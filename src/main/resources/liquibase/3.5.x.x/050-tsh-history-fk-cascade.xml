@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 / OGC-766 — now that v2 writes audit rows to test_sample_handling_history,
+    deleting a test_sample_handling row must cascade to its history (the v1 FK from
+    042 had no delete rule, so deleting a handling row that has audit history fails).
+    Recreate fk_tsh_history_handling with ON DELETE CASCADE.
+    -->
+    <changeSet id="OGC-766-tsh-history-fk-cascade" author="OGC">
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_sample_handling_history"
+            constraintName="fk_tsh_history_handling"/>
+        <addForeignKeyConstraint constraintName="fk_tsh_history_handling"
+            baseTableSchemaName="clinlims" baseTableName="test_sample_handling_history"
+            baseColumnNames="test_sample_handling_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_sample_handling"
+            referencedColumnNames="id" onDelete="CASCADE"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_sample_handling_history"
+                constraintName="fk_tsh_history_handling"/>
+            <addForeignKeyConstraint constraintName="fk_tsh_history_handling"
+                baseTableSchemaName="clinlims" baseTableName="test_sample_handling_history"
+                baseColumnNames="test_sample_handling_id"
+                referencedTableSchemaName="clinlims" referencedTableName="test_sample_handling"
+                referencedColumnNames="id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

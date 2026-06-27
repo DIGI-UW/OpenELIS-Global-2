@@ -23,6 +23,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { DEFAULT_SECTION } from "./sectionConfig";
 
 /**
  * OGC-949 M3 / OGC-928 — Test List View.
@@ -151,7 +152,11 @@ const TestCatalogList = () => {
   ];
 
   const openEditor = (testId) => {
-    history.push(`/MasterListsPage/TestCatalogEditor/${testId}`);
+    // Push the canonical section URL so the deep-link is fully formed and the
+    // first section + its SideNav item light up immediately.
+    history.push(
+      `/MasterListsPage/TestCatalogEditor/${testId}/${DEFAULT_SECTION}`,
+    );
   };
 
   const tableRows = (pageData.rows || []).map((r) => ({

@@ -18,7 +18,7 @@ public class DashBoardMetrics {
 
     Integer incomigOrders = 0;
 
-    Double averageTurnAroudTime = 0.0;
+    Long averageTurnAroudTime = 0L;
 
     Integer delayedTurnAround = 0;
 
@@ -86,11 +86,11 @@ public class DashBoardMetrics {
         this.incomigOrders = incomigOrders;
     }
 
-    public Double getAverageTurnAroudTime() {
+    public Long getAverageTurnAroudTime() {
         return averageTurnAroudTime;
     }
 
-    public void setAverageTurnAroudTime(Double averageTurnAroudTime) {
+    public void setAverageTurnAroudTime(Long averageTurnAroudTime) {
         this.averageTurnAroudTime = averageTurnAroudTime;
     }
 

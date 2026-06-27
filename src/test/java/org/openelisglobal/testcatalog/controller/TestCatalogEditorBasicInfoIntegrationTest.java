@@ -13,6 +13,9 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.BasicInfo;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,7 +40,46 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     private TestService testService;
 
     @Autowired
+    private TestResultComponentService componentService;
+
+    @Autowired
+    private TestResultInterpretationService interpretationService;
+
+    @Autowired
+    private TestResultService testResultService;
+
+    @Autowired
+    private org.openelisglobal.resultlimit.service.ResultLimitService resultLimitService;
+
+    @Autowired
+    private org.openelisglobal.testcatalog.service.RangeCoverageValidationService coverageService;
+
+    @Autowired
+    private org.openelisglobal.testsamplehandling.service.TestSampleHandlingService handlingService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
+
+    @Autowired
+    private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
+
+    @Autowired
+    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
+
+    @Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
+
+    @Autowired
+    private org.openelisglobal.testterminology.service.TestTerminologyMappingService terminologyService;
+
+    @Autowired
+    private org.openelisglobal.panel.service.PanelService panelService;
+
+    @Autowired
+    private org.openelisglobal.panelitem.service.PanelItemService panelItemService;
 
     private TestCatalogEditorRestController controller;
     private JdbcTemplate jdbc;
@@ -48,9 +90,13 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
         // Controllers live in the servlet context, not the test's root context; build
-        // one with the real (autowired) service so the save logic hits a real DB.
-        controller = new TestCatalogEditorRestController();
-        org.springframework.test.util.ReflectionTestUtils.setField(controller, "testService", testService);
+        // one with the real (autowired) services via constructor injection so the
+        // save logic hits a real DB. Constructor injection means a new controller
+        // dependency is a compile error here, not a runtime NPE.
+        controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
+                testResultService, resultLimitService, coverageService, handlingService, analyzerService,
+                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
+                panelService, panelItemService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, antimicrobial_resistance,"
@@ -161,6 +207,24 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         assertTrue(Boolean.TRUE.equals(reloaded.getAntimicrobialResistance()));
         assertTrue(reloaded.isActive());
         assertTrue(Boolean.TRUE.equals(reloaded.getOrderable()));
+    }
+
+    @org.junit.Test
+    public void basicInfo_cannotActivateAnInactiveTest_mustUseTheGatedEndpoint() {
+        // Basic-info CAN deactivate.
+        BasicInfo off = new BasicInfo();
+        off.active = false;
+        controller.saveBasicInfo(String.valueOf(TEST_ID), off, authedRequest());
+        assertTrue(!testService.getTestById(String.valueOf(TEST_ID)).isActive());
+
+        // But it must NOT flip an inactive test back to active — activation is gated
+        // on reference-range coverage via POST .../activate (the H-03 safety gate).
+        BasicInfo on = new BasicInfo();
+        on.active = true;
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), on, authedRequest());
+        assertEquals(200, resp.getStatusCode().value());
+        assertTrue("basic-info must not bypass the activation coverage gate",
+                !testService.getTestById(String.valueOf(TEST_ID)).isActive());
     }
 
     @org.junit.Test

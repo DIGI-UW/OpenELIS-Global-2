@@ -139,7 +139,7 @@ describe("TestCatalogList", () => {
     const cell = await screen.findByText("Glucose");
     fireEvent.click(cell.closest("tr"));
     expect(mockHistory.push).toHaveBeenCalledWith(
-      "/MasterListsPage/TestCatalogEditor/7",
+      "/MasterListsPage/TestCatalogEditor/7/basic-info",
     );
   });
 
