@@ -3,13 +3,13 @@ package org.openelisglobal.testcatalog.controller.rest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.BasicInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +19,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 
 public class TestCatalogEditorMicrobiologyTest extends BaseWebContextSensitiveTest {
-
-    private static final long TEST_ID = 78201L;
 
     @Autowired
     private TestService testService;
@@ -68,6 +66,7 @@ public class TestCatalogEditorMicrobiologyTest extends BaseWebContextSensitiveTe
     private javax.sql.DataSource dataSource;
 
     private JdbcTemplate jdbc;
+    private MicrobiologyTestFixtures fixtures;
     private TestCatalogEditorRestController controller;
 
     @Before
@@ -75,16 +74,13 @@ public class TestCatalogEditorMicrobiologyTest extends BaseWebContextSensitiveTe
     public void setUp() throws Exception {
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
+        fixtures = new MicrobiologyTestFixtures(jdbc);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
                 analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
                 panelService, panelItemService);
         cleanup();
-        jdbc.update("INSERT INTO clinlims.test"
-                + " (id, name, description, is_active, guid, domain, antimicrobial_resistance, orderable,"
-                + " culture_workflow_type, lastupdated)"
-                + " VALUES (?, 'MicroCatalogIT', 'MicroCatalogIT desc', 'Y', ?, 'CLINICAL', true, true, null, NOW())",
-                TEST_ID, UUID.randomUUID().toString());
+        fixtures.insertCatalogTest();
     }
 
     @After
@@ -97,20 +93,24 @@ public class TestCatalogEditorMicrobiologyTest extends BaseWebContextSensitiveTe
         BasicInfo update = new BasicInfo();
         update.cultureWorkflowType = "BACTERIOLOGY";
 
-        ResponseEntity<BasicInfo> saved = controller.saveBasicInfo(String.valueOf(TEST_ID), update, authedRequest());
+        ResponseEntity<BasicInfo> saved = controller
+                .saveBasicInfo(String.valueOf(MicrobiologyTestFixtures.CATALOG_TEST_ID), update, authedRequest());
 
         assertEquals(200, saved.getStatusCode().value());
         assertEquals("BACTERIOLOGY", saved.getBody().cultureWorkflowType);
-        org.openelisglobal.test.valueholder.Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        org.openelisglobal.test.valueholder.Test reloaded = testService
+                .getTestById(String.valueOf(MicrobiologyTestFixtures.CATALOG_TEST_ID));
         assertEquals("BACTERIOLOGY", reloaded.getCultureWorkflowType());
 
         BasicInfo clear = new BasicInfo();
         clear.cultureWorkflowType = "";
-        ResponseEntity<BasicInfo> cleared = controller.saveBasicInfo(String.valueOf(TEST_ID), clear, authedRequest());
+        ResponseEntity<BasicInfo> cleared = controller
+                .saveBasicInfo(String.valueOf(MicrobiologyTestFixtures.CATALOG_TEST_ID), clear, authedRequest());
 
         assertEquals(200, cleared.getStatusCode().value());
         assertNull(cleared.getBody().cultureWorkflowType);
-        assertNull(testService.getTestById(String.valueOf(TEST_ID)).getCultureWorkflowType());
+        assertNull(testService.getTestById(String.valueOf(MicrobiologyTestFixtures.CATALOG_TEST_ID))
+                .getCultureWorkflowType());
     }
 
     @Test
@@ -118,14 +118,15 @@ public class TestCatalogEditorMicrobiologyTest extends BaseWebContextSensitiveTe
         BasicInfo bad = new BasicInfo();
         bad.cultureWorkflowType = "IMPLEMENTATION_DETAIL";
 
-        ResponseEntity<BasicInfo> response = controller.saveBasicInfo(String.valueOf(TEST_ID), bad, authedRequest());
+        ResponseEntity<BasicInfo> response = controller
+                .saveBasicInfo(String.valueOf(MicrobiologyTestFixtures.CATALOG_TEST_ID), bad, authedRequest());
 
         assertEquals(422, response.getStatusCode().value());
     }
 
     private void cleanup() {
-        if (jdbc != null) {
-            jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        if (fixtures != null) {
+            fixtures.deleteCatalogTest();
         }
     }
 
