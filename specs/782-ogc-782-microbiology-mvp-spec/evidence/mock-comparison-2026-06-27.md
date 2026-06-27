@@ -17,40 +17,38 @@ Compared on 2026-06-27.
 
 ## Executive Finding
 
-The MVP evidence proves the happy-path behavior, but it does not visually match
-the OpenELIS-work guided workflow mocks. The implementation is currently a
-functional vertical workbench proof, while the mocks describe a guided,
-step-aware microbiology workflow shell with richer workbench, AST, expert-review,
-critical-notification, and WHONET mapping surfaces.
+The MVP now has design parity for the core case-workbench interaction shape:
+case progress rail, next-step callout, case-info strip, highlighted current
+work card, separate timeline, isolate card, AST card, critical-communication
+card, and report/WHONET readiness card. The happy-path behavior still passes in
+Playwright after the design pass.
 
-This is acceptable as a technical MVP checkpoint only if the PR is presented as
-behavioral proof, not mock-fidelity proof.
+The remaining differences are feature-depth gaps rather than raw layout gaps:
+the mock includes richer order context, media/subculture tracking, full isolate
+identification, table-level AST metadata, expert-review queues, and WHONET
+mapping/export screens that are outside this MVP slice.
 
 ## Comparison By Area
 
 | Area | Mock intent | Current evidence | Review call |
 |---|---|---|---|
-| Guided workflow shell | Persistent left walkthrough index, branch toggle, step number, Prev/Next, and current-step context. | Actual screenshots show normal OpenELIS header and a single vertical page. No guided shell or step navigation. | Product/UX gap if the deliverable is expected to resemble the mock. |
-| Case progress | Case-progress rail with done/current/to-do states and next-step callout. | Actual case stage is a single tag plus timeline text. | Workflow clarity gap. |
-| Case workbench layout | Compact cards for inoculation, timeline, isolates, AST results, reports. | Actual UI stacks large full-width forms and text lists. | Visual/ergonomic gap; behavior is present but hard to scan. |
-| Timeline | Structured activity log with timestamps, badges, actor, notes. | Actual timeline is a plain bold text list. | Evidence is hard to read; not mock-aligned. |
-| Isolate work-up | Rich isolate editing surface with Gram stain, colony morphology, preliminary/final ID, confidence, significance, and notes. | Actual creates/display one isolate with label, preliminary organism, and significance. | MVP behavior present; mock-level isolate work-up is not implemented. |
-| AST entry | Inline AST run table with method, reagent lot, breakpoint standard, per-drug MIC/interpretation/source/override rows. | Actual supports one antibiotic reading and override in a simple form. | Functional MVP only; major mock fidelity gap. |
-| Expert review | Separate inline expert-review queue with open/resolved flags and review decisions. | Actual has AST review button/status and final-release readiness. | Feature gap relative to M-06 mock. |
-| Critical notification | Inline critical notification card with open/ack/follow-up states and alert-path reuse. | M7 happy-path screenshots show the logging form but do not prove logged/acknowledged critical notification. M6 has separate foundational evidence. | Evidence gap for the all-up MVP story; feature exists but not shown in M7 video/screenshots. |
-| Report readiness | Reports card with explicit readiness checklist and preliminary/final release buttons. | Actual has two InlineNotifications and a final release button; after final release the button still appears enabled. | Functional but not mock-aligned; possible UX bug after final release. |
-| WHONET readiness/export | Mapping dashboard with percentage coverage, suggestions, per-vocabulary bars, and three-click export path. | Actual shows `WHONET export blocked ORGANISM_MAPPING_REQUIRED` only. | M7 implements readiness status, not the WHONET mapping/export UI in the mock. |
-| Evidence quality | Mock screenshots are focused viewport-level states. | Actual screenshots are very tall full-page captures; sticky header appears mid-page in AST/final screenshots. Video is hard to follow. | Evidence should be recaptured as focused panel screenshots or a narrated/stepped video before stakeholder review. |
+| Guided workflow shell | Persistent left walkthrough index, branch toggle, step number, Prev/Next, and current-step context. | Actual uses the normal OpenELIS shell plus an in-page case progress rail. | Accept for product MVP; do not build the prototype walkthrough chrome into OpenELIS. |
+| Case progress | Case-progress rail with done/current/to-do states and next-step callout. | Actual now has the progress rail, next-step callout, and stage tag. | Parity achieved for workflow orientation. |
+| Case workbench layout | Compact cards for inoculation, timeline, isolates, AST results, reports. | Actual now separates current inoculation/setup, timeline, isolates, AST, critical communication, and report readiness into cards. | Parity achieved for core card layout. |
+| Timeline | Structured activity log with timestamps, badges, actor, notes. | Actual uses structured activity rows with timestamps when available. | MVP-level parity; actor/system attribution remains future polish. |
+| Isolate work-up | Rich isolate editing surface with Gram stain, colony morphology, preliminary/final ID, confidence, significance, and notes. | Actual creates/displays one isolate with label, preliminary organism, and significance. | Feature-depth gap outside this MVP slice. |
+| AST entry | Inline AST run table with method, reagent lot, breakpoint standard, per-drug MIC/interpretation/source/override rows. | Actual now shows a result table for the recorded reading and inline override controls, but only one reading path is exercised. | MVP-level parity; reagent lot/breakpoint metadata is future scope. |
+| Expert review | Separate inline expert-review queue with open/resolved flags and review decisions. | Actual has AST review status and final-release readiness, not a separate expert-review queue. | Feature-depth gap relative to M-06 mock. |
+| Critical notification | Inline critical notification card with open/ack/follow-up states and alert-path reuse. | Actual has a compact critical-communication card and the component test proves log/ack behavior; the all-up video still focuses on the release path. | UI parity for card shape; evidence gap for all-up video coverage. |
+| Report readiness | Reports card with explicit readiness checklist and preliminary/final release buttons. | Actual now has final-release and WHONET readiness checklist cards and hides the release action after final release. | Parity achieved for MVP final-release readiness. |
+| WHONET readiness/export | Mapping dashboard with percentage coverage, suggestions, per-vocabulary bars, and three-click export path. | Actual shows WHONET readiness/blockers only. | Feature-depth gap; mapping/export dashboard is future scope. |
+| Evidence quality | Mock screenshots are focused viewport-level states. | Actual screenshots are recaptured after the design pass. Full-page shots still show fixed shell artifacts in tall captures, so the side-by-side crop is preferred for parity review. | Accept with side-by-side evidence; avoid using only video for visual review. |
 
 ## Specific Actual Evidence Issues
 
-- `ogc-782-ast-reviewed-ready.png` and `ogc-782-final-released.png` include the
-  sticky OpenELIS header in the middle of the full-page screenshot, making the
-  screenshot look broken even though the test passed.
-- `ogc-782-final-released.png` shows `FINAL_RELEASED`, but the `Release final
-  report` button is still visible and blue. That should be reviewed: either make
-  release idempotent with a post-release disabled state, or hide/change the
-  action after final release.
+- Tall full-page screenshots can include fixed OpenELIS shell elements in the
+  middle of the stitched image. The preferred design-review artifact is the
+  first-viewport side-by-side comparison listed below.
 - The M7 happy-path screenshot set does not show the M6 worklist/critical
   communication flow; that evidence exists separately but is not visible in the
   all-up MVP video.
@@ -59,18 +57,14 @@ behavioral proof, not mock-fidelity proof.
 
 ## Recommended Follow-Up
 
-1. Keep PR #3789 as the backend/API/readiness MVP slice if reviewers understand
-   it is not a UI fidelity pass.
-2. Add a follow-up UI milestone for mock-aligned case workbench ergonomics:
-   progress rail, compact cards, readiness checklist, and post-release action
-   state.
-3. Add a follow-up AST UI milestone for table-based AST entry and inline expert
-   review.
-4. Add a follow-up surveillance milestone for WHONET mapping readiness and
+1. Keep PR #3789 as the MVP implementation slice with core workbench design
+   parity.
+2. Add a follow-up AST UI milestone for multi-row AST entry, reagent lot,
+   breakpoint standard, and inline expert review.
+3. Add a follow-up surveillance milestone for WHONET mapping readiness and
    export preview UI.
-5. Re-record evidence with focused screenshots per section and a short guided
-   video that pauses at workbench, isolate, AST, review, final release, critical
-   communication, and WHONET readiness.
+4. Re-record a stakeholder-facing guided video if Casey needs a walkthrough
+   rather than raw Playwright evidence.
 
 ## Captured Comparison Aids
 
@@ -78,3 +72,5 @@ behavioral proof, not mock-fidelity proof.
   `/tmp/ogc-782-mock-compare/actual-contact-sheet.png`
 - Mock contact sheet:
   `/tmp/ogc-782-mock-compare/mock-contact-sheet.png`
+- Design-parity case workbench comparison:
+  `/tmp/ogc-782-mock-compare/design-parity-case-workbench-2026-06-27.png`

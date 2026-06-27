@@ -67,7 +67,7 @@ describe("MicrobiologyCaseView", () => {
     renderCase(service);
 
     expect(await screen.findByText("Microbiology case")).toBeInTheDocument();
-    expect(screen.getByText("RECEIVED")).toBeInTheDocument();
+    expect(screen.getAllByText("RECEIVED").length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText("Activity note"), {
       target: { value: "setup complete" },
     });
