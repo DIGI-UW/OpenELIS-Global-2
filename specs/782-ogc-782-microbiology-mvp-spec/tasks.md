@@ -107,7 +107,7 @@ on lazy loading in controllers.
 - [X] T036 [M2] Add read-only case REST controller in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
 - [X] T037 [M2] Run focused backend validation `mvn -q -Dtest='MicroCaseServiceTest,MicroCaseStateServiceTest,MicroIsolateServiceTest,MicroCaseIntegrationTest,MicroCaseRestControllerTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
 - [X] T038 [M2] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T039 [M2] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m2-case-core` to `develop` with validation evidence and link it from PR #3782.
+- [X] T039 [M2] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m2-case-core` to the M1 stacked branch with validation evidence and link it from PR #3782.
 
 ## Phase 3: M3 - Order Routing
 
