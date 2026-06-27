@@ -19,7 +19,10 @@ dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
  */
 
 // Demo story proof on the build stack (video-ready).
-const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
+const CORE_DEMO_TESTS = [
+  "**/demo/core/**/*.spec.ts",
+  "playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts",
+];
 
 // Harness demo story proof (video-ready).
 const HARNESS_DEMO_TESTS = ["**/demo/harness/**/*.spec.ts"];
