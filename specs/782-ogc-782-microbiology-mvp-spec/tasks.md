@@ -72,7 +72,7 @@ workflow UI is required.
 - [X] T018 [M1] Run focused backend validation `mvn -Dtest=MicrobiologyReferenceServiceTest,MicroBreakpointServiceTest,MicrobiologyReferenceDataIntegrationTest,MicrobiologyOrmValidationTest,TestCatalogEditorMicrobiologyTest test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
 - [X] T019 [M1] Run focused frontend validation `cd frontend && npm test -- BasicInfoSection.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
 - [X] T020 [M1] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T021 [M1] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations` to `spec/782-ogc-782-microbiology-mvp-spec` with validation evidence and link it from PR #3782.
+- [X] T021 [M1] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations` to `spec/782-ogc-782-microbiology-mvp-spec` with validation evidence and link it from PR #3782.
 
 ## Phase 2: M2 - Case Core
 
