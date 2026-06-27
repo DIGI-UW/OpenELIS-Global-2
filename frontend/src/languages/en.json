@@ -6084,5 +6084,21 @@
   "orderEntry.labels.source.presetDefault": "Preset default",
   "orderEntry.labels.locked.tooltipFor": "{label} is locked by the test configuration and cannot be changed.",
   "orderEntry.labels.total": "Total labels: {total}",
-  "orderEntry.labels.heading": "LABELS"
+  "orderEntry.labels.heading": "LABELS",
+  "microbiology.case.activityNote": "Activity note",
+  "microbiology.case.createIsolate": "Create isolate",
+  "microbiology.case.error": "Microbiology case error",
+  "microbiology.case.isolateLabel": "Isolate label",
+  "microbiology.case.isolates": "Isolates",
+  "microbiology.case.isolates.empty": "No isolates recorded",
+  "microbiology.case.loadError": "Unable to load microbiology case",
+  "microbiology.case.nextStage": "Next stage",
+  "microbiology.case.preliminaryOrganism": "Preliminary organism",
+  "microbiology.case.recordActivity": "Record activity",
+  "microbiology.case.sampleItem": "Sample item",
+  "microbiology.case.significance": "Significance",
+  "microbiology.case.timeline": "Case timeline",
+  "microbiology.case.timeline.empty": "No case activity recorded",
+  "microbiology.case.title": "Microbiology case",
+  "microbiology.case.workflow": "Workflow"
 }
