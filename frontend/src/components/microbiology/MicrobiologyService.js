@@ -42,11 +42,92 @@ export const saveOrderDetail = (caseId, payload) =>
     );
   });
 
+export const getAstPanels = (workflowType) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/reference/ast-panels?workflowType=${encodeURIComponent(
+        workflowType,
+      )}`,
+      resolve,
+    );
+  });
+
+export const getAntibiotics = () =>
+  new Promise((resolve) => {
+    getFromOpenElisServer("/rest/microbiology/reference/antibiotics", resolve);
+  });
+
+export const getAstRunsForIsolate = (isolateId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/ast/runs?isolateId=${encodeURIComponent(isolateId)}`,
+      resolve,
+    );
+  });
+
+export const startAstRun = (payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      "/rest/microbiology/ast/runs",
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
+export const recordAstReading = (runId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${runId}/readings`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
+export const overrideAstReading = (readingId, payload) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/ast/readings/${readingId}/override`,
+      JSON.stringify(payload),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
+export const reviewAstRun = (runId) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${runId}/review`,
+      JSON.stringify({}),
+      resolve,
+    );
+  });
+
+export const getCaseReadiness = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/readiness`,
+      resolve,
+    );
+  });
+
 const MicrobiologyService = {
   getCaseDetail,
   recordCaseActivity,
   createIsolate,
   saveOrderDetail,
+  getAstPanels,
+  getAntibiotics,
+  getAstRunsForIsolate,
+  startAstRun,
+  recordAstReading,
+  overrideAstReading,
+  reviewAstRun,
+  getCaseReadiness,
 };
 
 export default MicrobiologyService;

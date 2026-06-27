@@ -26,9 +26,24 @@ const renderCase = (service) =>
     </MemoryRouter>,
   );
 
+const astServiceStubs = {
+  getAstPanels: vi.fn().mockResolvedValue([]),
+  getAntibiotics: vi.fn().mockResolvedValue([]),
+  getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+  getCaseReadiness: vi.fn().mockResolvedValue({
+    finalReleaseReady: true,
+    blockers: [],
+  }),
+  startAstRun: vi.fn(),
+  recordAstReading: vi.fn(),
+  overrideAstReading: vi.fn(),
+  reviewAstRun: vi.fn(),
+};
+
 describe("MicrobiologyCaseView", () => {
   it("loads case details and records setup activity", async () => {
     const service = {
+      ...astServiceStubs,
       getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
       recordCaseActivity: vi.fn().mockResolvedValue({
         ...caseDetail,
@@ -82,6 +97,7 @@ describe("MicrobiologyCaseView", () => {
       ],
     };
     const service = {
+      ...astServiceStubs,
       getCaseDetail: vi
         .fn()
         .mockResolvedValueOnce(caseDetail)
