@@ -16,6 +16,7 @@ public class MicrobiologyTestFixtures {
     public static final String RULE_ID = "ogc782-rule";
     public static final String PANEL_ID = "ogc782-panel";
     public static final String SETUP_ID = "ogc782-setup";
+    public static final String TB_SETUP_ID = "ogc782-tb-setup";
     public static final String DEFAULT_USER_ID = "1";
 
     private final JdbcTemplate jdbc;
@@ -88,7 +89,15 @@ public class MicrobiologyTestFixtures {
                 + " '18-24h', 'Ambient', 'Y', NOW())", SETUP_ID, Long.valueOf(methodId));
     }
 
+    public void insertTbCultureSetup(String methodId) {
+        jdbc.update("INSERT INTO clinlims.micro_culture_setup"
+                + " (id, method_id, name, workflow_type, media_defaults, incubation_defaults, atmosphere_defaults,"
+                + " is_active, lastupdated) VALUES (?, ?, 'TB culture', 'MYCOBACTERIOLOGY_TB', 'MGIT',"
+                + " 'up to 42 days', 'Ambient', 'Y', NOW())", TB_SETUP_ID, Long.valueOf(methodId));
+    }
+
     public void deleteReferenceData() {
+        jdbc.update("DELETE FROM clinlims.micro_culture_setup WHERE id = ?", TB_SETUP_ID);
         jdbc.update("DELETE FROM clinlims.micro_culture_setup WHERE id = ?", SETUP_ID);
         jdbc.update("DELETE FROM clinlims.micro_breakpoint_rule WHERE id = ?", RULE_ID);
         jdbc.update("DELETE FROM clinlims.micro_breakpoint_standard WHERE id = ?", STANDARD_ID);
