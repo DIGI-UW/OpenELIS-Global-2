@@ -31,7 +31,7 @@ describe("ReportReadinessPanel", () => {
     expect(
       await screen.findByText("Final release blocked"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/AST_REVIEW_REQUIRED/)).toBeInTheDocument();
+    expect(screen.getByText(/AST Review Required/)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Release final report" }),
     ).toBeDisabled();
@@ -62,6 +62,6 @@ describe("ReportReadinessPanel", () => {
     await waitFor(() =>
       expect(service.releaseFinalReport).toHaveBeenCalledWith("case-1"),
     );
-    expect(await screen.findByText("FINAL_RELEASED")).toBeInTheDocument();
+    expect(await screen.findByText("Final Released")).toBeInTheDocument();
   });
 });

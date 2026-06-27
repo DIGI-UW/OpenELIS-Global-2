@@ -9,6 +9,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 
 const METHOD_OPTIONS = ["MIC", "ZONE"];
 const OVERRIDE_OPTIONS = ["SUSCEPTIBLE", "INTERMEDIATE", "RESISTANT"];
@@ -98,6 +99,7 @@ const AstEntryPanel = ({
   const currentReadingValue =
     currentReading?.rawValue ?? currentReading?.rawText ?? rawValue;
   const busy = saving || caseSaving;
+  const isReviewed = currentRun?.status === "REVIEWED";
 
   const runOperation = (operation) => {
     setSaving(true);
@@ -142,6 +144,7 @@ const AstEntryPanel = ({
   return (
     <section
       className="microbiology-card"
+      data-testid="microbiology-ast-card"
       aria-labelledby="microbiology-ast-heading"
     >
       <div className="microbiology-card__header">
@@ -156,7 +159,7 @@ const AstEntryPanel = ({
         {currentRun && (
           <div data-testid="microbiology-ast-run-status">
             <Tag type={currentRun.status === "REVIEWED" ? "green" : "cyan"}>
-              {currentRun.status}
+              {formatMicrobiologyEnum(currentRun.status)}
             </Tag>
           </div>
         )}
@@ -174,7 +177,9 @@ const AstEntryPanel = ({
                     ? "microbiology.readiness.ready"
                     : "microbiology.readiness.blocked",
                 })}
-                subtitle={(readiness.blockers || []).join(", ")}
+                subtitle={(readiness.blockers || [])
+                  .map(formatMicrobiologyEnum)
+                  .join(", ")}
                 hideCloseButton
               />
             ) : null}
@@ -214,7 +219,12 @@ const AstEntryPanel = ({
               <div>
                 <Button
                   onClick={startRun}
-                  disabled={busy || !selectedIsolateId || !selectedPanelId}
+                  disabled={
+                    busy ||
+                    !!currentRun ||
+                    !selectedIsolateId ||
+                    !selectedPanelId
+                  }
                 >
                   {intl.formatMessage({ id: "microbiology.ast.startRun" })}
                 </Button>
@@ -265,7 +275,7 @@ const AstEntryPanel = ({
                     onClick={recordReading}
                     disabled={
                       busy ||
-                      currentRun.status === "REVIEWED" ||
+                      isReviewed ||
                       !selectedAntibioticId ||
                       !rawValue.trim()
                     }
@@ -360,7 +370,9 @@ const AstEntryPanel = ({
                         <Button
                           kind="secondary"
                           onClick={overrideReading}
-                          disabled={busy || !overrideReason.trim()}
+                          disabled={
+                            busy || isReviewed || !overrideReason.trim()
+                          }
                         >
                           {intl.formatMessage({
                             id: "microbiology.ast.applyOverride",
@@ -373,11 +385,7 @@ const AstEntryPanel = ({
                 <Button
                   kind="primary"
                   onClick={reviewRun}
-                  disabled={
-                    busy ||
-                    currentRun.status === "REVIEWED" ||
-                    !currentRun.readings?.length
-                  }
+                  disabled={busy || isReviewed || !currentRun.readings?.length}
                 >
                   {intl.formatMessage({ id: "microbiology.ast.reviewRun" })}
                 </Button>

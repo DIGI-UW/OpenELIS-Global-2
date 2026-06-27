@@ -6,6 +6,7 @@ import AstEntryPanel from "./AstEntryPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
+import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
 import ReportReadinessPanel from "./ReportReadinessPanel";
 import "./MicrobiologyCaseView.css";
@@ -148,18 +149,19 @@ const MicrobiologyCaseView = ({
             </span>
             <span>
               {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
-              <strong>{caseDetail.workflowType}</strong>
+              <strong>{formatMicrobiologyEnum(caseDetail.workflowType)}</strong>
             </span>
           </div>
         </div>
         <Tag type={caseDetail.stage === "FINAL_RELEASED" ? "green" : "blue"}>
-          {caseDetail.stage}
+          {formatMicrobiologyEnum(caseDetail.stage)}
         </Tag>
       </header>
 
       <div className="microbiology-workbench__layout">
         <aside
           className="microbiology-workbench__rail"
+          data-testid="microbiology-progress-rail"
           aria-label={intl.formatMessage({ id: "microbiology.progress.title" })}
         >
           <h3>{intl.formatMessage({ id: "microbiology.progress.title" })}</h3>
@@ -194,6 +196,7 @@ const MicrobiologyCaseView = ({
           </section>
           <section
             className="microbiology-case-summary"
+            data-testid="microbiology-case-summary"
             aria-label={intl.formatMessage({
               id: "microbiology.progress.caseInfo",
             })}
@@ -207,7 +210,7 @@ const MicrobiologyCaseView = ({
             </span>
             <span>
               {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
-              {caseDetail.workflowType}
+              {formatMicrobiologyEnum(caseDetail.workflowType)}
             </span>
           </section>
           <Stack gap={5}>

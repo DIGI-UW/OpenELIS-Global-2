@@ -1,13 +1,23 @@
 import React, { useState } from "react";
 import { Button, Select, SelectItem, Tag, TextArea } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 
 const STAGE_OPTIONS = [
-  "SETUP_RECORDED",
-  "INCUBATING",
-  "GROWTH_DETECTED",
-  "NO_GROWTH_READY",
-  "REJECTED",
+  {
+    value: "SETUP_RECORDED",
+    labelId: "microbiology.case.action.startInoculation",
+  },
+  { value: "INCUBATING", labelId: "microbiology.case.action.setIncubating" },
+  {
+    value: "GROWTH_DETECTED",
+    labelId: "microbiology.case.action.recordGrowth",
+  },
+  {
+    value: "NO_GROWTH_READY",
+    labelId: "microbiology.case.action.markNoGrowth",
+  },
+  { value: "REJECTED", labelId: "microbiology.case.action.rejectCase" },
 ];
 
 const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
@@ -19,11 +29,15 @@ const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
     onRecordActivity({ nextStage, note });
     setNote("");
   };
+  const selectedStageOption =
+    STAGE_OPTIONS.find((option) => option.value === nextStage) ||
+    STAGE_OPTIONS[0];
 
   return (
     <>
       <section
         className="microbiology-card microbiology-card--current"
+        data-testid="microbiology-setup-card"
         aria-labelledby="microbiology-setup-heading"
       >
         <div className="microbiology-card__header">
@@ -40,13 +54,17 @@ const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
           <Select
             id="microbiology-next-stage"
             labelText={intl.formatMessage({
-              id: "microbiology.case.nextStage",
+              id: "microbiology.case.cultureAction",
             })}
             value={nextStage}
             onChange={(event) => setNextStage(event.target.value)}
           >
             {STAGE_OPTIONS.map((stage) => (
-              <SelectItem key={stage} value={stage} text={stage} />
+              <SelectItem
+                key={stage.value}
+                value={stage.value}
+                text={intl.formatMessage({ id: stage.labelId })}
+              />
             ))}
           </Select>
           <div />
@@ -62,7 +80,7 @@ const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
           </div>
           <div>
             <Button onClick={submit} disabled={saving}>
-              {intl.formatMessage({ id: "microbiology.case.recordActivity" })}
+              {intl.formatMessage({ id: selectedStageOption.labelId })}
             </Button>
           </div>
         </div>
@@ -70,6 +88,7 @@ const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
 
       <section
         className="microbiology-card"
+        data-testid="microbiology-timeline-card"
         aria-labelledby="microbiology-timeline-heading"
       >
         <div className="microbiology-card__header">
@@ -100,7 +119,7 @@ const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
                   `${activity.activityType}-${activity.occurredAt}`
                 }
               >
-                <strong>{activity.activityType}</strong>
+                <strong>{formatMicrobiologyEnum(activity.activityType)}</strong>
                 {activity.note ? `: ${activity.note}` : ""}
                 {activity.occurredAt && (
                   <div className="microbiology-list__meta">

@@ -121,7 +121,7 @@ describe("AstEntryPanel", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Start AST run" }));
 
-    expect(await screen.findByText("IN_PROGRESS")).toBeInTheDocument();
+    expect(await screen.findByText("In Progress")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Record AST reading" }));
 
     expect(
@@ -139,8 +139,20 @@ describe("AstEntryPanel", () => {
     expect(await screen.findByText(/RESISTANT/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Review AST run" }));
 
-    expect(await screen.findByText("REVIEWED")).toBeInTheDocument();
+    expect(await screen.findByText("Reviewed")).toBeInTheDocument();
     expect(screen.getByText("Final release ready")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start AST run" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Record AST reading" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Apply override" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Review AST run" }),
+    ).toBeDisabled();
     expect(service.recordAstReading).toHaveBeenCalledWith("run-1", {
       antibioticId: "abx-1",
       method: "MIC",

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
 
 const ReportReadinessPanel = ({
@@ -83,7 +84,7 @@ const ReportReadinessPanel = ({
         <span className="microbiology-status-dot microbiology-status-dot--warning">
           !
         </span>
-        {blocker}
+        {formatMicrobiologyEnum(blocker)}
       </li>
     ));
   };
@@ -91,6 +92,7 @@ const ReportReadinessPanel = ({
   return (
     <section
       className="microbiology-card"
+      data-testid="microbiology-report-card"
       aria-labelledby="microbiology-release-heading"
     >
       <div className="microbiology-card__header">
@@ -105,7 +107,7 @@ const ReportReadinessPanel = ({
         {effectiveReleaseState && (
           <div data-testid="microbiology-release-state">
             <Tag type={finalReleased ? "green" : "blue"}>
-              {effectiveReleaseState}
+              {formatMicrobiologyEnum(effectiveReleaseState)}
             </Tag>
           </div>
         )}
