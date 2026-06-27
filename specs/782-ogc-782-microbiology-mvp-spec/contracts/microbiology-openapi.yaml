@@ -1,0 +1,493 @@
+openapi: 3.0.3
+info:
+  title: OpenELIS Microbiology MVP API
+  version: 0.1.0
+  description: Planning contract for the OGC-782 microbiology MVP workflow.
+servers:
+  - url: /rest
+paths:
+  /microbiology/worklist:
+    get:
+      summary: List microbiology cases and AST work requiring action
+      parameters:
+        - name: workflowType
+          in: query
+          schema:
+            $ref: "#/components/schemas/MicroWorkflowType"
+        - name: stage
+          in: query
+          schema:
+            type: string
+        - name: dueAction
+          in: query
+          schema:
+            type: string
+        - name: urgentOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Worklist rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorklistRow"
+  /microbiology/cases/{caseId}:
+    get:
+      summary: Get compiled microbiology case detail
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Case detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroCaseDetail"
+        "404":
+          description: Case not found
+  /microbiology/cases/{caseId}/activities:
+    post:
+      summary: Record a case activity or observation
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaseActivityRequest"
+      responses:
+        "201":
+          description: Activity recorded and case state updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroCaseDetail"
+        "400":
+          description: Invalid activity for case state
+  /microbiology/cases/{caseId}/isolates:
+    post:
+      summary: Create an isolate for a case
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IsolateRequest"
+      responses:
+        "201":
+          description: Isolate created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroIsolate"
+  /microbiology/isolates/{isolateId}:
+    put:
+      summary: Update organism identification or significance for an isolate
+      parameters:
+        - $ref: "#/components/parameters/IsolateId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IsolateRequest"
+      responses:
+        "200":
+          description: Updated isolate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroIsolate"
+        "400":
+          description: Invalid isolate update
+  /microbiology/isolates/{isolateId}/ast-runs:
+    post:
+      summary: Start AST for an isolate
+      parameters:
+        - $ref: "#/components/parameters/IsolateId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstRunRequest"
+      responses:
+        "201":
+          description: AST run created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+        "400":
+          description: Isolate context is insufficient for AST
+  /microbiology/ast-runs/{astRunId}/readings:
+    put:
+      summary: Save AST readings for a run
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - readings
+              properties:
+                readings:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AstReadingRequest"
+      responses:
+        "200":
+          description: AST run with interpreted readings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+        "400":
+          description: Invalid reading payload
+  /microbiology/ast-runs/{astRunId}/review:
+    post:
+      summary: Mark an AST run reviewed
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      responses:
+        "200":
+          description: Reviewed AST run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+        "400":
+          description: AST run is not reviewable
+  /microbiology/cases/{caseId}/critical-communications:
+    post:
+      summary: Log a critical microbiology communication
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriticalCommunicationRequest"
+      responses:
+        "201":
+          description: Communication logged and alert surfaced when configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriticalCommunication"
+  /microbiology/cases/{caseId}/release-preliminary:
+    post:
+      summary: Release a preliminary microbiology report
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Preliminary release accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroCaseDetail"
+        "400":
+          description: Preliminary release is not allowed
+  /microbiology/cases/{caseId}/release-final:
+    post:
+      summary: Release a final microbiology report
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Final release accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroCaseDetail"
+        "409":
+          description: Case is not final-release ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessFailure"
+  /microbiology/surveillance/whonet/readiness:
+    get:
+      summary: Check finalized microbiology cases for WHONET readiness
+      parameters:
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: WHONET readiness report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WhonetReadinessRow"
+components:
+  parameters:
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema:
+        type: string
+    IsolateId:
+      name: isolateId
+      in: path
+      required: true
+      schema:
+        type: string
+    AstRunId:
+      name: astRunId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    MicroWorkflowType:
+      type: string
+      enum:
+        - BACTERIOLOGY
+        - MYCOBACTERIOLOGY_TB
+        - MYCOLOGY
+    WorklistRow:
+      type: object
+      properties:
+        caseId:
+          type: string
+        accessionNumber:
+          type: string
+        patientDisplay:
+          type: string
+        workflowType:
+          $ref: "#/components/schemas/MicroWorkflowType"
+        stage:
+          type: string
+        dueAction:
+          type: string
+        urgency:
+          type: string
+        hasSiblingWorkflow:
+          type: boolean
+        needsReview:
+          type: boolean
+        hasCriticalOpen:
+          type: boolean
+    MicroCaseDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        sampleItemId:
+          type: string
+        accessionNumber:
+          type: string
+        workflowType:
+          $ref: "#/components/schemas/MicroWorkflowType"
+        stage:
+          type: string
+        nextAction:
+          type: string
+        releaseBlockers:
+          type: array
+          items:
+            type: string
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaseActivity"
+        isolates:
+          type: array
+          items:
+            $ref: "#/components/schemas/MicroIsolate"
+        siblingCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/SiblingCase"
+    SiblingCase:
+      type: object
+      properties:
+        caseId:
+          type: string
+        workflowType:
+          $ref: "#/components/schemas/MicroWorkflowType"
+        stage:
+          type: string
+    CaseActivityRequest:
+      type: object
+      required:
+        - activityType
+      properties:
+        activityType:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        note:
+          type: string
+        structuredData:
+          type: object
+          additionalProperties: true
+    CaseActivity:
+      allOf:
+        - $ref: "#/components/schemas/CaseActivityRequest"
+        - type: object
+          properties:
+            id:
+              type: string
+            performedBy:
+              type: string
+    IsolateRequest:
+      type: object
+      properties:
+        isolateLabel:
+          type: string
+        organismId:
+          type: string
+        preliminaryOrganismText:
+          type: string
+        significance:
+          type: string
+    MicroIsolate:
+      allOf:
+        - $ref: "#/components/schemas/IsolateRequest"
+        - type: object
+          properties:
+            id:
+              type: string
+            caseId:
+              type: string
+            identificationStatus:
+              type: string
+    AstRunRequest:
+      type: object
+      properties:
+        panelId:
+          type: string
+        method:
+          type: string
+        breakpointStandardId:
+          type: string
+    AstRun:
+      type: object
+      properties:
+        id:
+          type: string
+        isolateId:
+          type: string
+        status:
+          type: string
+        readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/AstReading"
+    AstReadingRequest:
+      type: object
+      required:
+        - antibioticId
+        - readingValue
+      properties:
+        antibioticId:
+          type: string
+        readingType:
+          type: string
+        readingValue:
+          type: string
+        readingUnit:
+          type: string
+        overrideInterpretation:
+          type: string
+        overrideReason:
+          type: string
+    AstReading:
+      allOf:
+        - $ref: "#/components/schemas/AstReadingRequest"
+        - type: object
+          properties:
+            id:
+              type: string
+            interpretedValue:
+              type: string
+            finalInterpretation:
+              type: string
+            requiresManualJudgment:
+              type: boolean
+    CriticalCommunicationRequest:
+      type: object
+      required:
+        - targetType
+        - targetId
+        - recipientName
+        - message
+        - method
+      properties:
+        targetType:
+          type: string
+        targetId:
+          type: string
+        recipientName:
+          type: string
+        recipientContact:
+          type: string
+        message:
+          type: string
+        method:
+          type: string
+        followUpRequired:
+          type: boolean
+    CriticalCommunication:
+      allOf:
+        - $ref: "#/components/schemas/CriticalCommunicationRequest"
+        - type: object
+          properties:
+            id:
+              type: string
+            communicationStatus:
+              type: string
+            communicatedAt:
+              type: string
+              format: date-time
+            linkedAlertId:
+              type: integer
+              format: int64
+    ReadinessFailure:
+      type: object
+      properties:
+        caseId:
+          type: string
+        blockers:
+          type: array
+          items:
+            type: string
+    WhonetReadinessRow:
+      type: object
+      properties:
+        caseId:
+          type: string
+        ready:
+          type: boolean
+        missingMappings:
+          type: array
+          items:
+            type: string
