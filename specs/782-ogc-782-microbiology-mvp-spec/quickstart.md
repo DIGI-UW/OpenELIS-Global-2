@@ -18,6 +18,26 @@ without re-reading every Confluence/Jira/mockup artifact from scratch.
    - `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md`
    - `specs/roadmaps/microbiology-spec-health-cleanup-list.md`
 
+## Code QA Skills
+
+Use the `DIGI-UW/code-qa` skill suite as the verification companion for
+implementation PRs:
+
+```bash
+git submodule add https://github.com/DIGI-UW/code-qa tools/code-qa
+```
+
+Then make the local skill installer scan `tools/code-qa/skills`, or otherwise
+make these skills available to the implementing agent:
+
+- `meaningful-test-coverage`
+- `spec-code-alignment`
+- `simplicity-review`
+- `evidence-bundle`
+
+The final MVP acceptance gate in `tasks.md` requires these workflows before
+marking the implementation complete.
+
 ## Start The First Implementation Slice
 
 Create the first milestone branch from the accepted spec branch:

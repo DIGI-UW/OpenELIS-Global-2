@@ -246,6 +246,9 @@ inside product requirements.
   communication audit, accessibility checks.
 - **After M7**: Release readiness, report handoff, WHONET readiness, and
   Playwright happy-path/blocking-path flows.
+- **Final MVP Code QA**: Run `DIGI-UW/code-qa` workflows for meaningful test
+  coverage, spec-code alignment, simplicity review, and evidence bundling before
+  marking the MVP implementation complete.
 
 ## Phase 1 Design Outputs
 
