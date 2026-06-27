@@ -6100,5 +6100,22 @@
   "microbiology.case.timeline": "Case timeline",
   "microbiology.case.timeline.empty": "No case activity recorded",
   "microbiology.case.title": "Microbiology case",
-  "microbiology.case.workflow": "Workflow"
+  "microbiology.case.workflow": "Workflow",
+  "microbiology.ast.antibiotic": "Antibiotic",
+  "microbiology.ast.applyOverride": "Apply override",
+  "microbiology.ast.interpretation": "Interpretation",
+  "microbiology.ast.isolate": "Isolate",
+  "microbiology.ast.method": "Method",
+  "microbiology.ast.noIsolate": "Create an isolate before recording AST",
+  "microbiology.ast.override": "Override interpretation",
+  "microbiology.ast.overrideReason": "Override reason",
+  "microbiology.ast.panel": "AST panel",
+  "microbiology.ast.rawValue": "Result value",
+  "microbiology.ast.recordReading": "Record AST reading",
+  "microbiology.ast.reviewRun": "Review AST run",
+  "microbiology.ast.runStatus": "AST run status",
+  "microbiology.ast.startRun": "Start AST run",
+  "microbiology.ast.title": "Manual AST",
+  "microbiology.readiness.blocked": "Final release blocked",
+  "microbiology.readiness.ready": "Final release ready"
 }
