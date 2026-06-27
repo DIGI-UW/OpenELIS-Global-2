@@ -298,7 +298,7 @@ WHONET readiness; incomplete cases show blockers.
 - [x] T139 [M7] Debug failed Playwright runs with screenshot/trace evidence and fix source/test issues in `frontend/playwright/tests/` and `frontend/src/components/microbiology/`.
 - [x] T140 [M7] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseReadinessServiceTest,MicroReportReleaseServiceTest,MicroWhonetReadinessServiceTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test && cd frontend && npm test -- ReportReadinessPanel.test.jsx MicrobiologyCaseView.test.jsx AstEntryPanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
 - [x] T141 [M7] Run final documentation consistency update in `specs/782-ogc-782-microbiology-mvp-spec/tasks.md`, `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`, and `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`.
-- [ ] T142 [M7] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` to `develop` with TDD, Playwright trace/screenshot, and demo video evidence linked from PR #3782.
+- [x] T142 [M7] Open draft PR #3789 for `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` to the M6 stack branch with TDD, Playwright trace/screenshot, and demo video evidence linked from PR #3782.
 
 ## Final MVP Acceptance Gate
 
