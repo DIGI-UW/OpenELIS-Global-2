@@ -85,6 +85,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
 
         <!-- External Quality Assurance entities (005-eqa-module) -->
         <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>

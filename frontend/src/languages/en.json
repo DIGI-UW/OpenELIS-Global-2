@@ -6116,6 +6116,17 @@
   "microbiology.ast.runStatus": "AST run status",
   "microbiology.ast.startRun": "Start AST run",
   "microbiology.ast.title": "Manual AST",
+  "microbiology.critical.acknowledge": "Acknowledge",
+  "microbiology.critical.followUp": "Follow-up needed",
+  "microbiology.critical.log": "Log communication",
+  "microbiology.critical.message": "Message",
+  "microbiology.critical.messageRequired": "Message is required",
+  "microbiology.critical.recipient": "Recipient",
+  "microbiology.critical.title": "Critical communication",
   "microbiology.readiness.blocked": "Final release blocked",
-  "microbiology.readiness.ready": "Final release ready"
+  "microbiology.readiness.ready": "Final release ready",
+  "microbiology.worklist.critical": "Critical communication",
+  "microbiology.worklist.openCase": "Open case",
+  "microbiology.worklist.siblings": "Sibling workflows",
+  "microbiology.worklist.title": "Microbiology worklist"
 }

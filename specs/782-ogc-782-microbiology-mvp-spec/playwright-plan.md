@@ -61,3 +61,31 @@
   - `frontend/e2e-evidence/ogc-782-ast-reviewed-ready.png`
 - Video evidence:
   `frontend/test-results/demo-core-ogc-782-microbio-3f6cc-ual-AST-override-and-review-core-demo-video/video.webm`
+
+## M6 Worklist + Critical Communication
+
+- Flow: `microbiology-worklist-critical`
+- Routes: `/MicrobiologyCaseView/:caseId`, `/MicrobiologyWorklist`
+- Setup: seed one bacteriology case with a sibling TB workflow on the same
+  sample item and AST reference prerequisites through test-only Postgres setup.
+- User actions:
+  - open the bacteriology case,
+  - log a critical communication with a free-text recipient and follow-up flag,
+  - open the shared microbiology worklist,
+  - confirm the seeded case is high priority and shows sibling workflow context,
+  - open the case from the worklist,
+  - acknowledge the critical communication.
+- Expected outcomes:
+  - logged communication appears as `OPEN` on the case,
+  - worklist row shows `HIGH`, `Critical communication`, and
+    `MYCOBACTERIOLOGY_TB`,
+  - acknowledgement changes the communication status to `ACKNOWLEDGED`.
+- Project: `core-app`
+- Evidence commands:
+  `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts`
+  `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app`
+- Evidence result: passed locally on 2026-06-27 against the worktree dev stack
+  after rebuilding and recreating the OpenELIS/frontend/proxy containers.
+- Engineering note: generic `Alert` currently requires numeric entity ids while
+  microbiology cases use UUID strings, so M6 surfaces critical communication in
+  the microbiology worklist and does not force a generic alert row.
