@@ -34,7 +34,13 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
         readiness.caseId = microCase.getId();
         readiness.finalReleaseReady = true;
-        for (MicroIsolate isolate : isolateDAO.getByCaseId(caseId)) {
+        List<MicroIsolate> isolates = isolateDAO.getByCaseId(caseId);
+        if (isolates.isEmpty()) {
+            readiness.finalReleaseReady = false;
+            readiness.blockers.add("ISOLATE_REQUIRED");
+            return readiness;
+        }
+        for (MicroIsolate isolate : isolates) {
             if (MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name().equals(isolate.getSignificance())
                     && !hasReviewedAst(isolate.getId())) {
                 readiness.finalReleaseReady = false;

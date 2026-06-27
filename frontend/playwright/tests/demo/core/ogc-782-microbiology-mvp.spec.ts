@@ -17,7 +17,7 @@ test.describe("OGC-782 microbiology MVP", () => {
     try {
       await demo.title(
         "OGC-782 Microbiology MVP",
-        "Case workbench · isolate · manual AST · review readiness",
+        "Case workbench · isolate · manual AST · release readiness",
       );
 
       await test.step("Open the microbiology case", async () => {
@@ -55,9 +55,9 @@ test.describe("OGC-782 microbiology MVP", () => {
         await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
-        await expect(page.getByText("Final release blocked")).toBeVisible({
-          timeout: LONG_TIMEOUT,
-        });
+        await expect(
+          page.getByLabel("Manual AST").getByText("Final release blocked"),
+        ).toBeVisible({ timeout: LONG_TIMEOUT });
         await demo.evidence("ogc-782-isolate-created");
         await demo.pause(1500);
       });
@@ -109,10 +109,28 @@ test.describe("OGC-782 microbiology MVP", () => {
         ).toContainText("REVIEWED", {
           timeout: LONG_TIMEOUT,
         });
-        await expect(page.getByText("Final release ready")).toBeVisible({
-          timeout: LONG_TIMEOUT,
-        });
+        await expect(
+          page.getByLabel("Manual AST").getByText("Final release ready"),
+        ).toBeVisible({ timeout: LONG_TIMEOUT });
         await demo.evidence("ogc-782-ast-reviewed-ready");
+        await demo.pause(2000);
+      });
+
+      await test.step("Release the final report", async () => {
+        await demo.step(5, "Release final report");
+        await expect(
+          page.getByRole("heading", { name: "Report readiness" }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "Release final report" }),
+        ).toBeEnabled({ timeout: LONG_TIMEOUT });
+        await page
+          .getByRole("button", { name: "Release final report" })
+          .click();
+        await expect(
+          page.getByTestId("microbiology-release-state"),
+        ).toContainText("FINAL_RELEASED", { timeout: LONG_TIMEOUT });
+        await demo.evidence("ogc-782-final-released");
         await demo.pause(2000);
       });
     } finally {
