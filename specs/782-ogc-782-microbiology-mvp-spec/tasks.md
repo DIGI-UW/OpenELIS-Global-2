@@ -7,7 +7,9 @@
 
 **Tests**: Mandatory. Each milestone starts with failing tests or test plans
 before implementation. Runtime Playwright evidence is required for UI milestones
-and for final MVP acceptance.
+and for final MVP acceptance. Milestone PRs must also use the
+`DIGI-UW/code-qa` skill suite for meaningful test coverage, spec-code alignment,
+simplicity review, and evidence bundling.
 
 **Organization**: OpenELIS milestone-first per Constitution Principle IX. Each
 milestone is one PR and maps back to the user stories in `spec.md`.
@@ -311,6 +313,11 @@ WHONET readiness; incomplete cases show blockers.
 - [ ] T149 [MVP] Attach or link final Playwright screenshots, traces for failures if any, and `video.webm` evidence in the M7 PR and parent PR #3782.
 - [ ] T150 [MVP] Run `mvn spotless:apply && cd frontend && npm run format` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
 - [ ] T151 [MVP] Run `git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [ ] T152 [MVP] Verify `DIGI-UW/code-qa` is installed or available as a skill source from `https://github.com/DIGI-UW/code-qa` before final MVP acceptance.
+- [ ] T153 [MVP] Run the `meaningful-test-coverage` workflow from `DIGI-UW/code-qa` against the implemented microbiology MVP and record which backend, frontend, and E2E tests satisfy the inversion test in the M7 PR.
+- [ ] T154 [MVP] Run the `spec-code-alignment` workflow from `DIGI-UW/code-qa` against `specs/782-ogc-782-microbiology-mvp-spec/` and the implemented code, then update lagging specs or file defects for real code divergence.
+- [ ] T155 [MVP] Run the `simplicity-review` workflow from `DIGI-UW/code-qa` against the MVP diff and remove or explicitly justify speculative abstractions, duplicate exporters, duplicate alert surfaces, or unused configuration.
+- [ ] T156 [MVP] Run the `evidence-bundle` workflow from `DIGI-UW/code-qa` after the final `core-demo-video` Playwright run and attach the generated text report plus manually shared media links to the M7 PR and parent PR #3782.
 
 ## Dependencies & Execution Order
 
@@ -350,3 +357,8 @@ WHONET readiness; incomplete cases show blockers.
   and at least one narrow `core-app` or `core-demo` run before PR review.
 - Use `/debug-playwright` with screenshot/trace evidence before changing a
   failing Playwright selector or assertion.
+- Use `DIGI-UW/code-qa` before final review: `meaningful-test-coverage` must
+  reject theater tests, `spec-code-alignment` must reconcile implemented code
+  with `spec.md`/`plan.md`/`tasks.md`, `simplicity-review` must catch bloat, and
+  `evidence-bundle` must package final Playwright proof without committing
+  binary media.
