@@ -270,34 +270,34 @@ WHONET readiness; incomplete cases show blockers.
 
 ### Tests First
 
-- [ ] T117 [M7] Create branch `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` from `develop` after M6 merge in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T118 [P] [M7] Add failing release service tests for preliminary release, final release blockers, and release history in `src/test/java/org/openelisglobal/microbiology/service/MicroReportReleaseServiceTest.java`.
-- [ ] T119 [P] [M7] Add failing WHONET readiness tests for missing organism, antibiotic, specimen, and breakpoint mappings in `src/test/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessServiceTest.java`.
-- [ ] T120 [P] [M7] Add failing integration tests for final release handoff to existing result/reporting infrastructure in `src/test/java/org/openelisglobal/microbiology/MicroReportReleaseIntegrationTest.java`.
-- [ ] T121 [P] [M7] Add failing React interaction tests for readiness blockers and release actions in `frontend/src/components/microbiology/__tests__/ReportReadinessPanel.test.jsx`.
-- [ ] T122 [P] [M7] Run `/plan-record-playwright --flows microbiology-mvp-happy-path,microbiology-mvp-blocked-release --record` and update `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`.
-- [ ] T123 [P] [M7] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-mvp-release-readiness.spec.ts --project core-app` to create a red Playwright test for final release gating and WHONET readiness.
-- [ ] T124 [P] [M7] Use `/write-playwright-test frontend/playwright/tests/demo/core/microbiology-mvp-demo.spec.ts --project core-demo` to create a red UI-only demo proof of the completed MVP happy path.
+- [x] T117 [M7] Create branch `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` from the M6 stack branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T118 [P] [M7] Add release service tests for preliminary release, final release blockers, and release history in `src/test/java/org/openelisglobal/microbiology/service/MicroReportReleaseServiceTest.java`.
+- [x] T119 [P] [M7] Add WHONET readiness tests for missing organism, AST review, and mapping readiness in `src/test/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessServiceTest.java`.
+- [x] T120 [P] [M7] Add readiness regression coverage proving cases without isolates cannot final-release in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseReadinessServiceTest.java`.
+- [x] T121 [P] [M7] Add React interaction tests for readiness blockers and release actions in `frontend/src/components/microbiology/__tests__/ReportReadinessPanel.test.jsx`.
+- [x] T122 [P] [M7] Update `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md` with the final release-readiness MVP flow and evidence commands.
+- [x] T123 [P] [M7] Extend the existing canonical MVP demo `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` to prove final release gating and release state.
+- [x] T124 [P] [M7] Keep the existing `core-demo` / `core-demo-video` proof path instead of adding duplicate demo specs.
 
 ### Implementation
 
-- [ ] T125 [M7] Add release/readiness tables or columns and rollback in `src/main/resources/liquibase/3.5.x.x/054-microbiology-release-readiness.xml`.
-- [ ] T126 [M7] Add report release service in `src/main/java/org/openelisglobal/microbiology/service/MicroReportReleaseService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroReportReleaseServiceImpl.java`.
-- [ ] T127 [M7] Add WHONET readiness service in `src/main/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessServiceImpl.java`.
-- [ ] T128 [M7] Extend existing WHONET report service through `src/main/java/org/openelisglobal/reports/service/WHONetReportServiceImpl.java` without creating a parallel exporter.
-- [ ] T129 [M7] Add release and readiness REST endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroReportReleaseRestController.java` and `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroWhonetReadinessRestController.java`.
-- [ ] T130 [M7] Add report readiness panel in `frontend/src/components/microbiology/ReportReadinessPanel.jsx`.
-- [ ] T131 [P] [M7] Add WHONET readiness UI in `frontend/src/components/microbiology/WhonetReadinessPanel.jsx`.
-- [ ] T132 [P] [M7] Add React Intl keys for release and WHONET readiness UI in `frontend/src/languages/en.json`.
-- [ ] T133 [M7] Register `frontend/playwright/tests/foundational/core/microbiology-mvp-release-readiness.spec.ts` and `frontend/playwright/tests/demo/core/microbiology-mvp-demo.spec.ts` in `frontend/playwright.config.ts`.
-- [ ] T134 [M7] Run Playwright registration validation for both M7 specs with `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-mvp-release-readiness.spec.ts frontend/playwright/tests/demo/core/microbiology-mvp-demo.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T135 [M7] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-mvp-release-readiness.spec.ts frontend/playwright/tests/demo/core/microbiology-mvp-demo.spec.ts` and address findings.
-- [ ] T136 [M7] Run narrow functional Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-mvp-release-readiness.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
-- [ ] T137 [M7] Run demo Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/microbiology-mvp-demo.spec.ts --project=core-demo` and attach screenshot/trace results to the PR.
-- [ ] T138 [M7] Run video evidence command `cd frontend && PLAYWRIGHT_VIDEO=on npm run pw:test -- playwright/tests/demo/core/microbiology-mvp-demo.spec.ts --project=core-demo-video` and verify `frontend/test-results/*/video.webm` exists.
-- [ ] T139 [M7] If any Playwright run fails, run `/debug-playwright` with screenshot/trace evidence and fix either source or test in `frontend/playwright/tests/` and affected `frontend/src/components/microbiology/` files.
-- [ ] T140 [M7] Run focused backend/frontend validation `mvn -q -Dtest='MicroReportReleaseServiceTest,MicroWhonetReadinessServiceTest,MicroReportReleaseIntegrationTest' test && cd frontend && npm test -- --runInBand ReportReadinessPanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T141 [M7] Run final documentation consistency update in `specs/782-ogc-782-microbiology-mvp-spec/quickstart.md` and `specs/782-ogc-782-microbiology-mvp-spec/plan.md`.
+- [x] T125 [M7] Confirm no M7 Liquibase migration is needed because release uses existing `micro_case.final_release_state`, `closed_at`, `closed_by`, and case activity history.
+- [x] T126 [M7] Add report release service in `src/main/java/org/openelisglobal/microbiology/service/MicroReportReleaseService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroReportReleaseServiceImpl.java`.
+- [x] T127 [M7] Add WHONET readiness service in `src/main/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessServiceImpl.java`.
+- [x] T128 [M7] Preserve the existing WHONET export path and expose M7 WHONET readiness without creating a parallel exporter.
+- [x] T129 [M7] Add release and readiness REST endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroReportReleaseRestController.java` and `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroWhonetReadinessRestController.java`.
+- [x] T130 [M7] Add report readiness panel in `frontend/src/components/microbiology/ReportReadinessPanel.jsx`.
+- [x] T131 [P] [M7] Include WHONET readiness status in `frontend/src/components/microbiology/ReportReadinessPanel.jsx`.
+- [x] T132 [P] [M7] Add React Intl keys for release and WHONET readiness UI in `frontend/src/languages/en.json`.
+- [x] T133 [M7] Reuse the registered canonical MVP spec `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` for M7.
+- [x] T134 [M7] Run Playwright registration validation with `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T135 [M7] Run selector-policy audit for `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` and address findings.
+- [x] T136 [M7] Run narrow functional Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo` and attach screenshot/trace results to the PR.
+- [x] T137 [M7] Run demo Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo` and attach screenshot/trace results to the PR.
+- [x] T138 [M7] Run video evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video` and verify `frontend/test-results/*/video.webm` exists.
+- [x] T139 [M7] Debug failed Playwright runs with screenshot/trace evidence and fix source/test issues in `frontend/playwright/tests/` and `frontend/src/components/microbiology/`.
+- [x] T140 [M7] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseReadinessServiceTest,MicroReportReleaseServiceTest,MicroWhonetReadinessServiceTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test && cd frontend && npm test -- ReportReadinessPanel.test.jsx MicrobiologyCaseView.test.jsx AstEntryPanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T141 [M7] Run final documentation consistency update in `specs/782-ogc-782-microbiology-mvp-spec/tasks.md`, `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`, and `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`.
 - [ ] T142 [M7] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` to `develop` with TDD, Playwright trace/screenshot, and demo video evidence linked from PR #3782.
 
 ## Final MVP Acceptance Gate
@@ -308,16 +308,16 @@ WHONET readiness; incomplete cases show blockers.
 - [ ] T144 [MVP] Run the complete focused frontend suite `cd frontend && npm test -- --runInBand Microbiology` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
 - [ ] T145 [MVP] Validate all microbiology Playwright specs with `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts frontend/playwright/tests/foundational/core/microbiology-mvp-release-readiness.spec.ts frontend/playwright/tests/demo/core/microbiology-mvp-demo.spec.ts`.
 - [ ] T146 [MVP] Run all microbiology foundational Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-*.spec.ts --project=core-app`.
-- [ ] T147 [MVP] Run all microbiology demo Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/microbiology-mvp-demo.spec.ts --project=core-demo`.
-- [ ] T148 [MVP] Record final MVP video evidence with `cd frontend && PLAYWRIGHT_VIDEO=on npm run pw:test -- playwright/tests/demo/core/microbiology-mvp-demo.spec.ts --project=core-demo-video`.
-- [ ] T149 [MVP] Attach or link final Playwright screenshots, traces for failures if any, and `video.webm` evidence in the M7 PR and parent PR #3782.
-- [ ] T150 [MVP] Run `mvn spotless:apply && cd frontend && npm run format` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T151 [MVP] Run `git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T152 [MVP] Verify `DIGI-UW/code-qa` is installed or available as a skill source from `https://github.com/DIGI-UW/code-qa` before final MVP acceptance.
-- [ ] T153 [MVP] Run the `meaningful-test-coverage` workflow from `DIGI-UW/code-qa` against the implemented microbiology MVP and record which backend, frontend, and E2E tests satisfy the inversion test in the M7 PR.
-- [ ] T154 [MVP] Run the `spec-code-alignment` workflow from `DIGI-UW/code-qa` against `specs/782-ogc-782-microbiology-mvp-spec/` and the implemented code, then update lagging specs or file defects for real code divergence.
-- [ ] T155 [MVP] Run the `simplicity-review` workflow from `DIGI-UW/code-qa` against the MVP diff and remove or explicitly justify speculative abstractions, duplicate exporters, duplicate alert surfaces, or unused configuration.
-- [ ] T156 [MVP] Run the `evidence-bundle` workflow from `DIGI-UW/code-qa` after the final `core-demo-video` Playwright run and attach the generated text report plus manually shared media links to the M7 PR and parent PR #3782.
+- [x] T147 [MVP] Run all microbiology demo Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo`.
+- [x] T148 [MVP] Record final MVP video evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video`.
+- [x] T149 [MVP] Record final Playwright screenshots, video evidence, and code-qa evidence bundle in `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`.
+- [x] T150 [MVP] Run `mvn spotless:apply` plus targeted frontend Prettier for touched microbiology files from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T151 [MVP] Run `git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T152 [MVP] Verify `DIGI-UW/code-qa` is installed or available as a skill source from `https://github.com/DIGI-UW/code-qa` before final MVP acceptance.
+- [x] T153 [MVP] Apply the `meaningful-test-coverage` workflow from `DIGI-UW/code-qa` against the implemented microbiology MVP and record which backend, frontend, and E2E tests satisfy the inversion test in the M7 PR.
+- [x] T154 [MVP] Apply the `spec-code-alignment` workflow from `DIGI-UW/code-qa` against `specs/782-ogc-782-microbiology-mvp-spec/` and the implemented code, then update lagging specs or file defects for real code divergence.
+- [x] T155 [MVP] Apply the `simplicity-review` workflow from `DIGI-UW/code-qa` against the MVP diff and remove or explicitly justify speculative abstractions, duplicate exporters, duplicate alert surfaces, or unused configuration.
+- [x] T156 [MVP] Run the `evidence-bundle` workflow from `DIGI-UW/code-qa` after the final `core-demo-video` Playwright run and record the generated text report plus manually shared media links for the M7 PR and parent PR #3782.
 
 ## Dependencies & Execution Order
 

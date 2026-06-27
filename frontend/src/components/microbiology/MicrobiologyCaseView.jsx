@@ -7,6 +7,7 @@ import CaseTimelinePanel from "./CaseTimelinePanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
 import MicrobiologyService from "./MicrobiologyService";
+import ReportReadinessPanel from "./ReportReadinessPanel";
 
 const MicrobiologyCaseView = ({
   caseId: caseIdProp,
@@ -19,9 +20,12 @@ const MicrobiologyCaseView = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [readinessRefreshToken, setReadinessRefreshToken] = useState(0);
 
-  const loadCase = () => {
-    setLoading(true);
+  const loadCase = ({ showLoading = true } = {}) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     service.getCaseDetail(caseId).then((detail) => {
       if (!detail || detail.status) {
         setError(intl.formatMessage({ id: "microbiology.case.loadError" }));
@@ -30,7 +34,9 @@ const MicrobiologyCaseView = ({
         setError("");
         setCaseDetail(detail);
       }
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     });
   };
 
@@ -104,8 +110,17 @@ const MicrobiologyCaseView = ({
           isolates={caseDetail.isolates}
           service={service}
           saving={saving}
+          onAstUpdated={() =>
+            setReadinessRefreshToken((currentValue) => currentValue + 1)
+          }
         />
         <CriticalCommunicationPanel caseId={caseDetail.id} service={service} />
+        <ReportReadinessPanel
+          caseId={caseDetail.id}
+          service={service}
+          onReleased={() => loadCase({ showLoading: false })}
+          refreshToken={readinessRefreshToken}
+        />
       </Stack>
     </main>
   );

@@ -89,3 +89,45 @@
 - Engineering note: generic `Alert` currently requires numeric entity ids while
   microbiology cases use UUID strings, so M6 surfaces critical communication in
   the microbiology worklist and does not force a generic alert row.
+
+## M7 Release + Surveillance Readiness
+
+- Flow: `ogc-782-microbiology-mvp`
+- Route: `/MicrobiologyCaseView/:caseId`
+- Setup: reuse the M5/M6 seeded bacteriology case, AST panel, antibiotic, CLSI
+  2026 standard, and MIC breakpoint rule. M7 adds no new schema fixture because
+  release uses existing `micro_case` release state and case activity history.
+- User actions:
+  - open the case workbench,
+  - record setup activity,
+  - create a clinically significant isolate,
+  - start a manual AST run,
+  - record and override a MIC reading,
+  - review the AST run,
+  - confirm final release readiness,
+  - release the final report.
+- Expected outcomes:
+  - final release remains blocked until an isolate exists and AST is reviewed,
+  - the report readiness panel refreshes after AST review,
+  - WHONET readiness is displayed separately from final release readiness,
+  - final release writes `FINAL_RELEASED` and renders that state on the case
+    workbench.
+- Projects: `core-demo`, `core-demo-video`
+- Evidence commands:
+  `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts`
+  `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo`
+  `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video`
+- Evidence result: passed locally on 2026-06-27 against the rebuilt worktree dev
+  stack.
+- Screenshot evidence:
+  - `frontend/e2e-evidence/ogc-782-case-opened.png`
+  - `frontend/e2e-evidence/ogc-782-setup-recorded.png`
+  - `frontend/e2e-evidence/ogc-782-isolate-created.png`
+  - `frontend/e2e-evidence/ogc-782-ast-reading.png`
+  - `frontend/e2e-evidence/ogc-782-ast-overridden.png`
+  - `frontend/e2e-evidence/ogc-782-ast-reviewed-ready.png`
+  - `frontend/e2e-evidence/ogc-782-final-released.png`
+- Video evidence:
+  `frontend/test-results/demo-core-ogc-782-microbio-3f6cc-ual-AST-override-and-review-core-demo-video/video.webm`
+- Code-qa evidence bundle:
+  `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`

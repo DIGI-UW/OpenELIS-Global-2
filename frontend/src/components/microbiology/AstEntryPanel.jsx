@@ -20,6 +20,7 @@ const AstEntryPanel = ({
   isolates = [],
   service,
   saving: caseSaving,
+  onAstUpdated,
 }) => {
   const intl = useIntl();
   const [selectedIsolateId, setSelectedIsolateId] = useState("");
@@ -93,6 +94,11 @@ const AstEntryPanel = ({
     setSaving(true);
     return operation()
       .then(loadAstState)
+      .then(() => {
+        if (onAstUpdated) {
+          onAstUpdated();
+        }
+      })
       .finally(() => setSaving(false));
   };
 

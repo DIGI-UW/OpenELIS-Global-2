@@ -41,6 +41,11 @@ const astServiceStubs = {
   getCriticalCommunications: vi.fn().mockResolvedValue([]),
   logCriticalCommunication: vi.fn(),
   acknowledgeCriticalCommunication: vi.fn(),
+  getWhonetReadiness: vi.fn().mockResolvedValue({
+    whonetReady: true,
+    blockers: [],
+  }),
+  releaseFinalReport: vi.fn(),
 };
 
 describe("MicrobiologyCaseView", () => {

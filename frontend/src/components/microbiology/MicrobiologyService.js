@@ -139,6 +139,32 @@ export const acknowledgeCriticalCommunication = (communicationId) =>
     );
   });
 
+export const releasePreliminaryReport = (caseId) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/release/preliminary`,
+      JSON.stringify({ performedBy: DEFAULT_USER_ID }),
+      resolve,
+    );
+  });
+
+export const releaseFinalReport = (caseId) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/release/final`,
+      JSON.stringify({ performedBy: DEFAULT_USER_ID }),
+      resolve,
+    );
+  });
+
+export const getWhonetReadiness = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/whonet-readiness`,
+      resolve,
+    );
+  });
+
 const MicrobiologyService = {
   getCaseDetail,
   recordCaseActivity,
@@ -155,6 +181,9 @@ const MicrobiologyService = {
   getCriticalCommunications,
   logCriticalCommunication,
   acknowledgeCriticalCommunication,
+  releasePreliminaryReport,
+  releaseFinalReport,
+  getWhonetReadiness,
 };
 
 export default MicrobiologyService;
