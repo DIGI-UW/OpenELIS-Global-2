@@ -253,7 +253,7 @@ directory data.
 - [x] T113 [M6] Run selector-policy audit for `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` and address findings.
 - [x] T114 [M6] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app` and attach results to the PR.
 - [x] T115 [M6] Run focused backend/frontend validation `mvn -q -Dtest='MicroWorklistServiceTest,MicroCriticalCommunicationServiceTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test && cd frontend && npm test -- MicrobiologyWorklist.test.jsx CriticalCommunicationPanel.test.jsx MicrobiologyCaseView.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T116 [M6] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m6-worklists-critical` to `develop` with TDD and Playwright evidence and link it from PR #3782.
+- [x] T116 [M6] Open draft PR #3788 for `feat/782-ogc-782-microbiology-mvp-m6-worklists-critical` to the M5 stack branch with TDD and Playwright evidence.
 
 ## Phase 7: M7 - Release + Surveillance Readiness
 
