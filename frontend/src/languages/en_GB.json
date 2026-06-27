@@ -1280,7 +1280,7 @@
   "configuration.test.orderable.explain": "Tests that are orderable can be ordered on intake. If they are not orderable then they can only be ordered as a result of a reflex",
   "configuration.test.rename": "Rename existing test names",
   "configuration.test.rename.explain": "Use to rename existing tests.  Will not change test, only how the user sees them in OpenELIS and on reports",
-  "configuration.testSection.rename": "Rename Existing Test Sections",
+  "configuration.testSection.rename": "Rename Existing Test Services",
   "configuration.testSection.rename.explain": "Use to correct the name of existing test sections.",
   "configuration.testUnit.assign.new.unit": "Assign to test section",
   "configuration.testUnit.confirmation.explain": "This test unit will not be active until at least one test has been assigned to it.",
