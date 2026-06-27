@@ -214,7 +214,7 @@ unreviewed.
 - [X] T090 [M5] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts`.
 - [X] T091 [M5] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-manual-ast.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
 - [X] T092 [M5] Run focused backend/frontend validation `mvn -q -Dtest='MicroAstInterpretationServiceTest,MicroAstIntegrationTest,MicroCaseReadinessServiceTest' test && cd frontend && npm test -- --runInBand AstEntryPanel.test.jsx` from the repository root.
-- [ ] T093 [M5] Update PR #3789 with M5 TDD and Playwright evidence and mark the M5 block complete before starting M6.
+- [X] T093 [M5] Update PR #3789 with M5 TDD and Playwright evidence and mark the M5 block complete before starting M6.
 
 ## Phase 6: M6 - Worklists + Critical Communications
 
