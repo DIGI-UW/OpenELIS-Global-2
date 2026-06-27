@@ -175,7 +175,7 @@ timeline updates.
 - [X] T069 [M4] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts`.
 - [X] T070 [M4] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
 - [X] T071 [M4] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseRestControllerTest,MicroCaseLookupRestControllerTest,MicrobiologyArchitectureTest' test` and `cd frontend && npm test -- MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T072 [M4] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` to the M3 stacked branch with TDD and Playwright evidence and link it from PR #3782.
+- [X] T072 [M4] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` to the M3 stacked branch with TDD and Playwright evidence and link it from PR #3782.
 
 ## Phase 5: M5 - Manual AST
 
