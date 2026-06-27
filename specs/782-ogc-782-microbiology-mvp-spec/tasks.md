@@ -73,7 +73,7 @@ workflow UI is required.
 - [X] T018 [M1] Run focused backend validation `mvn -q -Dtest='MicrobiologyReferenceServiceTest,MicroBreakpointServiceTest,MicrobiologyReferenceDataIntegrationTest,MicrobiologyOrmValidationTest,TestCatalogEditorMicrobiologyTest' test` from the repository root.
 - [X] T019 [M1] Run focused frontend validation `cd frontend && npm test -- --runInBand BasicInfoSection.test.jsx` from the repository root.
 - [X] T020 [M1] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from the repository root.
-- [ ] T021 [M1] Update PR #3789 with M1 validation evidence and mark the M1 block complete before starting M2.
+- [X] T021 [M1] Update PR #3789 with M1 validation evidence and mark the M1 block complete before starting M2.
 
 ## Phase 2: M2 - Case Core
 
