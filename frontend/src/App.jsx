@@ -96,6 +96,9 @@ const AnalyzerFormPage = lazyWithRetry(
 const MicrobiologyPage = lazyWithRetry(
   () => import("./pages/MicrobiologyPage"),
 );
+const MicrobiologyWorklistPage = lazyWithRetry(
+  () => import("./pages/MicrobiologyWorklistPage"),
+);
 const QcRulePage = lazyWithRetry(
   () => import("./components/analyzers/QcRules/QcRuleBuilderModal"),
 );
@@ -552,6 +555,16 @@ export default function App() {
                   component={() => (
                     <Suspense fallback={null}>
                       <MicrobiologyPage />
+                    </Suspense>
+                  )}
+                  role=""
+                />
+                <SecureRoute
+                  path="/MicrobiologyWorklist"
+                  exact
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <MicrobiologyWorklistPage />
                     </Suspense>
                   )}
                   role=""

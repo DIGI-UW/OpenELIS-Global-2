@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="OGC-782-micro-critical-communication-table" author="OGC">
+    <createTable tableName="micro_critical_communication" schemaName="clinlims">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" primaryKeyName="pk_micro_critical_communication" nullable="false"/>
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="recipient" type="text"/>
+      <column name="message" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="communicated_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="communicated_by" type="varchar(20)"/>
+      <column name="acknowledgement_status" type="varchar(40)" defaultValue="OPEN">
+        <constraints nullable="false"/>
+      </column>
+      <column name="acknowledged_at" type="timestamp"/>
+      <column name="acknowledged_by" type="varchar(20)"/>
+      <column name="follow_up_needed" type="boolean" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="correction_of_id" type="varchar(36)"/>
+      <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+      <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="micro_critical_communication"
+      baseColumnNames="case_id"
+      constraintName="fk_micro_critical_comm_case"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="micro_case"
+      referencedColumnNames="id"/>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="micro_critical_communication"
+      baseColumnNames="correction_of_id"
+      constraintName="fk_micro_critical_comm_correction"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="micro_critical_communication"
+      referencedColumnNames="id"/>
+
+    <createIndex
+      schemaName="clinlims"
+      tableName="micro_critical_communication"
+      indexName="idx_micro_critical_comm_case">
+      <column name="case_id"/>
+    </createIndex>
+
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="micro_critical_communication"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

@@ -4,6 +4,7 @@ import { useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
 import AstEntryPanel from "./AstEntryPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
+import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
 import MicrobiologyService from "./MicrobiologyService";
 
@@ -104,6 +105,7 @@ const MicrobiologyCaseView = ({
           service={service}
           saving={saving}
         />
+        <CriticalCommunicationPanel caseId={caseDetail.id} service={service} />
       </Stack>
     </main>
   );

@@ -99,6 +99,7 @@ export default defineConfig({
       testMatch: [
         "**/foundational/core/**/*.spec.ts",
         "playwright/tests/foundational/core/microbiology-case-workbench.spec.ts",
+        "playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],
