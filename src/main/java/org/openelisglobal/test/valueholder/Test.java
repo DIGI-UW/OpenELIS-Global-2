@@ -71,6 +71,8 @@ public class Test extends EnumValueItemImpl {
     // existing antimicrobialResistance field below — no parallel column)
     private String domain = "CLINICAL";
 
+    private String cultureWorkflowType;
+
     private String stickerRequiredFlag;
 
     private String alternateTestDisplayValue;
@@ -283,6 +285,14 @@ public class Test extends EnumValueItemImpl {
 
     public void setDomain(String domain) {
         this.domain = domain;
+    }
+
+    public String getCultureWorkflowType() {
+        return cultureWorkflowType;
+    }
+
+    public void setCultureWorkflowType(String cultureWorkflowType) {
+        this.cultureWorkflowType = cultureWorkflowType;
     }
 
     public String getStickerRequiredFlag() {

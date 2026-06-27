@@ -4,6 +4,8 @@ import {
   Stack,
   TextInput,
   TextArea,
+  Select,
+  SelectItem,
   RadioButtonGroup,
   RadioButton,
   Toggle,
@@ -69,6 +71,12 @@ const sampleTypeMatchesDomain = (type, domain) => {
   const normalized = normalizeSampleDomain(type.domain);
   return normalized === null || normalized === domain;
 };
+
+const CULTURE_WORKFLOW_TYPES = [
+  "BACTERIOLOGY",
+  "MYCOBACTERIOLOGY_TB",
+  "MYCOLOGY",
+];
 
 const BasicInfoSection = ({ testId }) => {
   const domains = useDomains();
@@ -640,6 +648,32 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.antimicrobialResistance}
         onToggle={(checked) => update({ antimicrobialResistance: checked })}
       />
+      <Select
+        id="basic-info-culture-workflow-type"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.cultureWorkflowType",
+        })}
+        value={form.cultureWorkflowType || ""}
+        onChange={(event) =>
+          update({ cultureWorkflowType: event.target.value || "" })
+        }
+      >
+        <SelectItem
+          value=""
+          text={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.cultureWorkflowType.none",
+          })}
+        />
+        {CULTURE_WORKFLOW_TYPES.map((workflowType) => (
+          <SelectItem
+            key={workflowType}
+            value={workflowType}
+            text={intl.formatMessage({
+              id: `label.testCatalog.basicInfo.cultureWorkflowType.${workflowType}`,
+            })}
+          />
+        ))}
+      </Select>
       <Toggle
         id="basic-info-active"
         labelText={intl.formatMessage({

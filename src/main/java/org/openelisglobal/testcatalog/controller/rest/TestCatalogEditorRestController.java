@@ -174,6 +174,7 @@ public class TestCatalogEditorRestController {
         public List<String> sampleTypes = new ArrayList<>();
         public String code;
         public String domain;
+        public String cultureWorkflowType;
         public boolean active;
         public boolean amr;
         public boolean coverageIncomplete;
@@ -258,6 +259,7 @@ public class TestCatalogEditorRestController {
             row.name = name;
             row.code = test.getLocalCode();
             row.domain = test.getDomain();
+            row.cultureWorkflowType = test.getCultureWorkflowType();
             row.active = active;
             row.amr = testAmr;
             row.hasLoinc = !isBlank(test.getLoinc()) || loincMappedTestIds.contains(test.getId());
@@ -571,6 +573,9 @@ public class TestCatalogEditorRestController {
         return new ArrayList<>(resolved);
     }
 
+    private static final List<String> CULTURE_WORKFLOW_TYPES = List.of("BACTERIOLOGY", "MYCOBACTERIOLOGY_TB",
+            "MYCOLOGY");
+
     /** OGC-748 Basic Info — identity + domain + AMR flag + status. */
     public static class BasicInfo {
         public String testId;
@@ -583,6 +588,7 @@ public class TestCatalogEditorRestController {
         // OGC-1145 FR-1/2: all associated sample types (order preserved, primary
         // first). On write this list wins over the legacy scalar when present.
         public List<String> sampleTypeIds;
+        public String cultureWorkflowType;
         public Boolean antimicrobialResistance;
         public Boolean active;
         public Boolean orderable;
@@ -605,6 +611,10 @@ public class TestCatalogEditorRestController {
             return ResponseEntity.notFound().build();
         }
         if (body.domain != null && !DOMAINS.contains(body.domain)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        if (body.cultureWorkflowType != null && !body.cultureWorkflowType.isBlank()
+                && !CULTURE_WORKFLOW_TYPES.contains(body.cultureWorkflowType)) {
             return ResponseEntity.unprocessableEntity().build();
         }
         // OGC-1145 FR-1/2/3 — validate the sample-type set up front so a rejected
@@ -642,6 +652,9 @@ public class TestCatalogEditorRestController {
         // can't silently deactivate / clear AMR / un-orderable a test.
         if (body.domain != null) {
             test.setDomain(body.domain);
+        }
+        if (body.cultureWorkflowType != null) {
+            test.setCultureWorkflowType(body.cultureWorkflowType.isBlank() ? null : body.cultureWorkflowType);
         }
         if (body.antimicrobialResistance != null) {
             test.setAntimicrobialResistance(body.antimicrobialResistance);
@@ -744,6 +757,7 @@ public class TestCatalogEditorRestController {
             info.sampleTypeIds.add(type.getId());
         }
         info.sampleTypeId = info.sampleTypeIds.isEmpty() ? null : info.sampleTypeIds.get(0);
+        info.cultureWorkflowType = test.getCultureWorkflowType();
         info.antimicrobialResistance = Boolean.TRUE.equals(test.getAntimicrobialResistance());
         info.active = test.isActive();
         info.orderable = Boolean.TRUE.equals(test.getOrderable());
