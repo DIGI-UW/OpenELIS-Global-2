@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-782 M2 — microbiology case core data model only. -->
+
+    <changeSet id="OGC-782-micro-case-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_case">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_case"/>
+            </column>
+            <column name="sample_item_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="workflow_type" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stage" type="VARCHAR(40)" defaultValue="RECEIVED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="VARCHAR(40)" defaultValue="ROUTINE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="culture_method_id" type="numeric(10)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(20)"/>
+            <column name="closed_at" type="TIMESTAMP"/>
+            <column name="closed_by" type="VARCHAR(20)"/>
+            <column name="final_release_state" type="VARCHAR(40)" defaultValue="NOT_READY">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_case_sample_item"
+            baseTableSchemaName="clinlims" baseTableName="micro_case" baseColumnNames="sample_item_id"
+            referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_case_method"
+            baseTableSchemaName="clinlims" baseTableName="micro_case" baseColumnNames="culture_method_id"
+            referencedTableSchemaName="clinlims" referencedTableName="method" referencedColumnNames="id"/>
+        <addUniqueConstraint
+            constraintName="uq_micro_case_sample_workflow"
+            schemaName="clinlims" tableName="micro_case"
+            columnNames="sample_item_id, workflow_type"/>
+        <createIndex schemaName="clinlims" tableName="micro_case" indexName="idx_micro_case_sample_item">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_case
+            ADD CONSTRAINT micro_case_workflow_type_chk
+            CHECK (workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY'))
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_case
+            ADD CONSTRAINT micro_case_stage_chk
+            CHECK (stage IN (
+                'RECEIVED', 'SETUP_RECORDED', 'INCUBATING', 'GROWTH_DETECTED',
+                'NO_GROWTH_READY', 'IDENTIFICATION', 'AST_READY', 'AST_IN_PROGRESS',
+                'REVIEW_READY', 'PRELIM_RELEASED', 'FINAL_RELEASED', 'AMENDED', 'REJECTED'))
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_case
+            ADD CONSTRAINT micro_case_final_release_state_chk
+            CHECK (final_release_state IN ('NOT_READY', 'PRELIMINARY_RELEASED', 'FINAL_RELEASED'))
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_case"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-micro-case-activity-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_case_activity">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_case_activity"/>
+            </column>
+            <column name="case_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="activity_type" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="occurred_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_by" type="VARCHAR(20)"/>
+            <column name="note" type="TEXT"/>
+            <column name="structured_data" type="TEXT"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_case_activity_case"
+            baseTableSchemaName="clinlims" baseTableName="micro_case_activity" baseColumnNames="case_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <createIndex schemaName="clinlims" tableName="micro_case_activity" indexName="idx_micro_case_activity_case">
+            <column name="case_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_case_activity"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-micro-isolate-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_isolate">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_isolate"/>
+            </column>
+            <column name="case_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="isolate_label" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="organism_id" type="VARCHAR(36)"/>
+            <column name="preliminary_organism_text" type="TEXT"/>
+            <column name="significance" type="VARCHAR(40)" defaultValue="UNKNOWN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="identification_status" type="VARCHAR(40)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_isolate_case"
+            baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="case_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_isolate_organism"
+            baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="organism_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_organism" referencedColumnNames="id"/>
+        <addUniqueConstraint
+            constraintName="uq_micro_isolate_case_label"
+            schemaName="clinlims" tableName="micro_isolate"
+            columnNames="case_id, isolate_label"/>
+        <createIndex schemaName="clinlims" tableName="micro_isolate" indexName="idx_micro_isolate_case">
+            <column name="case_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_isolate
+            ADD CONSTRAINT micro_isolate_significance_chk
+            CHECK (significance IN ('UNKNOWN', 'CLINICALLY_SIGNIFICANT', 'CONTAMINANT', 'NORMAL_FLORA'))
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_isolate
+            ADD CONSTRAINT micro_isolate_identification_status_chk
+            CHECK (identification_status IN ('PENDING', 'PRELIMINARY', 'CONFIRMED'))
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_isolate"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
