@@ -86,6 +86,7 @@ beforeEach(() => {
         domain: "CLINICAL",
         // OGC-1145: an active test must carry ≥1 sample type or Save disables
         sampleTypeIds: ["2"],
+        cultureWorkflowType: "",
         antimicrobialResistance: false,
         active: true,
         orderable: true,
@@ -150,6 +151,21 @@ describe("BasicInfoSection domain-switch modal", () => {
     ).toBe(true);
   });
 
+  it("persists the culture workflow selection", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(screen.getByLabelText("Culture workflow"), {
+      target: { value: "BACTERIOLOGY" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1])).toMatchObject({
+      cultureWorkflowType: "BACTERIOLOGY",
+    });
+  });
+
   it("persists the Active toggle (boolean → Y/N)", async () => {
     renderSection();
     await screen.findByLabelText("Clinical");
@@ -203,6 +219,7 @@ describe("BasicInfoSection domain-switch modal", () => {
           code: "GLU",
           description: "",
           domain: "CLINICAL",
+          cultureWorkflowType: "",
           antimicrobialResistance: false,
           active: false,
           orderable: true,
