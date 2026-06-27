@@ -213,7 +213,7 @@ unreviewed.
 - [x] T090 [M5] Run selector-policy audit for `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` and address findings.
 - [x] T091 [M5] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo` and attach screenshot/video results to the PR.
 - [x] T092 [M5] Run focused backend/frontend validation `mvn -q -Dtest='MicroAstInterpretationServiceTest,MicroAstIntegrationTest,MicroCaseReadinessServiceTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test && cd frontend && npm test -- MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx AstEntryPanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T093 [M5] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m5-manual-ast` to `develop` with TDD and Playwright evidence and link it from PR #3782.
+- [x] T093 [M5] Open draft PR #3787 for `feat/782-ogc-782-microbiology-mvp-m5-manual-ast` to the M4 stack branch with TDD and Playwright evidence.
 
 ## Phase 6: M6 - Worklists + Critical Communications
 
