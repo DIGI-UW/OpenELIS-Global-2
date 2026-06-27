@@ -13,7 +13,10 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -39,5 +42,8 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroBreakpointStandard.class));
         assertNotNull(metamodel.entity(MicroBreakpointRule.class));
         assertNotNull(metamodel.entity(MicroCultureSetup.class));
+        assertNotNull(metamodel.entity(MicroCase.class));
+        assertNotNull(metamodel.entity(MicroCaseActivity.class));
+        assertNotNull(metamodel.entity(MicroIsolate.class));
     }
 }
