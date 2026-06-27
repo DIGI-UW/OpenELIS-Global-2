@@ -57,7 +57,7 @@ describe("CriticalCommunicationPanel", () => {
         followUpNeeded: true,
       }),
     );
-    expect(await screen.findByText("OPEN")).toBeInTheDocument();
+    expect(await screen.findByText("Open")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Acknowledge" }));
 
@@ -66,6 +66,6 @@ describe("CriticalCommunicationPanel", () => {
         "comm-1",
       ),
     );
-    expect(await screen.findByText("ACKNOWLEDGED")).toBeInTheDocument();
+    expect(await screen.findByText("Acknowledged")).toBeInTheDocument();
   });
 });

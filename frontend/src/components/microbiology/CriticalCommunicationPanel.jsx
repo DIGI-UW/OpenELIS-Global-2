@@ -8,6 +8,7 @@ import {
   Tag,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
 
 const CriticalCommunicationPanel = ({
@@ -68,6 +69,7 @@ const CriticalCommunicationPanel = ({
   return (
     <section
       className="microbiology-card"
+      data-testid="microbiology-critical-card"
       aria-labelledby="microbiology-critical-heading"
     >
       <div className="microbiology-card__header">
@@ -146,7 +148,9 @@ const CriticalCommunicationPanel = ({
                     }
                     data-testid="microbiology-critical-status"
                   >
-                    {communication.acknowledgementStatus}
+                    {formatMicrobiologyEnum(
+                      communication.acknowledgementStatus,
+                    )}
                   </Tag>
                 </div>
                 {communication.acknowledgementStatus === "OPEN" && (
