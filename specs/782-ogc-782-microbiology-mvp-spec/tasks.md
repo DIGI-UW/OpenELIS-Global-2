@@ -153,29 +153,29 @@ timeline updates.
 
 ### Tests First
 
-- [ ] T053 [M4] Create branch `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` from `develop` after M3 merge in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T054 [P] [M4] Run `/plan-record-playwright --flows microbiology-case-workbench` and record the planned route, setup data, assertions, and project target in `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`.
-- [ ] T055 [P] [M4] Add failing MockMvc tests for activity creation and isolate creation in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
-- [ ] T056 [P] [M4] Add failing React interaction tests for case detail loading and setup event save in `frontend/src/components/microbiology/__tests__/MicrobiologyCaseView.test.jsx`.
-- [ ] T057 [P] [M4] Add failing React interaction tests for isolate creation/update in `frontend/src/components/microbiology/__tests__/IsolatePanel.test.jsx`.
-- [ ] T058 [P] [M4] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project core-app` to create a red Playwright test for routed case setup and isolate creation.
+- [X] T053 [M4] Create branch `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` from the M3 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [X] T054 [P] [M4] Run `/plan-record-playwright --flows microbiology-case-workbench` and record the planned route, setup data, assertions, and project target in `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`.
+- [X] T055 [P] [M4] Add failing MockMvc tests for activity creation and isolate creation in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
+- [X] T056 [P] [M4] Add failing React interaction tests for case detail loading and setup event save in `frontend/src/components/microbiology/__tests__/MicrobiologyCaseView.test.jsx`.
+- [X] T057 [P] [M4] Add failing React interaction tests for isolate creation/update in `frontend/src/components/microbiology/__tests__/IsolatePanel.test.jsx`.
+- [X] T058 [P] [M4] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project core-app` to create a red Playwright test for routed case setup and isolate creation.
 
 ### Implementation
 
-- [ ] T059 [M4] Add activity mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
-- [ ] T060 [M4] Add isolate mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroIsolateRestController.java`.
-- [ ] T061 [P] [M4] Add frontend API client functions in `frontend/src/components/microbiology/MicrobiologyService.js`.
-- [ ] T062 [P] [M4] Add case page route in `frontend/src/pages/MicrobiologyPage.jsx` and `frontend/src/App.jsx`.
-- [ ] T063 [M4] Add case view shell and context header in `frontend/src/components/microbiology/MicrobiologyCaseView.jsx`.
-- [ ] T064 [M4] Add timeline and setup activity panel in `frontend/src/components/microbiology/CaseTimelinePanel.jsx`.
-- [ ] T065 [M4] Add isolate panel in `frontend/src/components/microbiology/IsolatePanel.jsx`.
-- [ ] T066 [P] [M4] Add React Intl keys for case workbench UI in `frontend/src/languages/en.json`.
-- [ ] T067 [M4] Register `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` in `frontend/playwright.config.ts`.
-- [ ] T068 [M4] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T069 [M4] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts`.
-- [ ] T070 [M4] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
-- [ ] T071 [M4] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseRestControllerTest' test && cd frontend && npm test -- --runInBand MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T072 [M4] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` to `develop` with TDD and Playwright evidence and link it from PR #3782.
+- [X] T059 [M4] Add activity mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
+- [X] T060 [M4] Add isolate mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroIsolateRestController.java`.
+- [X] T061 [P] [M4] Add frontend API client functions in `frontend/src/components/microbiology/MicrobiologyService.js`.
+- [X] T062 [P] [M4] Add case page route in `frontend/src/pages/MicrobiologyPage.jsx` and `frontend/src/App.jsx`.
+- [X] T063 [M4] Add case view shell and context header in `frontend/src/components/microbiology/MicrobiologyCaseView.jsx`.
+- [X] T064 [M4] Add timeline and setup activity panel in `frontend/src/components/microbiology/CaseTimelinePanel.jsx`.
+- [X] T065 [M4] Add isolate panel in `frontend/src/components/microbiology/IsolatePanel.jsx`.
+- [X] T066 [P] [M4] Add React Intl keys for case workbench UI in `frontend/src/languages/en.json`.
+- [X] T067 [M4] Register `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` in `frontend/playwright.config.ts`.
+- [X] T068 [M4] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [X] T069 [M4] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts`.
+- [X] T070 [M4] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
+- [X] T071 [M4] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseRestControllerTest,MicroCaseLookupRestControllerTest,MicrobiologyArchitectureTest' test` and `cd frontend && npm test -- MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [X] T072 [M4] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` to the M3 stacked branch with TDD and Playwright evidence and link it from PR #3782.
 
 ## Phase 5: M5 - Manual AST
 
