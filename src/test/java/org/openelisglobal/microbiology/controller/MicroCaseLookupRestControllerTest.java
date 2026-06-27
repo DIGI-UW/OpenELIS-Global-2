@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.service.MicroCaseService;
+import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +22,8 @@ public class MicroCaseLookupRestControllerTest {
         MicroCase tb = caseRow("case-2", MicroWorkflowType.MYCOBACTERIOLOGY_TB);
         when(service.getSiblingCases("1001")).thenReturn(List.of(bacteriology, tb));
 
-        ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service)
-                .getCasesForSampleItem("1001");
+        ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service,
+                org.mockito.Mockito.mock(MicroCaseStateService.class)).getCasesForSampleItem("1001");
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(2, response.getBody().size());
