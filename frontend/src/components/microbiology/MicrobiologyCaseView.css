@@ -1,0 +1,344 @@
+.microbiology-workbench {
+  background: #f4f4f4;
+  color: #161616;
+  min-height: calc(100vh - 3rem);
+  padding: 1.5rem;
+}
+
+.microbiology-workbench__hero,
+.microbiology-workbench__layout,
+.microbiology-next-step,
+.microbiology-case-summary,
+.microbiology-card {
+  max-width: 88rem;
+}
+
+.microbiology-workbench__hero {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto 1rem;
+}
+
+.microbiology-workbench__hero h2 {
+  font-size: 1.75rem;
+  font-weight: 400;
+  margin: 0.125rem 0 0.5rem;
+}
+
+.microbiology-workbench__eyebrow {
+  color: #525252;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.microbiology-workbench__meta {
+  color: #525252;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.microbiology-workbench__layout {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+  margin: 0 auto;
+}
+
+.microbiology-workbench__rail {
+  background: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  padding: 1rem;
+}
+
+.microbiology-workbench__rail h3 {
+  color: #525252;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+}
+
+.microbiology-progress {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.microbiology-progress__item {
+  align-items: center;
+  color: #525252;
+  display: grid;
+  gap: 0.625rem;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  line-height: 1.25;
+}
+
+.microbiology-progress__marker {
+  align-items: center;
+  background: #e0e0e0;
+  border-radius: 50%;
+  color: #525252;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 600;
+  height: 1.5rem;
+  justify-content: center;
+  width: 1.5rem;
+}
+
+.microbiology-progress__item--done .microbiology-progress__marker {
+  background: #24a148;
+  color: #ffffff;
+}
+
+.microbiology-progress__item--current {
+  color: #161616;
+  font-weight: 600;
+}
+
+.microbiology-progress__item--current .microbiology-progress__marker {
+  background: #0f62fe;
+  color: #ffffff;
+}
+
+.microbiology-workbench__content {
+  min-width: 0;
+}
+
+.microbiology-next-step {
+  align-items: center;
+  background: #edf5ff;
+  border-left: 0.25rem solid #0f62fe;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.microbiology-next-step p:last-child {
+  margin: 0.25rem 0 0;
+}
+
+.microbiology-case-summary {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.875rem 1.25rem;
+}
+
+.microbiology-case-summary span {
+  color: #525252;
+}
+
+.microbiology-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  padding: 1.25rem;
+}
+
+.microbiology-card--current {
+  border-color: #78a9ff;
+  border-left: 0.25rem solid #0f62fe;
+}
+
+.microbiology-card__body {
+  display: grid;
+  gap: 1rem;
+}
+
+.microbiology-card__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.microbiology-card__header h3 {
+  font-size: 1.25rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.microbiology-card__hint {
+  color: #6f6f6f;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0;
+}
+
+.microbiology-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.microbiology-form-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.microbiology-form-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.microbiology-list {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.microbiology-list__row {
+  border-left: 0.25rem solid #0f62fe;
+  background: #f4f4f4;
+  padding: 0.75rem 1rem;
+}
+
+.microbiology-list__meta {
+  color: #6f6f6f;
+  font-size: 0.75rem;
+}
+
+.microbiology-table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  width: 100%;
+}
+
+.microbiology-table th,
+.microbiology-table td {
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.microbiology-table th {
+  background: #f4f4f4;
+  color: #525252;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.microbiology-readiness-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.microbiology-readiness-list li {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.microbiology-status-dot {
+  align-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  height: 1.25rem;
+  justify-content: center;
+  width: 1.25rem;
+}
+
+.microbiology-report-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 1rem;
+}
+
+.microbiology-report-summary {
+  background: #f4f4f4;
+  padding: 1rem;
+}
+
+.microbiology-report-summary h4 {
+  color: #525252;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+}
+
+.microbiology-report-summary p {
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.microbiology-status-dot--success {
+  background: #24a148;
+}
+
+.microbiology-status-dot--warning {
+  background: #f1c21b;
+  color: #161616;
+}
+
+.microbiology-report-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.microbiology-critical-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.microbiology-critical-list p {
+  margin: 0;
+}
+
+.microbiology-critical-row {
+  align-items: flex-start;
+  background: #f4f4f4;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+@media (max-width: 66rem) {
+  .microbiology-workbench {
+    padding: 1rem;
+  }
+
+  .microbiology-workbench__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .microbiology-workbench__rail {
+    border-right: 0;
+  }
+
+  .microbiology-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .microbiology-form-grid,
+  .microbiology-report-grid,
+  .microbiology-form-grid--three {
+    grid-template-columns: 1fr;
+  }
+}

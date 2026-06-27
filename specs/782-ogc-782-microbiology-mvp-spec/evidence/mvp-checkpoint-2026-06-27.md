@@ -9,12 +9,17 @@ case opened in the workbench, setup was recorded, a significant isolate was
 created, manual AST was started/read/overridden/reviewed, readiness changed to
 final-release ready, and the final report was released.
 
+After the initial evidence review, the workbench also received a design-parity
+pass against the OpenELIS-work case-workbench mock: progress rail, next-step
+callout, case-info strip, highlighted inoculation/setup card, separate timeline,
+AST table, critical-communication card, and report/WHONET readiness cards.
+
 ## Validation Summary
 
 | Check | Result | Why it matters |
 |---|---|---|
 | Backend focused M7 tests | Passed | Verifies release services, WHONET readiness, architecture, ORM mapping, and readiness blockers. |
-| Frontend focused M7 tests | 3 files / 5 tests passed | Verifies readiness blocker rendering, release action behavior, case refresh, and AST-triggered readiness refresh. |
+| Frontend focused M7 tests | 5 files / 7 tests passed | Verifies case workbench refresh, isolate creation, manual AST, critical communication log/ack, readiness blocker rendering, release action behavior, and AST-triggered readiness refresh. |
 | Playwright registration | Passed for `core-demo` and `core-demo-video` | Confirms the MVP demo spec is correctly wired to the intended projects. |
 | Playwright MVP demo | Passed on `core-demo` | Proves the complete browser user story against the running stack. |
 | Playwright MVP video | Passed on `core-demo-video` | Produces reviewable video evidence of the MVP happy path. |
@@ -28,6 +33,7 @@ attachment or manual sharing.
 - Video: `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2/frontend/test-results/demo-core-ogc-782-microbio-3f6cc-ual-AST-override-and-review-core-demo-video/video.webm`
 - MP4 bundle copy: `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2/specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27/videos/demo-core-ogc-782-microbio-3f6cc-ual-AST-override-and-review-core-demo-video.mp4`
 - Bundle zip: `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2/specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.zip`
+- Design-parity comparison: `/tmp/ogc-782-mock-compare/design-parity-case-workbench-2026-06-27.png`
 
 Screenshots:
 

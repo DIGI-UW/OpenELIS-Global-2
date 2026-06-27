@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Select, SelectItem, Stack, TextInput } from "@carbon/react";
+import { Button, Select, SelectItem, Tag, TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
 
 const SIGNIFICANCE_OPTIONS = [
@@ -26,59 +26,79 @@ const IsolatePanel = ({ caseId, isolates = [], onCreateIsolate, saving }) => {
   };
 
   return (
-    <section aria-labelledby="microbiology-isolates-heading">
-      <Stack gap={5}>
-        <h3 id="microbiology-isolates-heading">
-          {intl.formatMessage({ id: "microbiology.case.isolates" })}
-        </h3>
+    <section
+      className="microbiology-card"
+      aria-labelledby="microbiology-isolates-heading"
+    >
+      <div className="microbiology-card__header">
+        <div>
+          <h3 id="microbiology-isolates-heading">
+            {intl.formatMessage({ id: "microbiology.case.isolates" })}
+          </h3>
+          <p className="microbiology-card__hint">
+            {intl.formatMessage({ id: "microbiology.case.isolates.hint" })}
+          </p>
+        </div>
+        <Tag type={isolates.length > 0 ? "green" : "cool-gray"}>
+          {isolates.length}
+        </Tag>
+      </div>
+      <div>
         {isolates.length === 0 ? (
           <p>
             {intl.formatMessage({ id: "microbiology.case.isolates.empty" })}
           </p>
         ) : (
-          <ul>
+          <ul className="microbiology-list">
             {isolates.map((isolate) => (
-              <li key={isolate.id}>
+              <li className="microbiology-list__row" key={isolate.id}>
                 <strong>{isolate.isolateLabel}</strong>
                 {isolate.preliminaryOrganismText
                   ? `: ${isolate.preliminaryOrganismText}`
                   : ""}
+                <div className="microbiology-list__meta">
+                  {isolate.significance}
+                </div>
               </li>
             ))}
           </ul>
         )}
-        <TextInput
-          id="microbiology-isolate-label"
-          labelText={intl.formatMessage({
-            id: "microbiology.case.isolateLabel",
-          })}
-          value={isolateLabel}
-          onChange={(event) => setIsolateLabel(event.target.value)}
-        />
-        <TextInput
-          id="microbiology-preliminary-organism"
-          labelText={intl.formatMessage({
-            id: "microbiology.case.preliminaryOrganism",
-          })}
-          value={preliminaryOrganismText}
-          onChange={(event) => setPreliminaryOrganismText(event.target.value)}
-        />
-        <Select
-          id="microbiology-isolate-significance"
-          labelText={intl.formatMessage({
-            id: "microbiology.case.significance",
-          })}
-          value={significance}
-          onChange={(event) => setSignificance(event.target.value)}
-        >
-          {SIGNIFICANCE_OPTIONS.map((option) => (
-            <SelectItem key={option} value={option} text={option} />
-          ))}
-        </Select>
-        <Button onClick={submit} disabled={saving || !isolateLabel.trim()}>
-          {intl.formatMessage({ id: "microbiology.case.createIsolate" })}
-        </Button>
-      </Stack>
+        <div className="microbiology-form-grid microbiology-form-grid--three">
+          <TextInput
+            id="microbiology-isolate-label"
+            labelText={intl.formatMessage({
+              id: "microbiology.case.isolateLabel",
+            })}
+            value={isolateLabel}
+            onChange={(event) => setIsolateLabel(event.target.value)}
+          />
+          <TextInput
+            id="microbiology-preliminary-organism"
+            labelText={intl.formatMessage({
+              id: "microbiology.case.preliminaryOrganism",
+            })}
+            value={preliminaryOrganismText}
+            onChange={(event) => setPreliminaryOrganismText(event.target.value)}
+          />
+          <Select
+            id="microbiology-isolate-significance"
+            labelText={intl.formatMessage({
+              id: "microbiology.case.significance",
+            })}
+            value={significance}
+            onChange={(event) => setSignificance(event.target.value)}
+          >
+            {SIGNIFICANCE_OPTIONS.map((option) => (
+              <SelectItem key={option} value={option} text={option} />
+            ))}
+          </Select>
+          <div>
+            <Button onClick={submit} disabled={saving || !isolateLabel.trim()}>
+              {intl.formatMessage({ id: "microbiology.case.createIsolate" })}
+            </Button>
+          </div>
+        </div>
+      </div>
     </section>
   );
 };
