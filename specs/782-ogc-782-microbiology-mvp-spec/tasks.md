@@ -138,7 +138,7 @@ without duplicate accessioning.
 - [X] T049 [M3] Add configuration error handling for missing culture workflow/method defaults in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
 - [X] T050 [M3] Run focused backend validation `mvn -q -Dtest='MicroOrderRoutingServiceTest,MicroOrderRoutingIntegrationTest,MicroOrderRoutingIdempotencyTest,MicroCaseLookupRestControllerTest' test` from the repository root.
 - [X] T051 [M3] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from the repository root.
-- [ ] T052 [M3] Update PR #3789 with M3 validation evidence and mark the M3 block complete before starting M4.
+- [X] T052 [M3] Update PR #3789 with M3 validation evidence and mark the M3 block complete before starting M4.
 
 ## Phase 4: M4 - Case Workbench
 
