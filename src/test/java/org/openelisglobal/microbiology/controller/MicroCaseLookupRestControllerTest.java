@@ -14,6 +14,7 @@ import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
+import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +35,8 @@ public class MicroCaseLookupRestControllerTest {
         when(service.getSiblingCases("1001")).thenReturn(List.of(bacteriology, tb));
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service, accessService,
-                userModuleService).getCasesForSampleItem("1001", request);
+                userModuleService, org.mockito.Mockito.mock(MicroCaseStateService.class))
+                .getCasesForSampleItem("1001", request);
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(2, response.getBody().size());
@@ -52,7 +54,8 @@ public class MicroCaseLookupRestControllerTest {
         when(accessService.canAccessSampleItem("1001", "7", false)).thenReturn(false);
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service, accessService,
-                userModuleService).getCasesForSampleItem("1001", request);
+                userModuleService, org.mockito.Mockito.mock(MicroCaseStateService.class))
+                .getCasesForSampleItem("1001", request);
 
         assertEquals(403, response.getStatusCode().value());
         verify(service, never()).getSiblingCases("1001");

@@ -21,9 +21,6 @@ dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
 // Demo story proof on the build stack (video-ready).
 const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
 
-// Core foundational verification (ci-safe).
-const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
-
 // Harness demo story proof (video-ready).
 const HARNESS_DEMO_TESTS = ["**/demo/harness/**/*.spec.ts"];
 
@@ -96,7 +93,10 @@ export default defineConfig({
     // Core foundational verification — runs on CI build stack.
     {
       name: "core-app",
-      testMatch: CORE_FOUNDATIONAL_TESTS,
+      testMatch: [
+        "**/foundational/core/**/*.spec.ts",
+        "playwright/tests/foundational/core/microbiology-case-workbench.spec.ts",
+      ],
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
