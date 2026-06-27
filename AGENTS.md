@@ -2334,8 +2334,13 @@ OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync
 
 ## Active Technologies
-- Java 21, JavaScript/React 17 + Spring Framework 6.2.2 traditional Spring MVC (spec/782-ogc-782-microbiology-mvp-spec)
-- PostgreSQL through Hibernate/JPA valueholders and Liquibase XML (spec/782-ogc-782-microbiology-mvp-spec)
+
+- Java 21, JavaScript/React 17 + Spring Framework 6.2.2 traditional Spring MVC
+  (spec/782-ogc-782-microbiology-mvp-spec)
+- PostgreSQL through Hibernate/JPA valueholders and Liquibase XML
+  (spec/782-ogc-782-microbiology-mvp-spec)
 
 ## Recent Changes
-- spec/782-ogc-782-microbiology-mvp-spec: Added Java 21, JavaScript/React 17 + Spring Framework 6.2.2 traditional Spring MVC
+
+- spec/782-ogc-782-microbiology-mvp-spec: Added Java 21, JavaScript/React 17 +
+  Spring Framework 6.2.2 traditional Spring MVC
