@@ -373,4 +373,7 @@
        filename is retained so already-applied demo migrations keep identity. -->
   <include relativeToChangelogFile="true" file="051-microbiology-reference-foundations.xml"/>
 
+  <!-- OGC-782 M2: microbiology case core -->
+  <include relativeToChangelogFile="true" file="052-microbiology-case-core.xml"/>
+
 </databaseChangeLog>
