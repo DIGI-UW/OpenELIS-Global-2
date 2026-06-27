@@ -254,7 +254,7 @@ directory data.
 - [X] T113 [M6] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts`.
 - [X] T114 [M6] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
 - [X] T115 [M6] Run focused backend/frontend validation `mvn -q -Dtest='MicroWorklistServiceTest,MicroWorklistIntegrationTest,MicroCriticalCommunicationServiceTest,MicroCriticalAlertIntegrationTest' test && cd frontend && npm test -- --runInBand MicrobiologyWorklist.test.jsx CriticalCommunicationPanel.test.jsx` from the repository root.
-- [ ] T116 [M6] Update PR #3789 with M6 TDD and Playwright evidence and mark the M6 block complete before starting M7.
+- [X] T116 [M6] Update PR #3789 with M6 TDD and Playwright evidence and mark the M6 block complete before starting M7.
 
 ## Phase 7: M7 - Release + Surveillance Readiness
 
