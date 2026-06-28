@@ -31,6 +31,9 @@ vi.mock("../../../services/analyzerService", () => ({
   getFields: vi.fn(),
   getPendingCodes: vi.fn(),
   getPluginConfig: vi.fn(),
+  getResultValueMappings: vi.fn(),
+  getPendingResultValues: vi.fn(),
+  resolvePendingResultValue: vi.fn(),
 }));
 
 // Mock react-router-dom
@@ -105,6 +108,16 @@ describe("FieldMapping", () => {
     analyzerService.getPluginConfig.mockImplementation((id, callback) => {
       callback(null);
     });
+    analyzerService.getResultValueMappings.mockImplementation(
+      (id, callback) => {
+        callback([]);
+      },
+    );
+    analyzerService.getPendingResultValues.mockImplementation(
+      (id, callback) => {
+        callback([]);
+      },
+    );
   });
 
   /**
@@ -448,6 +461,87 @@ describe("FieldMapping", () => {
       "1",
       expect.any(Function),
     );
+  });
+
+  test("testMappingReview_ShowsProfileMappingsPendingCodesAndResultValues", async () => {
+    const mockAnalyzer = {
+      id: "1",
+      name: "QuantStudio",
+      analyzerType: "MOLECULAR",
+    };
+
+    const mockFields = [
+      {
+        id: "field-1",
+        fieldName: "MTB-RIF",
+        fieldType: "QUALITATIVE",
+        isActive: true,
+      },
+    ];
+
+    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
+      callback(mockAnalyzer);
+    });
+    analyzerService.getFields.mockImplementation((id, callback) => {
+      callback(mockFields);
+    });
+    analyzerService.getMappings.mockImplementation((id, callback) => {
+      callback([
+        {
+          id: "mapping-1",
+          analyzerFieldId: "field-1",
+          analyzerFieldName: "MTB-RIF",
+          mappingType: "testCode",
+          isActive: true,
+        },
+      ]);
+    });
+    analyzerService.getPendingCodes.mockImplementation((id, callback) => {
+      callback([
+        {
+          id: "pc-1",
+          analyzerTestName: "XPERT-MTB",
+          seenCount: 3,
+          status: "PENDING",
+        },
+      ]);
+    });
+    analyzerService.getResultValueMappings.mockImplementation(
+      (id, callback) => {
+        callback([
+          {
+            analyzerValue: "Detected",
+            openelisValue: "POSITIVE",
+            testCode: "MTB",
+            active: true,
+          },
+        ]);
+      },
+    );
+    analyzerService.getPendingResultValues.mockImplementation(
+      (id, callback) => {
+        callback([
+          {
+            id: "rv-1",
+            analyzerValue: "Trace",
+            testCode: "MTB",
+            status: "PENDING",
+          },
+        ]);
+      },
+    );
+
+    renderWithIntl(<FieldMapping />);
+
+    expect(
+      await screen.findByTestId("field-row-field-1", {}, { timeout: 10000 }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("XPERT-MTB")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("result-value-mappings-panel"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Detected")).toBeInTheDocument();
+    expect(screen.getByText("Trace")).toBeInTheDocument();
   });
 
   /**

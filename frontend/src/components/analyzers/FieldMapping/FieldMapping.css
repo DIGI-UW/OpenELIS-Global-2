@@ -88,7 +88,8 @@
 }
 
 .field-mapping-plugin-config,
-.field-mapping-pending-codes {
+.field-mapping-pending-codes,
+.field-mapping-result-values {
   margin-bottom: 1rem;
 }
 
@@ -102,18 +103,28 @@
   border: 1px solid var(--cds-border-subtle);
 }
 
-.pending-codes-panel h4 {
+.pending-codes-panel h4,
+.result-value-mappings-panel h4 {
   margin-bottom: 0.25rem;
 }
 
-.pending-codes-table {
+.result-value-mappings-panel h5 {
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.pending-codes-table,
+.result-value-mappings-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 0.75rem;
 }
 
 .pending-codes-table th,
-.pending-codes-table td {
+.pending-codes-table td,
+.result-value-mappings-table th,
+.result-value-mappings-table td {
   text-align: left;
   padding: 0.5rem;
   border-bottom: 1px solid var(--cds-border-subtle);
