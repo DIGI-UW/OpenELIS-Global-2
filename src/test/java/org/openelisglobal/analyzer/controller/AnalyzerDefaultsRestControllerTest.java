@@ -5,6 +5,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -166,5 +170,31 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
 
         // Assert: FILE templates should have 'file/' prefix
         assertTrue("FILE templates should be under file/ directory", responseBody.contains("\"id\":\"file/"));
+    }
+
+    @Test
+    public void testGetProfiles_IncludesLabFacingSummaryFields() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rest/analyzer/profiles").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> profiles = new ObjectMapper().readValue(result.getResponse().getContentAsString(),
+                new TypeReference<List<Map<String, Object>>>() {
+                });
+
+        Map<String, Object> quantstudio = profiles.stream()
+                .filter(profile -> "file/quantstudio".equals(profile.get("id"))).findFirst()
+                .orElseThrow(() -> new AssertionError("Expected file/quantstudio profile"));
+
+        assertTrue("Profile id should remain available", quantstudio.containsKey("profileId"));
+        assertTrue("Display name should be lab-facing", quantstudio.containsKey("displayName"));
+        assertTrue("Supported connection mode should be present", quantstudio.containsKey("supportedConnectionMode"));
+        assertTrue("Test mapping count should be present", quantstudio.containsKey("testMappingCount"));
+        assertTrue("QC rule count should be present", quantstudio.containsKey("qcRuleCount"));
+        assertTrue("Result value mapping count should be present", quantstudio.containsKey("resultValueMappingCount"));
+        assertTrue("Readiness status should be present", quantstudio.containsKey("readinessStatus"));
+
+        assertTrue("Profile should include test mappings",
+                ((Number) quantstudio.get("testMappingCount")).intValue() > 0);
+        assertTrue("Profile should include QC rule defaults", ((Number) quantstudio.get("qcRuleCount")).intValue() > 0);
     }
 }
