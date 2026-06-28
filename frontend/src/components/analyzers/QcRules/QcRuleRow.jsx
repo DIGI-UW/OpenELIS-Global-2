@@ -59,6 +59,7 @@ const QcRuleRow = ({ rule, index, onChange, onDelete, disabled }) => {
         <div style={{ flex: "0 0 120px" }}>
           <TextInput
             id={`qc-rule-field-${index}`}
+            data-testid={`qc-rule-field-${index}`}
             labelText={
               index === 0
                 ? intl.formatMessage({
@@ -81,6 +82,7 @@ const QcRuleRow = ({ rule, index, onChange, onDelete, disabled }) => {
       <div style={{ flex: "1 1 auto" }}>
         <TextInput
           id={`qc-rule-operand-${index}`}
+          data-testid={`qc-rule-operand-${index}`}
           labelText={
             index === 0
               ? intl.formatMessage({ id: "analyzer.qcRules.operand" })

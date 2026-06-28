@@ -63,6 +63,7 @@ services:
             - ./volume/plugins/:/var/lib/openelis-global/plugins
             - ./volume/lucene:/var/lib/lucene_index
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
+            - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./configuration:/var/lib/openelis-global/configuration

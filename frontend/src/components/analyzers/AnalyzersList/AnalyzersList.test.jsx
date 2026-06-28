@@ -316,6 +316,41 @@ describe("AnalyzersList", () => {
     expect(statusBadge.textContent).toMatch(/validation/i);
   });
 
+  test("testAnalyzerQcSetup_ShowsReadinessAndControlLotAction", async () => {
+    const mockAnalyzers = [
+      createMockAnalyzer({
+        id: "1",
+        name: "Analyzer QC",
+        status: "VALIDATION",
+        qcRules: [],
+        controlLots: [],
+      }),
+    ];
+
+    getAnalyzers.mockImplementation((filters, callback) => {
+      act(() => {
+        callback({ analyzers: mockAnalyzers });
+      });
+    });
+
+    act(() => {
+      renderWithIntl(<AnalyzersList />);
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-qc-readiness-1"),
+    ).toHaveTextContent(messages["analyzer.qcReadiness.required"]);
+
+    await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
+    await userEvent.click(
+      await screen.findByTestId("analyzer-action-control-lots-1"),
+    );
+
+    expect(mockHistory.push).toHaveBeenCalledWith(
+      "/analyzers/qc/control-lots/new?analyzerId=1",
+    );
+  });
+
   /**
    * Test: Lifecycle stage filter filters analyzers correctly
    *

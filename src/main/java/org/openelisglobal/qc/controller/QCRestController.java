@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.analyzer.service.AnalyzerBridgeSyncService;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -66,6 +67,9 @@ public class QCRestController extends BaseRestController {
 
     @Autowired
     private QCDashboardService dashboardService;
+
+    @Autowired(required = false)
+    private AnalyzerBridgeSyncService analyzerBridgeSyncService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -183,6 +187,7 @@ public class QCRestController extends BaseRestController {
                 controlLotService.update(controlLot);
             }
 
+            pushAnalyzerBridgeSync(controlLot);
             return ResponseEntity.ok(controlLot);
 
         } catch (IllegalArgumentException e) {
@@ -204,6 +209,7 @@ public class QCRestController extends BaseRestController {
         try {
             QCControlLot controlLot = controlLotService.activateControlLot(id);
             if (controlLot != null) {
+                pushAnalyzerBridgeSync(controlLot);
                 return ResponseEntity.ok(controlLot);
             } else {
                 return ResponseEntity.notFound().build();
@@ -224,6 +230,7 @@ public class QCRestController extends BaseRestController {
         try {
             QCControlLot controlLot = controlLotService.deactivateControlLot(id);
             if (controlLot != null) {
+                pushAnalyzerBridgeSync(controlLot);
                 return ResponseEntity.ok(controlLot);
             } else {
                 return ResponseEntity.notFound().build();
@@ -524,5 +531,13 @@ public class QCRestController extends BaseRestController {
         Timestamp endDate = Timestamp.from(now);
         Timestamp startDate = Timestamp.from(now.minus(clamped * 30L, ChronoUnit.DAYS));
         return new Timestamp[] { startDate, endDate };
+    }
+
+    private void pushAnalyzerBridgeSync(QCControlLot controlLot) {
+        if (analyzerBridgeSyncService == null || controlLot == null || controlLot.getInstrumentId() == null
+                || controlLot.getInstrumentId().isBlank()) {
+            return;
+        }
+        analyzerBridgeSyncService.pushAnalyzer(controlLot.getInstrumentId());
     }
 }
