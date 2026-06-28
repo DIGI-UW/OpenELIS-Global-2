@@ -15,6 +15,7 @@ import org.junit.Test;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.qc.service.QCControlLotService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.test.service.TestService;
 
 /**
@@ -154,5 +155,25 @@ public class BridgeRegistrationServiceTest {
 
         assertTrue(payload.containsKey("controlLots"));
         assertEquals(List.of(), payload.get("controlLots"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void attachesActiveControlLotsUsingStringIds() {
+        QCControlLot lot = new QCControlLot();
+        lot.setLotNumber("LOT-2026-001");
+        lot.setControlLevel("L1");
+        lot.setTestId("42");
+        lot.setInstrumentId("AN-8");
+        when(qcControlLotService.getActiveControlLotsByInstrument("AN-8")).thenReturn(List.of(lot));
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        svc.attachControlLots(payload, "AN-8");
+
+        List<Map<String, Object>> controlLots = (List<Map<String, Object>>) payload.get("controlLots");
+        assertEquals(1, controlLots.size());
+        assertEquals("LOT-2026-001", controlLots.get(0).get("lotNumber"));
+        assertEquals("L1", controlLots.get(0).get("controlLevel"));
+        assertEquals("42", controlLots.get(0).get("testId"));
     }
 }

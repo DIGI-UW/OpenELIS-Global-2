@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerStatusTransitionServiceImpl.AnalyzerStatusChangeEvent;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.springframework.context.ApplicationEventPublisher;
 
 /**
@@ -34,6 +36,9 @@ public class AnalyzerStatusTransitionServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private AnalyzerPluginConfigService analyzerPluginConfigService;
 
     @InjectMocks
     private AnalyzerStatusTransitionServiceImpl transitionService;
@@ -89,6 +94,20 @@ public class AnalyzerStatusTransitionServiceTest {
         assertEquals(AnalyzerStatus.ACTIVE, result.getStatus());
         assertNotNull(result.getLastActivatedDate());
         verify(analyzerService).update(any(Analyzer.class));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testTransitionToActive_GenericPluginWithoutActiveQcRule_ThrowsException() {
+        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
+        testAnalyzer.setAnalyzerType(genericAnalyzerType());
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
+        when(analyzerPluginConfigService.hasAtLeastOneActiveQcRule("1")).thenReturn(false);
+
+        try {
+            transitionService.transitionToActive("1");
+        } finally {
+            verify(analyzerService, never()).update(any(Analyzer.class));
+        }
     }
 
     @Test(expected = IllegalStateException.class)
@@ -172,6 +191,20 @@ public class AnalyzerStatusTransitionServiceTest {
         transitionService.transitionToActiveFromError("1");
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void testTransitionToActiveFromError_GenericPluginWithoutActiveQcRule_ThrowsException() {
+        testAnalyzer.setStatus(AnalyzerStatus.ERROR_PENDING);
+        testAnalyzer.setAnalyzerType(genericAnalyzerType());
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
+        when(analyzerPluginConfigService.hasAtLeastOneActiveQcRule("1")).thenReturn(false);
+
+        try {
+            transitionService.transitionToActiveFromError("1");
+        } finally {
+            verify(analyzerService, never()).update(any(Analyzer.class));
+        }
+    }
+
     // === transitionToActiveFromOffline Tests ===
 
     @Test
@@ -191,6 +224,20 @@ public class AnalyzerStatusTransitionServiceTest {
         when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         transitionService.transitionToActiveFromOffline("1");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testTransitionToActiveFromOffline_GenericPluginWithoutActiveQcRule_ThrowsException() {
+        testAnalyzer.setStatus(AnalyzerStatus.OFFLINE);
+        testAnalyzer.setAnalyzerType(genericAnalyzerType());
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
+        when(analyzerPluginConfigService.hasAtLeastOneActiveQcRule("1")).thenReturn(false);
+
+        try {
+            transitionService.transitionToActiveFromOffline("1");
+        } finally {
+            verify(analyzerService, never()).update(any(Analyzer.class));
+        }
     }
 
     // === Event Publishing Tests ===
@@ -249,5 +296,13 @@ public class AnalyzerStatusTransitionServiceTest {
         testAnalyzer.setStatus(AnalyzerStatus.OFFLINE);
         result = transitionService.transitionToActiveFromOffline("1");
         assertEquals(AnalyzerStatus.ACTIVE, result.getStatus());
+    }
+
+    private AnalyzerType genericAnalyzerType() {
+        AnalyzerType type = new AnalyzerType();
+        type.setId("3");
+        type.setName("Generic ASTM");
+        type.setGenericPlugin(true);
+        return type;
     }
 }

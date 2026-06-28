@@ -245,6 +245,7 @@ const QcRulePage = () => {
           kind="primary"
           onClick={handleSave}
           disabled={saving || loading}
+          data-testid="qc-rule-save-btn"
         >
           {intl.formatMessage({ id: "label.button.save" })}
         </Button>

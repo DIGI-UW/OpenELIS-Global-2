@@ -7,10 +7,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,15 +22,20 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.analyzer.service.AnalyzerBridgeSyncService;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.qc.builder.QCControlLotBuilder;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.RuleConfigSummary;
+import org.openelisglobal.qc.form.QCControlLotForm;
 import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.service.QCDashboardService;
 import org.openelisglobal.qc.service.QCStatisticsService;
 import org.openelisglobal.qc.service.WestgardRuleConfigService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -60,9 +67,13 @@ public class QCRestControllerTest {
     @Mock
     private QCDashboardService dashboardService;
 
+    @Mock
+    private AnalyzerBridgeSyncService analyzerBridgeSyncService;
+
     @InjectMocks
     private QCRestController controller;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private MockMvc mockMvc;
     private QCControlLot sampleLot;
 
@@ -120,12 +131,25 @@ public class QCRestControllerTest {
     // ==================== Lifecycle transitions ====================
 
     @Test
+    public void saveControlLot_createPushesBridgeRegistrationForInstrument() throws Exception {
+        when(controlLotService.createControlLot(any(QCControlLot.class))).thenReturn(sampleLot);
+
+        mockMvc.perform(post("/rest/qc/controlLot").sessionAttr(IActionConstants.USER_SESSION_DATA, userSession())
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(controlLotForm("0"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.instrumentId").value("7"));
+
+        verify(analyzerBridgeSyncService).pushAnalyzer("7");
+    }
+
+    @Test
     public void activateControlLot_returns200WhenTransitioned() throws Exception {
         QCControlLot active = QCControlLotBuilder.create().withId("lot-1").asActive().build();
         when(controlLotService.activateControlLot("lot-1")).thenReturn(active);
 
         mockMvc.perform(put("/rest/qc/controlLot/lot-1/activate")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        verify(analyzerBridgeSyncService).pushAnalyzer(active.getInstrumentId());
     }
 
     @Test
@@ -133,6 +157,17 @@ public class QCRestControllerTest {
         when(controlLotService.activateControlLot("nope")).thenReturn(null);
 
         mockMvc.perform(put("/rest/qc/controlLot/nope/activate")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void deactivateControlLot_returns200AndPushesBridgeRegistration() throws Exception {
+        QCControlLot expired = QCControlLotBuilder.create().withId("lot-1").withInstrumentId("7").asExpired().build();
+        when(controlLotService.deactivateControlLot("lot-1")).thenReturn(expired);
+
+        mockMvc.perform(put("/rest/qc/controlLot/lot-1/deactivate")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRED"));
+
+        verify(analyzerBridgeSyncService).pushAnalyzer("7");
     }
 
     // ==================== Dashboard ====================
@@ -185,5 +220,24 @@ public class QCRestControllerTest {
                 .andExpect(status().isOk());
 
         verify(ruleConfigService).findByTestAndInstrument("42", "7");
+    }
+
+    private QCControlLotForm controlLotForm(String id) {
+        QCControlLotForm form = new QCControlLotForm();
+        form.setId(id);
+        form.setProductName("QC Product");
+        form.setLotNumber("LOT-2026-001");
+        form.setControlLevel("L1");
+        form.setTestId("42");
+        form.setInstrumentId("7");
+        form.setCalculationMethod("INITIAL_RUNS");
+        form.setInitialRunsCount(20);
+        return form;
+    }
+
+    private UserSessionData userSession() {
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(1);
+        return sessionData;
     }
 }

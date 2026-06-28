@@ -29,7 +29,7 @@ import {
   Toggle,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import {
@@ -68,9 +68,12 @@ export const buildControlLotPayload = (
 const ControlLotSetup = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { id: lotId } = useParams();
 
   const isEditMode = !!lotId;
+  const preselectedAnalyzerId =
+    new URLSearchParams(location.search || "").get("analyzerId") || "";
 
   // State
   const [loading, setLoading] = useState(false);
@@ -202,7 +205,7 @@ const ControlLotSetup = () => {
       controlMaterial: "",
       controlLevel: "",
       expirationDate: "",
-      analyzerId: "",
+      analyzerId: preselectedAnalyzerId,
       testId: "",
       isActive: true,
     };

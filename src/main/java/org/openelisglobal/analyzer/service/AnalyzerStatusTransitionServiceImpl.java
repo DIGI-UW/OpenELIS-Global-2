@@ -51,10 +51,7 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
             throw new IllegalStateException("Cannot transition to ACTIVE: analyzer " + analyzerId + " is in "
                     + currentStatus + " status (expected VALIDATION)");
         }
-        if (analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin()
-                && !analyzerPluginConfigService.hasAtLeastOneActiveQcRule(analyzerId)) {
-            throw new IllegalStateException("Cannot transition to ACTIVE: at least one active QC rule is required");
-        }
+        requireActiveQcReadiness(analyzer, analyzerId);
 
         analyzer.setLastActivatedDate(new Date());
 
@@ -96,6 +93,7 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
             throw new IllegalStateException("Cannot transition to ACTIVE from ERROR_PENDING: analyzer " + analyzerId
                     + " is in " + currentStatus + " status (expected ERROR_PENDING)");
         }
+        requireActiveQcReadiness(analyzer, analyzerId);
 
         return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "All errors acknowledged");
     }
@@ -109,8 +107,16 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
             throw new IllegalStateException("Cannot transition to ACTIVE from OFFLINE: analyzer " + analyzerId
                     + " is in " + currentStatus + " status (expected OFFLINE)");
         }
+        requireActiveQcReadiness(analyzer, analyzerId);
 
         return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "Connection restored");
+    }
+
+    private void requireActiveQcReadiness(Analyzer analyzer, String analyzerId) {
+        if (analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin()
+                && !analyzerPluginConfigService.hasAtLeastOneActiveQcRule(analyzerId)) {
+            throw new IllegalStateException("Cannot transition to ACTIVE: at least one active QC rule is required");
+        }
     }
 
     /**

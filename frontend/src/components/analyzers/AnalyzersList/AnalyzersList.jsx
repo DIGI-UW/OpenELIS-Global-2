@@ -244,6 +244,17 @@ const AnalyzersList = () => {
     return <AnalyzerForm />;
   }
 
+  const hasActiveQcRules = (analyzer) =>
+    Array.isArray(analyzer?.qcRules) &&
+    analyzer.qcRules.some((rule) => rule?.isActive !== false);
+
+  const hasActiveControlLots = (analyzer) =>
+    Array.isArray(analyzer?.controlLots) &&
+    analyzer.controlLots.some((lot) => (lot?.status || "ACTIVE") === "ACTIVE");
+
+  const isQcReady = (analyzer) =>
+    hasActiveQcRules(analyzer) && hasActiveControlLots(analyzer);
+
   return (
     <div className="analyzers-list" data-testid="analyzers-list">
       <div
@@ -525,15 +536,29 @@ const AnalyzersList = () => {
                                 unifiedStatus === "ERROR_PENDING"
                                   ? "analyzer.status.error_pending"
                                   : `analyzer.status.${unifiedStatus.toLowerCase()}`;
+                              const qcReady = isQcReady(analyzer);
                               cellContent = (
-                                <Tag
-                                  type={statusColor}
-                                  data-testid={`status-badge-${row.id}`}
-                                >
-                                  {intl.formatMessage({
-                                    id: statusKey,
-                                  })}
-                                </Tag>
+                                <div className="analyzer-status-tags">
+                                  <Tag
+                                    type={statusColor}
+                                    data-testid={`status-badge-${row.id}`}
+                                  >
+                                    {intl.formatMessage({
+                                      id: statusKey,
+                                    })}
+                                  </Tag>
+                                  <Tag
+                                    type={qcReady ? "green" : "warm-gray"}
+                                    size="sm"
+                                    data-testid={`analyzer-qc-readiness-${row.id}`}
+                                  >
+                                    {intl.formatMessage({
+                                      id: qcReady
+                                        ? "analyzer.qcReadiness.ready"
+                                        : "analyzer.qcReadiness.required",
+                                    })}
+                                  </Tag>
+                                </div>
                               );
                             } else if (headerKey === "lastModified") {
                               testId = `analyzer-last-modified-${row.id}`;
@@ -604,6 +629,17 @@ const AnalyzersList = () => {
                                       )
                                     }
                                     data-testid={`analyzer-action-qc-rules-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.controlLots",
+                                    })}
+                                    onClick={() =>
+                                      history.push(
+                                        `/analyzers/qc/control-lots/new?analyzerId=${analyzer.id}`,
+                                      )
+                                    }
+                                    data-testid={`analyzer-action-control-lots-${row.id}`}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({

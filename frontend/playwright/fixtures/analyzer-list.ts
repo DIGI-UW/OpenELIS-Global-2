@@ -71,6 +71,11 @@ export class AnalyzerListPage {
     return this.page.locator(`[data-testid="status-badge-${id}"]`);
   }
 
+  /** Get the QC readiness badge for an analyzer */
+  getQcReadinessBadge(id: string): Locator {
+    return this.page.locator(`[data-testid="analyzer-qc-readiness-${id}"]`);
+  }
+
   /** Open the overflow menu for a specific analyzer row */
   async openOverflowMenu(id: string) {
     const explicitOverflow = this.page.locator(
@@ -94,7 +99,9 @@ export class AnalyzerListPage {
       | "test-connection"
       | "edit"
       | "delete"
-      | "copy-mappings",
+      | "copy-mappings"
+      | "qc-rules"
+      | "control-lots",
   ) {
     const actionItem = this.page.locator(
       `[data-testid="analyzer-action-${action}-${id}"]`,
