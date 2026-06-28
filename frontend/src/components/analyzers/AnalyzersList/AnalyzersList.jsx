@@ -21,9 +21,9 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { getAnalyzers } from "../../../services/analyzerService";
-// AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
+import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 // QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
@@ -35,6 +35,7 @@ import "./AnalyzersList.css";
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const searchTimeoutRef = useRef(null);
 
   const [analyzers, setAnalyzers] = useState([]);
@@ -238,6 +239,11 @@ const AnalyzersList = () => {
     };
   });
 
+  const setupParams = new URLSearchParams(location.search || "");
+  if (setupParams.get("add") === "1") {
+    return <AnalyzerForm />;
+  }
+
   return (
     <div className="analyzers-list" data-testid="analyzers-list">
       <div
@@ -265,7 +271,7 @@ const AnalyzersList = () => {
           kind="primary"
           renderIcon={Add}
           data-testid="add-analyzer-button"
-          onClick={() => history.push("/analyzers/new")}
+          onClick={() => history.push("/analyzers?add=1")}
         >
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>

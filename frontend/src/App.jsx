@@ -1,7 +1,12 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
 import { IntlProvider } from "react-intl";
-import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
+import {
+  Redirect,
+  Route,
+  BrowserRouter as Router,
+  Switch,
+} from "react-router-dom";
 import "./App.css";
 import RedirectOldUI from "./RedirectOldUI";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -989,13 +994,7 @@ export default function App() {
                 <SecureRoute
                   path="/analyzers/new"
                   exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
+                  component={() => <Redirect to="/analyzers?add=1" />}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute

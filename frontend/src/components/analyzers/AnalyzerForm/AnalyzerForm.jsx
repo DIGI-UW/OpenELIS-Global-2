@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   Button,
   ButtonSet,
@@ -11,7 +17,7 @@ import {
   Loading,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import {
   createAnalyzer,
   updateAnalyzer,
@@ -35,10 +41,12 @@ import "./AnalyzerForm.css";
 const AnalyzerForm = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { id: analyzerId } = useParams();
   const isEditMode = !!analyzerId;
   const [analyzer, setAnalyzer] = useState(null);
   const [loadingAnalyzer, setLoadingAnalyzer] = useState(false);
+  const preselectedProfileRef = useRef(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -285,97 +293,126 @@ const AnalyzerForm = () => {
     }));
   };
 
-  const handleDefaultConfigSelect = (defaultItem) => {
-    if (!defaultItem || !defaultItem.id) {
+  const handleDefaultConfigSelect = useCallback(
+    (defaultItem) => {
+      if (!defaultItem || !defaultItem.id) {
+        return;
+      }
+
+      setSelectedDefault(defaultItem);
+
+      // Parse protocol and name from id (e.g., "hl7/mindray-bc2000")
+      const [protocol, name] = defaultItem.id.split("/");
+
+      getDefaultConfig(protocol, name, (configData) => {
+        if (configData && !configData.error) {
+          // Set plugin/protocol-level fields only — NOT instance-level (name, port, IP)
+          const protocolUpper = protocol.toUpperCase();
+          // Auto-resolve pluginTypeId from config protocol
+          const matchingPluginType = pluginTypes.find(
+            (t) =>
+              t.isGenericPlugin && t.protocol?.toUpperCase() === protocolUpper,
+          );
+
+          // Base fields from profile
+          const baseUpdates = {
+            identifierPattern: configData.identifier_pattern || undefined,
+            analyzerType:
+              configData.category ||
+              configData.profileMeta?.category ||
+              undefined,
+            protocolVersion:
+              PLUGIN_PROTOCOL_DEFAULTS[protocolUpper] || undefined,
+            communicationMode:
+              configData.communication_mode ||
+              configData.communication?.mode ||
+              undefined,
+            pluginTypeId: matchingPluginType?.id || undefined,
+          };
+
+          // FILE protocol: auto-fill file import fields from profile
+          const fileUpdates = {};
+          if (protocolUpper === "FILE") {
+            const defaults = configData.configDefaults || {};
+            const extensions = configData.supported_extensions || [];
+            const format =
+              defaults.fileFormat || configData.protocol?.format || "CSV";
+            fileUpdates.fileFormat = format;
+            fileUpdates.filePattern =
+              extensions.length > 0
+                ? `*{${extensions.join(",")}}`
+                : FILE_FORMAT_PATTERNS[format] || "*.csv";
+            fileUpdates.delimiter =
+              defaults.delimiter ||
+              (format === "CSV" ? "," : format === "TSV" ? "\t" : ",");
+            fileUpdates.hasHeader = defaults.hasHeader ?? true;
+            fileUpdates.skipRows = defaults.skipRows ?? 0;
+            if (configData.column_mapping) {
+              fileUpdates.columnMappings = JSON.stringify(
+                configData.column_mapping,
+                null,
+                2,
+              );
+            }
+          }
+
+          setFormData((prev) => ({
+            ...prev,
+            ...Object.fromEntries(
+              Object.entries(baseUpdates).filter(([, v]) => v !== undefined),
+            ),
+            ...fileUpdates,
+          }));
+
+          setNotification({
+            kind: "info",
+            title: intl.formatMessage({ id: "analyzer.form.defaults.loaded" }),
+            subtitle: intl.formatMessage(
+              { id: "analyzer.form.defaults.loaded.subtitle" },
+              {
+                name:
+                  configData.analyzer_name ||
+                  configData.profileMeta?.displayName,
+              },
+            ),
+          });
+        } else {
+          setNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "analyzer.form.defaults.error" }),
+            subtitle:
+              configData?.error ||
+              intl.formatMessage({ id: "analyzer.form.error.unknown" }),
+          });
+        }
+      });
+    },
+    [intl, pluginTypes],
+  );
+
+  useEffect(() => {
+    if (isEditMode || loadingDefaults || loadingPluginTypes) {
       return;
     }
-
-    setSelectedDefault(defaultItem);
-
-    // Parse protocol and name from id (e.g., "hl7/mindray-bc2000")
-    const [protocol, name] = defaultItem.id.split("/");
-
-    getDefaultConfig(protocol, name, (configData) => {
-      if (configData && !configData.error) {
-        // Set plugin/protocol-level fields only — NOT instance-level (name, port, IP)
-        const protocolUpper = protocol.toUpperCase();
-        // Auto-resolve pluginTypeId from config protocol
-        const matchingPluginType = pluginTypes.find(
-          (t) =>
-            t.isGenericPlugin && t.protocol?.toUpperCase() === protocolUpper,
-        );
-
-        // Base fields from profile
-        const baseUpdates = {
-          identifierPattern: configData.identifier_pattern || undefined,
-          analyzerType:
-            configData.category ||
-            configData.profileMeta?.category ||
-            undefined,
-          protocolVersion: PLUGIN_PROTOCOL_DEFAULTS[protocolUpper] || undefined,
-          communicationMode:
-            configData.communication_mode ||
-            configData.communication?.mode ||
-            undefined,
-          pluginTypeId: matchingPluginType?.id || undefined,
-        };
-
-        // FILE protocol: auto-fill file import fields from profile
-        const fileUpdates = {};
-        if (protocolUpper === "FILE") {
-          const defaults = configData.configDefaults || {};
-          const extensions = configData.supported_extensions || [];
-          const format =
-            defaults.fileFormat || configData.protocol?.format || "CSV";
-          fileUpdates.fileFormat = format;
-          fileUpdates.filePattern =
-            extensions.length > 0
-              ? `*{${extensions.join(",")}}`
-              : FILE_FORMAT_PATTERNS[format] || "*.csv";
-          fileUpdates.delimiter =
-            defaults.delimiter ||
-            (format === "CSV" ? "," : format === "TSV" ? "\t" : ",");
-          fileUpdates.hasHeader = defaults.hasHeader ?? true;
-          fileUpdates.skipRows = defaults.skipRows ?? 0;
-          if (configData.column_mapping) {
-            fileUpdates.columnMappings = JSON.stringify(
-              configData.column_mapping,
-              null,
-              2,
-            );
-          }
-        }
-
-        setFormData((prev) => ({
-          ...prev,
-          ...Object.fromEntries(
-            Object.entries(baseUpdates).filter(([, v]) => v !== undefined),
-          ),
-          ...fileUpdates,
-        }));
-
-        setNotification({
-          kind: "info",
-          title: intl.formatMessage({ id: "analyzer.form.defaults.loaded" }),
-          subtitle: intl.formatMessage(
-            { id: "analyzer.form.defaults.loaded.subtitle" },
-            {
-              name:
-                configData.analyzer_name || configData.profileMeta?.displayName,
-            },
-          ),
-        });
-      } else {
-        setNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "analyzer.form.defaults.error" }),
-          subtitle:
-            configData?.error ||
-            intl.formatMessage({ id: "analyzer.form.error.unknown" }),
-        });
-      }
-    });
-  };
+    const params = new URLSearchParams(location.search || "");
+    const profileId = params.get("profile");
+    if (!profileId || preselectedProfileRef.current === profileId) {
+      return;
+    }
+    const defaultItem = defaultConfigs.find((item) => item.id === profileId);
+    if (!defaultItem) {
+      return;
+    }
+    preselectedProfileRef.current = profileId;
+    handleDefaultConfigSelect(defaultItem);
+  }, [
+    defaultConfigs,
+    handleDefaultConfigSelect,
+    isEditMode,
+    loadingDefaults,
+    loadingPluginTypes,
+    location.search,
+  ]);
 
   const validateForm = () => {
     const newErrors = {};
