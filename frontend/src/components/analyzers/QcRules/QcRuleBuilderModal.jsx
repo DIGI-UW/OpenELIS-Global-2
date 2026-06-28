@@ -58,14 +58,12 @@ const QcRulePage = () => {
         });
       }
     });
-  }, [analyzer?.id, intl]);
+  }, [analyzerId, intl]);
 
   useEffect(() => {
-    if (open) {
-      setNotification(null);
-      loadRules();
-    }
-  }, [analyzerId, loadRules]);
+    setNotification(null);
+    loadRules();
+  }, [loadRules]);
 
   const handleRuleChange = (index, updatedRule) => {
     setRules((prev) => {

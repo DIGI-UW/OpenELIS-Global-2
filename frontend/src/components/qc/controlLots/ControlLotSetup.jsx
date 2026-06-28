@@ -40,6 +40,31 @@ import StatisticsConfigSection from "./StatisticsConfigSection";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./ControlLotSetup.css";
 
+export const buildControlLotPayload = (
+  values,
+  statisticsConfig,
+  { isEditMode = false, lotId = undefined } = {},
+) => ({
+  id: isEditMode ? lotId : undefined,
+  productName: values.controlMaterial,
+  lotNumber: values.lotNumber,
+  controlLevel: values.controlLevel,
+  expirationDate: values.expirationDate
+    ? (() => {
+        const [mm, dd, yyyy] = values.expirationDate.split("/");
+        return new Date(`${yyyy}-${mm}-${dd}T12:00:00`).toISOString();
+      })()
+    : undefined,
+  instrumentId: values.analyzerId || undefined,
+  testId: values.testId || undefined,
+  calculationMethod: statisticsConfig.calculationMethod,
+  initialRunsCount: statisticsConfig.initialRunsRequired,
+  manufacturerMean: statisticsConfig.mean,
+  manufacturerStdDev: statisticsConfig.standardDeviation,
+  activationDate: new Date().toISOString(),
+  status: values.isActive ? "ACTIVE" : "EXPIRED",
+});
+
 const ControlLotSetup = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -188,28 +213,10 @@ const ControlLotSetup = () => {
     setSubmitting(true);
     setError(null);
 
-    const payload = {
-      id: isEditMode ? lotId : undefined,
-      productName: values.controlMaterial,
-      lotNumber: values.lotNumber,
-      controlLevel: values.controlLevel,
-      expirationDate: values.expirationDate
-        ? (() => {
-            const [mm, dd, yyyy] = values.expirationDate.split("/");
-            return new Date(`${yyyy}-${mm}-${dd}T12:00:00`).toISOString();
-          })()
-        : undefined,
-      instrumentId: values.analyzerId
-        ? parseInt(values.analyzerId, 10)
-        : undefined,
-      testId: values.testId ? parseInt(values.testId, 10) : undefined,
-      calculationMethod: statisticsConfig.calculationMethod,
-      initialRunsCount: statisticsConfig.initialRunsRequired,
-      manufacturerMean: statisticsConfig.mean,
-      manufacturerStdDev: statisticsConfig.standardDeviation,
-      activationDate: new Date().toISOString(),
-      status: values.isActive ? "ACTIVE" : "EXPIRED",
-    };
+    const payload = buildControlLotPayload(values, statisticsConfig, {
+      isEditMode,
+      lotId,
+    });
 
     postToOpenElisServerFullResponse(
       "/rest/qc/controlLot",
