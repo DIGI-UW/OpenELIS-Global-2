@@ -1,4 +1,9 @@
-export const priorities = [
+export interface OrderPriorityOption {
+  value: string;
+  label: string;
+}
+
+export const priorities: OrderPriorityOption[] = [
   {
     value: "Routine",
     label: "ROUTINE",

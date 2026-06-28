@@ -1,10 +1,40 @@
 import config from "../../config.json";
+import type { IntlShape } from "react-intl";
+
+// This utility is the compatibility boundary for hundreds of legacy JavaScript
+// callers whose API response contracts have not yet been migrated.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type LegacyApiResponse = any;
+
+export type RequestPayload = BodyInit | Record<string, unknown> | null;
+
+interface ApiFieldError {
+  field?: string;
+  defaultMessage?: string;
+}
+
+export interface ApiMessagePayload {
+  messageKey?: string;
+  errorKey?: string;
+  messageArgs?: Record<string, unknown>;
+  errorArgs?: Record<string, unknown>;
+  message?: string;
+  error?: string;
+  fieldErrors?: ApiFieldError[];
+  [key: string]: unknown;
+}
+
+interface UserSessionDetails {
+  roles?: string[];
+}
+
+const csrfToken = (): string => localStorage.getItem("CSRF") as string;
 
 /**
  * Get the current locale from localStorage for API requests.
  * Falls back to browser language or 'en' if not set.
  */
-const getAcceptLanguageHeader = () => {
+const getAcceptLanguageHeader = (): string => {
   return localStorage.getItem("locale") || navigator.language || "en";
 };
 
@@ -17,15 +47,15 @@ const getAcceptLanguageHeader = () => {
  * `BindingResult.fieldErrors` → joined; otherwise the supplied fallback id.
  */
 export const resolveApiErrorMessage = (
-  intl,
-  payload,
-  fallbackId,
-  fallbackValues = {},
-) => {
+  intl: IntlShape,
+  payload: ApiMessagePayload | null | undefined,
+  fallbackId: string,
+  fallbackValues: Record<string, unknown> = {},
+): string => {
   const key = payload?.messageKey || payload?.errorKey;
   const keyArgs = payload?.messageArgs || payload?.errorArgs || {};
   if (key) {
-    return intl.formatMessage({ id: key }, keyArgs);
+    return String(intl.formatMessage({ id: key }, keyArgs));
   }
   const text =
     typeof payload?.message === "string"
@@ -46,15 +76,15 @@ export const resolveApiErrorMessage = (
       .filter(Boolean)
       .join("; ");
   }
-  return intl.formatMessage({ id: fallbackId }, fallbackValues);
+  return String(intl.formatMessage({ id: fallbackId }, fallbackValues));
 };
 
-const handleSessionError = (response) => {
+const handleSessionError = (response: Response): Response => {
   if (response.status === 403) {
     response
       .clone()
       .json()
-      .then((body) => {
+      .then((body: ApiMessagePayload) => {
         if (body && body.message && body.message.includes("CSRF")) {
           alert(
             "Your session has expired. The page will reload so you can continue.",
@@ -62,12 +92,16 @@ const handleSessionError = (response) => {
           window.location.reload();
         }
       })
-      .catch(() => {});
+      .catch(() => undefined);
   }
   return response;
 };
 
-export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
+export const getFromOpenElisServer = <T = LegacyApiResponse>(
+  endPoint: string,
+  callback: (response: T | undefined) => void,
+  signal: AbortSignal | null = null,
+): void => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -89,10 +123,10 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
         return response.json().then((jsonResp) => {
-          callback(jsonResp);
+          callback(jsonResp as T);
         });
       } else {
-        callback();
+        callback(undefined);
       }
     })
     .catch((error) => {
@@ -104,12 +138,12 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
     });
 };
 
-export const postToOpenElisServer = (
-  endPoint,
-  payLoad,
-  callback,
-  extraParams,
-) => {
+export const postToOpenElisServer = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (status: number, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -119,10 +153,10 @@ export const postToOpenElisServer = (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
-      body: payLoad,
+      body: payLoad as BodyInit,
     },
   )
     .then(handleSessionError)
@@ -136,12 +170,12 @@ export const postToOpenElisServer = (
     });
 };
 
-export const postToOpenElisServerFullResponse = (
-  endPoint,
-  payLoad,
-  callback,
-  extraParams,
-) => {
+export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -151,10 +185,10 @@ export const postToOpenElisServerFullResponse = (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
-      body: payLoad,
+      body: payLoad as BodyInit,
     },
   )
     .then(handleSessionError)
@@ -165,12 +199,12 @@ export const postToOpenElisServerFullResponse = (
     });
 };
 
-export const postToOpenElisServerFormData = (
-  endPoint,
-  formData,
-  callback,
-  extraParams,
-) => {
+export const postToOpenElisServerFormData = <TExtra = unknown>(
+  endPoint: string,
+  formData: FormData,
+  callback: (status: number, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -178,7 +212,7 @@ export const postToOpenElisServerFormData = (
       credentials: "include",
       method: "POST",
       headers: {
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
       body: formData,
@@ -195,12 +229,15 @@ export const postToOpenElisServerFormData = (
     });
 };
 
-export const postToOpenElisServerJsonResponse = (
-  endPoint,
-  payLoad,
-  callback,
-  extraParams,
-) => {
+export const postToOpenElisServerJsonResponse = <
+  T = LegacyApiResponse,
+  TExtra = unknown,
+>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: T | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -210,10 +247,10 @@ export const postToOpenElisServerJsonResponse = (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
-      body: payLoad,
+      body: payLoad as BodyInit,
     },
   )
     .then(handleSessionError)
@@ -235,7 +272,7 @@ export const postToOpenElisServerJsonResponse = (
       return response.json();
     })
     .then((json) => {
-      callback(json, extraParams);
+      callback(json as T, extraParams);
     })
     .catch((error) => {
       console.error("postToOpenElisServerJsonResponse error:", error);
@@ -245,14 +282,17 @@ export const postToOpenElisServerJsonResponse = (
           error: error.message || "Network error",
           message: error.message || "Network error",
           status: 0,
-        },
+        } as T,
         extraParams,
       );
     });
 };
 
 //provides Synchronous calls to the api
-export const getFromOpenElisServerSync = (endPoint, callback) => {
+export const getFromOpenElisServerSync = <T = LegacyApiResponse>(
+  endPoint: string,
+  callback: (response: LegacyApiResponse) => T,
+): T => {
   const request = new XMLHttpRequest();
   request.open("GET", config.serverBaseUrl + endPoint, false);
   request.setRequestHeader("credentials", "include");
@@ -265,11 +305,11 @@ export const getFromOpenElisServerSync = (endPoint, callback) => {
 };
 
 export const postToOpenElisServerForBlob = (
-  endPoint,
-  payLoad,
-  callback,
-  errorCallback,
-) => {
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (blob: Blob, response: Response) => void,
+  errorCallback?: (error: unknown) => void,
+): void => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -279,10 +319,10 @@ export const postToOpenElisServerForBlob = (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
-      body: payLoad,
+      body: payLoad as BodyInit,
     },
   )
     .then(handleSessionError)
@@ -303,7 +343,11 @@ export const postToOpenElisServerForBlob = (
     });
 };
 
-export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
+export const postToOpenElisServerForPDF = (
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (success: boolean, blob?: Blob) => void,
+): void => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -313,18 +357,18 @@ export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
-      body: payLoad,
+      body: payLoad as BodyInit,
     },
   )
     .then(handleSessionError)
     .then((response) => response.blob())
     .then((blob) => {
       callback(true, blob);
-      let link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob, { type: "application/pdf" });
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
       link.target = "_blank";
       document.body.appendChild(link);
       link.click();
@@ -336,22 +380,26 @@ export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
     });
 };
 
-export const putToOpenElisServer = (endPoint, payLoad, callback) => {
+export const putToOpenElisServer = (
+  endPoint: string,
+  payLoad: RequestPayload | undefined,
+  callback: (status: number) => void,
+): void => {
   // Build the request options
-  let options = {
+  const options: RequestInit = {
     // includes the browser sessionId in the Header for Authentication on the backend server
     credentials: "include",
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
   };
 
   // Include the body only if payLoad is provided
   if (payLoad) {
-    options.body = payLoad;
+    options.body = payLoad as BodyInit;
   }
 
   fetch(config.serverBaseUrl + endPoint, options)
@@ -366,22 +414,22 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     });
 };
 
-export const putToOpenElisServerFullResponse = (
-  endPoint,
-  payLoad,
-  callback,
-  extraParams,
-) => {
+export const putToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   fetch(config.serverBaseUrl + endPoint, {
     //includes the browser sessionId in the Header for Authentication on the backend server
     credentials: "include",
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
-    body: payLoad,
+    body: payLoad as BodyInit,
   })
     .then(handleSessionError)
     .then((response) => callback(response, extraParams))
@@ -391,14 +439,17 @@ export const putToOpenElisServerFullResponse = (
     });
 };
 
-export const deleteFromOpenElisServer = (endPoint, callback) => {
+export const deleteFromOpenElisServer = (
+  endPoint: string,
+  callback: (status: number) => void,
+): void => {
   fetch(config.serverBaseUrl + endPoint, {
     // includes the browser sessionId in the Header for Authentication on the backend server
     credentials: "include",
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
   })
@@ -413,18 +464,18 @@ export const deleteFromOpenElisServer = (endPoint, callback) => {
     });
 };
 
-export const deleteFromOpenElisServerFullResponse = (
-  endPoint,
-  callback,
-  extraParams,
-) => {
+export const deleteFromOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   fetch(config.serverBaseUrl + endPoint, {
     // includes the browser sessionId in the Header for Authentication on the backend server
     credentials: "include",
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
   })
@@ -436,7 +487,10 @@ export const deleteFromOpenElisServerFullResponse = (
     });
 };
 
-export const hasRole = (userSessionDetails, role) => {
+export const hasRole = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  role: string,
+): boolean => {
   if (!userSessionDetails || !userSessionDetails.roles) {
     return false;
   }
@@ -446,12 +500,14 @@ export const hasRole = (userSessionDetails, role) => {
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers
 
-export const getFromOpenElisServerV2 = (url) => {
-  return new Promise((resolve, reject) => {
+export const getFromOpenElisServerV2 = <T = LegacyApiResponse>(
+  url: string,
+): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
     // Simulating the original callback-based function
     getFromOpenElisServer(url, (res) => {
       if (res) {
-        resolve(res);
+        resolve(res as T);
       } else {
         reject("Failed to fetch Subscription data");
       }
@@ -459,12 +515,15 @@ export const getFromOpenElisServerV2 = (url) => {
   });
 };
 
-export const patchToOpenElisServerJsonResponse = (
-  endPoint,
-  payLoad,
-  callback,
-  extraParams,
-) => {
+export const patchToOpenElisServerJsonResponse = <
+  T = LegacyApiResponse,
+  TExtra = unknown,
+>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: T | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -474,10 +533,10 @@ export const patchToOpenElisServerJsonResponse = (
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
-      body: payLoad,
+      body: payLoad as BodyInit,
     },
   )
     .then(handleSessionError)
@@ -488,7 +547,7 @@ export const patchToOpenElisServerJsonResponse = (
       return response.json();
     })
     .then((json) => {
-      callback(json, extraParams);
+      callback(json as T, extraParams);
     })
     .catch((error) => {
       console.error(error);
@@ -496,7 +555,9 @@ export const patchToOpenElisServerJsonResponse = (
     });
 };
 
-export const convertAlphaNumLabNumForDisplay = (labNumber) => {
+export const convertAlphaNumLabNumForDisplay = (
+  labNumber: string | null | undefined,
+): string | null | undefined => {
   if (!labNumber) {
     return labNumber;
   }
@@ -508,9 +569,9 @@ export const convertAlphaNumLabNumForDisplay = (labNumber) => {
     return labNumber;
   }
   //if dash made it into value, then it's part of the analysis number, not the base lab number
-  let labNumberParts = labNumber.split("-");
-  let isAnalysisLabNumber = labNumberParts.length > 1;
-  let labNumberForDisplay = labNumberParts[0];
+  const labNumberParts = labNumber.split("-");
+  const isAnalysisLabNumber = labNumberParts.length > 1;
+  let labNumberForDisplay: string;
   //incomplete lab number
   if (labNumberParts[0].length < 8) {
     labNumberForDisplay = labNumberParts[0].slice(0, 2);
@@ -547,7 +608,7 @@ export const convertAlphaNumLabNumForDisplay = (labNumber) => {
   return labNumberForDisplay.toUpperCase();
 };
 
-export function encodeDate(dateString) {
+export function encodeDate(dateString: string): string {
   if (typeof dateString === "string" && dateString.trim() !== "") {
     return dateString.split("/").map(encodeURIComponent).join("%2F");
   } else {
@@ -555,18 +616,18 @@ export function encodeDate(dateString) {
   }
 }
 
-export function getDifferenceInDays(date1, date2) {
+export function getDifferenceInDays(date1: string, date2: string): number {
   console.log("secondDate", date2);
 
   // Function to parse dates in DD/MM/YYYY format
-  function parseDate(dateStr) {
+  function parseDate(dateStr: string): Date {
     const [day, month, year] = dateStr.split("/").map(Number);
     return new Date(year, month - 1, day); // Months are 0-based in JavaScript Date
   }
 
-  function correctDate(firstDate) {
+  function correctDate(firstDate: string): string {
     // "08/05/2024" the error is 08 is not day it is month and 05 is day
-    let dateParts = firstDate.split("/");
+    const dateParts = firstDate.split("/");
     if (dateParts[0].length === 4) {
       return dateParts[1] + "/" + dateParts[0] + "/" + dateParts[2];
     }
@@ -578,7 +639,7 @@ export function getDifferenceInDays(date1, date2) {
   const secondDate = parseDate(correctDate(date2));
 
   // Calculate the difference in time (milliseconds)
-  const timeDifference = secondDate - firstDate;
+  const timeDifference = secondDate.getTime() - firstDate.getTime();
 
   // Convert the time difference from milliseconds to days
   const millisecondsPerDay = 1000 * 60 * 60 * 24;
@@ -588,7 +649,7 @@ export function getDifferenceInDays(date1, date2) {
   return dayDifference;
 }
 
-export function formatTimestamp(timestamp) {
+export function formatTimestamp(timestamp: number): string {
   // Convert the timestamp to milliseconds and create a Date object
   const date = new Date(timestamp * 1000);
 
@@ -613,7 +674,7 @@ export function formatTimestamp(timestamp) {
 }
 
 // Helper function to convert a URL-safe base64 string to a Uint8Array
-export function urlBase64ToUint8Array(base64String) {
+export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 
@@ -637,12 +698,12 @@ export const Roles = {
   RESULTS: "Results",
   VALIDATION: "Validation",
   REPORTS: "Reports",
-};
+} as const;
 
-export const toBase64 = (file) =>
-  new Promise((resolve, reject) => {
+export const toBase64 = (file: Blob): Promise<string> =>
+  new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
   });

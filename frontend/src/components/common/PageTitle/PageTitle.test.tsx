@@ -1,4 +1,4 @@
-import React from "react";
+import React, { type ReactElement } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -12,7 +12,7 @@ const messages = {
 };
 
 // Helper to render with providers
-const renderWithIntl = (component) => {
+const renderWithIntl = (component: ReactElement) => {
   return render(
     <BrowserRouter>
       <IntlProvider locale="en" messages={messages}>

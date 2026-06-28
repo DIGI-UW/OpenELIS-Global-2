@@ -10,6 +10,23 @@ import {
 } from "./Utils";
 import config from "../../config.json";
 
+export interface BrandingConfiguration {
+  headerColor?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  faviconUrl?: string;
+  [key: string]: unknown;
+}
+
+interface BrandingApiError {
+  errors?: Record<string, unknown>;
+  error?: string;
+  message?: string;
+  globalErrors?: string[];
+}
+
+type BrandingCallback = (branding: BrandingConfiguration | undefined) => void;
+
 // =============================================================================
 // API Functions
 // =============================================================================
@@ -18,8 +35,8 @@ import config from "../../config.json";
  * Get current branding configuration
  * @param {Function} callback - Callback function to handle response
  */
-export const getBranding = (callback) => {
-  getFromOpenElisServer("/rest/site-branding", callback);
+export const getBranding = (callback: BrandingCallback): void => {
+  getFromOpenElisServer<BrandingConfiguration>("/rest/site-branding", callback);
 };
 
 /**
@@ -28,30 +45,43 @@ export const getBranding = (callback) => {
  * @param {Function} callback - Callback function to handle response (receives status, errorMessage, responseData)
  * @param {Object} extraParams - Additional parameters to pass to callback
  */
-export const updateBranding = (formData, callback, extraParams) => {
+export const updateBranding = <TExtra = unknown>(
+  formData: BrandingConfiguration,
+  callback: (
+    status: number,
+    errorMessage: string | null,
+    responseData: unknown,
+    extraParams: TExtra | undefined,
+  ) => void,
+  extraParams?: TExtra,
+): void => {
   const payload = JSON.stringify(formData);
   putToOpenElisServerFullResponse(
     "/rest/site-branding",
     payload,
-    async (response, extraParams) => {
+    async (response, callbackExtraParams) => {
+      if (!response) {
+        callback(0, "Network error", null, callbackExtraParams);
+        return;
+      }
       const status = response.status;
       let errorMessage = null;
-      let responseData = null;
+      let responseData: unknown = null;
 
       if (status === 200 || status === 201) {
         try {
           responseData = await response.json();
-        } catch (e) {
+        } catch {
           // Response might be empty, that's okay
         }
       } else {
         try {
-          const errorData = await response.json();
+          const errorData = (await response.json()) as BrandingApiError;
           console.error("Backend error response:", errorData);
           // Handle validation errors (from @Valid)
           if (errorData.errors && typeof errorData.errors === "object") {
             const validationErrors = Object.entries(errorData.errors)
-              .map(([field, message]) => `${field}: ${message}`)
+              .map(([field, message]) => `${field}: ${String(message)}`)
               .join("; ");
             errorMessage = validationErrors || "Validation error";
           } else {
@@ -68,7 +98,7 @@ export const updateBranding = (formData, callback, extraParams) => {
         }
       }
 
-      callback(status, errorMessage, responseData, extraParams);
+      callback(status, errorMessage, responseData, callbackExtraParams);
     },
     extraParams,
   );
@@ -80,7 +110,11 @@ export const updateBranding = (formData, callback, extraParams) => {
  * @param {Function} callback - Callback function to handle response
  * @param {Object} extraParams - Additional parameters to pass to callback
  */
-export const removeLogo = (type, callback, extraParams) => {
+export const removeLogo = <TExtra = unknown>(
+  type: string,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   deleteFromOpenElisServerFullResponse(
     `/rest/site-branding/logo/${type}`,
     callback,
@@ -93,7 +127,10 @@ export const removeLogo = (type, callback, extraParams) => {
  * @param {Function} callback - Callback function to handle response
  * @param {Object} extraParams - Additional parameters to pass to callback
  */
-export const resetBranding = (callback, extraParams) => {
+export const resetBranding = <TExtra = unknown>(
+  callback: (status: number, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
   const payload = JSON.stringify({});
   postToOpenElisServer(
     "/rest/site-branding/reset",
@@ -112,7 +149,9 @@ export const resetBranding = (callback, extraParams) => {
  * Sets CSS custom properties that Carbon components will use.
  * @param {Object} branding - Branding configuration object
  */
-export const applyBrandingColors = (branding) => {
+export const applyBrandingColors = (
+  branding: BrandingConfiguration | null | undefined,
+): void => {
   if (!branding) return;
 
   const root = document.documentElement;
@@ -132,7 +171,7 @@ export const applyBrandingColors = (branding) => {
  * Update the document favicon.
  * @param {String} faviconUrl - URL path to the favicon
  */
-export const applyFavicon = (faviconUrl) => {
+export const applyFavicon = (faviconUrl: string | null | undefined): void => {
   if (!faviconUrl) return;
 
   // Remove existing favicon links
@@ -152,7 +191,7 @@ export const applyFavicon = (faviconUrl) => {
  * Applies colors and favicon.
  * @param {Function} callback - Optional callback after branding is applied
  */
-export const loadAndApplyBranding = (callback) => {
+export const loadAndApplyBranding = (callback?: BrandingCallback): void => {
   getBranding((response) => {
     if (response) {
       applyBrandingColors(response);

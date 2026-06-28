@@ -1,6 +1,8 @@
-import { FormattedMessage } from "react-intl";
 import React from "react";
-export const OrderCurrentTestsHeaders = [
+import { FormattedMessage } from "react-intl";
+import type { TableHeaderData } from "./LabTableHeaders";
+
+export const OrderCurrentTestsHeaders: TableHeaderData[] = [
   {
     key: "accessionNumber",
     header: <FormattedMessage id="sample.label.labnumber" />,
@@ -35,7 +37,7 @@ export const OrderCurrentTestsHeaders = [
   },
 ];
 
-export const OrderPossibleTestsHeaders = [
+export const OrderPossibleTestsHeaders: TableHeaderData[] = [
   {
     key: "accessionNumber",
     header: <FormattedMessage id="sample.label.labnumber" />,
