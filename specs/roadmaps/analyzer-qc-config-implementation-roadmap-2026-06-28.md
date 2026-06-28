@@ -1,7 +1,7 @@
 # Analyzer QC + Configuration Implementation Roadmap
 
 - **Date:** 2026-06-28
-- **Status:** Code-rooted brief for review
+- **Status:** MVP implementation branch ready for review evidence
 - **Primary epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
 - **Related epics:** [OGC-1016](https://uwdigi.atlassian.net/browse/OGC-1016),
   [OGC-811](https://uwdigi.atlassian.net/browse/OGC-811),
@@ -13,6 +13,23 @@
 This brief turns the current analyzer/QC direction into an implementation
 roadmap. It is intentionally grounded in the current OpenELIS code, with Jira,
 Slack, `digi-uw/openelis-work`, and `digi-uw/code-qa` used as planning signals.
+
+## MVP Branch Status
+
+Branch `codex/ogc-1054-analyzer-qc-mvp` now carries the MVP implementation and
+review evidence for the Analyzer QC/config slice. The branch keeps the OpenELIS
+scope on analyzer configuration, profile-driven setup, mapping review, QC setup,
+readiness gating, bridge registration payload contracts, and direct result/QC
+processing. It does not add an OpenELIS FILE watcher/poller, does not introduce
+`QcRun`, and does not require a bridge repo change for the MVP.
+
+The final functional evidence is a user-facing Playwright demo flow, not an
+API-driven browser test. The recorded story verifies `/analyzers/types`, creates
+an analyzer from the shipped GeneXpert ASTM profile, reviews mappings, creates a
+QC rule, creates a control lot, and returns to `/analyzers` with QC readiness
+satisfied. The media bundle is generated outside the source tree at
+`/Users/pmanko/.codex/evidence/ogc-1054-analyzer-qc-config-mvp`; the MP4/PNG/zip
+artifacts are intentionally not committed.
 
 ## Executive Decision
 
@@ -483,11 +500,11 @@ Recommended grooming:
 
 ## Deterministic Next Steps
 
-1. Complete M0-M4 on `codex/ogc-1054-analyzer-qc-mvp` with checkpoint commits.
+1. Open the ready-for-review PR for `codex/ogc-1054-analyzer-qc-mvp` against
+   `develop`.
 2. Run backend, frontend, formatting, and code-qa validation gates before opening
-   one draft PR against `develop`.
-3. Attach or link Playwright/evidence-bundle proof when a full OpenELIS app stack
-   is available for browser validation.
+   the PR and include the validation/evidence summary in the PR body.
+3. Attach or link the generated Playwright/evidence-bundle proof for review.
 4. File bridge companion work only from concrete OpenELIS contract-test evidence;
    do not add an OE-side FILE poller as a workaround.
 5. Groom Jira text so `OGC-1054` child stories and analyzer QC scope stop
