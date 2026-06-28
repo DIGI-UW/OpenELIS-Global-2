@@ -25,13 +25,14 @@ const mockHistory = {
   push: vi.fn(),
   replace: vi.fn(),
 };
+let mockLocationSearch = "";
 
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
     useHistory: () => mockHistory,
-    useLocation: () => ({ pathname: "/analyzers" }),
+    useLocation: () => ({ pathname: "/analyzers", search: mockLocationSearch }),
   };
 });
 
@@ -102,6 +103,7 @@ describe("AnalyzersList", () => {
     vi.clearAllMocks();
     mockHistory.push.mockClear();
     mockHistory.replace.mockClear();
+    mockLocationSearch = "";
 
     // Default mock implementations for AnalyzerForm dependencies
     getAnalyzerTypes.mockImplementation((filters, callback) => {
@@ -274,6 +276,72 @@ describe("AnalyzersList", () => {
 
     // Assert: navigation occurred to the inline setup flow
     expect(mockHistory.push).toHaveBeenCalledWith("/analyzers?add=1");
+  });
+
+  test("testInlineAnalyzerSetup_UsesLabFacingFlowAndKeepsListVisible", async () => {
+    mockLocationSearch = "?add=1&profile=astm%2Fgenexpert-astm";
+    getAnalyzers.mockImplementation((filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "1",
+              name: "Existing GeneXpert",
+              analyzerType: "MOLECULAR",
+              status: "SETUP",
+            }),
+          ],
+        });
+      });
+    });
+    getDefaultConfigs.mockImplementation((callback) => {
+      callback([
+        {
+          id: "astm/genexpert-astm",
+          protocol: "ASTM",
+          analyzerName: "Cepheid GeneXpert (ASTM Mode)",
+          category: "MOLECULAR",
+          testMappingCount: 1,
+          qcRuleCount: 1,
+          resultValueMappingCount: 1,
+          readinessStatus: "READY",
+        },
+      ]);
+    });
+    getDefaultConfig.mockImplementation((protocol, name, callback) => {
+      callback({
+        analyzer_name: "Cepheid GeneXpert (ASTM Mode)",
+        category: "MOLECULAR",
+        protocol: "ASTM",
+        identifier_pattern: "GENEXPERT|CEPHEID.*GX",
+      });
+    });
+
+    act(() => {
+      renderWithIntl(<AnalyzersList />);
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-inline-setup"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("analyzers-list")).toBeInTheDocument();
+    expect(screen.getByTestId("analyzers-table")).toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-form")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("analyzer-form-default-config-dropdown"),
+    ).toHaveTextContent("GeneXpert");
+    expect(
+      screen.queryByTestId("analyzer-form-plugin-type-dropdown"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-identifier-pattern-input"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-status-dropdown"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-name-1")).toHaveTextContent(
+      "Existing GeneXpert",
+    );
   });
 
   /**

@@ -240,9 +240,7 @@ const AnalyzersList = () => {
   });
 
   const setupParams = new URLSearchParams(location.search || "");
-  if (setupParams.get("add") === "1") {
-    return <AnalyzerForm />;
-  }
+  const isSetupFlow = setupParams.get("add") === "1";
 
   const hasActiveQcRules = (analyzer) =>
     Array.isArray(analyzer?.qcRules) &&
@@ -287,6 +285,17 @@ const AnalyzersList = () => {
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>
       </div>
+
+      {isSetupFlow && (
+        <Grid
+          className="analyzers-inline-setup-grid"
+          data-testid="analyzers-inline-setup-grid"
+        >
+          <Column lg={16} md={8} sm={4}>
+            <AnalyzerForm inline />
+          </Column>
+        </Grid>
+      )}
 
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
         <Column lg={4} md={2} sm={2}>

@@ -544,6 +544,63 @@ describe("FieldMapping", () => {
     expect(screen.getByText("Trace")).toBeInTheDocument();
   });
 
+  test("testProfileAppliedMappingsReview_DisplaysLabFacingReviewWithoutRawConfig", async () => {
+    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
+      callback({
+        id: "1",
+        name: "MVP GeneXpert",
+        analyzerType: "MOLECULAR",
+        status: "SETUP",
+      });
+    });
+    analyzerService.getFields.mockImplementation((id, callback) => {
+      callback([
+        {
+          id: "field-1",
+          fieldName: "MTB",
+          fieldType: "QUALITATIVE",
+          isActive: true,
+        },
+      ]);
+    });
+    analyzerService.getMappings.mockImplementation((id, callback) => {
+      callback([
+        {
+          id: "mapping-1",
+          analyzerFieldId: "field-1",
+          analyzerCode: "MTB",
+          openelisFieldName: "Mycobacterium tuberculosis",
+          mappingType: "testCode",
+          isActive: true,
+        },
+      ]);
+    });
+    analyzerService.getPluginConfig.mockImplementation((id, callback) => {
+      callback({
+        analyzer_name: "Cepheid GeneXpert (ASTM Mode)",
+        default_test_mappings: [
+          {
+            analyzer_code: "MTB",
+            test_name_hint: "Mycobacterium tuberculosis",
+            loinc: "38379-4",
+          },
+        ],
+      });
+    });
+
+    renderWithIntl(<FieldMapping />);
+
+    expect(
+      await screen.findByTestId("profile-applied-mappings-panel"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("profile-applied-mapping-row-MTB"),
+    ).toHaveTextContent("Mycobacterium tuberculosis");
+    expect(
+      screen.queryByTestId("plugin-config-snapshot"),
+    ).not.toBeInTheDocument();
+  });
+
   /**
    * Test: Type compatibility blocks incompatible types
    */

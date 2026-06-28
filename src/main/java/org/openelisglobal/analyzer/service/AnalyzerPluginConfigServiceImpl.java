@@ -78,7 +78,53 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         }
         @SuppressWarnings("unchecked")
         Map<String, Object> defaultsMap = (Map<String, Object>) configDefaults;
-        if (defaultsMap.isEmpty()) {
+        applyDefaultsMap(analyzerId, defaultsMap, sysUserId);
+    }
+
+    @Override
+    public void applyProfileDefaults(String analyzerId, Map<String, Object> profileConfig, String sysUserId) {
+        if (profileConfig == null || profileConfig.isEmpty()) {
+            return;
+        }
+
+        Map<String, Object> defaults = new LinkedHashMap<>();
+        Object configDefaults = profileConfig.get("configDefaults");
+        if (configDefaults instanceof Map<?, ?> defaultsMap) {
+            for (Map.Entry<?, ?> entry : defaultsMap.entrySet()) {
+                defaults.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        }
+
+        List<Map<String, Object>> testMappings = mapList(profileConfig.get("default_test_mappings"));
+        if (!testMappings.isEmpty()) {
+            defaults.put("default_test_mappings", testMappings);
+        }
+
+        List<Map<String, Object>> resultMappings = normalizeResultValueMappings(
+                firstPresent(profileConfig, "resultValueMappings", "result_value_mappings"));
+        if (resultMappings.isEmpty()) {
+            resultMappings = deriveResultValueMappings(testMappings);
+        }
+        if (!resultMappings.isEmpty()) {
+            defaults.put(RESULT_VALUE_MAPPINGS, resultMappings);
+        }
+
+        if (profileConfig.get("analyzer_name") != null || profileConfig.get("protocol") != null
+                || profileConfig.get("category") != null) {
+            Map<String, Object> profile = new LinkedHashMap<>();
+            copyIfPresent(profileConfig, profile, "analyzer_name", "analyzerName");
+            copyIfPresent(profileConfig, profile, "protocol", "protocol");
+            copyIfPresent(profileConfig, profile, "category", "category");
+            if (!profile.isEmpty()) {
+                defaults.put("profile", profile);
+            }
+        }
+
+        applyDefaultsMap(analyzerId, defaults, sysUserId);
+    }
+
+    private void applyDefaultsMap(String analyzerId, Map<String, Object> defaultsMap, String sysUserId) {
+        if (defaultsMap == null || defaultsMap.isEmpty()) {
             return;
         }
         AnalyzerPluginConfig entity = getOrCreate(analyzerId, sysUserId);
@@ -165,6 +211,73 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
     @Transactional(readOnly = true)
     public boolean hasAtLeastOneActiveQcRule(String analyzerId) {
         return analyzerQcRuleService.hasAtLeastOneActiveRule(analyzerId);
+    }
+
+    private Object firstPresent(Map<String, Object> source, String... keys) {
+        if (source == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (source.containsKey(key)) {
+                return source.get(key);
+            }
+        }
+        return null;
+    }
+
+    private void copyIfPresent(Map<String, Object> source, Map<String, Object> target, String sourceKey,
+            String targetKey) {
+        Object value = source.get(sourceKey);
+        if (value != null) {
+            target.put(targetKey, value);
+        }
+    }
+
+    private List<Map<String, Object>> normalizeResultValueMappings(Object value) {
+        List<Map<String, Object>> rows = mapList(value);
+        List<Map<String, Object>> normalized = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Object analyzerValue = firstPresent(row, "analyzerValue", "analyzer_value");
+            Object openelisValue = firstPresent(row, "openelisValue", "openelis_value");
+            if (analyzerValue == null || openelisValue == null) {
+                continue;
+            }
+            Map<String, Object> mapping = new LinkedHashMap<>();
+            mapping.put("analyzerValue", analyzerValue);
+            mapping.put("openelisValue", openelisValue);
+            Object testCode = firstPresent(row, "testCode", "test_code", "analyzer_code");
+            if (testCode != null) {
+                mapping.put("testCode", testCode);
+            }
+            mapping.put("active", row.get("active") instanceof Boolean ? row.get("active") : true);
+            normalized.add(mapping);
+        }
+        return normalized;
+    }
+
+    private List<Map<String, Object>> deriveResultValueMappings(List<Map<String, Object>> testMappings) {
+        List<Map<String, Object>> derived = new ArrayList<>();
+        for (Map<String, Object> testMapping : testMappings) {
+            Object values = testMapping.get("values");
+            if (!(values instanceof List<?> resultValues)) {
+                continue;
+            }
+            Object testCode = firstPresent(testMapping, "testCode", "test_code", "analyzer_code");
+            for (Object value : resultValues) {
+                if (value == null) {
+                    continue;
+                }
+                Map<String, Object> mapping = new LinkedHashMap<>();
+                mapping.put("analyzerValue", String.valueOf(value));
+                mapping.put("openelisValue", String.valueOf(value));
+                if (testCode != null) {
+                    mapping.put("testCode", testCode);
+                }
+                mapping.put("active", true);
+                derived.add(mapping);
+            }
+        }
+        return derived;
     }
 
     private Map<String, Object> parseConfigMap(String json) {
