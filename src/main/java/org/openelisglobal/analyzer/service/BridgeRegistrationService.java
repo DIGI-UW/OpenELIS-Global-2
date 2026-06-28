@@ -299,23 +299,22 @@ public class BridgeRegistrationService {
     }
 
     void attachQcRules(java.util.Map<String, Object> payload, String oeAnalyzerId) {
-        if (analyzerQcRuleService == null) {
-            return;
-        }
         // Always attach `qcRules` (empty list when no active rules) so a sync
         // payload can distinguish "no rules — clear bridge state" from
         // "field absent — leave bridge state alone". Mirrors attachControlLots.
         java.util.List<java.util.Map<String, Object>> qcRulesPayload = new java.util.ArrayList<>();
-        java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
-        if (qcRules != null) {
-            for (QcRuleDto r : qcRules) {
-                java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-                m.put("ruleType", r.ruleType());
-                if (r.targetField() != null) {
-                    m.put("targetField", r.targetField());
+        if (analyzerQcRuleService != null) {
+            java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
+            if (qcRules != null) {
+                for (QcRuleDto r : qcRules) {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("ruleType", r.ruleType());
+                    if (r.targetField() != null) {
+                        m.put("targetField", r.targetField());
+                    }
+                    m.put("operand", r.operand());
+                    qcRulesPayload.add(m);
                 }
-                m.put("operand", r.operand());
-                qcRulesPayload.add(m);
             }
         }
         payload.put("qcRules", qcRulesPayload);
