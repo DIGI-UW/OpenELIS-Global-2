@@ -21,13 +21,16 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   getAnalyzers,
   type AnalyzerFilters,
   type AnalyzersResponse,
 } from "../../../services/analyzerService";
-// AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
+// /analyzers/new redirects to /analyzers?add=1 (see App.jsx) — this list
+// page renders AnalyzerForm inline for that case; only :id/edit is a true
+// separate route (AnalyzerFormPage).
+import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 // QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
@@ -70,6 +73,7 @@ interface AnalyzerTableRow {
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [, setAnalyzers] = useState<Analyzer[]>([]);
@@ -286,6 +290,11 @@ const AnalyzersList = () => {
     };
   });
 
+  const setupParams = new URLSearchParams(location.search || "");
+  if (setupParams.get("add") === "1") {
+    return <AnalyzerForm />;
+  }
+
   return (
     <div className="analyzers-list" data-testid="analyzers-list">
       <div
@@ -313,7 +322,7 @@ const AnalyzersList = () => {
           kind="primary"
           renderIcon={Add}
           data-testid="add-analyzer-button"
-          onClick={() => history.push("/analyzers/new")}
+          onClick={() => history.push("/analyzers?add=1")}
         >
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>

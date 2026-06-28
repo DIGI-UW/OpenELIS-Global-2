@@ -248,8 +248,7 @@ describe("AnalyzersList", () => {
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks
    * 2. Act: Click "Add Analyzer" button
-   * 3. Assert: Verify navigation to /analyzers/new (AnalyzerForm is now a
-   *    routed page, not an inline modal)
+   * 3. Assert: Verify navigation to /analyzers?add=1, the inline setup flow
    */
   test("testClickAddAnalyzer_NavigatesToNewForm", async () => {
     // Arrange: Setup API mocks
@@ -273,8 +272,8 @@ describe("AnalyzersList", () => {
     const addButton = screen.getByTestId("add-analyzer-button");
     await userEvent.click(addButton);
 
-    // Assert: navigation occurred to the new-analyzer route
-    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers/new");
+    // Assert: navigation occurred to the inline setup flow
+    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers?add=1");
   });
 
   /**
