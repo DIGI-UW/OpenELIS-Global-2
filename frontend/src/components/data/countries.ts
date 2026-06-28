@@ -1,4 +1,9 @@
-const nationalityDetails = [
+export interface NationalityOption {
+  label: string;
+  value: string;
+}
+
+const nationalityDetails: NationalityOption[] = [
   {
     label: "COSTA RICA",
     value: "COSTA RICAN",
@@ -1177,10 +1182,10 @@ const nationalityDetails = [
   },
 ];
 
-const valuesList = [];
+const valuesList: NationalityOption[] = [];
 
-for (var nationality in nationalityDetails) {
-  var nationalityItem = nationalityDetails[nationality];
+for (const nationality of nationalityDetails) {
+  const nationalityItem = nationality;
   valuesList.push({
     value: nationalityItem.value,
     label: nationalityItem.value,

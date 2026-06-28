@@ -1,5 +1,8 @@
+import React from "react";
 import { FormattedMessage } from "react-intl";
-export const sampleTypesTableHeader = [
+import type { TableHeaderData } from "./LabTableHeaders";
+
+export const sampleTypesTableHeader: TableHeaderData[] = [
   {
     key: "select_checkBox",
     header: "",
@@ -14,11 +17,14 @@ export const sampleTypesTableHeader = [
   },
   {
     key: "collectionDate",
-    header: <FormattedMessage id="sample.collection.date" /> + "(dd/mm/yyyy) ",
+    header:
+      String(<FormattedMessage id="sample.collection.date" />) +
+      "(dd/mm/yyyy) ",
   },
   {
     key: "collectionTime",
-    header: <FormattedMessage id="sample.collection.time" /> + "(hh:mm) ",
+    header:
+      String(<FormattedMessage id="sample.collection.time" />) + "(hh:mm) ",
   },
   {
     key: "collector",

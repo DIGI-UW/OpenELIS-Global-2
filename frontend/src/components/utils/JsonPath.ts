@@ -8,7 +8,7 @@ import { JSONPath } from "jsonpath-plus";
  * @param {string} path - A dot-bracket path (e.g. "testResult[0].refer")
  * @returns {*} The matched value, or undefined if not found
  */
-export function jpGet(obj, path) {
+export function jpGet<T = unknown>(obj: object, path: string): T | undefined {
   return JSONPath({ path, json: obj, wrap: false });
 }
 
@@ -23,10 +23,14 @@ export function jpGet(obj, path) {
  * @param {string} path - A dot-bracket path (e.g. "resultList[0].sentDate_")
  * @param {*} val - The value to set
  */
-export function jpSet(obj, path, val) {
+export function jpSet(obj: object, path: string, val: unknown): void {
   const results = JSONPath({ path, json: obj, resultType: "all" });
   if (results.length > 0) {
-    results[0].parent[results[0].parentProperty] = val;
+    const result = results[0];
+    if (result.parent && result.parentProperty !== null) {
+      (result.parent as Record<PropertyKey, unknown>)[result.parentProperty] =
+        val;
+    }
     return;
   }
   const lastDot = path.lastIndexOf(".");
@@ -37,6 +41,6 @@ export function jpSet(obj, path, val) {
     wrap: false,
   });
   if (parent && typeof parent === "object") {
-    parent[path.substring(lastDot + 1)] = val;
+    (parent as Record<string, unknown>)[path.substring(lastDot + 1)] = val;
   }
 }
