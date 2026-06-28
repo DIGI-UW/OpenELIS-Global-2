@@ -2,7 +2,9 @@ package org.openelisglobal.analyzer.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.analyzer.dao.AnalyzerPluginConfigDAO;
@@ -20,6 +22,8 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<Map<String, Object>>() {
     };
+    private static final String RESULT_VALUE_MAPPINGS = "resultValueMappings";
+    private static final String PENDING_RESULT_VALUES = "pendingResultValues";
     private static final Set<String> ALLOWED_TRANSFORM_TYPES = Set.of("PASS_THROUGH", "GREATER_LESS_FLAG", "VALUE_MAP",
             "THRESHOLD_CLASSIFY", "CODED_LOOKUP");
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -86,6 +90,74 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         update(entity);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getResultValueMappings(String analyzerId) {
+        return mapList(getConfigAsMap(analyzerId).get(RESULT_VALUE_MAPPINGS));
+    }
+
+    @Override
+    public Map<String, Object> updateResultValueMappings(String analyzerId, List<Map<String, Object>> mappings,
+            String sysUserId) {
+        AnalyzerPluginConfig entity = getOrCreate(analyzerId, sysUserId);
+        Map<String, Object> config = parseConfigMap(entity.getConfig());
+        List<Map<String, Object>> normalized = mapList(mappings);
+        config.put(RESULT_VALUE_MAPPINGS, normalized);
+        entity.setConfig(toJson(config));
+        entity.setSysUserId(sysUserId);
+        update(entity);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put(RESULT_VALUE_MAPPINGS, normalized);
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getPendingResultValues(String analyzerId) {
+        return mapList(getConfigAsMap(analyzerId).get(PENDING_RESULT_VALUES));
+    }
+
+    @Override
+    public Map<String, Object> resolvePendingResultValue(String analyzerId, String pendingResultValueId,
+            Map<String, Object> request, String sysUserId) {
+        AnalyzerPluginConfig entity = getOrCreate(analyzerId, sysUserId);
+        Map<String, Object> config = parseConfigMap(entity.getConfig());
+        List<Map<String, Object>> pendingValues = mapList(config.get(PENDING_RESULT_VALUES));
+        List<Map<String, Object>> resultMappings = mapList(config.get(RESULT_VALUE_MAPPINGS));
+
+        Map<String, Object> pending = pendingValues.stream()
+                .filter(value -> pendingResultValueId.equals(String.valueOf(value.get("id")))).findFirst().orElseThrow(
+                        () -> new IllegalArgumentException("Pending result value not found: " + pendingResultValueId));
+
+        String requestedStatus = normalizedString(request != null ? request.get("status") : null);
+        String openelisValue = request != null && request.get("openelisValue") != null
+                ? String.valueOf(request.get("openelisValue"))
+                : null;
+        String status = requestedStatus != null ? requestedStatus : (openelisValue != null ? "MAPPED" : "IGNORED");
+        if ("MAPPED".equals(status) && (openelisValue == null || openelisValue.isBlank())) {
+            throw new IllegalArgumentException("openelisValue is required when resolving a pending value as MAPPED");
+        }
+        if (!"MAPPED".equals(status) && !"IGNORED".equals(status)) {
+            throw new IllegalArgumentException("status must be MAPPED or IGNORED");
+        }
+
+        pending.put("status", status);
+        if (openelisValue != null) {
+            pending.put("openelisValue", openelisValue);
+        }
+        if ("MAPPED".equals(status)) {
+            upsertResultValueMapping(resultMappings, pending, openelisValue);
+        }
+
+        config.put(PENDING_RESULT_VALUES, pendingValues);
+        config.put(RESULT_VALUE_MAPPINGS, resultMappings);
+        entity.setConfig(toJson(config));
+        entity.setSysUserId(sysUserId);
+        update(entity);
+        return pending;
+    }
+
     @Autowired
     private AnalyzerQcRuleService analyzerQcRuleService;
 
@@ -104,6 +176,49 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         } catch (Exception e) {
             return new LinkedHashMap<>();
         }
+    }
+
+    private List<Map<String, Object>> mapList(Object value) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (!(value instanceof List<?> list)) {
+            return result;
+        }
+        for (Object item : list) {
+            if (item instanceof Map<?, ?> itemMap) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> entry : itemMap.entrySet()) {
+                    row.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+                result.add(row);
+            }
+        }
+        return result;
+    }
+
+    private void upsertResultValueMapping(List<Map<String, Object>> resultMappings, Map<String, Object> pending,
+            String openelisValue) {
+        String analyzerValue = String.valueOf(pending.get("analyzerValue"));
+        String testCode = pending.get("testCode") != null ? String.valueOf(pending.get("testCode")) : null;
+        for (Map<String, Object> mapping : resultMappings) {
+            boolean sameAnalyzerValue = analyzerValue.equals(String.valueOf(mapping.get("analyzerValue")));
+            Object mappingTestCode = mapping.get("testCode");
+            boolean sameTestCode = testCode == null ? mappingTestCode == null
+                    : testCode.equals(String.valueOf(mappingTestCode));
+            if (sameAnalyzerValue && sameTestCode) {
+                mapping.put("openelisValue", openelisValue);
+                mapping.put("active", true);
+                return;
+            }
+        }
+
+        Map<String, Object> mapping = new LinkedHashMap<>();
+        mapping.put("analyzerValue", analyzerValue);
+        if (testCode != null) {
+            mapping.put("testCode", testCode);
+        }
+        mapping.put("openelisValue", openelisValue);
+        mapping.put("active", true);
+        resultMappings.add(mapping);
     }
 
     private String toJson(Map<String, Object> data) {

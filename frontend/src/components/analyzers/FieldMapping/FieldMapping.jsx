@@ -28,6 +28,7 @@ import QueryStatusModal from "./QueryStatusModal";
 import TestMappingModal from "./TestMappingModal";
 import ValidationDashboard from "./ValidationDashboard";
 import PendingCodesPanel from "./PendingCodesPanel";
+import ResultValueMappingsPanel from "./ResultValueMappingsPanel";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./FieldMapping.css";
 
@@ -61,6 +62,8 @@ const FieldMapping = () => {
   const [errorNotification, setErrorNotification] = useState(null);
   const [pendingCodes, setPendingCodes] = useState([]);
   const [pluginConfig, setPluginConfig] = useState(null);
+  const [resultValueMappings, setResultValueMappings] = useState([]);
+  const [pendingResultValues, setPendingResultValues] = useState([]);
 
   useEffect(() => {
     if (!analyzerId) {
@@ -132,6 +135,20 @@ const FieldMapping = () => {
         setPluginConfig(pluginConfigData);
       } else {
         setPluginConfig(null);
+      }
+    });
+    analyzerService.getResultValueMappings(analyzerId, (mappingData) => {
+      if (Array.isArray(mappingData)) {
+        setResultValueMappings(mappingData);
+      } else {
+        setResultValueMappings([]);
+      }
+    });
+    analyzerService.getPendingResultValues(analyzerId, (pendingValuesData) => {
+      if (Array.isArray(pendingValuesData)) {
+        setPendingResultValues(pendingValuesData);
+      } else {
+        setPendingResultValues([]);
       }
     });
 
@@ -223,6 +240,24 @@ const FieldMapping = () => {
     analyzerService.getPendingCodes(analyzerId, (pendingCodesData) => {
       if (Array.isArray(pendingCodesData)) {
         setPendingCodes(pendingCodesData);
+      }
+    });
+  };
+
+  const refreshResultValues = () => {
+    analyzerService.getResultValueMappings(analyzerId, (mappingData) => {
+      if (Array.isArray(mappingData)) {
+        setResultValueMappings(mappingData);
+      }
+    });
+    analyzerService.getPendingResultValues(analyzerId, (pendingValuesData) => {
+      if (Array.isArray(pendingValuesData)) {
+        setPendingResultValues(pendingValuesData);
+      }
+    });
+    analyzerService.getPluginConfig(analyzerId, (pluginConfigData) => {
+      if (pluginConfigData && typeof pluginConfigData === "object") {
+        setPluginConfig(pluginConfigData);
       }
     });
   };
@@ -361,6 +396,19 @@ const FieldMapping = () => {
               analyzerId={analyzerId}
               pendingCodes={pendingCodes}
               onUpdated={refreshPendingCodes}
+            />
+          </Tile>
+        </Column>
+      </Grid>
+
+      <Grid className="field-mapping-result-values">
+        <Column lg={16} md={8} sm={4}>
+          <Tile>
+            <ResultValueMappingsPanel
+              analyzerId={analyzerId}
+              mappings={resultValueMappings}
+              pendingValues={pendingResultValues}
+              onUpdated={refreshResultValues}
             />
           </Tile>
         </Column>
