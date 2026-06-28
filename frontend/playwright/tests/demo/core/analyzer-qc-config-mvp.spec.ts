@@ -100,10 +100,14 @@ test.describe("OGC-1054 Analyzer QC/config MVP", () => {
       await demo.scene("Guided Analyzer Setup");
       const form = new AnalyzerFormPage(page);
       await form.expectOpen();
+      await expect(page.getByTestId("analyzer-inline-setup")).toBeVisible();
+      await expect(page.getByTestId("analyzers-table")).toBeVisible();
       await expect(form.defaultConfigDropdown).toContainText(/GeneXpert/i);
-      await expect(form.identifierPatternInput).toHaveValue(/GENEXPERT/i, {
-        timeout: LONG_TIMEOUT,
-      });
+      await expect(form.pluginTypeDropdown).not.toBeVisible();
+      await expect(form.identifierPatternInput).not.toBeVisible();
+      await expect(
+        page.getByTestId("analyzer-form-profile-summary"),
+      ).toBeVisible();
 
       await form.fillName(analyzerName);
       await demo.evidence("ogc-1054-inline-setup");
@@ -140,8 +144,14 @@ test.describe("OGC-1054 Analyzer QC/config MVP", () => {
       });
       await expect(page.getByTestId("field-mapping-stats")).toBeVisible();
       await expect(
+        page.getByTestId("profile-applied-mappings-panel"),
+      ).toContainText("MTB");
+      await expect(
+        page.getByTestId("plugin-config-snapshot"),
+      ).not.toBeVisible();
+      await expect(
         page.getByTestId("result-value-mappings-panel"),
-      ).toBeVisible();
+      ).toContainText("DETECTED");
       await demo.evidence("ogc-1054-mapping-review");
       await demo.pause(1_500);
     });

@@ -29,6 +29,10 @@
   min-width: 0; /* Allow title to shrink if needed */
 }
 
+.analyzers-inline-setup-grid {
+  margin-bottom: 1rem;
+}
+
 .analyzers-list-stats {
   margin-bottom: 1rem;
 }

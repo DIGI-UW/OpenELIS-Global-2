@@ -155,6 +155,64 @@ public class AnalyzerPluginConfigServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void testApplyProfileDefaults_PersistsMappingReviewDefaults() throws Exception {
+        AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
+        existing.setId("cfg-profile");
+        existing.setAnalyzerId("101");
+        existing.setConfig("{\"connectionRole\":\"SERVER\"}");
+        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
+
+        Map<String, Object> profile = new LinkedHashMap<>();
+        profile.put("configDefaults", Map.of("aggregationMode", "BY_SESSION"));
+        profile.put("default_test_mappings", List
+                .of(Map.of("test_code", "MTB", "test_name_hint", "Mycobacterium tuberculosis", "loinc", "38379-4")));
+        profile.put("result_value_mappings",
+                List.of(Map.of("analyzer_value", "Detected", "openelis_value", "POSITIVE", "test_code", "MTB")));
+
+        service.applyProfileDefaults("101", profile, "1");
+
+        Map<String, Object> persisted = objectMapper.readValue(existing.getConfig(), MAP_TYPE);
+        List<Map<String, Object>> profileMappings = (List<Map<String, Object>>) persisted.get("default_test_mappings");
+        List<Map<String, Object>> resultMappings = (List<Map<String, Object>>) persisted.get("resultValueMappings");
+
+        assertEquals("SERVER", persisted.get("connectionRole"));
+        assertEquals("BY_SESSION", persisted.get("aggregationMode"));
+        assertEquals("MTB", profileMappings.get(0).get("test_code"));
+        assertEquals("38379-4", profileMappings.get(0).get("loinc"));
+        assertEquals("Detected", resultMappings.get(0).get("analyzerValue"));
+        assertEquals("POSITIVE", resultMappings.get(0).get("openelisValue"));
+        assertEquals("MTB", resultMappings.get(0).get("testCode"));
+        assertEquals(true, resultMappings.get(0).get("active"));
+        verify(analyzerPluginConfigDAO).update(eq(existing));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testApplyProfileDefaults_DerivesResultValueMappingsFromTestValues() throws Exception {
+        AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
+        existing.setId("cfg-derived");
+        existing.setAnalyzerId("101");
+        existing.setConfig("{}");
+        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
+
+        Map<String, Object> profile = new LinkedHashMap<>();
+        profile.put("default_test_mappings",
+                List.of(Map.of("test_code", "MTB", "loinc", "85362-2", "values", List.of("DETECTED", "NOT DETECTED"))));
+
+        service.applyProfileDefaults("101", profile, "1");
+
+        Map<String, Object> persisted = objectMapper.readValue(existing.getConfig(), MAP_TYPE);
+        List<Map<String, Object>> resultMappings = (List<Map<String, Object>>) persisted.get("resultValueMappings");
+
+        assertEquals(2, resultMappings.size());
+        assertEquals("MTB", resultMappings.get(0).get("testCode"));
+        assertEquals("DETECTED", resultMappings.get(0).get("analyzerValue"));
+        assertEquals("DETECTED", resultMappings.get(0).get("openelisValue"));
+        assertEquals("NOT DETECTED", resultMappings.get(1).get("analyzerValue"));
+    }
+
+    @Test
     public void testUpdateResultValueMappings_PreservesOtherPluginConfig() throws Exception {
         AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
         existing.setId("cfg-3");

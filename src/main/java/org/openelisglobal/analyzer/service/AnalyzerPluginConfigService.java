@@ -14,6 +14,8 @@ public interface AnalyzerPluginConfigService extends BaseObjectService<AnalyzerP
 
     void applyConfigDefaults(String analyzerId, Object configDefaults, String sysUserId);
 
+    void applyProfileDefaults(String analyzerId, Map<String, Object> profileConfig, String sysUserId);
+
     List<Map<String, Object>> getResultValueMappings(String analyzerId);
 
     Map<String, Object> updateResultValueMappings(String analyzerId, List<Map<String, Object>> mappings,

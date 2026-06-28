@@ -15,6 +15,7 @@ import {
   InlineNotification,
   FormGroup,
   Loading,
+  Tag,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation, useParams } from "react-router-dom";
@@ -53,12 +54,26 @@ const findGenericPluginTypeByProtocol = (pluginTypes, protocol) => {
   );
 };
 
-const AnalyzerForm = () => {
+const getProfileCount = (profile, keys) => {
+  for (const key of keys) {
+    const value = profile?.[key];
+    if (typeof value === "number") {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.length;
+    }
+  }
+  return 0;
+};
+
+const AnalyzerForm = ({ inline = false }) => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const { id: analyzerId } = useParams();
   const isEditMode = !!analyzerId;
+  const labFacingSetup = inline && !isEditMode;
   const [analyzer, setAnalyzer] = useState(null);
   const [loadingAnalyzer, setLoadingAnalyzer] = useState(false);
   const preselectedProfileRef = useRef(null);
@@ -242,6 +257,11 @@ const AnalyzerForm = () => {
     const proto = selectedPluginType.protocol.toUpperCase();
     return defaultConfigs.filter((c) => c.protocol === proto);
   }, [defaultConfigs, selectedPluginType]);
+  const defaultConfigItems =
+    labFacingSetup && !selectedPluginType?.protocol
+      ? defaultConfigs
+      : filteredDefaultConfigs;
+  const showDefaultConfigDropdown = labFacingSetup || isGenericPlugin;
 
   // Load default configs once on mount — form is always rendered as a page,
   // so no modal-open gate is needed.
@@ -462,7 +482,14 @@ const AnalyzerForm = () => {
       });
     }
 
-    if (!formData.analyzerType) {
+    if (labFacingSetup && !selectedDefault) {
+      newErrors.defaultConfig = intl.formatMessage({
+        id: "analyzer.setup.inline.profileRequired",
+        defaultMessage: "Select an analyzer type before saving.",
+      });
+    }
+
+    if (!labFacingSetup && !formData.analyzerType) {
       newErrors.analyzerType = intl.formatMessage({
         id: "analyzer.form.validation.type.required",
       });
@@ -584,30 +611,124 @@ const AnalyzerForm = () => {
     return <Loading withOverlay={false} />;
   }
 
+  const selectedProfileName =
+    selectedDefault?.displayName ||
+    selectedDefault?.analyzerName ||
+    selectedDefault?.id?.split("/")[1] ||
+    "";
+  const selectedProfileProtocol =
+    selectedDefault?.protocol || selectedDefault?.id?.split("/")[0] || "";
+  const selectedProfileReadiness =
+    selectedDefault?.readinessStatus || selectedDefault?.readiness || "";
+  const selectedProfileMetrics = [
+    {
+      key: "tests",
+      label: intl.formatMessage({
+        id: "analyzer.setup.inline.profileMetric.tests",
+        defaultMessage: "Tests mapped",
+      }),
+      value: getProfileCount(selectedDefault, [
+        "testMappingCount",
+        "testMappings",
+        "default_test_mappings",
+      ]),
+    },
+    {
+      key: "qcRules",
+      label: intl.formatMessage({
+        id: "analyzer.setup.inline.profileMetric.qcRules",
+        defaultMessage: "QC defaults",
+      }),
+      value: getProfileCount(selectedDefault, ["qcRuleCount", "qcRules"]),
+    },
+    {
+      key: "resultValues",
+      label: intl.formatMessage({
+        id: "analyzer.setup.inline.profileMetric.resultValues",
+        defaultMessage: "Result values",
+      }),
+      value: getProfileCount(selectedDefault, [
+        "resultValueMappingCount",
+        "resultValueMappings",
+        "result_value_mappings",
+      ]),
+    },
+  ];
+
   return (
     <>
       <div
         data-testid="analyzer-form"
-        className="analyzer-form-page pageContent"
+        className={
+          labFacingSetup
+            ? "analyzer-form-page analyzer-inline-setup"
+            : "analyzer-form-page pageContent"
+        }
       >
         <div data-testid="analyzer-form-header">
-          <PageTitle
-            breadcrumbs={[
-              {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.root",
-                }),
-                link: "/analyzers",
-              },
-              {
-                label: intl.formatMessage({
-                  id: isEditMode
-                    ? "analyzer.form.editTitle"
-                    : "analyzer.form.addTitle",
-                }),
-              },
-            ]}
-          />
+          {labFacingSetup ? (
+            <div
+              className="analyzer-inline-setup-header"
+              data-testid="analyzer-inline-setup"
+            >
+              <div>
+                <h2>
+                  {intl.formatMessage({
+                    id: "analyzer.setup.inline.title",
+                    defaultMessage: "Set up a new analyzer",
+                  })}
+                </h2>
+                <p>
+                  {intl.formatMessage({
+                    id: "analyzer.setup.inline.subtitle",
+                    defaultMessage:
+                      "Create the analyzer from a shipped profile, verify defaults, and finish connection details.",
+                  })}
+                </p>
+              </div>
+              <div
+                className="analyzer-inline-steps"
+                data-testid="analyzer-inline-steps"
+              >
+                <span>
+                  {intl.formatMessage({
+                    id: "analyzer.setup.inline.step.instrument",
+                    defaultMessage: "Instrument",
+                  })}
+                </span>
+                <span>
+                  {intl.formatMessage({
+                    id: "analyzer.setup.inline.step.verify",
+                    defaultMessage: "Verify",
+                  })}
+                </span>
+                <span>
+                  {intl.formatMessage({
+                    id: "analyzer.setup.inline.step.connect",
+                    defaultMessage: "Connect",
+                  })}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <PageTitle
+              breadcrumbs={[
+                {
+                  label: intl.formatMessage({
+                    id: "analyzer.page.hierarchy.root",
+                  }),
+                  link: "/analyzers",
+                },
+                {
+                  label: intl.formatMessage({
+                    id: isEditMode
+                      ? "analyzer.form.editTitle"
+                      : "analyzer.form.addTitle",
+                  }),
+                },
+              ]}
+            />
+          )}
         </div>
         <div className="analyzer-form-content">
           {notification && (
@@ -636,86 +757,100 @@ const AnalyzerForm = () => {
               required
             />
 
-            <Dropdown
-              id="analyzer-status"
-              data-testid="analyzer-form-status-dropdown"
-              titleText={intl.formatMessage({
-                id: "analyzer.form.status",
-              })}
-              label={intl.formatMessage({
-                id: "analyzer.form.status",
-              })}
-              items={statusOptions}
-              itemToString={(item) => (item ? item.text : "")}
-              selectedItem={
-                statusOptions.find((opt) => opt.id === formData.status) ||
-                statusOptions[1] // Default to SETUP
-              }
-              onChange={({ selectedItem }) => {
-                if (selectedItem) {
-                  handleFieldChange("status", selectedItem.id);
+            {!labFacingSetup && (
+              <Dropdown
+                id="analyzer-status"
+                data-testid="analyzer-form-status-dropdown"
+                titleText={intl.formatMessage({
+                  id: "analyzer.form.status",
+                })}
+                label={intl.formatMessage({
+                  id: "analyzer.form.status",
+                })}
+                items={statusOptions}
+                itemToString={(item) => (item ? item.text : "")}
+                selectedItem={
+                  statusOptions.find((opt) => opt.id === formData.status) ||
+                  statusOptions[1] // Default to SETUP
                 }
-              }}
-              helperText={intl.formatMessage({
-                id: "analyzer.form.status.helperText",
-              })}
-            />
+                onChange={({ selectedItem }) => {
+                  if (selectedItem) {
+                    handleFieldChange("status", selectedItem.id);
+                  }
+                }}
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.status.helperText",
+                })}
+              />
+            )}
           </FormGroup>
 
           {/* Section 2 — Plugin Configuration */}
           <FormGroup legendText="">
-            <Dropdown
-              id="analyzer-plugin-type"
-              data-testid="analyzer-form-plugin-type-dropdown"
-              titleText={intl.formatMessage({
-                id: "analyzer.form.pluginType",
-                defaultMessage: "Plugin Type",
-              })}
-              label={intl.formatMessage({
-                id: "analyzer.form.pluginType.placeholder",
-                defaultMessage: "Select plugin type...",
-              })}
-              items={sortedPluginTypes}
-              selectedItem={
-                sortedPluginTypes.find(
-                  (opt) => opt.id === formData.pluginTypeId,
-                ) || null
-              }
-              itemToString={(item) =>
-                item ? `${item.name} (${item.protocol})` : ""
-              }
-              onChange={({ selectedItem }) => {
-                handleFieldChange("pluginTypeId", selectedItem?.id || "");
-                // Reset profile selection when plugin type changes
-                setSelectedDefault(null);
-                // Auto-set protocol version based on plugin type
-                if (selectedItem?.protocol) {
-                  handleFieldChange(
-                    "protocolVersion",
-                    PLUGIN_PROTOCOL_DEFAULTS[selectedItem.protocol] ||
-                      formData.protocolVersion,
-                  );
+            {!labFacingSetup && (
+              <Dropdown
+                id="analyzer-plugin-type"
+                data-testid="analyzer-form-plugin-type-dropdown"
+                titleText={intl.formatMessage({
+                  id: "analyzer.form.pluginType",
+                  defaultMessage: "Plugin Type",
+                })}
+                label={intl.formatMessage({
+                  id: "analyzer.form.pluginType.placeholder",
+                  defaultMessage: "Select plugin type...",
+                })}
+                items={sortedPluginTypes}
+                selectedItem={
+                  sortedPluginTypes.find(
+                    (opt) => opt.id === formData.pluginTypeId,
+                  ) || null
                 }
-              }}
-              disabled={loadingPluginTypes}
-              helperText={intl.formatMessage({
-                id: "analyzer.form.pluginType.helperText",
-                defaultMessage:
-                  "The analyzer plugin that will handle incoming messages",
-              })}
-            />
+                itemToString={(item) =>
+                  item ? `${item.name} (${item.protocol})` : ""
+                }
+                onChange={({ selectedItem }) => {
+                  handleFieldChange("pluginTypeId", selectedItem?.id || "");
+                  // Reset profile selection when plugin type changes
+                  setSelectedDefault(null);
+                  // Auto-set protocol version based on plugin type
+                  if (selectedItem?.protocol) {
+                    handleFieldChange(
+                      "protocolVersion",
+                      PLUGIN_PROTOCOL_DEFAULTS[selectedItem.protocol] ||
+                        formData.protocolVersion,
+                    );
+                  }
+                }}
+                disabled={loadingPluginTypes}
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.pluginType.helperText",
+                  defaultMessage:
+                    "The analyzer plugin that will handle incoming messages",
+                })}
+              />
+            )}
 
-            {isGenericPlugin && (
+            {showDefaultConfigDropdown && (
               <Dropdown
                 id="analyzer-default-config"
                 data-testid="analyzer-form-default-config-dropdown"
                 titleText={intl.formatMessage({
-                  id: "analyzer.form.loadDefaultConfig",
+                  id: labFacingSetup
+                    ? "analyzer.setup.inline.profile"
+                    : "analyzer.form.loadDefaultConfig",
+                  defaultMessage: labFacingSetup
+                    ? "Analyzer Type"
+                    : "Load Analyzer Profile",
                 })}
                 label={intl.formatMessage({
-                  id: "analyzer.form.loadDefaultConfig.placeholder",
+                  id: labFacingSetup
+                    ? "analyzer.setup.inline.profilePlaceholder"
+                    : "analyzer.form.loadDefaultConfig.placeholder",
+                  defaultMessage: labFacingSetup
+                    ? "Select a shipped analyzer profile"
+                    : "Select a built-in analyzer profile",
                 })}
-                items={filteredDefaultConfigs}
+                items={defaultConfigItems}
                 selectedItem={selectedDefault}
                 itemToString={(item) =>
                   item
@@ -726,13 +861,54 @@ const AnalyzerForm = () => {
                   handleDefaultConfigSelect(selectedItem)
                 }
                 disabled={loadingDefaults}
+                invalid={!!errors.defaultConfig}
+                invalidText={errors.defaultConfig}
                 helperText={intl.formatMessage({
-                  id: "analyzer.form.loadDefaultConfig.helperText",
+                  id: labFacingSetup
+                    ? "analyzer.setup.inline.profileHelp"
+                    : "analyzer.form.loadDefaultConfig.helperText",
+                  defaultMessage: labFacingSetup
+                    ? "Profiles include default test mappings, result-value mappings, and QC setup defaults."
+                    : "Quick setup using built-in analyzer profile templates",
                 })}
               />
             )}
 
-            {isGenericPlugin && (
+            {labFacingSetup && selectedDefault && (
+              <div
+                className="analyzer-inline-profile-summary"
+                data-testid="analyzer-form-profile-summary"
+              >
+                <div>
+                  <h3>{selectedProfileName}</h3>
+                  <div className="analyzer-inline-profile-tags">
+                    {selectedProfileProtocol && (
+                      <Tag type="blue">{selectedProfileProtocol}</Tag>
+                    )}
+                    {selectedDefault?.category && (
+                      <Tag type="gray">{selectedDefault.category}</Tag>
+                    )}
+                    {selectedProfileReadiness && (
+                      <Tag type="green">{selectedProfileReadiness}</Tag>
+                    )}
+                  </div>
+                </div>
+                <div className="analyzer-inline-profile-metrics">
+                  {selectedProfileMetrics.map((metric) => (
+                    <div
+                      key={metric.key}
+                      className="analyzer-inline-profile-metric"
+                      data-testid={`analyzer-form-profile-metric-${metric.key}`}
+                    >
+                      <strong>{metric.value}</strong>
+                      <span>{metric.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isGenericPlugin && !labFacingSetup && (
               <TextInput
                 id="analyzer-identifier-pattern"
                 data-testid="analyzer-form-identifier-pattern-input"
@@ -756,29 +932,31 @@ const AnalyzerForm = () => {
               />
             )}
 
-            <Dropdown
-              id="analyzer-type"
-              data-testid="analyzer-form-type-dropdown"
-              titleText={intl.formatMessage({ id: "analyzer.form.type" })}
-              label={intl.formatMessage({
-                id: "analyzer.form.type.placeholder",
-              })}
-              items={analyzerTypeOptions}
-              selectedItem={
-                analyzerTypeOptions.find(
-                  (opt) => opt.id === formData.analyzerType,
-                ) || null
-              }
-              itemToString={(item) => (item ? item.text : "")}
-              onChange={({ selectedItem }) =>
-                handleFieldChange("analyzerType", selectedItem?.id || "")
-              }
-              invalid={!!errors.analyzerType}
-              invalidText={errors.analyzerType}
-              required
-            />
+            {!labFacingSetup && (
+              <Dropdown
+                id="analyzer-type"
+                data-testid="analyzer-form-type-dropdown"
+                titleText={intl.formatMessage({ id: "analyzer.form.type" })}
+                label={intl.formatMessage({
+                  id: "analyzer.form.type.placeholder",
+                })}
+                items={analyzerTypeOptions}
+                selectedItem={
+                  analyzerTypeOptions.find(
+                    (opt) => opt.id === formData.analyzerType,
+                  ) || null
+                }
+                itemToString={(item) => (item ? item.text : "")}
+                onChange={({ selectedItem }) =>
+                  handleFieldChange("analyzerType", selectedItem?.id || "")
+                }
+                invalid={!!errors.analyzerType}
+                invalidText={errors.analyzerType}
+                required
+              />
+            )}
 
-            {!isFileProtocol && (
+            {!isFileProtocol && !labFacingSetup && (
               <Dropdown
                 id="analyzer-protocol-version"
                 data-testid="analyzer-form-protocol-version-dropdown"
@@ -804,29 +982,43 @@ const AnalyzerForm = () => {
 
           {/* Section 3 — Connection (hidden for FILE protocol) */}
           {!isFileProtocol && (
-            <FormGroup legendText="">
-              <Dropdown
-                id="analyzer-communication-mode"
-                data-testid="analyzer-form-communication-mode-dropdown"
-                titleText={intl.formatMessage({
-                  id: "analyzer.form.communicationMode",
-                })}
-                items={communicationModeItems}
-                selectedItem={
-                  communicationModeItems.find(
-                    (opt) => opt.value === formData.communicationMode,
-                  ) || null
-                }
-                itemToString={(item) => (item ? item.label : "")}
-                onChange={({ selectedItem }) => {
-                  if (selectedItem) {
-                    handleFieldChange("communicationMode", selectedItem.value);
+            <FormGroup
+              legendText={
+                labFacingSetup
+                  ? intl.formatMessage({
+                      id: "analyzer.setup.inline.connectTitle",
+                      defaultMessage: "Connection",
+                    })
+                  : ""
+              }
+            >
+              {!labFacingSetup && (
+                <Dropdown
+                  id="analyzer-communication-mode"
+                  data-testid="analyzer-form-communication-mode-dropdown"
+                  titleText={intl.formatMessage({
+                    id: "analyzer.form.communicationMode",
+                  })}
+                  items={communicationModeItems}
+                  selectedItem={
+                    communicationModeItems.find(
+                      (opt) => opt.value === formData.communicationMode,
+                    ) || null
                   }
-                }}
-                helperText={intl.formatMessage({
-                  id: "analyzer.form.communicationMode.help",
-                })}
-              />
+                  itemToString={(item) => (item ? item.label : "")}
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem) {
+                      handleFieldChange(
+                        "communicationMode",
+                        selectedItem.value,
+                      );
+                    }
+                  }}
+                  helperText={intl.formatMessage({
+                    id: "analyzer.form.communicationMode.help",
+                  })}
+                />
+              )}
               <div
                 className="connection-fields"
                 data-testid="analyzer-form-connection-fields"
@@ -938,25 +1130,27 @@ const AnalyzerForm = () => {
                 })}
               />
 
-              <TextArea
-                id="analyzer-column-mappings"
-                data-testid="analyzer-form-column-mappings-input"
-                labelText={intl.formatMessage({
-                  id: "analyzer.form.columnMappings",
-                  defaultMessage: "Column Mappings (JSON)",
-                })}
-                placeholder='{"Sample Name": "sampleId", "Target Name": "testCode", "Quantity Mean": "result"}'
-                value={formData.columnMappings}
-                onChange={(e) =>
-                  handleFieldChange("columnMappings", e.target.value)
-                }
-                rows={4}
-                helperText={intl.formatMessage({
-                  id: "analyzer.form.columnMappings.helperText",
-                  defaultMessage:
-                    "Maps file column names to internal field names",
-                })}
-              />
+              {!labFacingSetup && (
+                <TextArea
+                  id="analyzer-column-mappings"
+                  data-testid="analyzer-form-column-mappings-input"
+                  labelText={intl.formatMessage({
+                    id: "analyzer.form.columnMappings",
+                    defaultMessage: "Column Mappings (JSON)",
+                  })}
+                  placeholder='{"Sample Name": "sampleId", "Target Name": "testCode", "Quantity Mean": "result"}'
+                  value={formData.columnMappings}
+                  onChange={(e) =>
+                    handleFieldChange("columnMappings", e.target.value)
+                  }
+                  rows={4}
+                  helperText={intl.formatMessage({
+                    id: "analyzer.form.columnMappings.helperText",
+                    defaultMessage:
+                      "Maps file column names to internal field names",
+                  })}
+                />
+              )}
 
               {formData.fileFormat !== "EXCEL" && (
                 <>
