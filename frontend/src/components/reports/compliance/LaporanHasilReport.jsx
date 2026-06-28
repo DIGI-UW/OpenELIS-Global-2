@@ -25,6 +25,9 @@ import {
   StructuredListCell,
   Loading,
   InlineNotification,
+  Modal,
+  TextArea,
+  InlineLoading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -83,6 +86,16 @@ export default function LaporanHasilReport() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generatingPdf, setGeneratingPdf] = useState(null);
+
+  // Amendment modal state
+  const [amendmentModal, setAmendmentModal] = useState({
+    open: false,
+    sampleId: null,
+    labNumber: null,
+    reason: "",
+    submitting: false,
+    error: null,
+  });
 
   // { COMPLIANT: "Compliant", NON_COMPLIANT: "Non-Compliant", BORDERLINE: "Borderline" }
   const [statusLabels, setStatusLabels] = useState({});
@@ -165,28 +178,117 @@ export default function LaporanHasilReport() {
     (sampleId, labNumber) => {
       setGeneratingPdf(sampleId);
       const safeLabel = labNumber.replace(/[^a-zA-Z0-9-]/g, "");
-      window.open(
+      fetch(
         `${config.serverBaseUrl}/rest/complianceReport/exportPdf?sampleId=${sampleId}`,
-        "_blank",
-      );
-      // Update the row immediately in local state — no need to re-fetch the
-      // whole list just to show the generated timestamp.
-      const now = new Date().toLocaleString();
-      setReportData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          generatedCount: prev.generatedCount + 1,
-          notYetGeneratedCount: Math.max(0, prev.notYetGeneratedCount - 1),
-          orders: prev.orders.map((o) =>
-            o.sampleId === sampleId ? { ...o, lastGenerated: now } : o,
-          ),
-        };
-      });
-      setGeneratingPdf(null);
+        {
+          credentials: "include",
+          headers: { "X-CSRF-Token": localStorage.getItem("CSRF") },
+        },
+      )
+        .then((res) => {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.blob();
+        })
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `LH-${safeLabel}.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+          const now = new Date().toLocaleString();
+          setReportData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              generatedCount: prev.generatedCount + 1,
+              notYetGeneratedCount: Math.max(0, prev.notYetGeneratedCount - 1),
+              orders: prev.orders.map((o) =>
+                o.sampleId === sampleId ? { ...o, lastGenerated: now } : o,
+              ),
+            };
+          });
+        })
+        .catch((err) => {
+          setError(
+            intl.formatMessage(
+              { id: "laporanHasil.error.pdf", defaultMessage: "Failed to download PDF: {msg}" },
+              { msg: err.message },
+            ),
+          );
+        })
+        .finally(() => setGeneratingPdf(null));
     },
-    [],
+    [intl],
   );
+
+  const openAmendmentModal = useCallback((sampleId, labNumber) => {
+    setAmendmentModal({
+      open: true,
+      sampleId,
+      labNumber,
+      reason: "",
+      submitting: false,
+      error: null,
+    });
+  }, []);
+
+  const closeAmendmentModal = useCallback(() => {
+    setAmendmentModal((prev) => ({ ...prev, open: false }));
+  }, []);
+
+  const handleReissue = useCallback(() => {
+    const { sampleId, reason } = amendmentModal;
+    if (!reason || !reason.trim()) return;
+
+    setAmendmentModal((prev) => ({ ...prev, submitting: true, error: null }));
+
+    fetch(`${config.serverBaseUrl}/rest/complianceReport/reissue`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      credentials: "include",
+      body: JSON.stringify({ sampleId, reason: reason.trim() }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          return res.text().then((msg) => {
+            throw new Error(msg || intl.formatMessage({ id: "lhu.amendment.error.generic" }));
+          });
+        }
+        return res.blob();
+      })
+      .then((blob) => {
+        // Trigger PDF download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `LH-${amendmentModal.labNumber}-amendment.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        const now = new Date().toLocaleString();
+        setReportData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            orders: prev.orders.map((o) =>
+              o.sampleId === sampleId ? { ...o, lastGenerated: now } : o,
+            ),
+          };
+        });
+        setAmendmentModal((prev) => ({ ...prev, open: false, submitting: false }));
+      })
+      .catch((err) => {
+        setAmendmentModal((prev) => ({
+          ...prev,
+          submitting: false,
+          error: err.message,
+        }));
+      });
+  }, [amendmentModal, intl]);
 
   const tableRows = reportData?.orders?.map((order) => ({
     id: String(order.sampleId),
@@ -404,6 +506,7 @@ export default function LaporanHasilReport() {
                             if (cell.info.header === "actions") {
                               const isIneligible =
                                 order?.complianceStatus === "INELIGIBLE";
+                              const hasBeenReleased = !!order?.lastGenerated;
                               return (
                                 <TableCell key={cell.id}>
                                   {isIneligible ? (
@@ -413,6 +516,16 @@ export default function LaporanHasilReport() {
                                         defaultMessage="No standard linked"
                                       />
                                     </span>
+                                  ) : hasBeenReleased ? (
+                                    <Button
+                                      size="sm"
+                                      kind="tertiary"
+                                      onClick={() =>
+                                        openAmendmentModal(cell.value, order?.labNumber)
+                                      }
+                                    >
+                                      <FormattedMessage id="lhu.amendment.reissue" />
+                                    </Button>
                                   ) : (
                                     <Button
                                       size="sm"
@@ -454,6 +567,52 @@ export default function LaporanHasilReport() {
           <FormattedMessage id="laporanHasil.empty" />
         </p>
       )}
+
+      <Modal
+        open={amendmentModal.open}
+        modalHeading={intl.formatMessage({ id: "lhu.amendment.modal.heading" })}
+        primaryButtonText={
+          amendmentModal.submitting ? (
+            <InlineLoading description={intl.formatMessage({ id: "lhu.amendment.submitting" })} />
+          ) : (
+            intl.formatMessage({ id: "lhu.amendment.modal.submit" })
+          )
+        }
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel", defaultMessage: "Cancel" })}
+        primaryButtonDisabled={
+          !amendmentModal.reason?.trim() || amendmentModal.submitting
+        }
+        onRequestSubmit={handleReissue}
+        onRequestClose={closeAmendmentModal}
+        onSecondarySubmit={closeAmendmentModal}
+      >
+        <p style={{ marginBottom: "1rem" }}>
+          <FormattedMessage
+            id="lhu.amendment.modal.description"
+            values={{ labNumber: amendmentModal.labNumber }}
+          />
+        </p>
+        <TextArea
+          id="amendment-reason"
+          labelText={intl.formatMessage({ id: "lhu.amendment.reason.label" })}
+          helperText={intl.formatMessage({ id: "lhu.amendment.reason.helper" })}
+          placeholder={intl.formatMessage({ id: "lhu.amendment.reason.placeholder" })}
+          value={amendmentModal.reason}
+          onChange={(e) =>
+            setAmendmentModal((prev) => ({ ...prev, reason: e.target.value }))
+          }
+          invalid={amendmentModal.reason !== undefined && amendmentModal.reason.trim() === "" && amendmentModal.open}
+          invalidText={intl.formatMessage({ id: "lhu.amendment.reason.required" })}
+          rows={4}
+        />
+        {amendmentModal.error && (
+          <InlineNotification
+            kind="error"
+            title={amendmentModal.error}
+            style={{ marginTop: "1rem" }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

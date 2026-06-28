@@ -11,6 +11,7 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
@@ -21,6 +22,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.compliance.service.ComplianceEvaluationResult;
 import org.openelisglobal.compliance.service.ComplianceEvaluationService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
+import org.openelisglobal.compliance.service.LhuAmendmentService;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
@@ -38,6 +40,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -79,6 +83,12 @@ public class ComplianceReportRestController {
 
     @Autowired
     private org.openelisglobal.analysis.service.AnalysisService analysisService;
+
+    @Autowired
+    private LhuAmendmentService lhuAmendmentService;
+
+    @Autowired
+    private org.openelisglobal.compliance.service.ComplianceReportArchiveService archiveService;
 
     @GetMapping("/compliance-statuses")
     public ResponseEntity<java.util.List<java.util.Map<String, String>>> getComplianceStatuses() {
@@ -209,77 +219,190 @@ public class ComplianceReportRestController {
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=\"LH-" + safeFilename + ".pdf\"");
 
+        byte[] pdfBytes;
         try {
-            Document document = new Document(PageSize.A4);
-            PdfWriter.getInstance(document, response.getOutputStream());
-            document.open();
-
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-            Font sectionFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
-            Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
-            Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
-            Font labelFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
-
-            document.add(new Phrase("LAPORAN HASIL — CERTIFICATE OF TEST RESULTS\n\n", titleFont));
-            document.add(new Phrase("Lab Number: " + dto.getLabNumber() + "\n", cellFont));
-            document.add(new Phrase("Standard: " + safe(dto.getStandardName()) + "\n", cellFont));
-            document.add(new Phrase("Collection Date: " + safe(dto.getCollectionDate()) + "\n\n", cellFont));
-
-            addTwoColSection(document, sectionFont, labelFont, cellFont, "SITE INFORMATION", new String[][] {
-                    { "Site", safe(dto.getSiteName()) }, { "GPS Coordinates", safe(dto.getGpsCoordinates()) },
-                    { "Collection Date/Time", safe(dto.getCollectionDate()) },
-                    { "Collection Method", safe(dto.getCollectionMethod()) },
-                    { "PP No.", safe(dto.getRegulationNumber()) }, { "Standard", safe(dto.getStandardName()) } });
-
-            addTwoColSection(document, sectionFont, labelFont, cellFont, "COLLECTION CONDITIONS",
-                    new String[][] { { "Water Temp", safe(dto.getWaterTemp()) },
-                            { "Ambient Temp", safe(dto.getAmbientTemp()) }, { "Weather", safe(dto.getWeather()) },
-                            { "Preservation", safe(dto.getPreservation()) } });
-
-            document.add(new Phrase("\nCOMPLIANCE SUMMARY\n\n", sectionFont));
-            PdfPTable compTable = new PdfPTable(4);
-            compTable.setWidthPercentage(100);
-            compTable.setWidths(new float[] { 3f, 2f, 2.5f, 1.5f });
-            for (String h : new String[] { "Parameter", "Result", "Threshold", "Status" }) {
-                PdfPCell hCell = new PdfPCell(new Phrase(h, headerFont));
-                hCell.setBackgroundColor(new BaseColor(33, 82, 149));
-                hCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                hCell.setPadding(4);
-                compTable.addCell(hCell);
-            }
-            if (dto.getParameterResults() != null) {
-                for (ComplianceEvaluationResult.ParameterResult pr : dto.getParameterResults()) {
-                    compTable.addCell(new Phrase(safe(pr.getDisplayName()), cellFont));
-                    String rv = safe(pr.getResultValue());
-                    if (pr.getUnits() != null && !pr.getUnits().isEmpty()) {
-                        rv += " " + pr.getUnits();
-                    }
-                    compTable.addCell(new Phrase(rv, cellFont));
-                    compTable.addCell(new Phrase(safe(pr.getThresholdDisplay()), cellFont));
-                    compTable.addCell(new Phrase(pr.getStatus() != null ? pr.getStatus().toString() : "–", cellFont));
-                }
-            }
-            document.add(compTable);
-
-            document.add(new Phrase("\n\nSIGNATURES\n\n", sectionFont));
-            PdfPTable sigTable = new PdfPTable(2);
-            sigTable.setWidthPercentage(100);
-
-            PdfPCell analystCell = buildSignatureCell(dto.getAnalystSignature(), "Lab Analyst", labelFont, cellFont);
-            PdfPCell managerCell = buildSignatureCell(dto.getManagerSignature(), "Lab Manager", labelFont, cellFont);
-            sigTable.addCell(analystCell);
-            sigTable.addCell(managerCell);
-            document.add(sigTable);
-
-            document.close();
+            pdfBytes = buildOriginalPdfBytes(dto);
         } catch (DocumentException e) {
             LogEvent.logError(e);
             throw new IOException("Error generating PDF", e);
         }
 
+        response.getOutputStream().write(pdfBytes);
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String userId = auth != null ? auth.getName() : null;
         reportGenerationService.recordGeneration(sampleId, userId);
+
+        // Archive only on the release path — previews of unreleased samples must NOT be
+        // archived. Failure here must never break PDF delivery.
+        if (lhuAmendmentService.hasBeenReleased(sampleId)) {
+            try {
+                archiveService.archiveIfAbsent(sampleId, sample.getAmendmentNumber(), pdfBytes, userId);
+            } catch (Exception e) {
+                LogEvent.logError(e);
+            }
+        }
+    }
+
+    private byte[] buildOriginalPdfBytes(ComplianceReportOrderDTO dto) throws DocumentException, IOException {
+        Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+        Font sectionFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
+        Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
+        Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
+        Font labelFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
+
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4);
+        PdfWriter.getInstance(document, buf);
+        document.open();
+
+        document.add(new Phrase("LAPORAN HASIL — CERTIFICATE OF TEST RESULTS\n\n", titleFont));
+        document.add(new Phrase("Lab Number: " + dto.getLabNumber() + "\n", cellFont));
+        document.add(new Phrase("Standard: " + safe(dto.getStandardName()) + "\n", cellFont));
+        document.add(new Phrase("Collection Date: " + safe(dto.getCollectionDate()) + "\n\n", cellFont));
+
+        addTwoColSection(document, sectionFont, labelFont, cellFont, "SITE INFORMATION",
+                new String[][] { { "Site", safe(dto.getSiteName()) },
+                        { "GPS Coordinates", safe(dto.getGpsCoordinates()) },
+                        { "Collection Date/Time", safe(dto.getCollectionDate()) },
+                        { "Collection Method", safe(dto.getCollectionMethod()) },
+                        { "PP No.", safe(dto.getRegulationNumber()) }, { "Standard", safe(dto.getStandardName()) } });
+
+        addTwoColSection(document, sectionFont, labelFont, cellFont, "COLLECTION CONDITIONS",
+                new String[][] { { "Water Temp", safe(dto.getWaterTemp()) },
+                        { "Ambient Temp", safe(dto.getAmbientTemp()) }, { "Weather", safe(dto.getWeather()) },
+                        { "Preservation", safe(dto.getPreservation()) } });
+
+        addComplianceTable(document, dto, sectionFont, headerFont, cellFont);
+        addSignatureTable(document, dto, sectionFont, labelFont, cellFont);
+
+        document.close();
+        return buf.toByteArray();
+    }
+
+    public static class ReissueRequest {
+        private Long sampleId;
+        private String reason;
+
+        public Long getSampleId() {
+            return sampleId;
+        }
+
+        public void setSampleId(Long sampleId) {
+            this.sampleId = sampleId;
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public void setReason(String reason) {
+            this.reason = reason;
+        }
+    }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<?> reissue(@RequestBody ReissueRequest request, HttpServletResponse response)
+            throws IOException {
+        if (request.getReason() == null || request.getReason().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Amendment reason must not be blank");
+        }
+        if (request.getSampleId() == null) {
+            return ResponseEntity.badRequest().body("sampleId is required");
+        }
+        Sample sample = sampleService.get(String.valueOf(request.getSampleId()));
+        if (sample == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!lhuAmendmentService.hasBeenReleased(request.getSampleId())) {
+            return ResponseEntity.status(404).body("Sample has not been released; nothing to amend");
+        }
+
+        String priorCertificateNumber = lhuAmendmentService
+                .certificateNumberWithAmendmentSuffix(sample.getAccessionNumber(), sample.getAmendmentNumber());
+        lhuAmendmentService.applyLhuAmendment(request.getSampleId(), priorCertificateNumber,
+                request.getReason().trim());
+
+        // Refresh sample to get updated amendmentNumber, then regenerate PDF
+        sample = sampleService.get(String.valueOf(request.getSampleId()));
+        List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
+        SampleComplianceStandard primaryLink = links.isEmpty() ? null : links.get(0);
+        ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
+        ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
+                reportGenerationService.getLastGenerated(request.getSampleId()).isPresent());
+
+        String safeFilename = sample.getAccessionNumber().replaceAll("[^a-zA-Z0-9\\-]", "");
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"LH-" + safeFilename + "-Am" + sample.getAmendmentNumber() + ".pdf\"");
+
+        byte[] pdfBytes;
+        try {
+            pdfBytes = buildAmendmentPdfBytes(sample, dto);
+        } catch (DocumentException e) {
+            LogEvent.logError(e);
+            throw new IOException("Error generating amendment PDF", e);
+        }
+
+        response.getOutputStream().write(pdfBytes);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth != null ? auth.getName() : null;
+        reportGenerationService.recordGeneration(request.getSampleId(), userId);
+        try {
+            archiveService.archiveIfAbsent(request.getSampleId(), sample.getAmendmentNumber(), pdfBytes, userId);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+        }
+        return null;
+    }
+
+    private byte[] buildAmendmentPdfBytes(Sample sample, ComplianceReportOrderDTO dto)
+            throws DocumentException, IOException {
+        Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+        Font sectionFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
+        Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
+        Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
+        Font labelFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
+
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4);
+        PdfWriter.getInstance(document, buf);
+        document.open();
+
+        String certNumber = lhuAmendmentService.certificateNumberWithAmendmentSuffix(sample.getAccessionNumber(),
+                sample.getAmendmentNumber());
+        document.add(new Phrase("LAPORAN HASIL — CERTIFICATE OF TEST RESULTS (AMENDMENT)\n\n", titleFont));
+        document.add(new Phrase("Certificate No.: " + certNumber + "\n", labelFont));
+        document.add(new Phrase("Lab Number: " + dto.getLabNumber() + "\n", cellFont));
+
+        if (sample.getAmendmentNumber() != null && sample.getAmendmentNumber() >= 1) {
+            document.add(new Phrase("\nAMENDMENT NOTICE\n\n", sectionFont));
+            document.add(new Phrase("Amendment No.: " + sample.getAmendmentNumber() + "\n", cellFont));
+            document.add(new Phrase("Supersedes: " + safe(sample.getAmendsLhuNumber()) + "\n", cellFont));
+            document.add(new Phrase("Amendment reason: " + safe(sample.getAmendmentReason()) + "\n\n", cellFont));
+        }
+
+        document.add(new Phrase("Standard: " + safe(dto.getStandardName()) + "\n", cellFont));
+        document.add(new Phrase("Collection Date: " + safe(dto.getCollectionDate()) + "\n\n", cellFont));
+
+        addTwoColSection(document, sectionFont, labelFont, cellFont, "SITE INFORMATION",
+                new String[][] { { "Site", safe(dto.getSiteName()) },
+                        { "GPS Coordinates", safe(dto.getGpsCoordinates()) },
+                        { "Collection Date/Time", safe(dto.getCollectionDate()) },
+                        { "Collection Method", safe(dto.getCollectionMethod()) },
+                        { "PP No.", safe(dto.getRegulationNumber()) }, { "Standard", safe(dto.getStandardName()) } });
+
+        addTwoColSection(document, sectionFont, labelFont, cellFont, "COLLECTION CONDITIONS",
+                new String[][] { { "Water Temp", safe(dto.getWaterTemp()) },
+                        { "Ambient Temp", safe(dto.getAmbientTemp()) }, { "Weather", safe(dto.getWeather()) },
+                        { "Preservation", safe(dto.getPreservation()) } });
+
+        addComplianceTable(document, dto, sectionFont, headerFont, cellFont);
+        addSignatureTable(document, dto, sectionFont, labelFont, cellFont);
+
+        document.close();
+        return buf.toByteArray();
     }
 
     private ComplianceReportOrderDTO buildOrderDTO(Sample sample, SampleComplianceStandard link,
@@ -353,29 +476,25 @@ public class ComplianceReportRestController {
 
         reportGenerationService.getLastGenerated(Long.parseLong(sample.getId())).ifPresent(dto::setLastGenerated);
 
-        // Logbook saves AUTHORED signatures as RESULT_BATCH with record_id =
-        // sample_item.id.
-        // Validation saves VALIDATED_AND_RELEASED as VALIDATION_BATCH with record_id =
-        // analysis.id.
+        // Both RESULT_BATCH (AUTHORED) and VALIDATION_BATCH (VALIDATED_AND_RELEASED)
+        // store record_id = analysis.id.
         List<org.openelisglobal.sampleitem.valueholder.SampleItem> items = sampleItemService
                 .getSampleItemsBySampleId(sample.getId());
         for (org.openelisglobal.sampleitem.valueholder.SampleItem item : items) {
-            if (dto.getAnalystSignature() == null) {
-                List<ElectronicSignature> sigs = electronicSignatureService.getSignaturesForRecord("RESULT_BATCH",
-                        Long.parseLong(item.getId()));
-                for (ElectronicSignature sig : sigs) {
-                    if (sig.getSignatureMeaning() == SignatureMeaning.AUTHORED) {
-                        dto.setAnalystSignature(toSignatureDTO(sig, "Lab Analyst"));
-                        break;
+            List<org.openelisglobal.analysis.valueholder.Analysis> analyses = analysisService
+                    .getAnalysesBySampleItem(item);
+            for (org.openelisglobal.analysis.valueholder.Analysis analysis : analyses) {
+                if (dto.getAnalystSignature() == null) {
+                    List<ElectronicSignature> sigs = electronicSignatureService.getSignaturesForRecord("RESULT_BATCH",
+                            Long.parseLong(analysis.getId()));
+                    for (ElectronicSignature sig : sigs) {
+                        if (sig.getSignatureMeaning() == SignatureMeaning.AUTHORED) {
+                            dto.setAnalystSignature(toSignatureDTO(sig, "Lab Analyst"));
+                            break;
+                        }
                     }
                 }
-            }
-            if (dto.getManagerSignature() == null) {
-                List<org.openelisglobal.analysis.valueholder.Analysis> analyses = analysisService
-                        .getAnalysesBySampleItem(item);
-                for (org.openelisglobal.analysis.valueholder.Analysis analysis : analyses) {
-                    if (dto.getManagerSignature() != null)
-                        break;
+                if (dto.getManagerSignature() == null) {
                     List<ElectronicSignature> sigs = electronicSignatureService
                             .getSignaturesForRecord("VALIDATION_BATCH", Long.parseLong(analysis.getId()));
                     for (ElectronicSignature sig : sigs) {
@@ -385,7 +504,11 @@ public class ComplianceReportRestController {
                         }
                     }
                 }
+                if (dto.getAnalystSignature() != null && dto.getManagerSignature() != null)
+                    break;
             }
+            if (dto.getAnalystSignature() != null && dto.getManagerSignature() != null)
+                break;
         }
 
         return dto;
@@ -399,6 +522,44 @@ public class ComplianceReportRestController {
             dto.setSignedAt(sig.getSignedAt().toLocalDateTime().format(DISPLAY_FMT));
         }
         return dto;
+    }
+
+    private void addComplianceTable(Document doc, ComplianceReportOrderDTO dto, Font sectionFont, Font headerFont,
+            Font cellFont) throws DocumentException {
+        doc.add(new Phrase("\nCOMPLIANCE SUMMARY\n\n", sectionFont));
+        PdfPTable compTable = new PdfPTable(4);
+        compTable.setWidthPercentage(100);
+        compTable.setWidths(new float[] { 3f, 2f, 2.5f, 1.5f });
+        for (String h : new String[] { "Parameter", "Result", "Threshold", "Status" }) {
+            PdfPCell hCell = new PdfPCell(new Phrase(h, headerFont));
+            hCell.setBackgroundColor(new BaseColor(33, 82, 149));
+            hCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            hCell.setPadding(4);
+            compTable.addCell(hCell);
+        }
+        if (dto.getParameterResults() != null) {
+            for (ComplianceEvaluationResult.ParameterResult pr : dto.getParameterResults()) {
+                compTable.addCell(new Phrase(safe(pr.getDisplayName()), cellFont));
+                String rv = safe(pr.getResultValue());
+                if (pr.getUnits() != null && !pr.getUnits().isEmpty()) {
+                    rv += " " + pr.getUnits();
+                }
+                compTable.addCell(new Phrase(rv, cellFont));
+                compTable.addCell(new Phrase(safe(pr.getThresholdDisplay()), cellFont));
+                compTable.addCell(new Phrase(pr.getStatus() != null ? pr.getStatus().toString() : "–", cellFont));
+            }
+        }
+        doc.add(compTable);
+    }
+
+    private void addSignatureTable(Document doc, ComplianceReportOrderDTO dto, Font sectionFont, Font labelFont,
+            Font cellFont) throws DocumentException {
+        doc.add(new Phrase("\n\nSIGNATURES\n\n", sectionFont));
+        PdfPTable sigTable = new PdfPTable(2);
+        sigTable.setWidthPercentage(100);
+        sigTable.addCell(buildSignatureCell(dto.getAnalystSignature(), "Lab Analyst", labelFont, cellFont));
+        sigTable.addCell(buildSignatureCell(dto.getManagerSignature(), "Lab Manager", labelFont, cellFont));
+        doc.add(sigTable);
     }
 
     private void addTwoColSection(Document doc, Font sectionFont, Font labelFont, Font cellFont, String title,
