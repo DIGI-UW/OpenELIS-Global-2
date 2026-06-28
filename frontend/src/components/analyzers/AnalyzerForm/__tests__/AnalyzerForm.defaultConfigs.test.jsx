@@ -57,6 +57,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
       category: "CHEMISTRY",
     },
     {
+      id: "astm/genexpert-astm",
+      protocol: "ASTM",
+      analyzerName: "Cepheid GeneXpert (ASTM Mode)",
+      manufacturer: "Cepheid",
+      category: "MOLECULAR",
+    },
+    {
       id: "hl7/abbott-architect",
       protocol: "HL7",
       analyzerName: "Abbott Architect",
@@ -118,6 +125,31 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     ],
   };
 
+  const mockGeneXpertConfig = {
+    schema_version: "1.0",
+    analyzer_name: "Cepheid GeneXpert (ASTM Mode)",
+    manufacturer: "Cepheid",
+    category: "MOLECULAR",
+    protocol: "ASTM",
+    protocol_version: "LIS2-A2",
+    identifier_pattern: "GENEXPERT|CEPHEID.*GX",
+    transport: "RS-232 Serial",
+    test_mappings: [
+      {
+        analyzer_code: "MTB",
+        test_name_hint: "Mycobacterium tuberculosis",
+        loinc: "38379-4",
+        unit: "",
+      },
+    ],
+    result_value_mappings: [
+      {
+        analyzer_value: "POS",
+        openelis_value: "Positive",
+      },
+    ],
+  };
+
   const mockQuantstudioConfig = {
     profileMeta: {
       id: "quantstudio",
@@ -154,6 +186,8 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
           callback(mockBC2000Config);
         } else if (protocol === "astm" && name === "mindray-ba88a") {
           callback(mockBA88AConfig);
+        } else if (protocol === "astm" && name === "genexpert-astm") {
+          callback(mockGeneXpertConfig);
         } else if (protocol === "file" && name === "quantstudio") {
           callback(mockQuantstudioConfig);
         } else {
@@ -285,6 +319,46 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
       "Target Name": "testCode",
       "Quantity Mean": "result",
     });
+  });
+
+  test("preselects ASTM profile from setup URL with the generic ASTM plugin", async () => {
+    renderAtRoute("/analyzers?add=1&profile=astm%2Fgenexpert-astm");
+
+    await waitFor(() => {
+      expect(analyzerService.getDefaultConfig).toHaveBeenCalledWith(
+        "astm",
+        "genexpert-astm",
+        expect.any(Function),
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("analyzer-form-default-config-dropdown"),
+      ).toHaveTextContent(/GeneXpert/i);
+    });
+    expect(
+      screen.getByTestId("analyzer-form-identifier-pattern-input"),
+    ).toHaveValue("GENEXPERT|CEPHEID.*GX");
+
+    await userEvent.type(
+      screen.getByTestId("analyzer-form-name-input"),
+      "Main lab GeneXpert",
+      { delay: 0 },
+    );
+    await userEvent.click(screen.getByTestId("analyzer-form-save-button"));
+
+    await waitFor(() => {
+      expect(analyzerService.createAnalyzer).toHaveBeenCalledTimes(1);
+    });
+
+    const submitPayload = analyzerService.createAnalyzer.mock.calls[0][0];
+    expect(submitPayload.defaultConfigId).toBe("astm/genexpert-astm");
+    expect(submitPayload.pluginTypeId).toBe("1");
+    expect(submitPayload.analyzerType).toBe("MOLECULAR");
+    expect(submitPayload.identifierPattern).toBe("GENEXPERT|CEPHEID.*GX");
+    expect(submitPayload.fileFormat).toBeNull();
+    expect(submitPayload.importDirectory).toBeNull();
   });
 
   // Tests below require Carbon Dropdown interaction (click → select option)

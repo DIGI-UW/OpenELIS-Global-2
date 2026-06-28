@@ -424,6 +424,10 @@ const ControlLotSetup = () => {
                       labelText={intl.formatMessage({
                         id: "qc.controlLot.field.expiration",
                       })}
+                      value={values.expirationDate}
+                      onChange={(event) =>
+                        setFieldValue("expirationDate", event.target.value)
+                      }
                       onBlur={handleBlur("expirationDate")}
                       invalid={
                         touched.expirationDate && !!errors.expirationDate

@@ -377,6 +377,7 @@
   "analyzer.form.defaults.error": "Failed to load default configuration",
   "analyzer.form.defaults.loaded": "Default configuration loaded",
   "analyzer.form.defaults.loaded.subtitle": "Template for {name} has been loaded. Customize as needed before saving.",
+  "analyzer.form.defaults.missingGenericPlugin": "No active generic {protocol} analyzer plugin is available for this profile.",
   "analyzer.form.editTitle": "Edit Analyzer",
   "analyzer.form.error.invalidCommunicationMode": "Invalid communication mode: {value}. Valid values: {validValues}",
   "analyzer.form.error.invalidProtocolVersion": "Invalid protocol version: {value}. Valid values: {validValues}",

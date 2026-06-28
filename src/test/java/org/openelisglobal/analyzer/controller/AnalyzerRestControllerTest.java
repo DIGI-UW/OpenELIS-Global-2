@@ -133,6 +133,16 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.name").value(uniqueName));
     }
 
+    @Test
+    public void testCreateAnalyzer_WithActiveStatus_ReturnsBadRequest() throws Exception {
+        String uniqueName = "TEST-CreateActive-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"MOLECULAR\",\"status\":\"ACTIVE\",\"testUnitIds\":[]}";
+
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
+    }
+
     /**
      * Test: POST /rest/analyzer/analyzers/{id}/test-connection tests connection
      */
@@ -230,6 +240,29 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
                 .content(updateBody)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(analyzerId))
                 .andExpect(jsonPath("$.name").value("Updated Name"));
+    }
+
+    @Test
+    public void testUpdateAnalyzer_WithActiveStatus_ReturnsBadRequestAndDoesNotActivate() throws Exception {
+        String uniqueName = "TEST-UpdateActive-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\",\"ipAddress\":\"" + testIp
+                + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("SETUP")).andReturn();
+
+        Map<String, Object> responseMap = objectMapper.readValue(createResult.getResponse().getContentAsString(),
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
+
+        mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"ACTIVE\"}")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SETUP"));
     }
 
     /**

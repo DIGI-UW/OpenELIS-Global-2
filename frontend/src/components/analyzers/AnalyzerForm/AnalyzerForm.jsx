@@ -38,6 +38,21 @@ import {
 } from "../constants";
 import "./AnalyzerForm.css";
 
+const isGenericPluginType = (pluginType) =>
+  pluginType?.isGenericPlugin === true ||
+  pluginType?.isGenericPlugin === "true" ||
+  pluginType?.genericPlugin === true ||
+  pluginType?.genericPlugin === "true";
+
+const findGenericPluginTypeByProtocol = (pluginTypes, protocol) => {
+  const normalizedProtocol = protocol?.toUpperCase();
+  return pluginTypes.find(
+    (type) =>
+      isGenericPluginType(type) &&
+      type.protocol?.toUpperCase() === normalizedProtocol,
+  );
+};
+
 const AnalyzerForm = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -76,11 +91,11 @@ const AnalyzerForm = () => {
   const closeTimeoutRef = useRef(null);
 
   const [defaultConfigs, setDefaultConfigs] = useState([]);
-  const [loadingDefaults, setLoadingDefaults] = useState(false);
+  const [loadingDefaults, setLoadingDefaults] = useState(true);
   const [selectedDefault, setSelectedDefault] = useState(null);
 
   const [pluginTypes, setPluginTypes] = useState([]);
-  const [loadingPluginTypes, setLoadingPluginTypes] = useState(false);
+  const [loadingPluginTypes, setLoadingPluginTypes] = useState(true);
 
   // Analyzer type options (must match DB analyzer_type column values)
   const analyzerTypeOptions = [
@@ -195,15 +210,16 @@ const AnalyzerForm = () => {
   const selectedPluginType = pluginTypes.find(
     (t) => t.id === formData.pluginTypeId,
   );
-  const isGenericPlugin = selectedPluginType?.isGenericPlugin === true;
+  const isGenericPlugin = isGenericPluginType(selectedPluginType);
   const isFileProtocol = selectedPluginType?.protocol?.toUpperCase() === "FILE";
 
   const sortedPluginTypes = useMemo(() => {
     const protocolOrder = { ASTM: 0, HL7: 1, FILE: 2 };
     return [...pluginTypes].sort((a, b) => {
-      if (a.isGenericPlugin !== b.isGenericPlugin)
-        return b.isGenericPlugin ? 1 : -1;
-      if (a.isGenericPlugin && b.isGenericPlugin) {
+      const aIsGeneric = isGenericPluginType(a);
+      const bIsGeneric = isGenericPluginType(b);
+      if (aIsGeneric !== bIsGeneric) return bIsGeneric ? 1 : -1;
+      if (aIsGeneric && bIsGeneric) {
         return (
           (protocolOrder[a.protocol] ?? 99) - (protocolOrder[b.protocol] ?? 99)
         );
@@ -309,10 +325,28 @@ const AnalyzerForm = () => {
           // Set plugin/protocol-level fields only — NOT instance-level (name, port, IP)
           const protocolUpper = protocol.toUpperCase();
           // Auto-resolve pluginTypeId from config protocol
-          const matchingPluginType = pluginTypes.find(
-            (t) =>
-              t.isGenericPlugin && t.protocol?.toUpperCase() === protocolUpper,
+          const matchingPluginType = findGenericPluginTypeByProtocol(
+            pluginTypes,
+            protocolUpper,
           );
+
+          if (!matchingPluginType) {
+            setNotification({
+              kind: "error",
+              title: intl.formatMessage({
+                id: "analyzer.form.defaults.error",
+              }),
+              subtitle: intl.formatMessage(
+                {
+                  id: "analyzer.form.defaults.missingGenericPlugin",
+                  defaultMessage:
+                    "No active generic {protocol} analyzer plugin is available for this profile.",
+                },
+                { protocol: protocolUpper },
+              ),
+            });
+            return;
+          }
 
           // Base fields from profile
           const baseUpdates = {
@@ -391,7 +425,12 @@ const AnalyzerForm = () => {
   );
 
   useEffect(() => {
-    if (isEditMode || loadingDefaults || loadingPluginTypes) {
+    if (
+      isEditMode ||
+      loadingDefaults ||
+      loadingPluginTypes ||
+      pluginTypes.length === 0
+    ) {
       return;
     }
     const params = new URLSearchParams(location.search || "");
