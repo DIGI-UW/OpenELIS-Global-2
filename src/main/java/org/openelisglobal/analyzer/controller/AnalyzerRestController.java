@@ -1540,6 +1540,16 @@ public class AnalyzerRestController extends BaseRestController {
                     template.put("analyzerName", analyzerName);
                     template.put("manufacturer", manufacturer);
                     template.put("category", category);
+                    template.put("profileId", profileMeta != null ? profileMeta.get("id") : filename);
+                    template.put("displayName",
+                            profileMeta != null && profileMeta.get("displayName") != null
+                                    ? profileMeta.get("displayName")
+                                    : analyzerName);
+                    template.put("supportedConnectionMode", supportedConnectionMode(config, protocol));
+                    template.put("testMappingCount", listSize(config.get("default_test_mappings")));
+                    template.put("qcRuleCount", qcRuleCount(config));
+                    template.put("resultValueMappingCount", resultValueMappingCount(config));
+                    template.put("readinessStatus", readinessStatus(config, protocol));
 
                     templates.add(template);
                 } catch (Exception e) {
@@ -1549,6 +1559,79 @@ public class AnalyzerRestController extends BaseRestController {
         } catch (IOException e) {
             logger.warn("Failed to list template files in {}: {}", directory, e.getMessage());
         }
+    }
+
+    private String supportedConnectionMode(Map<String, Object> config, String fallbackProtocol) {
+        String protocolName = protocolName(config, fallbackProtocol);
+        if ("FILE".equalsIgnoreCase(protocolName)) {
+            return "FILE";
+        }
+        Object transport = config.get("transport");
+        if (transport instanceof List<?> transports && !transports.isEmpty()) {
+            return String.valueOf(transports.get(0));
+        }
+        return protocolName;
+    }
+
+    private int qcRuleCount(Map<String, Object> config) {
+        Object configDefaults = config.get("configDefaults");
+        if (configDefaults instanceof Map<?, ?> defaults) {
+            return listSize(defaults.get("qcRules"));
+        }
+        return 0;
+    }
+
+    private int resultValueMappingCount(Map<String, Object> config) {
+        int count = 0;
+        Object resultInterpretation = config.get("result_interpretation");
+        if (resultInterpretation instanceof Map<?, ?> interpretation) {
+            count += mapSize(interpretation.get("qualitative_values"));
+            count += mapSize(interpretation.get("valueMappings"));
+            count += mapSize(interpretation.get("resultValueMappings"));
+        }
+        Object configDefaults = config.get("configDefaults");
+        if (configDefaults instanceof Map<?, ?> defaults) {
+            count += mapSize(defaults.get("resultValueMappings"));
+        }
+        Object mappings = config.get("default_test_mappings");
+        if (mappings instanceof List<?> tests) {
+            for (Object test : tests) {
+                if (test instanceof Map<?, ?> testMap) {
+                    count += listSize(testMap.get("values"));
+                }
+            }
+        }
+        return count;
+    }
+
+    private String readinessStatus(Map<String, Object> config, String fallbackProtocol) {
+        Object profileMetaObj = config.get("profileMeta");
+        if (profileMetaObj instanceof Map<?, ?> profileMeta && profileMeta.get("status") != null) {
+            return String.valueOf(profileMeta.get("status"));
+        }
+        String protocolName = protocolName(config, fallbackProtocol);
+        boolean hasIdentity = !isBlank(
+                profileMetaObj instanceof Map<?, ?> profileMeta ? profileMeta.get("displayName") : null);
+        if ("FILE".equalsIgnoreCase(protocolName)) {
+            return hasIdentity && config.get("column_mapping") instanceof Map<?, ?> ? "READY" : "DRAFT";
+        }
+        return hasIdentity && listSize(config.get("default_test_mappings")) > 0 ? "READY" : "DRAFT";
+    }
+
+    private String protocolName(Map<String, Object> config, String fallbackProtocol) {
+        Object protocolObj = config.get("protocol");
+        if (protocolObj instanceof Map<?, ?> protocolMap && protocolMap.get("name") != null) {
+            return String.valueOf(protocolMap.get("name")).toUpperCase();
+        }
+        return fallbackProtocol != null ? fallbackProtocol.toUpperCase() : "";
+    }
+
+    private int listSize(Object value) {
+        return value instanceof List<?> list ? list.size() : 0;
+    }
+
+    private int mapSize(Object value) {
+        return value instanceof Map<?, ?> map ? map.size() : 0;
     }
 
     private String validateProfileMeta(Map<String, Object> config, String templateId) {
