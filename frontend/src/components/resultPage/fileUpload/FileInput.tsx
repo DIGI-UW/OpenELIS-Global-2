@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ChangeEvent, memo } from "react";
-import { FileUploader } from "@carbon/react";
+import { FileUploaderButton } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import { toBase64 } from "../../utils/Utils";
 
@@ -95,14 +95,22 @@ const CompactFileInput: React.FC<CompactFileInputProps> = memo(
     }, [results, data.accessionNumber]);
 
     return (
-      <FileUploader
-        buttonLabel={<FormattedMessage id="label.button.uploadfile" />}
-        filenameStatus={currentFile ? "complete" : ""}
-        accept={["image/jpeg", "image/png", "application/pdf"]}
-        multiple={false}
-        onChange={handleUpload}
-        filename={currentFile?.fileName}
-      />
+      <div className="cds--form-item">
+        <span
+          className="cds--label"
+          aria-hidden="true"
+          style={{ display: "block" }}
+        >
+          &nbsp;
+        </span>
+        <FileUploaderButton
+          labelText={<FormattedMessage id="label.button.uploadfile" />}
+          accept={["image/jpeg", "image/png", "application/pdf"]}
+          multiple={false}
+          onChange={handleUpload}
+          disableLabelChanges
+        />
+      </div>
     );
   },
 );
