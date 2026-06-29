@@ -23,6 +23,7 @@ export const V1_SECTIONS = [
   "analyzers",
   "alerts",
   "reflex-calc",
+  "localization",
   "display-order",
 ];
 

@@ -27,6 +27,7 @@ import ReagentsSection from "./sections/ReagentsSection";
 import LabelsSection from "./sections/LabelsSection";
 import AlertsSection from "./sections/AlertsSection";
 import ReflexCalcSection from "./sections/ReflexCalcSection";
+import LocalizationSection from "./sections/LocalizationSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
 
 /**
@@ -238,6 +239,8 @@ const TestCatalogEditor = () => {
                 <AlertsSection testId={testId} />
               ) : activeSection === "reflex-calc" ? (
                 <ReflexCalcSection testId={testId} />
+              ) : activeSection === "localization" ? (
+                <LocalizationSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />
