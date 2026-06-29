@@ -347,8 +347,10 @@ public class PatientDashBoardProvider {
             case ORDERS_IN_PROGRESS:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-                metrics.setOrdersInProgress(restricted ? countBySections(userSectionIds, statusIdList, false)
-                        : analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
+                // Counts the same set as the ORDERS_IN_PROGRESS list (collected, excluding QC,
+                // not restricted by test section) so the tile count matches the list.
+                metrics.setOrdersInProgress(
+                        analysisService.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statusIdList));
                 break;
             case ORDERS_READY_FOR_VALIDATION:
                 statusIdList = new ArrayList<>();
@@ -497,7 +499,7 @@ public class PatientDashBoardProvider {
         switch (listType) {
         case ORDERS_IN_PROGRESS:
             analyses = analysisService
-                    .getAnalysesForStatusIdExcludingQc(iStatusService.getStatusID(AnalysisStatus.NotStarted));
+                    .getCollectedAnalysesForStatusIdExcludingQc(iStatusService.getStatusID(AnalysisStatus.NotStarted));
             return convertAnalysesToOrderBean(analyses);
         case ORDERS_READY_FOR_VALIDATION:
             analyses = analysisService
