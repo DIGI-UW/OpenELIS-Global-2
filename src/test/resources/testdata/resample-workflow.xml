@@ -80,6 +80,12 @@
     <status_of_sample id="5" name="Test Canceled" code="5"
         status_type="ANALYSIS" description="Analysis canceled" is_active="Y"
         lastupdated="2023-11-01 12:00:00" />
+    <!-- id=6 the ORDER "Test Entered" status — a resample creates the replacement
+        at OrderStatus.Entered so it enters reception / result entry like a normal
+        order (StatusService maps name "Test Entered" -> OrderStatus.Entered). -->
+    <status_of_sample id="6" name="Test Entered" code="6"
+        status_type="ORDER" description="Order entered for testing"
+        is_active="Y" lastupdated="2023-11-01 12:00:00" />
 
     <!-- Original order. Carries the order-context fields a resample must preserve
         (FR-10.3 "site, compliance standard(s)... default conditions"): collection
@@ -102,6 +108,23 @@
         program_code="SILNAS" lastupdated="2024-02-12 10:00:00" />
     <sample_projects id="1" samp_id="1" proj_id="1"
         is_permanent="Y" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Compliance standard linked to the original order. The resample must
+        copy the sample_compliance_standards link onto the replacement (FR-10.3)
+        so it is eligible in the compliance report, not only shown in the order-entry
+        form. -->
+    <compliance_standard id="9001"
+        fhir_uuid="ce000099-0000-0000-0000-000000000001"
+        name="PP No. 22/2021 - Water Quality" version="2021"
+        description="Water quality regulation" issuing_body="Government"
+        regulation_number="PP 22/2021" country_region="Indonesia"
+        status="ACTIVE" effective_date="2024-01-01" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <!-- High id (9001), per the fixture convention, so the resample's sequence-generated
+        replacement link does not collide with this seeded row's primary key. -->
+    <sample_compliance_standards id="9001"
+        sample_id="1" compliance_standard_id="9001" priority="0"
+        created_date="2024-02-12 10:00:00" last_updated="2024-02-12 10:00:00" />
 
     <!-- Questionnaire / "default conditions" captured at order entry. -->
     <observation_history_type id="1"

@@ -22,6 +22,7 @@ import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFac
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -31,9 +32,11 @@ import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.sample.service.SampleComplianceStandardService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -100,6 +103,9 @@ public class ResampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SampleProjectService sampleProjectService;
+
+    @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
 
     @Autowired
     private SampleTypeRequestService sampleTypeRequestService;
@@ -205,8 +211,41 @@ public class ResampleServiceTest extends BaseWebContextSensitiveTest {
         assertNotEquals("fresh lab number, not the original's", ORIGINAL_ACCESSION, replacement.getAccessionNumber());
         assertEquals("replacement carries the freshly generated lab number", REPLACEMENT_ACCESSION,
                 replacement.getAccessionNumber());
-        assertEquals("draft awaits collection (Entered)", statusService.getStatusID(SampleStatus.Entered),
-                replacement.getStatusId());
+        // The replacement sample must carry the ORDER-workflow status, not the SAMPLE
+        // status, or it never surfaces in reception / result entry (OGC-580
+        // regression).
+        assertEquals("replacement sample is at OrderStatus.Entered so it enters the result-entry pipeline",
+                statusService.getStatusID(OrderStatus.Entered), replacement.getStatusId());
+
+        List<SampleItem> replacementItems = sampleItemService.getSampleItemsBySampleId(result.getNewSampleId());
+        assertEquals("replacement has the single cloned specimen", 1, replacementItems.size());
+        assertEquals("the cloned specimen carries the sample-level status (SampleStatus.Entered)",
+                statusService.getStatusID(SampleStatus.Entered), replacementItems.get(0).getStatusId());
+    }
+
+    /**
+     * FR-10.3: the replacement must carry the original's compliance standard(s).
+     * The link lives in sample_compliance_standards (the normalized table the
+     * compliance report reads), so the resample must copy those rows — copying only
+     * the observation_history representation would leave the replacement "No
+     * standard linked" in the report.
+     */
+    @Test
+    public void resample_copiesTheComplianceStandardLinkToTheReplacement() {
+        List<SampleComplianceStandard> originalLinks = sampleComplianceStandardService
+                .getAllForSample(ORIGINAL_SAMPLE_ID);
+        assertEquals("fixture sanity: the original order has one compliance standard", 1, originalLinks.size());
+        String standardId = originalLinks.get(0).getComplianceStandard().getId();
+
+        ResampleResult result = resampleService.resample(firstItemId(), REASON, TEST_USER_ID);
+
+        List<SampleComplianceStandard> replacementLinks = sampleComplianceStandardService
+                .getAllForSample(result.getNewSampleId());
+        assertEquals("replacement carries exactly one copied compliance standard link", 1, replacementLinks.size());
+        assertEquals("replacement is linked to the same compliance standard as the original", standardId,
+                replacementLinks.get(0).getComplianceStandard().getId());
+        assertNotEquals("the link is a new row for the replacement, not the original's row",
+                originalLinks.get(0).getId(), replacementLinks.get(0).getId());
     }
 
     @Test

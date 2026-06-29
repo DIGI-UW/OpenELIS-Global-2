@@ -2,6 +2,7 @@ package org.openelisglobal.sampleacceptance.service;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,6 +14,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notification.service.NotificationContext;
 import org.openelisglobal.notification.service.NotificationTriggerDispatcher;
@@ -24,9 +26,11 @@ import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.sample.service.SampleComplianceStandardService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -77,6 +81,9 @@ public class ResampleServiceImpl implements ResampleService {
     private SampleProjectService sampleProjectService;
 
     @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+
+    @Autowired
     private SampleTypeRequestService sampleTypeRequestService;
 
     @Autowired
@@ -122,14 +129,18 @@ public class ResampleServiceImpl implements ResampleService {
         nceSpecimenService.insert(specimen);
 
         // 2. Create the replacement draft order, pre-populated from the parent order.
-        String enteredStatusId = statusService.getStatusID(SampleStatus.Entered);
+        // The sample carries the order-workflow status (OrderStatus.Entered) so it
+        // surfaces in reception and result entry like a normal order; the sample item
+        // carries the sample-level status.
+        String orderEnteredStatusId = statusService.getStatusID(OrderStatus.Entered);
+        String itemEnteredStatusId = statusService.getStatusID(SampleStatus.Entered);
         Sample replacement = new Sample();
         replacement.setAccessionNumber(newAccession);
         replacement.setDomain(original.getDomain());
         replacement.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
         replacement.setEnteredDate(today);
         replacement.setRevision("0");
-        replacement.setStatusId(enteredStatusId);
+        replacement.setStatusId(orderEnteredStatusId);
         replacement.setResampledFromSampleId(originalSampleId);
         // Carry the order-context scalars that identify the order rather than the
         // physical specimen (FR-10.3). Collection/received timestamps are intentionally
@@ -179,6 +190,24 @@ public class ResampleServiceImpl implements ResampleService {
             sampleProject.setSysUserId(sysUserId);
             sampleProjectService.insert(sampleProject);
         }
+        // Copy the compliance standard link(s) (FR-10.3) from
+        // sample_compliance_standards so
+        // the replacement is eligible in the compliance report, not only shown in the
+        // entry form.
+        List<SampleComplianceStandard> originalStandards = sampleComplianceStandardService
+                .getAllForSample(originalSampleId);
+        if (!originalStandards.isEmpty()) {
+            List<SampleComplianceStandard> copies = new ArrayList<>();
+            for (SampleComplianceStandard originalStandard : originalStandards) {
+                SampleComplianceStandard copy = new SampleComplianceStandard();
+                copy.setSample(replacement);
+                copy.setComplianceStandard(originalStandard.getComplianceStandard());
+                copy.setPriority(originalStandard.getPriority());
+                copy.setSysUserId(sysUserId);
+                copies.add(copy);
+            }
+            sampleComplianceStandardService.replaceAllForSample(newSampleId, copies);
+        }
 
         // 4. Clone ONLY the failed specimen and its tests onto the replacement as a
         // fresh draft. The specimen awaits collection (Entered) and analyses start
@@ -192,7 +221,7 @@ public class ResampleServiceImpl implements ResampleService {
         newItem.setSortOrder(originalItem.getSortOrder());
         newItem.setQuantity(originalItem.getQuantity());
         newItem.setSourceOfSampleId(originalItem.getSourceOfSampleId());
-        newItem.setStatusId(enteredStatusId);
+        newItem.setStatusId(itemEnteredStatusId);
         newItem.setSysUserId(sysUserId);
         sampleItemService.insert(newItem);
         oldItemIdToNewItem.put(originalItem.getId(), newItem);
