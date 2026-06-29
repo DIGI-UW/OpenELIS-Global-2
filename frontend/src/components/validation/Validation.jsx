@@ -229,7 +229,13 @@ const Validation = (props) => {
       case "sampleInfo":
         return (
           <>
-            <div style={{ display: "flex", alignItems: "center" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+              }}
+            >
               <Button
                 onClick={async () => {
                   if ("clipboard" in navigator) {
