@@ -17,14 +17,19 @@ export const sampleTypesTableHeader: TableHeaderData[] = [
   },
   {
     key: "collectionDate",
-    header:
-      String(<FormattedMessage id="sample.collection.date" />) +
-      "(dd/mm/yyyy) ",
+    header: (
+      <>
+        <FormattedMessage id="sample.collection.date" /> (dd/mm/yyyy)
+      </>
+    ),
   },
   {
     key: "collectionTime",
-    header:
-      String(<FormattedMessage id="sample.collection.time" />) + "(hh:mm) ",
+    header: (
+      <>
+        <FormattedMessage id="sample.collection.time" /> (hh:mm)
+      </>
+    ),
   },
   {
     key: "collector",
