@@ -122,6 +122,14 @@ public class ComplianceReportRestController {
                 continue;
             }
 
+            // Exclude orders not yet collected (e.g. a fresh resample draft awaiting
+            // re-collection): no specimen has a collection date.
+            boolean collected = sampleItemService.getSampleItemsBySampleId(sample.getId()).stream()
+                    .anyMatch(item -> item.getCollectionDate() != null);
+            if (!collected) {
+                continue;
+            }
+
             List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
             if (links.isEmpty()) {
                 ineligibleCount++;
