@@ -1177,6 +1177,12 @@ const SampleTestSection = ({
       <h4 className="section-title">
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>
+      <p className="helper-text">
+        <FormattedMessage
+          id="sample.optional.info"
+          defaultMessage="Sample and test selection is optional at this step. Tests and sample type can be specified later during collection."
+        />
+      </p>
 
       {/* Sample Cards — only render regular (non-QC), non-rejected samples at top
           level. Rejected/resampled specimens are read-only in the QA intake-
@@ -1236,6 +1242,11 @@ const SampleTestSection = ({
                   onChange={(e) =>
                     handleSampleTypeChange(sampleIndex, e.target.value)
                   }
+                  helperText={intl.formatMessage({
+                    id: "sample.type.helper",
+                    defaultMessage:
+                      "Select a specimen type — available panels and tests update after selection.",
+                  })}
                   disabled={isReadOnly}
                 >
                   <SelectItem value="" text="" />
@@ -1266,6 +1277,11 @@ const SampleTestSection = ({
                           e.target.value,
                         )
                       }
+                      helperText={intl.formatMessage({
+                        id: "vector.lifecycleStage.helper",
+                        defaultMessage:
+                          "Developmental stage of the collected organism.",
+                      })}
                       disabled={isReadOnly}
                     >
                       <SelectItem value="" text="" />
@@ -1295,6 +1311,11 @@ const SampleTestSection = ({
                           e.target.value,
                         )
                       }
+                      helperText={intl.formatMessage({
+                        id: "vector.trapType.helper",
+                        defaultMessage:
+                          "Capture method or device used — select a sample type first.",
+                      })}
                       disabled={isReadOnly || !sample.sampleTypeId}
                     >
                       <SelectItem value="" text="" />
@@ -1314,6 +1335,11 @@ const SampleTestSection = ({
                       labelText={intl.formatMessage({
                         id: "vector.collectedVolume",
                         defaultMessage: "Quantity in Pool",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "vector.collectedVolume.helper",
+                        defaultMessage:
+                          "Number of organisms in this pool, e.g., number of mosquitoes.",
                       })}
                       value={sample.vectorFields?.collectionVolume || ""}
                       onChange={(e) =>

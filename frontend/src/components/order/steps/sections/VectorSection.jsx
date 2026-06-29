@@ -411,6 +411,18 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
           </SelectedCard>
         ) : (
           <>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "#525252",
+                margin: "0 0 0.5rem",
+              }}
+            >
+              <FormattedMessage
+                id="vector.order.site.helper"
+                defaultMessage="Only active surveillance sites appear in results. GPS coordinates are pre-filled from the site record."
+              />
+            </p>
             <TextInput
               id="vec-site-search"
               labelText=""
@@ -481,6 +493,21 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
               defaultMessage="Collection Context (optional — bionomics capture)"
             />
           </button>
+
+          {!collectionContextOpen && (
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "#525252",
+                margin: "0.25rem 0 0",
+              }}
+            >
+              <FormattedMessage
+                id="vector.order.collectionContext.helper"
+                defaultMessage="Optional — records ecological conditions at time of collection (bionomics)."
+              />
+            </p>
+          )}
 
           {collectionContextOpen && (
             <div
