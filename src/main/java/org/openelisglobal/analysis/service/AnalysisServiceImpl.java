@@ -378,6 +378,12 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String status) {
+        return baseObjectDAO.getCollectedAnalysesForStatusIdExcludingQc(status);
+    }
+
+    @Override
     public int getCountOfAnalysesForStatusIds(List<String> statusIdList) {
         return baseObjectDAO.getCountOfAnalysesForStatusIds(statusIdList);
     }
@@ -385,6 +391,11 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     public int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
         return baseObjectDAO.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList);
+    }
+
+    @Override
+    public int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
+        return baseObjectDAO.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statusIdList);
     }
 
     @Override

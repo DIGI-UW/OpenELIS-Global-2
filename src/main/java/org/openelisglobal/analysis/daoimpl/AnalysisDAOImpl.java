@@ -1119,6 +1119,26 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         return null;
     }
 
+    // Variant of getAnalysesForStatusIdExcludingQc that additionally excludes
+    // analyses whose sample item has not been collected (collection_date is null).
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException {
+
+        try {
+            String sql = "from Analysis a where a.statusId = :statusId"
+                    + " AND a.sampleItem.collectionDate IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("statusId", statusId);
+
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getCollectedAnalysesForStatusIdExcludingQc");
+        }
+
+        return null;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds)
@@ -1974,6 +1994,25 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
         } catch (HibernateException e) {
             handleException(e, "getCountOfAnalysesForStatusIdsExcludingQc");
+        }
+
+        return 0;
+    }
+
+    // Count corresponding to getCollectedAnalysesForStatusIdExcludingQc.
+    @Override
+    public int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
+        String hql = "SELECT COUNT(*) From Analysis a WHERE a.statusId IN (:analysisStatusList)"
+                + " AND a.sampleItem.collectionDate IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameterList("analysisStatusList", statusIdList);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfCollectedAnalysesForStatusIdsExcludingQc");
         }
 
         return 0;

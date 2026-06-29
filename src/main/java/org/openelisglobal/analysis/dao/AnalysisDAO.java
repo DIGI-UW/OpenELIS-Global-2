@@ -129,6 +129,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException;
 
+    List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds)
             throws LIMSRuntimeException;
 
@@ -254,6 +256,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
     int getCountOfAnalysesForStatusIds(List<String> statusIdList);
 
     int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
+
+    int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
 
     int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds);
 
