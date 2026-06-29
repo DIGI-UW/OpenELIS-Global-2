@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.Test;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.compliance.service.ComplianceEvaluationService;
+import org.openelisglobal.compliance.service.ComplianceReportArchiveService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
 import org.openelisglobal.compliance.service.LhuAmendmentService;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
@@ -32,7 +33,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
@@ -89,7 +89,7 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
     public void reissue_roleResults_passesSecurity() throws Exception {
         mockMvc.perform(post("/rest/complianceReport/reissue").with(user("analyst").roles("RESULTS"))
                 .contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
-                .andExpect(status().is(org.hamcrest.Matchers.not(403)));
+                .andExpect(status().is(org.hamcrest.CoreMatchers.not(403)));
     }
 
     @Configuration
@@ -107,29 +107,70 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
 
         @Bean
         ComplianceReportRestController complianceReportRestController() {
-            ComplianceReportRestController controller = new ComplianceReportRestController();
-            ReflectionTestUtils.setField(controller, "sampleService", mock(SampleService.class));
-            ReflectionTestUtils.setField(controller, "sampleItemService", mock(SampleItemService.class));
-            ReflectionTestUtils.setField(controller, "sampleComplianceStandardDAO",
-                    mock(SampleComplianceStandardDAO.class));
-            ReflectionTestUtils.setField(controller, "complianceEvaluationService",
-                    mock(ComplianceEvaluationService.class));
-            ReflectionTestUtils.setField(controller, "reportGenerationService",
-                    mock(ComplianceReportGenerationService.class));
-            ReflectionTestUtils.setField(controller, "electronicSignatureService",
-                    mock(ElectronicSignatureService.class));
-            ReflectionTestUtils.setField(controller, "observationHistoryService",
-                    mock(ObservationHistoryService.class));
-            ReflectionTestUtils.setField(controller, "vectorSamplingSiteService",
-                    mock(VectorSamplingSiteService.class));
-            ReflectionTestUtils.setField(controller, "resultService", mock(ResultService.class));
-            ReflectionTestUtils.setField(controller, "analysisService", mock(AnalysisService.class));
+            return new ComplianceReportRestController();
+        }
 
+        @Bean
+        SampleService sampleService() {
+            return mock(SampleService.class);
+        }
+
+        @Bean
+        SampleItemService sampleItemService() {
+            return mock(SampleItemService.class);
+        }
+
+        @Bean
+        SampleComplianceStandardDAO sampleComplianceStandardDAO() {
+            return mock(SampleComplianceStandardDAO.class);
+        }
+
+        @Bean
+        ComplianceEvaluationService complianceEvaluationService() {
+            return mock(ComplianceEvaluationService.class);
+        }
+
+        @Bean
+        ComplianceReportGenerationService reportGenerationService() {
+            return mock(ComplianceReportGenerationService.class);
+        }
+
+        @Bean
+        ElectronicSignatureService electronicSignatureService() {
+            return mock(ElectronicSignatureService.class);
+        }
+
+        @Bean
+        ObservationHistoryService observationHistoryService() {
+            return mock(ObservationHistoryService.class);
+        }
+
+        @Bean
+        VectorSamplingSiteService vectorSamplingSiteService() {
+            return mock(VectorSamplingSiteService.class);
+        }
+
+        @Bean
+        ResultService resultService() {
+            return mock(ResultService.class);
+        }
+
+        @Bean
+        AnalysisService analysisService() {
+            return mock(AnalysisService.class);
+        }
+
+        @Bean
+        ComplianceReportArchiveService archiveService() {
+            return mock(ComplianceReportArchiveService.class);
+        }
+
+        @Bean
+        LhuAmendmentService lhuAmendmentService() {
             LhuAmendmentService lhuAmendmentService = mock(LhuAmendmentService.class);
             when(lhuAmendmentService.hasBeenReleased(anyLong())).thenReturn(false);
             when(lhuAmendmentService.certificateNumberWithAmendmentSuffix(any(), any())).thenReturn("24-00001");
-            ReflectionTestUtils.setField(controller, "lhuAmendmentService", lhuAmendmentService);
-            return controller;
+            return lhuAmendmentService;
         }
     }
 }
