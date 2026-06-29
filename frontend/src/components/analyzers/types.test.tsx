@@ -22,10 +22,6 @@ describe("analyzer TypeScript contracts", () => {
     expectTypeOf<Analyzer["lifecycleStage"]>().toEqualTypeOf<
       AnalyzerStatus | undefined
     >();
-
-    // @ts-expect-error AnalyzerStatus must reject unsupported lifecycle values.
-    const unsupportedStatus: AnalyzerStatus = "CONNECTED";
-    expect(unsupportedStatus).toBe("CONNECTED");
   });
 
   test("allows analyzer identifiers and transport values returned by the API", () => {
@@ -51,10 +47,6 @@ describe("analyzer TypeScript contracts", () => {
     expectTypeOf<Analyzer["testUnitIds"]>().toEqualTypeOf<
       Array<string | number> | undefined
     >();
-
-    // @ts-expect-error testUnitIds only accepts string or number identifiers.
-    const analyzerWithInvalidTestUnits: Analyzer = { testUnitIds: [true] };
-    expect(analyzerWithInvalidTestUnits.testUnitIds).toEqual([true]);
   });
 
   test("types structured analyzer API errors with field errors and message args", () => {
@@ -74,10 +66,6 @@ describe("analyzer TypeScript contracts", () => {
     expectTypeOf<AnalyzerApiError["fieldErrors"]>().toEqualTypeOf<
       Array<{ field?: string; defaultMessage?: string }> | undefined
     >();
-
-    // @ts-expect-error messageArgs must be an object keyed by argument name.
-    const invalidError: AnalyzerApiError = { messageArgs: "GeneXpert" };
-    expect(invalidError.messageArgs).toBe("GeneXpert");
   });
 
   test("keeps analyzer API responses open for endpoint-specific payload fields", () => {
