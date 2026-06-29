@@ -164,14 +164,21 @@ describe("LaporanHasilReport", () => {
     expect(screen.getAllByText("✓ Compliant").length).toBeGreaterThan(0);
   });
 
-  it("renders Generate PDF button for each order", async () => {
+  it("renders a Generate PDF button for not-yet-generated orders and a Reissue button for already-generated orders", async () => {
     renderWithIntl(<LaporanHasilReport />);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Search/i }));
     });
 
+    // Order 101 has no lastGenerated -> Generate PDF.
+    // Order 102 was already generated (lastGenerated set) -> Reissue.
     const pdfButtons = screen.getAllByRole("button", { name: /Generate PDF/i });
-    expect(pdfButtons).toHaveLength(2);
+    expect(pdfButtons).toHaveLength(1);
+
+    const reissueButtons = screen.getAllByRole("button", {
+      name: /Reissue with Amendment/i,
+    });
+    expect(reissueButtons).toHaveLength(1);
   });
 
   it("shows empty state when no orders", async () => {
