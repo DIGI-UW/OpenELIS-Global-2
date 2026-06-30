@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- System Users -->
-    <system_user id="1" login_name="testuser" last_name="User"
-        first_name="Test" is_active="Y" is_employee="Y" />
-
-    <!-- Empty tables to ensure truncation before tests -->
-    <!-- notification_config_option will be truncated -->
-    <!-- site_information will be truncated -->
+    <!-- test-owned tables only: notification_config_option -->
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
+        here -->
 </dataset>

@@ -1,10 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <!-- System user (required by sys_user_id FK on all QC tables, and as alert
-        recipient) -->
-    <system_user id="1" login_name="testUser" last_name="Doe"
-        first_name="John" is_active="Y" is_employee="Y"
-        lastupdated="2025-01-01 12:00:00" />
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
+        here -->
 
     <!-- Analyzer (required by instrument_id FK on qc_control_lot) -->
     <analyzer id="1" name="TEST BioRad" is_active="true"

@@ -206,6 +206,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
                 jdbcConn.commit();
 
+                ensureBootstrapSystemUser();
                 // truncateTablesInConnection TRUNCATEs every table the dataset names
                 // and REFRESH re-inserts only the dataset's own rows — so a dataset
                 // that declares system_user without an id=1 row leaves the shared
@@ -267,6 +268,30 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 stmt.execute("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
                 logger.debug("Truncating table: {}", tableName);
             }
+        }
+    }
+
+    /**
+     * Idempotently ensure {@code system_user.id=1} ("admin") exists. Many fixtures
+     * reference {@code sys_user_id=1} but omit {@code system_user} from the dataset
+     * (relying on a DB seed that prior tests may have truncated). Audit-emitting
+     * services write {@code history.sys_user_id=1}; without this row those tests
+     * fail with {@code history_sysuer_fk} / {@code sample_sysuser_fk} violations.
+     */
+    protected void ensureBootstrapSystemUser() {
+        try (Connection conn = dataSource.getConnection();
+                java.sql.PreparedStatement select = conn
+                        .prepareStatement("SELECT COUNT(*) FROM clinlims.system_user WHERE id = 1");
+                java.sql.PreparedStatement insert = conn.prepareStatement(
+                        "INSERT INTO clinlims.system_user (id, login_name, first_name, last_name, is_active, is_employee, lastupdated) "
+                                + "VALUES (1, 'admin', 'John', 'Doe', 'Y', 'Y', NOW())")) {
+            try (java.sql.ResultSet rs = select.executeQuery()) {
+                if (rs.next() && rs.getInt(1) == 0) {
+                    insert.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to seed bootstrap system_user (id=1)", e);
         }
     }
 

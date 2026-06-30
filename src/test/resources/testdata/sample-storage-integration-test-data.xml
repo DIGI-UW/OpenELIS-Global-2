@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- system_user - from actual table structure -->
-    <system_user id="1" login_name="testuser" last_name="Test"
-        first_name="User" initials="TU" is_active="Y" is_employee="Y"
-        lastupdated="2024-01-01 10:00:00" />
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
+        here -->
 
     <!-- status_of_sample - common columns -->
     <status_of_sample id="1" description="Test Status"

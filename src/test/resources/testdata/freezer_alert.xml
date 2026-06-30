@@ -31,7 +31,9 @@
         humidity_offset="0.0" active="true" polling_interval_seconds="60"
         last_updated="2024-01-01 00:00:00" />
 
-    <!-- System Users -->
-    <system_user id="1" login_name="testuser" last_name="User"
-        first_name="Test" is_active="Y" is_employee="Y" />
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
+        here -->
+
+    <!-- Ensure a clean slate for alerts to prevent leakage between tests -->
+    <alert />
 </dataset>

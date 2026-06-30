@@ -2,11 +2,8 @@
 
 <dataset>
 
-    <!-- ===================== -->
-    <!-- SYSTEM_USER (required) -->
-    <!-- ===================== -->
-    <system_user id="1" login_name="itest" last_name="User"
-        first_name="Integration" is_active="Y" is_employee="Y" />
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
+        here -->
 
     <status_of_sample id="1"
         description="No tests have been run for this order" code="1"
@@ -161,7 +158,7 @@
     <!-- ===================== -->
     <sample id="10" accession_number="A-001" status_id="1"
         entered_date="2025-01-01 10:00:00" received_date="2025-01-01 10:00:00"
-        sys_user_id="1" />
+        sys_user_id="1" lastupdated="2025-01-01 00:00:00" />
     <sample_item id="110" samp_id="10" sort_order="1"
         external_id="A-001-1" typeosamp_id="1"
         collection_date="2025-01-01 10:00:00" collector="Tech" quantity="1.0"
@@ -173,7 +170,7 @@
 
     <sample id="11" accession_number="A-002" status_id="1"
         entered_date="2025-01-02 10:00:00" received_date="2025-01-02 10:00:00"
-        sys_user_id="1" />
+        sys_user_id="1" lastupdated="2025-01-02 00:00:00" />
     <sample_item id="111" samp_id="11" sort_order="1"
         external_id="A-002-1" typeosamp_id="1"
         collection_date="2025-01-02 10:00:00" collector="Tech" quantity="1.0"
@@ -187,7 +184,7 @@
         2 via shelf 6/device3) -->
     <sample id="20" accession_number="B-001" status_id="1"
         entered_date="2025-02-01 10:00:00" received_date="2025-02-01 10:00:00"
-        sys_user_id="1" />
+        sys_user_id="1" lastupdated="2025-02-01 00:00:00" />
     <sample_item id="120" samp_id="20" sort_order="1"
         external_id="B-001-1" typeosamp_id="1"
         collection_date="2025-02-01 10:00:00" collector="Tech" quantity="1.0"
@@ -199,7 +196,7 @@
 
     <sample id="21" accession_number="B-002" status_id="1"
         entered_date="2025-02-02 10:00:00" received_date="2025-02-02 10:00:00"
-        sys_user_id="1" />
+        sys_user_id="1" lastupdated="2025-02-02 00:00:00" />
     <sample_item id="121" samp_id="21" sort_order="1"
         external_id="B-002-1" typeosamp_id="1"
         collection_date="2025-02-02 10:00:00" collector="Tech" quantity="1.0"
@@ -211,7 +208,7 @@
 
     <sample id="22" accession_number="B-003" status_id="1"
         entered_date="2025-02-03 10:00:00" received_date="2025-02-03 10:00:00"
-        sys_user_id="1" />
+        sys_user_id="1" lastupdated="2025-02-03 00:00:00" />
     <sample_item id="122" samp_id="22" sort_order="1"
         external_id="B-003-1" typeosamp_id="1"
         collection_date="2025-02-03 10:00:00" collector="Tech" quantity="1.0"
@@ -224,7 +221,7 @@
     <!-- Disposed sample (status_id 24) used by status-only test -->
     <sample id="30" accession_number="DIS-001" status_id="24"
         entered_date="2025-03-01 10:00:00" received_date="2025-03-01 10:00:00"
-        sys_user_id="1" />
+        sys_user_id="1" lastupdated="2025-03-01 00:00:00" />
     <sample_item id="130" samp_id="30" sort_order="1"
         external_id="DIS-001-1" typeosamp_id="1"
         collection_date="2025-03-01 10:00:00" collector="Tech" quantity="1.0"

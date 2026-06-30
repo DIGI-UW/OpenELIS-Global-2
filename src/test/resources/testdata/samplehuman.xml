@@ -27,7 +27,7 @@
         middle_name="jolly" city="Kampala" state="Kampala metropolitan"
         zip_code="256" country="Uganda" work_phone="12345678"
         home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
-        fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+        fax="3456" email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
     <person id="5" last_name="Ataliah" first_name="Moreen"
         middle_name="amore" city="Orion" state="Texas" zip_code="001"
         country="USA" work_phone="10000001" home_phone="8000001"
