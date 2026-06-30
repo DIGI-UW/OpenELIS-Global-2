@@ -1,0 +1,161 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <!-- ───────── Localizations ───────── -->
+    <localization id="1" description="Blood Sample" />
+    <localization id="2" description="Urine Sample" />
+    <localization id="3" description="Serum Sample" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Blood Sample" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="Urine Sample" />
+    <localization_value id="3" localization_id="3"
+        locale="en" value="Serum Sample" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <!-- ───────── Types of Sample ───────── -->
+    <!-- id=1 Blood → sample_item id=1 (unassigned) -->
+    <!-- id=2 Urine → sample_item id=2 (unassigned) -->
+    <!-- id=3 Serum → sample_item id=3 (assigned to box) -->
+    <type_of_sample id="1" description="Blood Sample"
+        domain="H" name_localization_id="1" lastupdated="2024-01-01 00:00:00" />
+    <type_of_sample id="2" description="Urine Sample"
+        domain="H" name_localization_id="2" lastupdated="2024-01-01 00:00:00" />
+    <type_of_sample id="3" description="Serum Sample"
+        domain="H" name_localization_id="3" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- ───────── Status of Sample ───────── -->
+    <status_of_sample id="1" code="100"
+        status_type="SampleReceived" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- ───────── Samples (accession numbers) ───────── -->
+    <!-- ACC-001 has two sample items (blood + urine) → exercises sort-order
+        suffix logic -->
+    <!-- ACC-002 has one sample item (serum) → assigned to box -->
+    <sample id="1" accession_number="ACC-001" status_id="1"
+        received_date="2024-06-01 08:00:00" entered_date="2024-06-01 08:00:00"
+        collection_date="2024-06-01 07:00:00"
+        lastupdated="2024-06-01 08:00:00" />
+    <sample id="2" accession_number="ACC-002" status_id="1"
+        received_date="2024-06-02 09:00:00" entered_date="2024-06-02 09:00:00"
+        collection_date="2024-06-02 08:00:00"
+        lastupdated="2024-06-02 09:00:00" />
+
+    <!-- ───────── Sample Items ───────── -->
+    <!-- item 1: ACC-001 / Blood / sort_order=1 → UNASSIGNED -->
+    <sample_item id="1" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2024-06-01 07:00:00"
+        lastupdated="2024-06-01 08:00:00" />
+    <!-- item 2: ACC-001 / Urine / sort_order=2 → UNASSIGNED -->
+    <sample_item id="2" sort_order="2" status_id="1"
+        samp_id="1" typeosamp_id="2" collection_date="2024-06-01 07:00:00"
+        lastupdated="2024-06-01 08:00:00" />
+    <!-- item 3: ACC-002 / Serum / sort_order=1 → ASSIGNED to box id=1 -->
+    <sample_item id="3" sort_order="1" status_id="1"
+        samp_id="2" typeosamp_id="3" collection_date="2024-06-02 08:00:00"
+        lastupdated="2024-06-02 09:00:00" />
+
+    <!-- ───────── Organizations (referral destinations) ───────── -->
+    <organization id="1" lastupdated="2024-01-01 00:00:00"
+        name="National Reference Lab" city="Nairobi" zip_code="00100"
+        short_name="NRL" street_address="1 Reference Rd" state="NB"
+        internet_address="www.nrl.go.ke" clia_num="CLIA001" pws_id="PWS001"
+        local_abbrev="1" code="NRL001" is_active="Y" mls_sentinel_lab_flag="Y"
+        mls_lab_flag="Y" multiple_unit="HQ" />
+
+    <!-- ───────── Test Section ───────── -->
+    <test_section id="1" name="Microbiology"
+        description="Microbiology Section" is_external="N"
+        lastupdated="2024-01-01 00:00:00" sort_order="1"
+        name_localization_id="1" display_key="section.micro" />
+
+    <!-- ───────── Tests ───────── -->
+    <test id="1" name="HIV Viral Load"
+        description="HIV Viral Load Test" guid="TEST-HIV-VL-001"
+        name_localization_id="1" reporting_name_localization_id="1"
+        test_section_id="1" lastupdated="2024-01-01 00:00:00" />
+    <test id="2" name="Urine Dipstick"
+        description="Urine Dipstick Test" guid="TEST-URINE-DS-001"
+        name_localization_id="2" reporting_name_localization_id="2"
+        test_section_id="1" lastupdated="2024-01-01 00:00:00" />
+    <test id="3" name="Serum Electrolytes"
+        description="Serum Electrolytes Panel" guid="TEST-SERUM-EL-001"
+        name_localization_id="3" reporting_name_localization_id="3"
+        test_section_id="1" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- ───────── Analyses ───────── -->
+    <!-- analysis 1: sample_item 1 (Blood/unassigned) + test 1 -->
+    <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
+        revision="1" status="1" status_id="1"
+        started_date="2024-06-01 09:00:00" analysis_type="ROUTINE"
+        lastupdated="2024-06-01 09:00:00" entry_date="2024-06-01 09:00:00"
+        is_reportable="Y" referred_out="true"
+        fhir_uuid="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" />
+    <!-- analysis 2: sample_item 2 (Urine/unassigned) + test 2 -->
+    <analysis id="2" sampitem_id="2" test_sect_id="1" test_id="2"
+        revision="1" status="1" status_id="1"
+        started_date="2024-06-01 10:00:00" analysis_type="ROUTINE"
+        lastupdated="2024-06-01 10:00:00" entry_date="2024-06-01 10:00:00"
+        is_reportable="Y" referred_out="true"
+        fhir_uuid="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" />
+    <!-- analysis 3: sample_item 3 (Serum/assigned) + test 3 -->
+    <analysis id="3" sampitem_id="3" test_sect_id="1" test_id="3"
+        revision="1" status="1" status_id="1"
+        started_date="2024-06-02 10:00:00" analysis_type="ROUTINE"
+        lastupdated="2024-06-02 10:00:00" entry_date="2024-06-02 10:00:00"
+        is_reportable="Y" referred_out="true"
+        fhir_uuid="cccccccc-cccc-cccc-cccc-cccccccccccc" />
+
+    <!-- ───────── Referral Types / Reasons ───────── -->
+    <referral_type id="1" name="Sample Shipment"
+        description="Sample sent to reference lab"
+        display_key="referral.type.shipment" lastupdated="2024-01-01 00:00:00" />
+
+    <referral_reason id="1"
+        name="Test not available locally"
+        description="Test not available at origin lab"
+        display_key="referral.reason.unavailable"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- ───────── Referrals ───────── -->
+    <!-- referral 1: analysis 1 → sample_item 1 (Blood/unassigned) -->
+    <referral id="1" analysis_id="1" organization_id="1"
+        organization_name="National Reference Lab" referral_reason_id="1"
+        referral_type_id="1" requester_name="Dr. Kamau" status="CREATED"
+        canceled="false" referral_request_date="2024-06-01 11:00:00"
+        send_ready_date="2024-06-01 12:00:00"
+        lastUpdated="2024-06-01 11:00:00"
+        fhir_uuid="11111111-1111-1111-1111-111111111111" />
+    <!-- referral 2: analysis 2 → sample_item 2 (Urine/unassigned) -->
+    <referral id="2" analysis_id="2" organization_id="1"
+        organization_name="National Reference Lab" referral_reason_id="1"
+        referral_type_id="1" requester_name="Dr. Kamau" status="CREATED"
+        canceled="false" referral_request_date="2024-06-01 12:00:00"
+        send_ready_date="2024-06-01 13:00:00"
+        lastUpdated="2024-06-01 12:00:00"
+        fhir_uuid="22222222-2222-2222-2222-222222222222" />
+    <!-- referral 3: analysis 3 → sample_item 3 (Serum/assigned) -->
+    <referral id="3" analysis_id="3" organization_id="1"
+        organization_name="National Reference Lab" referral_reason_id="1"
+        referral_type_id="1" requester_name="Dr. Otieno" status="CREATED"
+        canceled="false" referral_request_date="2024-06-02 10:00:00"
+        send_ready_date="2024-06-02 11:00:00"
+        lastUpdated="2024-06-02 10:00:00"
+        fhir_uuid="33333333-3333-3333-3333-333333333333" />
+
+    <!-- ───────── Shipping Box (for the "assigned" test scenario) ───────── -->
+    <shipping_box id="1" box_id="BOX-2024-001"
+        fhir_uuid="ffffffff-ffff-ffff-ffff-ffffffffffff"
+        destination_facility_id="1" state="DRAFT"
+        created_date="2024-06-02 09:00:00" archived="false" sys_user_id="1"
+        lastupdated="2024-06-02 09:00:00" />
+
+    <!-- ───────── Box–SampleItem Assignment (sample_item 3 → box 1) ───────── -->
+    <box_sample_item id="1" shipping_box_id="1"
+        sample_item_id="3" added_date="2024-06-02 10:00:00"
+        reception_status="PENDING" sys_user_id="1"
+        lastupdated="2024-06-02 10:00:00" />
+
+</dataset>
