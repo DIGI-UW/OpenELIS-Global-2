@@ -16,6 +16,8 @@
 package org.openelisglobal.common.formfields;
 
 import java.util.Map;
+import org.openelisglobal.common.formfields.service.FormFieldConfigService;
+import org.openelisglobal.spring.util.SpringContext;
 
 public class AdminFormFields {
 
@@ -37,7 +39,12 @@ public class AdminFormFields {
     private Map<AdminFormFields.Field, Boolean> fields;
 
     private AdminFormFields() {
-        fields = new DefaultAdminFormFields().getFieldFormSet();
+        try {
+            FormFieldConfigService configService = SpringContext.getBean(FormFieldConfigService.class);
+            fields = configService.getAdminFormFields();
+        } catch (Exception e) {
+            fields = new DefaultAdminFormFields().getFieldFormSet();
+        }
     }
 
     public static AdminFormFields getInstance() {
@@ -48,7 +55,11 @@ public class AdminFormFields {
         return instance;
     }
 
+    public static void reload() {
+        instance = null;
+    }
+
     public boolean useField(AdminFormFields.Field field) {
-        return fields.get(field);
+        return fields != null && fields.containsKey(field) && fields.get(field);
     }
 }

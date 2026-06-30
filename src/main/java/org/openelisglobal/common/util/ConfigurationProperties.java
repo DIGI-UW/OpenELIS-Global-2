@@ -16,6 +16,8 @@
 package org.openelisglobal.common.util;
 
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.formfields.AdminFormFields;
+import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.util.DefaultConfigurationProperties.OEProperties;
 import org.openelisglobal.spring.util.SpringContext;
 
@@ -356,10 +358,14 @@ public abstract class ConfigurationProperties {
 
     public static void forceReload() {
         SpringContext.getBean(DefaultConfigurationProperties.class).initialize();
+        FormFields.reload();
+        AdminFormFields.reload();
         SpringContext.getBean(ConfigurationListenerService.class).refreshConfigurations();
     }
 
     public static void loadDBValuesIntoConfiguration() {
+        FormFields.reload();
+        AdminFormFields.reload();
         SpringContext.getBean(DefaultConfigurationProperties.class).loadChangedValuesFromDatabaseIntoFinalProperties();
         SpringContext.getBean(ConfigurationListenerService.class).refreshConfigurations();
     }
