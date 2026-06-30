@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Issue #3490 — Analyzer Manual QC Recording
+        Author: your_github_username
+
+        Creates the analyzer_qc_run table to persist individual manual QC
+        runs recorded against an analyzer from the import or list pages.
+        Also adds QC frequency configuration columns to the analyzer table
+        so that qcRequired/frequency rules live on the analyzer entity itself.
+    -->
+
+    <!-- ChangeSet 1: Create analyzer_qc_run table -->
+    <changeSet author="your_github_username" id="analyzer-qc-run-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_qc_run"/>
+            </not>
+        </preConditions>
+        <comment>Create analyzer_qc_run table for Issue #3490</comment>
+        <createTable tableName="analyzer_qc_run">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- PASS or FAIL -->
+            <column name="result" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Optional numeric or freetext measurement value -->
+            <column name="value" type="VARCHAR(500)"/>
+            <!-- When the QC was performed (not when it was recorded) -->
+            <column name="run_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Entry point: ANALYZER_IMPORT | ANALYZER_LIST | WORKPLAN | QC_MODULE -->
+            <column name="source" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- The user who performed (or recorded) the QC run -->
+            <column name="sys_user_id" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Optimistic lock timestamp (required by BaseObject) -->
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            constraintName="fk_analyzer_qc_run_analyzer"
+            baseTableName="analyzer_qc_run"
+            baseColumnNames="analyzer_id"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <!-- Fast lookup: last QC for an analyzer ordered by date -->
+        <createIndex indexName="idx_analyzer_qc_run_analyzer_date"
+                     tableName="analyzer_qc_run">
+            <column name="analyzer_id"/>
+            <column name="run_date" descending="true"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ChangeSet 2: Add QC frequency config columns to analyzer table -->
+    <changeSet author="your_github_username" id="analyzer-qc-run-2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer" columnName="qc_frequency_type"/>
+            </not>
+        </preConditions>
+        <comment>Add QC frequency config fields to analyzer for Issue #3490</comment>
+        <addColumn tableName="analyzer">
+            <!-- DAILY | PER_SHIFT | CUSTOM_HOURS — maps to QcFrequencyType enum -->
+            <column name="qc_frequency_type" type="VARCHAR(20)"/>
+            <!-- Used for PER_SHIFT and CUSTOM_HOURS: number of hours between runs -->
+            <column name="qc_frequency_hours" type="INTEGER"/>
+            <!-- When true, QC must PASS before results can be released -->
+            <column name="qc_required" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

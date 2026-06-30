@@ -39,6 +39,7 @@ import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
+import org.openelisglobal.analyzer.valueholder.QcFrequencyType;
 import org.openelisglobal.common.hibernateConverter.StringListConverter;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
@@ -439,11 +440,53 @@ public class Analyzer extends BaseObject<String> {
         return fhirUuid.toString();
     }
 
+
+    // ── Manual QC configuration fields (Issue #3490) ─────────────────────────
+
+    /**
+     * How often QC must be performed on this analyzer.
+     * Null means no schedule has been configured yet.
+     * Maps to QcFrequencyType: DAILY | PER_SHIFT | CUSTOM_HOURS
+     */
+    @Column(name = "qc_frequency_type", length = 20)
+    @Enumerated(EnumType.STRING)
+    private QcFrequencyType qcFrequencyType;
+
+    /**
+     * Number of hours between required QC runs.
+     * Used with PER_SHIFT (default 8 if null) and CUSTOM_HOURS frequency types.
+     */
+    @Column(name = "qc_frequency_hours")
+    private Integer qcFrequencyHours;
+
+    /**
+     * When true: QC must pass before analyzer results can be released.
+     * When false: QC status is informational only (default).
+     */
+    @Column(name = "qc_required", nullable = false)
+    private boolean qcRequired = false;
+
     /**
      * Enum for analyzer unified status field. Values must match database
      * constraint: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE,
      * DELETED, PENDING_REGISTRATION
      */
+
+    // ── QC config accessors (Issue #3490) ────────────────────────────────────
+
+    public QcFrequencyType getQcFrequencyType() { return qcFrequencyType; }
+    public void setQcFrequencyType(QcFrequencyType qcFrequencyType) {
+        this.qcFrequencyType = qcFrequencyType;
+    }
+
+    public Integer getQcFrequencyHours() { return qcFrequencyHours; }
+    public void setQcFrequencyHours(Integer qcFrequencyHours) {
+        this.qcFrequencyHours = qcFrequencyHours;
+    }
+
+    public boolean isQcRequired() { return qcRequired; }
+    public void setQcRequired(boolean qcRequired) { this.qcRequired = qcRequired; }
+
     public enum AnalyzerStatus {
         INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, DELETED, PENDING_REGISTRATION
     }
