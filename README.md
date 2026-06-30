@@ -37,6 +37,8 @@ You can find more information on how to set up OpenELIS at our
 
 [![Installer Packaging Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
 
+[![Verified by InfraScan](https://img.shields.io/badge/Verified_by-SolDevelo_InfraScan-0052cc?style=flat&logo=security)](https://github.com/soldevelo/infrascan)
+
 ### CI Architecture
 
 For the current fork/non-fork E2E validation design, artifact contracts, and
