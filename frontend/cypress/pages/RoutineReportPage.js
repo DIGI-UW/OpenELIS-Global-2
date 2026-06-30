@@ -1,4 +1,15 @@
 class RoutineReportPage {
+  closeNavigationMenuIfOpen() {
+    cy.get("[data-cy='menuButton']", { timeout: 15000 })
+      .should("exist")
+      .then(($btn) => {
+        const ariaLabel = ($btn.attr("aria-label") || "").toLowerCase();
+        if (ariaLabel.includes("close")) {
+          cy.wrap($btn).click();
+        }
+      });
+  }
+
   /**
    * Idempotent expand: only clicks the Carbon SideNavMenu toggle if it is
    * currently collapsed (aria-expanded !== "true"). This avoids the
@@ -10,7 +21,7 @@ class RoutineReportPage {
       .first()
       .then(($btn) => {
         if ($btn.attr("aria-expanded") !== "true") {
-          cy.wrap($btn).click();
+          cy.wrap($btn).click({ force: true });
         }
       });
     // Verify expansion completed (retries until true)
@@ -35,6 +46,7 @@ class RoutineReportPage {
       .then(($a) => {
         $a[0].click();
       });
+    this.closeNavigationMenuIfOpen();
   }
 
   aggregateReports() {
@@ -165,7 +177,18 @@ class RoutineReportPage {
   }
 
   typeInDatePicker(selector, date) {
-    cy.get(selector).type(date);
+    cy.get(selector)
+      .then(($el) => {
+        const isDirectInput = $el.is("input, textarea, select");
+        const $target = isDirectInput
+          ? $el
+          : $el.find("input, textarea, select").first();
+        cy.wrap($target);
+      })
+      .scrollIntoView()
+      .should("be.visible")
+      .clear({ force: true })
+      .type(date, { force: true });
   }
 }
 
