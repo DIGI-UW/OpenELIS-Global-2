@@ -17,7 +17,7 @@ OpenELIS adheres to the strictest of security standards to keep your data safe
 and supports fully featured, standards-based interoperability to make it easy to
 receive lab orders and send results to other systems
 
-Please vist our [website](http://www.openelis-global.org/) for more information.
+Please visit our [website](http://www.openelis-global.org/) for more information.
 
 You can find more information on how to set up OpenELIS at our
 [docs page](http://docs.openelis-global.org/)
@@ -115,7 +115,7 @@ speeds up the development process
 
          git clone https://github.com/username/OpenELIS-Global-2.git
 
-1.  innitialize and build sub modules
+1.  Initialize and build submodules
 
         cd OpenELIS-Global-2
         git submodule update --init --recursive
