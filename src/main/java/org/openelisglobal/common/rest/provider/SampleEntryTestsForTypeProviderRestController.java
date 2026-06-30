@@ -29,6 +29,7 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -97,6 +98,21 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     public List<IdValuePair> getUserSampleTests(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         return userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
+    }
+
+    @GetMapping(value = "sample-type-default-uoms", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, String> getSampleTypeDefaultUoms() {
+        Map<String, String> uomMap = new HashMap<>();
+        List<TypeOfSample> allTypes = typeOfSampleService.getAllTypeOfSamples();
+        if (allTypes != null) {
+            for (TypeOfSample type : allTypes) {
+                if (type.getDefaultUnitOfMeasure() != null) {
+                    uomMap.put(type.getId(), type.getDefaultUnitOfMeasure().getId());
+                }
+            }
+        }
+        return uomMap;
     }
 
     @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)

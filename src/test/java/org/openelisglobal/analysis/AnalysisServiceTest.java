@@ -351,6 +351,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         org.openelisglobal.test.valueholder.Test test = tService.get("1");
         Analysis analysis = aService.buildAnalysis(test, sampleItem);
         Assert.assertEquals("MANUAL", analysis.getAnalysisType());
+        Assert.assertNotNull(analysis.getMethod());
+        Assert.assertEquals(test.getMethod().getId(), analysis.getMethod().getId());
     }
 
     @Test

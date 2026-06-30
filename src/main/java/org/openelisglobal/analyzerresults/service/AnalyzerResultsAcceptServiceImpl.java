@@ -701,6 +701,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             analysis.setTest(test);
             analysis.setTestSection(test.getTestSection());
             analysis.setIsReportable(test.getIsReportable());
+            analysis.setMethod(test.getMethod());
             analysis.setRevision("0");
             analysis.setAnalyzerId(resultItem.getAnalyzerId());
         }

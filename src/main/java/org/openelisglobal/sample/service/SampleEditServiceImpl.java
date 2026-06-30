@@ -520,6 +520,7 @@ public class SampleEditServiceImpl implements SampleEditService {
                     analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
                     analysis.setIsReportable(test.getIsReportable());
                     analysis.setAnalysisType("MANUAL");
+                    analysis.setMethod(test.getMethod());
                     analysis.setStartedDate(DateUtil.getNowAsTimestamp());
                 }
 

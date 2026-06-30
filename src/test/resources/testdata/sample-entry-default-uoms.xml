@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <unit_of_measure id="100" name="mL"
+        description="Milliliters" />
+
+    <localization id="9200" description="sample type serum" />
+    <localization id="9201" description="sample type swab" />
+
+    <type_of_sample id="200" name_localization_id="9200"
+        description="Serum" domain="H" lastupdated="2026-03-14 12:00:00"
+        default_uom_id="100" />
+    <type_of_sample id="201" name_localization_id="9201"
+        description="Swab" domain="H" lastupdated="2026-03-14 12:00:00" />
+</dataset>
