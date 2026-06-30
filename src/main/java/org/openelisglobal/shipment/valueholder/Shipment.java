@@ -59,6 +59,9 @@ public class Shipment extends BaseObject<Integer> {
     @Column(name = "status", nullable = false, length = 50)
     private ShipmentStatus status;
 
+    @Column(name = "sys_user_id", nullable = false)
+    private Integer systemUserId;
+
     public Shipment() {
         this.status = ShipmentStatus.PENDING;
     }
@@ -143,5 +146,13 @@ public class Shipment extends BaseObject<Integer> {
 
     public void setStatus(ShipmentStatus status) {
         this.status = status;
+    }
+
+    public Integer getSystemUserId() {
+        return systemUserId;
+    }
+
+    public void setSystemUserId(Integer systemUserId) {
+        this.systemUserId = systemUserId;
     }
 }
