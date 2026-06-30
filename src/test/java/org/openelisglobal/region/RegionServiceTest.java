@@ -84,4 +84,49 @@ public class RegionServiceTest extends BaseWebContextSensitiveTest {
         region.setLastupdated(new Timestamp(System.currentTimeMillis()));
         return region;
     }
+
+    @Test
+    public void getRegionByInvalidId_shouldReturnNull() {
+        Region region = regionService.get("999");
+        Assert.assertNull(region);
+    }
+
+    @Test
+    public void updateRegion_shouldPersistUpdatedValue() throws Exception {
+        Region region = regionService.get("2");
+        Assert.assertNotNull(region);
+
+        region.setRegion("New Region Name");
+        regionService.update(region);
+
+        Region updatedRegion = regionService.get("2");
+        Assert.assertEquals("New Region Name", updatedRegion.getRegion());
+    }
+
+    @Test
+    public void deleteAllRegions_shouldRemoveAllRegions() throws Exception {
+        Assert.assertEquals(5, regionService.getAll().size());
+
+        List<Region> regions = regionService.getAll();
+
+        for (Region region : regions) {
+            if (region.getLastupdated() == null) {
+                region.setLastupdated(new Timestamp(System.currentTimeMillis()));
+            }
+        }
+
+        regionService.deleteAll(regions);
+
+        Assert.assertEquals(0, regionService.getAll().size());
+    }
+
+    @Test
+    public void regionEntity_shouldSetAndGetRegionName() {
+        Region region = new Region();
+
+        region.setRegion("South Zone");
+
+        Assert.assertEquals("South Zone", region.getRegion());
+        Assert.assertNull(region.getId());
+    }
 }
