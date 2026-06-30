@@ -1708,13 +1708,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
                     List<Test> tests = testService.getTestsByLoincCode(code.getCode());
                     if (tests.isEmpty()) {
-                        throw new InternalErrorException("No test with loinc code " + code.getCode());
+                        throw new UnprocessableEntityException("No test with loinc code " + code.getCode());
                     }
 
                     if (tests.getFirst().getLoinc().equals(code.getCode())) {
                         bean.setTestId(tests.getFirst().getId());
                     } else {
-                        throw new InternalErrorException("Observation code " + code.getCode()
+                        throw new UnprocessableEntityException("Observation code " + code.getCode()
                                 + " does not match test loinc code " + tests.getFirst().getLoinc());
                     }
 
@@ -1723,7 +1723,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             }
 
             if (!matchedLoinc) {
-                throw new InternalErrorException("Observation has code but no LOINC code was found");
+                throw new UnprocessableEntityException("Observation has code but no LOINC code was found");
             }
         }
 
@@ -2050,6 +2050,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Test test = analysis.getTest();
         SampleItem sampleItem = analysis.getSampleItem();
         Patient patient = sampleHumanService.getPatientForSample(sampleItem.getSample());
+        Provider provider = sampleHumanService.getProviderForSample(sampleItem.getSample());
         Observation observation = new Observation();
 
         observation.setId(result.getFhirUuidAsString());
@@ -2135,6 +2136,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             observation.setEffective(new DateTimeType(analysis.getStartedDate()));
         }
         // observation.setIssued(new Date());
+        List<Reference> performers = new ArrayList<>();
+        performers.add(this.createReferenceFor(ResourceType.Practitioner, provider.getFhirUuidAsString()));
+        observation.setPerformer(performers);
 
         return observation;
     }

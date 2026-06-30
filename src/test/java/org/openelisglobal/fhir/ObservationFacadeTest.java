@@ -93,6 +93,260 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void createObservation_withoutLoincCode_shouldReturn422() throws Exception {
+
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 85.5,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+    }
+
+    @Test
+    public void createObservation_withInvalidLoincCode_shouldReturn422() throws Exception {
+
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "999999",
+                      "display": "Invalid LOINC"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 85.5,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+    }
+
+    @Test
+    public void createObservation_withoutValueQuantity_shouldReturn422() throws Exception {
+
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00"
+                }
+                """.formatted(patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+    }
+
+    @Test
+    public void createObservation_withoutStatus_shouldReturn422() throws Exception {
+
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 85.5,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        int statusCode = response.getStatus();
+        assertTrue(statusCode == 400 || statusCode == 422);
+    }
+
+    @Test
     public void readObservation_withNonExistentId_shouldReturn404() throws Exception {
 
         String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
@@ -299,4 +553,419 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         assertNotNull("Result should be persisted in the database", createdResult);
         assertEquals("85.5", createdResult.getValue());
     }
+
+    @Test
+    public void createObservation_withoutServiceRequestShouldThrow422() throws Exception {
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 85.5,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(patientFhirUuid, specimenFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+
+    }
+
+    @Test
+    public void createObservation_withoutSpecimenShouldThrow422() throws Exception {
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 85.5,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(patientFhirUuid, analysisFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+
+    }
+
+    @Test
+    public void createObservation_withoutBasedOnShouldThrow422() throws Exception {
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 85.5,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+
+    }
+
+    @Test
+    public void updateObservation_withoutServiceRequest_shouldReturn422() throws Exception {
+        String observationFhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+
+        Result result = resultService.getResultByFhirUuid(observationFhirUuid);
+        assertNotNull("Result not found in test data", result);
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Observation/" + observationFhirUuid);
+
+        String updateJson = """
+                {
+                  "resourceType": "Observation",
+                  "id": "%s",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "effectiveDateTime": "2026-03-05T00:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 99.0,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(observationFhirUuid, patientFhirUuid, specimenFhirUuid);
+
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+    }
+
+    @Test
+    public void updateObservation_withoutSubject_shouldReturn422() throws Exception {
+        String observationFhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        Result result = resultService.getResultByFhirUuid(observationFhirUuid);
+        assertNotNull("Result not found in test data", result);
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Observation/" + observationFhirUuid);
+
+        String updateJson = """
+                {
+                  "resourceType": "Observation",
+                  "id": "%s",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-05T00:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 99.0,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(observationFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+    }
+
+    @Test
+    public void updateObservation_withoutSpecimen_shouldReturn422() throws Exception {
+        String observationFhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Result result = resultService.getResultByFhirUuid(observationFhirUuid);
+        assertNotNull("Result not found in test data", result);
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Observation/" + observationFhirUuid);
+
+        String updateJson = """
+                {
+                  "resourceType": "Observation",
+                  "id": "%s",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-05T00:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 99.0,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(observationFhirUuid, patientFhirUuid, analysisFhirUuid);
+
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+    }
+
+    @Test
+    public void updateObservation_withoutLoincCode_shouldReturn422() throws Exception {
+        String observationFhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Result result = resultService.getResultByFhirUuid(observationFhirUuid);
+        assertNotNull("Result not found in test data", result);
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Observation/" + observationFhirUuid);
+
+        String updateJson = """
+                {
+                  "resourceType": "Observation",
+                  "id": "%s",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-05T00:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 99.0,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(observationFhirUuid, patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+    }
+
+    @Test
+    public void updateObservation_withoutValue_shouldReturn422() throws Exception {
+        String observationFhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        Result result = resultService.getResultByFhirUuid(observationFhirUuid);
+        assertNotNull("Result not found in test data", result);
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Observation/" + observationFhirUuid);
+
+        String updateJson = """
+                {
+                  "resourceType": "Observation",
+                  "id": "%s",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-05T00:00:00+03:00"
+                }
+                """.formatted(observationFhirUuid, patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+    }
+
 }
