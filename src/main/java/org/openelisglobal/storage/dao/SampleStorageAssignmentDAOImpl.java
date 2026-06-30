@@ -37,9 +37,12 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
         try {
             sampleItemIdInt = Integer.parseInt(sampleItemId.trim());
         } catch (NumberFormatException e) {
-            logger.warn("Invalid SampleItem ID format (must be numeric): {}", sampleItemId);
-            return null;
+            throw new LIMSRuntimeException(
+                    "Invalid SampleItem ID format (must be numeric): " + sampleItemId,
+                    e
+            );
         }
+
 
         try {
             // Query directly using sampleItemId column (no join to HBM-mapped entity)
