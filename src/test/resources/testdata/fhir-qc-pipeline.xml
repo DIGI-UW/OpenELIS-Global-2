@@ -45,4 +45,41 @@
         test_id="1" instrument_id="1" rule_code="1₂ₛ" enabled="true"
         severity="WARNING" requires_corrective_action="false" sys_user_id="1"
         last_updated="2025-01-01 12:00:00" />
+    <!-- Dynamically added lots from FhirQCPipelineIntegrationTest -->
+    <qc_control_lot id="lot-lpc-int"
+        fhir_uuid="dddddddd-dddd-dddd-dddd-dddddddddddd"
+        product_name="test-product-LOT-LPC-INT" lot_number="LOT-LPC-INT"
+        manufacturer="test-mfr" control_level="LPC-UNIQUE" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        initial_runs_count="20" activation_date="2025-01-01 00:00:00"
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <qc_control_lot id="lot-extra-int"
+        fhir_uuid="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+        product_name="test-product-LOT-EXTRA-INT" lot_number="LOT-EXTRA-INT"
+        manufacturer="test-mfr" control_level="HPC" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        initial_runs_count="20" activation_date="2025-01-01 00:00:00"
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <qc_control_lot id="lot-lpc-dup-a"
+        fhir_uuid="ffffffff-ffff-ffff-ffff-ffffffffffff"
+        product_name="test-product-LOT-LPC-DUP-A" lot_number="LOT-LPC-DUP-A"
+        manufacturer="test-mfr" control_level="LPC" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        initial_runs_count="20" activation_date="2025-01-01 00:00:00"
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <qc_control_lot id="lot-lpc-dup-b"
+        fhir_uuid="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        product_name="test-product-LOT-LPC-DUP-B" lot_number="LOT-LPC-DUP-B"
+        manufacturer="test-mfr" control_level="LPC" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        initial_runs_count="20" activation_date="2025-01-01 00:00:00"
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
 </dataset>
