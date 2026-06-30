@@ -18,6 +18,11 @@
     ],
     "resolveJsonModule": true,
     "noEmit": true,
-    "target": "esnext"
-  }
+    "target": "esnext",
+    "allowJs": true,
+    "checkJs": false,
+    "isolatedModules": false
+  },
+  "include": ["src", "tailwind.config.js", "postcss.config.js"]
+  //"exclude": ["node_modules", "build", "dist"]
 }

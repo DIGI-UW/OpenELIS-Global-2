@@ -37,3 +37,4 @@ cypress/screenshots/
 
 # Dev scratch artifacts (local test-output, never commit)
 current_failures.txt
+test.css
