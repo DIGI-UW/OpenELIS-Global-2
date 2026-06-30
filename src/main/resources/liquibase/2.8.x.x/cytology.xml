@@ -332,4 +332,1023 @@
                                  baseTableName="cytology_report" baseColumnNames="cytology_sample_id"
                                  referencedTableName="cytology_sample" referencedColumnNames="id"/>
     </changeSet>
+
+    <!-- Bethesda System Dictionary Implementation -->
+    <changeSet author="openelis" id="13">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary_category
+                WHERE name = 'CYTOLOGY_SPECIMEN_ADEQUACY'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Bethesda System dictionary categories</comment>
+
+        <!-- Specimen Assessment Categories -->
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Specimen Adequacy"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_SPEC"/>
+            <column name="name" value="CYTOLOGY_SPECIMEN_ADEQUACY"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Adequacy Limitations"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_LIM"/>
+            <column name="name" value="CYTOLOGY_ADEQUACY_LIMITATION"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Unsatisfactory Reasons"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_UNSAT"/>
+            <column name="name" value="CYTOLOGY_UNSATISFACTORY_REASON"/>
+        </insert>
+
+        <!-- Clinical Classification Categories -->
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology General Categories"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_GEN"/>
+            <column name="name" value="CYTOLOGY_GENERAL_CATEGORY"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Organisms"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_ORG"/>
+            <column name="name" value="CYTOLOGY_ORGANISM"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Non-neoplastic Findings"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_NON"/>
+            <column name="name" value="CYTOLOGY_NON_NEOPLASTIC"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Squamous Abnormalities"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_SQU"/>
+            <column name="name" value="CYTOLOGY_SQUAMOUS_ABNORMALITY"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Glandular Abnormalities"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_GLA"/>
+            <column name="name" value="CYTOLOGY_GLANDULAR_ABNORMALITY"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Other Findings"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_OTH"/>
+            <column name="name" value="CYTOLOGY_OTHER_FINDING"/>
+        </insert>
+
+        <!-- HPV Testing Categories -->
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology HPV Results"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_HPV"/>
+            <column name="name" value="CYTOLOGY_HPV_RESULT"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology HPV Genotypes"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_GENE"/>
+            <column name="name" value="CYTOLOGY_HPV_GENOTYPE"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology HPV Methods"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_METH"/>
+            <column name="name" value="CYTOLOGY_HPV_METHOD"/>
+        </insert>
+
+        <!-- Clinical Management Categories -->
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Hormonal Evaluation"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_HOR"/>
+            <column name="name" value="CYTOLOGY_HORMONAL_EVAL"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology Risk Levels"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_RISK"/>
+            <column name="name" value="CYTOLOGY_RISK_LEVEL"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Cytology ASCCP Recommendations"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYTO_REC"/>
+            <column name="name" value="CYTOLOGY_RECOMMENDATION"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelis" id="14">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary d
+                JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
+                WHERE dc.name = 'CYTOLOGY_SPECIMEN_ADEQUACY' AND d.local_abbrev = 'SATISFACTORY'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert Bethesda System dictionary entries - Part 1 (Specimen Assessment)</comment>
+
+        <!-- Specimen Adequacy -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Satisfactory for evaluation"/>
+            <column name="local_abbrev" value="SATISFACTORY"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.adequacy.satisfactory"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SPECIMEN_ADEQUACY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Limited but evaluable"/>
+            <column name="local_abbrev" value="LIMITED_BUT_EVAL"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.adequacy.limited"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SPECIMEN_ADEQUACY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Unsatisfactory for evaluation"/>
+            <column name="local_abbrev" value="UNSATISFACTORY"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.adequacy.unsatisfactory"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SPECIMEN_ADEQUACY')"/>
+        </insert>
+
+        <!-- Adequacy Limitations -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Scant cellularity"/>
+            <column name="local_abbrev" value="SCANT_CELLULARITY"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.limitation.scant"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ADEQUACY_LIMITATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Poor preservation/fixation"/>
+            <column name="local_abbrev" value="POOR_PRESERVATION"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.limitation.preservation"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ADEQUACY_LIMITATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Presence of blood"/>
+            <column name="local_abbrev" value="PRESENCE_OF_BLOOD"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.limitation.blood"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ADEQUACY_LIMITATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Presence of inflammation"/>
+            <column name="local_abbrev" value="INFLAMMATION"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.limitation.inflammation"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ADEQUACY_LIMITATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Thick areas on slide"/>
+            <column name="local_abbrev" value="THICK_AREAS"/>
+            <column name="sort_order" value="5"/>
+            <column name="display_key" value="cytology.limitation.thick"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ADEQUACY_LIMITATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Air drying artifact"/>
+            <column name="local_abbrev" value="DRYING_ARTIFACT"/>
+            <column name="sort_order" value="6"/>
+            <column name="display_key" value="cytology.limitation.drying"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ADEQUACY_LIMITATION')"/>
+        </insert>
+
+        <!-- Unsatisfactory Reasons -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Scant squamous epithelial cells"/>
+            <column name="local_abbrev" value="SCANT_SQUAMOUS"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.unsatisfactory.scant_squamous"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_UNSATISFACTORY_REASON')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Obscured by blood"/>
+            <column name="local_abbrev" value="OBSCURED_BY_BLOOD"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.unsatisfactory.blood"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_UNSATISFACTORY_REASON')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Obscured by inflammation"/>
+            <column name="local_abbrev" value="OBSCURED_BY_INFLAMMATION"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.unsatisfactory.inflammation"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_UNSATISFACTORY_REASON')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Thick areas preventing evaluation"/>
+            <column name="local_abbrev" value="THICK_AREAS_UNEVAL"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.unsatisfactory.thick"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_UNSATISFACTORY_REASON')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Poor staining quality"/>
+            <column name="local_abbrev" value="POOR_STAINING"/>
+            <column name="sort_order" value="5"/>
+            <column name="display_key" value="cytology.unsatisfactory.staining"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_UNSATISFACTORY_REASON')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Contamination artifact"/>
+            <column name="local_abbrev" value="CONTAMINATION"/>
+            <column name="sort_order" value="6"/>
+            <column name="display_key" value="cytology.unsatisfactory.contamination"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_UNSATISFACTORY_REASON')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Processing artifact"/>
+            <column name="local_abbrev" value="PROCESSING_ARTIFACT"/>
+            <column name="sort_order" value="7"/>
+            <column name="display_key" value="cytology.unsatisfactory.processing"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_UNSATISFACTORY_REASON')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Other (specify)"/>
+            <column name="local_abbrev" value="OTHER_UNSATISFACTORY"/>
+            <column name="sort_order" value="8"/>
+            <column name="display_key" value="cytology.unsatisfactory.other"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_UNSATISFACTORY_REASON')"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelis" id="15">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary d
+                JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
+                WHERE dc.name = 'CYTOLOGY_GENERAL_CATEGORY' AND d.local_abbrev = 'NILM'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert Bethesda System dictionary entries - Part 2 (Clinical Classifications)</comment>
+
+        <!-- General Categories -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Negative for intraepithelial lesion or malignancy"/>
+            <column name="local_abbrev" value="NILM"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.general.nilm"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GENERAL_CATEGORY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Epithelial cell abnormalities"/>
+            <column name="local_abbrev" value="EPITHELIAL_ABNORMALITY"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.general.epithelial"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GENERAL_CATEGORY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Other malignant neoplasms"/>
+            <column name="local_abbrev" value="OTHER_MALIGNANCY"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.general.other_malignancy"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GENERAL_CATEGORY')"/>
+        </insert>
+
+        <!-- Organisms -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Trichomonas vaginalis"/>
+            <column name="local_abbrev" value="TRICHOMONAS"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.organism.trichomonas"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ORGANISM')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Fungal organisms - Candida species"/>
+            <column name="local_abbrev" value="FUNGAL_CANDIDA"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.organism.candida"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ORGANISM')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Shift in flora suggestive of bacterial vaginosis"/>
+            <column name="local_abbrev" value="SHIFT_FLORA"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.organism.bv"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ORGANISM')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Bacteria"/>
+            <column name="local_abbrev" value="BACTERIA"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.organism.bacteria"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ORGANISM')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Actinomyces-like organisms"/>
+            <column name="local_abbrev" value="ACTINOMYCES"/>
+            <column name="sort_order" value="5"/>
+            <column name="display_key" value="cytology.organism.actinomyces"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ORGANISM')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Cellular changes consistent with herpes simplex virus"/>
+            <column name="local_abbrev" value="CELLULAR_CHANGES_HSV"/>
+            <column name="sort_order" value="6"/>
+            <column name="display_key" value="cytology.organism.hsv"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ORGANISM')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Cellular changes consistent with cytomegalovirus"/>
+            <column name="local_abbrev" value="CELLULAR_CHANGES_CMV"/>
+            <column name="sort_order" value="7"/>
+            <column name="display_key" value="cytology.organism.cmv"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_ORGANISM')"/>
+        </insert>
+
+        <!-- Non-neoplastic Findings -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Squamous metaplasia"/>
+            <column name="local_abbrev" value="SQUAMOUS_METAPLASIA"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.non_neoplastic.squamous_meta"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_NON_NEOPLASTIC')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Keratotic changes"/>
+            <column name="local_abbrev" value="KERATOTIC_CHANGES"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.non_neoplastic.keratotic"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_NON_NEOPLASTIC')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Tubal metaplasia"/>
+            <column name="local_abbrev" value="TUBAL_METAPLASIA"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.non_neoplastic.tubal_meta"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_NON_NEOPLASTIC')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Atrophy"/>
+            <column name="local_abbrev" value="ATROPHY"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.non_neoplastic.atrophy"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_NON_NEOPLASTIC')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Pregnancy-related changes"/>
+            <column name="local_abbrev" value="PREGNANCY_CHANGES"/>
+            <column name="sort_order" value="5"/>
+            <column name="display_key" value="cytology.non_neoplastic.pregnancy"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_NON_NEOPLASTIC')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Reactive cellular changes"/>
+            <column name="local_abbrev" value="INFLAMMATORY_CHANGES"/>
+            <column name="sort_order" value="6"/>
+            <column name="display_key" value="cytology.non_neoplastic.reactive"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_NON_NEOPLASTIC')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Radiation-related changes"/>
+            <column name="local_abbrev" value="RADIATION_CHANGES"/>
+            <column name="sort_order" value="7"/>
+            <column name="display_key" value="cytology.non_neoplastic.radiation"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_NON_NEOPLASTIC')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="IUD-related changes"/>
+            <column name="local_abbrev" value="IUD_CHANGES"/>
+            <column name="sort_order" value="8"/>
+            <column name="display_key" value="cytology.non_neoplastic.iud"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_NON_NEOPLASTIC')"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelis" id="16">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary d
+                JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
+                WHERE dc.name = 'CYTOLOGY_SQUAMOUS_ABNORMALITY' AND d.local_abbrev = 'ASC_US'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert Bethesda System dictionary entries - Part 3 (Epithelial Abnormalities)</comment>
+
+        <!-- Squamous Abnormalities -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Atypical squamous cells of undetermined significance"/>
+            <column name="local_abbrev" value="ASC_US"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.squamous.asc_us"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SQUAMOUS_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Atypical squamous cells cannot exclude HSIL"/>
+            <column name="local_abbrev" value="ASC_H"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.squamous.asc_h"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SQUAMOUS_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Low-grade squamous intraepithelial lesion"/>
+            <column name="local_abbrev" value="LSIL"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.squamous.lsil"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SQUAMOUS_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="High-grade squamous intraepithelial lesion"/>
+            <column name="local_abbrev" value="HSIL"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.squamous.hsil"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SQUAMOUS_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HSIL with features suspicious for invasion"/>
+            <column name="local_abbrev" value="HSIL_SUSPICIOUS_INVASION"/>
+            <column name="sort_order" value="5"/>
+            <column name="display_key" value="cytology.squamous.hsil_invasion"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SQUAMOUS_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Squamous cell carcinoma"/>
+            <column name="local_abbrev" value="SQUAMOUS_CARCINOMA"/>
+            <column name="sort_order" value="6"/>
+            <column name="display_key" value="cytology.squamous.carcinoma"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_SQUAMOUS_ABNORMALITY')"/>
+        </insert>
+
+        <!-- Glandular Abnormalities -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Atypical glandular cells - endocervical"/>
+            <column name="local_abbrev" value="AGC_ENDOCERVICAL"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.glandular.agc_endo"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Atypical glandular cells - endometrial"/>
+            <column name="local_abbrev" value="AGC_ENDOMETRIAL"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.glandular.agc_em"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Atypical glandular cells - not otherwise specified"/>
+            <column name="local_abbrev" value="AGC_NOS"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.glandular.agc_nos"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="AGC favor neoplastic - endocervical"/>
+            <column name="local_abbrev" value="AGC_FAVOR_NEOPLASTIC_ENDOCERVICAL"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.glandular.agc_favor_endo"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="AGC favor neoplastic - endometrial"/>
+            <column name="local_abbrev" value="AGC_FAVOR_NEOPLASTIC_ENDOMETRIAL"/>
+            <column name="sort_order" value="5"/>
+            <column name="display_key" value="cytology.glandular.agc_favor_em"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="AGC favor neoplastic - NOS"/>
+            <column name="local_abbrev" value="AGC_FAVOR_NEOPLASTIC_NOS"/>
+            <column name="sort_order" value="6"/>
+            <column name="display_key" value="cytology.glandular.agc_favor_nos"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Endocervical adenocarcinoma in situ"/>
+            <column name="local_abbrev" value="AIS_ENDOCERVICAL"/>
+            <column name="sort_order" value="7"/>
+            <column name="display_key" value="cytology.glandular.ais"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Adenocarcinoma - endocervical"/>
+            <column name="local_abbrev" value="ADENOCARCINOMA_ENDOCERVICAL"/>
+            <column name="sort_order" value="8"/>
+            <column name="display_key" value="cytology.glandular.adeno_endo"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Adenocarcinoma - endometrial"/>
+            <column name="local_abbrev" value="ADENOCARCINOMA_ENDOMETRIAL"/>
+            <column name="sort_order" value="9"/>
+            <column name="display_key" value="cytology.glandular.adeno_em"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Adenocarcinoma - extrauterine"/>
+            <column name="local_abbrev" value="ADENOCARCINOMA_EXTRAUTERINE"/>
+            <column name="sort_order" value="10"/>
+            <column name="display_key" value="cytology.glandular.adeno_extra"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_GLANDULAR_ABNORMALITY')"/>
+        </insert>
+
+        <!-- Other Findings -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Other malignant neoplasm (specify)"/>
+            <column name="local_abbrev" value="OTHER_MALIGNANCY_SPECIFY"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.other.malignancy"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_OTHER_FINDING')"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelis" id="17">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary d
+                JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
+                WHERE dc.name = 'CYTOLOGY_HPV_RESULT' AND d.local_abbrev = 'HPV_POSITIVE'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert Bethesda System dictionary entries - Part 4 (HPV Testing and Clinical Management)</comment>
+
+        <!-- HPV Results -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV Positive"/>
+            <column name="local_abbrev" value="HPV_POSITIVE"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.hpv.positive"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_RESULT')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV Negative"/>
+            <column name="local_abbrev" value="HPV_NEGATIVE"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.hpv.negative"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_RESULT')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV Invalid/Inadequate"/>
+            <column name="local_abbrev" value="HPV_INVALID"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.hpv.invalid"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_RESULT')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV Not performed"/>
+            <column name="local_abbrev" value="HPV_NOT_DONE"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.hpv.not_done"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_RESULT')"/>
+        </insert>
+
+        <!-- HPV Genotypes -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="High-risk HPV types detected"/>
+            <column name="local_abbrev" value="HPV_HIGH_RISK"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.hpv.high_risk"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_GENOTYPE')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV 16 and/or 18 detected"/>
+            <column name="local_abbrev" value="HPV_16_18"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.hpv.type_16_18"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_GENOTYPE')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Other HPV types detected"/>
+            <column name="local_abbrev" value="HPV_OTHER_TYPES"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.hpv.other_types"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_GENOTYPE')"/>
+        </insert>
+
+        <!-- HPV Methods -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV PCR method"/>
+            <column name="local_abbrev" value="HPV_PCR"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.hpv.pcr"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_METHOD')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV Hybrid Capture"/>
+            <column name="local_abbrev" value="HPV_HYBRID_CAPTURE"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.hpv.hybrid_capture"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_METHOD')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV cobas method"/>
+            <column name="local_abbrev" value="HPV_COBAS"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.hpv.cobas"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_METHOD')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV Aptima method"/>
+            <column name="local_abbrev" value="HPV_APTIMA"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.hpv.aptima"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_METHOD')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="HPV Other method (specify)"/>
+            <column name="local_abbrev" value="HPV_OTHER_METHOD"/>
+            <column name="sort_order" value="5"/>
+            <column name="display_key" value="cytology.hpv.other_method"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HPV_METHOD')"/>
+        </insert>
+
+        <!-- Hormonal Evaluation -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Compatible with age and history"/>
+            <column name="local_abbrev" value="HORMONAL_COMPATIBLE"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.hormonal.compatible"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HORMONAL_EVAL')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Incompatible with age and history"/>
+            <column name="local_abbrev" value="HORMONAL_INCOMPATIBLE"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.hormonal.incompatible"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HORMONAL_EVAL')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Hormonal evaluation limited"/>
+            <column name="local_abbrev" value="HORMONAL_EVAL_LIMITED"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.hormonal.limited"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HORMONAL_EVAL')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Hormonal evaluation not applicable"/>
+            <column name="local_abbrev" value="HORMONAL_NOT_APPLICABLE"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.hormonal.not_applicable"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_HORMONAL_EVAL')"/>
+        </insert>
+
+        <!-- Risk Levels -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Low Risk"/>
+            <column name="local_abbrev" value="LOW"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.risk.low"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RISK_LEVEL')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Intermediate Risk"/>
+            <column name="local_abbrev" value="INTERMEDIATE"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.risk.intermediate"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RISK_LEVEL')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="High Risk"/>
+            <column name="local_abbrev" value="HIGH"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.risk.high"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RISK_LEVEL')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Malignant"/>
+            <column name="local_abbrev" value="MALIGNANT"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.risk.malignant"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RISK_LEVEL')"/>
+        </insert>
+
+        <!-- ASCCP Recommendations -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Routine screening in 3 years"/>
+            <column name="local_abbrev" value="ROUTINE_SCREENING_3YR"/>
+            <column name="sort_order" value="1"/>
+            <column name="display_key" value="cytology.recommendation.routine_3yr"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Routine screening in 5 years"/>
+            <column name="local_abbrev" value="ROUTINE_SCREENING_5YR"/>
+            <column name="sort_order" value="2"/>
+            <column name="display_key" value="cytology.recommendation.routine_5yr"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Repeat co-test in 1 year"/>
+            <column name="local_abbrev" value="REPEAT_COTEST_1YR"/>
+            <column name="sort_order" value="3"/>
+            <column name="display_key" value="cytology.recommendation.repeat_1yr"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Repeat cytology in 6 months"/>
+            <column name="local_abbrev" value="REPEAT_CYTOLOGY_6MO"/>
+            <column name="sort_order" value="4"/>
+            <column name="display_key" value="cytology.recommendation.repeat_6mo"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Colposcopy"/>
+            <column name="local_abbrev" value="COLPOSCOPY"/>
+            <column name="sort_order" value="5"/>
+            <column name="display_key" value="cytology.recommendation.colposcopy"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Colposcopy with endocervical sampling"/>
+            <column name="local_abbrev" value="COLPOSCOPY_WITH_ECC"/>
+            <column name="sort_order" value="6"/>
+            <column name="display_key" value="cytology.recommendation.colposcopy_ecc"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Colposcopy with endometrial biopsy"/>
+            <column name="local_abbrev" value="COLPOSCOPY_WITH_EMB"/>
+            <column name="sort_order" value="7"/>
+            <column name="display_key" value="cytology.recommendation.colposcopy_emb"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Immediate colposcopy or expedited treatment"/>
+            <column name="local_abbrev" value="IMMEDIATE_COLPOSCOPY"/>
+            <column name="sort_order" value="8"/>
+            <column name="display_key" value="cytology.recommendation.immediate"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Excisional procedure recommended"/>
+            <column name="local_abbrev" value="EXCISIONAL_PROCEDURE"/>
+            <column name="sort_order" value="9"/>
+            <column name="display_key" value="cytology.recommendation.excision"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Refer to gynecologic oncology"/>
+            <column name="local_abbrev" value="GYNECOLOGIC_ONCOLOGY"/>
+            <column name="sort_order" value="10"/>
+            <column name="display_key" value="cytology.recommendation.oncology"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'CYTOLOGY_RECOMMENDATION')"/>
+        </insert>
+    </changeSet>
+
 </databaseChangeLog>
