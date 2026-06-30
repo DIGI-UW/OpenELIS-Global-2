@@ -128,6 +128,8 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     public ResponseEntity<InventoryStorageLocation> create(@Valid @RequestBody InventoryStorageLocation location,
             HttpServletRequest request) {
         try {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "create",
+                    "Creating storage location: " + location.getName());
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
             location.setSysUserId(sysUserId);
@@ -138,9 +140,11 @@ public class InventoryStorageLocationRestController extends BaseRestController {
             }
 
             InventoryStorageLocation savedLocation = storageLocationService.save(location);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "create",
+                    "Successfully created storage location with ID: " + savedLocation.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLocation);
         } catch (Exception e) {
-            LogEvent.logError(e);
+            LogEvent.logError("InventoryStorageLocation", e, false);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
