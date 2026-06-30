@@ -546,7 +546,7 @@ const Validation = (props) => {
               disabled={isSubmitting}
               style={{ marginTop: "16px" }}
             >
-              <FormattedMessage id="label.button.save" />
+              <FormattedMessage id="label.button.validate" />
             </ESignatureButton>
           </Form>
         )}
