@@ -14,6 +14,7 @@
  */
 
 import { test as base, expect } from "@playwright/test";
+import * as fs from "fs";
 
 export const test = base.extend<{
   crashDiagnostics: void;
@@ -26,9 +27,21 @@ export const test = base.extend<{
     async ({ page, browser }, use, testInfo) => {
       const recentConsole: string[] = [];
       const recentNav: string[] = [];
+      const errorBuffer: string[] = [];
       const MAX_BUFFER = 20;
       let lastUrl = "";
       let navCount = 0;
+
+      // Initialize a per-test error context file for persistent logging
+      const errorContextPath = testInfo.outputPath(
+        `error-context-worker-${testInfo.workerIndex}.md`,
+      );
+      const timestamp = new Date().toISOString();
+      const header =
+        `\n\n=== Test Session: ${timestamp} ===\n` +
+        `Test: ${testInfo.title}\n` +
+        `Worker: ${testInfo.workerIndex}\n`;
+      fs.appendFileSync(errorContextPath, header, "utf8");
 
       function safeUrl(): string {
         try {
@@ -64,12 +77,20 @@ export const test = base.extend<{
       };
       const onConsole = (msg: import("@playwright/test").ConsoleMessage) => {
         if (msg.type() === "error" || msg.type() === "warning") {
+          const logMessage = `Browser Console ${msg.type()}: ${msg.text()}`;
           recentConsole.push(`[${msg.type()}] ${msg.text()}`);
           if (recentConsole.length > MAX_BUFFER) recentConsole.shift();
+
+          // Buffer for batch write at teardown (avoid sync I/O on hot path)
+          errorBuffer.push(`${logMessage}\n`);
         }
       };
       const onPageError = (error: Error) => {
         console.error(`[pageerror] ${error.message}\n${error.stack ?? ""}`);
+
+        // Buffer for batch write at teardown (avoid sync I/O on hot path)
+        const logMessage = `Page Error: ${error.message}\n${error.stack || ""}\n`;
+        errorBuffer.push(logMessage);
       };
       const onCrash = () => dumpContext("CRASH");
       const onClose = () => {
@@ -105,6 +126,10 @@ export const test = base.extend<{
 
       try {
         await use();
+
+        // Add summary to error context file
+        const summary = `\n--- Summary: ${recentConsole.length} console messages captured ---\n`;
+        fs.appendFileSync(errorContextPath, summary, "utf8");
       } finally {
         page.off("framenavigated", onFrameNavigated);
         page.off("console", onConsole);
@@ -113,6 +138,11 @@ export const test = base.extend<{
         page.off("close", onClose);
         page.off("requestfailed", onRequestFailed);
         page.off("response", onResponse);
+
+        // Batch write all buffered error logs at once
+        if (errorBuffer.length > 0) {
+          fs.appendFileSync(errorContextPath, errorBuffer.join(""), "utf8");
+        }
       }
     },
     { auto: true },
@@ -170,8 +200,10 @@ export const test = base.extend<{
         );
       }
 
-      await cdp?.detach().catch(() => {
-        /* detach on crashed page is harmless; swallow */
+      await cdp?.detach().catch((error) => {
+        console.error(
+          `[memory] ${testInfo.title}: CDP detach error: ${error.message}`,
+        );
       });
     },
     { auto: true },

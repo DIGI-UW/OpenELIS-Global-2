@@ -1,4 +1,5 @@
-import { test, expect } from "../../../helpers/test-base";
+import { expect } from "@playwright/test";
+import { test } from "../../../helpers/test-base";
 import { UI_TIMEOUT } from "../../../helpers/timeouts";
 
 async function gotoSamplePatientEntry(page) {
