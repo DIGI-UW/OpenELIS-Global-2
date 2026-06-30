@@ -1,0 +1,81 @@
+# EC2 Deploy Overlay — MUST be loaded LAST:
+#   -f dev.yml -f analyzer-test.yml -f letsencrypt.yml -f deploy.yml
+# Loading deploy.yml last ensures it overrides all ../../ paths from earlier files.
+#
+# Overrides dev + analyzer-test compose for remote EC2 deployment:
+#   - Uses published Docker images (no local builds, no ../../ paths)
+#   - Image tags configurable via env vars for PR vs develop deploys
+#   - All volume paths relative to the deploy dir (/opt/analyzer-harness/)
+#
+# Required env vars (with defaults for develop deploy):
+#   OE_IMAGE          — OE backend image       (default: itechuw/openelis-global-2-dev:develop)
+#   FRONTEND_IMAGE    — Frontend image          (default: itechuw/openelis-global-2-frontend-dev:develop)
+#   SIMULATOR_IMAGE   — Mock analyzer server    (default: itechuw/astm-mock-server:main)
+#   BRIDGE_IMAGE      — Analyzer bridge         (default: itechuw/openelis-analyzer-bridge:develop)
+#   DB_IMAGE          — PostgreSQL              (default: postgres:14.4)
+#   FHIR_IMAGE        — HAPI FHIR              (default: hapiproject/hapi:v6.6.0-tomcat)
+#   PROXY_IMAGE       — Nginx proxy             (default: nginx:1.27-alpine)
+#   CERTS_IMAGE       — Certificate generator   (default: itechuw/certgen:main)
+
+services:
+  certs:
+    image: ${CERTS_IMAGE:-itechuw/certgen:main}
+
+  db:
+    image: ${DB_IMAGE:-postgres:14.4}
+
+  oe:
+    image: ${OE_IMAGE:-itechuw/openelis-global-2-dev:develop}
+    # Replace volumes: remove ../../target/OpenELIS-Global.war (baked into image),
+    # remove ../../volume/tomcat/oe_server.xml (use image default),
+    # remap ../../projects/analyzer-profiles to local path.
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - lucene_index-vol:/var/lib/lucene_index
+      - ./volume/plugins:/var/lib/openelis-global/plugins
+      - ./volume/programs:/var/lib/openelis-global/programs
+      - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+      - ./volume/logs/tomcatLogs:/usr/local/tomcat/logs
+      - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
+      - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
+      - ./volume/configuration:/var/lib/openelis-global/configuration
+      - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
+      - ./volume/analyzer-imports:/data/analyzer-imports
+      - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
+      - serial-vol:/dev/serial
+
+  fhir:
+    image: ${FHIR_IMAGE:-hapiproject/hapi:v6.6.0-tomcat}
+    # Replace volumes: remove ../../tomcat/hapi_server.xml (use image default)
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-itechuw/openelis-global-2-frontend-dev:develop}
+    # Remove ../../frontend/src and /public hot-reload mounts
+    volumes: []
+
+  proxy:
+    image: ${PROXY_IMAGE:-nginx:1.27-alpine}
+    # Remap ../../ paths to local deploy dir
+    volumes:
+      - certs-vol:/etc/nginx/certs/
+      - keys-vol:/etc/nginx/keys/
+      - ./volume/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot:/var/www/certbot
+      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./nginx-proxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+
+  # Analyzer harness services: use published images, no build contexts
+  astm-simulator:
+    image: ${SIMULATOR_IMAGE:-itechuw/astm-mock-server:main}
+    volumes:
+      - ./e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  openelis-analyzer-bridge:
+    image: ${BRIDGE_IMAGE:-itechuw/openelis-analyzer-bridge:develop}
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global:ro
+      - ./bridge-config/configuration.yml:/app/configuration.yml:ro
+      - ./volume/analyzer-imports:/data/analyzer-imports
