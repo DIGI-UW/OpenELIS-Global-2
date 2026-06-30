@@ -64,9 +64,18 @@ const InventoryReportsModal = ({ open, onClose }) => {
   ];
 
   const exportFormats = [
-    { id: "PDF", text: "PDF" },
-    { id: "EXCEL", text: "Excel (.xlsx)" },
-    { id: "CSV", text: "CSV" },
+    {
+      id: "PDF",
+      text: intl.formatMessage({ id: "reports.export.pdf" }),
+    },
+    {
+      id: "EXCEL",
+      text: intl.formatMessage({ id: "reports.export.excel" }),
+    },
+    {
+      id: "CSV",
+      text: intl.formatMessage({ id: "reports.export.csv" }),
+    },
   ];
 
   const [formData, setFormData] = useState({
@@ -221,6 +230,7 @@ const InventoryReportsModal = ({ open, onClose }) => {
           titleText={intl.formatMessage({ id: "reports.format" })}
           label={intl.formatMessage({ id: "reports.format.select" })}
           items={exportFormats}
+          itemToString={(item) => (item ? item.text : "")}
           selectedItem={formData.exportFormat}
           onChange={({ selectedItem }) =>
             handleChange("exportFormat", selectedItem)

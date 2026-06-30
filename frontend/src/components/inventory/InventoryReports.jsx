@@ -68,9 +68,21 @@ const InventoryReports = () => {
 
   // Export formats
   const exportFormats = [
-    { id: "PDF", text: "PDF", icon: DocumentPdf },
-    { id: "EXCEL", text: "Excel (.xlsx)", icon: TableSplit },
-    { id: "CSV", text: "CSV", icon: DocumentBlank },
+    {
+      id: "PDF",
+      text: intl.formatMessage({ id: "reports.export.pdf" }),
+      icon: DocumentPdf,
+    },
+    {
+      id: "EXCEL",
+      text: intl.formatMessage({ id: "reports.export.excel" }),
+      icon: TableSplit,
+    },
+    {
+      id: "CSV",
+      text: intl.formatMessage({ id: "reports.export.csv" }),
+      icon: DocumentBlank,
+    },
   ];
 
   // Form state
@@ -212,6 +224,7 @@ const InventoryReports = () => {
                   titleText={intl.formatMessage({ id: "reports.format" })}
                   label={intl.formatMessage({ id: "reports.format.select" })}
                   items={exportFormats}
+                  itemToString={(item) => (item ? item.text : "")}
                   selectedItem={formData.exportFormat}
                   onChange={({ selectedItem }) =>
                     handleChange("exportFormat", selectedItem)
