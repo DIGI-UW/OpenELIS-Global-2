@@ -2,7 +2,7 @@ import { expect, Locator, Page } from "@playwright/test";
 import { LONG_TIMEOUT, SHORT_TIMEOUT, UI_TIMEOUT } from "./timeouts";
 
 /**
- * Mirrors {@link frontend/src/components/utils/Utils.js} `convertAlphaNumLabNumForDisplay`.
+ * Mirrors {@link frontend/src/components/utils/Utils.ts} `convertAlphaNumLabNumForDisplay`.
  * When site AccessionFormat is ALPHANUM, AnalyzerResults / AccessionResults show this form
  * (e.g. E2E001 → E2-E001). Plain `getByText('E2E001')` then fails in CI while it may pass
  * locally with SiteYearNum formatting.
