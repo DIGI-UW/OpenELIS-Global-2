@@ -116,6 +116,12 @@ public class Freezer extends BaseObject<Long> {
     @Column(name = "active")
     private Boolean active = Boolean.TRUE;
 
+    // Distinct from `active` (enable/disable): marks a device as deleted so it is
+    // excluded from listings. See #3743 — reusing `active` for delete left
+    // "deleted" devices visible and re-activatable.
+    @Column(name = "deleted", nullable = false)
+    private Boolean deleted = Boolean.FALSE;
+
     @OneToMany(mappedBy = "freezer", cascade = CascadeType.ALL, orphanRemoval = false)
     @JsonIgnore
     private List<FreezerReading> readings = new ArrayList<>();

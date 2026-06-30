@@ -168,6 +168,11 @@ public class FreezerServiceImpl implements FreezerService {
     @Transactional
     public void setDeviceStatus(Long id, Boolean active) {
         Freezer freezer = requireFreezer(id);
+        // Guard against resurrecting a deleted device via the enable/disable toggle
+        // (#3743).
+        if (Boolean.TRUE.equals(freezer.getDeleted())) {
+            throw new IllegalArgumentException("Cannot change status of a deleted freezer: " + id);
+        }
         freezer.setActive(active);
         freezerDAO.update(freezer);
     }
@@ -176,8 +181,10 @@ public class FreezerServiceImpl implements FreezerService {
     @Transactional
     public void deleteFreezer(Long id) {
         Freezer freezer = requireFreezer(id);
-        // Soft delete by setting inactive
-        freezer.setActive(false);
+        // Soft delete via the dedicated `deleted` flag (NOT `active`, which is the
+        // enable/disable toggle). This keeps the device out of all listings and
+        // prevents it being re-activated. See #3743.
+        freezer.setDeleted(true);
         freezerDAO.update(freezer);
     }
 

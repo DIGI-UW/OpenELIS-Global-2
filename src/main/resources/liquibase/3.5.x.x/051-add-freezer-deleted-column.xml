@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    #3743: Cold Storage device "delete" was a soft delete that reused the
+    `active` flag. But `active` is also the enable/disable toggle, so deleted
+    devices kept appearing in the management list (getAllFreezers/searchFreezers
+    do not filter `active`) and could even be resurrected by pressing their
+    power toggle. Add a dedicated `deleted` flag so delete is distinct from
+    disable; the DAO queries exclude deleted=true. Existing rows backfill to
+    deleted=false.
+  -->
+  <changeSet id="3.5.0-051-add-freezer-deleted" author="collins-wagima">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="freezer" columnName="deleted" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="freezer" schemaName="clinlims">
+      <column name="deleted" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>
