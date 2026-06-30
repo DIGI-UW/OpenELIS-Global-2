@@ -165,27 +165,6 @@ function ChangePassword() {
                     .oneOf(
                       [Yup.ref("newPassword"), null],
                       intl.formatMessage({ id: "validation.password.match" }),
-                    )
-                    .min(
-                      7,
-                      intl.formatMessage({
-                        id: "validation.password.minLength",
-                      }),
-                    )
-                    .matches(
-                      /^(?=.*[*$#!])(?=.*[A-Z])[A-Za-z0-9*$#!]{7,}$/,
-                      intl.formatMessage({
-                        id: "validation.password.specialChar",
-                      }),
-                    )
-                    .test(
-                      "not-same-as-old",
-                      intl.formatMessage({
-                        id: "validation.password.notSameAsOld",
-                      }),
-                      function (value) {
-                        return value !== this.parent.password; // compare newPassword to old password
-                      },
                     ),
                 })}
               >
