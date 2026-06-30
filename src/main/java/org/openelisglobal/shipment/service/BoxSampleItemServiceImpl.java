@@ -209,8 +209,7 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
             shippingBoxDAO.update(box);
 
             // Assign all referrals for this sample item to this box
-            Integer sampleItemIdInt = Integer.parseInt(sampleItemId);
-            List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemIdInt);
+            List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemId);
             for (Referral referral : referrals) {
                 if (referral.getAssignedBox() == null) {
                     referral.setAssignedBox(box);
@@ -249,7 +248,7 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
 
             // Unassign all referrals for this sample item that are assigned to this box
             if (sampleItem != null && shippingBox != null) {
-                List<Referral> referrals = referralDAO.getReferralsBySampleItemId(Integer.parseInt(sampleItem.getId()));
+                List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItem.getId());
 
                 for (Referral referral : referrals) {
                     // Check if this referral is assigned to this box
