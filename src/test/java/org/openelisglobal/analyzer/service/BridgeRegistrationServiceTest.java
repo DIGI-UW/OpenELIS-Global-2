@@ -14,6 +14,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.qc.service.QCControlLotService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.test.service.TestService;
 
 /**
@@ -27,14 +29,20 @@ public class BridgeRegistrationServiceTest {
     private BridgeRegistrationService svc;
     private AnalyzerTestMappingService mappingService;
     private TestService testService;
+    private AnalyzerQcRuleService analyzerQcRuleService;
+    private QCControlLotService qcControlLotService;
 
     @Before
     public void setUp() throws Exception {
         svc = new BridgeRegistrationService();
         mappingService = mock(AnalyzerTestMappingService.class);
         testService = mock(TestService.class);
+        analyzerQcRuleService = mock(AnalyzerQcRuleService.class);
+        qcControlLotService = mock(QCControlLotService.class);
         inject("analyzerTestMappingService", mappingService);
         inject("testService", testService);
+        inject("analyzerQcRuleService", analyzerQcRuleService);
+        inject("qcControlLotService", qcControlLotService);
     }
 
     private void inject(String field, Object value) throws Exception {
@@ -103,5 +111,69 @@ public class BridgeRegistrationServiceTest {
         // Key present (empty) so a sync push can clear stale bridge mappings.
         assertTrue(payload.containsKey("testCodeLoinc"));
         assertNotNull(payload.get("testCodeLoinc"));
+    }
+
+    @Test
+    public void attachesEmptyQcRulesWhenNoActiveRulesExist() {
+        when(analyzerQcRuleService.getActiveRuleDtosForAnalyzer("AN-4")).thenReturn(List.of());
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        svc.attachQcRules(payload, "AN-4");
+
+        assertTrue(payload.containsKey("qcRules"));
+        assertEquals(List.of(), payload.get("qcRules"));
+    }
+
+    @Test
+    public void attachesEmptyQcRulesWhenQcRuleServiceIsUnavailable() throws Exception {
+        inject("analyzerQcRuleService", null);
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        svc.attachQcRules(payload, "AN-5");
+
+        assertTrue(payload.containsKey("qcRules"));
+        assertEquals(List.of(), payload.get("qcRules"));
+    }
+
+    @Test
+    public void attachesEmptyControlLotsWhenNoActiveLotsExist() {
+        when(qcControlLotService.getActiveControlLotsByInstrument("AN-6")).thenReturn(List.of());
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        svc.attachControlLots(payload, "AN-6");
+
+        assertTrue(payload.containsKey("controlLots"));
+        assertEquals(List.of(), payload.get("controlLots"));
+    }
+
+    @Test
+    public void attachesEmptyControlLotsWhenControlLotServiceIsUnavailable() throws Exception {
+        inject("qcControlLotService", null);
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        svc.attachControlLots(payload, "AN-7");
+
+        assertTrue(payload.containsKey("controlLots"));
+        assertEquals(List.of(), payload.get("controlLots"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void attachesActiveControlLotsUsingStringIds() {
+        QCControlLot lot = new QCControlLot();
+        lot.setLotNumber("LOT-2026-001");
+        lot.setControlLevel("L1");
+        lot.setTestId("42");
+        lot.setInstrumentId("AN-8");
+        when(qcControlLotService.getActiveControlLotsByInstrument("AN-8")).thenReturn(List.of(lot));
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        svc.attachControlLots(payload, "AN-8");
+
+        List<Map<String, Object>> controlLots = (List<Map<String, Object>>) payload.get("controlLots");
+        assertEquals(1, controlLots.size());
+        assertEquals("LOT-2026-001", controlLots.get(0).get("lotNumber"));
+        assertEquals("L1", controlLots.get(0).get("controlLevel"));
+        assertEquals("42", controlLots.get(0).get("testId"));
     }
 }

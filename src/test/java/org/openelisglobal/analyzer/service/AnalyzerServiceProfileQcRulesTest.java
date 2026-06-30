@@ -96,6 +96,19 @@ public class AnalyzerServiceProfileQcRulesTest {
     }
 
     @Test
+    public void testAutoCreateTestMappings_AppliesProfileDefaultsExactlyOnce() {
+        Map<String, Object> configDefaults = new HashMap<>();
+        configDefaults.put("aggregationMode", "BY_SESSION");
+        configDefaults.put("aggregationWindowSeconds", 60);
+        Map<String, Object> config = new HashMap<>();
+        config.put("configDefaults", configDefaults);
+
+        analyzerService.autoCreateTestMappings("1", config, "1");
+
+        verify(analyzerPluginConfigService, times(1)).applyProfileDefaults("1", config, "1");
+    }
+
+    @Test
     public void testAutoCreateTestMappings_WithNoConfigDefaults_CreatesNoRows() {
         Map<String, Object> config = new HashMap<>();
         // no configDefaults key at all

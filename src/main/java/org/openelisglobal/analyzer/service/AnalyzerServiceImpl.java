@@ -381,7 +381,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
                 "Called for analyzer " + analyzerId + ", config keys: " + config.keySet());
 
-        analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
+        analyzerPluginConfigService.applyProfileDefaults(analyzerId, config, sysUserId);
 
         // FR-15: Auto-create QC rules from profile configDefaults
         createQcRulesFromProfile(analyzerId, config.get("configDefaults"), sysUserId);

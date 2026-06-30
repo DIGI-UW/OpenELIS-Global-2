@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -8,6 +9,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +27,10 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerPluginConfigServiceTest {
+
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<Map<String, Object>>() {
+    };
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Mock
     private AnalyzerPluginConfigDAO analyzerPluginConfigDAO;
@@ -144,6 +151,110 @@ public class AnalyzerPluginConfigServiceTest {
         assertTrue(existing.getConfig().contains("\"override\":\"existing\""));
         assertTrue(existing.getConfig().contains("\"newDefault\":[\"A\",\"B\"]"));
         assertTrue(existing.getConfig().contains("\"already\":\"set\""));
+        verify(analyzerPluginConfigDAO).update(eq(existing));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testApplyProfileDefaults_PersistsMappingReviewDefaults() throws Exception {
+        AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
+        existing.setId("cfg-profile");
+        existing.setAnalyzerId("101");
+        existing.setConfig("{\"connectionRole\":\"SERVER\"}");
+        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
+
+        Map<String, Object> profile = new LinkedHashMap<>();
+        profile.put("configDefaults", Map.of("aggregationMode", "BY_SESSION"));
+        profile.put("default_test_mappings", List
+                .of(Map.of("test_code", "MTB", "test_name_hint", "Mycobacterium tuberculosis", "loinc", "38379-4")));
+        profile.put("result_value_mappings",
+                List.of(Map.of("analyzer_value", "Detected", "openelis_value", "POSITIVE", "test_code", "MTB")));
+
+        service.applyProfileDefaults("101", profile, "1");
+
+        Map<String, Object> persisted = objectMapper.readValue(existing.getConfig(), MAP_TYPE);
+        List<Map<String, Object>> profileMappings = (List<Map<String, Object>>) persisted.get("default_test_mappings");
+        List<Map<String, Object>> resultMappings = (List<Map<String, Object>>) persisted.get("resultValueMappings");
+
+        assertEquals("SERVER", persisted.get("connectionRole"));
+        assertEquals("BY_SESSION", persisted.get("aggregationMode"));
+        assertEquals("MTB", profileMappings.get(0).get("test_code"));
+        assertEquals("38379-4", profileMappings.get(0).get("loinc"));
+        assertEquals("Detected", resultMappings.get(0).get("analyzerValue"));
+        assertEquals("POSITIVE", resultMappings.get(0).get("openelisValue"));
+        assertEquals("MTB", resultMappings.get(0).get("testCode"));
+        assertEquals(true, resultMappings.get(0).get("active"));
+        verify(analyzerPluginConfigDAO).update(eq(existing));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testApplyProfileDefaults_DerivesResultValueMappingsFromTestValues() throws Exception {
+        AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
+        existing.setId("cfg-derived");
+        existing.setAnalyzerId("101");
+        existing.setConfig("{}");
+        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
+
+        Map<String, Object> profile = new LinkedHashMap<>();
+        profile.put("default_test_mappings",
+                List.of(Map.of("test_code", "MTB", "loinc", "85362-2", "values", List.of("DETECTED", "NOT DETECTED"))));
+
+        service.applyProfileDefaults("101", profile, "1");
+
+        Map<String, Object> persisted = objectMapper.readValue(existing.getConfig(), MAP_TYPE);
+        List<Map<String, Object>> resultMappings = (List<Map<String, Object>>) persisted.get("resultValueMappings");
+
+        assertEquals(2, resultMappings.size());
+        assertEquals("MTB", resultMappings.get(0).get("testCode"));
+        assertEquals("DETECTED", resultMappings.get(0).get("analyzerValue"));
+        assertEquals("DETECTED", resultMappings.get(0).get("openelisValue"));
+        assertEquals("NOT DETECTED", resultMappings.get(1).get("analyzerValue"));
+    }
+
+    @Test
+    public void testUpdateResultValueMappings_PreservesOtherPluginConfig() throws Exception {
+        AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
+        existing.setId("cfg-3");
+        existing.setAnalyzerId("101");
+        existing.setConfig(
+                "{\"connectionRole\":\"SERVER\",\"serverListenPort\":17001,\"pendingResultValues\":[{\"id\":\"rv-1\",\"status\":\"PENDING\"}]}");
+        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
+
+        List<Map<String, Object>> mappings = List.of(
+                Map.of("analyzerValue", "Detected", "openelisValue", "POSITIVE", "testCode", "MTB", "active", true));
+
+        Map<String, Object> updated = service.updateResultValueMappings("101", mappings, "1");
+        Map<String, Object> persisted = objectMapper.readValue(existing.getConfig(), MAP_TYPE);
+
+        assertEquals("SERVER", persisted.get("connectionRole"));
+        assertEquals(17001, persisted.get("serverListenPort"));
+        assertEquals(mappings, updated.get("resultValueMappings"));
+        assertEquals(mappings, persisted.get("resultValueMappings"));
+        assertTrue(persisted.containsKey("pendingResultValues"));
+        verify(analyzerPluginConfigDAO).update(eq(existing));
+    }
+
+    @Test
+    public void testResolvePendingResultValue_MapsPendingValueAndAddsMapping() throws Exception {
+        AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
+        existing.setId("cfg-4");
+        existing.setAnalyzerId("101");
+        existing.setConfig(
+                "{\"pendingResultValues\":[{\"id\":\"rv-1\",\"analyzerValue\":\"Trace\",\"testCode\":\"MTB\",\"status\":\"PENDING\",\"seenCount\":2}],\"resultValueMappings\":[]}");
+        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
+
+        Map<String, Object> resolved = service.resolvePendingResultValue("101", "rv-1",
+                Map.of("openelisValue", "INDETERMINATE"), "1");
+        Map<String, Object> persisted = objectMapper.readValue(existing.getConfig(), MAP_TYPE);
+        List<Map<String, Object>> pending = (List<Map<String, Object>>) persisted.get("pendingResultValues");
+        List<Map<String, Object>> mappings = (List<Map<String, Object>>) persisted.get("resultValueMappings");
+
+        assertEquals("MAPPED", resolved.get("status"));
+        assertEquals("MAPPED", pending.get(0).get("status"));
+        assertEquals("Trace", mappings.get(0).get("analyzerValue"));
+        assertEquals("INDETERMINATE", mappings.get(0).get("openelisValue"));
+        assertEquals("MTB", mappings.get(0).get("testCode"));
         verify(analyzerPluginConfigDAO).update(eq(existing));
     }
 }

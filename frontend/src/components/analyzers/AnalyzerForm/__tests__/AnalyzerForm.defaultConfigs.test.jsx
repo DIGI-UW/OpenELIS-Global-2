@@ -1,9 +1,10 @@
 import React from "react";
 import { render, screen, wait } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Route } from "react-router-dom";
 import AnalyzerForm from "../AnalyzerForm";
 import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
@@ -27,6 +28,18 @@ const renderWithIntl = (component) => {
   );
 };
 
+const renderAtRoute = (entry) => {
+  return render(
+    <MemoryRouter initialEntries={[entry]}>
+      <IntlProvider locale="en" messages={messages}>
+        <Route path="/analyzers">
+          <AnalyzerForm />
+        </Route>
+      </IntlProvider>
+    </MemoryRouter>,
+  );
+};
+
 describe("AnalyzerForm - Default Configs (M20)", () => {
   const mockDefaultConfigs = [
     {
@@ -44,11 +57,25 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
       category: "CHEMISTRY",
     },
     {
+      id: "astm/genexpert-astm",
+      protocol: "ASTM",
+      analyzerName: "Cepheid GeneXpert (ASTM Mode)",
+      manufacturer: "Cepheid",
+      category: "MOLECULAR",
+    },
+    {
       id: "hl7/abbott-architect",
       protocol: "HL7",
       analyzerName: "Abbott Architect",
       manufacturer: "Abbott",
       category: "CHEMISTRY",
+    },
+    {
+      id: "file/quantstudio",
+      protocol: "FILE",
+      analyzerName: "QuantStudio QS5/QS7",
+      manufacturer: "Thermo Fisher",
+      category: "MOLECULAR",
     },
   ];
 
@@ -98,6 +125,54 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     ],
   };
 
+  const mockGeneXpertConfig = {
+    schema_version: "1.0",
+    analyzer_name: "Cepheid GeneXpert (ASTM Mode)",
+    manufacturer: "Cepheid",
+    category: "MOLECULAR",
+    protocol: "ASTM",
+    protocol_version: "LIS2-A2",
+    identifier_pattern: "GENEXPERT|CEPHEID.*GX",
+    transport: "RS-232 Serial",
+    test_mappings: [
+      {
+        analyzer_code: "MTB",
+        test_name_hint: "Mycobacterium tuberculosis",
+        loinc: "38379-4",
+        unit: "",
+      },
+    ],
+    result_value_mappings: [
+      {
+        analyzer_value: "POS",
+        openelis_value: "Positive",
+      },
+    ],
+  };
+
+  const mockQuantstudioConfig = {
+    profileMeta: {
+      id: "quantstudio",
+      displayName: "QuantStudio QS5/QS7",
+    },
+    category: "MOLECULAR",
+    protocol: {
+      name: "FILE",
+      format: "CSV",
+    },
+    supported_extensions: [".csv"],
+    column_mapping: {
+      "Sample Name": "sampleId",
+      "Target Name": "testCode",
+      "Quantity Mean": "result",
+    },
+    configDefaults: {
+      fileFormat: "CSV",
+      delimiter: ",",
+      hasHeader: true,
+    },
+  };
+
   beforeEach(() => {
     // Mock getDefaultConfigs to return list
     analyzerService.getDefaultConfigs.mockImplementation((callback) => {
@@ -111,6 +186,10 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
           callback(mockBC2000Config);
         } else if (protocol === "astm" && name === "mindray-ba88a") {
           callback(mockBA88AConfig);
+        } else if (protocol === "astm" && name === "genexpert-astm") {
+          callback(mockGeneXpertConfig);
+        } else if (protocol === "file" && name === "quantstudio") {
+          callback(mockQuantstudioConfig);
         } else {
           callback({ error: "Template not found" });
         }
@@ -130,6 +209,12 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
           id: "2",
           name: "Generic HL7",
           protocol: "HL7",
+          isGenericPlugin: true,
+        },
+        {
+          id: "3",
+          name: "Generic File",
+          protocol: "FILE",
           isGenericPlugin: true,
         },
       ]);
@@ -190,6 +275,90 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     await wait(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalledTimes(1);
     });
+  });
+
+  test("preselects profile from setup URL and submits defaultConfigId once", async () => {
+    renderAtRoute("/analyzers?add=1&profile=file%2Fquantstudio");
+
+    await waitFor(() => {
+      expect(analyzerService.getDefaultConfig).toHaveBeenCalledWith(
+        "file",
+        "quantstudio",
+        expect.any(Function),
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("analyzer-form-file-format-dropdown"),
+      ).toBeInTheDocument();
+    });
+
+    await userEvent.type(
+      screen.getByTestId("analyzer-form-name-input"),
+      "Main lab QuantStudio",
+      { delay: 0 },
+    );
+    await userEvent.type(
+      screen.getByTestId("analyzer-form-import-directory-input"),
+      "/data/analyzer-imports/quantstudio/incoming",
+      { delay: 0 },
+    );
+    await userEvent.click(screen.getByTestId("analyzer-form-save-button"));
+
+    await waitFor(() => {
+      expect(analyzerService.createAnalyzer).toHaveBeenCalled();
+    });
+
+    const submitPayload = analyzerService.createAnalyzer.mock.calls[0][0];
+    expect(submitPayload.defaultConfigId).toBe("file/quantstudio");
+    expect(submitPayload.pluginTypeId).toBe("3");
+    expect(submitPayload.analyzerType).toBe("MOLECULAR");
+    expect(submitPayload.columnMappings).toEqual({
+      "Sample Name": "sampleId",
+      "Target Name": "testCode",
+      "Quantity Mean": "result",
+    });
+  });
+
+  test("preselects ASTM profile from setup URL with the generic ASTM plugin", async () => {
+    renderAtRoute("/analyzers?add=1&profile=astm%2Fgenexpert-astm");
+
+    await waitFor(() => {
+      expect(analyzerService.getDefaultConfig).toHaveBeenCalledWith(
+        "astm",
+        "genexpert-astm",
+        expect.any(Function),
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("analyzer-form-default-config-dropdown"),
+      ).toHaveTextContent(/GeneXpert/i);
+    });
+    expect(
+      screen.getByTestId("analyzer-form-identifier-pattern-input"),
+    ).toHaveValue("GENEXPERT|CEPHEID.*GX");
+
+    await userEvent.type(
+      screen.getByTestId("analyzer-form-name-input"),
+      "Main lab GeneXpert",
+      { delay: 0 },
+    );
+    await userEvent.click(screen.getByTestId("analyzer-form-save-button"));
+
+    await waitFor(() => {
+      expect(analyzerService.createAnalyzer).toHaveBeenCalledTimes(1);
+    });
+
+    const submitPayload = analyzerService.createAnalyzer.mock.calls[0][0];
+    expect(submitPayload.defaultConfigId).toBe("astm/genexpert-astm");
+    expect(submitPayload.pluginTypeId).toBe("1");
+    expect(submitPayload.analyzerType).toBe("MOLECULAR");
+    expect(submitPayload.identifierPattern).toBe("GENEXPERT|CEPHEID.*GX");
+    expect(submitPayload.fileFormat).toBeNull();
+    expect(submitPayload.importDirectory).toBeNull();
   });
 
   // Tests below require Carbon Dropdown interaction (click → select option)

@@ -798,6 +798,99 @@ export const getPendingCodes = (analyzerId, callback) => {
 };
 
 /**
+ * Get analyzer result-value mappings stored in plugin config JSON.
+ * @param {String} analyzerId
+ * @param {Function} callback - Callback function (data) => void
+ */
+export const getResultValueMappings = (analyzerId, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/result-value-mappings`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
+/**
+ * Replace analyzer result-value mappings stored in plugin config JSON.
+ * @param {String} analyzerId
+ * @param {Array<Object>} mappings
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams
+ */
+export const updateResultValueMappings = (
+  analyzerId,
+  mappings,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/result-value-mappings`;
+  const payload = JSON.stringify(mappings);
+  fetch(config.serverBaseUrl + endpoint, {
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+    body: payload,
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        callback(
+          {
+            ...json,
+            status: response.status,
+            statusCode: response.status,
+            statusText: response.statusText,
+            error:
+              json.error || `HTTP ${response.status}: ${response.statusText}`,
+          },
+          extraParams,
+        );
+        return;
+      }
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      callback(
+        {
+          error: error.message || "Network error",
+          status: 0,
+        },
+        extraParams,
+      );
+    });
+};
+
+/**
+ * Get pending analyzer result values awaiting OpenELIS value resolution.
+ * @param {String} analyzerId
+ * @param {Function} callback - Callback function (data) => void
+ */
+export const getPendingResultValues = (analyzerId, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-result-values`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
+/**
+ * Resolve a pending analyzer result value to an OpenELIS value.
+ * @param {String} analyzerId
+ * @param {String} pendingResultValueId
+ * @param {Object} body
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams
+ */
+export const resolvePendingResultValue = (
+  analyzerId,
+  pendingResultValueId,
+  body,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-result-values/${pendingResultValueId}/resolve`;
+  const payload = JSON.stringify(body || {});
+  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+};
+
+/**
  * Update pending-code status for an analyzer.
  * @param {String} analyzerId
  * @param {String} pendingCodeId

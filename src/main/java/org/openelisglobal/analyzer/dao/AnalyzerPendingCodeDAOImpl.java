@@ -29,7 +29,7 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
         String hql = "FROM AnalyzerPendingCode a WHERE a.analyzerId = :analyzerId ORDER BY a.lastSeenAt DESC";
         Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerPendingCode.class);
-        query.setParameter("analyzerId", parseAnalyzerId(analyzerId));
+        query.setParameter("analyzerId", normalizeAnalyzerId(analyzerId));
         return query.getResultList();
     }
 
@@ -43,7 +43,7 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
                 + " AND a.analyzerTestName = :analyzerTestName";
         Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerPendingCode.class);
-        query.setParameter("analyzerId", parseAnalyzerId(analyzerId));
+        query.setParameter("analyzerId", normalizeAnalyzerId(analyzerId));
         query.setParameter("analyzerTestName", analyzerTestName);
         return Optional.ofNullable(query.uniqueResultOptional().orElse(null));
     }
@@ -57,7 +57,7 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
         String hql = "SELECT COUNT(a) FROM AnalyzerPendingCode a WHERE a.analyzerId = :analyzerId"
                 + " AND a.status = :status";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-        query.setParameter("analyzerId", parseAnalyzerId(analyzerId));
+        query.setParameter("analyzerId", normalizeAnalyzerId(analyzerId));
         query.setParameter("status", status);
         Long count = query.uniqueResult();
         return count == null ? 0 : count;
@@ -74,7 +74,7 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
                     + " AND a.status = :status AND a.lastSeenAt < :cutoff";
             Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerPendingCode.class);
-            query.setParameter("analyzerId", parseAnalyzerId(analyzerId));
+            query.setParameter("analyzerId", normalizeAnalyzerId(analyzerId));
             query.setParameter("status", AnalyzerPendingCode.Status.PENDING);
             query.setParameter("cutoff", cutoff);
             List<AnalyzerPendingCode> toDelete = query.getResultList();
@@ -87,11 +87,7 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
         }
     }
 
-    private Integer parseAnalyzerId(String analyzerId) {
-        try {
-            return Integer.parseInt(analyzerId.trim());
-        } catch (NumberFormatException e) {
-            throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
-        }
+    private String normalizeAnalyzerId(String analyzerId) {
+        return analyzerId.trim();
     }
 }

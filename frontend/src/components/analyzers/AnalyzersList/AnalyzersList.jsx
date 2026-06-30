@@ -21,9 +21,9 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { getAnalyzers } from "../../../services/analyzerService";
-// AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
+import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 // QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
@@ -35,6 +35,7 @@ import "./AnalyzersList.css";
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const searchTimeoutRef = useRef(null);
 
   const [analyzers, setAnalyzers] = useState([]);
@@ -238,6 +239,20 @@ const AnalyzersList = () => {
     };
   });
 
+  const setupParams = new URLSearchParams(location.search || "");
+  const isSetupFlow = setupParams.get("add") === "1";
+
+  const hasActiveQcRules = (analyzer) =>
+    Array.isArray(analyzer?.qcRules) &&
+    analyzer.qcRules.some((rule) => rule?.isActive !== false);
+
+  const hasActiveControlLots = (analyzer) =>
+    Array.isArray(analyzer?.controlLots) &&
+    analyzer.controlLots.some((lot) => (lot?.status || "ACTIVE") === "ACTIVE");
+
+  const isQcReady = (analyzer) =>
+    hasActiveQcRules(analyzer) && hasActiveControlLots(analyzer);
+
   return (
     <div className="analyzers-list" data-testid="analyzers-list">
       <div
@@ -265,11 +280,22 @@ const AnalyzersList = () => {
           kind="primary"
           renderIcon={Add}
           data-testid="add-analyzer-button"
-          onClick={() => history.push("/analyzers/new")}
+          onClick={() => history.push("/analyzers?add=1")}
         >
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>
       </div>
+
+      {isSetupFlow && (
+        <Grid
+          className="analyzers-inline-setup-grid"
+          data-testid="analyzers-inline-setup-grid"
+        >
+          <Column lg={16} md={8} sm={4}>
+            <AnalyzerForm inline />
+          </Column>
+        </Grid>
+      )}
 
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
         <Column lg={4} md={2} sm={2}>
@@ -519,15 +545,29 @@ const AnalyzersList = () => {
                                 unifiedStatus === "ERROR_PENDING"
                                   ? "analyzer.status.error_pending"
                                   : `analyzer.status.${unifiedStatus.toLowerCase()}`;
+                              const qcReady = isQcReady(analyzer);
                               cellContent = (
-                                <Tag
-                                  type={statusColor}
-                                  data-testid={`status-badge-${row.id}`}
-                                >
-                                  {intl.formatMessage({
-                                    id: statusKey,
-                                  })}
-                                </Tag>
+                                <div className="analyzer-status-tags">
+                                  <Tag
+                                    type={statusColor}
+                                    data-testid={`status-badge-${row.id}`}
+                                  >
+                                    {intl.formatMessage({
+                                      id: statusKey,
+                                    })}
+                                  </Tag>
+                                  <Tag
+                                    type={qcReady ? "green" : "warm-gray"}
+                                    size="sm"
+                                    data-testid={`analyzer-qc-readiness-${row.id}`}
+                                  >
+                                    {intl.formatMessage({
+                                      id: qcReady
+                                        ? "analyzer.qcReadiness.ready"
+                                        : "analyzer.qcReadiness.required",
+                                    })}
+                                  </Tag>
+                                </div>
                               );
                             } else if (headerKey === "lastModified") {
                               testId = `analyzer-last-modified-${row.id}`;
@@ -598,6 +638,17 @@ const AnalyzersList = () => {
                                       )
                                     }
                                     data-testid={`analyzer-action-qc-rules-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.controlLots",
+                                    })}
+                                    onClick={() =>
+                                      history.push(
+                                        `/analyzers/qc/control-lots/new?analyzerId=${analyzer.id}`,
+                                      )
+                                    }
+                                    data-testid={`analyzer-action-control-lots-${row.id}`}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({

@@ -25,13 +25,14 @@ const mockHistory = {
   push: vi.fn(),
   replace: vi.fn(),
 };
+let mockLocationSearch = "";
 
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
     useHistory: () => mockHistory,
-    useLocation: () => ({ pathname: "/analyzers" }),
+    useLocation: () => ({ pathname: "/analyzers", search: mockLocationSearch }),
   };
 });
 
@@ -102,6 +103,7 @@ describe("AnalyzersList", () => {
     vi.clearAllMocks();
     mockHistory.push.mockClear();
     mockHistory.replace.mockClear();
+    mockLocationSearch = "";
 
     // Default mock implementations for AnalyzerForm dependencies
     getAnalyzerTypes.mockImplementation((filters, callback) => {
@@ -248,8 +250,7 @@ describe("AnalyzersList", () => {
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks
    * 2. Act: Click "Add Analyzer" button
-   * 3. Assert: Verify navigation to /analyzers/new (AnalyzerForm is now a
-   *    routed page, not an inline modal)
+   * 3. Assert: Verify navigation to /analyzers?add=1, the inline setup flow
    */
   test("testClickAddAnalyzer_NavigatesToNewForm", async () => {
     // Arrange: Setup API mocks
@@ -273,8 +274,74 @@ describe("AnalyzersList", () => {
     const addButton = screen.getByTestId("add-analyzer-button");
     await userEvent.click(addButton);
 
-    // Assert: navigation occurred to the new-analyzer route
-    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers/new");
+    // Assert: navigation occurred to the inline setup flow
+    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers?add=1");
+  });
+
+  test("testInlineAnalyzerSetup_UsesLabFacingFlowAndKeepsListVisible", async () => {
+    mockLocationSearch = "?add=1&profile=astm%2Fgenexpert-astm";
+    getAnalyzers.mockImplementation((filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "1",
+              name: "Existing GeneXpert",
+              analyzerType: "MOLECULAR",
+              status: "SETUP",
+            }),
+          ],
+        });
+      });
+    });
+    getDefaultConfigs.mockImplementation((callback) => {
+      callback([
+        {
+          id: "astm/genexpert-astm",
+          protocol: "ASTM",
+          analyzerName: "Cepheid GeneXpert (ASTM Mode)",
+          category: "MOLECULAR",
+          testMappingCount: 1,
+          qcRuleCount: 1,
+          resultValueMappingCount: 1,
+          readinessStatus: "READY",
+        },
+      ]);
+    });
+    getDefaultConfig.mockImplementation((protocol, name, callback) => {
+      callback({
+        analyzer_name: "Cepheid GeneXpert (ASTM Mode)",
+        category: "MOLECULAR",
+        protocol: "ASTM",
+        identifier_pattern: "GENEXPERT|CEPHEID.*GX",
+      });
+    });
+
+    act(() => {
+      renderWithIntl(<AnalyzersList />);
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-inline-setup"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("analyzers-list")).toBeInTheDocument();
+    expect(screen.getByTestId("analyzers-table")).toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-form")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("analyzer-form-default-config-dropdown"),
+    ).toHaveTextContent("GeneXpert");
+    expect(
+      screen.queryByTestId("analyzer-form-plugin-type-dropdown"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-identifier-pattern-input"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-status-dropdown"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-name-1")).toHaveTextContent(
+      "Existing GeneXpert",
+    );
   });
 
   /**
@@ -315,6 +382,41 @@ describe("AnalyzersList", () => {
     expect(statusBadge).not.toBeNull();
     // Verify badge contains the status text
     expect(statusBadge.textContent).toMatch(/validation/i);
+  });
+
+  test("testAnalyzerQcSetup_ShowsReadinessAndControlLotAction", async () => {
+    const mockAnalyzers = [
+      createMockAnalyzer({
+        id: "1",
+        name: "Analyzer QC",
+        status: "VALIDATION",
+        qcRules: [],
+        controlLots: [],
+      }),
+    ];
+
+    getAnalyzers.mockImplementation((filters, callback) => {
+      act(() => {
+        callback({ analyzers: mockAnalyzers });
+      });
+    });
+
+    act(() => {
+      renderWithIntl(<AnalyzersList />);
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-qc-readiness-1"),
+    ).toHaveTextContent(messages["analyzer.qcReadiness.required"]);
+
+    await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
+    await userEvent.click(
+      await screen.findByTestId("analyzer-action-control-lots-1"),
+    );
+
+    expect(mockHistory.push).toHaveBeenCalledWith(
+      "/analyzers/qc/control-lots/new?analyzerId=1",
+    );
   });
 
   /**

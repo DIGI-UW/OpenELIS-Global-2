@@ -28,6 +28,7 @@ import QueryStatusModal from "./QueryStatusModal";
 import TestMappingModal from "./TestMappingModal";
 import ValidationDashboard from "./ValidationDashboard";
 import PendingCodesPanel from "./PendingCodesPanel";
+import ResultValueMappingsPanel from "./ResultValueMappingsPanel";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./FieldMapping.css";
 
@@ -41,6 +42,84 @@ const extractMappings = (mappingsData) => {
     if (Array.isArray(mappingsData.data)) return mappingsData.data;
   }
   return [];
+};
+
+const asArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "object") {
+    return Object.entries(value).map(([key, entry]) => ({
+      analyzer_code: key,
+      ...(entry && typeof entry === "object"
+        ? entry
+        : { openelis_test: entry }),
+    }));
+  }
+  return [];
+};
+
+const testIdPart = (value) =>
+  String(value || "unknown")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "unknown";
+
+const extractProfileAppliedMappings = (pluginConfig, mappings, fields) => {
+  const config = pluginConfig?.config || pluginConfig || {};
+  const configuredMappings = asArray(
+    config.default_test_mappings ||
+      config.defaultTestMappings ||
+      config.test_mappings ||
+      config.testMappings,
+  );
+
+  if (configuredMappings.length > 0) {
+    return configuredMappings.map((mapping, index) => {
+      const analyzerCode =
+        mapping.analyzer_code ||
+        mapping.analyzerCode ||
+        mapping.code ||
+        mapping.testCode ||
+        mapping.test_code ||
+        `mapping-${index + 1}`;
+      return {
+        id: testIdPart(analyzerCode),
+        analyzerCode,
+        openelisTest:
+          mapping.test_name_hint ||
+          mapping.openelis_test ||
+          mapping.openelisTest ||
+          mapping.testName ||
+          mapping.test_name ||
+          mapping.test_code ||
+          mapping.loinc ||
+          "-",
+        loinc: mapping.loinc || mapping.loincCode || "-",
+        status: "Profile",
+      };
+    });
+  }
+
+  return mappings.map((mapping, index) => {
+    const field = fields.find((item) => item.id === mapping.analyzerFieldId);
+    const analyzerCode =
+      mapping.analyzerCode ||
+      mapping.analyzerFieldName ||
+      field?.fieldName ||
+      field?.astmRef ||
+      `mapping-${index + 1}`;
+    return {
+      id: testIdPart(analyzerCode),
+      analyzerCode,
+      openelisTest:
+        mapping.openelisFieldName ||
+        mapping.openelisField ||
+        mapping.openelisTestName ||
+        mapping.mappingType ||
+        "-",
+      loinc: mapping.loinc || mapping.loincCode || "-",
+      status: mapping.isActive === false ? "Draft" : "Active",
+    };
+  });
 };
 
 const FieldMapping = () => {
@@ -61,6 +140,8 @@ const FieldMapping = () => {
   const [errorNotification, setErrorNotification] = useState(null);
   const [pendingCodes, setPendingCodes] = useState([]);
   const [pluginConfig, setPluginConfig] = useState(null);
+  const [resultValueMappings, setResultValueMappings] = useState([]);
+  const [pendingResultValues, setPendingResultValues] = useState([]);
 
   useEffect(() => {
     if (!analyzerId) {
@@ -132,6 +213,20 @@ const FieldMapping = () => {
         setPluginConfig(pluginConfigData);
       } else {
         setPluginConfig(null);
+      }
+    });
+    analyzerService.getResultValueMappings(analyzerId, (mappingData) => {
+      if (Array.isArray(mappingData)) {
+        setResultValueMappings(mappingData);
+      } else {
+        setResultValueMappings([]);
+      }
+    });
+    analyzerService.getPendingResultValues(analyzerId, (pendingValuesData) => {
+      if (Array.isArray(pendingValuesData)) {
+        setPendingResultValues(pendingValuesData);
+      } else {
+        setPendingResultValues([]);
       }
     });
 
@@ -218,11 +313,36 @@ const FieldMapping = () => {
   const activePendingCodes = pendingCodes.filter(
     (code) => code.status === "PENDING",
   ).length;
+  const profileAppliedMappings = extractProfileAppliedMappings(
+    pluginConfig,
+    mappings,
+    fields,
+  );
+  const showAdvancedConfig =
+    new URLSearchParams(location.search || "").get("advanced") === "1";
 
   const refreshPendingCodes = () => {
     analyzerService.getPendingCodes(analyzerId, (pendingCodesData) => {
       if (Array.isArray(pendingCodesData)) {
         setPendingCodes(pendingCodesData);
+      }
+    });
+  };
+
+  const refreshResultValues = () => {
+    analyzerService.getResultValueMappings(analyzerId, (mappingData) => {
+      if (Array.isArray(mappingData)) {
+        setResultValueMappings(mappingData);
+      }
+    });
+    analyzerService.getPendingResultValues(analyzerId, (pendingValuesData) => {
+      if (Array.isArray(pendingValuesData)) {
+        setPendingResultValues(pendingValuesData);
+      }
+    });
+    analyzerService.getPluginConfig(analyzerId, (pluginConfigData) => {
+      if (pluginConfigData && typeof pluginConfigData === "object") {
+        setPluginConfig(pluginConfigData);
       }
     });
   };
@@ -296,6 +416,26 @@ const FieldMapping = () => {
         </Grid>
       )}
 
+      <Grid className="field-mapping-profile-context">
+        <Column lg={16} md={8} sm={4}>
+          <InlineNotification
+            kind="info"
+            title={intl.formatMessage({
+              id: "analyzer.fieldMapping.profileContext.title",
+              defaultMessage: "Profile mapping review",
+            })}
+            subtitle={intl.formatMessage({
+              id: "analyzer.fieldMapping.profileContext.subtitle",
+              defaultMessage:
+                "Review profile-applied test mappings, pending analyzer codes, and qualitative result values in one workflow.",
+            })}
+            lowContrast
+            hideCloseButton
+            data-testid="field-mapping-profile-context"
+          />
+        </Column>
+      </Grid>
+
       <Grid className="field-mapping-stats" data-testid="field-mapping-stats">
         <Column lg={5} md={4} sm={4}>
           <Tile data-testid="stat-total-mappings">
@@ -339,20 +479,105 @@ const FieldMapping = () => {
         </Column>
       </Grid>
 
-      <Grid className="field-mapping-plugin-config">
+      <Grid className="field-mapping-profile-review">
         <Column lg={16} md={8} sm={4}>
-          <Tile data-testid="plugin-config-snapshot">
-            <div className="stat-label">
-              {intl.formatMessage({
-                id: "analyzer.fieldMapping.pluginConfig.title",
-              })}
+          <Tile data-testid="profile-applied-mappings-panel">
+            <div className="profile-applied-mappings-header">
+              <h4>
+                {intl.formatMessage({
+                  id: "analyzer.fieldMapping.profileApplied.title",
+                  defaultMessage: "Profile-Applied Test Mappings",
+                })}
+              </h4>
+              <p>
+                {intl.formatMessage({
+                  id: "analyzer.fieldMapping.profileApplied.subtitle",
+                  defaultMessage:
+                    "Confirm analyzer test codes are linked to the intended OpenELIS tests before activation.",
+                })}
+              </p>
             </div>
-            <pre className="plugin-config-pre">
-              {JSON.stringify(pluginConfig || {}, null, 2)}
-            </pre>
+            {profileAppliedMappings.length > 0 ? (
+              <table className="profile-applied-mappings-table">
+                <thead>
+                  <tr>
+                    <th>
+                      {intl.formatMessage({
+                        id: "analyzer.fieldMapping.profileApplied.analyzerCode",
+                        defaultMessage: "Analyzer Code",
+                      })}
+                    </th>
+                    <th>
+                      {intl.formatMessage({
+                        id: "analyzer.fieldMapping.profileApplied.openelisTest",
+                        defaultMessage: "OpenELIS Test",
+                      })}
+                    </th>
+                    <th>
+                      {intl.formatMessage({
+                        id: "analyzer.fieldMapping.profileApplied.loinc",
+                        defaultMessage: "LOINC",
+                      })}
+                    </th>
+                    <th>
+                      {intl.formatMessage({
+                        id: "analyzer.fieldMapping.profileApplied.status",
+                        defaultMessage: "Status",
+                      })}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profileAppliedMappings.map((mapping) => (
+                    <tr
+                      key={`${mapping.id}-${mapping.analyzerCode}`}
+                      data-testid={`profile-applied-mapping-row-${mapping.id}`}
+                    >
+                      <td>{mapping.analyzerCode}</td>
+                      <td>{mapping.openelisTest}</td>
+                      <td>{mapping.loinc}</td>
+                      <td>
+                        {intl.formatMessage({
+                          id: `analyzer.fieldMapping.profileApplied.status.${mapping.status.toLowerCase()}`,
+                          defaultMessage: mapping.status,
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p
+                className="profile-applied-mappings-empty"
+                data-testid="profile-applied-mappings-empty"
+              >
+                {intl.formatMessage({
+                  id: "analyzer.fieldMapping.profileApplied.empty",
+                  defaultMessage:
+                    "No profile-applied test mappings are available yet.",
+                })}
+              </p>
+            )}
           </Tile>
         </Column>
       </Grid>
+
+      {showAdvancedConfig && (
+        <Grid className="field-mapping-plugin-config">
+          <Column lg={16} md={8} sm={4}>
+            <Tile data-testid="plugin-config-snapshot">
+              <div className="stat-label">
+                {intl.formatMessage({
+                  id: "analyzer.fieldMapping.pluginConfig.title",
+                })}
+              </div>
+              <pre className="plugin-config-pre">
+                {JSON.stringify(pluginConfig || {}, null, 2)}
+              </pre>
+            </Tile>
+          </Column>
+        </Grid>
+      )}
 
       <Grid className="field-mapping-pending-codes">
         <Column lg={16} md={8} sm={4}>
@@ -361,6 +586,19 @@ const FieldMapping = () => {
               analyzerId={analyzerId}
               pendingCodes={pendingCodes}
               onUpdated={refreshPendingCodes}
+            />
+          </Tile>
+        </Column>
+      </Grid>
+
+      <Grid className="field-mapping-result-values">
+        <Column lg={16} md={8} sm={4}>
+          <Tile>
+            <ResultValueMappingsPanel
+              analyzerId={analyzerId}
+              mappings={resultValueMappings}
+              pendingValues={pendingResultValues}
+              onUpdated={refreshResultValues}
             />
           </Tile>
         </Column>

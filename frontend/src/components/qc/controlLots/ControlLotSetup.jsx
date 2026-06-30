@@ -29,7 +29,7 @@ import {
   Toggle,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import {
@@ -40,12 +40,40 @@ import StatisticsConfigSection from "./StatisticsConfigSection";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./ControlLotSetup.css";
 
+export const buildControlLotPayload = (
+  values,
+  statisticsConfig,
+  { isEditMode = false, lotId = undefined } = {},
+) => ({
+  id: isEditMode ? lotId : undefined,
+  productName: values.controlMaterial,
+  lotNumber: values.lotNumber,
+  controlLevel: values.controlLevel,
+  expirationDate: values.expirationDate
+    ? (() => {
+        const [mm, dd, yyyy] = values.expirationDate.split("/");
+        return new Date(`${yyyy}-${mm}-${dd}T12:00:00`).toISOString();
+      })()
+    : undefined,
+  instrumentId: values.analyzerId || undefined,
+  testId: values.testId || undefined,
+  calculationMethod: statisticsConfig.calculationMethod,
+  initialRunsCount: statisticsConfig.initialRunsRequired,
+  manufacturerMean: statisticsConfig.mean,
+  manufacturerStdDev: statisticsConfig.standardDeviation,
+  activationDate: new Date().toISOString(),
+  status: values.isActive ? "ACTIVE" : "EXPIRED",
+});
+
 const ControlLotSetup = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { id: lotId } = useParams();
 
   const isEditMode = !!lotId;
+  const preselectedAnalyzerId =
+    new URLSearchParams(location.search || "").get("analyzerId") || "";
 
   // State
   const [loading, setLoading] = useState(false);
@@ -177,7 +205,7 @@ const ControlLotSetup = () => {
       controlMaterial: "",
       controlLevel: "",
       expirationDate: "",
-      analyzerId: "",
+      analyzerId: preselectedAnalyzerId,
       testId: "",
       isActive: true,
     };
@@ -188,28 +216,10 @@ const ControlLotSetup = () => {
     setSubmitting(true);
     setError(null);
 
-    const payload = {
-      id: isEditMode ? lotId : undefined,
-      productName: values.controlMaterial,
-      lotNumber: values.lotNumber,
-      controlLevel: values.controlLevel,
-      expirationDate: values.expirationDate
-        ? (() => {
-            const [mm, dd, yyyy] = values.expirationDate.split("/");
-            return new Date(`${yyyy}-${mm}-${dd}T12:00:00`).toISOString();
-          })()
-        : undefined,
-      instrumentId: values.analyzerId
-        ? parseInt(values.analyzerId, 10)
-        : undefined,
-      testId: values.testId ? parseInt(values.testId, 10) : undefined,
-      calculationMethod: statisticsConfig.calculationMethod,
-      initialRunsCount: statisticsConfig.initialRunsRequired,
-      manufacturerMean: statisticsConfig.mean,
-      manufacturerStdDev: statisticsConfig.standardDeviation,
-      activationDate: new Date().toISOString(),
-      status: values.isActive ? "ACTIVE" : "EXPIRED",
-    };
+    const payload = buildControlLotPayload(values, statisticsConfig, {
+      isEditMode,
+      lotId,
+    });
 
     postToOpenElisServerFullResponse(
       "/rest/qc/controlLot",
@@ -414,6 +424,10 @@ const ControlLotSetup = () => {
                       labelText={intl.formatMessage({
                         id: "qc.controlLot.field.expiration",
                       })}
+                      value={values.expirationDate}
+                      onChange={(event) =>
+                        setFieldValue("expirationDate", event.target.value)
+                      }
                       onBlur={handleBlur("expirationDate")}
                       invalid={
                         touched.expirationDate && !!errors.expirationDate

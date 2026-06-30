@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -102,5 +103,53 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"MAPPED\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value("pc-1"))
                 .andExpect(jsonPath("$.status").value("MAPPED"));
+    }
+
+    @Test
+    public void testGetResultValueMappings_Returns200() throws Exception {
+        when(analyzerPluginConfigService.getResultValueMappings("101")).thenReturn(List.of(Map.of("analyzerValue",
+                "Detected", "openelisValue", "POSITIVE", "testCode", "MTB", "active", true)));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/101/result-value-mappings")
+                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].analyzerValue").value("Detected"))
+                .andExpect(jsonPath("$[0].openelisValue").value("POSITIVE"));
+    }
+
+    @Test
+    public void testUpdateResultValueMappings_Returns200() throws Exception {
+        Map<String, Object> response = Map.of("resultValueMappings",
+                List.of(Map.of("analyzerValue", "Detected", "openelisValue", "POSITIVE")));
+        when(analyzerPluginConfigService.updateResultValueMappings(eq("101"), any(List.class), any()))
+                .thenReturn(response);
+
+        mockMvc.perform(put("/rest/analyzer/analyzers/101/result-value-mappings")
+                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON)
+                .content("[{\"analyzerValue\":\"Detected\",\"openelisValue\":\"POSITIVE\"}]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultValueMappings[0].openelisValue").value("POSITIVE"));
+    }
+
+    @Test
+    public void testGetPendingResultValues_Returns200() throws Exception {
+        when(analyzerPluginConfigService.getPendingResultValues("101"))
+                .thenReturn(List.of(Map.of("id", "rv-1", "analyzerValue", "Trace", "status", "PENDING")));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/101/pending-result-values")
+                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value("rv-1"))
+                .andExpect(jsonPath("$[0].status").value("PENDING"));
+    }
+
+    @Test
+    public void testResolvePendingResultValue_Returns200() throws Exception {
+        when(analyzerPluginConfigService.resolvePendingResultValue(eq("101"), eq("rv-1"), any(Map.class), any()))
+                .thenReturn(Map.of("id", "rv-1", "status", "MAPPED", "openelisValue", "INDETERMINATE"));
+
+        mockMvc.perform(post("/rest/analyzer/analyzers/101/pending-result-values/rv-1/resolve")
+                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"openelisValue\":\"INDETERMINATE\"}")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("MAPPED"))
+                .andExpect(jsonPath("$.openelisValue").value("INDETERMINATE"));
     }
 }

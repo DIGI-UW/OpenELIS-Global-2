@@ -69,6 +69,42 @@
   font-size: 1.5rem;
 }
 
+.field-mapping-profile-context,
+.field-mapping-profile-review {
+  margin-bottom: 1rem;
+}
+
+.profile-applied-mappings-header h4 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.profile-applied-mappings-header p,
+.profile-applied-mappings-empty {
+  margin: 0.25rem 0 0;
+  color: var(--cds-text-secondary);
+}
+
+.profile-applied-mappings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+.profile-applied-mappings-table th,
+.profile-applied-mappings-table td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  vertical-align: middle;
+}
+
+.profile-applied-mappings-table th {
+  color: var(--cds-text-secondary);
+  font-weight: 600;
+}
+
 /* Action Buttons */
 .field-mapping-actions {
   display: flex;
@@ -88,7 +124,8 @@
 }
 
 .field-mapping-plugin-config,
-.field-mapping-pending-codes {
+.field-mapping-pending-codes,
+.field-mapping-result-values {
   margin-bottom: 1rem;
 }
 
@@ -102,18 +139,28 @@
   border: 1px solid var(--cds-border-subtle);
 }
 
-.pending-codes-panel h4 {
+.pending-codes-panel h4,
+.result-value-mappings-panel h4 {
   margin-bottom: 0.25rem;
 }
 
-.pending-codes-table {
+.result-value-mappings-panel h5 {
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.pending-codes-table,
+.result-value-mappings-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 0.75rem;
 }
 
 .pending-codes-table th,
-.pending-codes-table td {
+.pending-codes-table td,
+.result-value-mappings-table th,
+.result-value-mappings-table td {
   text-align: left;
   padding: 0.5rem;
   border-bottom: 1px solid var(--cds-border-subtle);

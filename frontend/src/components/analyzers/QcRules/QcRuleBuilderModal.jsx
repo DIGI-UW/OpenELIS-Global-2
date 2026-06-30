@@ -58,14 +58,12 @@ const QcRulePage = () => {
         });
       }
     });
-  }, [analyzer?.id, intl]);
+  }, [analyzerId, intl]);
 
   useEffect(() => {
-    if (open) {
-      setNotification(null);
-      loadRules();
-    }
-  }, [analyzerId, loadRules]);
+    setNotification(null);
+    loadRules();
+  }, [loadRules]);
 
   const handleRuleChange = (index, updatedRule) => {
     setRules((prev) => {
@@ -247,6 +245,7 @@ const QcRulePage = () => {
           kind="primary"
           onClick={handleSave}
           disabled={saving || loading}
+          data-testid="qc-rule-save-btn"
         >
           {intl.formatMessage({ id: "label.button.save" })}
         </Button>

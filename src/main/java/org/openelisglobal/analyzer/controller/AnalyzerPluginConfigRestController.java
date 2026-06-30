@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -96,6 +97,51 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError("Failed to update pending code: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/analyzers/{analyzerId}/result-value-mappings")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<List<Map<String, Object>>> getResultValueMappings(@PathVariable String analyzerId) {
+        return ResponseEntity.ok(analyzerPluginConfigService.getResultValueMappings(analyzerId));
+    }
+
+    @PutMapping("/analyzers/{analyzerId}/result-value-mappings")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<Map<String, Object>> updateResultValueMappings(@PathVariable String analyzerId,
+            @RequestBody List<Map<String, Object>> body, HttpServletRequest request) {
+        try {
+            return ResponseEntity
+                    .ok(analyzerPluginConfigService.updateResultValueMappings(analyzerId, body, getSysUserId(request)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    AnalyzerControllerHelper.wrapError("Failed to update result value mappings: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/analyzers/{analyzerId}/pending-result-values")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<List<Map<String, Object>>> getPendingResultValues(@PathVariable String analyzerId) {
+        return ResponseEntity.ok(analyzerPluginConfigService.getPendingResultValues(analyzerId));
+    }
+
+    @PostMapping("/analyzers/{analyzerId}/pending-result-values/{pendingResultValueId}/resolve")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<Map<String, Object>> resolvePendingResultValue(@PathVariable String analyzerId,
+            @PathVariable String pendingResultValueId, @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+        try {
+            return ResponseEntity.ok(analyzerPluginConfigService.resolvePendingResultValue(analyzerId,
+                    pendingResultValueId, body, getSysUserId(request)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    AnalyzerControllerHelper.wrapError("Failed to resolve pending result value: " + e.getMessage()));
         }
     }
 }
