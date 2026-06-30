@@ -238,15 +238,19 @@ const SerialConfiguration = ({
   };
 
   const getNumberInputValue = (
-    event:
+    event: (
       | React.ChangeEvent<HTMLInputElement>
       | React.MouseEvent<HTMLButtonElement>
       | React.KeyboardEvent<HTMLInputElement>
-      | React.FocusEvent<HTMLInputElement>,
+      | React.FocusEvent<HTMLInputElement>
+    ) & {
+      imaginaryTarget?: { value?: string | number };
+    },
   ): number => {
-    return event.target instanceof HTMLInputElement
-      ? Number(event.target.value)
-      : 0;
+    const value = event.imaginaryTarget?.value ?? event.target.value;
+    const numericValue = Number(value);
+
+    return Number.isFinite(numericValue) ? numericValue : 0;
   };
 
   const handleConnect = () => {
