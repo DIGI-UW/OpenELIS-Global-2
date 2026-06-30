@@ -1943,6 +1943,71 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
     }
 
+    @Override
+    public ResultsUpdateDataSet createResultUpdateDataSetFromReport(DiagnosticReport report, String sysuserId) {
+
+        ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet(sysuserId);
+        Analysis analysis = null;
+
+        if (report.hasBasedOn() && report.getBasedOnFirstRep().hasReference()) {
+            String analysisUUID = report.getBasedOnFirstRep().getReferenceElement().getIdPart();
+            List<Analysis> matches = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUUID));
+            if (matches != null && !matches.isEmpty()) {
+                analysis = matches.get(0);
+            }
+        }
+
+        if (analysis == null) {
+            analysis = new Analysis();
+        }
+
+        if (report.hasResult()) {
+            List<TestResultItem> resultItems = new ArrayList<>();
+            for (Reference resultRef : report.getResult()) {
+                String resultId = resultRef.getReferenceElement().getIdPart();
+                Result result = getItemByFhirId(resultId, resultService);
+                Observation observation = transformResultToObservation(result);
+                TestResultItem resultItem = createResultFromObservation(observation);
+                resultItems.add(resultItem);
+            }
+            dataSet.getAnalysisOnlyChangeResults().addAll(resultItems);
+        }
+
+        if (report.hasSpecimen()) {
+            for (Reference specimenRef : report.getSpecimen()) {
+                String sampleItemUUID = specimenRef.getReferenceElement().getIdPart();
+                SampleItem sampleItem = getItemByFhirId(sampleItemUUID, sampleItemService);
+                analysis.setSampleItem(sampleItem);
+            }
+        }
+
+        if (report.hasCode()) {
+            List<Test> tests = resolveTestsFromCodeableConcept(report.getCode());
+            if (tests != null && !tests.isEmpty()) {
+                analysis.setTest(tests.get(0));
+            }
+        }
+
+        if (report.hasStatus()) {
+            DiagnosticReport.DiagnosticReportStatus status = report.getStatus();
+            if (status == DiagnosticReport.DiagnosticReportStatus.FINAL) {
+                analysis.setStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
+            } else if (status == DiagnosticReport.DiagnosticReportStatus.PRELIMINARY) {
+                analysis.setStatusId(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+            } else if (status == DiagnosticReport.DiagnosticReportStatus.PARTIAL) {
+                analysis.setStatusId(statusService.getStatusID(AnalysisStatus.TechnicalRejected));
+            } else if (status == DiagnosticReport.DiagnosticReportStatus.REGISTERED) {
+                analysis.setStatusId(statusService.getStatusID(AnalysisStatus.NotStarted));
+            }
+        }
+
+        analysis.setSysUserId(sysuserId);
+
+        dataSet.getModifiedAnalysis().add(analysis);
+
+        return dataSet;
+    }
+
     private DiagnosticReport transformResultToDiagnosticReport(String analysisId) {
         return transformResultToDiagnosticReport(analysisService.get(analysisId));
     }
@@ -2552,7 +2617,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         Test requestedTest = null;
         if (serviceRequest.hasCode()) {
-            List<Test> foundTests = resolveTestsFromServiceRequest(serviceRequest);
+            CodeableConcept codeableConcept = serviceRequest.getCode();
+            List<Test> foundTests = resolveTestsFromCodeableConcept(codeableConcept);
             requestedTest = foundTests.get(0);
         }
 
@@ -2796,14 +2862,14 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
-    public List<Test> resolveTestsFromServiceRequest(ServiceRequest serviceRequest) {
+    public List<Test> resolveTestsFromCodeableConcept(CodeableConcept codeableConcept) {
         List<Test> resolvedTests = new ArrayList<>();
 
-        if (serviceRequest == null || !serviceRequest.hasCode() || !serviceRequest.getCode().hasCoding()) {
+        if (codeableConcept == null || !codeableConcept.hasCoding()) {
             return resolvedTests;
         }
 
-        serviceRequest.getCode().getCoding().forEach(coding -> {
+        codeableConcept.getCoding().forEach(coding -> {
 
             if ("http://loinc.org".equalsIgnoreCase(coding.getSystem()) && coding.hasCode()) {
 
