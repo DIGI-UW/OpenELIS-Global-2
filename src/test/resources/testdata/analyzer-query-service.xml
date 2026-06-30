@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Minimal fixture for AnalyzerQueryServiceIntegrationTest. No analyzer
+    rows are present — this is intentional. The tests validate that AnalyzerQueryServiceImpl
+    handles non-existent analyzer IDs gracefully by converting the internal ObjectNotFoundException
+    into a "failed" job state rather than propagating the exception to the caller.
+    See AnalyzerQueryServiceIntegrationTest class-level Javadoc for full details. -->
+<dataset>
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y" />
+</dataset>
