@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="1" login_name="alice" first_name="Alice"
+        last_name="Tester" is_active="Y" is_employee="Y" />
+
+    <notification_payload_template id="1"
+        type="TEST_RESULT"
+        message_template="Your test result is ready."
+        subject_template="Test Result Notification" />
+</dataset>
