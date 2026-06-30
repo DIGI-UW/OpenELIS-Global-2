@@ -16,15 +16,12 @@ import org.openelisglobal.common.util.StringUtil;
 
 public class SecurityFilter implements Filter {
 
-    private ArrayList<String> exceptions = new ArrayList<>();
-
     public SecurityFilter() {
     }
 
     @Override
     public void destroy() {
-        // TODO Auto-generated method stub
-
+        // Nothing to clean up
     }
 
     @Override
@@ -36,17 +33,17 @@ public class SecurityFilter implements Filter {
         boolean suspectedAttack = false;
         ArrayList<String> attackList = new ArrayList<>();
 
-        // persistent XSS check
-        if (httpRequest.getMethod().equals("POST") || httpRequest.getRequestURI().contains("Update")
+        // Persistent XSS check on POST or sensitive URIs
+        if ("POST".equalsIgnoreCase(httpRequest.getMethod())
+                || httpRequest.getRequestURI().contains("Update")
                 || httpRequest.getRequestURI().contains("Save")) {
+
             Enumeration<String> parameterNames = httpRequest.getParameterNames();
             while (parameterNames.hasMoreElements()) {
                 String curParam = parameterNames.nextElement();
                 String paramValue = httpRequest.getParameter(curParam);
-                // String paramValue = java.net.URLDecoder.decode(param, "UTF-8");
 
-                paramValue = paramValue.replaceAll("\\s", "");
-                if (paramValue.contains("<script>") || paramValue.contains("</script>")) {
+                if (paramValue != null && paramValue.toLowerCase().contains("<script")) {
                     suspectedAttack = true;
                     attackList.add("XSS on " + curParam + ": " + StringUtil.snipToMaxLength(paramValue, 50));
                 }
@@ -63,26 +60,19 @@ public class SecurityFilter implements Filter {
                 separator = ",";
                 attackMessage.append(attack);
             }
-            // should log suspected attempt
+
+            // Log suspected attempt
             LogEvent.logWarn(this.getClass().getSimpleName(), "doFilter()", attackMessage.toString());
-            // send to safe page
-            httpResponse.sendRedirect("Dashboard");
+
+            // Respond with error instead of silent redirect
+            httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Suspected XSS attack detected");
         } else {
-            chain.doFilter(request, httpResponse);
+            chain.doFilter(request, response);
         }
-    }
-
-    public void addException(String exception) {
-        exceptions.add(exception);
-    }
-
-    private void addExceptions() {
-        exceptions.add("importAnalyzer");
     }
 
     @Override
     public void init(FilterConfig arg0) throws ServletException {
-        // TODO Auto-generated method stub
-        addExceptions();
+        // No exceptions list needed anymore
     }
 }
