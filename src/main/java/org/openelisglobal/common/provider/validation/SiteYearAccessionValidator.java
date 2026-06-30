@@ -15,6 +15,7 @@ package org.openelisglobal.common.provider.validation;
 
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 
 public class SiteYearAccessionValidator extends BaseSiteYearAccessionValidator implements IAccessionNumberGenerator {
@@ -82,5 +83,10 @@ public class SiteYearAccessionValidator extends BaseSiteYearAccessionValidator i
         String incrementAsString;
         incrementAsString = String.format("%013d", nextNum);
         return getPrefix() + year + incrementAsString;
+    }
+
+    @Override
+    protected Property getRegexProperty() {
+        return Property.SITEYEARNUM_ACCESSION_REGEX;
     }
 }

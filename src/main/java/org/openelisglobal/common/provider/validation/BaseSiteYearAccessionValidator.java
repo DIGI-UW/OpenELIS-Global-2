@@ -140,6 +140,10 @@ public abstract class BaseSiteYearAccessionValidator {
             return ValidationResults.FORMAT_FAIL;
         }
 
+        if (!AccessionNumberUtil.matchesConfiguredRegex(accessionNumber, getRegexProperty())) {
+            return ValidationResults.FORMAT_FAIL;
+        }
+
         return ValidationResults.SUCCESS;
     }
 
@@ -186,4 +190,6 @@ public abstract class BaseSiteYearAccessionValidator {
     protected abstract int getMinAccessionLength();
 
     protected abstract int getChangeableLength();
+
+    protected abstract Property getRegexProperty();
 }
