@@ -133,14 +133,13 @@ li.clickableUserDetails:hover {
   margin: 0 5% 0 2%;
 }
 
-/* -----------------------------------------------------------------------------
- * Login page layout
- * -----------------------------------------------------------------------------
- * The global layout can retain a persisted LOCK sidenav mode even when the user
- * is unauthenticated (no sidenav visible). These wrappers ensure the login form
- * stays horizontally centered regardless of surrounding layout state.
- */
-.oe-loginPageContent {
+.inputText,
+.inputSearch {
+  --cds-text-primary: black;
+  --cds-text-secondary: black;
+}
+
+.inputText {
   width: 100%;
 }
 
@@ -173,10 +172,12 @@ li.clickableUserDetails:hover {
   border: 0.5px solid #295785;
   border-radius: 5px;
 }
+
 .ruleBody {
   margin: 2%;
   padding: 0.5%;
 }
+
 .gridBoundary,
 .columnBoundary.section {
   padding: 1%;
@@ -199,13 +200,6 @@ li.clickableUserDetails:hover {
   margin-left: 1%;
 }
 
-.gpsDiv {
-  display: flex;
-  margin-top: 2%;
-  /* margin-bottom: 3%; */
-  margin-left: 1%;
-}
-
 .section {
   border: 0.5px solid green;
   border-radius: 3px;
@@ -224,7 +218,7 @@ li.clickableUserDetails:hover {
   font-size: 10px;
 }
 
-.inlineDivBlock > div {
+.inlineDivBlock>div {
   display: inline-block;
   margin-right: 1rem;
 }
@@ -232,12 +226,14 @@ li.clickableUserDetails:hover {
 .inlineChildDiv {
   margin-left: 1%;
 }
+
 .middleAlign,
 .middleAlignVertical,
 .bottomAlign {
   height: 100%;
   display: flex;
 }
+
 .middleAlign {
   align-items: center;
   justify-content: center;
@@ -247,9 +243,11 @@ li.clickableUserDetails:hover {
   display: flex;
   justify-content: center;
 }
+
 .middleAlignVertical {
   align-items: center;
 }
+
 .bottomAlign {
   align-items: flex-end;
 }
@@ -268,11 +266,13 @@ li.clickableUserDetails:hover {
   margin-left: 1%;
   margin-right: 0%;
 }
+
 .searchLabNumber,
 .sampleInfo {
   margin-left: 0%;
   margin-right: 0%;
 }
+
 .searchLabNumber {
   width: 50%;
 }
@@ -292,13 +292,21 @@ li.clickableUserDetails:hover {
   margin-right: 5%;
   width: 100%;
 }
+
 .institute {
   margin-left: 5%;
   margin-right: 5%;
   width: 100%;
 }
-/* REMOVED: Forcing black text caused dark mode input issues 
-   Carbon's <Theme theme="white"> handles this correctly */
+
+.inputText,
+.inputSelect,
+.inputSelect2,
+.inputText2 {
+  --cds-text-primary: black;
+  --cds-text-secondary: black;
+}
+
 .inputText,
 .inputSelect {
   width: 100%;
@@ -308,6 +316,7 @@ li.clickableUserDetails:hover {
 .inputSelect2 {
   width: 380px;
 }
+
 .inputText2,
 .inputSelect2 {
   padding-left: 1%;
@@ -393,11 +402,12 @@ button {
 .requiredFieldIndicator {
   color: red;
 }
+
 .toastDisplay {
-  position: fixed; /*or fixed*/
+  position: fixed;
   top: 47px;
   right: 0px;
-  z-index: 9100; /* Must be higher than Carbon modals (9000) to appear on top */
+  z-index: 9100;
 }
 
 .selectSampleType {
@@ -432,9 +442,11 @@ button {
 .first-row {
   max-width: 500px;
 }
+
 .searchResultsBtn {
   margin: 10px !important;
 }
+
 .advancedSearchResultsBtn {
   margin: 10px !important;
 }
@@ -504,22 +516,16 @@ button {
   background-color: var(--cds-background, #295785);
 }
 
-.reduced-padding-nav-menu-item > a.cds--side-nav__link {
+.reduced-padding-nav-menu-item>a.cds--side-nav__link {
   padding-left: 1rem !important;
 }
 
-/* Compensate padding when active border is added */
-.reduced-padding-nav-menu-item > a.cds--side-nav__link--current,
-.reduced-padding-nav-menu-item > a.cds--side-nav__link[aria-current="page"] {
-  padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border */
-}
-
-.top-level-menu-item > a {
+.top-level-menu-item>a {
   pointer-events: auto !important;
   text-decoration: none !important;
 }
 
-.top-level-menu-item > a:hover {
+.top-level-menu-item>a:hover {
   background-color: var(--cds-background-hover, #072655);
 }
 
@@ -529,9 +535,11 @@ button {
   .banner h5 {
     font-size: 1.8vw;
   }
+
   .banner p {
     font-size: 1.4vw;
   }
+
   .formInlineDiv {
     grid-template-columns: 1fr;
   }
