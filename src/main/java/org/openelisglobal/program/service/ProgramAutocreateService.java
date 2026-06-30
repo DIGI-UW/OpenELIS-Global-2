@@ -103,56 +103,60 @@ public class ProgramAutocreateService {
                         while ((linee = reader.readLine()) != null) {
                             String[] lines = linee.split("	");
                             UUID uuid = UUID.randomUUID();
-                            System.out.println("\t\t<insert schemaName=\"clinlims\" tableName=\"localization\">\n" + //
-                                    "\t\t\t<column name=\"id\" valueSequenceNext=\"localization_seq\" />\n" + //
-                                    "\t\t\t<column name=\"lastupdated\" valueComputed=\"${now}\" />\n" + //
-                                    "\t\t\t<column name=\"description\" value=\"test name\" />\n" + //
-                                    "\t\t\t<column name=\"english\" value=\"" + lines[1].trim() + "\" />\n" + //
-                                    "\t\t\t<column name=\"french\" value=\"" + lines[1].trim() + "\"/>\n" + //
-                                    "\t\t</insert>\n" + //
-                                    "\t\t<insert schemaName=\"clinlims\" tableName=\"localization\">\n" + //
-                                    "\t\t\t<column name=\"id\" valueSequenceNext=\"localization_seq\" />\n" + //
-                                    "\t\t\t<column name=\"lastupdated\" valueComputed=\"${now}\" />\n" + //
-                                    "\t\t\t<column name=\"description\" value=\"test reporting name\" />\n" + //
-                                    "\t\t\t<column name=\"english\" value=\"" + lines[2].trim() + "\" />\n" + //
-                                    "\t\t\t<column name=\"french\" value=\"" + lines[2].trim() + "\"/>\n" + //
-                                    "\t\t</insert>\n" + //
-                                    "\t\t<insert schemaName=\"clinlims\" tableName=\"test\">\n" + //
-                                    "\t\t\t<column name=\"id\" valueNumeric=\"nextval('test_seq') \"/>\n" + //
-                                    "\t\t\t<column name=\"description\" value=\"" + lines[1].trim() + "\"/> \n" + //
-                                    "\t\t\t<column name=\"lastupdated\" valueDate='now()' /> \n" + //
-                                    "\t\t\t<column name=\"is_active\" value='Y' /> \n" + //
-                                    "\t\t\t<column name=\"is_reportable\" value='N' /> \n" + //
-                                    "\t\t\t<column name=\"test_section_id\" valueComputed=\"(select id from"
-                                    + " test_section where name = 'Immunohistochemistry' limit 1)\" />\n" + //
-                                    "\t\t\t<column name=\"local_code\" value='" + lines[0].trim() + "' />\n" + //
-                                    "\t\t\t<column name=\"name\" value=\"test." + lines[0].trim() + "\"/>\n" + //
-                                    "\t\t\t<column name=\"name_localization_id\" valueComputed=\"(select id from"
-                                    + " localization where english = '" + lines[1].trim()
-                                    + "' and description = 'test name' limit 1)\" />\n" + //
-                                    "\t\t\t<column name=\"reporting_name_localization_id\""
-                                    + " valueComputed=\"(select id from localization where english = '"
-                                    + lines[2].trim() + "' and description = 'test reporting name' limit 1)\" />\n" + //
-                                    "\t\t\t<column name=\"guid\" value=\"" + uuid + "\"/>\n" + //
-                                    "\t\t</insert> \n" + //
-                                    "\t\t<insert tableName=\"test_result\">\n" + //
-                                    "\t\t\t<column name=\"id\" valueNumeric=\"nextval( 'test_result_seq' )\"/>\n" + //
-                                    "\t\t\t<column name=\"test_id\"  valueNumeric=\" ( select id from"
-                                    + " clinlims.test where description = '" + lines[1].trim() + "' ) \" />\n" + //
-                                    "\t\t\t<column name=\"tst_rslt_type\" value=\"R\" />\n" + //
-                                    "\t\t\t<column name=\"lastupdated\" valueComputed=\"${now}\"/>\n" + //
-                                    "\t\t\t<column name=\"is_active\" value=\"t\"/>\n" + //
-                                    "\t\t\t<column name=\"sort_order\" valueNumeric=\"0\" />\n" + //
-                                    "\t\t</insert>\n" + //
-                                    "\t\t<insert schemaName=\"clinlims\" tableName=\"sampletype_test\">\n" + //
-                                    "\t\t\t<column name=\"id\" valueNumeric=\" nextval( 'sample_type_test_seq' )"
-                                    + " \"/>\n" + //
-                                    "\t\t\t<column name=\"sample_type_id\" valueNumeric=\" ( select id from"
-                                    + " clinlims.type_of_sample where description = 'Immunohistochemistry specimen'"
-                                    + " ) \"/>\n" + //
-                                    "\t\t\t<column name=\"test_id\"  valueNumeric=\" ( select id from"
-                                    + " clinlims.test where description = '" + lines[1].trim() + "' ) \" />\n" + //
-                                    "\t\t</insert>");
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "autocreateProgram",
+                                    "Prepared auto-create entries for test '" + lines[1].trim()
+                                            + "' (reporting name '" + lines[2].trim()
+                                            + "') with generated UUID " + uuid);
+                                            "\t\t\t<column name=\"description\" value=\"test name\" />\n" + //
+                                            "\t\t\t<column name=\"english\" value=\"" + lines[1].trim() + "\" />\n" + //
+                                            "\t\t\t<column name=\"french\" value=\"" + lines[1].trim() + "\"/>\n" + //
+                                            "\t\t</insert>\n" + //
+                                            "\t\t<insert schemaName=\"clinlims\" tableName=\"localization\">\n" + //
+                                            "\t\t\t<column name=\"id\" valueSequenceNext=\"localization_seq\" />\n" + //
+                                            "\t\t\t<column name=\"lastupdated\" valueComputed=\"${now}\" />\n" + //
+                                            "\t\t\t<column name=\"description\" value=\"test reporting name\" />\n" + //
+                                            "\t\t\t<column name=\"english\" value=\"" + lines[2].trim() + "\" />\n" + //
+                                            "\t\t\t<column name=\"french\" value=\"" + lines[2].trim() + "\"/>\n" + //
+                                            "\t\t</insert>\n" + //
+                                            "\t\t<insert schemaName=\"clinlims\" tableName=\"test\">\n" + //
+                                            "\t\t\t<column name=\"id\" valueNumeric=\"nextval('test_seq') \"/>\n" + //
+                                            "\t\t\t<column name=\"description\" value=\"" + lines[1].trim() + "\"/> \n"
+                                            + //
+                                            "\t\t\t<column name=\"lastupdated\" valueDate='now()' /> \n" + //
+                                            "\t\t\t<column name=\"is_active\" value='Y' /> \n" + //
+                                            "\t\t\t<column name=\"is_reportable\" value='N' /> \n" + //
+                                            "\t\t\t<column name=\"test_section_id\" valueComputed=\"(select id from"
+                                            + " test_section where name = 'Immunohistochemistry' limit 1)\" />\n" + //
+                                            "\t\t\t<column name=\"local_code\" value='" + lines[0].trim() + "' />\n" + //
+                                            "\t\t\t<column name=\"name\" value=\"test." + lines[0].trim() + "\"/>\n" + //
+                                            "\t\t\t<column name=\"name_localization_id\" valueComputed=\"(select id from"
+                                            + " localization where english = '" + lines[1].trim()
+                                            + "' and description = 'test name' limit 1)\" />\n" + //
+                                            "\t\t\t<column name=\"reporting_name_localization_id\""
+                                            + " valueComputed=\"(select id from localization where english = '"
+                                            + lines[2].trim()
+                                            + "' and description = 'test reporting name' limit 1)\" />\n" + //
+                                            "\t\t\t<column name=\"guid\" value=\"" + uuid + "\"/>\n" + //
+                                            "\t\t</insert> \n" + //
+                                            "\t\t<insert tableName=\"test_result\">\n" + //
+                                            "\t\t\t<column name=\"id\" valueNumeric=\"nextval( 'test_result_seq' )\"/>\n"
+                                            + //
+                                            "\t\t\t<column name=\"test_id\"  valueNumeric=\" ( select id from"
+                                            + " clinlims.test where description = '" + lines[1].trim() + "' ) \" />\n" + //
+                                            "\t\t\t<column name=\"tst_rslt_type\" value=\"R\" />\n" + //
+                                            "\t\t\t<column name=\"lastupdated\" valueComputed=\"${now}\"/>\n" + //
+                                            "\t\t\t<column name=\"is_active\" value=\"t\"/>\n" + //
+                                            "\t\t\t<column name=\"sort_order\" valueNumeric=\"0\" />\n" + //
+                                            "\t\t</insert>\n" + //
+                                            "\t\t<insert schemaName=\"clinlims\" tableName=\"sampletype_test\">\n" + //
+                                            "\t\t\t<column name=\"id\" valueNumeric=\" nextval( 'sample_type_test_seq' )"
+                                            + " \"/>\n" + //
+                                            "\t\t\t<column name=\"sample_type_id\" valueNumeric=\" ( select id from"
+                                            + " clinlims.type_of_sample where description = 'Immunohistochemistry specimen'"
+                                            + " ) \"/>\n" + //
+                                            "\t\t\t<column name=\"test_id\"  valueNumeric=\" ( select id from"
+                                            + " clinlims.test where description = '" + lines[1].trim() + "' ) \" />\n" + //
+                                            "\t\t</insert>");
                         }
                         continue;
                     } else {

@@ -39,9 +39,9 @@ public class QueryProviderFactory {
     protected Object createObject(String className) throws LIMSRuntimeException {
         Object object = null;
         try {
-            Class classDefinition = Class.forName(className);
-            object = classDefinition.newInstance();
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            Class<?> classDefinition = Class.forName(className);
+            object = classDefinition.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Unable to create an object for " + className, e);
         }
