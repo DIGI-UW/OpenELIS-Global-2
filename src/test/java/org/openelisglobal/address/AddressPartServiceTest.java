@@ -72,4 +72,69 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Village", part.getPartName());
         assertEquals("1", part.getDisplayOrder());
     }
+
+    @Test
+    public void insertAddressPart_shouldPersistAndBeRetrievableById() {
+        AddressPart part = new AddressPart();
+        part.setPartName("Pathway"); // ← change "Street" to "Pathway"
+        part.setDisplayOrder("10");
+        part.setSysUserId("1");
+
+        String insertedId = partService.insert(part);
+
+        assertNotNull("Inserted ID should not be null", insertedId);
+        AddressPart retrieved = partService.get(insertedId);
+        assertNotNull("Retrieved part should not be null", retrieved);
+        assertEquals("Pathway", retrieved.getPartName());
+        assertEquals("10", retrieved.getDisplayOrder());
+    }
+
+    @Test
+    public void insertAddressPart_shouldIncreaseTotalCount() {
+        int countBefore = partService.getAll().size();
+
+        AddressPart part = new AddressPart();
+        part.setPartName("Alley"); // short, under 20 chars
+        part.setDisplayOrder("5");
+        part.setSysUserId("1");
+        partService.insert(part);
+
+        assertEquals("Count should increase by 1", countBefore + 1, partService.getAll().size());
+    }
+
+    @Test
+    public void updateDisplayOrder_shouldPersistNewDisplayOrder() {
+        AddressPart part = new AddressPart();
+        part.setPartName("Avenue"); // short, under 20 chars
+        part.setDisplayOrder("30");
+        part.setSysUserId("1");
+        String id = partService.insert(part);
+
+        AddressPart saved = partService.get(id);
+        saved.setDisplayOrder("100");
+        partService.save(saved);
+
+        AddressPart reloaded = partService.get(id);
+        assertEquals("100", reloaded.getDisplayOrder());
+    }
+
+    @Test
+    public void insertTwoDifferentParts_shouldHaveDistinctIds() {
+        AddressPart part1 = new AddressPart();
+        part1.setPartName("Boulevard"); // short, under 20 chars
+        part1.setDisplayOrder("40");
+        part1.setSysUserId("1");
+
+        AddressPart part2 = new AddressPart();
+        part2.setPartName("Highway"); // short, under 20 chars
+        part2.setDisplayOrder("41");
+        part2.setSysUserId("1");
+
+        String id1 = partService.insert(part1);
+        String id2 = partService.insert(part2);
+
+        assertNotNull(id1);
+        assertNotNull(id2);
+        assertNotEquals("Two inserts must produce distinct IDs", id1, id2);
+    }
 }
