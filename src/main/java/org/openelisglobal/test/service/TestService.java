@@ -1,6 +1,7 @@
 package org.openelisglobal.test.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Set;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,6 +22,8 @@ public interface TestService extends BaseObjectService<Test, String> {
     Test getActiveTestById(Integer id);
 
     Integer getTotalTestCount();
+
+    List<Test> getTestsByIds(Set<String> ids);
 
     List<Test> getAllActiveTests(boolean onlyTestsFullySetup);
 
