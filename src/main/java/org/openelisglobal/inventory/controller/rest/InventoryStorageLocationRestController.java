@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,10 +46,11 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     public ResponseEntity<InventoryStorageLocation> getById(@PathVariable String id) {
         try {
             InventoryStorageLocation location = storageLocationService.get(Long.valueOf(id));
-            if (location == null) {
-                return ResponseEntity.notFound().build();
-            }
             return ResponseEntity.ok(location);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -129,6 +131,9 @@ public class InventoryStorageLocationRestController extends BaseRestController {
             HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+            if (usd == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
             String sysUserId = String.valueOf(usd.getSystemUserId());
             location.setSysUserId(sysUserId);
 
@@ -149,18 +154,22 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     public ResponseEntity<InventoryStorageLocation> update(@PathVariable String id,
             @Valid @RequestBody InventoryStorageLocation location, HttpServletRequest request) {
         try {
-            InventoryStorageLocation existingLocation = storageLocationService.get(Long.valueOf(id));
-            if (existingLocation == null) {
-                return ResponseEntity.notFound().build();
-            }
+            storageLocationService.get(Long.valueOf(id));
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+            if (usd == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
             String sysUserId = String.valueOf(usd.getSystemUserId());
             location.setId(Long.valueOf(id));
             location.setSysUserId(sysUserId);
 
             InventoryStorageLocation updatedLocation = storageLocationService.update(location);
             return ResponseEntity.ok(updatedLocation);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -171,10 +180,17 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     public ResponseEntity<?> deactivate(@PathVariable String id, HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+            if (usd == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
             storageLocationService.deactivateLocation(Long.valueOf(id), sysUserId);
             return ResponseEntity.ok().build();
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(e.getMessage()));
@@ -182,6 +198,11 @@ public class InventoryStorageLocationRestController extends BaseRestController {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @org.springframework.web.bind.annotation.ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Void> handleValidationErrors(MethodArgumentNotValidException e) {
+        return ResponseEntity.badRequest().build();
     }
 
     @Setter

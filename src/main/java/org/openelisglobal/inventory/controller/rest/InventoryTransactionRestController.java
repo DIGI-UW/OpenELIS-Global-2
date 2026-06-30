@@ -5,6 +5,7 @@ import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,10 @@ public class InventoryTransactionRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.ok(transaction);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -44,6 +49,8 @@ public class InventoryTransactionRestController extends BaseRestController {
         try {
             List<InventoryTransaction> transactions = transactionService.getByLotId(Long.valueOf(lotId));
             return ResponseEntity.ok(transactions);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -63,10 +70,12 @@ public class InventoryTransactionRestController extends BaseRestController {
 
     @GetMapping(value = "/date-range", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryTransaction>> getByDateRange(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Timestamp startDate,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Timestamp endDate) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate startDate,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate endDate) {
         try {
-            List<InventoryTransaction> transactions = transactionService.getByDateRange(startDate, endDate);
+            List<InventoryTransaction> transactions = transactionService.getByDateRange(
+                    Timestamp.valueOf(startDate.atStartOfDay()),
+                    Timestamp.valueOf(endDate.atTime(java.time.LocalTime.MAX)));
             return ResponseEntity.ok(transactions);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -76,11 +85,13 @@ public class InventoryTransactionRestController extends BaseRestController {
 
     @GetMapping(value = "/reference", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryTransaction>> getByReference(@RequestParam String referenceId,
-            @RequestParam String referenceType) {
+            @RequestParam ReferenceType referenceType) {
         try {
             List<InventoryTransaction> transactions = transactionService.getByReference(Long.valueOf(referenceId),
                     referenceType);
             return ResponseEntity.ok(transactions);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

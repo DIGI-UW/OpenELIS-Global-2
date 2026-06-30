@@ -73,4 +73,10 @@
         quantity_after="15.00" transaction_date="2025-02-01 00:00:00"
         notes="Test usage" performed_by_user="1"
         last_updated="2025-12-06 00:00:00" />
+
+    <!-- Inventory Usage -->
+    <inventory_usage id="1000" inventory_item_id="1001"
+        lot_id="1002" test_result_id="5000" analysis_id="6000"
+        quantity_used="5.0" usage_date="2025-02-01 00:00:00"
+        performed_by_user="1" last_updated="2025-12-06 00:00:00" />
 </dataset>
