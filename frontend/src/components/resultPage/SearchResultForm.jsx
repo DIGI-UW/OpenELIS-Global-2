@@ -1268,6 +1268,7 @@ export function SearchResults(props) {
                 noLabel={true}
                 onChange={(e) => validateResults(e, row.id)}
                 value={row.resultValue}
+                style={validationState[row.id]?.style}
               >
                 {/* {...updateShadowResult(e, this, param.rowId)} */}
                 <SelectItem text="" value="" />
@@ -1290,6 +1291,7 @@ export function SearchResults(props) {
                 name={`testResult[${row.id}].multiSelectResultValues`}
                 dictionaryValues={row.dictionaryResults}
                 value={row.multiSelectResultValues}
+                style={validationState[row.id]?.style}
                 onChange={(e) => handleChange(e, row.id)}
               />
             );
@@ -1301,6 +1303,7 @@ export function SearchResults(props) {
                 name={`testResult[${row.id}].multiSelectResultValues`}
                 dictionaryValues={row.dictionaryResults}
                 value={row.multiSelectResultValues}
+                style={validationState[row.id]?.style}
                 onChange={(e) => handleChange(e, row.id)}
               />
             );
@@ -2111,6 +2114,67 @@ export function SearchResults(props) {
 
   const handleSave = () => {
     if (isSubmitting) {
+      return;
+    }
+    const hasAccepted = props.results.testResult.some(
+      (row) => row.forceTechApproval && row.forceTechApproval !== "",
+    );
+    if (!hasAccepted) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "result.accept.required",
+          defaultMessage:
+            "Please accept at least one test result before saving.",
+        }),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
+      return;
+    }
+    let newValidationState = { ...validationState };
+    let hasError = false;
+    props.results.testResult.forEach((row) => {
+      if (
+        (row.resultType === "M" || row.resultType === "C") &&
+        row.isModified === "true"
+      ) {
+        const empty =
+          !row.multiSelectResultValues ||
+          row.multiSelectResultValues === "{}" ||
+          row.multiSelectResultValues === "";
+        if (empty) {
+          newValidationState[row.id] = {
+            isInvalid: true,
+            style: { borderColor: "red" },
+          };
+          hasError = true;
+        }
+      }
+      if (row.resultType === "D" && row.isModified === "true") {
+        const empty =
+          !row.resultValue || row.resultValue === "" || row.resultValue === "0";
+        if (empty) {
+          newValidationState[row.id] = {
+            isInvalid: true,
+            style: { borderColor: "red" },
+          };
+          hasError = true;
+        }
+      }
+    });
+    if (hasError) {
+      setValidationState(newValidationState);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "result.required",
+          defaultMessage:
+            "Please select a value for all modified result fields before saving.",
+        }),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
       return;
     }
     setIsSubmitting(true);
