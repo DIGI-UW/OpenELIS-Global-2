@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <!-- ===== PERSONS ===== -->
+    <person id="1" last_name="Alpha" first_name="Alice"
+        lastUpdated="2024-01-01 00:00:00" />
+    <person id="2" last_name="Beta" first_name="Bob"
+        lastUpdated="2024-01-01 00:00:00" />
+
+    <!-- ===== PATIENTS ===== -->
+    <patient id="1" person_id="1" gender="F"
+        birth_date="1990-05-15 00:00:00" entered_birth_date="1990-05-15"
+        national_id="NAT001" lastUpdated="2024-01-01 00:00:00" />
+    <patient id="2" person_id="2" gender="M"
+        birth_date="1985-03-20 00:00:00" entered_birth_date="1985-03-20"
+        national_id="NAT002" lastUpdated="2024-01-01 00:00:00" />
+
+    <!-- ===== LOCALIZATION (FK required by test rows) ===== -->
+    <localization id="1" description="Haemoglobin" />
+    <localization id="2" description="WBC Count" />
+    <localization id="3" description="Platelet Count" />
+
+    <!-- test_operations has a unique constraint on test_id alone (uk_md0mku8w5fxpk9tpgm8uqt2oe),
+        meaning each test may belong to exactly ONE ResultCalculation globally. Each
+        test below is therefore assigned to a distinct ResultCalculation. -->
+
+    <!-- ===== TESTS ===== -->
+    <!-- test 101 → assigned to rc 1 (patient 1, calc 1) -->
+    <test id="101" description="Haemoglobin test" loinc="718-7"
+        reporting_description="Haemoglobin" sticker_req_flag="N" is_active="Y"
+        active_begin="2024-01-01 00:00:00" active_end="2099-12-31 00:00:00"
+        is_reportable="Y" time_holding="60" time_wait="30"
+        time_ta_average="120" time_ta_warning="180" time_ta_max="240"
+        label_qty="1" lastupdated="2024-01-01 00:00:00" local_code="HGB"
+        sort_order="1" name="Haemoglobin" orderable="true"
+        guid="test-guid-101" name_localization_id="1"
+        antimicrobial_resistance="false" />
+    <!-- test 102 → assigned to rc 2 (patient 2, calc 1) -->
+    <test id="102" description="WBC count test" loinc="6690-2"
+        reporting_description="WBC Count" sticker_req_flag="N" is_active="Y"
+        active_begin="2024-01-01 00:00:00" active_end="2099-12-31 00:00:00"
+        is_reportable="Y" time_holding="60" time_wait="30"
+        time_ta_average="120" time_ta_warning="180" time_ta_max="240"
+        label_qty="1" lastupdated="2024-01-01 00:00:00" local_code="WBC"
+        sort_order="2" name="WBC Count" orderable="true" guid="test-guid-102"
+        name_localization_id="2" antimicrobial_resistance="false" />
+    <!-- test 103 → assigned to rc 3 (patient 1, calc 2) -->
+    <test id="103" description="Platelet count test" loinc="26515-7"
+        reporting_description="Platelet Count" sticker_req_flag="N"
+        is_active="Y" active_begin="2024-01-01 00:00:00"
+        active_end="2099-12-31 00:00:00" is_reportable="Y" time_holding="60"
+        time_wait="30" time_ta_average="120" time_ta_warning="180"
+        time_ta_max="240" label_qty="1" lastupdated="2024-01-01 00:00:00"
+        local_code="PLT" sort_order="3" name="Platelet Count" orderable="true"
+        guid="test-guid-103" name_localization_id="3"
+        antimicrobial_resistance="false" />
+
+    <!-- ===== RESULTS ===== -->
+    <result id="3001" sort_order="1" result_type="N" value="12.5"
+        is_reportable="Y" lastupdated="2024-01-01 00:00:00"
+        significant_digits="1" grouping="0"
+        fhir_uuid="aaaaaaaa-0001-0001-0001-aaaaaaaaaaaa" />
+    <result id="3002" sort_order="2" result_type="N" value="8.0"
+        is_reportable="Y" lastupdated="2024-01-01 00:00:00"
+        significant_digits="1" grouping="0"
+        fhir_uuid="aaaaaaaa-0002-0002-0002-aaaaaaaaaaaa" />
+    <result id="3003" sort_order="3" result_type="N" value="320.0"
+        is_reportable="Y" lastupdated="2024-01-01 00:00:00"
+        significant_digits="0" grouping="0"
+        fhir_uuid="aaaaaaaa-0003-0003-0003-aaaaaaaaaaaa" />
+    <result id="3004" sort_order="4" result_type="N" value="5.1"
+        is_reportable="Y" lastupdated="2024-01-01 00:00:00"
+        significant_digits="1" grouping="0"
+        fhir_uuid="aaaaaaaa-0004-0004-0004-aaaaaaaaaaaa" />
+
+    <!-- ===== CALCULATIONS ===== -->
+    <calculation id="1" name="HGB Ratio" sample_id="0"
+        test_id="101" result="NORMAL" toggled="false" active="true"
+        last_updated="2024-01-01 00:00:00" />
+    <calculation id="2" name="WBC Score" sample_id="0"
+        test_id="102" result="LOW" toggled="false" active="true"
+        last_updated="2024-01-01 00:00:00" />
+    <calculation id="3" name="PLT Ratio" sample_id="0"
+        test_id="103" result="HIGH" toggled="true" active="false"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Dataset layout (test associations seeded programmatically in @Before):
+        rc 1 patient 1, calc 1, result 3001 tests {101} rc 2 patient 2, calc 1, result
+        3002 tests {102} rc 3 patient 1, calc 2, result 3003 tests {103} rc 4 patient
+        2, calc 3, result 3004 tests {} (no test association) -->
+
+    <!-- ===== RESULT_CALCULATION ===== -->
+    <result_calculation id="1" calculation_id="1"
+        patient_id="1" result_id="3001" last_updated="2024-01-01 00:00:00" />
+    <result_calculation id="2" calculation_id="1"
+        patient_id="2" result_id="3002" last_updated="2024-01-01 00:00:00" />
+    <result_calculation id="3" calculation_id="2"
+        patient_id="1" result_id="3003" last_updated="2024-01-01 00:00:00" />
+    <result_calculation id="4" calculation_id="3"
+        patient_id="2" result_id="3004" last_updated="2024-01-01 00:00:00" />
+
+    <!-- test_operations and test_result_map have no primary key — DBUnit REFRESH
+        throws NoPrimaryKeyException. Seeded programmatically via TestService/ ResultCalculationService
+        in ResultCalculationServiceTest.seedTestOperations(). -->
+
+</dataset>
