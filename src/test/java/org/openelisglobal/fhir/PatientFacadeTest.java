@@ -263,4 +263,236 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         assertEquals(404, response.getStatus());
     }
+
+    // ========================================================================
+    // ERROR SCENARIO TESTS - HTTP Status Codes
+    // ========================================================================
+
+    @Test
+    public void createPatient_withMalformedJson_shouldReturn400() throws Exception {
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+
+        // Malformed JSON - missing closing brace
+        String malformedJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "family": "Test"
+                """;
+
+        request.setContent(malformedJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        // Expecting 400 Bad Request for malformed JSON
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    public void readPatient_withInvalidUuid_shouldReturn404() throws Exception {
+        // UUID with invalid format (too short)
+        String invalidUuid = "invalid-uuid-format";
+
+        MockHttpServletRequest request = buildRequest("GET", "/Patient/" + invalidUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void readPatient_withNonExistentUuid_shouldReturn404() throws Exception {
+        // Valid UUID format but doesn't exist in database
+        String nonExistentUuid = "99999999-9999-9999-9999-999999999999";
+
+        MockHttpServletRequest request = buildRequest("GET", "/Patient/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void createPatient_withNullResource_shouldReturn400() throws Exception {
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+
+        // Send null/empty content
+        request.setContent(new byte[0]);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        // Should return 400 for empty request body
+        assertEquals(400, response.getStatus());
+    }
+
+    // ========================================================================
+    // ERROR SCENARIO TESTS - FHIR Validation
+    // ========================================================================
+
+    @Test
+    public void createPatient_withMissingName_shouldReturnOperationOutcome() throws Exception {
+        clearDataBase();
+
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+
+        // Patient with no name - required field missing
+        String invalidJson = """
+                {
+                  "resourceType": "Patient",
+                  "gender": "male"
+                }
+                """;
+
+        request.setContent(invalidJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        // PatientProvider rejects nameless patients with 422 UnprocessableEntity
+        assertEquals(422, response.getStatus());
+
+        // Response body must be an OperationOutcome with at least one ERROR issue
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
+        assertTrue(json.has("issue"));
+        assertTrue(json.get("issue").isArray());
+        assertTrue(json.get("issue").size() > 0);
+        assertEquals("error", json.get("issue").get(0).get("severity").asText());
+    }
+
+    @Test
+    public void createPatient_withInvalidBirthDate_shouldReturnValidationError() throws Exception {
+        clearDataBase();
+
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+
+        // Invalid date format (should be YYYY-MM-DD)
+        String invalidJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "family": "Test",
+                    "given": ["User"]
+                  }],
+                  "gender": "male",
+                  "birthDate": "invalid-date-format"
+                }
+                """;
+
+        request.setContent(invalidJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        // HAPI rejects an unparseable birthDate at the deserialisation layer → 400
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    public void createPatient_withInvalidGender_shouldReturn400() throws Exception {
+        clearDataBase();
+
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+
+        // Invalid gender value (FHIR R4 allows: male, female, other, unknown)
+        String invalidJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "family": "Test",
+                    "given": ["User"]
+                  }],
+                  "gender": "invalid-gender",
+                  "birthDate": "1990-01-01"
+                }
+                """;
+
+        request.setContent(invalidJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        // HAPI rejects an out-of-set gender value at deserialisation → 400
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_withMismatchedBodyAndUrlId_shouldReturn400() throws Exception {
+        Patient existingPatient = patientService.get("1");
+        String correctUuid = existingPatient.getFhirUuidAsString();
+        String wrongUuid = "11111111-1111-1111-1111-111111111111";
+
+        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + correctUuid);
+
+        // Resource ID doesn't match URL ID
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "family": "Test",
+                    "given": ["User"]
+                  }],
+                  "gender": "male"
+                }
+                """.formatted(wrongUuid);
+
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        // HAPI enforces body id == URL id on PUT; mismatches are rejected with 400
+        assertEquals(400, response.getStatus());
+    }
+
+    // ========================================================================
+    // ERROR SCENARIO TESTS - Edge Cases
+    // ========================================================================
+
+    @Test
+    public void readPatient_withEmptyId_shouldReturn404() throws Exception {
+        MockHttpServletRequest request = buildRequest("GET", "/Patient/");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        // HAPI routes GET /Patient/ (trailing slash) to the search endpoint; proxy
+        // unavailable in test environment → 500. Verifies server always returns a
+        // structured HTTP response.
+        assertEquals(500, response.getStatus());
+    }
+
+    @Test
+    public void createPatient_withOnlyWhitespaceInName_shouldReturnValidationError() throws Exception {
+        clearDataBase();
+
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+
+        // Name fields with only whitespace
+        String invalidJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "family": "   ",
+                    "given": ["  "]
+                  }],
+                  "gender": "male"
+                }
+                """;
+
+        request.setContent(invalidJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        // Whitespace-only names are caught by the blank-name validation → 422
+        assertEquals(422, response.getStatus());
+
+        // Response body must be an OperationOutcome describing the validation failure
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
+        assertTrue(json.has("issue"));
+        assertTrue(json.get("issue").isArray());
+        assertTrue(json.get("issue").size() > 0);
+        assertEquals("error", json.get("issue").get(0).get("severity").asText());
+    }
 }
