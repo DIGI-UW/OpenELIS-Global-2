@@ -169,6 +169,9 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok(toRoomResponse(room));
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid room id format received: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting room by id", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -222,6 +225,9 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid room id format received for update: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error updating room", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -257,6 +263,9 @@ public class StorageLocationRestController extends BaseRestController {
                 // override
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
             }
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid room id format received for delete check: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error checking room delete constraints", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -277,6 +286,9 @@ public class StorageLocationRestController extends BaseRestController {
 
             Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(room);
             return ResponseEntity.ok(summary);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid room id format received for cascade summary: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting room cascade delete summary", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -313,6 +325,9 @@ public class StorageLocationRestController extends BaseRestController {
             error.put("error", "Cannot delete room");
             error.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid room id format received for delete: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error deleting room", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -395,6 +410,9 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid parentRoomId format received while creating device: {}", form.getParentRoomId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error creating device", e);
             Map<String, Object> error = new HashMap<>();
@@ -425,6 +443,9 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageLocationService.getDevicesForAPI(roomIdInt);
             }
             return ResponseEntity.ok(response);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric filter received for devices. roomId={}", roomId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting devices", e);
             return ResponseEntity.ok(new ArrayList<>());
@@ -440,6 +461,9 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok(toDeviceResponse(device));
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid device id format received: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting device by id", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -522,6 +546,10 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric id format received for device update. id={}, parentRoomId={}", id,
+                    form.getParentRoomId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error updating device", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -554,6 +582,9 @@ public class StorageLocationRestController extends BaseRestController {
                 response.put("message", message);
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
             }
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid device id format received for delete check: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error checking device delete constraints", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -574,6 +605,9 @@ public class StorageLocationRestController extends BaseRestController {
 
             Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(device);
             return ResponseEntity.ok(summary);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid device id format received for cascade summary: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting device cascade delete summary", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -597,6 +631,10 @@ public class StorageLocationRestController extends BaseRestController {
             Integer newParentId = newParentRoomId != null ? Integer.parseInt(newParentRoomId) : null;
             Map<String, Object> result = storageLocationService.canMoveLocation(device, newParentId);
             return ResponseEntity.ok(result);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric id format received for device move check. id={}, newParentRoomId={}", id,
+                    newParentRoomId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error checking device move constraints", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -632,6 +670,9 @@ public class StorageLocationRestController extends BaseRestController {
             error.put("error", "Cannot delete device");
             error.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid device id format received for delete: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error deleting device", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -672,6 +713,9 @@ public class StorageLocationRestController extends BaseRestController {
             shelf.setId(id);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(toShelfResponse(shelf));
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid parentDeviceId format received while creating shelf: {}", form.getParentDeviceId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error creating shelf", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -701,6 +745,9 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageLocationService.getShelvesForAPI(deviceIdInt);
             }
             return ResponseEntity.ok(response);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric filter received for shelves. deviceId={}, roomId={}", deviceId, roomId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting shelves", e);
             return ResponseEntity.ok(new ArrayList<>());
@@ -716,6 +763,9 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok(toShelfResponse(shelf));
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid shelf id format received: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting shelf by id", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -739,6 +789,10 @@ public class StorageLocationRestController extends BaseRestController {
             Integer newParentId = newParentDeviceId != null ? Integer.parseInt(newParentDeviceId) : null;
             Map<String, Object> result = storageLocationService.canMoveLocation(shelf, newParentId);
             return ResponseEntity.ok(result);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric id format received for shelf move check. id={}, newParentDeviceId={}", id,
+                    newParentDeviceId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error checking shelf move constraints", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -812,6 +866,10 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric id format received for shelf update. id={}, parentDeviceId={}", id,
+                    form.getParentDeviceId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error updating shelf", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -844,6 +902,9 @@ public class StorageLocationRestController extends BaseRestController {
                 response.put("message", message);
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
             }
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid shelf id format received for delete check: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error checking shelf delete constraints", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -864,6 +925,9 @@ public class StorageLocationRestController extends BaseRestController {
 
             Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(shelf);
             return ResponseEntity.ok(summary);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid shelf id format received for cascade summary: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting shelf cascade delete summary", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -899,6 +963,9 @@ public class StorageLocationRestController extends BaseRestController {
             error.put("error", "Cannot delete shelf");
             error.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid shelf id format received for delete: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error deleting shelf", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -937,6 +1004,9 @@ public class StorageLocationRestController extends BaseRestController {
             rack.setId(id);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(toRackResponse(rack));
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid parentShelfId format received while creating rack: {}", form.getParentShelfId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error creating rack", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -968,6 +1038,10 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageLocationService.getRacksForAPI(shelfIdInt);
             }
             return ResponseEntity.ok(response);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric filter received for racks. shelfId={}, deviceId={}, roomId={}", shelfId,
+                    deviceId, roomId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting racks", e);
             return ResponseEntity.ok(new ArrayList<>());
@@ -983,6 +1057,9 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok(toRackResponse(rack));
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid rack id format received: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting rack by id", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1006,6 +1083,10 @@ public class StorageLocationRestController extends BaseRestController {
             Integer newParentId = newParentShelfId != null ? Integer.parseInt(newParentShelfId) : null;
             Map<String, Object> result = storageLocationService.canMoveLocation(rack, newParentId);
             return ResponseEntity.ok(result);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric id format received for rack move check. id={}, newParentShelfId={}", id,
+                    newParentShelfId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error checking rack move constraints", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1082,6 +1163,10 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid numeric id format received for rack update. id={}, parentShelfId={}", id,
+                    form.getParentShelfId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error updating rack", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -1115,6 +1200,9 @@ public class StorageLocationRestController extends BaseRestController {
                 response.put("message", message);
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
             }
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid rack id format received for delete check: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error checking rack delete constraints", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1135,6 +1223,9 @@ public class StorageLocationRestController extends BaseRestController {
 
             Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(rack);
             return ResponseEntity.ok(summary);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid rack id format received for cascade summary: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting rack cascade delete summary", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1170,6 +1261,9 @@ public class StorageLocationRestController extends BaseRestController {
             error.put("error", "Cannot delete rack");
             error.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid rack id format received for delete: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error deleting rack", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1233,6 +1327,9 @@ public class StorageLocationRestController extends BaseRestController {
             box.setId(id);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(toBoxResponse(box));
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid parentRackId format received while creating box: {}", form.getParentRackId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error creating box", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -1263,6 +1360,9 @@ public class StorageLocationRestController extends BaseRestController {
                 response.add(toBoxResponse(box));
             }
             return ResponseEntity.ok(response);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid rackId format received while listing boxes: {}", rackId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error getting boxes", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1320,6 +1420,9 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid box id format received for update: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error updating box", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -1353,6 +1456,9 @@ public class StorageLocationRestController extends BaseRestController {
                 response.put("message", message);
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
             }
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid box id format received for delete check: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error checking box delete constraints", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1384,6 +1490,9 @@ public class StorageLocationRestController extends BaseRestController {
 
             storageLocationService.delete(box);
             return ResponseEntity.noContent().build();
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid box id format received for delete: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error deleting box", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
