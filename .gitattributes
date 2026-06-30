@@ -1,0 +1,2 @@
+scripts/prflow/** text eol=lf
+.github/workflows/prflow-*.yml text eol=lf

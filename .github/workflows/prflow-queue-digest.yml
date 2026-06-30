@@ -1,0 +1,32 @@
+name: PRFlow / Queue digest
+
+permissions:
+  pull-requests: read
+  issues: write
+  contents: read
+
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"
+  workflow_dispatch:
+
+concurrency:
+  group: prflow-digest-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    name: Daily digest
+    runs-on: ubuntu-latest
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run digest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BASE_BRANCH: develop
+          TOP_N: "15"
+          PRFLOW_DIGEST_ISSUE: ${{ vars.PRFLOW_DIGEST_ISSUE || '0' }}
+        run: bash scripts/prflow/digest.sh

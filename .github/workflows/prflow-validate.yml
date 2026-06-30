@@ -1,0 +1,29 @@
+name: PRFlow / Validate
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/prflow-*.yml"
+      - "scripts/prflow/**"
+  push:
+    branches: [develop]
+    paths:
+      - ".github/workflows/prflow-*.yml"
+      - "scripts/prflow/**"
+
+jobs:
+  validate:
+    name: Shell syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PRFlow self-test
+        run: bash scripts/prflow/self-test.sh
+
+      - name: Workflow files present
+        run: |
+          test -f .github/workflows/prflow-classify.yml
+          test -f .github/workflows/prflow-queue-digest.yml
+          test -f .github/workflows/prflow-ready-dependabot.yml
+          test -f .github/workflows/prflow-behind-nudge.yml

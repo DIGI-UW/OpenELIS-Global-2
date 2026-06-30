@@ -1,0 +1,39 @@
+name: PRFlow / Behind nudge
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to nudge
+        required: true
+        type: number
+
+concurrency:
+  group: prflow-behind-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  nudge:
+    name: Behind-branch nudge
+    runs-on: ubuntu-latest
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+
+      - name: Nudge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          PR="${{ github.event.pull_request.number || inputs.pr_number }}"
+          bash scripts/prflow/behind-nudge.sh "$PR"
