@@ -9,7 +9,7 @@ public class RealOdooClient implements OdooConnection {
 
     private final OdooClient odooClient;
 
-    private boolean available = false;
+    private volatile boolean available = false;
 
     public RealOdooClient(OdooClient odooClient) {
         this.odooClient = odooClient;
@@ -25,20 +25,42 @@ public class RealOdooClient implements OdooConnection {
 
     @Override
     public boolean isAvailable() {
+        if (!available) {
+            try {
+                odooClient.init();
+                available = true;
+                log.info("Odoo connection restored.");
+            } catch (Exception e) {
+                log.debug("Odoo still unavailable: {}", e.getMessage());
+                available = false;
+            }
+        }
         return available;
     }
 
     @Override
     public Integer create(String model, List<Map<String, Object>> dataParams) {
-        if (!available)
+        if (!isAvailable())
             throw new IllegalStateException("Odoo is not available");
-        return odooClient.create(model, dataParams);
+        try {
+            return odooClient.create(model, dataParams);
+        } catch (Exception e) {
+            available = false;
+            log.error("Odoo create call failed, marking unavailable: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override
     public Object[] searchAndRead(String model, List<Object> criteria, List<String> fields) {
-        if (!available)
+        if (!isAvailable())
             throw new IllegalStateException("Odoo is not available");
-        return odooClient.searchAndRead(model, criteria, fields);
+        try {
+            return odooClient.searchAndRead(model, criteria, fields);
+        } catch (Exception e) {
+            available = false;
+            log.error("Odoo searchAndRead call failed, marking unavailable: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 }

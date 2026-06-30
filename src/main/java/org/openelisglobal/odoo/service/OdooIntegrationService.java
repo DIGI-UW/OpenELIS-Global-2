@@ -7,6 +7,9 @@ import java.util.Locale;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
@@ -17,6 +20,8 @@ import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -33,6 +38,7 @@ import org.springframework.stereotype.Service;
 public class OdooIntegrationService {
 
     private static final Logger log = LogManager.getLogger(OdooIntegrationService.class);
+
     @Value("${org.openelisglobal.odoo.map.testname.locale:en}")
     private String testMapLocale;
 
@@ -48,32 +54,87 @@ public class OdooIntegrationService {
     @Autowired
     private PatientService patientService;
 
+    @Autowired
+    private SampleItemService sampleItemService;
+
+    @Autowired
+    private AnalysisService analysisService;
+
     /**
-     * Creates an invoice in Odoo for the given sample data.
-     * 
-     * @param updateData The sample data containing order information
-     * @throws OdooOperationException if there's an error creating the invoice
+     * Creates an invoice in Odoo directly from a Sample (used by retry job). Builds
+     * a minimal SamplePatientUpdateData wrapper around the sample, reconstructing
+     * the sampleItemsTests from the DB so the retry path produces invoices with the
+     * same line items as the original first-attempt path.
      */
+    public void createInvoiceForSample(org.openelisglobal.sample.valueholder.Sample sample) {
+        org.openelisglobal.sample.action.util.SamplePatientUpdateData updateData = new org.openelisglobal.sample.action.util.SamplePatientUpdateData(
+                null);
+        updateData.setSample(sample);
+        if (sample != null && sample.getAccessionNumber() != null) {
+            updateData.setAccessionNumber(sample.getAccessionNumber());
+        }
+
+        if (sample != null && sample.getId() != null) {
+            updateData.setSampleItemsTests(buildSampleTestCollections(sample));
+        }
+
+        createInvoice(updateData);
+    }
+
+    /**
+     * Reconstructs the {@link SampleTestCollection} list for the given sample by
+     * querying its persisted {@link SampleItem}s and their associated
+     * {@link Analysis} records. Only analyses that carry a non-null {@link Test}
+     * are included. Used by the retry path where sampleItemsTests is not populated
+     * by the normal order-entry flow.
+     */
+    private List<SampleTestCollection> buildSampleTestCollections(org.openelisglobal.sample.valueholder.Sample sample) {
+        List<SampleTestCollection> collections = new ArrayList<>();
+        List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        for (SampleItem sampleItem : sampleItems) {
+            List<Test> tests = new ArrayList<>();
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                if (analysis.getTest() != null) {
+                    tests.add(analysis.getTest());
+                }
+            }
+            if (!tests.isEmpty()) {
+                SampleAddService sampleAddService = SpringContext.getBean(SampleAddService.class);
+                collections.add(
+                        sampleAddService.new SampleTestCollection(sampleItem, tests, null, null, null, null, null));
+            }
+        }
+        if (collections.isEmpty()) {
+            log.warn("No test analyses found for sample {} during retry — invoice will have no line items",
+                    sample.getAccessionNumber());
+        }
+        return collections;
+    }
+
     public void createInvoice(SamplePatientUpdateData updateData) {
-        // Check if Odoo connection is available
+        if (updateData == null) {
+            throw new IllegalArgumentException("updateData must not be null");
+        }
+
+        String accessionNumber = updateData.getAccessionNumber();
+        if (accessionNumber == null) {
+            throw new IllegalArgumentException("Accession number is required for Odoo invoice creation");
+        }
+
         if (!odooConnection.isAvailable()) {
-            log.info("Odoo connection is not available. Skipping invoice creation for sample: {}",
-                    updateData.getAccessionNumber());
-            return;
+            throw new org.openelisglobal.odoo.exception.OdooUnavailableException(
+                    "Odoo connection is not available for sample: " + accessionNumber);
         }
 
         try {
             Map<String, Object> invoiceData = createInvoiceData(updateData);
             Integer invoiceId = odooConnection.create("account.move", List.of(invoiceData));
             if (invoiceId == null) {
-                throw new OdooOperationException(
-                        "Odoo returned null invoice ID for sample: " + updateData.getAccessionNumber());
+                throw new OdooOperationException("Odoo returned null invoice ID for sample: " + accessionNumber);
             }
-            log.info("Successfully created invoice in Odoo with ID: {} for sample: {}", invoiceId,
-                    updateData.getAccessionNumber());
+            log.info("Successfully created invoice in Odoo with ID: {} for sample: {}", invoiceId, accessionNumber);
         } catch (Exception e) {
-            log.error("Error creating invoice in Odoo for sample {}: {}", updateData.getAccessionNumber(),
-                    e.getMessage(), e);
+            log.error("Error creating invoice in Odoo for sample {}: {}", accessionNumber, e.getMessage(), e);
             throw new OdooOperationException("Failed to create invoice in Odoo", e);
         }
     }
@@ -99,7 +160,7 @@ public class OdooIntegrationService {
 
     /**
      * Gets or creates a partner in Odoo for the patient associated with the sample.
-     * 
+     *
      * @param updateData The sample data containing patient information
      * @return The partner ID in Odoo
      */
@@ -151,7 +212,6 @@ public class OdooIntegrationService {
             log.info("Created new partner in Odoo with ID: {} for patient: {} {}", partnerId, person.getFirstName(),
                     person.getLastName());
             return partnerId;
-
         } catch (Exception e) {
             log.error("Error getting or creating patient partner: {}", e.getMessage(), e);
             return 1;
@@ -160,7 +220,7 @@ public class OdooIntegrationService {
 
     /**
      * Finds a partner in Odoo by national ID.
-     * 
+     *
      * @param nationalId The patient's national ID
      * @return The partner ID if found, null otherwise
      */
@@ -206,7 +266,7 @@ public class OdooIntegrationService {
 
     /**
      * Finds a partner in Odoo by name as a fallback.
-     * 
+     *
      * @param firstName The patient's first name
      * @param lastName  The patient's last name
      * @return The partner ID if found, null otherwise
@@ -254,7 +314,7 @@ public class OdooIntegrationService {
 
     /**
      * Creates partner data for Odoo from patient and person information.
-     * 
+     *
      * @param patient The patient
      * @param person  The person associated with the patient
      * @return Map containing partner data for Odoo
