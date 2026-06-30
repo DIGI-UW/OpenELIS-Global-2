@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -141,6 +142,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
+import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -169,6 +172,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private AnalysisService analysisService;
     @Autowired
     private TestService testService;
+    @Autowired
+    private TestTerminologyMappingService testTerminologyMappingService;
     @Autowired
     private ResultService resultService;
     @Autowired
@@ -1141,10 +1146,85 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformTestToCodeableConcept",
                 "transformTestToCodeableConcept test called");
 
+        String display = test.getLocalizedTestName() != null ? test.getLocalizedTestName().getEnglish()
+                : test.getName();
         CodeableConcept codeableConcept = new CodeableConcept();
-        codeableConcept
-                .addCoding(new Coding("http://loinc.org", test.getLoinc(), test.getLocalizedTestName().getEnglish()));
+
+        // Group the configured terminology mappings (the editor's Terminology section
+        // is the source of truth) by their FHIR system, keeping only those with a
+        // recognized system and a code. The legacy test.loinc value participates as a
+        // LOINC SAME_AS candidate — it is kept in sync with the LOINC SAME_AS mapping
+        // and also covers tests not yet migrated to the terminology editor.
+        Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
+        for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
+            String system = terminologySystemUrl(mapping.getSource());
+            if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
+                continue;
+            }
+            bySystem.computeIfAbsent(system, k -> new ArrayList<>())
+                    .add(new Candidate(mapping.getCode(), "SAME_AS".equalsIgnoreCase(mapping.getRelationship())));
+        }
+        if (!GenericValidator.isBlankOrNull(test.getLoinc())) {
+            bySystem.computeIfAbsent("http://loinc.org", k -> new ArrayList<>())
+                    .add(new Candidate(test.getLoinc(), true));
+        }
+
+        // Emit one system's codings at a time. Within a system the SAME_AS mapping is
+        // the equivalent concept, so it wins; with no SAME_AS we keep the rest. A test
+        // thus maps to multiple terminology systems at once (LOINC + SNOMED + ...).
+        for (Map.Entry<String, List<Candidate>> entry : bySystem.entrySet()) {
+            String system = entry.getKey();
+            List<Candidate> candidates = entry.getValue();
+            boolean hasSameAs = candidates.stream().anyMatch(c -> c.sameAs);
+            Set<String> seenCodes = new HashSet<>();
+            for (Candidate candidate : candidates) {
+                if (hasSameAs && !candidate.sameAs) {
+                    continue;
+                }
+                if (seenCodes.add(candidate.code)) {
+                    codeableConcept.addCoding(new Coding(system, candidate.code, display));
+                }
+            }
+        }
         return codeableConcept;
+    }
+
+    /**
+     * A candidate code for one terminology system, flagged if it is a SAME_AS
+     * mapping.
+     */
+    private static final class Candidate {
+        private final String code;
+        private final boolean sameAs;
+
+        private Candidate(String code, boolean sameAs) {
+            this.code = code;
+            this.sameAs = sameAs;
+        }
+    }
+
+    /**
+     * Canonical FHIR system URI for a terminology mapping source. LOINC and SNOMED
+     * use the HL7-registered URIs already used elsewhere in this service; CIEL and
+     * OCL use their OpenConceptLab canonical URLs. Returns {@code null} for an
+     * unrecognized source so it is skipped rather than emitting a bogus system.
+     */
+    private String terminologySystemUrl(String source) {
+        if (source == null) {
+            return null;
+        }
+        switch (source.toUpperCase()) {
+        case "LOINC":
+            return "http://loinc.org";
+        case "SNOMED":
+            return "http://snomed.info/sct";
+        case "CIEL":
+            return "https://openconceptlab.org/orgs/CIEL/sources/CIEL";
+        case "OCL":
+            return "https://openconceptlab.org";
+        default:
+            return null;
+        }
     }
 
     private Specimen transformToFhirSpecimen(SampleTestCollection sampleTest) {

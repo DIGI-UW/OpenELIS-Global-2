@@ -22,6 +22,7 @@ import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -156,9 +157,19 @@ public class TestCatalogEditorRestController {
     @GetMapping(value = "/tests", produces = MediaType.APPLICATION_JSON_VALUE)
     public TestListPage listTests(@RequestParam(required = false) String domain,
             @RequestParam(required = false, defaultValue = "all") String status,
-            @RequestParam(required = false) Boolean amr, @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize) {
+            @RequestParam(required = false) Boolean amr, @RequestParam(required = false) String sampleType,
+            @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "25") int pageSize) {
         String searchLower = search == null ? null : search.toLowerCase(Locale.ROOT);
+        // Resolve the test ids for the requested sample type once (one query),
+        // rather than looking up each test's sample types while filtering.
+        Set<String> sampleTypeTestIds = null;
+        if (!isBlank(sampleType)) {
+            sampleTypeTestIds = new HashSet<>();
+            for (TypeOfSampleTest link : typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleType)) {
+                sampleTypeTestIds.add(link.getTestId());
+            }
+        }
         List<TestListRow> filtered = new ArrayList<>();
         for (Test test : testService.getAll()) {
             if (domain != null && !domain.isBlank() && !domain.equals(test.getDomain())) {
@@ -173,6 +184,9 @@ public class TestCatalogEditorRestController {
             }
             boolean testAmr = Boolean.TRUE.equals(test.getAntimicrobialResistance());
             if (amr != null && amr != testAmr) {
+                continue;
+            }
+            if (sampleTypeTestIds != null && !sampleTypeTestIds.contains(test.getId())) {
                 continue;
             }
             String name = test.getName();
@@ -204,28 +218,13 @@ public class TestCatalogEditorRestController {
         int from = Math.min((result.page - 1) * result.pageSize, filtered.size());
         int to = Math.min(from + result.pageSize, filtered.size());
         result.rows = new ArrayList<>(filtered.subList(from, to));
-        // Disambiguate same-named tests by appending their sample type, e.g.
-        // "Covid-PCR (Urine)". Done on the page slice only (≤ pageSize lookups).
+        // Augment each name with its sample type — e.g. "Covid-PCR (Urine)" — using
+        // the same helper the rest of the app uses (respects augmentTestNameWithType).
+        // Done on the page slice only (≤ pageSize lookups).
         for (TestListRow row : result.rows) {
-            row.name = (row.name == null ? "" : row.name) + sampleTypeSuffix(row.testId);
+            row.name = TestServiceImpl.getLocalizedTestNameWithType(row.testId);
         }
         return result;
-    }
-
-    private String sampleTypeSuffix(String testId) {
-        List<String> sampleNames = new ArrayList<>();
-        for (TypeOfSampleTest link : typeOfSampleTestService.getTypeOfSampleTestsForTest(testId)) {
-            TypeOfSample sampleType = typeOfSampleService.getTypeOfSampleById(link.getTypeOfSampleId());
-            if (sampleType == null) {
-                continue;
-            }
-            String name = !isBlank(sampleType.getDescription()) ? sampleType.getDescription()
-                    : sampleType.getLocalAbbreviation();
-            if (!isBlank(name) && !sampleNames.contains(name)) {
-                sampleNames.add(name);
-            }
-        }
-        return sampleNames.isEmpty() ? "" : " (" + String.join("/", sampleNames) + ")";
     }
 
     public static class EditorEnvelope {
@@ -244,8 +243,9 @@ public class TestCatalogEditorRestController {
         }
         EditorEnvelope envelope = new EditorEnvelope();
         envelope.testId = test.getId();
-        // Test.getName() resolves the localized name, falling back to description.
-        envelope.name = test.getName();
+        // Name augmented with the sample type (e.g. "Covid-PCR (Urine)") so the
+        // selected test is distinguishable, matching the list view.
+        envelope.name = TestServiceImpl.getLocalizedTestNameWithType(test);
         envelope.code = test.getLocalCode();
         envelope.domain = test.getDomain();
         envelope.applicableSections = V1_SECTIONS;

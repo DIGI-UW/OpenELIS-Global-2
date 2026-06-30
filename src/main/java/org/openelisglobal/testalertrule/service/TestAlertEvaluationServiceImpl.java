@@ -2,7 +2,7 @@ package org.openelisglobal.testalertrule.service;
 
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.notification.service.sender.ClientNotificationSender;
+import org.openelisglobal.notification.service.sender.AsyncNotificationDispatcher;
 import org.openelisglobal.notification.valueholder.EmailNotification;
 import org.openelisglobal.notification.valueholder.RemoteNotification;
 import org.openelisglobal.notification.valueholder.SMSNotification;
@@ -38,10 +38,11 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
     @Autowired
     private SampleHumanService sampleHumanService;
 
-    // The SMS/Email senders used by the testNotificationConfig page. Optional so
-    // the processor still runs (header-only) in environments with none wired.
-    @Autowired(required = false)
-    private List<ClientNotificationSender> notificationSenders;
+    // Sends SMS/Email off the request thread so the result-entry response isn't
+    // blocked on SMTP / SMS-gateway calls (same async behavior as the default
+    // test-notification flow).
+    @Autowired
+    private AsyncNotificationDispatcher asyncNotificationDispatcher;
 
     @Override
     @Transactional
@@ -147,20 +148,10 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         dispatch(mail);
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     private void dispatch(RemoteNotification notification) {
-        if (notificationSenders == null) {
-            return;
-        }
-        for (ClientNotificationSender sender : notificationSenders) {
-            try {
-                if (sender.forClass().isInstance(notification)) {
-                    sender.send(notification);
-                }
-            } catch (RuntimeException e) {
-                LogEvent.logError(e);
-            }
-        }
+        // Fire-and-forget on a separate thread; the notification already carries
+        // a fully-resolved string payload, so no Hibernate session is needed.
+        asyncNotificationDispatcher.dispatch(notification);
     }
 
     private String patientContact(Result result, boolean phone) {

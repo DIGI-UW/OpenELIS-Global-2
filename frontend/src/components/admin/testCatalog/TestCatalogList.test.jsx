@@ -91,16 +91,18 @@ describe("TestCatalogList", () => {
   });
 
   it("restores filter state from the URL and sends it to the server", async () => {
-    mockHistory.location = { search: "?amr=true&domain=CLINICAL" };
+    mockHistory.location = { search: "?amr=true&domain=CLINICAL&sampleType=2" };
     let requestedUrl = "";
     getFromOpenElisServer.mockImplementation((url, cb) => {
-      requestedUrl = url;
+      // Only the tests endpoint carries filter state; ignore the sample-types
+      // reference fetch.
+      if (url.includes("/tests")) requestedUrl = url;
       cb(pageOf([]));
     });
     renderList();
-    await waitFor(() => expect(getFromOpenElisServer).toHaveBeenCalled());
-    expect(requestedUrl).toContain("amr=true");
+    await waitFor(() => expect(requestedUrl).toContain("amr=true"));
     expect(requestedUrl).toContain("domain=CLINICAL");
+    expect(requestedUrl).toContain("sampleType=2");
   });
 
   it("aborts the previous request when filters change (stale-result guard)", () => {
@@ -108,7 +110,9 @@ describe("TestCatalogList", () => {
     try {
       const signals = [];
       getFromOpenElisServer.mockImplementation((url, cb, sig) => {
-        signals.push(sig);
+        // Track only the tests endpoint; the sample-types reference fetch is
+        // a separate, signal-less call.
+        if (url.includes("/tests")) signals.push(sig);
         cb(pageOf([]));
       });
       renderList();

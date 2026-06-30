@@ -75,10 +75,21 @@ const TestCatalogList = () => {
   const [domain, setDomain] = useState(initParams.get("domain") || "");
   const [status, setStatus] = useState(initParams.get("status") || "all");
   const [amr, setAmr] = useState(initParams.get("amr") || "");
+  const [sampleType, setSampleType] = useState(
+    initParams.get("sampleType") || "",
+  );
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [search, setSearch] = useState(initParams.get("search") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(
     initParams.get("search") || "",
   );
+
+  // Sample types for the filter dropdown — fetched once (static reference data).
+  useEffect(() => {
+    getFromOpenElisServer("/rest/test-catalog/sample-types", (res) => {
+      setSampleTypes(Array.isArray(res) ? res : []);
+    });
+  }, []);
 
   // Debounce the search box: fetch once the user pauses, not on every keystroke.
   useEffect(() => {
@@ -97,6 +108,7 @@ const TestCatalogList = () => {
     if (domain) params.set("domain", domain);
     if (status && status !== "all") params.set("status", status);
     if (amr) params.set("amr", amr);
+    if (sampleType) params.set("sampleType", sampleType);
     if (debouncedSearch) params.set("search", debouncedSearch);
     params.set("page", String(page));
     params.set("pageSize", String(pageSize));
@@ -121,7 +133,16 @@ const TestCatalogList = () => {
       controller.signal,
     );
     return () => controller.abort();
-  }, [domain, status, amr, debouncedSearch, page, pageSize, history]);
+  }, [
+    domain,
+    status,
+    amr,
+    sampleType,
+    debouncedSearch,
+    page,
+    pageSize,
+    history,
+  ]);
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
@@ -158,6 +179,16 @@ const TestCatalogList = () => {
       `/MasterListsPage/TestCatalogEditor/${testId}/${DEFAULT_SECTION}`,
     );
   };
+
+  const sampleTypeItems = [
+    {
+      id: "",
+      name: intl.formatMessage({
+        id: "label.testCatalog.list.filter.allSampleTypes",
+      }),
+    },
+    ...sampleTypes,
+  ];
 
   const tableRows = (pageData.rows || []).map((r) => ({
     id: r.testId,
@@ -237,6 +268,20 @@ const TestCatalogList = () => {
               onChange={({ selectedItem }) => {
                 setPage(1);
                 setAmr(selectedItem ? selectedItem.id : "");
+              }}
+            />
+            <Dropdown
+              id="filter-sample-type"
+              titleText={intl.formatMessage({
+                id: "label.testCatalog.list.filter.sampleType",
+              })}
+              label=""
+              items={sampleTypeItems}
+              itemToString={(item) => (item ? item.name : "")}
+              selectedItem={sampleTypeItems.find((o) => o.id === sampleType)}
+              onChange={({ selectedItem }) => {
+                setPage(1);
+                setSampleType(selectedItem ? selectedItem.id : "");
               }}
             />
             <Search
