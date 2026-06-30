@@ -252,6 +252,46 @@ public class TestCatalogEditorRestController {
         return ResponseEntity.ok(envelope);
     }
 
+    // ── Localization (OGC-767) ────────────────────────────────────────────────
+    // The editor's Localization section edits a test's name / reporting-name
+    // translations. Those live in the generic `localization` tables (the test
+    // already FK-links to them), so this only bridges testId → the backing
+    // localization ids; the UI then reads/writes per-locale values through the
+    // existing /rest/localizations/{id} endpoints. No per-test translation store.
+
+    public static class LocalizationFieldRef {
+        public String field;
+        public String localizationId;
+
+        public LocalizationFieldRef(String field, String localizationId) {
+            this.field = field;
+            this.localizationId = localizationId;
+        }
+    }
+
+    public static class LocalizationRefs {
+        public String testId;
+        public List<LocalizationFieldRef> fields = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/tests/{testId}/localization", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LocalizationRefs> getLocalizationRefs(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Map<String, String> ids = testService.getNameLocalizationIds(testId);
+        LocalizationRefs refs = new LocalizationRefs();
+        refs.testId = testId;
+        for (String field : List.of("name", "reportingName")) {
+            String localizationId = ids.get(field);
+            if (localizationId != null) {
+                refs.fields.add(new LocalizationFieldRef(field, localizationId));
+            }
+        }
+        return ResponseEntity.ok(refs);
+    }
+
     private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
 
     /** OGC-748 Basic Info — identity + domain + AMR flag + status. */
