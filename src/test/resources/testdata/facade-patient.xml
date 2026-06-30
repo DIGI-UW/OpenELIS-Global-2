@@ -5,6 +5,17 @@
         identity_type="NATIONAL" description="Patient ID Number"
         lastupdated="2023-01-01 00:00:00" />
 
+    <patient_identity_type id="10"
+        identity_type="SUBJECT" description="Subject Number"
+        lastupdated="2023-01-01 00:00:00" />
+
+    <patient_identity_type id="11" identity_type="ST"
+        description="ST Number" lastupdated="2023-01-01 00:00:00" />
+
+    <patient_identity_type id="12"
+        identity_type="GUID" description="GUID"
+        lastupdated="2023-01-01 00:00:00" />
+
     <patient_identity_type id="17"
         identity_type="NATIONALITY" description="Nationality"
         lastupdated="2023-01-01 00:00:00" />
@@ -55,24 +66,35 @@
         national_id="1234" ethnicity="U" external_id="EX456"
         school_attend="Makerere College" birth_place="Mulago"
         fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04635"
-        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+        entered_birth_date="12/12/1992" lastupdated="2023-11-01 12:00:02" />
 
     <patient id="2" person_id="2" race="black" gender="F"
         birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
         national_id="56789" ethnicity="A" external_id="EX123"
         school_attend="Merryland College" birth_place="Nevada"
         fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04636"
-        entered_birth_date="1997-10-09" lastupdated="2023-11-01 12:00:02" />
+        entered_birth_date="10/09/1997" lastupdated="2023-11-01 12:00:02" />
 
     <patient id="3" person_id="3" race="black" gender="M"
         birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
         national_id="1234" ethnicity="U" external_id="EX432"
         school_attend="Makerere College" birth_place="Kawempe"
         fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04637"
-        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+        entered_birth_date="12/12/1992" lastupdated="2023-11-01 12:00:02" />
 
     <patient_identity id="1" identity_type_id="9"
         patient_id="1" identity_data="334-422-A"
+        lastupdated="2023-11-01 12:00:02" />
+
+    <patient_identity id="4" identity_type_id="10"
+        patient_id="1" identity_data="SUB123"
+        lastupdated="2023-11-01 12:00:02" />
+
+    <patient_identity id="5" identity_type_id="11"
+        patient_id="1" identity_data="ST456" lastupdated="2023-11-01 12:00:02" />
+
+    <patient_identity id="6" identity_type_id="12"
+        patient_id="1" identity_data="GUID789"
         lastupdated="2023-11-01 12:00:02" />
 
     <patient_identity id="2" identity_type_id="17"

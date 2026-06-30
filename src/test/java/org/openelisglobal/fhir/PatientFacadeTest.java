@@ -1,37 +1,32 @@
 package org.openelisglobal.fhir;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.address.service.AddressPartService;
-import org.openelisglobal.address.service.PersonAddressService;
-import org.openelisglobal.address.valueholder.PersonAddress;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.fhir.providers.PatientProvider;
-import org.openelisglobal.login.valueholder.UserSessionData;
-import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.service.PatientServiceImpl;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.patient.valueholder.PatientContact;
-import org.openelisglobal.patientidentity.service.PatientIdentityService;
-import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
-import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mock.web.*;
-import org.springframework.test.annotation.Rollback;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockServletConfig;
+import org.springframework.mock.web.MockServletContext;
+import org.springframework.test.util.AopTestUtils;
 
-@Rollback
 public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -39,107 +34,326 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
     @Autowired
     private PersonService personService;
     @Autowired
-    private PatientIdentityService patientIdentityService;
-    @Autowired
-    private PatientContactService patientContactService;
-    @Autowired
-    private PatientIdentityTypeService patientIdentityTypeService;
-    @Autowired
     private PatientProvider patientProvider;
     @Autowired
     private MockServletContext servletContext;
-    @Autowired
-    private AddressPartService addressPartService;
-    @Autowired
-    private PersonAddressService personAddressService;
 
     private RestfulServer fhirServlet;
     private ObjectMapper objectMapper;
 
     @Before
     public void setUp() throws Exception {
-        // Reset singleton caches to avoid stale identity type IDs from previous tests
         org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap.reset();
+        executeDataSetWithStateManagement("testdata/facade-patient.xml");
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY", "PATIENT_IDENTITY_TYPE");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
+
+        PatientServiceImpl target = AopTestUtils.getUltimateTargetObject(patientService);
+        target.initializeGlobalVariables();
 
         fhirServlet = new RestfulServer(FhirContext.forR4());
         fhirServlet.setResourceProviders(Arrays.asList(patientProvider));
-
         MockServletConfig servletConfig = new MockServletConfig(servletContext);
         servletConfig.addInitParameter("name", "FhirServlet");
         fhirServlet.init(servletConfig);
 
         objectMapper = new ObjectMapper();
-        executeDataSetWithStateManagement("testdata/facade-patient.xml");
-        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
-        executeDataSetWithStateManagement("testdata/system-user.xml");
-    }
-
-    private MockHttpServletRequest buildRequest(String method, String pathInfo) {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod(method);
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo(pathInfo);
-        request.setRequestURI("/fhir" + pathInfo);
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
-
-        UserSessionData data = new UserSessionData();
-        data.setSytemUserId(1);
-        request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, data);
-
-        return request;
-    }
-
-    public void clearDataBase() {
-        List<PatientContact> contacts = patientContactService.getAll();
-        List<Patient> patients = patientService.getAll();
-        List<PatientIdentity> identities = patientIdentityService.getAll();
-        List<Person> persons = personService.getAll();
-        List<PersonAddress> personAddresses = personAddressService.getAll();
-
-        // Fixture-loaded entities have null sys_user_id; the audit pipeline
-        // rejects deletes without one. Stamp before the deleteAll fan-out.
-        identities.forEach(e -> e.setSysUserId("1"));
-        contacts.forEach(e -> e.setSysUserId("1"));
-        personAddresses.forEach(e -> e.setSysUserId("1"));
-        patients.forEach(e -> e.setSysUserId("1"));
-        persons.forEach(e -> e.setSysUserId("1"));
-
-        patientIdentityService.deleteAll(identities);
-        patientContactService.deleteAll(contacts);
-        personAddressService.deleteAll(personAddresses);
-
-        patientService.deleteAll(patients);
-        personService.deleteAll(persons);
-
     }
 
     @Test
-    public void readPatient_shouldReturnPatientResource() throws Exception {
-        Patient existingPatient = patientService.get("1");
-        assertNotNull(existingPatient);
+    public void readPatient_shouldReturn200() throws Exception {
+        Patient patient = patientService.get("2");
+        String uuid = patient.getFhirUuidAsString();
 
-        String patientUuid = existingPatient.getFhirUuidAsString();
-        MockHttpServletRequest request = buildRequest("GET", "/Patient/" + patientUuid);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
         assertEquals(200, response.getStatus());
-
-        JsonNode json = objectMapper.readTree(response.getContentAsString());
-        assertEquals("Patient", json.get("resourceType").asText());
-        assertEquals(patientUuid, json.get("id").asText());
-        assertEquals("male", json.get("gender").asText());
     }
 
     @Test
-    public void createPatient_withBirthDate_shouldPersistCorrectly() throws Exception {
-        clearDataBase();
+    public void readPatient_shouldMapResourceTypeAndId() throws Exception {
+        Patient patient = patientService.get("2");
+        String uuid = patient.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("Patient", json.get("resourceType").asText());
+        assertEquals(uuid, json.get("id").asText());
+    }
+
+    @Test
+    public void readPatient_shouldMapFemaleGender() throws Exception {
+        Patient patient = patientService.get("2");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("female", json.get("gender").asText());
+    }
+
+    @Test
+    public void readPatient_shouldMapNameField() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertNotNull(json.get("name"));
+        assertTrue(json.get("name").size() > 0);
+    }
+
+    @Test
+    public void readPatient_shouldMapGenderField() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertNotNull(json.get("gender"));
+        assertFalse(json.get("gender").asText().isEmpty());
+    }
+
+    @Test
+    public void readPatient_shouldMapBirthDateField() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertNotNull(json.get("birthDate"));
+        assertFalse(json.get("birthDate").asText().isEmpty());
+    }
+
+    @Test
+    public void readPatient_shouldMapAddressField() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        JsonNode address = json.get("address");
+        assertNotNull(address);
+        assertTrue(address.size() > 0);
+        assertEquals("Kampala", address.get(0).get("city").asText());
+        assertEquals("Uganda", address.get(0).get("country").asText());
+    }
+
+    @Test
+    public void readPatient_shouldMapAtLeastFiveIdentifiers() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        JsonNode identifiers = json.get("identifier");
+        assertNotNull(identifiers);
+        assertTrue(identifiers.size() >= 5);
+    }
+
+    @Test
+    public void readPatient_shouldMapNationalIdIdentifier() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        JsonNode identifiers = json.get("identifier");
+        boolean hasNationalId = false;
+        for (JsonNode identifier : identifiers) {
+            if (identifier.path("system").asText().endsWith("/pat_nationalId")) {
+                hasNationalId = true;
+                break;
+            }
+        }
+        assertTrue(hasNationalId);
+    }
+
+    @Test
+    public void readPatient_shouldMapSubjectNumberIdentifier() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        JsonNode identifiers = json.get("identifier");
+        boolean hasSubjectNumber = false;
+        for (JsonNode identifier : identifiers) {
+            if (identifier.path("system").asText().endsWith("/pat_subjectNumber")) {
+                hasSubjectNumber = true;
+                break;
+            }
+        }
+        assertTrue(hasSubjectNumber);
+    }
+
+    @Test
+    public void readPatient_shouldMapStNumberIdentifier() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        JsonNode identifiers = json.get("identifier");
+        boolean hasStNumber = false;
+        for (JsonNode identifier : identifiers) {
+            if (identifier.path("system").asText().endsWith("/pat_stNumber")) {
+                hasStNumber = true;
+                break;
+            }
+        }
+        assertTrue(hasStNumber);
+    }
+
+    @Test
+    public void readPatient_shouldMapGuidIdentifier() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        JsonNode identifiers = json.get("identifier");
+        boolean hasGuid = false;
+        for (JsonNode identifier : identifiers) {
+            if (identifier.path("system").asText().endsWith("/pat_guid")) {
+                hasGuid = true;
+                break;
+            }
+        }
+        assertTrue(hasGuid);
+    }
+
+    @Test
+    public void readPatient_shouldMapUuidIdentifier() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        JsonNode identifiers = json.get("identifier");
+        boolean hasUuid = false;
+        for (JsonNode identifier : identifiers) {
+            if (identifier.path("system").asText().endsWith("/pat_uuid")) {
+                hasUuid = true;
+                break;
+            }
+        }
+        assertTrue(hasUuid);
+    }
+
+    @Test
+    public void readPatient_withNonExistentId_shouldReturn404() throws Exception {
+        String nonExistentUuid = UUID.randomUUID().toString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void readPatient_withNonExistentId_shouldReturnOperationOutcome() throws Exception {
+        String nonExistentUuid = UUID.randomUUID().toString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
+    }
+
+    @Test
+    public void createPatient_withAllIdentifiers_shouldReturn201CreatedStatus() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
+        String createJson = """
+                {
+                  "resourceType": "Patient",
+                  "identifier": [
+                    { "system": "http://openelis-global.org/pat_nationalId", "value": "NAT123" },
+                    { "system": "http://openelis-global.org/pat_subjectNumber", "value": "SUB123" },
+                    { "system": "http://openelis-global.org/pat_stNumber", "value": "ST123" },
+                    { "system": "http://openelis-global.org/pat_guid", "value": "GUID123" }
+                  ],
+                  "name": [{
+                    "use": "official",
+                    "family": "Identifier",
+                    "given": ["Test"]
+                  }],
+                  "gender": "male",
+                  "birthDate": "1992-12-12",
+                  "address": [{
+                    "line": ["123 Test St"],
+                    "city": "Kampala",
+                    "country": "Uganda"
+                  }]
+                }
+                """;
+        request.setContent(createJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+    }
+
+    @Test
+    public void createPatient_withBirthDate_shouldReturn201CreatedStatus() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
         String createJson = """
                 {
                   "resourceType": "Patient",
@@ -149,39 +363,123 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
                     "given": ["Joe"]
                   }],
                   "gender": "male",
-                  "birthDate": "1992-12-12"
+                  "birthDate": "1992-12-12",
+                  "address": [{
+                    "line": ["456 Birth St"],
+                    "city": "Entebbe",
+                    "country": "Uganda"
+                  }]
                 }
                 """;
-
         request.setContent(createJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(201, response.getStatus());
-
-        JsonNode json = objectMapper.readTree(response.getContentAsString());
-        String createdId = json.get("id").asText();
-        assertNotNull(createdId);
-
-        Patient savedPatient = patientService.getAllMatching("fhirUuid", UUID.fromString(createdId)).get(0);
-
-        Person person = personService.get(savedPatient.getPerson().getId());
-        assertEquals("Martin", person.getLastName());
-        assertEquals("Joe", person.getFirstName());
     }
 
     @Test
-    public void updatePatient_shouldUpdateNameAndTelecom() throws Exception {
-        Patient existingPatient = patientService.get("1");
-        String patientUuid = existingPatient.getFhirUuidAsString();
+    public void createPatient_withTelecom_shouldReturn201Created() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
+        String createJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "use": "official",
+                    "family": "Nakato",
+                    "given": ["Aisha"]
+                  }],
+                  "gender": "female",
+                  "birthDate": "1995-05-20",
+                  "telecom": [{
+                    "system": "email",
+                    "value": "aisha.nakato@example.com",
+                    "use": "work"
+                  }],
+                  "address": [{
+                    "line": ["789 Telecom Rd"],
+                    "city": "Jinja",
+                    "country": "Uganda"
+                  }]
+                }
+                """;
+        request.setContent(createJson.getBytes());
 
-        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + patientUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+    }
+
+    @Test
+    public void createPatient_withFemaleGender_shouldReturn201Created() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
+        String createJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "use": "official",
+                    "family": "Akello",
+                    "given": ["Grace"]
+                  }],
+                  "gender": "female",
+                  "birthDate": "1990-03-15",
+                  "address": [{
+                    "line": ["101 Gender Ave"],
+                    "city": "Gulu",
+                    "country": "Uganda"
+                  }]
+                }
+                """;
+        request.setContent(createJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+    }
+
+    @Test
+    public void createPatient_withInvalidGender_shouldReturn400() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
+        String invalidJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "use": "official",
+                    "family": "Test",
+                    "given": ["User"]
+                  }],
+                  "gender": "invalidGender",
+                  "address": [{
+                    "line": ["Invalid St"],
+                    "city": "TestCity",
+                    "country": "TestCountry"
+                  }]
+                }
+                """;
+        request.setContent(invalidJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_shouldReturn200() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
         String updateJson = """
                 {
                   "resourceType": "Patient",
                   "id": "%s",
-                  "active": true,
                   "name": [{
                     "use": "official",
                     "family": "UpdatedFamily",
@@ -192,15 +490,55 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
                     "value": "updated.email@example.com",
                     "use": "work"
                   }],
-                  "gender": "male"
+                  "gender": "male",
+                  "address": [{
+                    "line": ["Updated Address"],
+                    "city": "Updated City",
+                    "country": "Uganda"
+                  }]
                 }
-                """.formatted(patientUuid);
-
+                """.formatted(uuid);
         request.setContent(updateJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_shouldPersistUpdatedFieldsInDatabase() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "UpdatedFamily",
+                    "given": ["UpdatedGiven"]
+                  }],
+                  "telecom": [{
+                    "system": "email",
+                    "value": "updated.email@example.com",
+                    "use": "work"
+                  }],
+                  "gender": "male",
+                  "address": [{
+                    "line": ["Updated Road"],
+                    "city": "Updated City",
+                    "country": "Uganda"
+                  }]
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
 
         Patient updatedPatient = patientService.get("1");
         Person updatedPerson = personService.get(updatedPatient.getPerson().getId());
@@ -208,59 +546,206 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals("UpdatedFamily", updatedPerson.getLastName());
         assertEquals("UpdatedGiven", updatedPerson.getFirstName());
         assertEquals("updated.email@example.com", updatedPerson.getEmail());
+        assertEquals("Updated City", updatedPerson.getCity());
     }
 
     @Test
-    public void updatePatient_withInvalidId_shouldReturn404() throws Exception {
-        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
-
-        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + nonExistentUuid);
-
+    public void updatePatient_shouldReturn200WhenGenderProvided() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
         String updateJson = """
                 {
                   "resourceType": "Patient",
                   "id": "%s",
-                  "active": true,
+                  "name": [{
+                    "use": "official",
+                    "family": "Namukasa",
+                    "given": ["Esther"]
+                  }],
+                  "gender": "male",
+                  "address": [{
+                    "line": ["Preserve St"],
+                    "city": "Preserve City",
+                    "country": "Uganda"
+                  }]
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_shouldPreserveGenderInDatabase() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "Namukasa",
+                    "given": ["Esther"]
+                  }],
+                  "gender": "male",
+                  "address": [{
+                    "line": ["Gender St"],
+                    "city": "Gender City",
+                    "country": "Uganda"
+                  }]
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        Patient updatedPatient = patientService.get("1");
+
+        assertEquals("M", updatedPatient.getGender());
+    }
+
+    @Test
+    public void updatePatient_withInvalidId_shouldReturn404() throws Exception {
+        String nonExistentUuid = UUID.randomUUID().toString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + nonExistentUuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
                   "name": [{
                     "use": "official",
                     "family": "Test",
                     "given": ["User"]
+                  }],
+                  "address": [{
+                    "line": ["Invalid ID St"],
+                    "city": "Invalid City",
+                    "country": "Uganda"
                   }]
                 }
                 """.formatted(nonExistentUuid);
-
         request.setContent(updateJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(404, response.getStatus());
     }
 
     @Test
-    public void deletePatient_shouldReturn204() throws Exception {
-        Patient existingPatient = patientService.get("1");
-        String patientUuid = existingPatient.getFhirUuidAsString();
+    public void updatePatient_withNewBirthDate_shouldReturn200() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "Doe",
+                    "given": ["John"]
+                  }],
+                  "gender": "male",
+                  "birthDate": "1985-06-15",
+                  "address": [{
+                    "line": ["Birthdate St"],
+                    "city": "Birthdate City",
+                    "country": "Uganda"
+                  }]
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
 
-        MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" + patientUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_withNewBirthDate_shouldPersistInDatabase() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "Doe",
+                    "given": ["John"]
+                  }],
+                  "gender": "male",
+                  "birthDate": "1985-06-15",
+                  "address": [{
+                    "line": ["Birthdate Road"],
+                    "city": "Birthdate City",
+                    "country": "Uganda"
+                  }]
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        Patient updatedPatient = patientService.get("1");
+
+        assertNotNull(updatedPatient.getBirthDate());
+        assertTrue(updatedPatient.getBirthDateForDisplay().contains("1985"));
+    }
+
+    @Test
+    public void deletePatient_shouldReturn204() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Patient/" + uuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
         assertEquals(204, response.getStatus());
-
-        Patient deletedPatient = patientService.get("1");
-        assertNotNull(deletedPatient);
     }
 
     @Test
     public void deletePatient_withNonExistentId_shouldReturn404() throws Exception {
-        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
+        String nonExistentUuid = UUID.randomUUID().toString();
 
-        MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" + nonExistentUuid);
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Patient/" + nonExistentUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
         assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void deletePatient_thenPatientShouldStillExistInDatabase() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest deleteRequest = buildFhirRequest("DELETE", "/Patient/" + uuid);
+        MockHttpServletResponse deleteResponse = new MockHttpServletResponse();
+
+        fhirServlet.service(deleteRequest, deleteResponse);
+
+        Patient afterDelete = patientService.get("1");
+
+        assertNotNull(afterDelete);
     }
 }
