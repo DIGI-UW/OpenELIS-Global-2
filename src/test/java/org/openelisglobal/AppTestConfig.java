@@ -26,6 +26,7 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
@@ -52,6 +53,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.MediaType;
@@ -257,6 +259,13 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public FhirReferralService fhirReferralService() {
         return Mockito.mock(FhirReferralService.class);
+    }
+
+    @Bean
+    @Primary
+    @Profile("test")
+    public FhirPersistanceService fhirPersistanceService() {
+        return mock(FhirPersistanceService.class);
     }
 
     @Bean()
