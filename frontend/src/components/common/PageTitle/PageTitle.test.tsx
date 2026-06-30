@@ -1,18 +1,21 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, RenderResult } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import PageTitle from "./PageTitle";
 
-// Mock messages
-const messages = {
+interface Breadcrumb {
+  label: string;
+  link?: string;
+}
+
+const messages: Record<string, string> = {
   "page.breadcrumb.separator": ">",
   "page.title.back": "Back",
 };
 
-// Helper to render with providers
-const renderWithIntl = (component) => {
+const renderWithIntl = (component: React.ReactElement): RenderResult => {
   return render(
     <BrowserRouter>
       <IntlProvider locale="en" messages={messages}>
@@ -31,51 +34,46 @@ describe("PageTitle Component", () => {
   });
 
   it("should render hierarchical breadcrumbs with separator", () => {
-    renderWithIntl(
-      <PageTitle
-        breadcrumbs={[
-          { label: "Analyzers", link: "/analyzers" },
-          { label: "Field Mappings" },
-          { label: "Hematology Analyzer 1" },
-        ]}
-      />,
-    );
+    const breadcrumbs: Breadcrumb[] = [
+      { label: "Analyzers", link: "/analyzers" },
+      { label: "Field Mappings" },
+      { label: "Hematology Analyzer 1" },
+    ];
+
+    renderWithIntl(<PageTitle breadcrumbs={breadcrumbs} />);
 
     expect(screen.getByText("Analyzers")).not.toBeNull();
     expect(screen.getByText("Field Mappings")).not.toBeNull();
     expect(screen.getByText("Hematology Analyzer 1")).not.toBeNull();
 
-    // Check separators
     const separators = screen.getAllByText(">");
     expect(separators).toHaveLength(2);
   });
 
   it("should render back arrow when showBackArrow is true", () => {
+    const breadcrumbs: Breadcrumb[] = [
+      { label: "Analyzers", link: "/analyzers" },
+      { label: "Field Mappings" },
+    ];
+
     renderWithIntl(
-      <PageTitle
-        breadcrumbs={[
-          { label: "Analyzers", link: "/analyzers" },
-          { label: "Field Mappings" },
-        ]}
-        showBackArrow={true}
-      />,
+      <PageTitle breadcrumbs={breadcrumbs} showBackArrow={true} />,
     );
 
     expect(screen.getByTestId("page-title-back-button")).not.toBeNull();
   });
 
   it("should render clickable breadcrumb links", async () => {
-    renderWithIntl(
-      <PageTitle
-        breadcrumbs={[
-          { label: "Analyzers", link: "/analyzers" },
-          { label: "Field Mappings" },
-        ]}
-      />,
-    );
+    const breadcrumbs: Breadcrumb[] = [
+      { label: "Analyzers", link: "/analyzers" },
+      { label: "Field Mappings" },
+    ];
+
+    renderWithIntl(<PageTitle breadcrumbs={breadcrumbs} />);
 
     const link = screen.getByTestId("breadcrumb-link-0");
     expect(link).not.toBeNull();
+
     await userEvent.click(link);
     // Navigation verified by router (not tested here)
   });
@@ -92,13 +90,14 @@ describe("PageTitle Component", () => {
   });
 
   it("should call custom onBack handler when provided", async () => {
-    const mockOnBack = vi.fn();
+    const mockOnBack = jest.fn<void, []>();
+    const breadcrumbs: Breadcrumb[] = [
+      { label: "Analyzers", link: "/analyzers" },
+      { label: "Field Mappings" },
+    ];
     renderWithIntl(
       <PageTitle
-        breadcrumbs={[
-          { label: "Analyzers", link: "/analyzers" },
-          { label: "Field Mappings" },
-        ]}
+        breadcrumbs={breadcrumbs}
         showBackArrow={true}
         onBack={mockOnBack}
       />,
@@ -106,6 +105,7 @@ describe("PageTitle Component", () => {
 
     const backButton = screen.getByTestId("page-title-back-button");
     await userEvent.click(backButton);
+
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
 });
