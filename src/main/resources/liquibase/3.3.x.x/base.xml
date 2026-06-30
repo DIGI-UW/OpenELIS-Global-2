@@ -98,4 +98,7 @@
   <!-- OGC-356: Sample type request table for decoupled order workflow -->
   <include relativeToChangelogFile="true" file="034-create-sample-type-request-table.xml"/>
 
+  <!-- OGC-3486: Accreditation data model (accrediting_body, test_accreditation) -->
+  <include relativeToChangelogFile="true" file="035-create-accreditation-tables.xml"/>
+
 </databaseChangeLog>
