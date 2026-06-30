@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -66,6 +67,14 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         body.put("status", status.value());
         body.put("error", status.getReasonPhrase());
         return body;
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    protected ResponseEntity<Object> handleResponseStatusException(ResponseStatusException ex, WebRequest request) {
+        LogEvent.logWarn(this.getClass().getName(), "handleResponseStatusException",
+                ex.getStatusCode() + (ex.getReason() != null ? ": " + ex.getReason() : ""));
+        String body = ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString();
+        return new ResponseEntity<>(body, ex.getHeaders(), ex.getStatusCode());
     }
 
     @Override
