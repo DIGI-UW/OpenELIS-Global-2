@@ -10,20 +10,36 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
 
+interface QueryStatus {
+  state: string;
+  progress: number;
+  logs: string[];
+  error?: string;
+  fields?: Array<Record<string, unknown>>;
+}
+
+interface QueryStatusModalProps {
+  open: boolean;
+  onClose: () => void;
+  analyzerId: string;
+  jobId: string;
+  onCompleted?: (status: QueryStatus) => void;
+}
+
 export default function QueryStatusModal({
   open,
   onClose,
   analyzerId,
   jobId,
   onCompleted,
-}) {
+}: QueryStatusModalProps) {
   const intl = useIntl();
   const [status, setStatus] = useState({
     state: "pending",
     progress: 0,
     logs: [],
   });
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completedRef = useRef(false); // Track if onCompleted has been called
 
   useEffect(() => {
@@ -77,10 +93,12 @@ export default function QueryStatusModal({
       timerRef.current = null;
     }
     // Remove focus from any button before closing to prevent aria-hidden warning
-    if (document.activeElement && document.activeElement.blur) {
+    if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    onClose && onClose();
+    if (onClose) {
+      onClose();
+    }
   };
 
   return (
@@ -92,8 +110,8 @@ export default function QueryStatusModal({
       preventCloseOnClickOutside={false}
     >
       <ModalHeader
-        title={<FormattedMessage id="analyzer.query.modal.title" />}
-        label={<FormattedMessage id="analyzer.query.modal.subtitle" />}
+        title={intl.formatMessage({ id: "analyzer.query.modal.title" })}
+        label={intl.formatMessage({ id: "analyzer.query.modal.subtitle" })}
       />
       <ModalBody>
         <div data-testid="query-status-state">

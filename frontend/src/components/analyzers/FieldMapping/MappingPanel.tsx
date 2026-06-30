@@ -11,7 +11,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Button,
-  Dropdown,
   TextInput,
   Tag,
   Tooltip,
@@ -29,7 +28,7 @@ const MappingPanel = ({
   mapping,
   onCreateMapping,
   onUpdateMapping,
-  onRetireMapping,
+  onRetireMapping = (_mappingId, _retirementReason) => undefined,
   analyzerName,
   analyzerIsActive = false,
   pendingMessagesCount = 0,
@@ -381,7 +380,7 @@ const MappingPanel = ({
                         analyzerId,
                         field.id,
                         testValue,
-                        (result, extraParams) => {
+                        (result, _extraParams) => {
                           if (result && !result.error) {
                             setValidationResult({
                               isValid: result.isValid,
@@ -509,7 +508,10 @@ const MappingPanel = ({
               </div>
             </>
           ) : (
-            <p>No mapping exists for this field. Click "Edit" to create one.</p>
+            <p>
+              No mapping exists for this field. Click &quot;Edit&quot; to create
+              one.
+            </p>
           )}
         </div>
       )}

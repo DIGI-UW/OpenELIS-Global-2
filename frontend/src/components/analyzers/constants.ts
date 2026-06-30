@@ -14,7 +14,7 @@ export const PROTOCOL_VERSIONS = [
  * Maps the protocol string from AnalyzerType (ASTM, HL7, FILE) to the
  * corresponding ProtocolVersion enum value.
  */
-export const PLUGIN_PROTOCOL_DEFAULTS = {
+export const PLUGIN_PROTOCOL_DEFAULTS: Record<string, string> = {
   ASTM: "ASTM_LIS2_A2",
   HL7: "HL7_V2_3_1",
 };

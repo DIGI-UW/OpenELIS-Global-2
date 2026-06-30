@@ -27,19 +27,32 @@ import {
   disconnectSerialPort,
   getSerialPortStatus,
 } from "../../../services/serialService";
+import type {
+  AnalyzerApiResponse,
+  AnalyzerNotification,
+  SerialPortConfiguration,
+} from "../analyzerTypes";
 import "./SerialConfiguration.css";
+
+interface SerialConfigurationProps {
+  analyzerId?: string | number | null;
+  configuration?: SerialPortConfiguration | null;
+  open: boolean;
+  onClose: () => void;
+  onSave?: (response: AnalyzerApiResponse) => void;
+}
 
 const SerialConfiguration = ({
   analyzerId,
-  configuration,
+  configuration = null,
   open,
   onClose,
   onSave,
-}) => {
+}: SerialConfigurationProps) => {
   const intl = useIntl();
   const isEditMode = !!configuration;
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SerialPortConfiguration>({
     analyzerId: analyzerId || null,
     portName: "",
     baudRate: 9600,
@@ -50,10 +63,14 @@ const SerialConfiguration = ({
     active: true,
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof SerialPortConfiguration, string>>
+  >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState(null);
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
   // Stop bits options
   const stopBitsOptions = [
@@ -129,7 +146,7 @@ const SerialConfiguration = ({
     setConnectionStatus(null);
   }, [configuration, analyzerId, open]);
 
-  const loadConnectionStatus = (configId) => {
+  const loadConnectionStatus = (configId: string) => {
     getSerialPortStatus(configId, (data) => {
       if (data && data.status) {
         setConnectionStatus(data.status);
@@ -137,7 +154,10 @@ const SerialConfiguration = ({
     });
   };
 
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = <K extends keyof SerialPortConfiguration>(
+    field: K,
+    value: SerialPortConfiguration[K],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -149,7 +169,8 @@ const SerialConfiguration = ({
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: Partial<Record<keyof SerialPortConfiguration, string>> =
+      {};
 
     if (!formData.analyzerId) {
       newErrors.analyzerId = intl.formatMessage({
@@ -187,7 +208,7 @@ const SerialConfiguration = ({
     setIsSubmitting(true);
     setNotification(null);
 
-    const callback = (response, extraParams) => {
+    const callback = (response: AnalyzerApiResponse) => {
       setIsSubmitting(false);
       if (response.error) {
         setNotification({
@@ -214,6 +235,22 @@ const SerialConfiguration = ({
     } else {
       createSerialPortConfiguration(formData, callback);
     }
+  };
+
+  const getNumberInputValue = (
+    event: (
+      | React.ChangeEvent<HTMLInputElement>
+      | React.MouseEvent<HTMLButtonElement>
+      | React.KeyboardEvent<HTMLInputElement>
+      | React.FocusEvent<HTMLInputElement>
+    ) & {
+      imaginaryTarget?: { value?: string | number };
+    },
+  ): number => {
+    const value = event.imaginaryTarget?.value ?? event.target.value;
+    const numericValue = Number(value);
+
+    return Number.isFinite(numericValue) ? numericValue : 0;
   };
 
   const handleConnect = () => {
@@ -301,10 +338,7 @@ const SerialConfiguration = ({
             label={intl.formatMessage({ id: "serial.config.baudRate.label" })}
             value={formData.baudRate}
             onChange={(e) =>
-              handleFieldChange(
-                "baudRate",
-                e.imaginaryTarget?.value || e.target.value,
-              )
+              handleFieldChange("baudRate", getNumberInputValue(e))
             }
             invalid={!!errors.baudRate}
             invalidText={errors.baudRate}
@@ -319,10 +353,7 @@ const SerialConfiguration = ({
             label={intl.formatMessage({ id: "serial.config.dataBits.label" })}
             value={formData.dataBits}
             onChange={(e) =>
-              handleFieldChange(
-                "dataBits",
-                e.imaginaryTarget?.value || e.target.value,
-              )
+              handleFieldChange("dataBits", getNumberInputValue(e))
             }
             invalid={!!errors.dataBits}
             invalidText={errors.dataBits}
@@ -334,6 +365,9 @@ const SerialConfiguration = ({
           <Dropdown
             id="stopBits"
             titleText={intl.formatMessage({
+              id: "serial.config.stopBits.label",
+            })}
+            label={intl.formatMessage({
               id: "serial.config.stopBits.label",
             })}
             items={stopBitsOptions}
@@ -349,6 +383,7 @@ const SerialConfiguration = ({
           <Dropdown
             id="parity"
             titleText={intl.formatMessage({ id: "serial.config.parity.label" })}
+            label={intl.formatMessage({ id: "serial.config.parity.label" })}
             items={parityOptions}
             selectedItem={parityOptions.find(
               (opt) => opt.id === formData.parity,
@@ -362,6 +397,9 @@ const SerialConfiguration = ({
           <Dropdown
             id="flowControl"
             titleText={intl.formatMessage({
+              id: "serial.config.flowControl.label",
+            })}
+            label={intl.formatMessage({
               id: "serial.config.flowControl.label",
             })}
             items={flowControlOptions}

@@ -15,11 +15,27 @@ import {
   Checkbox,
   FormGroup,
   InlineNotification,
-  List,
-  ListItem,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import type { AnalyzerField, AnalyzerNotification } from "../analyzerTypes";
 import "./QualitativeMappingModal.css";
+
+interface QualitativeMapping {
+  analyzerValue: string;
+  openelisCode: string;
+  isDefault: boolean;
+}
+
+interface QualitativeMappingModalProps {
+  open: boolean;
+  onClose: () => void;
+  field: AnalyzerField;
+  qualitativeMappings?: QualitativeMapping[];
+  analyzerValues?: string[];
+  onSave: (
+    mappingsData: Array<QualitativeMapping & { analyzerFieldId: string }>,
+  ) => void;
+}
 
 const QualitativeMappingModal = ({
   open,
@@ -28,11 +44,13 @@ const QualitativeMappingModal = ({
   qualitativeMappings = [],
   analyzerValues = [],
   onSave,
-}) => {
+}: QualitativeMappingModalProps) => {
   const intl = useIntl();
-  const [mappings, setMappings] = useState([]);
-  const [errors, setErrors] = useState({});
-  const [notification, setNotification] = useState(null);
+  const [mappings, setMappings] = useState<QualitativeMapping[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
 
   // Mock OpenELIS codes - in production, this would come from API
   const openelisCodes = [
@@ -82,7 +100,7 @@ const QualitativeMappingModal = ({
 
   // Validate form
   const validate = () => {
-    const newErrors = {};
+    const newErrors: Record<string, string> = {};
     let hasError = false;
 
     mappings.forEach((mapping, index) => {
@@ -113,7 +131,11 @@ const QualitativeMappingModal = ({
   };
 
   // Handle mapping change
-  const handleMappingChange = (index, field, value) => {
+  const handleMappingChange = <K extends keyof QualitativeMapping>(
+    index: number,
+    field: K,
+    value: QualitativeMapping[K],
+  ) => {
     setMappings((prev) => {
       const newMappings = [...prev];
       newMappings[index] = {
@@ -218,9 +240,9 @@ const QualitativeMappingModal = ({
               <FormattedMessage id="analyzer.qualitativeMapping.noValues" />
             </p>
           ) : (
-            <List ordered={false} nested={false}>
+            <ul>
               {mappings.map((mapping, index) => (
-                <ListItem key={index} className="qualitative-mapping-item">
+                <li key={index} className="qualitative-mapping-item">
                   <div className="qualitative-mapping-row">
                     <div className="qualitative-mapping-analyzer-value">
                       <strong>{mapping.analyzerValue}</strong>
@@ -255,16 +277,20 @@ const QualitativeMappingModal = ({
                           id: "analyzer.qualitativeMapping.isDefault",
                         })}
                         checked={mapping.isDefault}
-                        onChange={(checked) => {
-                          handleMappingChange(index, "isDefault", checked);
+                        onChange={(_, { checked }) => {
+                          handleMappingChange(
+                            index,
+                            "isDefault",
+                            Boolean(checked),
+                          );
                         }}
                         data-testid={`qualitative-mapping-default-${index}`}
                       />
                     </div>
                   </div>
-                </ListItem>
+                </li>
               ))}
-            </List>
+            </ul>
           )}
         </FormGroup>
       </ModalBody>

@@ -26,16 +26,41 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { createField } from "../../../services/analyzerService";
+import type {
+  AnalyzerApiResponse,
+  AnalyzerNotification,
+} from "../analyzerTypes";
 import "./InlineFieldCreationModal.css";
+
+interface InlineFieldFormValues {
+  fieldName: string;
+  entityType: string;
+  loincCode: string;
+  description: string;
+  fieldType: string;
+  acceptedUnits: string[];
+}
+
+interface InlineFieldCreationModalProps {
+  open: boolean;
+  onClose: () => void;
+  onFieldCreated?: (field: unknown, id?: string) => void;
+  fieldType?: string;
+}
+
+interface CreateFieldResponse extends AnalyzerApiResponse {
+  field?: unknown;
+  id?: string;
+}
 
 const InlineFieldCreationModal = ({
   open,
   onClose,
   onFieldCreated,
   fieldType, // Required field type for type compatibility
-}) => {
+}: InlineFieldCreationModalProps) => {
   const intl = useIntl();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<InlineFieldFormValues>({
     fieldName: "",
     entityType: "",
     loincCode: "",
@@ -43,9 +68,13 @@ const InlineFieldCreationModal = ({
     fieldType: fieldType || "NUMERIC",
     acceptedUnits: [],
   });
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof InlineFieldFormValues, string>>
+  >({});
   const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
 
   // Entity type options
   const entityTypeOptions = [
@@ -93,7 +122,7 @@ const InlineFieldCreationModal = ({
 
   // Validate form
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: Partial<Record<keyof InlineFieldFormValues, string>> = {};
 
     if (!formData.fieldName || formData.fieldName.trim() === "") {
       newErrors.fieldName = intl.formatMessage({
@@ -125,7 +154,10 @@ const InlineFieldCreationModal = ({
   };
 
   // Handle form field changes
-  const handleFieldChange = (fieldName, value) => {
+  const handleFieldChange = <K extends keyof InlineFieldFormValues>(
+    fieldName: K,
+    value: InlineFieldFormValues[K],
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [fieldName]: value,
@@ -162,7 +194,7 @@ const InlineFieldCreationModal = ({
 
     createField(
       payload,
-      (response, error) => {
+      (response: CreateFieldResponse, error?: unknown) => {
         setLoading(false);
 
         if (error || response?.error) {
@@ -310,7 +342,6 @@ const InlineFieldCreationModal = ({
               }}
               invalid={!!errors.entityType}
               invalidText={errors.entityType}
-              required
               data-testid="entity-type-dropdown"
             />
 
@@ -386,7 +417,9 @@ const InlineFieldCreationModal = ({
                 items={unitOptions}
                 selectedItems={formData.acceptedUnits
                   .map((unit) => unitOptions.find((item) => item.id === unit))
-                  .filter(Boolean)}
+                  .filter((item): item is (typeof unitOptions)[number] =>
+                    Boolean(item),
+                  )}
                 onChange={({ selectedItems }) => {
                   handleFieldChange(
                     "acceptedUnits",
@@ -395,7 +428,6 @@ const InlineFieldCreationModal = ({
                 }}
                 invalid={!!errors.acceptedUnits}
                 invalidText={errors.acceptedUnits}
-                required
                 data-testid="accepted-units-multiselect"
               />
             )}

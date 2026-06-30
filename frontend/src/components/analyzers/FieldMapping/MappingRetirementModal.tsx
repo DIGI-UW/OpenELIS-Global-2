@@ -29,7 +29,7 @@ import "./MappingRetirementModal.css";
 const MappingRetirementModal = ({
   open,
   onClose,
-  mappingName,
+  mappingName: _mappingName,
   pendingMessagesCount = 0,
   onConfirm,
 }) => {

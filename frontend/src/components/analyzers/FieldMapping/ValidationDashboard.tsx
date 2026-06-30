@@ -151,7 +151,7 @@ const ValidationDashboard = ({ analyzerId, status }) => {
     ([testUnit, coverage]) => ({
       id: testUnit,
       testUnit,
-      coverage: Math.round(coverage * 100),
+      coverage: Math.round(Number(coverage) * 100),
     }),
   );
 

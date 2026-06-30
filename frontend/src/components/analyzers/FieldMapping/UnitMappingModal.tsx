@@ -18,18 +18,54 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import type { AnalyzerField, AnalyzerNotification } from "../analyzerTypes";
 import "./UnitMappingModal.css";
 
-const UnitMappingModal = ({ open, onClose, field, unitMapping, onSave }) => {
+interface UnitMappingFormValues {
+  analyzerUnit: string;
+  openelisUnit: string;
+  conversionFactor: string;
+  rejectIfMismatch: boolean;
+}
+
+interface UnitMappingRecord extends UnitMappingFormValues {
+  analyzerFieldId?: string;
+}
+
+interface UnitMappingModalProps {
+  open: boolean;
+  onClose: () => void;
+  field: AnalyzerField;
+  unitMapping?: Partial<UnitMappingRecord> | null;
+  onSave: (mappingData: {
+    analyzerFieldId: string;
+    analyzerUnit: string;
+    openelisUnit: string;
+    conversionFactor: number | null;
+    rejectIfMismatch: boolean;
+  }) => void;
+}
+
+const UnitMappingModal = ({
+  open,
+  onClose,
+  field,
+  unitMapping,
+  onSave,
+}: UnitMappingModalProps) => {
   const intl = useIntl();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<UnitMappingFormValues>({
     analyzerUnit: "",
     openelisUnit: "",
     conversionFactor: "",
     rejectIfMismatch: false,
   });
-  const [errors, setErrors] = useState({});
-  const [notification, setNotification] = useState(null);
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof UnitMappingFormValues, string>>
+  >({});
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
 
   // Mock OpenELIS units list - in production, this would come from API
   const openelisUnits = [
@@ -68,7 +104,7 @@ const UnitMappingModal = ({ open, onClose, field, unitMapping, onSave }) => {
 
   // Validate form
   const validate = () => {
-    const newErrors = {};
+    const newErrors: Partial<Record<keyof UnitMappingFormValues, string>> = {};
 
     if (!formData.analyzerUnit || formData.analyzerUnit.trim() === "") {
       newErrors.analyzerUnit = intl.formatMessage({
@@ -111,7 +147,10 @@ const UnitMappingModal = ({ open, onClose, field, unitMapping, onSave }) => {
   };
 
   // Handle field changes
-  const handleFieldChange = (fieldName, value) => {
+  const handleFieldChange = <K extends keyof UnitMappingFormValues>(
+    fieldName: K,
+    value: UnitMappingFormValues[K],
+  ) => {
     setFormData((prev) => ({ ...prev, [fieldName]: value }));
     // Clear error for this field
     if (errors[fieldName]) {
@@ -248,13 +287,15 @@ const UnitMappingModal = ({ open, onClose, field, unitMapping, onSave }) => {
                 handleFieldChange("conversionFactor", e.target.value)
               }
               placeholder="0.0555"
-              helperText={intl.formatMessage({
-                id: "analyzer.unitMapping.conversionFactor.helper",
-                values: {
+              helperText={intl.formatMessage(
+                {
+                  id: "analyzer.unitMapping.conversionFactor.helper",
+                },
+                {
                   from: formData.analyzerUnit,
                   to: formData.openelisUnit,
                 },
-              })}
+              )}
               invalid={!!errors.conversionFactor}
               invalidText={errors.conversionFactor}
               type="number"
@@ -273,9 +314,6 @@ const UnitMappingModal = ({ open, onClose, field, unitMapping, onSave }) => {
             onToggle={(checked) =>
               handleFieldChange("rejectIfMismatch", checked)
             }
-            helperText={intl.formatMessage({
-              id: "analyzer.unitMapping.rejectIfMismatch.helper",
-            })}
             data-testid="unit-mapping-reject-if-mismatch"
           />
         </FormGroup>
