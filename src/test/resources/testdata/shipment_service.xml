@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <organization id="1" name="Central Laboratory"
+        is_active="Y" />
+    <organization id="2" name="Regional Clinic" is_active="Y" />
+
+    <system_user id="1" login_name="admin" last_name="Admin"
+        first_name="System" is_active="Y" is_employee="Y"
+        lastupdated="2024-01-01 10:00:00" />
+
+    <shipping_box id="1" box_id="BOX-001"
+        fhir_uuid="c56a4180-65aa-42ec-a945-5fd21dec0538"
+        destination_facility_id="1" state="DRAFT" capacity="50"
+        created_date="2024-01-01 10:00:00" created_by="1" sys_user_id="1"
+        archived="false" lastupdated="2024-01-01 10:00:00" />
+    <shipping_box id="2" box_id="BOX-002"
+        fhir_uuid="d56a4180-65aa-42ec-a945-5fd21dec0539"
+        destination_facility_id="2" state="DRAFT" capacity="25"
+        created_date="2024-01-02 10:00:00" created_by="1" sys_user_id="1"
+        archived="false" lastupdated="2024-01-02 10:00:00" />
+    <shipping_box id="3" box_id="BOX-003"
+        fhir_uuid="e56a4180-65aa-42ec-a945-5fd21dec0540"
+        destination_facility_id="1" state="DRAFT" capacity="100"
+        created_date="2024-01-03 10:00:00" created_by="1" sys_user_id="1"
+        archived="false" lastupdated="2024-01-03 10:00:00" />
+
+    <!-- Existing Shipment 1 (PENDING) -->
+    <shipment id="1" shipping_box_id="1" courier="FedEx"
+        tracking_number="TRK1001" status="PENDING" sys_user_id="1"
+        lastupdated="2024-01-01 11:00:00" />
+
+    <!-- Existing Shipment 2 (IN_TRANSIT) -->
+    <shipment id="2" shipping_box_id="2" courier="DHL"
+        tracking_number="TRK1002" status="IN_TRANSIT"
+        shipped_date="2024-01-02 12:00:00" sys_user_id="1"
+        lastupdated="2024-01-02 12:00:00" />
+
+    <!-- Box 3 does not have a shipment yet -->
+</dataset>
