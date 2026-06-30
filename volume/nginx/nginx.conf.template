@@ -55,6 +55,8 @@ http {
 
         ssl_protocols TLSv1.2 TLSv1.3;
         ssl_prefer_server_ciphers off;
+        
+        include snippets/security-headers.conf;        
 
         # Proxy headers
         proxy_set_header X-Forwarded-For $proxy_protocol_addr;
@@ -160,7 +162,9 @@ http {
 
         ssl_certificate /etc/nginx/certs/apache-selfsigned.crt;
         ssl_certificate_key /etc/nginx/keys/apache-selfsigned.key;
-
+        
+        include snippets/security-headers.conf;
+        
         proxy_set_header X-Forwarded-For $proxy_protocol_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $host;
