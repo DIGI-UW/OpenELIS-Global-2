@@ -361,7 +361,9 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public PagingProperties pagingProperties() {
-        return new PagingProperties();
+        PagingProperties p = new PagingProperties();
+        p.setResultsPageSize(99);
+        return p;
     }
 
     @Bean

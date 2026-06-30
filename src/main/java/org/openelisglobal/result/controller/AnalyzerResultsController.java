@@ -167,7 +167,8 @@ public class AnalyzerResultsController extends BaseController {
 
     @RequestMapping(value = "/AnalyzerResults", method = RequestMethod.GET)
     public ModelAndView showAnalyzerResults(@Valid @ModelAttribute("form") AnalyzerResultsForm oldForm,
-            BindingResult result, HttpServletRequest request)
+            BindingResult result, @RequestParam(required = false) String type,
+            @RequestParam(required = false) String id, HttpServletRequest request)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         AnalyzerResultsForm form = new AnalyzerResultsForm();
 
@@ -180,14 +181,15 @@ public class AnalyzerResultsController extends BaseController {
 
         form.setType(requestAnalyzerType);
 
-        AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(getAnalyzerIdFromRequest());
+        String analyzerId = resolveAnalyzerId(id, type);
+        AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(analyzerId);
         if (analyzerPlugin instanceof BidirectionalAnalyzer) {
             BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
             form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());
         }
 
         AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
-        List<AnalyzerResults> analyzerResultsList = getAnalyzerResults();
+        List<AnalyzerResults> analyzerResultsList = getAnalyzerResults(analyzerId);
         if (GenericValidator.isBlankOrNull(request.getParameter("page"))) {
             // get list of AnalyzerData from table based on analyzer type
             if (analyzerResultsList.isEmpty()) {
@@ -213,6 +215,7 @@ public class AnalyzerResultsController extends BaseController {
             @RequestParam(required = false) String id, HttpServletRequest request)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         AnalyzerResultsForm form = new AnalyzerResultsForm();
+        form.setResultList(new ArrayList<>());
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 
@@ -234,17 +237,19 @@ public class AnalyzerResultsController extends BaseController {
         }
         List<AnalyzerResults> analyzerResultsList = new ArrayList<>();
         try {
-            AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService
-                    .getPluginByAnalyzerId(getAnalyzerIdFromRequest());
+            String analyzerId = resolveAnalyzerId(id, type);
+            AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(analyzerId);
             if (analyzerPlugin instanceof BidirectionalAnalyzer) {
                 BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
                 form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());
             }
-            analyzerResultsList = getAnalyzerResults();
+            analyzerResultsList = getAnalyzerResults(analyzerId);
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "showRestAnalyzerResults",
                     "Error loading analyzer results: " + e.getMessage());
             LogEvent.logError(e);
+            form.setResultList(new ArrayList<>());
+            form.setDisplayNotFoundMsg(true);
             return form;
         }
 
@@ -382,8 +387,8 @@ public class AnalyzerResultsController extends BaseController {
     // readOnly — causing the accept flow to skip mapped results.
     // Test resolution now happens once at FHIR import time.
 
-    private List<AnalyzerResults> getAnalyzerResults() {
-        return analyzerResultsService.getResultsbyAnalyzer(getAnalyzerIdFromRequest());
+    private List<AnalyzerResults> getAnalyzerResults(String analyzerId) {
+        return analyzerResultsService.getResultsbyAnalyzer(analyzerId);
     }
 
     protected AnalyzerResultItem analyzerResultsToAnalyzerResultItem(AnalyzerResults result) {
@@ -660,10 +665,10 @@ public class AnalyzerResultsController extends BaseController {
             actualMessage = PluginMenuService.getInstance().getMenuLabel(localizationService.getCurrentLocaleLanguage(),
                     messageKey);
         }
-        return actualMessage == null ? getActualAnalyzerNameFromRequest() : actualMessage;
+        return actualMessage == null ? request.getParameter("type") : actualMessage;
     }
 
-    protected String getAnalyzerNameFromRequest() {
+    protected String getAnalyzerNameFromRequest(HttpServletRequest request) {
         String analyzer = null;
         String requestType = request.getParameter("type");
         if (!GenericValidator.isBlankOrNull(requestType)) {
@@ -672,10 +677,10 @@ public class AnalyzerResultsController extends BaseController {
         return analyzer;
     }
 
-    protected String getAnalyzerTypeNameFromRequest() {
+    protected String getAnalyzerTypeNameFromRequest(HttpServletRequest request) {
         try {
-            Analyzer analyzer = analyzerService.get(getAnalyzerIdFromRequest());
-            if (analyzer.getAnalyzerType() != null) {
+            Analyzer analyzer = analyzerService.get(getAnalyzerIdFromRequest(request));
+            if (analyzer != null && analyzer.getAnalyzerType() != null) {
                 return analyzer.getAnalyzerType().getName();
             }
             return "";
@@ -684,23 +689,24 @@ public class AnalyzerResultsController extends BaseController {
         }
     }
 
-    protected String getActualAnalyzerNameFromRequest() {
-        String requestType = request.getParameter("type");
-        return requestType;
+    protected String getActualAnalyzerNameFromRequest(HttpServletRequest request) {
+        return request.getParameter("type");
     }
 
-    protected String getAnalyzerIdFromRequest() {
+    protected String resolveAnalyzerId(String idParam, String typeParam) {
         // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
-        String idParam = request.getParameter("id");
         if (idParam != null && !idParam.isBlank()) {
             return idParam;
         }
-        String requestType = request.getParameter("type");
-        if (requestType != null) {
-            Analyzer analyzer = analyzerService.getAnalyzerByName(requestType);
+        if (typeParam != null) {
+            Analyzer analyzer = analyzerService.getAnalyzerByName(typeParam);
             return analyzer != null ? analyzer.getId() : null;
         }
         return null;
+    }
+
+    protected String getAnalyzerIdFromRequest(HttpServletRequest request) {
+        return resolveAnalyzerId(request.getParameter("id"), request.getParameter("type"));
     }
 
     private void writeErrorResponse(HttpServletResponse response, String safeMessage) {
@@ -848,7 +854,7 @@ public class AnalyzerResultsController extends BaseController {
 
     @Override
     protected String getPageSubtitleKey() {
-        String key = analyzerNameToSubtitleKey.get(getActualAnalyzerNameFromRequest());
+        String key = analyzerNameToSubtitleKey.get(getActualAnalyzerNameFromRequest(request));
         if (key == null) {
             key = PluginMenuService.getInstance()
                     .getKeyForAction("/AnalyzerResults?type=" + request.getParameter("type"));
