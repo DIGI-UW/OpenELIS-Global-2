@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <status_of_sample id="901"
+        description="Patient identity query test status" code="901"
+        status_type="SAMPLE" lastupdated="2026-01-01 00:00:00"
+        name="PatientIdentityQueryStatus" display_key="status.patient.identity.query"
+        is_active="Y" />
+
+    <person id="1" last_name="Doe" first_name="John"
+        middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastupdated="2026-01-01 00:00:00" />
+
+    <patient id="1" person_id="1" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX456"
+        school_attend="MaKerere College" birth_place="Mulago"
+        entered_birth_date="1992-12-12" lastupdated="2026-01-01 00:00:00" />
+
+    <person id="901" last_name="Provider" first_name="Test"
+        middle_name="User" city="Kampala" state="Kampala"
+        zip_code="256" country="Uganda" work_phone="11111111"
+        home_phone="11111112" cell_phone="11111113" primary_phone="11111111"
+        fax="1111" email="provider@test.org" lastupdated="2026-01-01 00:00:00" />
+
+    <provider id="901" person_id="901" provider_type="P"
+        lastupdated="2026-01-01 00:00:00" />
+
+    <sample id="901" accession_number="PATIENT-IDENTITY-001"
+        status_id="901" entered_date="2026-01-01 00:00:00"
+        received_date="2026-01-01 00:00:00" is_confirmation="false"
+        lastupdated="2026-01-01 00:00:00" />
+
+    <project id="901" name="Project A" />
+
+    <sample_projects id="901" proj_id="901" samp_id="901"
+        is_permanent="Y" lastupdated="2026-01-01 00:00:00" />
+
+    <sample_human id="901" provider_id="901" samp_id="901"
+        patient_id="1" lastupdated="2026-01-01 00:00:00" />
+</dataset>
