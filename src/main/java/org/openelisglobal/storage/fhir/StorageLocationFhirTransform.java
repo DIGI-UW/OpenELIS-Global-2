@@ -1,7 +1,11 @@
 package org.openelisglobal.storage.fhir;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.BooleanType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
@@ -15,10 +19,18 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
+import org.openelisglobal.storage.service.CodeGenerationService;
+import org.openelisglobal.storage.service.StorageBoxService;
+import org.openelisglobal.storage.service.StorageDeviceService;
+import org.openelisglobal.storage.service.StorageRackService;
+import org.openelisglobal.storage.service.StorageRoomService;
+import org.openelisglobal.storage.service.StorageShelfService;
 import org.openelisglobal.storage.valueholder.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -30,6 +42,24 @@ public class StorageLocationFhirTransform {
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
+
+    @Autowired
+    private CodeGenerationService codeGenerationService;
+
+    @Autowired
+    private StorageRoomService storageRoomService;
+
+    @Autowired
+    private StorageBoxService storageBoxService;
+
+    @Autowired
+    private StorageDeviceService storageDeviceService;
+
+    @Autowired
+    private StorageShelfService storageShelfService;
+
+    @Autowired
+    private StorageRackService storageRackService;
 
     private static final String OPENELIS_STORAGE_CODE_SYSTEM = "http://openelis.org/storage-location-code";
     private static final String MCSD_PROFILE = "http://ihe.net/fhir/StructureDefinition/IHE.mCSD.Location";
@@ -47,6 +77,36 @@ public class StorageLocationFhirTransform {
     private static final String EXT_DEVICE_IP_ADDRESS = "http://openelis.org/fhir/extension/device-ip-address";
     private static final String EXT_DEVICE_PORT = "http://openelis.org/fhir/extension/device-port";
     private static final String EXT_DEVICE_COMMUNICATION_PROTOCOL = "http://openelis.org/fhir/extension/device-communication-protocol";
+
+    public StorageRoom createStorageRoomFromLocation(Location location) {
+        StorageRoom room = new StorageRoom();
+        if (location.hasId()) {
+            String roomId = location.getIdElement().getIdPart();
+            room = getItemByFhirId(UUID.fromString(roomId), storageRoomService);
+            if (room == null) {
+                room = new StorageRoom();
+                room.setFhirUuid(UUID.fromString(roomId));
+            }
+
+        } else {
+            room.setFhirUuid(UUID.randomUUID());
+        }
+        if (location.hasName()) {
+            room.setName(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "room");
+            if (GenericValidator.isBlankOrNull(room.getCode())) {
+                room.setCode(generatedCode);
+            }
+        }
+        if (location.hasDescription()) {
+            room.setDescription(location.getDescription());
+        }
+        if (location.hasStatus()) {
+            room.setActive(location.getStatus() == LocationStatus.ACTIVE);
+        }
+        return room;
+
+    }
 
     public Location transformToFhirLocation(StorageRoom room) {
         Location location = new Location();
@@ -78,6 +138,94 @@ public class StorageLocationFhirTransform {
         location.getMeta().addTag(STORAGE_HIERARCHY_TAG_SYSTEM, "room", "Room");
 
         return location;
+    }
+
+    public StorageDevice createOrUpdateStorageDeviceFromLocation(Location location) {
+
+        StorageDevice device;
+
+        if (location.hasId()) {
+            UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
+            device = getItemByFhirId(uuid, storageDeviceService);
+            if (device == null) {
+                device = new StorageDevice();
+                device.setFhirUuid(uuid);
+            }
+        } else {
+            device = new StorageDevice();
+            device.setFhirUuid(UUID.randomUUID());
+        }
+
+        if (location.hasName()) {
+            device.setName(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
+            if (GenericValidator.isBlankOrNull(device.getCode())) {
+                device.setCode(generatedCode);
+            }
+
+        }
+
+        if (location.hasStatus()) {
+            device.setActive(location.getStatus() == LocationStatus.ACTIVE);
+        }
+
+        if (!location.getIdentifier().isEmpty()) {
+            device.setCode(location.getIdentifierFirstRep().getValue());
+        }
+
+        if (location.hasPartOf() && location.getPartOf().hasReference()) {
+            String refId = location.getPartOf().getReferenceElement().getIdPart();
+            if (refId != null) {
+                StorageRoom room = getItemByFhirId(UUID.fromString(refId), storageRoomService);
+                device.setParentRoom(room);
+            }
+        }
+
+        if (!location.getType().isEmpty()) {
+            CodeableConcept typeConcept = location.getTypeFirstRep();
+            if (!typeConcept.getCoding().isEmpty()) {
+                String typeCode = typeConcept.getCodingFirstRep().getCode();
+                device.setType(typeCode);
+            }
+        }
+
+        for (Extension ext : location.getExtension()) {
+
+            switch (ext.getUrl()) {
+
+            case EXT_STORAGE_TEMPERATURE:
+                if (ext.getValue() instanceof org.hl7.fhir.r4.model.DecimalType val) {
+                    device.setTemperatureSetting(new BigDecimal(val.getValue().doubleValue()));
+                }
+                break;
+
+            case EXT_STORAGE_CAPACITY:
+                if (ext.getValue() instanceof IntegerType val) {
+                    device.setCapacityLimit(val.getValue());
+                }
+                break;
+
+            case EXT_DEVICE_IP_ADDRESS:
+                if (ext.getValue() instanceof StringType val) {
+                    device.setIpAddress(val.getValue());
+                }
+                break;
+
+            case EXT_DEVICE_PORT:
+                if (ext.getValue() instanceof IntegerType val) {
+                    device.setPort(val.getValue());
+                }
+                break;
+
+            case EXT_DEVICE_COMMUNICATION_PROTOCOL:
+                if (ext.getValue() instanceof StringType val) {
+                    device.setCommunicationProtocol(val.getValue());
+                }
+                break;
+            }
+        }
+
+        return device;
     }
 
     public Location transformToFhirLocation(StorageDevice device) {
@@ -155,6 +303,54 @@ public class StorageLocationFhirTransform {
         return location;
     }
 
+    public StorageShelf createOrUpdateStorageShelfFromLocation(Location location) {
+
+        StorageShelf shelf;
+
+        if (location.hasId()) {
+            UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
+            shelf = getItemByFhirId(uuid, storageShelfService);
+
+            if (shelf == null) {
+                shelf = new StorageShelf();
+                shelf.setFhirUuid(uuid);
+            }
+        } else {
+            shelf = new StorageShelf();
+            shelf.setFhirUuid(UUID.randomUUID());
+        }
+
+        if (location.hasName()) {
+            shelf.setLabel(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
+            if (GenericValidator.isBlankOrNull(shelf.getCode())) {
+                shelf.setCode(generatedCode);
+            }
+        }
+
+        if (location.hasStatus()) {
+            shelf.setActive(location.getStatus() == LocationStatus.ACTIVE);
+        }
+
+        if (location.hasPartOf() && location.getPartOf().hasReference()) {
+            String refId = location.getPartOf().getReferenceElement().getIdPart();
+
+            if (refId != null) {
+                StorageDevice device = getItemByFhirId(UUID.fromString(refId), storageDeviceService);
+                shelf.setParentDevice(device);
+            }
+        }
+        for (Extension ext : location.getExtension()) {
+
+            if (EXT_STORAGE_CAPACITY.equals(ext.getUrl()) && ext.getValue() instanceof IntegerType val) {
+
+                shelf.setCapacityLimit(val.getValue());
+            }
+        }
+
+        return shelf;
+    }
+
     public Location transformToFhirLocation(StorageShelf shelf) {
         Location location = new Location();
 
@@ -201,6 +397,47 @@ public class StorageLocationFhirTransform {
         return location;
     }
 
+    public StorageRack createOrUpdateStorageRackFromLocation(Location location) {
+
+        StorageRack rack;
+
+        if (location.hasId()) {
+            UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
+            rack = getItemByFhirId(uuid, storageRackService);
+
+            if (rack == null) {
+                rack = new StorageRack();
+                rack.setFhirUuid(uuid);
+            }
+        } else {
+            rack = new StorageRack();
+            rack.setFhirUuid(UUID.randomUUID());
+        }
+
+        if (location.hasName()) {
+            rack.setLabel(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "rack");
+            if (GenericValidator.isBlankOrNull(rack.getCode())) {
+                rack.setCode(generatedCode);
+            }
+        }
+
+        if (location.hasStatus()) {
+            rack.setActive(location.getStatus() == LocationStatus.ACTIVE);
+        }
+
+        if (location.hasPartOf() && location.getPartOf().hasReference()) {
+            String refId = location.getPartOf().getReferenceElement().getIdPart();
+
+            if (refId != null) {
+                StorageShelf shelf = getItemByFhirId(UUID.fromString(refId), storageShelfService);
+                rack.setParentShelf(shelf);
+            }
+        }
+
+        return rack;
+    }
+
     public Location transformToFhirLocation(StorageRack rack) {
         Location location = new Location();
 
@@ -243,6 +480,87 @@ public class StorageLocationFhirTransform {
         location.getMeta().addTag(STORAGE_HIERARCHY_TAG_SYSTEM, "rack", "Rack");
 
         return location;
+    }
+
+    public StorageBox createOrUpdateStorageBoxFromLocation(Location location) {
+
+        StorageBox box;
+
+        if (location.hasId()) {
+            UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
+            box = getItemByFhirId(uuid, storageBoxService);
+
+            if (box == null) {
+                box = new StorageBox();
+                box.setFhirUuid(uuid);
+            }
+        } else {
+            box = new StorageBox();
+            box.setFhirUuid(UUID.randomUUID());
+        }
+
+        if (location.hasName()) {
+            box.setLabel(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "box");
+            if (GenericValidator.isBlankOrNull(box.getCode())) {
+                box.setCode(generatedCode);
+            }
+        }
+        if (location.hasStatus()) {
+            box.setActive(location.getStatus() == LocationStatus.ACTIVE);
+        }
+
+        if (location.hasPartOf() && location.getPartOf().hasReference()) {
+            String refId = location.getPartOf().getReferenceElement().getIdPart();
+
+            if (refId != null) {
+                StorageRack rack = getItemByFhirId(UUID.fromString(refId), storageRackService);
+                box.setParentRack(rack);
+            }
+        }
+
+        if (location.hasPhysicalType() && location.getPhysicalType().hasText()) {
+            box.setType(location.getPhysicalType().getText());
+        }
+
+        Integer rows = null;
+        Integer columns = null;
+
+        for (Extension ext : location.getExtension()) {
+
+            String url = ext.getUrl();
+
+            if (EXT_RACK_GRID_DIMENSIONS.equals(url) && ext.getValue() instanceof StringType val) {
+
+                String grid = val.getValue(); // e.g. "8 × 12"
+
+                if (grid != null && grid.contains("×")) {
+                    String[] parts = grid.split("×");
+
+                    if (parts.length == 2) {
+                        try {
+                            rows = Integer.parseInt(parts[0].trim());
+                            columns = Integer.parseInt(parts[1].trim());
+                        } catch (NumberFormatException e) {
+                            LogEvent.logWarn(getClass().getSimpleName(), "createOrUpdateStorageBoxFromLocation",
+                                    "Invalid grid format: " + grid);
+                        }
+                    }
+                }
+            }
+
+            else if (EXT_RACK_POSITION_HINT.equals(url) && ext.getValue() instanceof StringType val) {
+
+                box.setPositionSchemaHint(val.getValue());
+            }
+        }
+
+        if (rows != null && columns != null && rows > 0 && columns > 0) {
+            box.setRows(rows);
+            box.setColumns(columns);
+        }
+
+        return box;
     }
 
     public Location transformToFhirLocation(StorageBox box) {
@@ -414,5 +732,25 @@ public class StorageLocationFhirTransform {
             LogEvent.logError("Error persisting Location to FHIR server: " + e.getMessage(), e);
             throw new FhirLocalPersistingException(e);
         }
+    }
+
+    public <T extends BaseObject<?>> T getItemByFhirId(UUID fhirUuid, BaseObjectService<T, ?> service) {
+
+        if (fhirUuid == null) {
+            return null;
+        }
+
+        List<T> matches = service.getAllMatching("fhirUuid", fhirUuid);
+
+        if (matches == null || matches.isEmpty()) {
+            return null;
+        }
+
+        if (matches.size() > 1) {
+            LogEvent.logWarn(getClass().getSimpleName(), "getItemByFhirId",
+                    "Multiple records found for fhirUuid: " + fhirUuid);
+        }
+
+        return matches.get(0);
     }
 }
