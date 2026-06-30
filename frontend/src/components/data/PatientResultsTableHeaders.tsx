@@ -1,6 +1,8 @@
-import { FormattedMessage } from "react-intl";
 import React from "react";
-export const patientSearchHeaderData = [
+import { FormattedMessage } from "react-intl";
+import type { TableHeaderData } from "./LabTableHeaders";
+
+export const patientSearchHeaderData: TableHeaderData[] = [
   {
     key: "lastName",
     header: <FormattedMessage id="patient.last.name" />,
