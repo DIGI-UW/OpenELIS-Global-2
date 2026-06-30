@@ -139,7 +139,9 @@ function OEHeader({
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
-    return userSessionDetails.authenticated ? "User" : "Lang";
+    return userSessionDetails.authenticated
+      ? intl.formatMessage({ id: "header.icon.user" })
+      : intl.formatMessage({ id: "header.icon.lang" });
   };
 
   const handleMenuItems = (tag, res) => {
@@ -654,21 +656,23 @@ function OEHeader({
                 id="sidenav-menu-button"
                 data-cy="menuButton"
                 className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
-                aria-label={
-                  mode === SIDENAV_MODES.CLOSE
-                    ? "Open menu"
-                    : mode === SIDENAV_MODES.SHOW
-                      ? "Pin menu"
-                      : "Close menu"
-                }
+                aria-label={intl.formatMessage({
+                  id:
+                    mode === SIDENAV_MODES.CLOSE
+                      ? "header.icon.menu.open"
+                      : mode === SIDENAV_MODES.SHOW
+                        ? "header.icon.menu.pin"
+                        : "header.icon.menu.close",
+                })}
                 onClick={toggleSideNav}
-                title={
-                  mode === SIDENAV_MODES.CLOSE
-                    ? "Open menu"
-                    : mode === SIDENAV_MODES.SHOW
-                      ? "Pin menu"
-                      : "Close menu"
-                }
+                title={intl.formatMessage({
+                  id:
+                    mode === SIDENAV_MODES.CLOSE
+                      ? "header.icon.menu.open"
+                      : mode === SIDENAV_MODES.SHOW
+                        ? "header.icon.menu.pin"
+                        : "header.icon.menu.close",
+                })}
                 type="button"
               >
                 {mode === SIDENAV_MODES.CLOSE && <Menu size={20} />}
@@ -697,14 +701,18 @@ function OEHeader({
                   {searchBar && <SearchBar />}
                   <HeaderGlobalAction
                     id="search-Icon"
-                    aria-label="Search"
+                    aria-label={intl.formatMessage({
+                      id: "header.icon.search",
+                    })}
                     onClick={() => handlePanelToggle(searchBar ? "" : "search")}
                   >
                     {!searchBar ? <Search size={20} /> : <Close size={20} />}
                   </HeaderGlobalAction>
                   <HeaderGlobalAction
                     id="notification-Icon"
-                    aria-label="Notifications"
+                    aria-label={intl.formatMessage({
+                      id: "header.icon.notifications",
+                    })}
                     onClick={() =>
                       handlePanelToggle(
                         notificationsOpen ? "" : "notifications",

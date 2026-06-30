@@ -13,6 +13,8 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -36,6 +38,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -101,6 +104,12 @@ public class TestCatalogEditorRestController {
     private final PanelService panelService;
 
     private final PanelItemService panelItemService;
+
+    // Field-injected (optional) so the existing all-args constructor used by the
+    // controller's unit tests stays unchanged; only used to label dictionary
+    // options.
+    @Autowired(required = false)
+    private DictionaryService dictionaryService;
 
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
@@ -195,7 +204,28 @@ public class TestCatalogEditorRestController {
         int from = Math.min((result.page - 1) * result.pageSize, filtered.size());
         int to = Math.min(from + result.pageSize, filtered.size());
         result.rows = new ArrayList<>(filtered.subList(from, to));
+        // Disambiguate same-named tests by appending their sample type, e.g.
+        // "Covid-PCR (Urine)". Done on the page slice only (≤ pageSize lookups).
+        for (TestListRow row : result.rows) {
+            row.name = (row.name == null ? "" : row.name) + sampleTypeSuffix(row.testId);
+        }
         return result;
+    }
+
+    private String sampleTypeSuffix(String testId) {
+        List<String> sampleNames = new ArrayList<>();
+        for (TypeOfSampleTest link : typeOfSampleTestService.getTypeOfSampleTestsForTest(testId)) {
+            TypeOfSample sampleType = typeOfSampleService.getTypeOfSampleById(link.getTypeOfSampleId());
+            if (sampleType == null) {
+                continue;
+            }
+            String name = !isBlank(sampleType.getDescription()) ? sampleType.getDescription()
+                    : sampleType.getLocalAbbreviation();
+            if (!isBlank(name) && !sampleNames.contains(name)) {
+                sampleNames.add(name);
+            }
+        }
+        return sampleNames.isEmpty() ? "" : " (" + String.join("/", sampleNames) + ")";
     }
 
     public static class EditorEnvelope {
@@ -220,6 +250,46 @@ public class TestCatalogEditorRestController {
         envelope.domain = test.getDomain();
         envelope.applicableSections = V1_SECTIONS;
         return ResponseEntity.ok(envelope);
+    }
+
+    // ── Localization (OGC-767) ────────────────────────────────────────────────
+    // The editor's Localization section edits a test's name / reporting-name
+    // translations. Those live in the generic `localization` tables (the test
+    // already FK-links to them), so this only bridges testId → the backing
+    // localization ids; the UI then reads/writes per-locale values through the
+    // existing /rest/localizations/{id} endpoints. No per-test translation store.
+
+    public static class LocalizationFieldRef {
+        public String field;
+        public String localizationId;
+
+        public LocalizationFieldRef(String field, String localizationId) {
+            this.field = field;
+            this.localizationId = localizationId;
+        }
+    }
+
+    public static class LocalizationRefs {
+        public String testId;
+        public List<LocalizationFieldRef> fields = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/tests/{testId}/localization", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LocalizationRefs> getLocalizationRefs(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Map<String, String> ids = testService.getNameLocalizationIds(testId);
+        LocalizationRefs refs = new LocalizationRefs();
+        refs.testId = testId;
+        for (String field : List.of("name", "reportingName")) {
+            String localizationId = ids.get(field);
+            if (localizationId != null) {
+                refs.fields.add(new LocalizationFieldRef(field, localizationId));
+            }
+        }
+        return ResponseEntity.ok(refs);
     }
 
     private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
@@ -323,6 +393,10 @@ public class TestCatalogEditorRestController {
     public static class OptionDto {
         public String id;
         public String value;
+        // Human-readable label for a dictionary-backed option (value holds the
+        // dictionary id, which is what the save round-trip persists). Null when the
+        // value isn't a resolvable dictionary id.
+        public String valueName;
         public String resultType;
         public Integer sortOrder;
         public Boolean normal;
@@ -468,6 +542,7 @@ public class TestCatalogEditorRestController {
                 OptionDto odto = new OptionDto();
                 odto.id = o.getId();
                 odto.value = o.getValue();
+                odto.valueName = dictionaryName(o.getValue());
                 odto.resultType = o.getTestResultType();
                 odto.sortOrder = parseIntOrNull(o.getSortOrder());
                 odto.normal = o.getIsNormal();
@@ -476,6 +551,53 @@ public class TestCatalogEditorRestController {
             sr.components.add(dto);
         }
         return sr;
+    }
+
+    /** A dictionary entry for the option-search typeahead. */
+    public static class DictionaryOption {
+        public String id;
+        public String name;
+    }
+
+    /**
+     * Typeahead for select-list option values: active dictionary entries whose name
+     * starts with {@code search}, capped for responsiveness. Blank search returns
+     * nothing (so the control doesn't dump the whole dictionary).
+     */
+    @GetMapping(value = "/dictionary", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<DictionaryOption> searchDictionaryOptions(@RequestParam(required = false) String search) {
+        List<DictionaryOption> results = new ArrayList<>();
+        if (dictionaryService == null || isBlank(search)) {
+            return results;
+        }
+        int limit = 50;
+        for (Dictionary dictionary : dictionaryService.getDictionaryEntrysByCategoryAbbreviation(search.trim(), null)) {
+            if (results.size() >= limit) {
+                break;
+            }
+            DictionaryOption option = new DictionaryOption();
+            option.id = dictionary.getId();
+            option.name = dictionary.getDictEntry();
+            results.add(option);
+        }
+        return results;
+    }
+
+    /**
+     * Resolve a dictionary-backed option value (a numeric dictionary id) to its
+     * human label. Returns null for non-numeric / free-text values, when the id
+     * doesn't resolve, or when the dictionary service isn't wired (unit tests).
+     */
+    private String dictionaryName(String value) {
+        if (dictionaryService == null || value == null || !value.matches("\\d+")) {
+            return null;
+        }
+        try {
+            Dictionary dictionary = dictionaryService.getDictionaryById(value);
+            return dictionary == null ? null : dictionary.getDictEntry();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     // ── Reference Ranges + Coverage Validation (OGC-969 / OGC-973) ─────────────

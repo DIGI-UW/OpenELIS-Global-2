@@ -35,6 +35,9 @@
         <class>org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling</class>
         <class>org.openelisglobal.testterminology.valueholder.TestTerminologyMapping</class>
+        <class>org.openelisglobal.testreagentlink.valueholder.TestReagentLink</class>
+        <class>org.openelisglobal.testalertrule.valueholder.TestAlertRule</class>
+        <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandlingHistory</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
@@ -90,6 +93,7 @@
         <!-- Notification entities -->
         <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
         <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
+        <class>org.openelisglobal.notifications.entity.Notification</class>
 
         <!-- Dictionary entities (required by NoteBook.type relationship) -->
         <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>

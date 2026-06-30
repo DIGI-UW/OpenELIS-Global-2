@@ -16,6 +16,8 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.controller.TestAddController.TestSet;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +45,10 @@ public class TestAddServiceImpl implements TestAddService {
     private TypeOfSampleService typeOfSampleService;
     @Autowired
     private PanelService panelService;
+    @Autowired
+    private TestTerminologyMappingService terminologyMappingService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
 
     @Override
     @Transactional
@@ -58,6 +64,7 @@ public class TestAddServiceImpl implements TestAddService {
             set.test.setLocalizedTestName(nameLocalization);
             set.test.setLocalizedReportingName(reportingNameLocalization);
             testService.insert(set.test);
+            terminologyMappingService.syncLegacyLoinc(set.test.getId(), set.test.getLoinc(), currentUserId);
 
             TestSection testSection = set.test.getTestSection();
             if ("N".equals(testSection.getIsActive())) {
@@ -106,6 +113,7 @@ public class TestAddServiceImpl implements TestAddService {
                 resultLimit.setTestId(set.test.getId());
                 resultLimitService.insert(resultLimit);
             }
+            testResultComponentService.syncPrimaryComponentFromLegacy(set.test.getId(), currentUserId);
         }
     }
 }

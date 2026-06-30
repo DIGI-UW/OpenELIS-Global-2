@@ -17,8 +17,13 @@ export const V1_SECTIONS = [
   "ranges",
   "storage",
   "panels",
+  "labels",
   "terminology",
+  "reagents",
   "analyzers",
+  "alerts",
+  "reflex-calc",
+  "localization",
   "display-order",
 ];
 
