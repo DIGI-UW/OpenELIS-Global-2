@@ -155,6 +155,7 @@
         <class>org.openelisglobal.compliance.valueholder.ParameterGroup</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceThreshold</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceReportArchive</class>
 
         <!-- QC Result Evaluation entities (OGC-554 S-08) -->
         <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>

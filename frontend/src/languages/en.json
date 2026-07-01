@@ -6194,6 +6194,17 @@
   "laporanHasil.action.generatePdf": "Generate PDF",
   "laporanHasil.action.regeneratePdf": "Re-generate PDF",
 
+  "lhu.amendment.reissue": "Reissue with Amendment",
+  "lhu.amendment.modal.heading": "Reissue LHU with Amendment",
+  "lhu.amendment.modal.description": "You are reissuing LHU for lab number {labNumber}. The reissued report will be identified as an amendment to the previously released certificate.",
+  "lhu.amendment.modal.submit": "Reissue & Download PDF",
+  "lhu.amendment.reason.label": "Amendment reason",
+  "lhu.amendment.reason.helper": "State why the original report is being amended (required for ISO 17025 §7.8.8 compliance).",
+  "lhu.amendment.reason.placeholder": "e.g. Incorrect pH result — instrument was not calibrated",
+  "lhu.amendment.reason.required": "Amendment reason is required",
+  "lhu.amendment.submitting": "Reissuing…",
+  "lhu.amendment.error.generic": "Failed to reissue the report. Please try again.",
+
   "laporanHasil.detail.siteInfo": "Site Information",
   "laporanHasil.detail.site": "Site",
   "laporanHasil.detail.gps": "GPS",

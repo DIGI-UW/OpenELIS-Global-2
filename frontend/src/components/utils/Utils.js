@@ -315,6 +315,35 @@ export const postToOpenElisServerForBlob = (
     });
 };
 
+export const getFromOpenElisServerForBlob = (
+  endPoint,
+  callback,
+  errorCallback,
+) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    headers: {
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+  })
+    .then(handleSessionError)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.blob().then((blob) => ({ blob, response }));
+    })
+    .then(({ blob, response }) => {
+      callback(blob, response);
+    })
+    .catch((error) => {
+      console.error(error);
+      if (errorCallback) {
+        errorCallback(error);
+      }
+    });
+};
+
 export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
   fetch(
     config.serverBaseUrl + endPoint,

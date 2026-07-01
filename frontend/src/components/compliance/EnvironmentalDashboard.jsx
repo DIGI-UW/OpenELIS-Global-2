@@ -406,6 +406,10 @@ export default function EnvironmentalDashboard() {
             titleText={intl.formatMessage({
               id: "compliance.dashboard.filter.sites",
             })}
+            label={intl.formatMessage({
+              id: "compliance.dashboard.filter.sites.placeholder",
+              defaultMessage: "All sites",
+            })}
             items={sites}
             itemToString={(s) => (s ? s.name : "")}
             onChange={({ selectedItems }) =>
