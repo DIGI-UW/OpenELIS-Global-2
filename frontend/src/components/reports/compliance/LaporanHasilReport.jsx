@@ -30,8 +30,11 @@ import {
   InlineLoading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
-import config from "../../../config.json";
+import {
+  getFromOpenElisServer,
+  getFromOpenElisServerForBlob,
+  postToOpenElisServerForBlob,
+} from "../../utils/Utils";
 
 const STATUS_TAG_TYPE = {
   COMPLIANT: "green",
@@ -178,18 +181,9 @@ export default function LaporanHasilReport() {
     (sampleId, labNumber) => {
       setGeneratingPdf(sampleId);
       const safeLabel = labNumber.replace(/[^a-zA-Z0-9-]/g, "");
-      fetch(
-        `${config.serverBaseUrl}/rest/complianceReport/exportPdf?sampleId=${sampleId}`,
-        {
-          credentials: "include",
-          headers: { "X-CSRF-Token": localStorage.getItem("CSRF") },
-        },
-      )
-        .then((res) => {
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          return res.blob();
-        })
-        .then((blob) => {
+      getFromOpenElisServerForBlob(
+        `/rest/complianceReport/exportPdf?sampleId=${sampleId}`,
+        (blob) => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
@@ -208,16 +202,18 @@ export default function LaporanHasilReport() {
               ),
             };
           });
-        })
-        .catch((err) => {
+          setGeneratingPdf(null);
+        },
+        (err) => {
           setError(
             intl.formatMessage(
               { id: "laporanHasil.error.pdf", defaultMessage: "Failed to download PDF: {msg}" },
               { msg: err.message },
             ),
           );
-        })
-        .finally(() => setGeneratingPdf(null));
+          setGeneratingPdf(null);
+        },
+      );
     },
     [intl],
   );
@@ -243,25 +239,10 @@ export default function LaporanHasilReport() {
 
     setAmendmentModal((prev) => ({ ...prev, submitting: true, error: null }));
 
-    fetch(`${config.serverBaseUrl}/rest/complianceReport/reissue`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-      credentials: "include",
-      body: JSON.stringify({ sampleId, reason: reason.trim() }),
-    })
-      .then((res) => {
-        if (!res.ok) {
-          return res.text().then((msg) => {
-            throw new Error(msg || intl.formatMessage({ id: "lhu.amendment.error.generic" }));
-          });
-        }
-        return res.blob();
-      })
-      .then((blob) => {
-        // Trigger PDF download
+    postToOpenElisServerForBlob(
+      `/rest/complianceReport/reissue`,
+      JSON.stringify({ sampleId, reason: reason.trim() }),
+      (blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -280,14 +261,15 @@ export default function LaporanHasilReport() {
           };
         });
         setAmendmentModal((prev) => ({ ...prev, open: false, submitting: false }));
-      })
-      .catch((err) => {
+      },
+      (err) => {
         setAmendmentModal((prev) => ({
           ...prev,
           submitting: false,
           error: err.message,
         }));
-      });
+      },
+    );
   }, [amendmentModal, intl]);
 
   const tableRows = reportData?.orders?.map((order) => ({
@@ -506,7 +488,7 @@ export default function LaporanHasilReport() {
                             if (cell.info.header === "actions") {
                               const isIneligible =
                                 order?.complianceStatus === "INELIGIBLE";
-                              const hasBeenReleased = !!order?.lastGenerated;
+                              const hasBeenReleased = !!order?.hasBeenReleased;
                               return (
                                 <TableCell key={cell.id}>
                                   {isIneligible ? (

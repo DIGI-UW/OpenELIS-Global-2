@@ -27,6 +27,7 @@ public class ComplianceReportOrderDTO {
     private String weather;
     private String preservation;
 
+    private boolean hasBeenReleased;
     private List<ParameterResult> parameterResults;
     private SignatureDTO analystSignature;
     private SignatureDTO managerSignature;
@@ -195,6 +196,14 @@ public class ComplianceReportOrderDTO {
 
     public void setParameterResults(List<ParameterResult> parameterResults) {
         this.parameterResults = parameterResults;
+    }
+
+    public boolean isHasBeenReleased() {
+        return hasBeenReleased;
+    }
+
+    public void setHasBeenReleased(boolean hasBeenReleased) {
+        this.hasBeenReleased = hasBeenReleased;
     }
 
     public SignatureDTO getAnalystSignature() {

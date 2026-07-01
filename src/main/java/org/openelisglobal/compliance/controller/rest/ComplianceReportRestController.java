@@ -318,6 +318,24 @@ public class ComplianceReportRestController {
             return ResponseEntity.status(404).body("Sample has not been released; nothing to amend");
         }
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth != null ? auth.getName() : null;
+
+        // Backfill the original (amendment_number=0) archive if the sample was only
+        // previewed before release and never formally archived on the exportPdf path.
+        if (!archiveService.findBySampleIdAndAmendmentNumber(request.getSampleId(), 0).isPresent()) {
+            try {
+                List<SampleComplianceStandard> origLinks = sampleComplianceStandardDAO.getAllForSample(sample.getId());
+                SampleComplianceStandard origPrimaryLink = origLinks.isEmpty() ? null : origLinks.get(0);
+                ComplianceEvaluationResult origEval = complianceEvaluationService.evaluate(sample);
+                ComplianceReportOrderDTO origDto = buildOrderDTO(sample, origPrimaryLink, origEval, true);
+                byte[] origPdfBytes = buildOriginalPdfBytes(origDto);
+                archiveService.archiveIfAbsent(request.getSampleId(), 0, origPdfBytes, userId);
+            } catch (Exception e) {
+                LogEvent.logError(e);
+            }
+        }
+
         String priorCertificateNumber = lhuAmendmentService
                 .certificateNumberWithAmendmentSuffix(sample.getAccessionNumber(), sample.getAmendmentNumber());
         lhuAmendmentService.applyLhuAmendment(request.getSampleId(), priorCertificateNumber,
@@ -346,8 +364,6 @@ public class ComplianceReportRestController {
 
         response.getOutputStream().write(pdfBytes);
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String userId = auth != null ? auth.getName() : null;
         reportGenerationService.recordGeneration(request.getSampleId(), userId);
         try {
             archiveService.archiveIfAbsent(request.getSampleId(), sample.getAmendmentNumber(), pdfBytes, userId);
@@ -475,6 +491,7 @@ public class ComplianceReportRestController {
         }
 
         reportGenerationService.getLastGenerated(Long.parseLong(sample.getId())).ifPresent(dto::setLastGenerated);
+        dto.setHasBeenReleased(lhuAmendmentService.hasBeenReleased(Long.parseLong(sample.getId())));
 
         // Both RESULT_BATCH (AUTHORED) and VALIDATION_BATCH (VALIDATED_AND_RELEASED)
         // store record_id = analysis.id.
