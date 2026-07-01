@@ -67,6 +67,7 @@ const MOCK_REPORT = {
       testCount: 4,
       complianceStatus: "COMPLIANT",
       lastGenerated: "2026-04-05T10:30:00",
+      hasBeenReleased: true,
       gpsCoordinates: null,
       collectionMethod: null,
       waterTemp: null,
@@ -94,6 +95,8 @@ vi.mock("../../../utils/Utils", () => ({
       callback(MOCK_REPORT);
     }
   }),
+  getFromOpenElisServerForBlob: vi.fn(),
+  postToOpenElisServerForBlob: vi.fn(),
 }));
 
 vi.mock("../../../../config.json", () => ({
