@@ -409,7 +409,10 @@ const PatientSearchSection = ({
                     id: "patient.dob",
                     defaultMessage: "Date of Birth",
                   })}
-                  placeholder="dd/mm/yyyy"
+                  placeholder={intl.formatMessage({
+                    id: "patient.dob.placeholder",
+                    defaultMessage: "dd/mm/yyyy",
+                  })}
                   disabled={isReadOnly}
                 />
               </DatePicker>

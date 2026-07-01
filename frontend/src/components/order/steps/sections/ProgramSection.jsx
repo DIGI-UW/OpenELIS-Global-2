@@ -447,7 +447,10 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
                 id: "vl.lastVLDate",
                 defaultMessage: "Date of Last VL Result",
               })}
-              placeholder="dd/mm/yyyy"
+              placeholder={intl.formatMessage({
+                id: "vl.lastVLDate.placeholder",
+                defaultMessage: "dd/mm/yyyy",
+              })}
               disabled={isReadOnly}
             />
           </DatePicker>
