@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Minimal fixture for the compliance report archive / LHU amendment service
+    tests (OGC-776). Provides Sample#1 (accession 24-00001) which both ComplianceReportArchiveServiceTest
+    and LhuAmendmentServiceTest resolve via sampleService.get("1"). -->
+<dataset>
+    <sample id="1" accession_number="24-00001"
+        entered_date="2024-02-12 00:00:00" received_date="2024-02-12 00:00:00"
+        collection_date="2024-02-11 08:30:00" is_confirmation="false"
+        lastupdated="2024-02-12 12:00:00" />
+</dataset>

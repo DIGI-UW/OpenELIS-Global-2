@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.sample.service.SampleService;
@@ -31,6 +32,13 @@ public class LhuAmendmentServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SampleService sampleService;
+
+    @Before
+    public void setUp() throws Exception {
+        // Seed Sample#1 (accession 24-00001), which the amendment service and these
+        // assertions resolve via sampleService.get("1").
+        executeDataSetWithStateManagement("testdata/compliance-report-archive.xml");
+    }
 
     /**
      * A fresh (never-amended) order has amendmentNumber == null. Untouched orders

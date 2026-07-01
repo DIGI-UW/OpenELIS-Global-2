@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Optional;
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.compliance.valueholder.ComplianceReportArchive;
@@ -29,6 +30,12 @@ public class ComplianceReportArchiveServiceTest extends BaseWebContextSensitiveT
 
     @Autowired
     private ComplianceReportArchiveService archiveService;
+
+    @Before
+    public void setUp() throws Exception {
+        // Seed Sample#1, which archiveIfAbsent resolves via sampleService.get("1").
+        executeDataSetWithStateManagement("testdata/compliance-report-archive.xml");
+    }
 
     /**
      * First call archives the PDF and returns a persisted record with a valid
