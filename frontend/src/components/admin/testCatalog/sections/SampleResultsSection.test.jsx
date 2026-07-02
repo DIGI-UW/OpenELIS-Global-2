@@ -304,13 +304,14 @@ describe("SampleResultsSection", () => {
         cb(clone(numericTest));
       }
     });
-    renderSection();
+    const { container } = renderSection();
     await screen.findByDisplayValue("SYS");
 
-    fireEvent.change(
-      screen.getByLabelText(messages["label.testCatalog.sampleResults.uom"]),
-      { target: { value: "5" } },
-    );
+    // Unit is a typeahead ComboBox: filter, then pick the option.
+    fireEvent.change(container.querySelector("#comp-uom-0"), {
+      target: { value: "mmHg" },
+    });
+    fireEvent.click(await screen.findByText("mmHg"));
     fireEvent.click(saveButton());
 
     expect(savedPayload().components[0].uomId).toBe("5");
@@ -327,15 +328,14 @@ describe("SampleResultsSection", () => {
         cb(clone(SAMPLE_RESULTS));
       }
     });
-    renderSection();
+    const { container } = renderSection();
     await screen.findByDisplayValue("SYS");
 
-    fireEvent.change(
-      screen.getByLabelText(
-        messages["label.testCatalog.sampleResults.copyFrom"],
-      ),
-      { target: { value: "9" } },
-    );
+    // "Start from another test" is a typeahead ComboBox.
+    fireEvent.change(container.querySelector("#copy-from-test"), {
+      target: { value: "Other" },
+    });
+    fireEvent.click(await screen.findByText("Other Test"));
     fireEvent.click(
       screen.getByRole("button", {
         name: messages["label.testCatalog.sampleResults.copyFromButton"],

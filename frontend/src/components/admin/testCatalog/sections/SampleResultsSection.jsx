@@ -501,26 +501,23 @@ const SampleResultsSection = ({ testId }) => {
                 {/* Unit + significant digits apply only to Numeric (FR-29). */}
                 {c.resultType === "N" && (
                   <>
-                    <Select
+                    <ComboBox
                       id={`comp-uom-${ci}`}
-                      labelText={intl.formatMessage({
+                      titleText={intl.formatMessage({
                         id: "label.testCatalog.sampleResults.uom",
                       })}
-                      value={c.uomId || ""}
-                      onChange={(e) =>
-                        patchComponent(ci, { uomId: e.target.value })
+                      placeholder={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.uom.none",
+                      })}
+                      items={uoms}
+                      itemToString={(u) => (u ? u.value : "")}
+                      selectedItem={uoms.find((u) => u.id === c.uomId) || null}
+                      onChange={({ selectedItem }) =>
+                        patchComponent(ci, {
+                          uomId: selectedItem ? selectedItem.id : "",
+                        })
                       }
-                    >
-                      <SelectItem
-                        value=""
-                        text={intl.formatMessage({
-                          id: "label.testCatalog.sampleResults.uom.none",
-                        })}
-                      />
-                      {uoms.map((u) => (
-                        <SelectItem key={u.id} value={u.id} text={u.value} />
-                      ))}
-                    </Select>
+                    />
                     <TextInput
                       id={`comp-sigdig-${ci}`}
                       type="number"
@@ -799,24 +796,21 @@ const SampleResultsSection = ({ testId }) => {
       )}
 
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
-        <Select
+        <ComboBox
           id="copy-from-test"
-          labelText={intl.formatMessage({
+          titleText={intl.formatMessage({
             id: "label.testCatalog.sampleResults.copyFrom",
           })}
-          value={copyFromId}
-          onChange={(e) => setCopyFromId(e.target.value)}
-        >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "label.testCatalog.sampleResults.copyFrom.placeholder",
-            })}
-          />
-          {otherTests.map((t) => (
-            <SelectItem key={t.id} value={t.id} text={t.value} />
-          ))}
-        </Select>
+          placeholder={intl.formatMessage({
+            id: "label.testCatalog.sampleResults.copyFrom.placeholder",
+          })}
+          items={otherTests}
+          itemToString={(t) => (t ? t.value : "")}
+          selectedItem={otherTests.find((t) => t.id === copyFromId) || null}
+          onChange={({ selectedItem }) =>
+            setCopyFromId(selectedItem ? selectedItem.id : "")
+          }
+        />
         <Button
           kind="secondary"
           disabled={!copyFromId}
