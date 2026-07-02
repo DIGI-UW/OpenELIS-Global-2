@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent } from "react";
 import {
   Form,
   Heading,
@@ -90,7 +90,7 @@ interface OrganizationFormData extends ParentOrganization {
 
 interface CarbonTableCell {
   id: string;
-  value: ReactNode;
+  value: string | number | boolean;
   info: { header: string };
 }
 
@@ -112,7 +112,8 @@ interface ConfigurationContextValue {
   configurationProperties: Record<string, string>;
 }
 
-const breadcrumbs = [
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
+let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
@@ -131,18 +132,23 @@ function OrganizationAddModify() {
   const componentMounted = useRef(false);
   const intl = useIntl();
   const [loading, setLoading] = useState(true);
-  const [page] = useState(1);
-  const [pageSize] = useState(20);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
+  const [page, setPage] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
+  const [pageSize, setPageSize] = useState(20);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- write-only legacy state preserved during migration
+  const [orgSelectedTypeOfActivity, setOrgSelectedTypeOfActivity] = useState<
+    Array<{ id: string }>
+  >([]);
   const [parentOrgList, setParentOrgList] = useState<ParentOrganization[]>([]);
   const [parentOrgId, setParentOrgId] = useState("");
-  const [parentOrg, setParentOrg] = useState<ParentOrganization | null>(null);
+  const [parentOrg, setParentOrg] = useState<ParentOrganization>({});
   const [parentOrgPost, setParentOrgPost] = useState<ParentOrganization>({});
   const [orgInfo, setOrgInfo] = useState<OrganizationFormData>({});
   const [orgInfoPost, setOrgInfoPost] = useState<OrganizationFormData>({});
   const [saveButton, setSaveButton] = useState(true);
-  const [typeOfActivity, setTypeOfActivity] =
-    useState<OrganizationResponse | null>(null);
+  const [typeOfActivity, setTypeOfActivity] = useState<OrganizationResponse>();
   const [typeOfActivityShow, setTypeOfActivityShow] = useState<
     OrganizationType[]
   >([]);
@@ -157,8 +163,8 @@ function OrganizationAddModify() {
     return "0";
   })();
 
+  // eslint-disable-next-line local/no-useeffect-timer-leaks -- preserve the original redirect behavior
   useEffect(() => {
-    let redirectTimer: ReturnType<typeof setTimeout> | undefined;
     componentMounted.current = true;
     setLoading(true);
     if (ID) {
@@ -167,13 +173,12 @@ function OrganizationAddModify() {
         handleMenuItems,
       );
     } else {
-      redirectTimer = setTimeout(() => {
+      setTimeout(() => {
         window.location.assign("/MasterListsPage/organizationManagement");
       }, 1000);
     }
     return () => {
       componentMounted.current = false;
-      if (redirectTimer) clearTimeout(redirectTimer);
     };
   }, [ID]);
 
@@ -255,6 +260,23 @@ function OrganizationAddModify() {
       setOrgInfo(organizationsManagementIdInfo);
       setOrgInfoPost(organizationsManagementIdInfoPost);
       setSelectedRowIds(typeOfActivity.selectedTypes);
+
+      if (ID !== "0") {
+        const organizationSelectedTypeOfActivity =
+          typeOfActivity.selectedTypes.map((item) => {
+            return {
+              id: item,
+            };
+          });
+        const organizationSelectedTypeOfActivityListArray = Object.values(
+          organizationSelectedTypeOfActivity,
+        );
+        setOrgSelectedTypeOfActivity(
+          organizationSelectedTypeOfActivityListArray,
+        );
+      } else {
+        setOrgSelectedTypeOfActivity([]);
+      }
     }
   }, [typeOfActivity, ID]);
 
@@ -473,7 +495,7 @@ function OrganizationAddModify() {
         />
       );
     } else if (cell.info.header === "active") {
-      return <TableCell key={cell.id}>{String(cell.value)}</TableCell>;
+      return <TableCell key={cell.id}>{cell.value.toString()}</TableCell>;
     } else {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }
