@@ -4434,6 +4434,8 @@
   "label.testCatalog.displayOrder.col.test": "Test",
   "label.testCatalog.displayOrder.dragHandle": "Drag to reorder",
   "label.testCatalog.terminology.intro": "Map this test to standard terminology codes for interoperability.",
+  "warning.testCatalog.noLoinc": "This test has no LOINC. Analyzer and electronic-order results cannot be imported to it.",
+  "warning.testCatalog.duplicateLoinc": "LOINC {code} is also used by {testName}. Incoming results for this code route to only one test (first match) — results may be sent to the wrong test.",
   "label.testCatalog.terminology.col.source": "Source",
   "label.testCatalog.terminology.col.code": "Code",
   "label.testCatalog.terminology.col.relationship": "Relationship",

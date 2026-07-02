@@ -382,6 +382,49 @@ public class TestCatalogEditorRestController {
         return ResponseEntity.ok(refs);
     }
 
+    // ── LOINC integrity (OGC-1112 FR-15..18) ──────────────────────────────────
+    // Analyzer / electronic-order results route by first-matching LOINC across the
+    // whole active catalog (getActiveTestsByLoinc → get(0)); surface the two ways
+    // that silently mis-routes: a test with no LOINC, or two active tests sharing
+    // one. Warnings only — never a hard block.
+
+    public static class TestRef {
+        public String testId;
+        public String name;
+    }
+
+    public static class LoincIntegrity {
+        public String loinc;
+        public boolean active;
+        public boolean noLoinc;
+        public List<TestRef> duplicates = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/tests/{testId}/loinc-integrity", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LoincIntegrity> getLoincIntegrity(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        LoincIntegrity integrity = new LoincIntegrity();
+        integrity.loinc = test.getLoinc();
+        integrity.active = test.isActive();
+        // A test that should receive results (active + orderable) but has no LOINC
+        // can never be matched by the resolver.
+        integrity.noLoinc = test.isActive() && Boolean.TRUE.equals(test.getOrderable()) && isBlank(test.getLoinc());
+        if (!isBlank(test.getLoinc())) {
+            for (Test other : testService.getActiveTestsByLoinc(test.getLoinc())) {
+                if (other.getId() != null && !other.getId().equals(testId)) {
+                    TestRef ref = new TestRef();
+                    ref.testId = other.getId();
+                    ref.name = TestServiceImpl.getLocalizedTestNameWithType(other);
+                    integrity.duplicates.add(ref);
+                }
+            }
+        }
+        return ResponseEntity.ok(integrity);
+    }
+
     private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
 
     /** OGC-748 Basic Info — identity + domain + AMR flag + status. */
