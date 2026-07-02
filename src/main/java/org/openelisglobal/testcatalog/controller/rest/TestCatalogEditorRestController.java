@@ -1296,6 +1296,32 @@ public class TestCatalogEditorRestController {
         return options;
     }
 
+    /**
+     * Name-only inline panel create (OGC-1112 FR-43). Further config is done in
+     * Panel Management.
+     */
+    public static class CreatePanelRequest {
+        public String name;
+    }
+
+    @PostMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PanelOption> createPanel(@RequestBody CreatePanelRequest body, HttpServletRequest request) {
+        if (body == null || isBlank(body.name)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        Panel panel = new Panel();
+        panel.setPanelName(body.name.trim());
+        panel.setDescription(body.name.trim());
+        panel.setIsActive("Y");
+        panel.setSortOrderInt(Integer.MAX_VALUE);
+        panel.setSysUserId(ControllerUtills.getSysUserId(request));
+        String id = panelService.insert(panel);
+        PanelOption created = new PanelOption();
+        created.id = id;
+        created.name = panel.getPanelName();
+        return ResponseEntity.status(201).body(created);
+    }
+
     @GetMapping(value = "/tests/{testId}/panels", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TestPanelsResponse> getTestPanels(@PathVariable String testId) {
         Test test = testService.getTestById(testId);
