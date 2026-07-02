@@ -24,8 +24,12 @@ import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -43,6 +47,8 @@ import org.xml.sax.InputSource;
 @RestController
 @RequestMapping("/rest/coldstorage/audit-trail")
 public class FreezerAuditTrailController extends BaseRestController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(FreezerAuditTrailController.class);
 
     @Autowired
     private HistoryService historyService;
@@ -64,17 +70,28 @@ public class FreezerAuditTrailController extends BaseRestController {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getAuditTrail(@RequestParam(required = false) Long freezerId,
             @RequestParam(required = false) String start, @RequestParam(required = false) String end) {
 
         List<Map<String, Object>> auditEvents = new ArrayList<>();
 
+        // Date parsing is genuine client input validation - a malformed date param is
+        // a 400, not a server bug - so it is parsed and reported separately from the
+        // rest of the method, which represents unexpected server-side failures.
+        OffsetDateTime startDateTime;
+        OffsetDateTime endDateTime;
         try {
-            // Parse dates if provided, otherwise use null (fetch all)
-            OffsetDateTime startDateTime = start != null ? OffsetDateTime.parse(start) : null;
-            OffsetDateTime endDateTime = end != null ? OffsetDateTime.parse(end) : null;
+            startDateTime = start != null ? OffsetDateTime.parse(start) : null;
+            endDateTime = end != null ? OffsetDateTime.parse(end) : null;
+        } catch (java.time.format.DateTimeParseException ex) {
+            LOGGER.debug("Rejecting audit trail request with unparseable date parameter(s): start={}, end={}", start,
+                    end, ex);
+            return ResponseEntity.badRequest().build();
+        }
 
+        try {
             List<Freezer> freezersToCheck;
             if (freezerId != null) {
                 Freezer freezer = freezerService.findById(freezerId).orElse(null);
@@ -208,8 +225,12 @@ public class FreezerAuditTrailController extends BaseRestController {
             auditEvents.sort(Comparator.comparing((Map<String, Object> e) -> (String) e.get("performedAt")).reversed());
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().build();
+            // An unexpected failure here is a real server-side bug (bad input was already
+            // rejected above with a 400), not a client error - surface it as a 500 and
+            // log it through the app's logger so it is visible in normal log
+            // aggregation instead of only on stderr via printStackTrace().
+            LOGGER.error("Unexpected error building freezer audit trail for freezerId={}", freezerId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
 
         return ResponseEntity.ok(auditEvents);
@@ -249,7 +270,13 @@ public class FreezerAuditTrailController extends BaseRestController {
 
             return event;
         } catch (Exception e) {
-            e.printStackTrace();
+            // A malformed audit XML record must not be silently treated as "no
+            // changes" - that hides real configuration-change history from
+            // investigators. Log it properly (previously printStackTrace(), which
+            // bypasses the app's logger/log aggregation) so the underlying data
+            // problem is visible, even though this individual history row is skipped.
+            LOGGER.error("Failed to build configuration change event for history id={}, freezerId={}", history.getId(),
+                    freezer.getId(), e);
             return null;
         }
     }
@@ -271,7 +298,10 @@ public class FreezerAuditTrailController extends BaseRestController {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // Malformed audit XML is logged, not silently swallowed - a
+            // parse failure here previously masked itself as "no changes" for this
+            // history row, hiding real configuration-change history from audits.
+            LOGGER.error("Failed to parse audit trail change XML: {}", xml, e);
         }
         return changes;
     }

@@ -181,4 +181,19 @@
       free-text values instead of dictionary ids broke every getDictionaryById consumer -->
   <include relativeToChangelogFile="true" file="068-repair-free-text-dictionary-options.xml"/>
 
+  <!-- Cold storage monitoring audit: FREEZER_OFFLINE dead-man's-switch alert type -->
+  <include relativeToChangelogFile="true" file="069-add-freezer-offline-alert-type.xml"/>
+
+  <!-- Cold storage monitoring audit: dedicated freezer.deleted flag (issue #3743) -->
+  <include relativeToChangelogFile="true" file="070-add-freezer-deleted-column.xml"/>
+
+  <!-- Cold storage monitoring audit: configurable Modbus register decoding + RS-485 driver timing (issue #3743) -->
+  <include relativeToChangelogFile="true" file="071-freezer-register-and-rs485-config.xml"/>
+
+  <!-- Cold storage monitoring audit: prevent duplicate freezer_reading rows from a retried poll -->
+  <include relativeToChangelogFile="true" file="072-freezer-reading-unique-constraint.xml"/>
+
+  <!-- Cold storage monitoring audit: explicit DECIMAL precision/scale for temperature/humidity columns -->
+  <include relativeToChangelogFile="true" file="073-freezer-decimal-precision.xml"/>
+
 </databaseChangeLog>

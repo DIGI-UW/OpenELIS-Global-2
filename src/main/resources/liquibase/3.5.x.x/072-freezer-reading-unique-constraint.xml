@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-072-freezer-reading-unique-constraint" author="cold-storage-monitoring-audit">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM information_schema.table_constraints
+        WHERE constraint_name = 'uk_freezer_reading_freezer_recorded_at'
+        AND table_name = 'freezer_reading'
+      </sqlCheck>
+    </preConditions>
+    <comment>A retried poll (e.g. after a Modbus timeout that actually succeeded on
+      the far side, or a duplicate scheduler trigger) could previously insert two
+      freezer_reading rows for the same freezer at the same recorded_at timestamp.
+      A unique constraint on (freezer_id, recorded_at) prevents this at the
+      database level. Pre-existing duplicate rows (if any) are deduplicated first,
+      keeping the lowest id, so the constraint can be added cleanly.</comment>
+    <sql>
+      DELETE FROM clinlims.freezer_reading fr
+      USING clinlims.freezer_reading fr2
+      WHERE fr.freezer_id = fr2.freezer_id
+        AND fr.recorded_at = fr2.recorded_at
+        AND fr.id > fr2.id;
+    </sql>
+    <addUniqueConstraint
+        constraintName="uk_freezer_reading_freezer_recorded_at"
+        schemaName="clinlims"
+        tableName="freezer_reading"
+        columnNames="freezer_id, recorded_at"/>
+  </changeSet>
+
+</databaseChangeLog>

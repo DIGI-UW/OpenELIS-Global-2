@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-069-add-freezer-offline-alert-type" author="cold-storage-monitoring-audit">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="alert"/>
+    </preConditions>
+    <comment>Add FREEZER_OFFLINE to alert_type CHECK constraint so a device that stops
+      responding to Modbus polling can raise its own alert, independent of any
+      temperature threshold breach.</comment>
+    <sql>
+      ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+      ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+      CHECK (alert_type IN (
+        'FREEZER_TEMPERATURE', 'FREEZER_OFFLINE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+        'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED'
+      ));
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

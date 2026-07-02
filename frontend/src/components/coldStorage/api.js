@@ -43,13 +43,13 @@ const postColdStorageJson = (path, payload) =>
       JSON.stringify(payload),
       (json) => {
         if (json && (json.status >= 400 || json.statusCode >= 400)) {
-          reject(
-            new Error(
-              json.message ||
-                json.error ||
-                `Request failed with status ${json.status || json.statusCode}`,
-            ),
+          const error = new Error(
+            json.message ||
+              json.error ||
+              `Request failed with status ${json.status || json.statusCode}`,
           );
+          error.status = json.status || json.statusCode;
+          reject(error);
         } else {
           resolve(json);
         }
@@ -74,16 +74,14 @@ export const acknowledgeAlert = async (alertId, userId, notes = "") => {
           // For error responses, try to parse JSON error message
           return response
             .json()
+            .catch(() => ({}))
             .then((errorJson) => {
-              throw new Error(
+              const error = new Error(
                 errorJson.message ||
                   `Failed to acknowledge alert: HTTP ${response.status}`,
               );
-            })
-            .catch(() => {
-              throw new Error(
-                `Failed to acknowledge alert: HTTP ${response.status}`,
-              );
+              error.status = response.status;
+              throw error;
             });
         }
         return response.json();
@@ -109,16 +107,14 @@ export const resolveAlert = async (alertId, userId, resolutionNotes) => {
           // For error responses, try to parse JSON error message
           return response
             .json()
+            .catch(() => ({}))
             .then((errorJson) => {
-              throw new Error(
+              const error = new Error(
                 errorJson.message ||
                   `Failed to resolve alert: HTTP ${response.status}`,
               );
-            })
-            .catch(() => {
-              throw new Error(
-                `Failed to resolve alert: HTTP ${response.status}`,
-              );
+              error.status = response.status;
+              throw error;
             });
         }
         return response.json();
@@ -168,26 +164,19 @@ export const createCorrectiveAction = async (
   freezerId,
   actionType,
   description,
-  createdByUserId,
 ) => {
   return postColdStorageJson("/rest/coldstorage/corrective-actions", {
     freezerId,
     actionType,
     description,
-    createdByUserId,
   });
 };
 
-export const updateCorrectiveAction = async (
-  actionId,
-  updatedByUserId,
-  description,
-  status,
-) => {
+export const updateCorrectiveAction = async (actionId, description, status) => {
   return new Promise((resolve, reject) => {
     putToOpenElisServer(
       `/rest/coldstorage/corrective-actions/${actionId}`,
-      JSON.stringify({ description, status, updatedByUserId }),
+      JSON.stringify({ description, status }),
       (response) => {
         try {
           const json = JSON.parse(response);
@@ -200,15 +189,11 @@ export const updateCorrectiveAction = async (
   });
 };
 
-export const completeCorrectiveAction = async (
-  actionId,
-  updatedByUserId,
-  completionNotes,
-) => {
+export const completeCorrectiveAction = async (actionId, completionNotes) => {
   return new Promise((resolve, reject) => {
     putToOpenElisServer(
       `/rest/coldstorage/corrective-actions/${actionId}/complete`,
-      JSON.stringify({ updatedByUserId, completionNotes }),
+      JSON.stringify({ completionNotes }),
       (response) => {
         try {
           const json = JSON.parse(response);
@@ -221,15 +206,11 @@ export const completeCorrectiveAction = async (
   });
 };
 
-export const retractCorrectiveAction = async (
-  actionId,
-  updatedByUserId,
-  retractionReason,
-) => {
+export const retractCorrectiveAction = async (actionId, retractionReason) => {
   return new Promise((resolve, reject) => {
     putToOpenElisServer(
       `/rest/coldstorage/corrective-actions/${actionId}/retract`,
-      JSON.stringify({ updatedByUserId, retractionReason }),
+      JSON.stringify({ retractionReason }),
       (response) => {
         try {
           const json = JSON.parse(response);
@@ -261,16 +242,6 @@ export const fetchAuditTrail = async ({ freezerId }) => {
   return getFromOpenElisServerV2(
     `/rest/coldstorage/audit-trail${params.toString() ? `?${params.toString()}` : ""}`,
   );
-};
-
-export const generateReport = async ({
-  reportType,
-  format,
-  start,
-  end,
-  freezerId,
-}) => {
-  return { success: false, message: "Report generation is under development" };
 };
 
 export const downloadReportDirect = ({
@@ -411,6 +382,12 @@ export const fetchFilteredAlerts = async (filters = {}) => {
   if (filters.status) {
     params.append("status", filters.status);
   }
+  if (filters.page !== undefined && filters.page !== null) {
+    params.append("page", filters.page);
+  }
+  if (filters.size !== undefined && filters.size !== null) {
+    params.append("size", filters.size);
+  }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
   return getFromOpenElisServerV2(`/rest/alerts${queryString}`).then(
@@ -419,6 +396,36 @@ export const fetchFilteredAlerts = async (filters = {}) => {
       totalElements: alerts ? alerts.length : 0,
     }),
   );
+};
+
+export const deleteAlert = async (alertId) => {
+  return new Promise((resolve, reject) => {
+    fetch(`${config.serverBaseUrl}/rest/alerts/${alertId}`, {
+      credentials: "include",
+      method: "DELETE",
+      headers: {
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response
+            .json()
+            .catch(() => ({}))
+            .then((errorJson) => {
+              const error = new Error(
+                errorJson.message ||
+                  `Failed to delete alert: HTTP ${response.status}`,
+              );
+              error.status = response.status;
+              throw error;
+            });
+        }
+        return response.status === 204 ? {} : response.json().catch(() => ({}));
+      })
+      .then((json) => resolve(json))
+      .catch((error) => reject(error));
+  });
 };
 
 export const fetchAlertDetails = async (alertId) => {

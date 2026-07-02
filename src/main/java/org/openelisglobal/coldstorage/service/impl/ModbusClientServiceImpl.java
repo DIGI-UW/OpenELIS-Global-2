@@ -45,8 +45,34 @@ public class ModbusClientServiceImpl implements ModbusClientService {
                         ex.getMessage());
                 LOGGER.debug("Modbus read failure for '{}'", freezer.getName(), ex);
             }
+
+            if (attempt < attempts) {
+                backoffBeforeRetry(freezer, attempt);
+            }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Waits a short, configurable delay between retry attempts. Retrying
+     * back-to-back with zero delay is hard on an overwhelmed device and worse on a
+     * shared RS-485 bus where other slaves may also be waiting for a turn. This
+     * method runs on the per-device polling thread (see
+     * {@link org.openelisglobal.coldstorage.service.impl.ModbusPollingService}),
+     * never on the shared scheduler thread, so blocking here does not delay polling
+     * of other devices.
+     */
+    private void backoffBeforeRetry(Freezer freezer, int attempt) {
+        long backoffMillis = (long) config.getRetryBackoffMillis() * attempt;
+        if (backoffMillis <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(backoffMillis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            LOGGER.debug("Interrupted while backing off before Modbus retry for '{}'", freezer.getName());
+        }
     }
 
     private ReadingResult readOnce(Freezer freezer) throws Exception {
@@ -99,6 +125,20 @@ public class ModbusClientServiceImpl implements ModbusClientService {
             cfg.setDataBits(defaultInteger(freezer.getDataBits(), 8));
             cfg.setStopBits(toStopBits(defaultInteger(freezer.getStopBits(), 1)));
             cfg.setParity(toParity(freezer.getParity()));
+
+            // RS-485 half-duplex driver-enable (DE) timing. Off by default (rs485Mode =
+            // false) so existing RS-232/point-to-point serial devices are unaffected.
+            // digitalpetri modbus-serial 2.1.5 added these fields to
+            // SerialPortTransportConfig for the Modbus-over-Serial-Line spec's RS-485
+            // turnaround timing requirements (issue #3743).
+            if (Boolean.TRUE.equals(freezer.getRs485Mode())) {
+                cfg.setRs485Mode(true);
+                cfg.setRs485RtsActiveHigh(Boolean.TRUE.equals(freezer.getRs485RtsActiveHigh()));
+                cfg.setRs485Termination(Boolean.TRUE.equals(freezer.getRs485Termination()));
+                cfg.setRs485RxDuringTx(Boolean.TRUE.equals(freezer.getRs485RxDuringTx()));
+                cfg.setRs485DelayBefore(defaultInteger(freezer.getRs485DelayBeforeMs(), 0));
+                cfg.setRs485DelayAfter(defaultInteger(freezer.getRs485DelayAfterMs(), 0));
+            }
         });
 
         ModbusRtuClient client = ModbusRtuClient.create(transport,
@@ -121,18 +161,41 @@ public class ModbusClientServiceImpl implements ModbusClientService {
 
     private double readRegister(ModbusClient client, Freezer freezer, int register, BigDecimal scale, BigDecimal offset)
             throws ModbusExecutionException, ModbusResponseException, ModbusTimeoutException {
+        int registerCount = defaultInteger(freezer.getRegisterCount(), 1);
+        if (registerCount != 1 && registerCount != 2) {
+            LOGGER.warn("Freezer '{}' has unsupported registerCount {}, defaulting to 1", freezer.getName(),
+                    registerCount);
+            registerCount = 1;
+        }
         ReadHoldingRegistersResponse response = client.readHoldingRegisters(freezer.getSlaveId(),
-                new ReadHoldingRegistersRequest(register, 1));
-        return convertScaledValue(response, scale, offset);
+                new ReadHoldingRegistersRequest(register, registerCount));
+        Freezer.WordOrder wordOrder = freezer.getWordOrder() != null ? freezer.getWordOrder()
+                : Freezer.WordOrder.BIG_ENDIAN;
+        return convertScaledValue(response, registerCount, wordOrder, scale, offset);
     }
 
-    private double convertScaledValue(ReadHoldingRegistersResponse response, BigDecimal scale, BigDecimal offset)
-            throws ModbusResponseException {
+    /**
+     * Decodes 1 or 2 raw 16-bit Modbus holding registers into a signed value,
+     * according to the freezer's configured register width and word order, before
+     * applying scale/offset. Defaults (1 register, big-endian/signed short) match
+     * the original hardcoded behavior, so existing configured devices are
+     * unaffected.
+     */
+    private double convertScaledValue(ReadHoldingRegistersResponse response, int registerCount,
+            Freezer.WordOrder wordOrder, BigDecimal scale, BigDecimal offset) throws ModbusResponseException {
         byte[] registers = response != null ? response.registers() : null;
-        if (registers == null || registers.length < 2) {
+        int expectedBytes = registerCount * 2;
+        if (registers == null || registers.length < expectedBytes) {
             throw new IllegalStateException("No register data returned from Modbus device");
         }
-        int raw = toSignedShort(registers[0], registers[1]);
+
+        long raw;
+        if (registerCount == 1) {
+            raw = toSignedShort(registers[0], registers[1]);
+        } else {
+            raw = toSignedInt32(registers, wordOrder);
+        }
+
         double scaled = raw * (scale != null ? scale.doubleValue() : 1.0d);
         return scaled + (offset != null ? offset.doubleValue() : 0.0d);
     }
@@ -141,6 +204,31 @@ public class ModbusClientServiceImpl implements ModbusClientService {
         int value = ((high & 0xFF) << 8) | (low & 0xFF);
         if ((value & 0x8000) != 0) {
             value -= 0x10000;
+        }
+        return value;
+    }
+
+    /**
+     * Decodes two consecutive 16-bit registers (4 bytes) into a signed 32-bit
+     * value. {@code BIG_ENDIAN} treats the first register as the most significant
+     * word (each register itself is big-endian per the Modbus spec);
+     * {@code LITTLE_ENDIAN} treats the second register as the most significant word
+     * (a common "word-swapped" convention on non-compliant devices, e.g. DIY
+     * ESP32+DS18B20 slaves - see issue #3743).
+     */
+    private long toSignedInt32(byte[] registers, Freezer.WordOrder wordOrder) {
+        int highWord;
+        int lowWord;
+        if (wordOrder == Freezer.WordOrder.LITTLE_ENDIAN) {
+            lowWord = ((registers[0] & 0xFF) << 8) | (registers[1] & 0xFF);
+            highWord = ((registers[2] & 0xFF) << 8) | (registers[3] & 0xFF);
+        } else {
+            highWord = ((registers[0] & 0xFF) << 8) | (registers[1] & 0xFF);
+            lowWord = ((registers[2] & 0xFF) << 8) | (registers[3] & 0xFF);
+        }
+        long value = ((long) (highWord & 0xFFFF) << 16) | (lowWord & 0xFFFF);
+        if ((value & 0x80000000L) != 0) {
+            value -= 0x100000000L;
         }
         return value;
     }

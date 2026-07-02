@@ -40,9 +40,18 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
                     freezer.getName());
         }
 
-        FreezerReading.Status status = determineStatus(temperature, humidity, transmissionOk, profile);
+        FreezerReading.Status status = determineStatus(freezer, recordedAt, temperature, humidity, transmissionOk,
+                profile);
         FreezerReading savedReading = freezerReadingService.saveReading(freezer, recordedAt, temperature, humidity,
                 status, transmissionOk, errorMessage);
+
+        if (!transmissionOk) {
+            // Dead-man's switch: a failed poll has no temperature to compare against a
+            // threshold, so it can never reach the checks below. It must still surface
+            // as its own alert or a disconnected sensor goes unnoticed indefinitely.
+            publishTransmissionFailedEvent(freezer.getId(), errorMessage, savedReading.getId());
+            return;
+        }
 
         // Check temperature thresholds and publish events for alert system
         if (profile != null) {
@@ -54,12 +63,19 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
         }
     }
 
-    private FreezerReading.Status determineStatus(BigDecimal temperature, BigDecimal humidity, boolean transmissionOk,
-            ThresholdProfile profile) {
+    private void publishTransmissionFailedEvent(Long freezerId, String errorMessage, Long readingId) {
+        org.openelisglobal.coldstorage.event.FreezerTransmissionFailedEvent event = new org.openelisglobal.coldstorage.event.FreezerTransmissionFailedEvent(
+                this, freezerId, errorMessage, readingId);
+        eventPublisher.publishEvent(event);
+        LOGGER.warn("Published transmission failure event for freezer {}: {}", freezerId, errorMessage);
+    }
+
+    private FreezerReading.Status determineStatus(Freezer freezer, OffsetDateTime recordedAt, BigDecimal temperature,
+            BigDecimal humidity, boolean transmissionOk, ThresholdProfile profile) {
         if (!transmissionOk) {
             return FreezerReading.Status.CRITICAL;
         }
-        return thresholdEvaluationService.evaluateStatus(temperature, humidity, profile);
+        return thresholdEvaluationService.evaluateStatus(temperature, humidity, profile, freezer, recordedAt);
     }
 
     /**

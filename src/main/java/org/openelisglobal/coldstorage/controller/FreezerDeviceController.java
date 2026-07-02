@@ -1,10 +1,10 @@
 package org.openelisglobal.coldstorage.controller;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,6 +24,7 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,6 +59,7 @@ public class FreezerDeviceController extends BaseRestController {
         this.systemUserService = systemUserService;
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/status")
     public List<FreezerStatusResponse> getCurrentStatus(
             @RequestParam(name = "roomId", required = false) Long roomFilter,
@@ -70,6 +72,7 @@ public class FreezerDeviceController extends BaseRestController {
                 .collect(Collectors.toList());
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/id/{freezerId}/readings")
     public List<SensorReadingResponse> getReadings(@PathVariable Long freezerId, @RequestParam OffsetDateTime start,
             @RequestParam OffsetDateTime end) {
@@ -78,6 +81,7 @@ public class FreezerDeviceController extends BaseRestController {
                 .collect(Collectors.toList());
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/{name}/latest")
     public ResponseEntity<SensorReadingResponse> getLatestByName(@PathVariable String name) {
         return freezerService.findByName(name)
@@ -85,6 +89,7 @@ public class FreezerDeviceController extends BaseRestController {
                 .map(SensorReadingResponse::from).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/{name}/recent")
     public ResponseEntity<List<SensorReadingResponse>> getRecentByName(@PathVariable String name,
             @RequestParam(defaultValue = "10") @Min(1) @Max(250) int limit) {
@@ -94,27 +99,32 @@ public class FreezerDeviceController extends BaseRestController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/devices")
     public List<Freezer> listDevices(@RequestParam(name = "search", required = false) String search) {
         return freezerService.getAllFreezers(search);
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/devices/{id}")
     public ResponseEntity<Freezer> getDevice(@PathVariable Long id) {
         return freezerService.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/devices/name/{name}")
     public ResponseEntity<Freezer> getDeviceByName(@PathVariable String name) {
         return freezerService.findByName(name).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/storage-devices")
     public List<StorageDeviceResponse> listStorageDevices() {
         return storageLocationService.getAllDevices().stream().filter(StorageDevice::getActive)
                 .map(StorageDeviceResponse::from).collect(Collectors.toList());
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/users")
     public List<IdValuePair> listUsers() {
         return systemUserService.getAll().stream()
@@ -122,6 +132,7 @@ public class FreezerDeviceController extends BaseRestController {
                 .map(user -> new IdValuePair(user.getId(), user.getDisplayName())).collect(Collectors.toList());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices")
     public ResponseEntity<Freezer> createDevice(@RequestBody @Valid Freezer freezer,
             @RequestParam(name = "roomId", required = true) Long roomId,
@@ -130,6 +141,7 @@ public class FreezerDeviceController extends BaseRestController {
         return ResponseEntity.ok(created);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/devices/{id}")
     public ResponseEntity<Freezer> updateDevice(@PathVariable Long id, @RequestBody @Valid Freezer freezer,
             @RequestParam(name = "roomId", required = true) Long roomId,
@@ -138,18 +150,21 @@ public class FreezerDeviceController extends BaseRestController {
         return ResponseEntity.ok(updated);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices/{id}/toggle-status")
     public ResponseEntity<Void> toggleDeviceStatus(@PathVariable Long id, @RequestBody ToggleStatusRequest request) {
         freezerService.setDeviceStatus(id, request.getActive());
         return ResponseEntity.ok().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices/{id}/delete")
     public ResponseEntity<Void> deleteDevice(@PathVariable Long id) {
         freezerService.deleteFreezer(id);
         return ResponseEntity.ok().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/devices/{id}/thresholds")
     public ResponseEntity<Freezer> updateDeviceThresholds(@PathVariable Long id,
             @RequestBody @Valid UpdateThresholdsRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
@@ -163,7 +178,11 @@ public class FreezerDeviceController extends BaseRestController {
         FreezerReading latest = freezerReadingService.getLatestReading(freezer.getId()).orElse(null);
         ThresholdProfile profile = resolveActiveProfile(freezer,
                 latest != null ? latest.getRecordedAt() : OffsetDateTime.now());
-        BigDecimal targetTemperature = deriveTargetTemperature(profile);
+        // Threshold-averaging math lives in ThresholdEvaluationService, not here -
+        // controllers are a thin delegation layer per the 5-layer architecture.
+        BigDecimal targetTemperature = thresholdEvaluationService != null
+                ? thresholdEvaluationService.deriveTargetTemperature(profile)
+                : null;
         return FreezerStatusResponse.from(freezer, latest, targetTemperature);
     }
 
@@ -179,30 +198,6 @@ public class FreezerDeviceController extends BaseRestController {
         }
     }
 
-    private BigDecimal deriveTargetTemperature(ThresholdProfile profile) {
-        if (profile == null) {
-            return null;
-        }
-        if (profile.getWarningMin() != null && profile.getWarningMax() != null) {
-            return profile.getWarningMin().add(profile.getWarningMax()).divide(BigDecimal.valueOf(2), 2,
-                    RoundingMode.HALF_UP);
-        }
-        if (profile.getCriticalMin() != null && profile.getCriticalMax() != null) {
-            return profile.getCriticalMin().add(profile.getCriticalMax()).divide(BigDecimal.valueOf(2), 2,
-                    RoundingMode.HALF_UP);
-        }
-        if (profile.getWarningMax() != null) {
-            return profile.getWarningMax();
-        }
-        if (profile.getCriticalMax() != null) {
-            return profile.getCriticalMax();
-        }
-        if (profile.getWarningMin() != null) {
-            return profile.getWarningMin();
-        }
-        return profile.getCriticalMin();
-    }
-
     @Data
     public static class FreezerStatusResponse {
         private Long freezerId;
@@ -214,6 +209,7 @@ public class FreezerDeviceController extends BaseRestController {
         private FreezerReading.Status status;
         private BigDecimal temperatureCelsius;
         private BigDecimal humidityPercentage;
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
         private OffsetDateTime recordedAt;
 
         public static FreezerStatusResponse from(Freezer freezer, FreezerReading reading,
@@ -226,7 +222,10 @@ public class FreezerDeviceController extends BaseRestController {
                     freezer.getLinkedDeviceTypeString() != null ? freezer.getLinkedDeviceTypeString() : "unknown");
             response.setProtocol(freezer.getProtocol() != null ? freezer.getProtocol().name() : null);
             response.setTargetTemperatureCelsius(targetTemperature);
-            response.setStatus(reading != null ? reading.getStatus() : FreezerReading.Status.NORMAL);
+            // Leave status/temperature null (not a fabricated NORMAL) when the device has
+            // never reported a reading, so the dashboard can render "no data yet" instead
+            // of a misleading green tag.
+            response.setStatus(reading != null ? reading.getStatus() : null);
             response.setTemperatureCelsius(reading != null ? reading.getTemperatureCelsius() : null);
             response.setHumidityPercentage(reading != null ? reading.getHumidityPercentage() : null);
             response.setRecordedAt(reading != null ? reading.getRecordedAt() : null);
@@ -255,6 +254,7 @@ public class FreezerDeviceController extends BaseRestController {
 
     @Data
     public static class SensorReadingResponse {
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
         private OffsetDateTime recordedAt;
         private BigDecimal temperatureCelsius;
         private BigDecimal humidityPercentage;

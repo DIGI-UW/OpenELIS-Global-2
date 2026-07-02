@@ -81,63 +81,86 @@ export default function HistoricalTrends({
     return map;
   }, [devices]);
 
-  const loadReadings = useCallback(async () => {
-    if (!devices.length) {
-      setChartData([]);
-      return;
-    }
-    const ids =
-      selectedFreezer === "All Freezers"
-        ? devices
-            .map((device) => device.id)
-            .filter(Boolean)
-            .slice(0, MAX_SERIES)
-        : [freezerNameToIdMap[selectedFreezer] || devices[0]?.id].filter(
-            Boolean,
+  // fetchHistoricalReadings (via getFromOpenElisServerV2) does not expose an
+  // AbortController signal, so this can't cancel the in-flight network
+  // request itself. The AbortController is instead used as a "was this call
+  // superseded" guard so a slow older response can't overwrite the chart
+  // with stale data after the freezer/time-range filter has changed again.
+  // The controller is created by the caller (the useEffect below) and
+  // passed in, matching the existing house pattern for load-on-mount
+  // effects in this codebase.
+  const loadReadings = useCallback(
+    (controller) => {
+      if (!devices.length) {
+        setChartData([]);
+        return;
+      }
+      const ids =
+        selectedFreezer === "All Freezers"
+          ? devices
+              .map((device) => device.id)
+              .filter(Boolean)
+              .slice(0, MAX_SERIES)
+          : [freezerNameToIdMap[selectedFreezer] || devices[0]?.id].filter(
+              Boolean,
+            );
+
+      if (!ids.length) {
+        setChartData([]);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      const { start, end } = getRangeBoundaries(timeRange);
+
+      (async () => {
+        try {
+          const responses = await Promise.all(
+            ids.map((id) =>
+              fetchHistoricalReadings(id, start, end).then((data) => ({
+                freezerId: id,
+                readings: data || [],
+              })),
+            ),
           );
+          if (controller.signal.aborted) {
+            return;
+          }
 
-    if (!ids.length) {
-      setChartData([]);
-      return;
-    }
+          const normalized = responses.flatMap(({ freezerId, readings }) => {
+            const device = devices.find((d) => d.id === freezerId);
+            const freezerName = device?.unitName || `Freezer ${freezerId}`;
+            return readings
+              .filter((reading) => reading.temperatureCelsius != null)
+              .map((reading) => ({
+                group: freezerName,
+                key: formatTrendLabel(reading.recordedAt),
+                value: reading.temperatureCelsius,
+              }));
+          });
 
-    setLoading(true);
-    setError(null);
-    const { start, end } = getRangeBoundaries(timeRange);
-
-    try {
-      const responses = await Promise.all(
-        ids.map((id) =>
-          fetchHistoricalReadings(id, start, end).then((data) => ({
-            freezerId: id,
-            readings: data || [],
-          })),
-        ),
-      );
-
-      const normalized = responses.flatMap(({ freezerId, readings }) => {
-        const device = devices.find((d) => d.id === freezerId);
-        const freezerName = device?.unitName || `Freezer ${freezerId}`;
-        return readings
-          .filter((reading) => reading.temperatureCelsius != null)
-          .map((reading) => ({
-            group: freezerName,
-            key: formatTrendLabel(reading.recordedAt),
-            value: reading.temperatureCelsius,
-          }));
-      });
-
-      setChartData(normalized);
-    } catch (apiError) {
-      setError(apiError.message || "Unable to load historical data.");
-      setChartData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [devices, selectedFreezer, timeRange, freezerNameToIdMap]);
+          setChartData(normalized);
+        } catch (apiError) {
+          if (controller.signal.aborted) {
+            return;
+          }
+          setError(apiError.message || "Unable to load historical data.");
+          setChartData([]);
+        } finally {
+          if (!controller.signal.aborted) {
+            setLoading(false);
+          }
+        }
+      })();
+    },
+    [devices, selectedFreezer, timeRange, freezerNameToIdMap],
+  );
 
   useEffect(() => {
-    loadReadings();
+    const controller = new AbortController();
+    loadReadings(controller);
+    return () => controller.abort();
   }, [loadReadings]);
 
   useEffect(() => {
@@ -217,7 +240,7 @@ export default function HistoricalTrends({
 
   const handleReset = useCallback(() => {
     setZoomLevel(1);
-    loadReadings();
+    loadReadings(new AbortController());
   }, [loadReadings]);
 
   const handleExportCsv = useCallback(() => {

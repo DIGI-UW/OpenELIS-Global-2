@@ -9,6 +9,7 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.coldstorage.event.FreezerTemperatureThresholdViolatedEvent;
+import org.openelisglobal.coldstorage.event.FreezerTransmissionFailedEvent;
 import org.openelisglobal.coldstorage.service.FreezerAlertService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,16 @@ public class FreezerAlertServiceImpl implements FreezerAlertService {
                 contextDataJson);
     }
 
+    @Override
+    @Transactional
+    public Alert createFreezerOfflineAlert(Long freezerId, String errorMessage) {
+        String message = buildOfflineAlertMessage(errorMessage);
+        String contextDataJson = buildOfflineContextDataJson(errorMessage);
+
+        return alertService.createAlert(AlertType.FREEZER_OFFLINE, "Freezer", freezerId, AlertSeverity.CRITICAL,
+                message, contextDataJson);
+    }
+
     @EventListener
     @Async
     public void handleFreezerTemperatureThresholdViolated(FreezerTemperatureThresholdViolatedEvent event) {
@@ -53,9 +64,36 @@ public class FreezerAlertServiceImpl implements FreezerAlertService {
         }
     }
 
+    @Override
+    @EventListener
+    @Async
+    public void handleFreezerTransmissionFailed(FreezerTransmissionFailedEvent event) {
+        try {
+            createFreezerOfflineAlert(event.getFreezerId(), event.getErrorMessage());
+        } catch (Exception e) {
+            logger.error("Error creating freezer offline alert for freezer ID: {}", event.getFreezerId(), e);
+        }
+    }
+
     private String buildAlertMessage(BigDecimal temperature, BigDecimal thresholdValue, String thresholdType) {
         return String.format("Temperature threshold violated: Current %.1f°C, Threshold %.1f°C (%s)",
                 temperature.doubleValue(), thresholdValue.doubleValue(), thresholdType);
+    }
+
+    private String buildOfflineAlertMessage(String errorMessage) {
+        return "Freezer is not responding to monitoring polls"
+                + (errorMessage != null && !errorMessage.isBlank() ? ": " + errorMessage : "");
+    }
+
+    private String buildOfflineContextDataJson(String errorMessage) {
+        try {
+            Map<String, Object> contextData = new HashMap<>();
+            contextData.put("errorMessage", errorMessage);
+            return objectMapper.writeValueAsString(contextData);
+        } catch (Exception e) {
+            logger.error("Error building offline-alert context data JSON", e);
+            return "{}";
+        }
     }
 
     private String buildContextDataJson(BigDecimal temperature, BigDecimal thresholdValue, String thresholdType) {

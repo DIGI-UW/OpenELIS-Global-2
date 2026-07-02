@@ -40,6 +40,17 @@ public class Freezer extends BaseObject<Long> {
         NONE, EVEN, ODD, MARK, SPACE
     }
 
+    /**
+     * Byte/word order used to decode multi-byte Modbus register values.
+     * {@code BIG_ENDIAN} (the historical, still-default behavior) means the most
+     * significant byte/word comes first on the wire; {@code LITTLE_ENDIAN} means
+     * least significant first. Real-world devices (e.g. DIY ESP32+DS18B20 Modbus
+     * slaves, see issue #3743) do not all agree on this.
+     */
+    public enum WordOrder {
+        BIG_ENDIAN, LITTLE_ENDIAN
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "freezer_generator")
     @SequenceGenerator(name = "freezer_generator", sequenceName = "freezer_seq", allocationSize = 1)
@@ -89,6 +100,65 @@ public class Freezer extends BaseObject<Long> {
     @Column(name = "humidity_register")
     private Integer humidityRegister;
 
+    /**
+     * Number of consecutive 16-bit holding registers to read for a single value (1
+     * or 2). Defaults to 1 (a single signed 16-bit register), matching the decoding
+     * behavior of every existing configured device. A 32-bit sensor value needs 2.
+     */
+    @Column(name = "register_count", nullable = false)
+    private Integer registerCount = 1;
+
+    /**
+     * Byte/word order used when {@link #registerCount} is 2. Ignored for a
+     * single-register read. Defaults to {@link WordOrder#BIG_ENDIAN}, matching
+     * existing decoding behavior.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "word_order", length = 16, nullable = false)
+    private WordOrder wordOrder = WordOrder.BIG_ENDIAN;
+
+    /**
+     * RS-485 half-duplex mode for the RTU serial transport (driver-enable/DE
+     * timing). Off by default so existing RS-232/point-to-point serial devices are
+     * unaffected. See digitalpetri modbus-serial 2.1.5
+     * {@code SerialPortTransportConfig} rs485* fields (Linux
+     * {@code setRs485ModeParameters}).
+     */
+    @Column(name = "rs485_mode", nullable = false)
+    private Boolean rs485Mode = Boolean.FALSE;
+
+    /**
+     * RS-485 RTS polarity: true = RTS high during transmit. Ignored unless
+     * {@link #rs485Mode} is set.
+     */
+    @Column(name = "rs485_rts_active_high", nullable = false)
+    private Boolean rs485RtsActiveHigh = Boolean.FALSE;
+
+    /** RS-485 bus termination enabled. Ignored unless {@link #rs485Mode} is set. */
+    @Column(name = "rs485_termination", nullable = false)
+    private Boolean rs485Termination = Boolean.FALSE;
+
+    /**
+     * RS-485: whether the receiver stays enabled while transmitting (echo). Ignored
+     * unless {@link #rs485Mode} is set.
+     */
+    @Column(name = "rs485_rx_during_tx", nullable = false)
+    private Boolean rs485RxDuringTx = Boolean.FALSE;
+
+    /**
+     * RS-485 driver-enable turnaround delay before transmit, in milliseconds.
+     * Ignored unless {@link #rs485Mode} is set.
+     */
+    @Column(name = "rs485_delay_before_ms", nullable = false)
+    private Integer rs485DelayBeforeMs = 0;
+
+    /**
+     * RS-485 driver-enable turnaround delay after transmit, in milliseconds.
+     * Ignored unless {@link #rs485Mode} is set.
+     */
+    @Column(name = "rs485_delay_after_ms", nullable = false)
+    private Integer rs485DelayAfterMs = 0;
+
     @Column(name = "temperature_scale")
     private BigDecimal temperatureScale = BigDecimal.ONE;
 
@@ -115,6 +185,15 @@ public class Freezer extends BaseObject<Long> {
 
     @Column(name = "active")
     private Boolean active = Boolean.TRUE;
+
+    /**
+     * Soft-delete marker, distinct from {@link #active}. {@code active} is the
+     * operator enable/disable toggle; {@code deleted} means the device was removed
+     * and must never be re-activated or reappear in device lists. Reading history
+     * is kept (freezer_reading FKs to this row) rather than hard-deleting.
+     */
+    @Column(name = "deleted", nullable = false)
+    private Boolean deleted = Boolean.FALSE;
 
     @OneToMany(mappedBy = "freezer", cascade = CascadeType.ALL, orphanRemoval = false)
     @JsonIgnore

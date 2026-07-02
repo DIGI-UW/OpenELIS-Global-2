@@ -1,0 +1,50 @@
+.oe-systemSettings {
+  padding: 1rem 0;
+}
+
+.oe-systemSettings-headerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.oe-systemSettings-warningNotification {
+  margin-bottom: 1.5rem;
+}
+
+.oe-systemSettings-panel {
+  padding: 1rem;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+}
+
+.oe-systemSettings-panelHeading {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.oe-systemSettings-fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.oe-systemSettings-toggle {
+  margin-bottom: 1rem;
+}
+
+.oe-systemSettings-infoTile {
+  padding: 1rem;
+  background-color: var(--cds-layer-02, #f4f4f4);
+}
+
+.oe-systemSettings-infoLabel {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  margin-bottom: 0.25rem;
+}
+
+.oe-systemSettings-infoValue {
+  font-weight: 600;
+}

@@ -13,6 +13,7 @@ import {
 } from "@carbon/react";
 import { Settings } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import "./SystemSettings.scss";
 import { fetchSystemConfig, saveSystemConfig } from "../api";
 import {
   AlertDialog,
@@ -152,18 +153,11 @@ function SystemSettings() {
   }
 
   return (
-    <div style={{ padding: "1rem 0" }}>
+    <div className="oe-systemSettings">
       {notificationVisible === true ? <AlertDialog /> : ""}
 
       <Section>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "1.5rem",
-          }}
-        >
+        <div className="oe-systemSettings-headerRow">
           <Settings size={24} />
           <Heading>
             <FormattedMessage id="coldStorage.systemConfiguration" />
@@ -176,29 +170,17 @@ function SystemSettings() {
           subtitle={intl.formatMessage({ id: "coldStorage.configMovedDesc" })}
           lowContrast={false}
           hideCloseButton
-          style={{ marginBottom: "1.5rem" }}
+          className="oe-systemSettings-warningNotification"
         />
 
         <Form>
           <Stack gap={6}>
             {/* Protocol Configuration */}
-            <div
-              style={{
-                padding: "1rem",
-                border: "1px solid #e0e0e0",
-                borderRadius: "4px",
-              }}
-            >
-              <Heading style={{ marginBottom: "1rem", fontSize: "1rem" }}>
+            <div className="oe-systemSettings-panel">
+              <Heading className="oe-systemSettings-panelHeading">
                 <FormattedMessage id="coldStorage.protocolConfiguration" />
               </Heading>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                  gap: "1rem",
-                }}
-              >
+              <div className="oe-systemSettings-fieldGrid">
                 <TextInput
                   id="modbus-tcp-port"
                   labelText={intl.formatMessage({
@@ -240,14 +222,8 @@ function SystemSettings() {
             </div>
 
             {/* Security Settings */}
-            <div
-              style={{
-                padding: "1rem",
-                border: "1px solid #e0e0e0",
-                borderRadius: "4px",
-              }}
-            >
-              <Heading style={{ marginBottom: "1rem", fontSize: "1rem" }}>
+            <div className="oe-systemSettings-panel">
+              <Heading className="oe-systemSettings-panelHeading">
                 <FormattedMessage id="coldStorage.securitySettings" />
               </Heading>
 
@@ -262,7 +238,7 @@ function SystemSettings() {
                 onToggle={(checked) =>
                   handleToggle("twoFactorAuthEnabled", checked)
                 }
-                style={{ marginBottom: "1rem" }}
+                className="oe-systemSettings-toggle"
                 disabled
               />
 
@@ -287,78 +263,43 @@ function SystemSettings() {
             </div>
 
             {/* System Information (Read-only) */}
-            <Tile
-              style={{
-                padding: "1rem",
-                backgroundColor: "#f4f4f4",
-              }}
-            >
-              <Heading style={{ marginBottom: "1rem", fontSize: "1rem" }}>
+            <Tile className="oe-systemSettings-infoTile">
+              <Heading className="oe-systemSettings-panelHeading">
                 <FormattedMessage id="coldStorage.systemInformation" />
               </Heading>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                  gap: "1rem",
-                }}
-              >
+              <div className="oe-systemSettings-fieldGrid">
                 <div>
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#525252",
-                      marginBottom: "0.25rem",
-                    }}
-                  >
+                  <p className="oe-systemSettings-infoLabel">
                     <FormattedMessage id="coldStorage.systemVersion" />
                   </p>
-                  <p style={{ fontWeight: "600" }}>
+                  <p className="oe-systemSettings-infoValue">
                     {systemInfo.systemVersion}
                   </p>
                 </div>
 
                 <div>
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#525252",
-                      marginBottom: "0.25rem",
-                    }}
-                  >
+                  <p className="oe-systemSettings-infoLabel">
                     <FormattedMessage id="coldStorage.databaseVersion" />
                   </p>
-                  <p style={{ fontWeight: "600" }}>
+                  <p className="oe-systemSettings-infoValue">
                     {systemInfo.databaseVersion}
                   </p>
                 </div>
 
                 <div>
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#525252",
-                      marginBottom: "0.25rem",
-                    }}
-                  >
+                  <p className="oe-systemSettings-infoLabel">
                     <FormattedMessage id="coldStorage.lastUpdate" />
                   </p>
-                  <p style={{ fontWeight: "600" }}>
+                  <p className="oe-systemSettings-infoValue">
                     {formatDateTime(systemInfo.lastUpdate)}
                   </p>
                 </div>
 
                 <div>
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#525252",
-                      marginBottom: "0.25rem",
-                    }}
-                  >
+                  <p className="oe-systemSettings-infoLabel">
                     <FormattedMessage id="coldStorage.uptime" />
                   </p>
-                  <p style={{ fontWeight: "600" }}>
+                  <p className="oe-systemSettings-infoValue">
                     {formatUptime(systemInfo.uptimeSeconds)}
                   </p>
                 </div>

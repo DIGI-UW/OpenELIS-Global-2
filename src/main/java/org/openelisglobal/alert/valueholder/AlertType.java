@@ -7,6 +7,12 @@ public enum AlertType {
     FREEZER_TEMPERATURE,
 
     /**
+     * Freezer/fridge Modbus device stopped responding to polling (dead-man's
+     * switch, fires independently of any temperature threshold breach)
+     */
+    FREEZER_OFFLINE,
+
+    /**
      * Equipment malfunction or failure alerts
      */
     EQUIPMENT_FAILURE,

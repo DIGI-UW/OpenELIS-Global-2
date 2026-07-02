@@ -3,6 +3,7 @@ package org.openelisglobal.coldstorage.service;
 import java.math.BigDecimal;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.coldstorage.event.FreezerTemperatureThresholdViolatedEvent;
+import org.openelisglobal.coldstorage.event.FreezerTransmissionFailedEvent;
 
 public interface FreezerAlertService {
 
@@ -24,9 +25,26 @@ public interface FreezerAlertService {
             String thresholdType);
 
     /**
+     * Create a freezer-offline alert (dead-man's switch) for a device that failed
+     * to respond to Modbus polling.
+     *
+     * @param freezerId    Freezer ID
+     * @param errorMessage The poll failure reason
+     * @return Created alert
+     */
+    Alert createFreezerOfflineAlert(Long freezerId, String errorMessage);
+
+    /**
      * Event listener for FreezerTemperatureThresholdViolatedEvent.
      *
      * @param event The temperature threshold violation event
      */
     void handleFreezerTemperatureThresholdViolated(FreezerTemperatureThresholdViolatedEvent event);
+
+    /**
+     * Event listener for FreezerTransmissionFailedEvent.
+     *
+     * @param event The transmission failure event
+     */
+    void handleFreezerTransmissionFailed(FreezerTransmissionFailedEvent event);
 }

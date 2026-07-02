@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-073-freezer-decimal-precision" author="cold-storage-monitoring-audit">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM information_schema.columns
+        WHERE table_schema = 'clinlims' AND table_name = 'freezer_reading'
+        AND column_name = 'temperature_celsius' AND numeric_precision IS NULL
+      </sqlCheck>
+    </preConditions>
+    <comment>Temperature/humidity DECIMAL columns for cold storage monitoring were
+      created with no explicit precision/scale (bare DECIMAL), which is imprecise
+      and DB-dependent. Application code consistently rounds these values to 2
+      decimal places (e.g. FreezerReportServiceImpl's RoundingMode.HALF_UP scale-2
+      averaging, and readings are stored from a raw scaled sensor value with no more
+      than hundredths-of-a-degree meaning), so DECIMAL(6,2) is used: 2dp matches
+      current usage exactly (no truncation of existing data) and a precision of 6
+      comfortably covers the full range in use (down to -86C ultra-low freezers)
+      with headroom.</comment>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="temperature_scale" newDataType="DECIMAL(10,4)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="temperature_offset" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="humidity_scale" newDataType="DECIMAL(10,4)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="humidity_offset" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="target_temperature" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="warning_threshold" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="critical_threshold" newDataType="DECIMAL(6,2)"/>
+
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="warning_min" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="warning_max" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="critical_min" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="critical_max" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="humidity_warning_min" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="humidity_warning_max" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="humidity_critical_min" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="humidity_critical_max" newDataType="DECIMAL(6,2)"/>
+
+    <modifyDataType schemaName="clinlims" tableName="freezer_reading" columnName="temperature_celsius" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer_reading" columnName="humidity_percentage" newDataType="DECIMAL(6,2)"/>
+  </changeSet>
+
+</databaseChangeLog>
