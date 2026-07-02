@@ -229,4 +229,20 @@ describe("TestCatalogEditor shell", () => {
       "/MasterListsPage/TestCatalogList",
     );
   });
+
+  it("create mode: a non-Basic-Info section shows a 'save first' notice, not Basic Info", () => {
+    mockParams = { testId: "new", section: "methods" };
+    getFromOpenElisServer.mockImplementation((url, cb) => cb([]));
+    renderEditor();
+    expect(
+      screen.getByText(
+        messages["label.testCatalog.editor.createSaveFirst.title"],
+      ),
+    ).toBeInTheDocument();
+    // The envelope is never fetched for a new test.
+    expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+      "/rest/test-catalog/tests/new",
+      expect.anything(),
+    );
+  });
 });

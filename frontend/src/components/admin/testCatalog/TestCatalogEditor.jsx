@@ -252,12 +252,31 @@ const TestCatalogEditor = () => {
           <Tile>
             <Heading>
               <FormattedMessage
-                id={`label.testCatalog.section.${activeSection}`}
+                id={`label.testCatalog.section.${
+                  isCreate ? "basic-info" : activeSection
+                }`}
               />
             </Heading>
             <div style={{ marginTop: "1rem" }}>
               {isCreate ? (
-                <BasicInfoSection testId={testId} />
+                // Create-in-place: only Basic Info is usable; the other sections
+                // need a persisted test, so guide the user to save first (FR-3)
+                // rather than showing Basic Info under another section's title.
+                activeSection === "basic-info" ? (
+                  <BasicInfoSection testId={testId} />
+                ) : (
+                  <InlineNotification
+                    kind="info"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "label.testCatalog.editor.createSaveFirst.title",
+                    })}
+                    subtitle={intl.formatMessage({
+                      id: "label.testCatalog.editor.createSaveFirst",
+                    })}
+                  />
+                )
               ) : activeSection === "basic-info" ? (
                 <BasicInfoSection testId={testId} />
               ) : activeSection === "sample-results" ? (
