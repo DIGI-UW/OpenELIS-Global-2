@@ -4091,6 +4091,7 @@
   "show.aliquoting": "Show Aliquoting",
   "showing": "Showing",
   "sidenav.label.addorder": "Add Generic Order",
+  "breadcrumb.label.addOrder": "Add Order",
   "sidenav.label.admin": "Admin",
   "sidenav.label.admin.analyzerTest": "Analyzer Test Name",
   "sidenav.label.admin.backToMainMenu": "Back to main menu",
