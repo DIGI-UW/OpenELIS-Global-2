@@ -98,6 +98,14 @@ public class RangeCoverageValidationService {
             coveredTo = Math.max(coveredTo, max);
         }
 
+        // Tail gap (FR-20/21): only an open-ended top band (max = +Infinity) covers
+        // to the top of the reportable lifetime. If the highest covered age is
+        // finite, everything above it is uncovered — e.g. bands 0–15 + 15–30 leave
+        // 30+ uncovered — which the frontier walk above would otherwise miss.
+        if (Double.isFinite(coveredTo)) {
+            coverage.gaps.add(new AgeInterval(coveredTo, Double.POSITIVE_INFINITY));
+        }
+
         // Gaps drive the safety gate, so they outrank overlaps for the status.
         if (!coverage.gaps.isEmpty()) {
             coverage.status = Status.GAP;
