@@ -364,6 +364,25 @@ button {
   padding: 0.5%;
 }
 
+/* Text wrapping for select list result values */
+.resultCellText {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+}
+
+.cds--form-item.result .cds--select-input {
+  white-space: normal;
+  text-overflow: ellipsis;
+  height: auto;
+  min-height: 2.5rem;
+}
+
+.cds--form-item.result {
+  width: 100%;
+}
+
 .inlineDiv {
   display: flex;
   margin-top: 2%;
