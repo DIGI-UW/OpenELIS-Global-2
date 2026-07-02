@@ -2,12 +2,15 @@ package org.openelisglobal.microbiology.service;
 
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.form.MicroCaseReadinessForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
+import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +20,17 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
     private final MicroCaseReadinessService readinessService;
+    private final MicroCaseStateService stateService;
+    private final MicroCriticalCommunicationDAO communicationDAO;
 
     public MicroReportReleaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
-            MicroCaseReadinessService readinessService) {
+            MicroCaseReadinessService readinessService, MicroCaseStateService stateService,
+            MicroCriticalCommunicationDAO communicationDAO) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.readinessService = readinessService;
+        this.stateService = stateService;
+        this.communicationDAO = communicationDAO;
     }
 
     @Override
@@ -44,9 +52,12 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         if (!readiness.finalReleaseReady) {
             throw new IllegalStateException("Final release is blocked: " + String.join(", ", readiness.blockers));
         }
-        MicroCase microCase = getCase(caseId);
+        if (hasOpenCriticalFollowUp(caseId)) {
+            throw new IllegalStateException("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
+        }
+        MicroCase microCase = stateService.advanceStage(caseId, MicroCaseStage.FINAL_RELEASED, performedBy,
+                "Final report released");
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
-        microCase.setStage(MicroCaseStage.FINAL_RELEASED.name());
         microCase.setClosedAt(MicroCaseServiceImpl.now());
         microCase.setClosedBy(performedBy);
         MicroCase updated = caseDAO.update(microCase);
@@ -67,5 +78,15 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         activity.setPerformedBy(performedBy);
         activity.setNote(note);
         activityDAO.insert(activity);
+    }
+
+    private boolean hasOpenCriticalFollowUp(String caseId) {
+        for (MicroCriticalCommunication communication : communicationDAO.getByCaseId(caseId)) {
+            if (Boolean.TRUE.equals(communication.getFollowUpNeeded())
+                    && MicroCriticalCommunicationStatus.OPEN.name().equals(communication.getAcknowledgementStatus())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
