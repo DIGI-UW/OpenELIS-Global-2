@@ -16,6 +16,8 @@ import {
   Tag,
   Loading,
   InlineNotification,
+  ContentSwitcher,
+  Switch,
 } from "@carbon/react";
 import { Add, Edit, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -23,6 +25,7 @@ import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
 import RangeModal from "./sections/RangeModal";
+import StorageSection from "./sections/StorageSection";
 
 /**
  * OGC-1112 (FR-7..14) — Edit related tests together.
@@ -71,6 +74,7 @@ const CombinedTestEditor = () => {
   const [components, setComponents] = useState([]);
   const [differs, setDiffers] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [sharedSection, setSharedSection] = useState("ranges");
 
   useEffect(() => {
     if (testIds.length === 0) {
@@ -140,6 +144,16 @@ const CombinedTestEditor = () => {
 
   const removeRange = (i) =>
     setRanges((prev) => prev.filter((_, idx) => idx !== i));
+
+  // FR-13: drop a test from the edited set (min 2 to stay a group).
+  const deselectTest = (id) => {
+    const remaining = testIds.filter((t) => t !== id);
+    if (remaining.length >= 2) {
+      history.push(
+        `${base}/TestCatalogEditor/group/${remaining.join(",")}/ranges`,
+      );
+    }
+  };
 
   const handleSaveAll = () => {
     setSaving(true);
@@ -253,6 +267,9 @@ const CombinedTestEditor = () => {
                   <TableHeader>
                     <FormattedMessage id="label.testCatalog.list.col.status" />
                   </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                  </TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -285,114 +302,172 @@ const CombinedTestEditor = () => {
                         />
                       </Tag>
                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Tile>
-        </Column>
-
-        {/* Shared Ranges editor — edit once, apply to all (FR-9/11). */}
-        <Column lg={16} md={8} sm={4}>
-          <Tile style={{ marginTop: "1rem" }}>
-            <h5>
-              <FormattedMessage id="label.testCatalog.section.ranges" />
-            </h5>
-            <p>
-              <FormattedMessage id="label.testCatalog.group.rangesIntro" />
-            </p>
-            {differs && (
-              <InlineNotification
-                kind="warning"
-                lowContrast
-                hideCloseButton
-                data-testid="ranges-differ-warning"
-                title={intl.formatMessage({
-                  id: "state.testCatalog.differsAcrossTests",
-                })}
-                subtitle={intl.formatMessage({
-                  id: "label.testCatalog.group.rangesDiffer",
-                })}
-              />
-            )}
-            <Table size="sm">
-              <TableHead>
-                <TableRow>
-                  <TableHeader>
-                    <FormattedMessage id="label.testCatalog.ranges.table.sex" />
-                  </TableHeader>
-                  <TableHeader>
-                    <FormattedMessage id="label.testCatalog.ranges.table.age" />
-                  </TableHeader>
-                  <TableHeader>
-                    <FormattedMessage id="label.testCatalog.ranges.table.normal" />
-                  </TableHeader>
-                  <TableHeader>
-                    <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                  </TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ranges.map((r, i) => (
-                  <TableRow key={r.id || `r-${i}`}>
-                    <TableCell>{r.gender || "All"}</TableCell>
                     <TableCell>
-                      {(r.minAge ?? 0) +
-                        " – " +
-                        (r.maxAge == null ? "∞" : r.maxAge)}
-                    </TableCell>
-                    <TableCell>
-                      {(r.lowNormal ?? "—") + " / " + (r.highNormal ?? "—")}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        hasIconOnly
-                        renderIcon={Edit}
-                        iconDescription={intl.formatMessage({
-                          id: "label.button.edit",
-                        })}
-                        onClick={() => setEditingIndex(i)}
-                      />
+                      {/* FR-13: drop a test from the set before saving. */}
                       <Button
                         kind="ghost"
                         size="sm"
                         hasIconOnly
                         renderIcon={TrashCan}
                         iconDescription={intl.formatMessage({
-                          id: "label.button.delete",
+                          id: "button.testCatalog.removeFromSet",
                         })}
-                        onClick={() => removeRange(i)}
+                        disabled={testIds.length <= 2}
+                        onClick={() => deselectTest(s.testId)}
                       />
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
-              <Button
-                kind="tertiary"
-                renderIcon={Add}
-                onClick={() => setEditingIndex(-1)}
-              >
-                <FormattedMessage id="label.testCatalog.ranges.add" />
-              </Button>
-              <Button kind="primary" disabled={saving} onClick={handleSaveAll}>
-                <FormattedMessage id="button.testCatalog.setAllTo" />
-              </Button>
-              <Button
-                kind="ghost"
-                onClick={() => history.push(`${base}/TestCatalogList`)}
-              >
-                <FormattedMessage id="label.button.cancel" />
-              </Button>
-            </div>
           </Tile>
         </Column>
+
+        {/* Shared-section switcher: which config to edit across all tests. */}
+        <Column lg={16} md={8} sm={4}>
+          <ContentSwitcher
+            style={{ marginTop: "1rem", maxWidth: "24rem" }}
+            selectedIndex={sharedSection === "storage" ? 1 : 0}
+            onChange={({ index }) =>
+              setSharedSection(index === 1 ? "storage" : "ranges")
+            }
+          >
+            <Switch
+              name="ranges"
+              text={intl.formatMessage({
+                id: "label.testCatalog.section.ranges",
+              })}
+            />
+            <Switch
+              name="storage"
+              text={intl.formatMessage({
+                id: "label.testCatalog.section.storage",
+              })}
+            />
+          </ContentSwitcher>
+        </Column>
+
+        {/* Shared Storage editor — reuses the full storage form in group mode. */}
+        {sharedSection === "storage" && (
+          <Column lg={16} md={8} sm={4}>
+            <Tile style={{ marginTop: "1rem" }}>
+              <p>
+                <FormattedMessage id="label.testCatalog.group.storageIntro" />
+              </p>
+              <StorageSection groupTestIds={testIds} />
+            </Tile>
+          </Column>
+        )}
+
+        {/* Shared Ranges editor — edit once, apply to all (FR-9/11). */}
+        {sharedSection === "ranges" && (
+          <Column lg={16} md={8} sm={4}>
+            <Tile style={{ marginTop: "1rem" }}>
+              <h5>
+                <FormattedMessage id="label.testCatalog.section.ranges" />
+              </h5>
+              <p>
+                <FormattedMessage id="label.testCatalog.group.rangesIntro" />
+              </p>
+              {differs && (
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  data-testid="ranges-differ-warning"
+                  title={intl.formatMessage({
+                    id: "state.testCatalog.differsAcrossTests",
+                  })}
+                  subtitle={intl.formatMessage({
+                    id: "label.testCatalog.group.rangesDiffer",
+                  })}
+                />
+              )}
+              <Table size="sm">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>
+                      <FormattedMessage id="label.testCatalog.ranges.table.sex" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="label.testCatalog.ranges.table.age" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="label.testCatalog.ranges.table.normal" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                    </TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {ranges.map((r, i) => (
+                    <TableRow key={r.id || `r-${i}`}>
+                      <TableCell>{r.gender || "All"}</TableCell>
+                      <TableCell>
+                        {(r.minAge ?? 0) +
+                          " – " +
+                          (r.maxAge == null ? "∞" : r.maxAge)}
+                      </TableCell>
+                      <TableCell>
+                        {(r.lowNormal ?? "—") + " / " + (r.highNormal ?? "—")}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          hasIconOnly
+                          renderIcon={Edit}
+                          iconDescription={intl.formatMessage({
+                            id: "label.button.edit",
+                          })}
+                          onClick={() => setEditingIndex(i)}
+                        />
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          hasIconOnly
+                          renderIcon={TrashCan}
+                          iconDescription={intl.formatMessage({
+                            id: "label.button.delete",
+                          })}
+                          onClick={() => removeRange(i)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div
+                style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}
+              >
+                <Button
+                  kind="tertiary"
+                  renderIcon={Add}
+                  onClick={() => setEditingIndex(-1)}
+                >
+                  <FormattedMessage id="label.testCatalog.ranges.add" />
+                </Button>
+                <Button
+                  kind="primary"
+                  disabled={saving}
+                  onClick={handleSaveAll}
+                >
+                  <FormattedMessage id="button.testCatalog.setAllTo" />
+                </Button>
+                <Button
+                  kind="ghost"
+                  onClick={() => history.push(`${base}/TestCatalogList`)}
+                >
+                  <FormattedMessage id="label.button.cancel" />
+                </Button>
+              </div>
+            </Tile>
+          </Column>
+        )}
       </Grid>
 
-      {editingIndex !== null && (
+      {editingIndex !== null && sharedSection === "ranges" && (
         <RangeModal
           range={editingIndex >= 0 ? ranges[editingIndex] : null}
           components={components}

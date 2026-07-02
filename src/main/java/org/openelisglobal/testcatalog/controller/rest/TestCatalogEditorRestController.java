@@ -979,6 +979,12 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
+        TestSampleHandling saved = handlingService.saveForTest(testId, toHandling(body),
+                ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toStorage(testId, saved));
+    }
+
+    private TestSampleHandling toHandling(StorageDto body) {
         TestSampleHandling desired = new TestSampleHandling();
         desired.setStorageCondition(isBlank(body.storageCondition) ? null : body.storageCondition);
         desired.setStorageConditionCustom(isBlank(body.storageConditionCustom) ? null : body.storageConditionCustom);
@@ -993,8 +999,26 @@ public class TestCatalogEditorRestController {
         desired.setDisposalUnit(isBlank(body.disposalUnit) ? null : body.disposalUnit);
         desired.setSpecialInstructions(isBlank(body.specialInstructions) ? null : body.specialInstructions);
         desired.setOverrideRestricted(Boolean.TRUE.equals(body.overrideRestricted));
-        TestSampleHandling saved = handlingService.saveForTest(testId, desired, ControllerUtills.getSysUserId(request));
-        return ResponseEntity.ok(toStorage(testId, saved));
+        return desired;
+    }
+
+    public static class GroupStorageUpdate {
+        public List<String> testIds = new ArrayList<>();
+        public StorageDto storage;
+    }
+
+    @PutMapping(value = "/group/storage", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> saveGroupStorage(@RequestBody GroupStorageUpdate body, HttpServletRequest request) {
+        if (body == null || body.testIds == null || body.testIds.isEmpty() || body.storage == null) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        for (String testId : body.testIds) {
+            if (testService.getTestById(testId) != null) {
+                handlingService.saveForTest(testId, toHandling(body.storage), sysUserId);
+            }
+        }
+        return ResponseEntity.ok().build();
     }
 
     private StorageDto toStorage(String testId, TestSampleHandling h) {

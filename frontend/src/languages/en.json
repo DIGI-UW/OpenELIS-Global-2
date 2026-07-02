@@ -4492,6 +4492,8 @@
   "state.testCatalog.differsAcrossTests": "Differs across tests",
   "button.testCatalog.setAllTo": "Set all to these values",
   "label.testCatalog.group.rangesSaved": "Reference ranges saved to {count} tests.",
+  "label.testCatalog.group.storageIntro": "Edit storage & handling once; saving applies it to every selected test.",
+  "button.testCatalog.removeFromSet": "Remove from this set",
   "label.testCatalog.group.rangesIntro": "Edit the reference ranges once; saving applies them to every selected test. Identity and LOINC stay per test.",
   "label.testCatalog.group.rangesDiffer": "The selected tests' current ranges are not identical. Saving will set all of them to the values below.",
   "label.testCatalog.ranges.table.sex": "Applies to",
