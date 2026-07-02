@@ -52,9 +52,9 @@ interface ProviderRecord {
 
 interface ProviderMenuResponse {
   providers?: ProviderRecord[];
-  fromRecordCount: number;
-  toRecordCount: number;
-  totalRecordCount: number;
+  fromRecordCount?: string;
+  toRecordCount?: string;
+  totalRecordCount?: string;
 }
 
 interface ProviderTableRow {
@@ -63,9 +63,9 @@ interface ProviderTableRow {
   lastName: string;
   firstName: string;
   active: boolean;
-  telephone: string;
-  fax: string;
-  email: string;
+  telephone?: string;
+  fax?: string;
+  email?: string;
 }
 
 interface YesNoOption {
@@ -103,7 +103,8 @@ interface ConfigurationContextValue {
   configurationProperties: Record<string, string>;
 }
 
-const breadcrumbs = [
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
+let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
@@ -129,15 +130,15 @@ function ProviderMenu() {
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
-  const [startingRecNo, setStartingRecNo] = useState(1);
+  const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
   const [providerMenuList, setProviderMenuList] =
-    useState<ProviderMenuResponse | null>(null);
+    useState<ProviderMenuResponse>({});
   const [providerMenuListShow, setProviderMenuListShow] = useState<
     ProviderTableRow[]
   >([]);
-  const [fromRecordCount, setFromRecordCount] = useState(0);
-  const [toRecordCount, setToRecordCount] = useState(0);
-  const [totalRecordCount, setTotalRecordCount] = useState(0);
+  const [fromRecordCount, setFromRecordCount] = useState("");
+  const [toRecordCount, setToRecordCount] = useState("");
+  const [totalRecordCount, setTotalRecordCount] = useState("");
   const [paging, setPaging] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -145,8 +146,10 @@ function ProviderMenu() {
     useState<ProviderTableRow | null>(null);
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
-  const [telephone, setTelephone] = useState("");
-  const [fax, setFax] = useState("");
+  const [telephone, setTelephone] = useState<string | undefined>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
+  const [fhirUuid, setFhirUuid] = useState("");
+  const [fax, setFax] = useState<string | undefined>("");
   const [email, setEmail] = useState("");
   const [isActive, setIsActive] = useState<YesNoOption>({
     id: "yes",
@@ -201,7 +204,7 @@ function ProviderMenu() {
   }, [panelSearchTerm]);
 
   useEffect(() => {
-    if (providerMenuList?.providers) {
+    if (providerMenuList.providers) {
       const newProviderMenuList = providerMenuList.providers.map((item) => {
         return {
           id: item.id,
@@ -209,14 +212,14 @@ function ProviderMenu() {
           lastName: item.person.lastName,
           firstName: item.person.firstName,
           active: item.active,
-          telephone: item.person.workPhone || "",
-          fax: item.person.fax || "",
-          email: item.person.email || "",
+          telephone: item.person.workPhone,
+          fax: item.person.fax,
+          email: item.person.email,
         };
       });
-      setFromRecordCount(providerMenuList.fromRecordCount);
-      setToRecordCount(providerMenuList.toRecordCount);
-      setTotalRecordCount(providerMenuList.totalRecordCount);
+      setFromRecordCount(providerMenuList.fromRecordCount!);
+      setToRecordCount(providerMenuList.toRecordCount!);
+      setTotalRecordCount(providerMenuList.totalRecordCount!);
       setProviderMenuListShow(newProviderMenuList);
     }
   }, [providerMenuList]);
@@ -293,7 +296,7 @@ function ProviderMenu() {
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
+    setStartingRecNo(Math.max(fromRecordCount as unknown as number, 1));
     setSelectedRowIds([]);
   };
 
@@ -321,8 +324,7 @@ function ProviderMenu() {
   };
 
   const openUpdateModal = (providerId: string) => {
-    const provider = providerMenuListShow.find((p) => p.id === providerId);
-    if (!provider) return;
+    const provider = providerMenuListShow.find((p) => p.id === providerId)!;
     setCurrentProvider(provider);
     setLastName(provider.lastName);
     setFirstName(provider.firstName);
@@ -361,9 +363,8 @@ function ProviderMenu() {
   };
 
   const handleUpdateProvider = () => {
-    if (!currentProvider) return;
     const updatedProvider = {
-      fhirUuid: currentProvider.fhirUuid,
+      fhirUuid: currentProvider!.fhirUuid,
       person: {
         lastName,
         firstName,
@@ -374,7 +375,7 @@ function ProviderMenu() {
       active: isActive.id === "yes",
     };
     postToOpenElisServerFullResponse(
-      "/rest/Provider/FhirUuid?fhirUuid=" + currentProvider.fhirUuid,
+      "/rest/Provider/FhirUuid?fhirUuid=" + currentProvider!.fhirUuid,
       JSON.stringify(updatedProvider),
       displayStatus,
     );
@@ -425,6 +426,14 @@ function ProviderMenu() {
     });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve original migration behavior
+  const handleFaxChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
+      setFax(value);
+    }
+  };
+
   const renderCell = (cell: CarbonTableCell, row: CarbonTableRow) => {
     if (cell.info.header === "select") {
       return (
@@ -445,7 +454,7 @@ function ProviderMenu() {
         />
       );
     } else if (cell.info.header === "active") {
-      return <TableCell key={cell.id}>{String(cell.value)}</TableCell>;
+      return <TableCell key={cell.id}>{cell.value!.toString()}</TableCell>;
     } else {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }
@@ -550,7 +559,7 @@ function ProviderMenu() {
             itemToString={(item) => (item ? item.value : "")}
             selectedItem={isActive}
             onChange={({ selectedItem }) =>
-              selectedItem && setIsActive(selectedItem)
+              setIsActive(selectedItem as YesNoOption)
             }
           />
           <TextInput
@@ -620,7 +629,7 @@ function ProviderMenu() {
             itemToString={(item) => (item ? item.value : "")}
             selectedItem={isActive}
             onChange={({ selectedItem }) =>
-              selectedItem && setIsActive(selectedItem)
+              setIsActive(selectedItem as YesNoOption)
             }
           />
           <TextInput

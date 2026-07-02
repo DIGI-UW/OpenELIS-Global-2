@@ -4,10 +4,8 @@ export interface LabNumberFormValues {
   alphanumPrefix: string;
 }
 
-const labNumberFormValues: LabNumberFormValues = {
+export default {
   labNumberType: "ALPHANUM",
   usePrefix: false,
   alphanumPrefix: "",
-};
-
-export default labNumberFormValues;
+} as LabNumberFormValues;

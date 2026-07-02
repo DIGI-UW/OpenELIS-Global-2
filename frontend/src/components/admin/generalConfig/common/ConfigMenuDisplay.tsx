@@ -84,15 +84,18 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
   const [pageSize, setPageSize] = useState(30);
   const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-  const [startingRecNo] = useState(1);
-  const [formEntryConfigMenuList, setformEntryConfigMenuList] =
-    useState<ConfigMenuResponse | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
+  const [startingRecNo, setStartingRecNo] = useState(1);
+  const [formEntryConfigMenuList, setformEntryConfigMenuList] = useState<
+    ConfigMenuResponse | []
+  >([]);
   const [orderEntryConfigurationList, setOrderEntryConfigurationList] =
     useState<ConfigTableRow[]>([]);
 
   const [ConfigEdit, setConfigEdit] = useState(false);
 
-  const breadcrumbs = [
+  // eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
+  let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
     { label: `${props.label}`, link: `/MasterListsPage/${props.menuType}` },
@@ -154,8 +157,13 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
 
   useEffect(() => {
     const updateConfigList = () => {
-      if (formEntryConfigMenuList && formEntryConfigMenuList.menuList) {
-        const updatedList = formEntryConfigMenuList.menuList
+      if (
+        formEntryConfigMenuList &&
+        (formEntryConfigMenuList as ConfigMenuResponse).menuList
+      ) {
+        const updatedList = (
+          formEntryConfigMenuList as ConfigMenuResponse
+        ).menuList
           .map((item) => {
             let value = item.value;
             if (item.valueType === "text" && item.tag === "localization") {

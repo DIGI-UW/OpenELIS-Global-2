@@ -163,7 +163,7 @@ const LogoUploadSection = forwardRef<
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
-      setPreview(typeof reader.result === "string" ? reader.result : null);
+      setPreview(reader.result as string);
     };
     reader.readAsDataURL(selectedFile);
   };

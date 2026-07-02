@@ -45,9 +45,9 @@ interface OrganizationMenuItem {
 
 interface OrganizationMenuResponse {
   menuList: OrganizationMenuItem[];
-  fromRecordCount: number;
-  toRecordCount: number;
-  totalRecordCount: number;
+  fromRecordCount: string;
+  toRecordCount: string;
+  totalRecordCount: string;
 }
 
 interface OrganizationTableRow {
@@ -82,7 +82,8 @@ interface NotificationContextValue {
   }) => void;
 }
 
-const breadcrumbs = [
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
+let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
@@ -103,19 +104,19 @@ function OrganizationManagement() {
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
-  const [selectedRowIdsPost, setSelectedRowIdsPost] = useState<{
-    selectedIDs: string[];
-  }>({ selectedIDs: [] });
+  const [selectedRowIdsPost, setSelectedRowIdsPost] = useState<
+    string[] | { selectedIDs: string[] }
+  >([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
-  const [totalRecordCount, setTotalRecordCount] = useState<number>(0);
-  const [startingRecNo, setStartingRecNo] = useState(1);
-  const [fromRecordCount, setFromRecordCount] = useState<number>(0);
-  const [toRecordCount, setToRecordCount] = useState<number>(0);
+  const [totalRecordCount, setTotalRecordCount] = useState("");
+  const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
+  const [fromRecordCount, setFromRecordCount] = useState("");
+  const [toRecordCount, setToRecordCount] = useState("");
   const [paging, setPaging] = useState(1);
   const [organizationsManagmentList, setOrganizationsManagmentList] =
-    useState<OrganizationMenuResponse | null>(null);
+    useState<OrganizationMenuResponse>();
   const [organizationsManagmentListShow, setOrganizationsManagmentListShow] =
     useState<OrganizationTableRow[]>([]);
 
@@ -141,7 +142,7 @@ function OrganizationManagement() {
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
+    setStartingRecNo(Math.max(fromRecordCount as unknown as number, 1));
     setSelectedRowIds([]);
   };
 
@@ -295,7 +296,7 @@ function OrganizationManagement() {
         />
       );
     } else if (cell.info.header === "active") {
-      return <TableCell key={cell.id}>{String(cell.value)}</TableCell>;
+      return <TableCell key={cell.id}>{cell.value!.toString()}</TableCell>;
     } else {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }

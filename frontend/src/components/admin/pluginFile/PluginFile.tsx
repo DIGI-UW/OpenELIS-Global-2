@@ -18,7 +18,8 @@ interface PluginListResponse {
   pluginList?: string[];
 }
 
-const breadcrumbs = [
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
+let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {

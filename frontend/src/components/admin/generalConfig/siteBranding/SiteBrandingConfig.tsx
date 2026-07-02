@@ -28,6 +28,7 @@ import {
   NotificationKinds,
 } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import LogoUploadSection from "./LogoUploadSection";
 import type { LogoUploadSectionHandle } from "./LogoUploadSection";
@@ -58,6 +59,8 @@ interface NotificationContextValue {
 
 function SiteBrandingConfig() {
   const intl = useIntl();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original router subscription
+  const history = useHistory();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext) as NotificationContextValue;
 
@@ -532,9 +535,10 @@ function SiteBrandingConfig() {
               window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
             onUseHeaderLogoChange={(useHeader) => {
-              setBranding((prev) =>
-                prev ? { ...prev, useHeaderLogoForLogin: useHeader } : prev,
-              );
+              setBranding((prev) => ({
+                ...prev!,
+                useHeaderLogoForLogin: useHeader,
+              }));
             }}
           />
         </Column>
@@ -576,9 +580,7 @@ function SiteBrandingConfig() {
             })}
             value={branding?.headerColor || "#295785"}
             onChange={(color) => {
-              setBranding((prev) =>
-                prev ? { ...prev, headerColor: color } : prev,
-              );
+              setBranding((prev) => ({ ...prev!, headerColor: color }));
               // Apply color immediately for preview
               document.documentElement.style.setProperty(
                 "--site-branding-header",
@@ -598,9 +600,7 @@ function SiteBrandingConfig() {
             })}
             value={branding?.primaryColor || "#0f62fe"}
             onChange={(color) => {
-              setBranding((prev) =>
-                prev ? { ...prev, primaryColor: color } : prev,
-              );
+              setBranding((prev) => ({ ...prev!, primaryColor: color }));
               // Apply color immediately for preview
               document.documentElement.style.setProperty(
                 "--cds-interactive-01",
@@ -624,9 +624,7 @@ function SiteBrandingConfig() {
             })}
             value={branding?.secondaryColor || "#393939"}
             onChange={(color) => {
-              setBranding((prev) =>
-                prev ? { ...prev, secondaryColor: color } : prev,
-              );
+              setBranding((prev) => ({ ...prev!, secondaryColor: color }));
               // Apply color immediately for preview
               document.documentElement.style.setProperty(
                 "--cds-interactive-02",

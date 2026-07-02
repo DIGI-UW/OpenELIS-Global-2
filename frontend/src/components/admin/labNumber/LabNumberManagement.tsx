@@ -30,7 +30,8 @@ import { ConfigurationContext } from "../../layout/Layout";
 import { jpSet } from "../../utils/JsonPath";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
-const breadcrumbs = [
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
+let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
@@ -96,7 +97,8 @@ function LabNumberManagement() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.add.edited.msg" }),
       });
-      const body = await res.json();
+      // eslint-disable-next-line no-var -- preserve the original JavaScript declaration
+      var body = await res.json();
       setLabNumberValues({ ...LabNumberFormValues, ...body });
     } else {
       addNotification({
@@ -121,7 +123,8 @@ function LabNumberManagement() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
-    const submitValues = { ...labNumberValues };
+    // eslint-disable-next-line no-var -- preserve the original JavaScript declaration
+    var submitValues = { ...labNumberValues };
     postToOpenElisServerFullResponse(
       "/rest/labnumbermanagement",
       JSON.stringify(submitValues),
@@ -147,7 +150,8 @@ function LabNumberManagement() {
   };
 
   const generateSampleLabNum = () => {
-    const dateDigits = new Date().getFullYear() % 100;
+    // eslint-disable-next-line prefer-const -- preserve the original JavaScript declaration
+    let dateDigits = new Date().getFullYear() % 100;
     let labNumber = "" + dateDigits;
     if (labNumberValues.usePrefix && labNumberValues.alphanumPrefix) {
       labNumber = labNumber + labNumberValues.alphanumPrefix;

@@ -115,9 +115,10 @@ const GenericConfigEdit = ({ menuType, ID }: GenericConfigEditProps) => {
   };
 
   const updateFormEntryConfig = (newState: Partial<FormEntryConfig>) => {
-    setFormEntryConfig((prevState) =>
-      prevState ? { ...prevState, ...newState } : prevState,
-    );
+    setFormEntryConfig((prevState) => ({
+      ...prevState!,
+      ...newState,
+    }));
   };
 
   const handleRadioChange = (value: string) => {
@@ -136,7 +137,7 @@ const GenericConfigEdit = ({ menuType, ID }: GenericConfigEditProps) => {
     setTextInputEnglishValue(newValue);
     updateFormEntryConfig({
       localization: {
-        ...FormEntryConfig?.localization,
+        ...FormEntryConfig!.localization,
         english: newValue,
       },
     });
@@ -147,7 +148,7 @@ const GenericConfigEdit = ({ menuType, ID }: GenericConfigEditProps) => {
     setTextInputFrenchValue(newValue);
     updateFormEntryConfig({
       localization: {
-        ...FormEntryConfig?.localization,
+        ...FormEntryConfig!.localization,
         french: newValue,
       },
     });
@@ -169,13 +170,12 @@ const GenericConfigEdit = ({ menuType, ID }: GenericConfigEditProps) => {
   };
 
   const handleSubmitButton = () => {
-    if (!FormEntryConfig) return;
-    if (FormEntryConfig.valueType === "logoUpload") {
+    if (FormEntryConfig!.valueType === "logoUpload") {
       const formData = new FormData();
       if (!removeImage) {
         formData.append("logoFile", file as File);
       }
-      formData.append("logoName", FormEntryConfig.paramName);
+      formData.append("logoName", FormEntryConfig!.paramName);
       formData.append("removeImage", removeImage ? "true" : "false");
 
       postToOpenElisServerFormData(`/rest/logoUpload`, formData, handleSubmit);
@@ -190,7 +190,7 @@ const GenericConfigEdit = ({ menuType, ID }: GenericConfigEditProps) => {
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
 
-    const file = files?.[0];
+    const file = files![0];
     if (!file) {
       return;
     }
@@ -208,7 +208,7 @@ const GenericConfigEdit = ({ menuType, ID }: GenericConfigEditProps) => {
 
     reader.onloadend = () => {
       const base64String = reader.result;
-      setImg(typeof base64String === "string" ? base64String : null);
+      setImg(base64String as string);
     };
 
     reader.readAsDataURL(file);
