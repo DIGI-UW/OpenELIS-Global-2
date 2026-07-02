@@ -7,6 +7,7 @@ import {
   ComboBox,
   Select,
   SelectItem,
+  SelectItemGroup,
   Toggle,
   Checkbox,
   Button,
@@ -40,7 +41,11 @@ import { NotificationContext } from "../../../layout/Layout";
  * config copied from another test (OGC-966). Inline-add of a *new* unit (the
  * create half of OGC-963) and sample types (OGC-961) are follow-ups.
  */
-const RESULT_TYPES = ["N", "D", "R"];
+// The platform's full result-type set (TypeOfTestResultServiceImpl.ResultType):
+// three common types, plus four advanced / legacy types kept available so a test
+// saved as M/C/T/A stays editable without its type being downgraded (FR-28/FR-37).
+const PRIMARY_RESULT_TYPES = ["N", "D", "R"];
+const ADVANCED_RESULT_TYPES = ["M", "C", "T", "A"];
 
 const SampleResultsSection = ({ testId }) => {
   const intl = useIntl();
@@ -311,6 +316,12 @@ const SampleResultsSection = ({ testId }) => {
 
   return (
     <Stack gap={6}>
+      <p>
+        <FormattedMessage id="label.testCatalog.sampleResults.purpose" />
+      </p>
+      <p style={{ color: "var(--cds-text-secondary, #525252)" }}>
+        <FormattedMessage id="label.testCatalog.sampleResults.mostTestsOneResult" />
+      </p>
       {components.length === 0 ? (
         <p>
           <FormattedMessage id="label.testCatalog.sampleResults.empty" />
@@ -377,20 +388,44 @@ const SampleResultsSection = ({ testId }) => {
                   labelText={intl.formatMessage({
                     id: "label.testCatalog.sampleResults.resultType",
                   })}
+                  helperText={intl.formatMessage({
+                    id: `label.testCatalog.sampleResults.resultTypeDesc.${c.resultType || "N"}`,
+                  })}
                   value={c.resultType || "N"}
                   onChange={(e) =>
                     patchComponent(ci, { resultType: e.target.value })
                   }
                 >
-                  {RESULT_TYPES.map((t) => (
-                    <SelectItem
-                      key={t}
-                      value={t}
-                      text={intl.formatMessage({
-                        id: `label.testCatalog.sampleResults.resultType.${t}`,
-                      })}
-                    />
-                  ))}
+                  <SelectItemGroup
+                    label={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.resultType.group.primary",
+                    })}
+                  >
+                    {PRIMARY_RESULT_TYPES.map((t) => (
+                      <SelectItem
+                        key={t}
+                        value={t}
+                        text={intl.formatMessage({
+                          id: `label.testCatalog.sampleResults.resultType.${t}`,
+                        })}
+                      />
+                    ))}
+                  </SelectItemGroup>
+                  <SelectItemGroup
+                    label={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.resultType.group.advanced",
+                    })}
+                  >
+                    {ADVANCED_RESULT_TYPES.map((t) => (
+                      <SelectItem
+                        key={t}
+                        value={t}
+                        text={intl.formatMessage({
+                          id: `label.testCatalog.sampleResults.resultType.${t}`,
+                        })}
+                      />
+                    ))}
+                  </SelectItemGroup>
                 </Select>
                 <Select
                   id={`comp-uom-${ci}`}
