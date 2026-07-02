@@ -19,6 +19,8 @@
 #   - autoCreateTestMappings() from profile LOINCs
 #   - autoCreateFromProfile() for FILE analyzers (FileImportConfig)
 #   - registerWithBridge() for TCP analyzers (bridge transport binding)
+# Lifecycle ACTIVE transitions are intentionally not seeded through REST create;
+# readiness must be reached through mapping/QC lifecycle rules.
 #
 # Usage:
 #   ./seed-analyzers.sh                          # clean + seed (default)
@@ -385,7 +387,6 @@ create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"protocolVersion\": \"ASTM_LIS2_A2\",
   \"communicationMode\": \"ANALYZER_INITIATED\",
   \"identifierPattern\": \"GENEXPERT|CEPHEID\",
-  \"status\": \"ACTIVE\",
   \"defaultConfigId\": \"astm/genexpert-astm\"
 }"
 
@@ -399,7 +400,6 @@ create_analyzer "Mindray BC-5380" "{
   \"protocolVersion\": \"HL7_V2_3_1\",
   \"communicationMode\": \"ANALYZER_INITIATED\",
   \"identifierPattern\": \"MINDRAY.*BC.?5380|BC.?5380\",
-  \"status\": \"ACTIVE\",
   \"defaultConfigId\": \"hl7/mindray-bc5380\"
 }"
 
@@ -417,7 +417,6 @@ create_analyzer "Mindray BS-200" "{
   \"protocolVersion\": \"HL7_V2_3_1\",
   \"communicationMode\": \"ANALYZER_INITIATED\",
   \"identifierPattern\": \"MINDRAY.*BS.?200|BS.?200\",
-  \"status\": \"ACTIVE\",
   \"defaultConfigId\": \"hl7/mindray-bs200\"
 }"
 
@@ -426,7 +425,6 @@ create_analyzer "QuantStudio 5" '{
   "name": "QuantStudio 5",
   "analyzerType": "MOLECULAR",
   "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
   "defaultConfigId": "file/quantstudio"
 }'
 
@@ -435,7 +433,6 @@ create_analyzer "QuantStudio 7" '{
   "name": "QuantStudio 7",
   "analyzerType": "MOLECULAR",
   "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
   "defaultConfigId": "file/quantstudio"
 }'
 
@@ -444,7 +441,6 @@ create_analyzer "FluoroCycler XT" '{
   "name": "FluoroCycler XT",
   "analyzerType": "MOLECULAR",
   "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
   "defaultConfigId": "file/fluorocycler-xt"
 }'
 
@@ -453,7 +449,6 @@ create_analyzer "Wondfo Finecare FS-205" '{
   "name": "Wondfo Finecare FS-205",
   "analyzerType": "IMMUNOASSAY",
   "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
   "defaultConfigId": "file/wondfo-csv"
 }'
 
@@ -462,7 +457,6 @@ create_analyzer "Tecan Infinite F50" '{
   "name": "Tecan Infinite F50",
   "analyzerType": "IMMUNOASSAY",
   "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
   "defaultConfigId": "file/tecan-f50"
 }'
 
@@ -471,7 +465,6 @@ create_analyzer "Thermo Multiskan FC" '{
   "name": "Thermo Multiskan FC",
   "analyzerType": "IMMUNOASSAY",
   "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
   "defaultConfigId": "file/multiskan-fc"
 }'
 

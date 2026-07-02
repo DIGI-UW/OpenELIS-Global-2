@@ -48,6 +48,7 @@ public class AnalyzerBridgeSyncService {
         } catch (Exception e) {
             LogEvent.logWarn(CLASS_NAME, "pushAnalyzer",
                     "Bridge push failed for analyzer " + analyzerId + ": " + e.getMessage());
+            LogEvent.logWarn(e);
         }
     }
 }

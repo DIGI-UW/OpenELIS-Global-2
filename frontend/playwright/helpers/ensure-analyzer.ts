@@ -8,7 +8,6 @@ export interface AnalyzerPayload {
   port: number;
   protocolVersion: string;
   identifierPattern: string;
-  status: string;
   defaultConfigId: string;
 }
 
@@ -20,7 +19,6 @@ export const GENEXPERT_DEFAULT_ANALYZER: AnalyzerPayload = {
   port: 9600,
   protocolVersion: "ASTM_LIS2_A2",
   identifierPattern: "GENEXPERT|CEPHEID",
-  status: "ACTIVE",
   defaultConfigId: "astm/genexpert-astm",
 };
 

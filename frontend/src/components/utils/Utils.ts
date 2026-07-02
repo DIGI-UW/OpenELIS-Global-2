@@ -34,7 +34,7 @@ const csrfToken = (): string => localStorage.getItem("CSRF") as string;
  * Get the current locale from localStorage for API requests.
  * Falls back to browser language or 'en' if not set.
  */
-const getAcceptLanguageHeader = (): string => {
+export const getAcceptLanguageHeader = (): string => {
   return localStorage.getItem("locale") || navigator.language || "en";
 };
 

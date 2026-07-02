@@ -267,6 +267,27 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SETUP"));
     }
 
+    @Test
+    public void testUpdateAnalyzer_WithUnchangedActiveStatus_ReturnsUpdated() throws Exception {
+        String uniqueName = "TEST-UnchangedActive-" + System.currentTimeMillis();
+        String updatedName = uniqueName + "-Updated";
+        Integer analyzerId = jdbcTemplate.queryForObject("SELECT nextval('analyzer_seq')", Integer.class);
+        jdbcTemplate.update("INSERT INTO clinlims.analyzer (id, name, is_active, status, last_updated) "
+                + "VALUES (?, ?, true, 'ACTIVE', now())", analyzerId, uniqueName);
+
+        String updateBody = "{\"name\":\"" + updatedName + "\",\"status\":\"ACTIVE\"}";
+
+        mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
+                .content(updateBody)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(String.valueOf(analyzerId)))
+                .andExpect(jsonPath("$.name").value(updatedName)).andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        Map<String, Object> row = jdbcTemplate.queryForMap("SELECT name, status FROM clinlims.analyzer WHERE id = ?",
+                analyzerId);
+        assertEquals(updatedName, row.get("name"));
+        assertEquals("ACTIVE", row.get("status"));
+    }
+
     /**
      * Test: POST /rest/analyzer/analyzers/{id}/delete soft-deletes an analyzer that
      * was just created in the same test.

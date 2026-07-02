@@ -8,6 +8,7 @@
  */
 
 import {
+  getAcceptLanguageHeader,
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../components/utils/Utils";
@@ -182,6 +183,7 @@ export const updateAnalyzer = (
     credentials: "include",
     method: "PUT",
     headers: {
+      "Accept-Language": getAcceptLanguageHeader(),
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF"),
     },
@@ -413,6 +415,7 @@ export const updateMapping = (
     credentials: "include",
     method: "PUT",
     headers: {
+      "Accept-Language": getAcceptLanguageHeader(),
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF"),
     },
@@ -954,6 +957,7 @@ export const updateResultValueMappings = (
     credentials: "include",
     method: "PUT",
     headers: {
+      "Accept-Language": getAcceptLanguageHeader(),
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF"),
     },

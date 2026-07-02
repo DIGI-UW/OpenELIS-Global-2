@@ -495,15 +495,24 @@ public class AnalyzerRestController extends BaseRestController {
             }
             AnalyzerStatus requestedStatus = null;
             if (form.getStatus() != null && !form.getStatus().isBlank()) {
+                AnalyzerStatus submittedStatus;
                 try {
-                    requestedStatus = parseManualStatus(form.getStatus());
+                    submittedStatus = parseStatusValue(form.getStatus());
                 } catch (IllegalArgumentException e) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                             .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
                 }
-                if (!analyzerService.validateStatusTransition(analyzer.getStatus(), requestedStatus)) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper.wrapError(
-                            "Invalid status transition from " + analyzer.getStatus() + " to " + requestedStatus));
+                if (submittedStatus != analyzer.getStatus()) {
+                    try {
+                        requestedStatus = parseManualStatus(form.getStatus());
+                    } catch (IllegalArgumentException e) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+                    }
+                    if (!analyzerService.validateStatusTransition(analyzer.getStatus(), requestedStatus)) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper.wrapError(
+                                "Invalid status transition from " + analyzer.getStatus() + " to " + requestedStatus));
+                    }
                 }
             }
 
@@ -647,17 +656,18 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     private AnalyzerStatus parseManualStatus(String status) {
+        AnalyzerStatus parsedStatus = parseStatusValue(status);
+        if (!MANUALLY_SETTABLE_STATUSES.contains(parsedStatus)) {
+            throw new IllegalArgumentException("Status " + parsedStatus
+                    + " cannot be set manually. Only INACTIVE, SETUP, and VALIDATION are allowed.");
+        }
+        return parsedStatus;
+    }
+
+    private AnalyzerStatus parseStatusValue(String status) {
         try {
-            AnalyzerStatus parsedStatus = AnalyzerStatus.valueOf(status);
-            if (!MANUALLY_SETTABLE_STATUSES.contains(parsedStatus)) {
-                throw new IllegalArgumentException("Status " + parsedStatus
-                        + " cannot be set manually. Only INACTIVE, SETUP, and VALIDATION are allowed.");
-            }
-            return parsedStatus;
+            return AnalyzerStatus.valueOf(status);
         } catch (IllegalArgumentException e) {
-            if (e.getMessage() != null && e.getMessage().contains("cannot be set manually")) {
-                throw e;
-            }
             throw new IllegalArgumentException("Invalid status value: " + status);
         }
     }
