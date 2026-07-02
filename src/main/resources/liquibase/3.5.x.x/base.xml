@@ -153,4 +153,8 @@
   <!-- OGC-949 / OGC-1129: analyzer target→component mapping columns -->
   <include relativeToChangelogFile="true" file="056-analyzer-component-mapping.xml"/>
 
+
+  <!-- OGC-427 / OGC-811 M1: batch workplan foundation -->
+  <include relativeToChangelogFile="true" file="057-batch-workplan-foundation.xml"/>
+
 </databaseChangeLog>

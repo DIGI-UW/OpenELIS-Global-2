@@ -144,6 +144,10 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+        <!-- Batch Workplan foundation (OGC-427 / OGC-811 M1) -->
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplan</class>
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

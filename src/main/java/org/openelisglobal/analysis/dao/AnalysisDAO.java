@@ -220,6 +220,10 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
     List<Analysis> getPageAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber, String upperRangeAccessionNumber, boolean doRange, boolean finished);
 
+    List<Analysis> getAllAnalysisByStatus(List<String> statusIdList, int maxResults) throws LIMSRuntimeException;
+
+    List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
             LocalDate upperDate);
 
