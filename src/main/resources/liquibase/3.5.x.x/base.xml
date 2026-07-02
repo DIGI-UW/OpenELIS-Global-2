@@ -559,4 +559,7 @@
        (Test catalog import v2, OGC-1194). -->
   <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
 
+  <!-- OGC-427 / OGC-811 M1: batch workplan foundation -->
+  <include relativeToChangelogFile="true" file="104-batch-workplan-foundation.xml"/>
+
 </databaseChangeLog>
