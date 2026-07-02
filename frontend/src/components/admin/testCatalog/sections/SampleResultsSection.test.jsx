@@ -46,7 +46,9 @@ const SAMPLE_RESULTS = {
       code: "SYS",
       label: "Systolic",
       displayOrder: 1,
-      resultType: "N",
+      // Select-list type so the options + interpretations editors render (they are
+      // progressively disclosed by type — options show for D/M/C, FR-30).
+      resultType: "D",
       significantDigits: 0,
       defaultResult: "",
       allowMultipleReadings: false,
@@ -123,10 +125,12 @@ beforeEach(() => {
 
 describe("SampleResultsSection", () => {
   it("renders loaded components with their options and interpretations", async () => {
-    renderSection();
+    const { container } = renderSection();
     expect(await screen.findByDisplayValue("SYS")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Systolic")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Male")).toBeInTheDocument(); // option value
+    // The editable option input (scoped so it doesn't collide with the live
+    // preview's dropdown, which also shows the option label).
+    expect(container.querySelector("#opt-value-0-0").value).toBe("Male");
     expect(screen.getByDisplayValue(">140")).toBeInTheDocument(); // interpretation match
     expect(screen.getByDisplayValue("High")).toBeInTheDocument(); // interpretation text
   });
@@ -273,6 +277,21 @@ describe("SampleResultsSection", () => {
   });
 
   it("picks a unit of measure from the master list and persists it", async () => {
+    // Unit of measure only applies to Numeric components (progressive disclosure).
+    const numericTest = {
+      testId: "7",
+      components: [
+        {
+          id: "C1",
+          code: "SYS",
+          label: "Systolic",
+          displayOrder: 1,
+          resultType: "N",
+          options: [],
+          interpretations: [],
+        },
+      ],
+    };
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url === "/rest/test-list") {
         cb([]);
@@ -282,7 +301,7 @@ describe("SampleResultsSection", () => {
           { id: "6", value: "mg/dL" },
         ]);
       } else {
-        cb(clone(SAMPLE_RESULTS));
+        cb(clone(numericTest));
       }
     });
     renderSection();

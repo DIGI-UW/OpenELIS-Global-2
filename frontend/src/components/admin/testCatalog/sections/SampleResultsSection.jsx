@@ -47,6 +47,77 @@ import { NotificationContext } from "../../../layout/Layout";
 const PRIMARY_RESULT_TYPES = ["N", "D", "R"];
 const ADVANCED_RESULT_TYPES = ["M", "C", "T", "A"];
 
+/**
+ * Live result-entry preview (FR-35): renders a read-only representation of the
+ * control a technician will see for this component's configuration, updating as
+ * the admin edits. Disabled so nothing is entered/saved from it.
+ */
+const ResultEntryPreview = ({ component, uoms, intl }) => {
+  const type = component.resultType || "N";
+  const label = component.label || component.code || "";
+  const options = component.options || [];
+  const unit = (uoms.find((u) => u.id === component.uomId) || {}).value || "";
+
+  let control = null;
+  if (type === "N") {
+    control = (
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <TextInput id="preview-n" labelText="" placeholder="0" disabled />
+        {unit && <span>{unit}</span>}
+      </div>
+    );
+  } else if (type === "T") {
+    control = (
+      <TextInput id="preview-t" labelText="" placeholder="1:10" disabled />
+    );
+  } else if (type === "R" || type === "A") {
+    control = <TextInput id="preview-text" labelText="" disabled />;
+  } else if (type === "D") {
+    control = (
+      <Select id="preview-d" labelText="" disabled>
+        {options.map((o, i) => (
+          <SelectItem key={i} value={String(i)} text={o.valueName || o.value} />
+        ))}
+      </Select>
+    );
+  } else if (type === "M" || type === "C") {
+    control = (
+      <div>
+        {options.map((o, i) => (
+          <Checkbox
+            key={i}
+            id={`preview-m-${i}`}
+            labelText={o.valueName || o.value}
+            disabled
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        border: "1px solid var(--cds-border-subtle, #e0e0e0)",
+        padding: "1rem",
+        marginTop: "0.5rem",
+      }}
+      data-testid="result-entry-preview"
+    >
+      <strong>
+        {intl.formatMessage({ id: "label.testCatalog.sampleResults.preview" })}
+      </strong>
+      <p style={{ color: "var(--cds-text-secondary, #525252)" }}>
+        {intl.formatMessage({
+          id: "label.testCatalog.sampleResults.previewHelper",
+        })}
+      </p>
+      {label && <div className="cds--label">{label}</div>}
+      {control}
+    </div>
+  );
+};
+
 const SampleResultsSection = ({ testId }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -427,37 +498,44 @@ const SampleResultsSection = ({ testId }) => {
                     ))}
                   </SelectItemGroup>
                 </Select>
-                <Select
-                  id={`comp-uom-${ci}`}
-                  labelText={intl.formatMessage({
-                    id: "label.testCatalog.sampleResults.uom",
-                  })}
-                  value={c.uomId || ""}
-                  onChange={(e) =>
-                    patchComponent(ci, { uomId: e.target.value })
-                  }
-                >
-                  <SelectItem
-                    value=""
-                    text={intl.formatMessage({
-                      id: "label.testCatalog.sampleResults.uom.none",
-                    })}
-                  />
-                  {uoms.map((u) => (
-                    <SelectItem key={u.id} value={u.id} text={u.value} />
-                  ))}
-                </Select>
-                <TextInput
-                  id={`comp-sigdig-${ci}`}
-                  type="number"
-                  labelText={intl.formatMessage({
-                    id: "label.testCatalog.sampleResults.significantDigits",
-                  })}
-                  value={c.significantDigits ?? ""}
-                  onChange={(e) =>
-                    patchComponent(ci, { significantDigits: e.target.value })
-                  }
-                />
+                {/* Unit + significant digits apply only to Numeric (FR-29). */}
+                {c.resultType === "N" && (
+                  <>
+                    <Select
+                      id={`comp-uom-${ci}`}
+                      labelText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.uom",
+                      })}
+                      value={c.uomId || ""}
+                      onChange={(e) =>
+                        patchComponent(ci, { uomId: e.target.value })
+                      }
+                    >
+                      <SelectItem
+                        value=""
+                        text={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.uom.none",
+                        })}
+                      />
+                      {uoms.map((u) => (
+                        <SelectItem key={u.id} value={u.id} text={u.value} />
+                      ))}
+                    </Select>
+                    <TextInput
+                      id={`comp-sigdig-${ci}`}
+                      type="number"
+                      labelText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.significantDigits",
+                      })}
+                      value={c.significantDigits ?? ""}
+                      onChange={(e) =>
+                        patchComponent(ci, {
+                          significantDigits: e.target.value,
+                        })
+                      }
+                    />
+                  </>
+                )}
                 <TextInput
                   id={`comp-default-${ci}`}
                   labelText={intl.formatMessage({
@@ -479,213 +557,230 @@ const SampleResultsSection = ({ testId }) => {
                     patchComponent(ci, { displayOrder: e.target.value })
                   }
                 />
-                <Toggle
-                  id={`comp-multi-${ci}`}
-                  labelText={intl.formatMessage({
-                    id: "label.testCatalog.sampleResults.allowMultiple",
-                  })}
-                  labelA={intl.formatMessage({ id: "label.no" })}
-                  labelB={intl.formatMessage({ id: "label.yes" })}
-                  toggled={!!c.allowMultipleReadings}
-                  onToggle={(checked) =>
-                    patchComponent(ci, { allowMultipleReadings: checked })
-                  }
-                />
+                {c.resultType === "N" && (
+                  <Toggle
+                    id={`comp-multi-${ci}`}
+                    labelText={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.allowMultiple",
+                    })}
+                    labelA={intl.formatMessage({ id: "label.no" })}
+                    labelB={intl.formatMessage({ id: "label.yes" })}
+                    toggled={!!c.allowMultipleReadings}
+                    onToggle={(checked) =>
+                      patchComponent(ci, { allowMultipleReadings: checked })
+                    }
+                  />
+                )}
 
-                {/* Select-list options (OGC-964) */}
-                <h6>
-                  <FormattedMessage id="label.testCatalog.sampleResults.options" />
-                </h6>
-                <Table size="sm">
-                  <TableHead>
-                    <TableRow>
-                      <TableHeader>
-                        <FormattedMessage id="label.testCatalog.sampleResults.option.value" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                      </TableHeader>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(c.options || []).map((o, oi) => (
-                      <TableRow key={o.id || `opt-${oi}`}>
-                        <TableCell>
-                          {o.valueName ? (
-                            // Dictionary-backed option: show the entry name, not the
-                            // raw dictionary id stored in `value`.
-                            o.valueName
-                          ) : (
-                            <TextInput
-                              id={`opt-value-${ci}-${oi}`}
-                              labelText=""
-                              value={o.value || ""}
-                              onChange={(e) =>
-                                patchChild(ci, "options", oi, {
-                                  value: e.target.value,
-                                })
-                              }
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <TextInput
-                            id={`opt-order-${ci}-${oi}`}
-                            type="number"
-                            labelText=""
-                            value={o.sortOrder ?? ""}
-                            onChange={(e) =>
-                              patchChild(ci, "options", oi, {
-                                sortOrder: e.target.value,
-                              })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Checkbox
-                            id={`opt-normal-${ci}-${oi}`}
-                            labelText=""
-                            checked={!!o.normal}
-                            onChange={(_e, { checked }) =>
-                              patchChild(ci, "options", oi, { normal: checked })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            hasIconOnly
-                            renderIcon={TrashCan}
-                            iconDescription={intl.formatMessage({
-                              id: "label.testCatalog.sampleResults.removeOption",
-                            })}
-                            onClick={() => removeChild(ci, "options", oi)}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <ComboBox
-                  key={`opt-add-${ci}-${optionComboReset[ci] || 0}`}
-                  id={`opt-add-${ci}`}
-                  titleText={intl.formatMessage({
-                    id: "label.testCatalog.sampleResults.addOption",
-                  })}
-                  placeholder={intl.formatMessage({
-                    id: "label.testCatalog.sampleResults.searchDictionary",
-                  })}
-                  items={optionSearch[ci] || []}
-                  itemToString={(item) => (item ? item.name : "")}
-                  onInputChange={(text) => searchDictionary(ci, text)}
-                  onChange={({ selectedItem }) =>
-                    addDictionaryOption(ci, selectedItem)
-                  }
-                />
+                {/* Live result-entry preview (FR-35): the control a technician
+                    will see for this component's type. Read-only. */}
+                <ResultEntryPreview component={c} uoms={uoms} intl={intl} />
 
-                {/* Interpretations (OGC-965) */}
-                <h6>
-                  <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
-                </h6>
-                <Table size="sm">
-                  <TableHead>
-                    <TableRow>
-                      <TableHeader>
-                        <FormattedMessage id="label.testCatalog.sampleResults.interp.valueMatch" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="label.testCatalog.sampleResults.interp.text" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="label.testCatalog.sampleResults.interp.severity" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                      </TableHeader>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(c.interpretations || []).map((it, ii) => (
-                      <TableRow key={it.id || `int-${ii}`}>
-                        <TableCell>
-                          <TextInput
-                            id={`int-match-${ci}-${ii}`}
-                            labelText=""
-                            value={it.valueMatch || ""}
-                            onChange={(e) =>
-                              patchChild(ci, "interpretations", ii, {
-                                valueMatch: e.target.value,
-                              })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <TextInput
-                            id={`int-text-${ci}-${ii}`}
-                            labelText=""
-                            value={it.text || ""}
-                            onChange={(e) =>
-                              patchChild(ci, "interpretations", ii, {
-                                text: e.target.value,
-                              })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            id={`int-sev-${ci}-${ii}`}
-                            labelText=""
-                            value={it.severity || "NORMAL"}
-                            onChange={(e) =>
-                              patchChild(ci, "interpretations", ii, {
-                                severity: e.target.value,
-                              })
-                            }
-                          >
-                            {["NORMAL", "ABNORMAL", "CRITICAL"].map((s) => (
-                              <SelectItem
-                                key={s}
-                                value={s}
-                                text={intl.formatMessage({
-                                  id: `label.testCatalog.sampleResults.severity.${s}`,
-                                })}
+                {/* Select-list options apply only to select-list types (FR-30). */}
+                {["D", "M", "C"].includes(c.resultType) && (
+                  <>
+                    {/* Select-list options (OGC-964) */}
+                    <h6>
+                      <FormattedMessage id="label.testCatalog.sampleResults.options" />
+                    </h6>
+                    <Table size="sm">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>
+                            <FormattedMessage id="label.testCatalog.sampleResults.option.value" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                          </TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {(c.options || []).map((o, oi) => (
+                          <TableRow key={o.id || `opt-${oi}`}>
+                            <TableCell>
+                              {o.valueName ? (
+                                // Dictionary-backed option: show the entry name, not the
+                                // raw dictionary id stored in `value`.
+                                o.valueName
+                              ) : (
+                                <TextInput
+                                  id={`opt-value-${ci}-${oi}`}
+                                  labelText=""
+                                  value={o.value || ""}
+                                  onChange={(e) =>
+                                    patchChild(ci, "options", oi, {
+                                      value: e.target.value,
+                                    })
+                                  }
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <TextInput
+                                id={`opt-order-${ci}-${oi}`}
+                                type="number"
+                                labelText=""
+                                value={o.sortOrder ?? ""}
+                                onChange={(e) =>
+                                  patchChild(ci, "options", oi, {
+                                    sortOrder: e.target.value,
+                                  })
+                                }
                               />
-                            ))}
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            hasIconOnly
-                            renderIcon={TrashCan}
-                            iconDescription={intl.formatMessage({
-                              id: "label.testCatalog.sampleResults.removeInterpretation",
-                            })}
-                            onClick={() =>
-                              removeChild(ci, "interpretations", ii)
-                            }
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  renderIcon={Add}
-                  onClick={() => addInterpretation(ci)}
-                >
-                  <FormattedMessage id="label.testCatalog.sampleResults.addInterpretation" />
-                </Button>
+                            </TableCell>
+                            <TableCell>
+                              <Checkbox
+                                id={`opt-normal-${ci}-${oi}`}
+                                labelText=""
+                                checked={!!o.normal}
+                                onChange={(_e, { checked }) =>
+                                  patchChild(ci, "options", oi, {
+                                    normal: checked,
+                                  })
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                hasIconOnly
+                                renderIcon={TrashCan}
+                                iconDescription={intl.formatMessage({
+                                  id: "label.testCatalog.sampleResults.removeOption",
+                                })}
+                                onClick={() => removeChild(ci, "options", oi)}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <ComboBox
+                      key={`opt-add-${ci}-${optionComboReset[ci] || 0}`}
+                      id={`opt-add-${ci}`}
+                      titleText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.addOption",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.searchDictionary",
+                      })}
+                      items={optionSearch[ci] || []}
+                      itemToString={(item) => (item ? item.name : "")}
+                      onInputChange={(text) => searchDictionary(ci, text)}
+                      onChange={({ selectedItem }) =>
+                        addDictionaryOption(ci, selectedItem)
+                      }
+                    />
+                  </>
+                )}
+
+                {/* Interpretations apply to Numeric & select-list types (FR-32). */}
+                {["N", "D", "M", "C"].includes(c.resultType) && (
+                  <>
+                    <h6>
+                      <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
+                    </h6>
+                    <Table size="sm">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>
+                            <FormattedMessage id="label.testCatalog.sampleResults.interp.valueMatch" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="label.testCatalog.sampleResults.interp.text" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="label.testCatalog.sampleResults.interp.severity" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                          </TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {(c.interpretations || []).map((it, ii) => (
+                          <TableRow key={it.id || `int-${ii}`}>
+                            <TableCell>
+                              <TextInput
+                                id={`int-match-${ci}-${ii}`}
+                                labelText=""
+                                value={it.valueMatch || ""}
+                                onChange={(e) =>
+                                  patchChild(ci, "interpretations", ii, {
+                                    valueMatch: e.target.value,
+                                  })
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <TextInput
+                                id={`int-text-${ci}-${ii}`}
+                                labelText=""
+                                value={it.text || ""}
+                                onChange={(e) =>
+                                  patchChild(ci, "interpretations", ii, {
+                                    text: e.target.value,
+                                  })
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                id={`int-sev-${ci}-${ii}`}
+                                labelText=""
+                                value={it.severity || "NORMAL"}
+                                onChange={(e) =>
+                                  patchChild(ci, "interpretations", ii, {
+                                    severity: e.target.value,
+                                  })
+                                }
+                              >
+                                {["NORMAL", "ABNORMAL", "CRITICAL"].map((s) => (
+                                  <SelectItem
+                                    key={s}
+                                    value={s}
+                                    text={intl.formatMessage({
+                                      id: `label.testCatalog.sampleResults.severity.${s}`,
+                                    })}
+                                  />
+                                ))}
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                hasIconOnly
+                                renderIcon={TrashCan}
+                                iconDescription={intl.formatMessage({
+                                  id: "label.testCatalog.sampleResults.removeInterpretation",
+                                })}
+                                onClick={() =>
+                                  removeChild(ci, "interpretations", ii)
+                                }
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      renderIcon={Add}
+                      onClick={() => addInterpretation(ci)}
+                    >
+                      <FormattedMessage id="label.testCatalog.sampleResults.addInterpretation" />
+                    </Button>
+                  </>
+                )}
 
                 <div>
                   <Button

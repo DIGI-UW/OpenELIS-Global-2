@@ -4305,6 +4305,8 @@
   "label.testCatalog.sampleResults.resultTypeDesc.C": "Grouped options; select multiple groups.",
   "label.testCatalog.sampleResults.resultTypeDesc.T": "A dilution ratio such as 1:10 or 1:20 (common in serology).",
   "label.testCatalog.sampleResults.resultTypeDesc.A": "Validated alphanumeric text (a code or short coded value).",
+  "label.testCatalog.sampleResults.preview": "Result entry preview",
+  "label.testCatalog.sampleResults.previewHelper": "This is what a technician will see when entering this result.",
   "label.testCatalog.sampleResults.purpose": "Define what a technician records for this test and how results are interpreted.",
   "label.testCatalog.sampleResults.mostTestsOneResult": "Most tests record one result. Add a component only if this test produces several values (e.g. a differential).",
   "label.testCatalog.sampleResults.displayOrder": "Display order",
