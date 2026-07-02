@@ -297,10 +297,31 @@ const SampleResultsSection = ({ testId }) => {
     v === "" || v === null || v === undefined ? null : Number(v);
 
   const handleSave = () => {
+    // Every component needs a label (FR-29); the code isn't a separate user field,
+    // so default it to the label when left blank. Guide the user with a clear
+    // message instead of surfacing the backend's 422.
+    const normalized = components.map((c) => {
+      const label = (c.label || "").trim();
+      const code = (c.code || "").trim() || label;
+      return { ...c, label, code };
+    });
+    if (normalized.some((c) => !c.label)) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage({
+          id: "label.testCatalog.sampleResults.labelRequired",
+        }),
+      });
+      return;
+    }
     setSaving(true);
     const payload = {
       testId,
-      components: components.map((c) => ({
+      components: normalized.map((c) => ({
         ...c,
         displayOrder: toInt(c.displayOrder),
         significantDigits: toInt(c.significantDigits),

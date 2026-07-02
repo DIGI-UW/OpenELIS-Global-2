@@ -184,13 +184,20 @@ describe("SampleResultsSection", () => {
   });
 
   it("adds a component and includes it in the saved payload", async () => {
-    renderSection();
+    const { container } = renderSection();
     await screen.findByDisplayValue("SYS");
 
     fireEvent.click(screen.getByTestId("add-component"));
+    // A component needs a label to save (code defaults to the label).
+    fireEvent.change(container.querySelector("#comp-label-1"), {
+      target: { value: "Diastolic" },
+    });
     fireEvent.click(saveButton());
 
-    expect(savedPayload().components).toHaveLength(2);
+    const components = savedPayload().components;
+    expect(components).toHaveLength(2);
+    // Code defaults to the label when left blank.
+    expect(components[1].code).toBe("Diastolic");
   });
 
   it("adds a dictionary option via the search box and includes it in the payload", async () => {

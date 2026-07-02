@@ -127,9 +127,22 @@ const BasicInfoSection = ({ testId }) => {
     }
     setSaving(true);
     setCodeError(false);
+    // The create endpoint expects `amr` (not `antimicrobialResistance`); map the
+    // form's field names to the request body.
+    const payload = {
+      name: createForm.name,
+      reportingName: createForm.reportingName,
+      code: createForm.code,
+      labUnitId: createForm.labUnitId,
+      sampleTypeId: createForm.sampleTypeId,
+      domain: createForm.domain,
+      amr: createForm.antimicrobialResistance,
+      orderable: createForm.orderable,
+      description: createForm.description,
+    };
     postToOpenElisServerFullResponse(
       "/rest/test-catalog/tests",
-      JSON.stringify(createForm),
+      JSON.stringify(payload),
       (response) => {
         setSaving(false);
         if (response && response.status === 201) {
