@@ -797,8 +797,15 @@ public class TestCatalogEditorRestController {
                 return ResponseEntity.unprocessableEntity().build();
             }
         }
+        resultLimitService.saveRangesForTest(testId, toResultLimits(body.ranges),
+                ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toRanges(testId));
+    }
+
+    /** Maps range DTOs to ResultLimits (shared by single-test + group saves). */
+    private List<ResultLimit> toResultLimits(List<RangeDto> ranges) {
         List<ResultLimit> desired = new ArrayList<>();
-        for (RangeDto r : body.ranges) {
+        for (RangeDto r : ranges) {
             ResultLimit limit = new ResultLimit();
             if (!isBlank(r.id)) {
                 limit.setId(r.id);
@@ -815,8 +822,92 @@ public class TestCatalogEditorRestController {
             // whatever the existing row already had (see saveRangesForTest).
             desired.add(limit);
         }
-        resultLimitService.saveRangesForTest(testId, desired, ControllerUtills.getSysUserId(request));
-        return ResponseEntity.ok(toRanges(testId));
+        return desired;
+    }
+
+    // ── Edit related tests together (OGC-1112 FR-7..14) ───────────────────────
+    // A "group" is defined by the admin's selection (comma-separated ids in the
+    // URL) — no stored family entity. Identity + LOINC stay per test (FR-12);
+    // shared config (here: Ranges) is written to every selected test (FR-11).
+
+    public static class GroupTestSummary {
+        public String testId;
+        public String name;
+        public String code;
+        public String sampleType;
+        public String loinc;
+        public boolean active;
+    }
+
+    @GetMapping(value = "/group/summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<GroupTestSummary> groupSummary(@RequestParam String ids) {
+        List<GroupTestSummary> out = new ArrayList<>();
+        for (String rawId : ids.split(",")) {
+            String id = rawId.trim();
+            if (id.isEmpty()) {
+                continue;
+            }
+            Test test = testService.getTestById(id);
+            if (test == null) {
+                continue;
+            }
+            GroupTestSummary summary = new GroupTestSummary();
+            summary.testId = test.getId();
+            summary.name = TestServiceImpl.getLocalizedTestNameWithType(test);
+            summary.code = test.getLocalCode();
+            summary.loinc = test.getLoinc();
+            summary.active = test.isActive();
+            TypeOfSample sampleTypeOfTest = testService.getTypeOfSample(test);
+            summary.sampleType = sampleTypeOfTest != null ? sampleTypeOfTest.getLocalizedName() : null;
+            out.add(summary);
+        }
+        return out;
+    }
+
+    public static class GroupRangesUpdate {
+        public List<String> testIds = new ArrayList<>();
+        public List<RangeDto> ranges = new ArrayList<>();
+    }
+
+    @PutMapping(value = "/group/ranges", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> saveGroupRanges(@RequestBody GroupRangesUpdate body, HttpServletRequest request) {
+        if (body == null || body.testIds == null || body.testIds.isEmpty()) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        for (RangeDto r : body.ranges) {
+            if (r.gender != null && !r.gender.isBlank() && !RANGE_GENDERS.contains(r.gender)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            double min = r.minAge != null ? r.minAge : 0d;
+            double max = r.maxAge != null ? r.maxAge : Double.POSITIVE_INFINITY;
+            if (min < 0d || max <= min) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+        }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        for (String testId : body.testIds) {
+            Test test = testService.getTestById(testId);
+            if (test == null) {
+                continue;
+            }
+            // New rows per test: the ids in the shared set belong to no single test,
+            // so drop them and let each test insert its own (FR-11 per-test write).
+            List<RangeDto> perTest = new ArrayList<>();
+            for (RangeDto r : body.ranges) {
+                RangeDto copy = new RangeDto();
+                copy.componentId = r.componentId;
+                copy.gender = r.gender;
+                copy.minAge = r.minAge;
+                copy.maxAge = r.maxAge;
+                copy.lowNormal = r.lowNormal;
+                copy.highNormal = r.highNormal;
+                copy.lowCritical = r.lowCritical;
+                copy.highCritical = r.highCritical;
+                perTest.add(copy);
+            }
+            resultLimitService.saveRangesForTest(testId, toResultLimits(perTest), sysUserId);
+        }
+        return ResponseEntity.ok().build();
     }
 
     private RangesResponse toRanges(String testId) {

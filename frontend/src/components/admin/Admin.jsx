@@ -27,6 +27,7 @@ import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
 import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
+import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
@@ -89,6 +90,10 @@ function Admin() {
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
+      <Route
+        path={`${path}/TestCatalogEditor/group/:ids/:section?`}
+        component={CombinedTestEditor}
+      />
       <Route
         path={`${path}/TestCatalogEditor/:testId?/:section?`}
         component={TestCatalogEditor}
