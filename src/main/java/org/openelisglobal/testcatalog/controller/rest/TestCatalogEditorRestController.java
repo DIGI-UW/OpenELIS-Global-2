@@ -21,10 +21,13 @@ import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
+import org.openelisglobal.testcatalog.service.TestCatalogCreationService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
@@ -111,6 +114,14 @@ public class TestCatalogEditorRestController {
     // options.
     @Autowired(required = false)
     private DictionaryService dictionaryService;
+
+    // Field-injected (optional) for the create-in-place flow (FR-2) and the Lab
+    // Unit picker; keeps the existing test constructor unchanged.
+    @Autowired(required = false)
+    private TestCatalogCreationService testCatalogCreationService;
+
+    @Autowired(required = false)
+    private TestSectionService testSectionService;
 
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
@@ -240,6 +251,80 @@ public class TestCatalogEditorRestController {
         public List<String> applicableSections;
     }
 
+    // ── Create a new test (OGC-1112 FR-2..4) ──────────────────────────────────
+
+    /** A selectable Lab Unit (test_section) for the create form. */
+    public static class LabUnitOption {
+        public String id;
+        public String name;
+    }
+
+    @GetMapping(value = "/lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<LabUnitOption> listLabUnits() {
+        List<LabUnitOption> options = new ArrayList<>();
+        if (testSectionService == null) {
+            return options;
+        }
+        for (TestSection section : testSectionService.getAllTestSections()) {
+            LabUnitOption option = new LabUnitOption();
+            option.id = section.getId();
+            option.name = section.getLocalizedName();
+            options.add(option);
+        }
+        options.sort((a, b) -> {
+            String an = a.name == null ? "" : a.name;
+            String bn = b.name == null ? "" : b.name;
+            return an.compareToIgnoreCase(bn);
+        });
+        return options;
+    }
+
+    /** Create-in-place request body (FR-2). */
+    public static class CreateTestRequest {
+        public String name;
+        public String reportingName;
+        public String code;
+        public String labUnitId;
+        public String sampleTypeId;
+        public String domain;
+        public Boolean amr;
+        public Boolean orderable;
+        public String description;
+    }
+
+    public static class CreatedTest {
+        public String testId;
+    }
+
+    @PostMapping(value = "/tests", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CreatedTest> createTest(@RequestBody CreateTestRequest body, HttpServletRequest request) {
+        if (testCatalogCreationService == null) {
+            return ResponseEntity.status(503).build();
+        }
+        if (body == null || isBlank(body.name) || isBlank(body.reportingName) || isBlank(body.code)
+                || isBlank(body.domain) || !DOMAINS.contains(body.domain) || isBlank(body.sampleTypeId)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        // Code uniqueness (FR-4) → 409 so the UI can flag the field.
+        if (testCatalogCreationService.codeInUse(body.code)) {
+            return ResponseEntity.status(409).build();
+        }
+        TestCatalogCreationService.CreateTestParams params = new TestCatalogCreationService.CreateTestParams();
+        params.name = body.name;
+        params.reportingName = body.reportingName;
+        params.code = body.code;
+        params.labUnitId = body.labUnitId;
+        params.sampleTypeId = body.sampleTypeId;
+        params.domain = body.domain;
+        params.amr = body.amr;
+        params.orderable = body.orderable;
+        params.description = body.description;
+        String newId = testCatalogCreationService.createInactiveTest(params, ControllerUtills.getSysUserId(request));
+        CreatedTest created = new CreatedTest();
+        created.testId = newId;
+        return ResponseEntity.status(201).body(created);
+    }
+
     @GetMapping(value = "/tests/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EditorEnvelope> getEditorEnvelope(@PathVariable String testId) {
         Test test = testService.getTestById(testId);
@@ -330,11 +415,17 @@ public class TestCatalogEditorRestController {
         if (body.domain != null && !DOMAINS.contains(body.domain)) {
             return ResponseEntity.unprocessableEntity().build();
         }
-        // Name/code/description are not editable here (deferred to OGC-950) — reject
-        // an attempt to change them rather than silently dropping the edit.
-        if (changesImmutableField(body.name, test.getName()) || changesImmutableField(body.code, test.getLocalCode())
-                || changesImmutableField(body.description, test.getDescription())) {
+        // The display name is localized — it is edited in the Localization section
+        // (which owns the per-locale + English values), so it stays immutable here.
+        // Code and description ARE editable here now (OGC-1112 dependency 8).
+        if (changesImmutableField(body.name, test.getName())) {
             return ResponseEntity.unprocessableEntity().build();
+        }
+        if (body.code != null && !body.code.isBlank()) {
+            test.setLocalCode(body.code);
+        }
+        if (body.description != null) {
+            test.setDescription(body.description);
         }
         // Boxed flags: apply only what the caller actually sent, so a partial PUT
         // can't silently deactivate / clear AMR / un-orderable a test.
