@@ -47,6 +47,11 @@ import { NotificationContext } from "../../../layout/Layout";
 const PRIMARY_RESULT_TYPES = ["N", "D", "R"];
 const ADVANCED_RESULT_TYPES = ["M", "C", "T", "A"];
 
+// A single component renders as one flat block (no accordion chrome); 2+
+// components render as accordion panels (FR-34). PlainPanel is the flat wrapper —
+// it ignores the accordion-only `open`/`title` props.
+const PlainPanel = ({ children }) => <div>{children}</div>;
+
 /**
  * Live result-entry preview (FR-35): renders a read-only representation of the
  * control a technician will see for this component's configuration, updating as
@@ -385,6 +390,11 @@ const SampleResultsSection = ({ testId }) => {
     );
   }
 
+  // One component → flat; several → accordion panels (FR-34).
+  const multipleComponents = components.length > 1;
+  const ListWrapper = multipleComponents ? Accordion : React.Fragment;
+  const ItemWrapper = multipleComponents ? AccordionItem : PlainPanel;
+
   return (
     <Stack gap={6}>
       <p>
@@ -398,9 +408,9 @@ const SampleResultsSection = ({ testId }) => {
           <FormattedMessage id="label.testCatalog.sampleResults.empty" />
         </p>
       ) : (
-        <Accordion>
+        <ListWrapper>
           {components.map((c, ci) => (
-            <AccordionItem
+            <ItemWrapper
               key={c.id || `new-${ci}`}
               open
               title={
@@ -790,9 +800,9 @@ const SampleResultsSection = ({ testId }) => {
                   </Button>
                 </div>
               </Stack>
-            </AccordionItem>
+            </ItemWrapper>
           ))}
-        </Accordion>
+        </ListWrapper>
       )}
 
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
