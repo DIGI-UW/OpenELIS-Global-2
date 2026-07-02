@@ -13,7 +13,7 @@ import {
   Loading,
   InlineNotification,
 } from "@carbon/react";
-import { Add, TrashCan } from "@carbon/icons-react";
+import { Add, TrashCan, View, ArrowUp, ArrowDown } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -52,6 +52,35 @@ const PanelsSection = ({ testId }) => {
   const [newPanelName, setNewPanelName] = useState("");
   const [creating, setCreating] = useState(false);
   const [comboKey, setComboKey] = useState(0);
+  // FR-42: show the panel's other tests for context when repositioning.
+  const [contextPanelId, setContextPanelId] = useState(null);
+  const [contextTests, setContextTests] = useState([]);
+
+  const toggleContext = (panelId) => {
+    if (contextPanelId === panelId) {
+      setContextPanelId(null);
+      setContextTests([]);
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/test-catalog/panels/${panelId}/test-order`,
+      (res) => {
+        setContextTests(res && Array.isArray(res.tests) ? res.tests : []);
+        setContextPanelId(panelId);
+      },
+    );
+  };
+
+  const nudgePosition = (panelId, delta) =>
+    setMemberships((prev) =>
+      prev.map((m) => {
+        if (m.panelId !== panelId) {
+          return m;
+        }
+        const current = toInt(m.position) || 0;
+        return { ...m, position: Math.max(1, current + delta) };
+      }),
+    );
 
   useEffect(() => {
     if (!testId) {
@@ -263,6 +292,36 @@ const PanelsSection = ({ testId }) => {
                     kind="ghost"
                     size="sm"
                     hasIconOnly
+                    renderIcon={ArrowUp}
+                    iconDescription={intl.formatMessage({
+                      id: "label.testCatalog.panels.moveUp",
+                    })}
+                    onClick={() => nudgePosition(m.panelId, -1)}
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
+                    renderIcon={ArrowDown}
+                    iconDescription={intl.formatMessage({
+                      id: "label.testCatalog.panels.moveDown",
+                    })}
+                    onClick={() => nudgePosition(m.panelId, 1)}
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
+                    renderIcon={View}
+                    iconDescription={intl.formatMessage({
+                      id: "label.testCatalog.panels.viewOrder",
+                    })}
+                    onClick={() => toggleContext(m.panelId)}
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
                     renderIcon={TrashCan}
                     iconDescription={intl.formatMessage({
                       id: "label.testCatalog.panels.remove",
@@ -272,6 +331,30 @@ const PanelsSection = ({ testId }) => {
                 </TableCell>
               </TableRow>
             ))}
+            {contextPanelId &&
+              contextTests.length > 0 &&
+              memberships.some((m) => m.panelId === contextPanelId) && (
+                <TableRow>
+                  <TableCell colSpan={3}>
+                    <strong>
+                      <FormattedMessage id="label.testCatalog.panels.orderContext" />
+                    </strong>
+                    <ol>
+                      {contextTests.map((t) => (
+                        <li
+                          key={t.testId}
+                          style={{
+                            fontWeight: t.testId === testId ? "bold" : "normal",
+                          }}
+                        >
+                          {t.testName || t.testId}
+                          {t.testId === testId && " ←"}
+                        </li>
+                      ))}
+                    </ol>
+                  </TableCell>
+                </TableRow>
+              )}
           </TableBody>
         </Table>
       )}
