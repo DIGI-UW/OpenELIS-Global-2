@@ -90,6 +90,27 @@
   margin-bottom: 1rem;
 }
 
+/* Date-range: the two inputs default to a fixed 200px (via an unclassed wrapper
+   span + input max-width) and overflow/overlap inside the narrow filter column.
+   Let the container, wrapper, span and input all fill the column, and add a gap. */
+.reference-lab-results__filters .cds--date-picker--range {
+  gap: 0.5rem;
+}
+.reference-lab-results__filters .cds--date-picker--range .cds--date-picker-container {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.reference-lab-results__filters .cds--date-picker--range .cds--date-picker-input__wrapper,
+.reference-lab-results__filters .cds--date-picker--range .cds--date-picker-input__wrapper > span {
+  width: 100%;
+  min-width: 0;
+}
+.reference-lab-results__filters .cds--date-picker--range .cds--date-picker__input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .reference-lab-results__clear {
   padding-top: 1.5rem;
 }
@@ -130,6 +151,12 @@
   margin-top: 1rem;
 }
 
+.reference-lab-results__expand-hint {
+  font-size: 0.875rem;
+  color: #525252;
+  margin: 0 0 0.5rem 0;
+}
+
 .reference-lab-results__detail-row {
   display: flex;
   justify-content: space-between;
@@ -164,4 +191,64 @@
   .reference-lab-results__filters .cds--date-picker {
     width: 100%;
   }
+}
+
+/* OGC-802: returned-view result cards + summary/actions cells */
+.reference-lab-results__result-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.reference-lab-results__result-card {
+  border: 1px solid #e0e0e0;
+  border-left: 3px solid #0f62fe;
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  max-width: 22rem;
+}
+
+.reference-lab-results__result-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.reference-lab-results__result-test {
+  font-weight: 600;
+}
+
+.reference-lab-results__result-value {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin: 0.25rem 0;
+}
+
+.reference-lab-results__result-range,
+.reference-lab-results__result-note {
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+.reference-lab-results__result-note {
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+.reference-lab-results__result-entry-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+}
+
+.reference-lab-results__row-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.reference-lab-results__summary-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
 }

@@ -18,6 +18,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkFlowServiceImpl;
 import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkFlowServiceImpl.ReferralResultsImportObjects;
+import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.referral.dao.ReferralStatusHistoryDAO;
 import org.openelisglobal.referral.dto.ReferenceLabReferralDTO;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
@@ -29,6 +30,7 @@ import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -156,6 +158,90 @@ public class ReferenceLabResultsMarkLostTest extends BaseWebContextSensitiveTest
         Assert.assertTrue(
                 "FhirReferralService must receive a publish invocation carrying the lost reason so it can land in Task.note",
                 fhirCalledWithReason);
+    }
+
+    @Test
+    public void markReferralAsLost_bestEffortFhirFailureStillCommitsLocalLost() throws Exception {
+        // Symmetric to the reject best-effort test: an unchecked RuntimeException
+        // out of the FHIR publish (unreachable store / HTTP 500) must not roll back
+        // the local lost-flag write or the linked-analysis cancellation.
+        Analysis preLost = analysisService.get(LINKED_ANALYSIS_ID);
+        preLost.setReferredOut(true);
+        preLost.setSysUserId(ACTOR_USER_ID);
+        analysisService.update(preLost);
+        Mockito.doThrow(new RuntimeException("simulated FHIR store outage (HTTP 500)")).when(fhirReferralServiceMock)
+                .publishReferralLost(Mockito.any(Referral.class), Mockito.anyString(), Mockito.anyString());
+
+        // Must NOT propagate — the catch swallows the publish failure.
+        referralService.markReferralAsLost(REFERRAL_ID, REASON, ACTOR_USER_ID);
+
+        Referral fresh = referralService.getReferralById(REFERRAL_ID);
+        Assert.assertEquals("status must persist as CANCELLED despite the FHIR publish failure",
+                ReferralStatus.CANCELLED, fresh.getStatus());
+        Assert.assertTrue("lostStatus must persist despite the FHIR publish failure",
+                Boolean.TRUE.equals(fresh.getLostStatus()));
+        Assert.assertEquals("lost reason must persist despite the FHIR publish failure", REASON, fresh.getLostReason());
+
+        Analysis freshAnalysis = analysisService.get(LINKED_ANALYSIS_ID);
+        String canceledStatusId = statusService.getStatusID(AnalysisStatus.Canceled);
+        Assert.assertEquals("linked analysis must still be cancelled despite the FHIR publish failure",
+                canceledStatusId, freshAnalysis.getStatusId());
+        Assert.assertFalse("referred_out must be cleared despite the FHIR publish failure",
+                freshAnalysis.isReferredOut());
+
+        Mockito.verify(fhirReferralServiceMock).publishReferralLost(Mockito.any(Referral.class), Mockito.anyString(),
+                Mockito.anyString());
+    }
+
+    @Test
+    public void markReferralAsLost_realTransactionalPublishFailureStillCommitsLocalLost() throws Exception {
+        // TRUE regression guard for the rollback-only bug on the lost path. Wires the
+        // REAL @Transactional publish bean (not a proxy-less Mockito mock) and forces
+        // its FHIR-store read to throw, reproducing the production boundary: the
+        // publish runs inside markReferralAsLost's transaction. At REQUIRED propagation
+        // the inner throw marks the SHARED tx rollback-only -> commit fails with
+        // UnexpectedRollbackException (test fails). At REQUIRES_NEW only the inner tx
+        // is poisoned, the caller's catch swallows it, and the local lost write commits
+        // (test passes).
+        Analysis preLost = analysisService.get(LINKED_ANALYSIS_ID);
+        preLost.setReferredOut(true);
+        preLost.setFhirUuid(UUID.randomUUID());
+        preLost.setSysUserId(ACTOR_USER_ID);
+        analysisService.update(preLost);
+
+        Object realTarget = AopTestUtils.getTargetObject(realFhirReferralService);
+        FhirPersistanceService originalPersistence = (FhirPersistanceService) ReflectionTestUtils.getField(realTarget,
+                "fhirPersistanceService");
+        FhirPersistanceService failingPersistence = Mockito.mock(FhirPersistanceService.class);
+        Mockito.when(failingPersistence.getServiceRequestByAnalysisUuid(Mockito.anyString()))
+                .thenThrow(new RuntimeException("simulated FHIR store outage (connection refused)"));
+        ReflectionTestUtils.setField(realTarget, "fhirPersistanceService", failingPersistence);
+
+        ReflectionTestUtils.setField(referralService, "fhirReferralService", realFhirReferralService);
+
+        try {
+            // Must NOT propagate: the real publish throws inside its own REQUIRES_NEW
+            // tx, the caller's catch swallows it, and the outer tx commits cleanly.
+            referralService.markReferralAsLost(REFERRAL_ID, REASON, ACTOR_USER_ID);
+
+            Referral fresh = referralService.getReferralById(REFERRAL_ID);
+            Assert.assertEquals("status must commit as CANCELLED even though the real transactional FHIR publish threw",
+                    ReferralStatus.CANCELLED, fresh.getStatus());
+            Assert.assertTrue("lostStatus must commit despite the publish failure",
+                    Boolean.TRUE.equals(fresh.getLostStatus()));
+            Assert.assertEquals("lost reason must commit despite the publish failure", REASON, fresh.getLostReason());
+
+            Analysis freshAnalysis = analysisService.get(LINKED_ANALYSIS_ID);
+            String canceledStatusId = statusService.getStatusID(AnalysisStatus.Canceled);
+            Assert.assertEquals("linked analysis must commit cancelled despite the publish failure", canceledStatusId,
+                    freshAnalysis.getStatusId());
+            Assert.assertFalse("referred_out must commit cleared despite the publish failure",
+                    freshAnalysis.isReferredOut());
+
+            Mockito.verify(failingPersistence).getServiceRequestByAnalysisUuid(Mockito.anyString());
+        } finally {
+            ReflectionTestUtils.setField(realTarget, "fhirPersistanceService", originalPersistence);
+        }
     }
 
     @Test

@@ -172,6 +172,8 @@ const OrderReferralRequest = ({
             <CustomSelect
               id={"shadowReferredTest_" + id}
               defaultSelect={testValue}
+              value={test.id}
+              disabled={true}
             />
           ),
         };

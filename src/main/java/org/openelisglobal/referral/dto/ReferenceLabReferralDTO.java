@@ -28,6 +28,9 @@ public class ReferenceLabReferralDTO {
     private Long daysTotal;
     private String resultSummary;
     private Boolean manuallyEntered;
+    // OGC-802: result cards read live from DiagnosticReport.Observation for the
+    // Returned view. Null/empty for Outstanding and History.
+    private List<ResultCard> results;
 
     public String getId() {
         return id;
@@ -219,5 +222,72 @@ public class ReferenceLabReferralDTO {
 
     public void setManuallyEntered(Boolean manuallyEntered) {
         this.manuallyEntered = manuallyEntered;
+    }
+
+    public List<ResultCard> getResults() {
+        return results;
+    }
+
+    public void setResults(List<ResultCard> results) {
+        this.results = results;
+    }
+
+    /** One returned result, read from a single DiagnosticReport.Observation. */
+    public static class ResultCard {
+        private String testName;
+        private String value;
+        private String units;
+        private String referenceRange;
+        // Normal / Abnormal / Critical (or null when the peer sent no interpretation)
+        private String interpretation;
+        private String note;
+
+        public String getTestName() {
+            return testName;
+        }
+
+        public void setTestName(String testName) {
+            this.testName = testName;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+
+        public String getUnits() {
+            return units;
+        }
+
+        public void setUnits(String units) {
+            this.units = units;
+        }
+
+        public String getReferenceRange() {
+            return referenceRange;
+        }
+
+        public void setReferenceRange(String referenceRange) {
+            this.referenceRange = referenceRange;
+        }
+
+        public String getInterpretation() {
+            return interpretation;
+        }
+
+        public void setInterpretation(String interpretation) {
+            this.interpretation = interpretation;
+        }
+
+        public String getNote() {
+            return note;
+        }
+
+        public void setNote(String note) {
+            this.note = note;
+        }
     }
 }

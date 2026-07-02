@@ -19,6 +19,10 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
 
     List<Referral> getReferralsBySampleId(String id);
 
+    List<Referral> getReferralsByBoxId(Integer boxId);
+
+    long countReferralsBlockingReconcile(Integer boxId);
+
     List<Referral> getUncanceledOpenReferrals();
 
     List<Referral> getSentReferrals();
@@ -68,6 +72,31 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
      * where the box was dispatched but the sample never reached the reference lab.
      */
     void markReferralAsLost(String referralId, String reason, String actorUserId);
+
+    /**
+     * OGC-803 Accept: acknowledge a returned reference-lab result into the patient
+     * record. The result is already posted (by the inbound FHIR path), so this is a
+     * reconciliation flag — not a re-post. Sets reconciled/at/by, writes a
+     * status-history note row (status stays COMPLETED), and routes the row from
+     * Returned to History. No-op when the referral is missing, not COMPLETED, or
+     * already reconciled.
+     */
+    void markReferralReconciled(String referralId, String actorUserId);
+
+    /**
+     * OGC-804 Reject: terminally reject a returned reference-lab result the lab
+     * declines to reconcile. Transitions COMPLETED -> REJECTED, persists the
+     * reason, closes the originating Analysis to RejectedByReferenceLab, and fires
+     * the recollection notification. Refuses if already reconciled.
+     */
+    void markReferralRejected(String referralId, String reasonCode, String reasonText, String actorUserId);
+
+    /**
+     * OGC-810 Notify reference lab: fire the configurable REFERRAL_NUDGE trigger to
+     * nudge a slow reference lab about an outstanding referral, and record a
+     * REFERRAL_NUDGE_SENT audit note. {@code freeFormMessage} is optional.
+     */
+    void nudgeReferenceLab(String referralId, String freeFormMessage, String actorUserId);
 
     List<ReferralStatusHistory> getSubcontractStatusHistory(String referralId);
 }

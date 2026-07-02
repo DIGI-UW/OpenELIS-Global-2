@@ -49,6 +49,9 @@ public class ShippingBoxRestController extends BaseRestController {
     private ShippingBoxService shippingBoxService;
 
     @Autowired
+    private org.openelisglobal.referral.service.ReferralService referralService;
+
+    @Autowired
     private BoxSampleItemService boxSampleItemService;
 
     @Autowired
@@ -523,11 +526,12 @@ public class ShippingBoxRestController extends BaseRestController {
     @PutMapping("/{id}/state")
     public ResponseEntity<?> changeBoxState(@PathVariable Integer id, @RequestParam String newState,
             HttpServletRequest request) {
+        BoxState state = null;
         try {
             if (newState == null || newState.isBlank()) {
                 return ResponseEntity.badRequest().body("State parameter is required");
             }
-            BoxState state = BoxState.valueOf(newState.toUpperCase());
+            state = BoxState.valueOf(newState.toUpperCase());
             String userIdString = getSysUserId(request);
             Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
             ShippingBox box = shippingBoxService.changeBoxState(id, state, systemUserId);
@@ -537,6 +541,13 @@ public class ShippingBoxRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Invalid state: " + newState);
         } catch (IllegalStateException e) {
+            // OGC-807: the frontend needs the blocking count to render its own i18n copy.
+            if (state == BoxState.RECONCILED) {
+                java.util.Map<String, Object> body = new java.util.HashMap<>();
+                body.put("error", e.getMessage());
+                body.put("blockedReferralCount", referralService.countReferralsBlockingReconcile(id));
+                return ResponseEntity.badRequest().body(body);
+            }
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             LogEvent.logError(e);

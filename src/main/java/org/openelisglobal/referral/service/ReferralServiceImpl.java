@@ -11,6 +11,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Hibernate;
+import org.openelisglobal.alert.valueholder.AlertSeverity;
+import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -70,6 +72,8 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
     private NotificationTriggerDispatcher notificationTriggerDispatcher;
     @Autowired
     private FhirReferralService fhirReferralService;
+    @Autowired
+    private org.openelisglobal.alert.service.AlertService alertService;
 
     ReferralServiceImpl() {
         super(Referral.class);
@@ -112,21 +116,43 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
 
     @Override
     @Transactional(readOnly = true)
+    public List<Referral> getReferralsByBoxId(Integer boxId) {
+        return getBaseObjectDAO().getReferralsByBoxId(boxId);
+    }
+
+    // OGC-807: a referral blocks box reconciliation until it reaches a terminal
+    // state, unless it was marked lost (lost referrals don't gate the box).
+    @Override
+    @Transactional(readOnly = true)
+    public long countReferralsBlockingReconcile(Integer boxId) {
+        return getBaseObjectDAO().getReferralsByBoxId(boxId).stream()
+                .filter(r -> !Boolean.TRUE.equals(r.getLostStatus()))
+                .filter(r -> r.getStatus() == null || !r.getStatus().isTerminal()).count();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Referral> getReferralsByOrganization(String organizationId, Date lowDate, Date highDate) {
         return getBaseObjectDAO().getAllReferralsByOrganization(organizationId, lowDate, highDate);
     }
 
-    @Override
+    // Every post-sent, non-terminal state: the poll must keep watching these for
+    // the
+    // reference lab's completion. Terminal (COMPLETED/REJECTED/CANCELLED) and DRAFT
+    // (not yet sent) are excluded.
     @SuppressWarnings("deprecation")
+    private static final List<ReferralStatus> IN_FLIGHT_STATUSES = Arrays.asList(ReferralStatus.REQUESTED,
+            ReferralStatus.SENT, ReferralStatus.RECEIVED, ReferralStatus.IN_PROGRESS);
+
+    @Override
     public List<Referral> getSentReferrals() {
-        return getBaseObjectDAO().getReferralsByStatus(Arrays.asList(ReferralStatus.REQUESTED, ReferralStatus.SENT));
+        return getBaseObjectDAO().getReferralsByStatus(IN_FLIGHT_STATUSES);
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public List<UUID> getSentReferralUuids() {
-        return getBaseObjectDAO().getReferralsByStatus(Arrays.asList(ReferralStatus.REQUESTED, ReferralStatus.SENT))
-                .stream().map(e -> e.getFhirUuid()).filter(e -> e != null).collect(Collectors.toList());
+        return getSentReferrals().stream().map(e -> e.getFhirUuid()).filter(e -> e != null)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -409,9 +435,13 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         // but doesn't roll back the local lost-flag write.
         Referral fresh = baseObjectDAO.getReferralById(referralId);
         cancelLinkedAnalysis(fresh, actorUserId);
+        // Best-effort: a FHIR-store problem (unreachable store, missing Organization,
+        // HTTP error) must never roll back the local lost-flag write. Catch
+        // RuntimeException too, but ONLY around the publish call — a genuine local-DB
+        // failure elsewhere still propagates.
         try {
             fhirReferralService.publishReferralLost(fresh, reason, actorUserId);
-        } catch (FhirLocalPersistingException e) {
+        } catch (FhirLocalPersistingException | RuntimeException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "markReferralAsLost",
                     "failed to publish FHIR lost notification for referral " + referralId);
             LogEvent.logError(e);
@@ -437,6 +467,197 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         analysis.setReferredOut(false);
         analysis.setSysUserId(actorUserId);
         analysisService.update(analysis);
+    }
+
+    // ---- OGC-803 / OGC-804 reception actions ---------------------------------
+
+    // REQUIRES_NEW so the guard's no-op (wrong source state / already reconciled)
+    // and the reconcile write are isolated from any caller transaction, matching
+    // the auto-trigger transition methods above.
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markReferralReconciled(String referralId, String actorUserId) {
+        Referral referral = baseObjectDAO.getReferralById(referralId);
+        if (referral == null) {
+            throw new IllegalArgumentException("Referral not found: " + referralId);
+        }
+        // Reconcile-ack only applies to a returned (COMPLETED) result that hasn't
+        // already been acknowledged; anything else is a no-op so repeat Accepts and
+        // wrong-state rows don't write spurious history.
+        if (referral.getStatus() != ReferralStatus.COMPLETED || Boolean.TRUE.equals(referral.getReconciled())) {
+            return;
+        }
+        Timestamp now = DateUtil.getNowAsTimestamp();
+        referral.setReconciled(true);
+        referral.setReconciledAt(now);
+        referral.setReconciledBy(actorUserId);
+        referral.setSysUserId(actorUserId);
+        baseObjectDAO.update(referral);
+
+        // Status stays COMPLETED — record the acknowledgment as a same-status note
+        // row so the activity log shows who reconciled it and when. The note carries
+        // the OGC-803 audit payload (REFERRAL_RESULT_RECEIVED): analysisId + source.
+        String analysisId = referral.getAnalysis() != null ? referral.getAnalysis().getId() : null;
+        ReferralStatusHistory history = new ReferralStatusHistory();
+        history.setReferralId(referralId);
+        history.setFromStatus(ReferralStatus.COMPLETED);
+        history.setToStatus(ReferralStatus.COMPLETED);
+        history.setChangedByUserId(actorUserId);
+        history.setChangedAt(now);
+        history.setNotes("REFERRAL_RESULT_RECEIVED {\"analysisId\":" + jsonStr(analysisId) + ",\"source\":\"fhir\"}");
+        history.setSysUserId(actorUserId);
+        statusHistoryDAO.insert(history);
+    }
+
+    @Override
+    @Transactional
+    public void markReferralRejected(String referralId, String reasonCode, String reasonText, String actorUserId) {
+        Referral referral = baseObjectDAO.getReferralById(referralId);
+        if (referral == null) {
+            throw new IllegalArgumentException("Referral not found: " + referralId);
+        }
+        // A reconciled result is already in the patient record — refuse to reject it.
+        if (Boolean.TRUE.equals(referral.getReconciled())) {
+            throw new IllegalStateException("Referral " + referralId + " is already reconciled and cannot be rejected");
+        }
+        // notes column is VARCHAR(500); reasonText itself can be 500 chars (UI cap),
+        // so cap the prefixed note to fit. Prefix carries the OGC-804 audit verb +
+        // reason code (REFERRAL_RESULT_REJECTED); reason text follows.
+        String note = capNote("REFERRAL_RESULT_REJECTED [" + safe(reasonCode) + "] " + safe(reasonText));
+        transition(referralId, ReferralStatus.REJECTED, actorUserId, note, null);
+
+        // transition() no-ops for legacy referrals without a subcontract row; only
+        // run the side effects when the status actually advanced to REJECTED.
+        Referral fresh = baseObjectDAO.getReferralById(referralId);
+        if (fresh == null || fresh.getStatus() != ReferralStatus.REJECTED) {
+            return;
+        }
+        fresh.setRejectReasonCode(reasonCode);
+        fresh.setRejectReasonText(reasonText);
+        fresh.setSysUserId(actorUserId);
+        baseObjectDAO.update(fresh);
+
+        // Close the originating Analysis terminally so the workbench stops surfacing
+        // it, build the recollection notification while associations are attached,
+        // and best-effort-publish the rejection to the receiving lab over FHIR.
+        rejectLinkedAnalysis(fresh, actorUserId);
+        raiseReferralRejectedAlert(fresh, reasonCode, reasonText);
+        fireReferralRejectedAfterCommit(fresh, reasonText, actorUserId);
+        // Best-effort: a FHIR-store problem (unreachable store, missing Organization,
+        // HTTP error) must never roll back the local rejection. Catch RuntimeException
+        // too, but ONLY around the publish call — a genuine local-DB failure elsewhere
+        // still propagates.
+        try {
+            fhirReferralService.publishReferralRejected(fresh, reasonText, actorUserId);
+        } catch (FhirLocalPersistingException | RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "markReferralRejected",
+                    "failed to publish FHIR rejection for referral " + referralId);
+            LogEvent.logError(e);
+        }
+    }
+
+    // OGC-804: raise an in-app Alert for lab-side acknowledgment of the rejection.
+    // Best-effort — an alert failure must never roll back the rejection itself.
+    private void raiseReferralRejectedAlert(Referral referral, String reasonCode, String reasonText) {
+        try {
+            String json = "{\"referralId\":\"" + referral.getId() + "\",\"reasonCode\":" + jsonStr(reasonCode)
+                    + ",\"reasonText\":" + jsonStr(reasonText) + "}";
+            alertService.createAlert(AlertType.REFERRAL_REJECTED, "Referral", Long.valueOf(referral.getId()),
+                    AlertSeverity.CRITICAL, "Reference lab rejected referral " + referral.getId(), json);
+        } catch (RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "raiseReferralRejectedAlert",
+                    "failed to raise rejection alert for referral " + referral.getId());
+            LogEvent.logError(e);
+        }
+    }
+
+    private static String jsonStr(String s) {
+        if (s == null) {
+            return "null";
+        }
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
+    // Clone of cancelLinkedAnalysis targeting the new RejectedByReferenceLab
+    // status.
+    private void rejectLinkedAnalysis(Referral referral, String actorUserId) {
+        Analysis analysis = referral.getAnalysis();
+        if (analysis == null) {
+            return;
+        }
+        String rejectedId = SpringContext.getBean(IStatusService.class)
+                .getStatusID(AnalysisStatus.RejectedByReferenceLab);
+        // Same sentinel handling as cancelLinkedAnalysis — skip rather than write a
+        // non-existent FK when the status isn't seeded (slim test fixtures).
+        if (rejectedId == null || rejectedId.isBlank() || "-1".equals(rejectedId)) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "rejectLinkedAnalysis",
+                    "RejectedByReferenceLab status id not configured (" + rejectedId
+                            + "); skipping analysis rejection for " + analysis.getId());
+            return;
+        }
+        analysis.setStatusId(rejectedId);
+        analysis.setReferredOut(false);
+        analysis.setSysUserId(actorUserId);
+        analysisService.update(analysis);
+    }
+
+    private void fireReferralRejectedAfterCommit(Referral referral, String reasonText, String actorUserId) {
+        NotificationContext context = buildReferralRejectedContext(referral, reasonText, actorUserId);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        notificationTriggerDispatcher.fire(context);
+                    } catch (RuntimeException e) {
+                        LogEvent.logError(ReferralServiceImpl.class.getSimpleName(), "fireReferralRejectedAfterCommit",
+                                "failed to fire REFERRAL_REJECTED_NEEDS_RECOLLECTION for referral " + referral.getId());
+                        LogEvent.logError(e);
+                    }
+                }
+            });
+        } else {
+            notificationTriggerDispatcher.fire(context);
+        }
+    }
+
+    private NotificationContext buildReferralRejectedContext(Referral referral, String reasonText, String actorUserId) {
+        Sample sample = null;
+        if (referral.getAnalysis() != null && referral.getAnalysis().getSampleItem() != null) {
+            sample = referral.getAnalysis().getSampleItem().getSample();
+        }
+        Organization receivingLab = referral.getOrganization();
+        String accession = sample == null ? null : sample.getAccessionNumber();
+        String testName = referral.getAnalysis() == null || referral.getAnalysis().getTest() == null ? null
+                : referral.getAnalysis().getTest().getLocalizedTestName().getLocalizedValue();
+
+        Map<String, String> variables = new LinkedHashMap<>();
+        variables.put("referralId", safe(referral.getId()));
+        variables.put("sampleAccessionNumber", safe(accession));
+        variables.put("testName", safe(testName));
+        variables.put("labName", receivingLab == null ? "" : safe(receivingLab.getOrganizationName()));
+        variables.put("rejectReason", safe(reasonText));
+        variables.put("deepLink", accession == null ? "" : "/result?accessionNumber=" + accession);
+
+        String patientFirst = "";
+        String patientLast = "";
+        if (sample != null) {
+            try {
+                Patient patient = sampleHumanService.getPatientForSample(sample);
+                if (patient != null && patient.getPerson() != null) {
+                    patientFirst = patient.getPerson().getFirstName() == null ? "" : patient.getPerson().getFirstName();
+                    patientLast = patient.getPerson().getLastName() == null ? "" : patient.getPerson().getLastName();
+                }
+            } catch (RuntimeException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "buildReferralRejectedContext",
+                        "could not resolve patient for sample " + sample.getId());
+            }
+        }
+        variables.put("patientFirstName", patientFirst);
+        variables.put("patientLastName", patientLast);
+
+        return new NotificationContext("REFERRAL_REJECTED_NEEDS_RECOLLECTION", referral, sample, receivingLab,
+                actorUserId, variables);
     }
 
     @Override
@@ -539,6 +760,81 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         }
     }
 
+    @Override
+    @Transactional
+    public void nudgeReferenceLab(String referralId, String freeFormMessage, String actorUserId) {
+        Referral referral = baseObjectDAO.getReferralById(referralId);
+        if (referral == null) {
+            throw new IllegalArgumentException("Referral not found: " + referralId);
+        }
+        NotificationContext context = buildReferralNudgeContext(referral, freeFormMessage, actorUserId);
+
+        // REFERRAL_NUDGE_SENT audit note: same-status activity-log row, mirrors the
+        // OGC-803/804 verb-in-notes pattern. targets = the COC contact we nudge.
+        ReferralSubcontract sub = referral.getSubcontract();
+        String targets = sub == null ? "" : (safe(sub.getCocContactEmail()) + "/" + safe(sub.getCocContactPhone()));
+        ReferralStatusHistory history = new ReferralStatusHistory();
+        history.setReferralId(referralId);
+        history.setFromStatus(referral.getStatus());
+        history.setToStatus(referral.getStatus());
+        history.setChangedByUserId(actorUserId);
+        history.setChangedAt(DateUtil.getNowAsTimestamp());
+        history.setNotes(capNote("REFERRAL_NUDGE_SENT {\"targets\":" + jsonStr(targets) + ",\"message\":"
+                + jsonStr(safe(freeFormMessage)) + "}"));
+        history.setSysUserId(actorUserId);
+        statusHistoryDAO.insert(history);
+
+        fireReferralNudgeAfterCommit(referral, context);
+    }
+
+    private NotificationContext buildReferralNudgeContext(Referral referral, String freeFormMessage,
+            String actorUserId) {
+        Sample sample = null;
+        if (referral.getAnalysis() != null && referral.getAnalysis().getSampleItem() != null) {
+            sample = referral.getAnalysis().getSampleItem().getSample();
+        }
+        Organization receivingLab = referral.getOrganization();
+        String accession = sample == null ? null : sample.getAccessionNumber();
+        String testName = referral.getAnalysis() == null || referral.getAnalysis().getTest() == null ? null
+                : referral.getAnalysis().getTest().getLocalizedTestName().getLocalizedValue();
+        long daysOutstanding = referral.getSentDate() == null ? 0
+                : java.time.temporal.ChronoUnit.DAYS.between(referral.getSentDate().toInstant(),
+                        java.time.Instant.now());
+
+        Map<String, String> variables = new LinkedHashMap<>();
+        variables.put("referralId", safe(referral.getId()));
+        variables.put("sampleAccessionNumber", safe(accession));
+        variables.put("labName", receivingLab == null ? "" : safe(receivingLab.getOrganizationName()));
+        variables.put("testName", safe(testName));
+        variables.put("daysOutstanding", String.valueOf(daysOutstanding));
+        variables.put("freeFormMessage", safe(freeFormMessage));
+        // Touch the subcontract's COC fields so they initialize inside this tx; the
+        // recipient resolver reads them on the async dispatch thread.
+        ReferralSubcontract sub = referral.getSubcontract();
+        variables.put("cocContactName", sub == null ? "" : safe(sub.getCocContactName()));
+
+        return new NotificationContext("REFERRAL_NUDGE", referral, sample, receivingLab, actorUserId, variables);
+    }
+
+    private void fireReferralNudgeAfterCommit(Referral referral, NotificationContext context) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        notificationTriggerDispatcher.fire(context);
+                    } catch (RuntimeException e) {
+                        LogEvent.logError(ReferralServiceImpl.class.getSimpleName(), "fireReferralNudgeAfterCommit",
+                                "failed to fire REFERRAL_NUDGE for referral " + referral.getId());
+                        LogEvent.logError(e);
+                    }
+                }
+            });
+        } else {
+            notificationTriggerDispatcher.fire(context);
+        }
+    }
+
     private NotificationContext buildSubcontractDispatchedContext(Referral referral, String actorUserId) {
         Sample sample = null;
         if (referral.getAnalysis() != null && referral.getAnalysis().getSampleItem() != null) {
@@ -595,6 +891,14 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
 
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    // referral_status_history.notes is VARCHAR(500); keep notes within bound.
+    private static String capNote(String note) {
+        if (note == null || note.length() <= 500) {
+            return note;
+        }
+        return note.substring(0, 500);
     }
 
     private String resolveReferredTestsForSample(Sample sample, String fallbackTestName) {

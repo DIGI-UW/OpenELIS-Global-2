@@ -32,6 +32,9 @@ import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.Task;
 import org.hl7.fhir.r4.model.Task.TaskRestrictionComponent;
 import org.hl7.fhir.r4.model.Task.TaskStatus;
+import org.openelisglobal.alert.service.AlertService;
+import org.openelisglobal.alert.valueholder.AlertSeverity;
+import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -62,7 +65,6 @@ import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
-import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.reports.service.DocumentTrackService;
 import org.openelisglobal.reports.service.DocumentTypeService;
 import org.openelisglobal.reports.valueholder.DocumentTrack;
@@ -83,6 +85,7 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -124,6 +127,8 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     private TestService testService;
     @Autowired
     private FhirConfig fhirConfig;
+    @Autowired
+    private AlertService alertService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private String RESULT_TABLE_ID;
@@ -314,13 +319,25 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         fhirPersistanceService.updateFhirResourcesInFhirStore(updateResources);
     }
 
+    // REQUIRES_NEW so a FHIR-store outage that throws here marks ONLY this inner
+    // tx rollback-only — never the caller's transaction that already committed the
+    // local lost-flag write. The caller's catch then actually works (with plain
+    // REQUIRED the exception poisons the shared tx before the caller's catch runs
+    // and commit fails with UnexpectedRollbackException). Re-fetch by id so lazy
+    // associations resolve against this inner session's live persistence context.
     @Override
-    @Transactional
-    public void publishReferralLost(Referral referral, String reason, String actorUserId)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void publishReferralLost(Referral detached, String reason, String actorUserId)
             throws FhirLocalPersistingException {
-        if (referral.getFhirUuid() == null) {
+        if (detached.getFhirUuid() == null) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "publishReferralLost",
-                    "skipping FHIR publish: referral " + referral.getId() + " has no fhir_uuid");
+                    "skipping FHIR publish: referral " + detached.getId() + " has no fhir_uuid");
+            return;
+        }
+        Referral referral = referralService.getReferralById(detached.getId());
+        if (referral == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "publishReferralLost",
+                    "skipping FHIR publish: referral " + detached.getId() + " no longer exists");
             return;
         }
         Analysis analysis = referral.getAnalysis();
@@ -371,6 +388,75 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         fhirPersistanceService.updateFhirResourcesInFhirStore(updateResources);
     }
 
+    // REQUIRES_NEW so a FHIR-store outage that throws here marks ONLY this inner
+    // tx rollback-only — never the caller's transaction that already committed the
+    // local rejection. The caller's catch then actually works (with plain REQUIRED
+    // the exception poisons the shared tx before the caller's catch runs and commit
+    // fails with UnexpectedRollbackException). Re-fetch by id so lazy associations
+    // resolve against this inner session's live persistence context.
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void publishReferralRejected(Referral detached, String reasonText, String actorUserId)
+            throws FhirLocalPersistingException {
+        if (detached.getFhirUuid() == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "publishReferralRejected",
+                    "skipping FHIR publish: referral " + detached.getId() + " has no fhir_uuid");
+            return;
+        }
+        Referral referral = referralService.getReferralById(detached.getId());
+        if (referral == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "publishReferralRejected",
+                    "skipping FHIR publish: referral " + detached.getId() + " no longer exists");
+            return;
+        }
+        Analysis analysis = referral.getAnalysis();
+        if (analysis == null || analysis.getFhirUuid() == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "publishReferralRejected",
+                    "skipping FHIR publish: referral " + referral.getId() + " has no analysis fhir_uuid");
+            return;
+        }
+
+        Map<String, Resource> updateResources = new HashMap<>();
+
+        // ServiceRequest -> REVOKED. Fall back to a bare SR when the store has no
+        // prior copy (env/vector samples where the dispatch path never pushed one).
+        ServiceRequest serviceRequest = fhirPersistanceService
+                .getServiceRequestByAnalysisUuid(analysis.getFhirUuidAsString()).orElseGet(() -> {
+                    ServiceRequest sr = new ServiceRequest();
+                    sr.setId(analysis.getFhirUuidAsString());
+                    return sr;
+                });
+        serviceRequest.setStatus(ServiceRequestStatus.REVOKED);
+        putByTypedId(updateResources, serviceRequest);
+
+        // Task -> REJECTED with statusReason "rejected by reference lab" + note
+        // carrying the user-supplied reason. Built like the lost/dispatch paths.
+        org.openelisglobal.organization.valueholder.Organization referralOrganization = referral.getOrganization();
+        Organization fhirOrg = referralOrganization == null ? null : getFhirOrganization(referralOrganization);
+        Sample sample = analysis.getSampleItem() != null ? analysis.getSampleItem().getSample() : null;
+        org.openelisglobal.patient.valueholder.Patient localPatient = sample == null ? null
+                : sampleHumanService.getPatientForSample(sample);
+        Patient fhirPatient = (localPatient == null) ? null
+                : fhirPersistanceService.getPatientByUuid(localPatient.getFhirUuidAsString()).orElse(null);
+        Provider provider = sample == null ? null : sampleHumanService.getProviderForSample(sample);
+        Optional<Practitioner> requester = Optional.empty();
+        if (provider != null) {
+            requester = Optional.of(fhirTransformService.transformProviderToPractitioner(provider));
+            requester.get().setId(UUID.randomUUID().toString());
+            putByTypedId(updateResources, requester.get());
+        }
+        Task task = createReferralTask(fhirOrg, fhirPatient, serviceRequest, requester, sample);
+        task.setId(referral.getFhirUuidAsString());
+        task.setStatus(TaskStatus.REJECTED);
+        task.setStatusReason(new CodeableConcept().setText("rejected by reference lab"));
+        if (reasonText != null && !reasonText.isBlank()) {
+            task.addNote(new Annotation().setText(reasonText));
+        }
+        putByTypedId(updateResources, task);
+
+        fhirPersistanceService.updateFhirResourcesInFhirStore(updateResources);
+    }
+
     private void putByTypedId(Map<String, Resource> resources, Resource resource) {
         resources.put(resource.getResourceType().name() + "/" + resource.getIdElement().getIdPart(), resource);
     }
@@ -393,7 +479,10 @@ public class FhirReferralServiceImpl implements FhirReferralService {
             }
         }
 
-        return fhirPersistanceService.getFhirOrganizationByName(organization.getOrganizationName()).orElseThrow();
+        // Best-effort: a missing/unreachable FHIR Organization degrades to a null
+        // owner reference rather than throwing — the Task/SR build tolerates a null
+        // org.
+        return fhirPersistanceService.getFhirOrganizationByName(organization.getOrganizationName()).orElse(null);
     }
 
     public Task createReferralTask(Organization referralOrganization, Patient patient, ServiceRequest serviceRequest,
@@ -480,6 +569,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
 
         // createNeededNotes(analysisItem, analysis, noteUpdateList);
 
+        List<Map.Entry<Result, Observation>> criticalResults = new ArrayList<>();
         for (Observation observation : resultsImport.observations) {
             Result result = getResultFromObservation(observation, currentResults, analysis);
             resultUpdateList.add(result);
@@ -487,6 +577,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                 addResultSets(analysis, result, resultSaveService);
             }
             recordResultForReferral(resultsImport, analysis, result, referralSets);
+            if (isCriticalOrAbnormal(observation)) {
+                criticalResults.add(new java.util.AbstractMap.SimpleEntry<>(result, observation));
+            }
         }
 
         try {
@@ -502,6 +595,11 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                     "fhirTransformService.transformPersistResultValidationFhirObjects");
             fhirTransformService.transformPersistResultValidationFhirObjects(deletableList, analysisUpdateList,
                     resultUpdateList, resultItemList, sampleUpdateList, noteUpdateList);
+            // OGC-803: a Critical/Abnormal returned result raises an in-app Alert in
+            // addition to posting the result (acceptance still proceeds normally).
+            for (Map.Entry<Result, Observation> critical : criticalResults) {
+                raiseCriticalResultAlert(analysis, critical.getKey(), critical.getValue());
+            }
             resultsImport.originalReferralObjects.task.setStatus(TaskStatus.COMPLETED);
             LogEvent.logDebug(this.getClass().getSimpleName(), "setReferralResult",
                     "fhirPersistanceService.updateFhirResourceInFhirStore");
@@ -509,6 +607,55 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         } catch (FhirPersistanceException e) {
             LogEvent.logError(e);
         }
+    }
+
+    // HL7 v3 ObservationInterpretation: AA/HH/LL are critical, A/H/L abnormal.
+    // Also honour a free-text "critical"/"abnormal" interpretation.
+    private boolean isCriticalOrAbnormal(Observation observation) {
+        for (CodeableConcept interpretation : observation.getInterpretation()) {
+            for (Coding coding : interpretation.getCoding()) {
+                String code = coding.getCode() == null ? "" : coding.getCode().toUpperCase();
+                if (code.equals("AA") || code.equals("HH") || code.equals("LL") || code.equals("A") || code.equals("H")
+                        || code.equals("L") || code.equals("AB")) {
+                    return true;
+                }
+            }
+            String text = interpretation.getText();
+            if (text != null && (text.equalsIgnoreCase("critical") || text.equalsIgnoreCase("abnormal"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // OGC-803: raise an in-app Alert for a Critical/Abnormal returned result.
+    // Best-effort — an alert failure must never roll back the posted result.
+    private void raiseCriticalResultAlert(Analysis analysis, Result result, Observation observation) {
+        try {
+            String testCode = analysis.getTest() != null ? analysis.getTest().getId() : "";
+            String value = result.getValue() == null ? "" : result.getValue();
+            String range = observation.hasReferenceRange() && observation.getReferenceRangeFirstRep().hasText()
+                    ? observation.getReferenceRangeFirstRep().getText()
+                    : "";
+            String deepLink = "/result?analysisId=" + analysis.getId();
+            String json = "{\"analysisId\":\"" + analysis.getId() + "\",\"testCode\":" + jsonStr(testCode)
+                    + ",\"value\":" + jsonStr(value) + ",\"range\":" + jsonStr(range) + ",\"deepLink\":"
+                    + jsonStr(deepLink) + "}";
+            Long entityId = result.getId() != null ? Long.valueOf(result.getId()) : Long.valueOf(analysis.getId());
+            alertService.createAlert(AlertType.REFERRAL_CRITICAL_RESULT, "Result", entityId, AlertSeverity.CRITICAL,
+                    "Critical/abnormal reference lab result for analysis " + analysis.getId(), json);
+        } catch (RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "raiseCriticalResultAlert",
+                    "failed to raise critical-result alert for analysis " + analysis.getId());
+            LogEvent.logError(e);
+        }
+    }
+
+    private static String jsonStr(String s) {
+        if (s == null) {
+            return "null";
+        }
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
     private Result getResultFromObservation(Observation observation, List<Result> currentResults, Analysis analysis) {
@@ -631,22 +778,11 @@ public class FhirReferralServiceImpl implements FhirReferralService {
 
         ReferralSet referralSet = new ReferralSet();
 
+        // The poll already advanced the referral to COMPLETED when the reference lab
+        // returned results (OGC-803); Accept only posts the result data here, in one
+        // transaction, so there is no nested-commit version bump to reconcile.
         Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
         LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral", "got referral for analysis");
-        // Route through the guarded transition so a ReferralStatusHistory row is
-        // written for the inbound DiagnosticReport. The transition is REQUIRES_NEW;
-        // an IllegalStateException from the guard (illegal source state) only
-        // logs — the result data still imports so we don't lose clinical content
-        // when the peer's intermediate Task updates were never delivered.
-        try {
-            referralService.markReferralCompleted(referral.getId(), "1", "DiagnosticReport received");
-        } catch (IllegalStateException e) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "recordResultForReferral",
-                    "transition guard refused completed: " + e.getMessage());
-        }
-        // Mirror the committed DB status into the in-memory entity so downstream
-        // referralSet persistence doesn't write the stale (pre-transition) value.
-        referral.setStatus(ReferralStatus.COMPLETED);
         List<ReferralResult> referralResults = referralResultService.getReferralResultsForReferral(referral.getId());
         LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral",
                 "got referralresults for referral");
@@ -659,10 +795,16 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         referralResult.setResult(result);
 
         NoteService noteService = SpringContext.getBean(NoteService.class);
-        referralSet.setNote(noteService.createSavableNote(referral.getAnalysis(), NoteServiceImpl.NoteType.INTERNAL,
-                "referral result imported automatically", RESULT_SUBJECT, "1"));
-        LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral",
-                "created referral result import note");
+        Note importNote = noteService.createSavableNote(referral.getAnalysis(), NoteServiceImpl.NoteType.INTERNAL,
+                "referral result imported automatically", RESULT_SUBJECT, "1");
+        // Idempotency: the note carries a uniqueness constraint, so re-importing a
+        // result for an analysis that already has this note would 500. Only attach it
+        // when it isn't already present (updateReferralSets skips a null note).
+        if (!noteService.duplicateNoteExists(importNote)) {
+            referralSet.setNote(importNote);
+            LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral",
+                    "created referral result import note");
+        }
         referralSet.setReferral(referral);
 
         referralSets.add(referralSet);

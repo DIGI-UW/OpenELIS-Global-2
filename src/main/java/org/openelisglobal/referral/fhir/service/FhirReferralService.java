@@ -38,6 +38,21 @@ public interface FhirReferralService {
      */
     void publishReferralLost(Referral referral, String reason, String actorUserId) throws FhirLocalPersistingException;
 
+    /**
+     * Publish an OGC-804 rejection to the FHIR store: PUTs the Task to
+     * status=rejected (with statusReason "rejected by reference lab" and a note
+     * carrying the rejection reason) and the ServiceRequest to status=revoked so
+     * the receiving lab sees the returned result was declined.
+     *
+     * <p>
+     * Best-effort: skips silently when the referral or its analysis has no
+     * fhir_uuid; throws {@link FhirLocalPersistingException} on FHIR-store errors
+     * so the caller can log + continue without rolling back the local DB
+     * transition.
+     */
+    void publishReferralRejected(Referral referral, String reasonText, String actorUserId)
+            throws FhirLocalPersistingException;
+
     // Bundle cancelReferralToOrganization(String organizationId, String sampleId,
     // List<String>
     // analysisIds)

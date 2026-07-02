@@ -42,6 +42,12 @@ public enum ReferralStatus {
      * hook advances the local state directly to COMPLETED. The FRS calls
      * draft→requested→received→in-progress→completed the "canonical progression" —
      * i.e. the normal path, not the only path.
+     *
+     * <p>
+     * {@code COMPLETED -> REJECTED} is the one terminal-state exception (OGC-804):
+     * a returned result the lab declines to reconcile is rejected from the Returned
+     * view, closing the originating Analysis and prompting re-collection. Every
+     * other terminal state stays a dead end.
      */
     public boolean canTransitionTo(ReferralStatus target) {
         if (target == null) {
@@ -52,7 +58,19 @@ public enum ReferralStatus {
         case REQUESTED -> target == RECEIVED || target == COMPLETED || target == REJECTED || target == CANCELLED;
         case RECEIVED -> target == COMPLETED || target == REJECTED || target == CANCELLED;
         case IN_PROGRESS -> target == COMPLETED || target == REJECTED || target == CANCELLED;
-        case COMPLETED, REJECTED, CANCELLED -> false;
+        case COMPLETED -> target == REJECTED;
+        case REJECTED, CANCELLED -> false;
+        default -> false;
+        };
+    }
+
+    /**
+     * Terminal states have no outgoing lifecycle edges (legacy FINISHED/CANCELED
+     * included).
+     */
+    public boolean isTerminal() {
+        return switch (this) {
+        case COMPLETED, REJECTED, CANCELLED, FINISHED, CANCELED -> true;
         default -> false;
         };
     }

@@ -10,9 +10,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.Observation;
+import org.hl7.fhir.r4.model.Quantity;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkFlowServiceImpl.ReferralResultsImportObjects;
+import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkflowService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
@@ -58,6 +65,44 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
     @Autowired
     private SiteInformationService siteInformationService;
 
+    @Autowired
+    private FhirApiWorkflowService fhirApiWorkflowService;
+
+    @Autowired
+    private org.openelisglobal.referral.fhir.service.FhirReferralService fhirReferralService;
+
+    @Autowired
+    private ReferralService referralService;
+
+    @Override
+    public void acceptReferral(String referralId, String actorUserId) {
+        Referral referral = referralDAO.getReferralById(referralId);
+        if (referral == null) {
+            throw new IllegalArgumentException("Referral not found: " + referralId);
+        }
+        // Only a returned (COMPLETED) result that hasn't been accepted yet can be
+        // accepted; anything else is a no-op so repeat clicks don't double-post.
+        if (referral.getStatus() != ReferralStatus.COMPLETED || Boolean.TRUE.equals(referral.getReconciled())) {
+            return;
+        }
+        UUID referralTaskUuid = referral.getFhirUuid();
+        if (referralTaskUuid == null) {
+            throw new IllegalStateException("Referral " + referralId + " has no FHIR uuid to fetch results for");
+        }
+        List<ReferralResultsImportObjects> imports = fhirApiWorkflowService.fetchReturnedResults(referralTaskUuid);
+        if (imports.isEmpty()) {
+            throw new IllegalStateException("No returned results available to accept for referral " + referralId);
+        }
+        // setReferralResult is @Transactional and posts atomically (Observation ->
+        // Result, Analysis -> Finalized, Task -> completed); markReferralReconciled is
+        // a separate REQUIRES_NEW ack commit. acceptReferral itself stays untransacted
+        // so each sub-call keeps its own boundary.
+        for (ReferralResultsImportObjects imp : imports) {
+            fhirReferralService.setReferralResult(imp);
+        }
+        referralService.markReferralReconciled(referralId, actorUserId);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<ReferenceLabReferralDTO> getDashboardReferrals(DashboardView view) {
@@ -76,14 +121,16 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
     @Transactional(readOnly = true)
     public ReferenceLabMetricsDTO getDashboardMetrics() {
         long outstanding = referralDAO.getReferralsByStatus(OUTSTANDING_STATUSES).size();
-        // Returned excludes manual entries — those land directly in History per
-        // OGC-799 AC ("After manual save, row jumps from Outstanding → History").
-        long returned = referralDAO.getReferralsByStatus(RETURNED_STATUSES).stream()
-                .filter(r -> !Boolean.TRUE.equals(r.getManuallyEntered())).count();
+        List<Referral> completed = referralDAO.getReferralsByStatus(RETURNED_STATUSES);
+        // Returned excludes both actioned cases: manual entries (OGC-799) and
+        // Accepted/reconciled rows (OGC-803) — they belong in History, not Returned.
+        long returned = completed.stream()
+                .filter(r -> !Boolean.TRUE.equals(r.getManuallyEntered()) && !Boolean.TRUE.equals(r.getReconciled()))
+                .count();
+        long reconciledToday = completed.stream().filter(r -> reconciledOn(r, LocalDate.now())).count();
         long rejectedThisWeek = countRejectedSince(LocalDate.now().minusDays(7));
-        // reconciledToday wires up in v2 when the reconciled audit lands; until then
-        // it stays at 0 so the tile renders without faking a count.
-        return new ReferenceLabMetricsDTO(outstanding, returned, 0L, rejectedThisWeek, resolveStuckThresholdDays());
+        return new ReferenceLabMetricsDTO(outstanding, returned, reconciledToday, rejectedThisWeek,
+                resolveStuckThresholdDays());
     }
 
     private int resolveStuckThresholdDays() {
@@ -100,17 +147,20 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
 
     /**
      * Splits {@link ReferralStatus#COMPLETED} between the Returned and History
-     * buckets by the {@code manually_entered} flag. Non-COMPLETED rows always
+     * buckets. A COMPLETED row needs reception action (Returned) until it's either
+     * manually entered (OGC-799) or reconciled/Accepted (OGC-803); once either flag
+     * is set it has been actioned and moves to History. Non-COMPLETED rows always
      * belong in whichever bucket their status maps to.
      */
     private boolean belongsInBucket(Referral referral, DashboardView view) {
         if (referral.getStatus() != ReferralStatus.COMPLETED) {
             return true;
         }
-        boolean manuallyEntered = Boolean.TRUE.equals(referral.getManuallyEntered());
+        boolean actioned = Boolean.TRUE.equals(referral.getManuallyEntered())
+                || Boolean.TRUE.equals(referral.getReconciled());
         return switch (view) {
-        case RETURNED -> !manuallyEntered;
-        case HISTORY -> manuallyEntered;
+        case RETURNED -> !actioned;
+        case HISTORY -> actioned;
         case OUTSTANDING -> false;
         };
     }
@@ -120,6 +170,14 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         return referralDAO.getReferralsByStatus(Collections.singletonList(ReferralStatus.REJECTED)).stream()
                 .filter(r -> r.getLastupdated() != null && !r.getLastupdated().toInstant().isBefore(cutoffInstant))
                 .count();
+    }
+
+    private boolean reconciledOn(Referral referral, LocalDate day) {
+        if (!Boolean.TRUE.equals(referral.getReconciled()) || referral.getReconciledAt() == null) {
+            return false;
+        }
+        LocalDate reconciledDay = referral.getReconciledAt().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return reconciledDay.equals(day);
     }
 
     private List<ReferralStatus> statusesFor(DashboardView view) {
@@ -180,6 +238,7 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
             dto.setDaysOutstanding(daysBetween(referral.getSentDate(), Timestamp.from(Instant.now())));
         } else if (view == DashboardView.RETURNED) {
             dto.setReturnedDate(toIso(latestChangedAt(referral.getId(), ReferralStatus.COMPLETED)));
+            enrichReturnedResults(dto, referral);
         } else if (view == DashboardView.HISTORY) {
             Timestamp closed = closedDateFor(referral);
             dto.setClosedDate(toIso(closed));
@@ -190,6 +249,122 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         }
 
         return dto;
+    }
+
+    // OGC-802: live-read the returned Observations from the remote FHIR store and
+    // map
+    // them to display-only result cards. Best-effort — a FHIR outage leaves the row
+    // listed without cards rather than failing the whole dashboard.
+    // ponytail: one FHIR round-trip per returned row; batch/parallelize if the
+    // Returned list grows large enough to feel slow.
+    private void enrichReturnedResults(ReferenceLabReferralDTO dto, Referral referral) {
+        if (referral.getFhirUuid() == null) {
+            return;
+        }
+        try {
+            List<ReferenceLabReferralDTO.ResultCard> cards = new ArrayList<>();
+            for (ReferralResultsImportObjects imp : fhirApiWorkflowService
+                    .fetchReturnedResults(referral.getFhirUuid())) {
+                if (imp.observations == null) {
+                    continue;
+                }
+                for (Observation observation : imp.observations) {
+                    cards.add(toResultCard(observation));
+                }
+            }
+            if (!cards.isEmpty()) {
+                dto.setResults(cards);
+                dto.setResultSummary(summarizeResults(cards));
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "enrichReturnedResults",
+                    "could not live-read results for referral " + referral.getId() + ": " + e.getMessage());
+        }
+    }
+
+    private ReferenceLabReferralDTO.ResultCard toResultCard(Observation obs) {
+        ReferenceLabReferralDTO.ResultCard card = new ReferenceLabReferralDTO.ResultCard();
+        if (obs.hasCode()) {
+            card.setTestName(
+                    obs.getCode().hasText() ? obs.getCode().getText() : obs.getCode().getCodingFirstRep().getDisplay());
+        }
+        if (obs.hasValueQuantity()) {
+            Quantity q = obs.getValueQuantity();
+            String number = q.getValue() != null ? q.getValue().stripTrailingZeros().toPlainString() : "";
+            String comparator = q.hasComparator() ? q.getComparator().toCode() + " " : "";
+            card.setValue((comparator + number).trim());
+            card.setUnits(q.getUnit());
+        } else if (obs.hasValueStringType()) {
+            card.setValue(obs.getValueStringType().getValue());
+        } else if (obs.hasValueCodeableConcept()) {
+            CodeableConcept cc = obs.getValueCodeableConcept();
+            card.setValue(cc.hasText() ? cc.getText() : cc.getCodingFirstRep().getDisplay());
+        }
+        if (obs.hasReferenceRange()) {
+            card.setReferenceRange(referenceRangeText(obs.getReferenceRangeFirstRep()));
+        }
+        card.setInterpretation(interpretationLabel(obs));
+        if (obs.hasNote()) {
+            card.setNote(obs.getNoteFirstRep().getText());
+        }
+        return card;
+    }
+
+    private String referenceRangeText(Observation.ObservationReferenceRangeComponent rr) {
+        if (rr.hasText()) {
+            return rr.getText();
+        }
+        String low = rr.hasLow() && rr.getLow().getValue() != null
+                ? rr.getLow().getValue().stripTrailingZeros().toPlainString()
+                : null;
+        String high = rr.hasHigh() && rr.getHigh().getValue() != null
+                ? rr.getHigh().getValue().stripTrailingZeros().toPlainString()
+                : null;
+        if (low != null && high != null) {
+            return low + " – " + high;
+        }
+        if (high != null) {
+            return "≤ " + high;
+        }
+        if (low != null) {
+            return "≥ " + low;
+        }
+        return null;
+    }
+
+    // HL7 v3 ObservationInterpretation → display label. AA/HH/LL = Critical,
+    // A/H/L/AB = Abnormal, N = Normal; otherwise fall back to any free text.
+    private String interpretationLabel(Observation obs) {
+        for (CodeableConcept interpretation : obs.getInterpretation()) {
+            for (Coding coding : interpretation.getCoding()) {
+                String code = coding.getCode() == null ? "" : coding.getCode().toUpperCase();
+                if (code.equals("AA") || code.equals("HH") || code.equals("LL")) {
+                    return "Critical";
+                }
+                if (code.equals("A") || code.equals("H") || code.equals("L") || code.equals("AB")) {
+                    return "Abnormal";
+                }
+                if (code.equals("N")) {
+                    return "Normal";
+                }
+            }
+            if (interpretation.hasText()) {
+                return interpretation.getText();
+            }
+        }
+        return null;
+    }
+
+    private String summarizeResults(List<ReferenceLabReferralDTO.ResultCard> cards) {
+        ReferenceLabReferralDTO.ResultCard first = cards.get(0);
+        String summary = first.getValue() == null ? "" : first.getValue();
+        if (first.getUnits() != null && !first.getUnits().isBlank()) {
+            summary = (summary + " " + first.getUnits()).trim();
+        }
+        if (cards.size() > 1) {
+            summary = summary + " (+" + (cards.size() - 1) + " more)";
+        }
+        return summary;
     }
 
     private Integer ageInYears(Timestamp birthDate) {
@@ -281,6 +456,12 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         // it from the dedicated column.
         if (Boolean.TRUE.equals(referral.getLostStatus()) && referral.getLostDate() != null) {
             return referral.getLostDate();
+        }
+        // Accept/reconcile closes the row at reconciled_at, not the COMPLETED
+        // transition time (which is when the result returned, i.e. the open moment).
+        if (referral.getStatus() == ReferralStatus.COMPLETED && Boolean.TRUE.equals(referral.getReconciled())
+                && referral.getReconciledAt() != null) {
+            return referral.getReconciledAt();
         }
         ReferralStatus terminal = referral.getStatus();
         if (terminal == ReferralStatus.REJECTED || terminal == ReferralStatus.CANCELLED

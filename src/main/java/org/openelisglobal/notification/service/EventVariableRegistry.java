@@ -59,6 +59,8 @@ public final class EventVariableRegistry {
         return switch (type) {
         case REFERRAL_OUT -> referralOutVariables();
         case SUBCONTRACT_DISPATCHED -> subcontractDispatchedVariables();
+        case REFERRAL_REJECTED_NEEDS_RECOLLECTION -> referralRejectedVariables();
+        case REFERRAL_NUDGE -> referralNudgeVariables();
         default -> List.of();
         };
     }
@@ -67,8 +69,32 @@ public final class EventVariableRegistry {
         return switch (type) {
         case REFERRAL_OUT -> referralOutSampleValues();
         case SUBCONTRACT_DISPATCHED -> subcontractDispatchedSampleValues();
+        case REFERRAL_REJECTED_NEEDS_RECOLLECTION -> referralRejectedSampleValues();
+        case REFERRAL_NUDGE -> referralNudgeSampleValues();
         default -> Map.of();
         };
+    }
+
+    private static List<Variable> referralNudgeVariables() {
+        List<Variable> vars = new ArrayList<>();
+        vars.add(new Variable("sampleAccessionNumber", "sample_id", "Sample / specimen ID (lab number)"));
+        vars.add(new Variable("referralId", "referral_id", "Internal referral identifier"));
+        vars.add(new Variable("labName", "referred_lab", "Name of the external laboratory receiving the referral"));
+        vars.add(new Variable("testName", "test_name", "Referred test name"));
+        vars.add(new Variable("daysOutstanding", "days_outstanding", "Days the referral has been outstanding"));
+        vars.add(new Variable("freeFormMessage", "free_form_message", "Optional free-text note from the lab manager"));
+        return vars;
+    }
+
+    private static Map<String, String> referralNudgeSampleValues() {
+        Map<String, String> values = new LinkedHashMap<>();
+        values.put("sampleAccessionNumber", "ENV-2026-00841");
+        values.put("referralId", "42");
+        values.put("labName", "Pusat Lab Lingkungan Hidup");
+        values.put("testName", "Mercury (Hg)");
+        values.put("daysOutstanding", "12");
+        values.put("freeFormMessage", "Kindly prioritise — patient follow-up pending.");
+        return values;
     }
 
     private static List<Variable> referralOutVariables() {
@@ -121,6 +147,32 @@ public final class EventVariableRegistry {
         values.put("agreementReference", "AGR-2026-017");
         values.put("handoffDatetime", "25 Apr 2026 09:30");
         values.put("cocContactName", "Jane Doe");
+        return values;
+    }
+
+    private static List<Variable> referralRejectedVariables() {
+        List<Variable> vars = new ArrayList<>();
+        vars.add(new Variable("sampleAccessionNumber", "sample_id", "Sample / specimen ID (lab number)"));
+        vars.add(new Variable("referralId", "referral_id", "Internal referral identifier"));
+        vars.add(new Variable("patientFirstName", "patient_first_name", "Patient first name"));
+        vars.add(new Variable("patientLastName", "patient_last_name", "Patient last name"));
+        vars.add(new Variable("testName", "test_name", "Rejected test name"));
+        vars.add(new Variable("labName", "referred_lab", "Reference laboratory that returned the result"));
+        vars.add(new Variable("rejectReason", "reject_reason", "Reason the returned result was rejected"));
+        vars.add(new Variable("deepLink", "deep_link", "Link to the order in OpenELIS for re-collection"));
+        return vars;
+    }
+
+    private static Map<String, String> referralRejectedSampleValues() {
+        Map<String, String> values = new LinkedHashMap<>();
+        values.put("sampleAccessionNumber", "ENV-2026-00841");
+        values.put("referralId", "42");
+        values.put("patientFirstName", "Jane");
+        values.put("patientLastName", "Doe");
+        values.put("testName", "Mercury (Hg)");
+        values.put("labName", "Pusat Lab Lingkungan Hidup");
+        values.put("rejectReason", "Hemolyzed sample — re-collect required");
+        values.put("deepLink", "https://openelis.example.org/result?accessionNumber=ENV-2026-00841");
         return values;
     }
 }

@@ -6,6 +6,7 @@ import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,6 @@ import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
-import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.spring.util.SpringContext;
@@ -69,8 +69,6 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     private FhirUtil fhirUtil;
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
-    @Autowired
-    private FhirReferralService fhirReferralService;
     @Autowired
     private ReferralService referralService;
     @Autowired
@@ -247,92 +245,83 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         if (fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
             return;
         }
-
-        IGenericClient sourceFhirClient = fhirUtil.getFhirClient(remoteStorePath);
-        // IQuery<Bundle> searchQuery = sourceFhirClient.search()//
-        // .forResource(Task.class)//
-        // .returnBundle(Bundle.class)//
-        // .include(Task.INCLUDE_BASED_ON) // serviceRequest
-        // .where(Task.STATUS.exactly().code(TaskStatus.ACCEPTED.toCode()))//
-        // .where(Task.REQUESTER.hasAnyOfIds(remoteStoreIdentifier));
-        for (UUID referralTaskUuid : referralService.getSentReferralUuids()) {
-            LogEvent.logTrace(this.getClass().getSimpleName(), "beginTaskImportResultsPath",
-                    "searching for results for Task ID " + referralTaskUuid);
+        // OGC-803 reception model: the poll DETECTS returned results (remote Task
+        // COMPLETED) and advances the local referral to COMPLETED so it surfaces in
+        // "Returned — needs action". It no longer posts to the Analysis — that
+        // happens on the user's Accept action (see fetchReturnedResults +
+        // acceptReferral).
+        for (org.openelisglobal.referral.valueholder.Referral sentReferral : referralService.getSentReferrals()) {
+            UUID referralTaskUuid = sentReferral.getFhirUuid();
+            if (referralTaskUuid == null || sentReferral.getStatus() == ReferralStatus.COMPLETED) {
+                continue;
+            }
             try {
-                IQuery<Bundle> searchQuery = sourceFhirClient.search() //
-                        .forResource(Task.class) //
-                        .returnBundle(Bundle.class) //
-                        .include(Task.INCLUDE_BASED_ON) // serviceRequest
-                        .include(ServiceRequest.INCLUDE_REQUESTER.asRecursive()) // serviceRequest
-                        // Filler flips Task->COMPLETED in the same transaction as SR->COMPLETED
-                        // (FhirTransformServiceImpl on OrderStatus.Finished), so polling for
-                        // ACCEPTED never observed the conjunction. COMPLETED is also the
-                        // FHIR-canonical "results available" status.
-                        .where(Task.STATUS.exactly().code(TaskStatus.COMPLETED.toCode())) //
-                        .where(Task.RES_ID.exactly().identifier(referralTaskUuid.toString()));
-                Bundle originalTasksBundle = searchQuery.execute();
-                if (originalTasksBundle.hasEntry()) {
-                    LogEvent.logTrace(this.getClass().getSimpleName(), "beginTaskImportResultsPath",
-                            "received bundle with " + originalTasksBundle.getEntry().size() + " entries for Task ID "
-                                    + referralTaskUuid);
-                } else {
-                    LogEvent.logTrace(this.getClass().getSimpleName(), "beginTaskImportResultsPath",
-                            "received bundle with 0 entries for Task ID " + referralTaskUuid);
+                if (!fetchReturnedResultsFromStore(remoteStorePath, referralTaskUuid).isEmpty()) {
+                    referralService.markReferralCompleted(sentReferral.getId(), "1",
+                            "Results returned by reference lab");
                 }
-                Map<String, OriginalReferralObjects> originalReferralObjectsByServiceRequest = new HashMap<>();
-                for (BundleEntryComponent bundleEntry : originalTasksBundle.getEntry()) {
-                    if (bundleEntry.hasResource()) {
-                        try {
-                            addOriginalReferralObject(bundleEntry, originalReferralObjectsByServiceRequest);
-                        } catch (RuntimeException e) {
-                            LogEvent.logError("could not import result for: " + bundleEntry.getResource().getId(), e);
-                        }
-                    }
-                }
-                if (originalReferralObjectsByServiceRequest.size() > 0) {
-                    searchQuery = sourceFhirClient.search() //
-                            .forResource(ServiceRequest.class) //
-                            .returnBundle(Bundle.class) //
-                            // .revInclude(Task.INCLUDE_BASED_ON)//
-                            // .include(ServiceRequest.INCLUDE_SPECIMEN) // specimen
-                            .revInclude(Observation.INCLUDE_BASED_ON.asRecursive()) //
-                            .revInclude(DiagnosticReport.INCLUDE_BASED_ON.asRecursive()) //
-                            .where(ServiceRequest.STATUS.exactly().code(ServiceRequestStatus.COMPLETED.toCode()))
-                            .where(ServiceRequest.BASED_ON
-                                    .hasAnyOfIds(originalReferralObjectsByServiceRequest.keySet()));
-                    originalTasksBundle = searchQuery.execute();
-
-                    Map<String, ReferralResultsImportObjects> resultImportByServiceRequest = new HashMap<>();
-                    for (BundleEntryComponent bundleEntry : originalTasksBundle.getEntry()) {
-                        if (bundleEntry.hasResource()) {
-                            try {
-                                addResultImportObject(bundleEntry, resultImportByServiceRequest,
-                                        originalReferralObjectsByServiceRequest);
-                            } catch (RuntimeException e) {
-                                LogEvent.logError(e);
-                                LogEvent.logError("could not import result for: " + bundleEntry.getResource().getId(),
-                                        e);
-                            }
-                        }
-                    }
-
-                    for (Entry<String, ReferralResultsImportObjects> resultsImportEntry : resultImportByServiceRequest
-                            .entrySet()) {
-                        try {
-                            fhirReferralService.setReferralResult(resultsImportEntry.getValue());
-                        } catch (RuntimeException e) {
-                            LogEvent.logError(e);
-                            LogEvent.logError(
-                                    "could not import result for ServiceRequest: " + resultsImportEntry.getKey(), e);
-                        }
-                    }
-                }
-
+            } catch (IllegalStateException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "beginTaskImportResultsPath",
+                        "completion transition refused for referral " + sentReferral.getId() + ": " + e.getMessage());
             } catch (RuntimeException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "beginTaskImportResultsPath",
+                        "could not check returned results for referral " + sentReferral.getId());
                 LogEvent.logError(e);
-                LogEvent.logError("could not import result for referral with UUID: " + referralTaskUuid, e);
             }
         }
+    }
+
+    @Override
+    public List<ReferralResultsImportObjects> fetchReturnedResults(UUID referralTaskUuid) {
+        List<ReferralResultsImportObjects> all = new ArrayList<>();
+        for (String remoteStorePath : fhirConfig.getRemoteStorePaths()) {
+            all.addAll(fetchReturnedResultsFromStore(remoteStorePath, referralTaskUuid));
+        }
+        return all;
+    }
+
+    private List<ReferralResultsImportObjects> fetchReturnedResultsFromStore(String remoteStorePath,
+            UUID referralTaskUuid) {
+        if (fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
+            return Collections.emptyList();
+        }
+        IGenericClient sourceFhirClient = fhirUtil.getFhirClient(remoteStorePath);
+        IQuery<Bundle> searchQuery = sourceFhirClient.search() //
+                .forResource(Task.class) //
+                .returnBundle(Bundle.class) //
+                .include(Task.INCLUDE_BASED_ON) //
+                .include(ServiceRequest.INCLUDE_REQUESTER.asRecursive()) //
+                .where(Task.STATUS.exactly().code(TaskStatus.COMPLETED.toCode())) //
+                .where(Task.RES_ID.exactly().identifier(referralTaskUuid.toString()));
+        Bundle originalTasksBundle = searchQuery.execute();
+
+        Map<String, OriginalReferralObjects> originalReferralObjectsByServiceRequest = new HashMap<>();
+        for (BundleEntryComponent bundleEntry : originalTasksBundle.getEntry()) {
+            if (bundleEntry.hasResource()) {
+                addOriginalReferralObject(bundleEntry, originalReferralObjectsByServiceRequest);
+            }
+        }
+        if (originalReferralObjectsByServiceRequest.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        searchQuery = sourceFhirClient.search() //
+                .forResource(ServiceRequest.class) //
+                .returnBundle(Bundle.class) //
+                .revInclude(Observation.INCLUDE_BASED_ON.asRecursive()) //
+                .revInclude(DiagnosticReport.INCLUDE_BASED_ON.asRecursive()) //
+                .where(ServiceRequest.STATUS.exactly().code(ServiceRequestStatus.COMPLETED.toCode()))
+                .where(ServiceRequest.BASED_ON.hasAnyOfIds(originalReferralObjectsByServiceRequest.keySet()));
+        Bundle resultsBundle = searchQuery.execute();
+
+        Map<String, ReferralResultsImportObjects> resultImportByServiceRequest = new HashMap<>();
+        for (BundleEntryComponent bundleEntry : resultsBundle.getEntry()) {
+            if (bundleEntry.hasResource()) {
+                addResultImportObject(bundleEntry, resultImportByServiceRequest,
+                        originalReferralObjectsByServiceRequest);
+            }
+        }
+        return new ArrayList<>(resultImportByServiceRequest.values());
     }
 
     private void addOriginalReferralObject(BundleEntryComponent bundleEntry,

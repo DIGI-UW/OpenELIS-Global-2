@@ -23,9 +23,15 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
-import { Warning, WarningAlt } from "@carbon/icons-react";
+import {
+  CheckmarkOutline,
+  Send,
+  Warning,
+  WarningAlt,
+} from "@carbon/icons-react";
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -34,9 +40,15 @@ import React, {
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { NotificationContext } from "../layout/Layout";
 import ShipmentNavigation from "../shipment/ShipmentNavigation";
-import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+  putToOpenElisServer,
+} from "../utils/Utils";
 import MarkLostModal from "./MarkLostModal";
+import RejectModal from "./RejectModal";
 import "./ReferenceLabResults.css";
 
 const VIEWS = ["outstanding", "returned", "history"];
@@ -78,6 +90,7 @@ const ReferenceLabResults = () => {
   const history = useHistory();
   const location = useLocation();
   const componentMounted = useRef(true);
+  const { addNotification } = useContext(NotificationContext);
 
   const activeView = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -104,6 +117,7 @@ const ReferenceLabResults = () => {
 
   const [expandedRow, setExpandedRow] = useState(null);
   const [markLostTarget, setMarkLostTarget] = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
 
   const toggleExpand = useCallback((id) => {
     setExpandedRow((prev) => (prev === id ? null : id));
@@ -123,6 +137,60 @@ const ReferenceLabResults = () => {
       }
     });
   }, [activeView]);
+
+  const acceptReferral = useCallback(
+    (row) => {
+      putToOpenElisServer(
+        `/rest/reference-lab-results/referrals/${row.id}/accept`,
+        null,
+        (status) => {
+          if (status === 204 || status === 200) {
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage({
+                id: "referral.notification.accepted",
+              }),
+            });
+            setExpandedRow(null);
+            refetchReferrals();
+          } else {
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: intl.formatMessage({ id: "referral.accept.error" }),
+            });
+          }
+        },
+      );
+    },
+    [addNotification, intl, refetchReferrals],
+  );
+
+  const notifyReferenceLab = useCallback(
+    (row) => {
+      postToOpenElisServer(
+        `/rest/reference-lab-results/referrals/${row.id}/notify`,
+        null,
+        (status) => {
+          if (status === 204 || status === 200) {
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage({ id: "referral.notify.toast" }),
+            });
+          } else {
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: intl.formatMessage({ id: "referral.notify.errorRetry" }),
+            });
+          }
+        },
+      );
+    },
+    [addNotification, intl],
+  );
 
   useEffect(() => {
     componentMounted.current = true;
@@ -405,7 +473,7 @@ const ReferenceLabResults = () => {
               <DatePickerInput
                 id="date-to"
                 placeholder="mm/dd/yyyy"
-                labelText=""
+                labelText={" "}
               />
             </DatePicker>
           </Column>
@@ -471,6 +539,9 @@ const ReferenceLabResults = () => {
           expandedRow={expandedRow}
           toggleExpand={toggleExpand}
           onMarkLost={setMarkLostTarget}
+          onNotify={notifyReferenceLab}
+          onAccept={acceptReferral}
+          onReject={setRejectTarget}
         />
       )}
 
@@ -481,6 +552,19 @@ const ReferenceLabResults = () => {
           onClose={() => setMarkLostTarget(null)}
           onSuccess={() => {
             setMarkLostTarget(null);
+            setExpandedRow(null);
+            refetchReferrals();
+          }}
+        />
+      )}
+
+      {rejectTarget && (
+        <RejectModal
+          open
+          referral={rejectTarget}
+          onClose={() => setRejectTarget(null)}
+          onSuccess={() => {
+            setRejectTarget(null);
             setExpandedRow(null);
             refetchReferrals();
           }}
@@ -521,13 +605,24 @@ const ReferralTable = ({
   expandedRow,
   toggleExpand,
   onMarkLost,
+  onNotify,
+  onAccept,
+  onReject,
 }) => {
   const shared = { rows, intl, expandedRow, toggleExpand };
   if (view === "outstanding") {
-    return <OutstandingTable {...shared} onMarkLost={onMarkLost} />;
+    return (
+      <OutstandingTable
+        {...shared}
+        onMarkLost={onMarkLost}
+        onNotify={onNotify}
+      />
+    );
   }
   if (view === "returned") {
-    return <ReturnedTable {...shared} />;
+    return (
+      <ReturnedTable {...shared} onAccept={onAccept} onReject={onReject} />
+    );
   }
   return <HistoryTable {...shared} />;
 };
@@ -600,6 +695,62 @@ const renderDays = (days) => {
   );
 };
 
+const INTERP_TAG_KIND = {
+  Normal: "green",
+  Abnormal: "magenta",
+  Critical: "red",
+};
+
+const interpLabel = (interpretation, intl) =>
+  ["Normal", "Abnormal", "Critical"].includes(interpretation)
+    ? intl.formatMessage({ id: `referral.result.interp.${interpretation}` })
+    : interpretation;
+
+const isCritical = (row) =>
+  (row.results || []).some((r) => r.interpretation === "Critical");
+
+const ResultCard = ({ result, intl }) => (
+  <div className="reference-lab-results__result-card">
+    <div className="reference-lab-results__result-card-head">
+      <span className="reference-lab-results__result-test">
+        {result.testName || "—"}
+      </span>
+      {result.interpretation && (
+        <Tag type={INTERP_TAG_KIND[result.interpretation] || "gray"} size="sm">
+          {interpLabel(result.interpretation, intl)}
+        </Tag>
+      )}
+    </div>
+    <div className="reference-lab-results__result-value">
+      {result.value || "—"}
+      {result.units ? ` ${result.units}` : ""}
+    </div>
+    {result.referenceRange && (
+      <div className="reference-lab-results__result-range">
+        <FormattedMessage id="referral.result.referenceRange" />:{" "}
+        {result.referenceRange}
+      </div>
+    )}
+    {result.note && (
+      <div className="reference-lab-results__result-note">{result.note}</div>
+    )}
+  </div>
+);
+
+const renderResultSummary = (row, intl) => {
+  if (!row.resultSummary) return "—";
+  return (
+    <span className="reference-lab-results__summary-cell">
+      {isCritical(row) && (
+        <Tag type="red" size="sm">
+          {intl.formatMessage({ id: "referral.expand.criticalBadge" })}
+        </Tag>
+      )}
+      {row.resultSummary}
+    </span>
+  );
+};
+
 const TableShell = ({ title, count, headers, intl, expandable, children }) => (
   <TableContainer
     title={title}
@@ -633,6 +784,7 @@ const OutstandingTable = ({
   expandedRow,
   toggleExpand,
   onMarkLost,
+  onNotify,
 }) => {
   const headers = [
     intl.formatMessage({ id: "referral.column.labNumber" }),
@@ -698,6 +850,7 @@ const OutstandingTable = ({
                   mode="outstanding"
                   intl={intl}
                   onMarkLost={onMarkLost}
+                  onNotify={onNotify}
                 />
               </TableExpandedRow>
             )}
@@ -708,14 +861,23 @@ const OutstandingTable = ({
   );
 };
 
-const ReturnedTable = ({ rows, intl, expandedRow, toggleExpand }) => {
+const ReturnedTable = ({
+  rows,
+  intl,
+  expandedRow,
+  toggleExpand,
+  onAccept,
+  onReject,
+}) => {
   const headers = [
     intl.formatMessage({ id: "referral.column.labNumber" }),
     intl.formatMessage({ id: "referral.column.patient" }),
     intl.formatMessage({ id: "referral.column.tests" }),
     intl.formatMessage({ id: "referral.column.referenceLab" }),
+    intl.formatMessage({ id: "referral.column.resultSummary" }),
     intl.formatMessage({ id: "referral.column.returnedDate" }),
     intl.formatMessage({ id: "referral.column.requestor" }),
+    intl.formatMessage({ id: "referral.column.actions" }),
   ];
   return (
     <TableShell
@@ -738,12 +900,43 @@ const ReturnedTable = ({ rows, intl, expandedRow, toggleExpand }) => {
               <TableCell>{row.patientDisplay || "—"}</TableCell>
               <TableCell>{renderTests(row.tests)}</TableCell>
               <TableCell>{row.referenceLabName || "—"}</TableCell>
+              <TableCell>{renderResultSummary(row, intl)}</TableCell>
               <TableCell>{renderDate(row.returnedDate)}</TableCell>
               <TableCell>{row.requestor || "—"}</TableCell>
+              <TableCell>
+                <div className="reference-lab-results__row-actions">
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAccept && onAccept(row);
+                    }}
+                  >
+                    <FormattedMessage id="referral.action.accept" />
+                  </Button>
+                  <Button
+                    kind="danger--ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReject && onReject(row);
+                    }}
+                  >
+                    <FormattedMessage id="referral.action.reject" />
+                  </Button>
+                </div>
+              </TableCell>
             </TableExpandRow>
             {expandedRow === row.id && (
               <TableExpandedRow colSpan={headers.length + 1}>
-                <ExpandPanel row={row} mode="returned" intl={intl} />
+                <ExpandPanel
+                  row={row}
+                  mode="returned"
+                  intl={intl}
+                  onAccept={onAccept}
+                  onReject={onReject}
+                />
               </TableExpandedRow>
             )}
           </React.Fragment>
@@ -822,7 +1015,15 @@ const formatDateTime = (iso) => {
   })}`;
 };
 
-const ExpandPanel = ({ row, mode, intl, onMarkLost }) => (
+const ExpandPanel = ({
+  row,
+  mode,
+  intl,
+  onMarkLost,
+  onNotify,
+  onAccept,
+  onReject,
+}) => (
   <div className="reference-lab-results__expand">
     <Grid narrow>
       <Column lg={5} md={4} sm={4}>
@@ -952,7 +1153,62 @@ const ExpandPanel = ({ row, mode, intl, onMarkLost }) => (
               >
                 <FormattedMessage id="referral.action.markLost" />
               </Button>
+              <Button
+                kind="ghost"
+                size="sm"
+                renderIcon={Send}
+                onClick={() => onNotify && onNotify(row)}
+              >
+                <FormattedMessage id="referral.action.notifyReferenceLab" />
+              </Button>
             </div>
+          </>
+        )}
+        {mode === "returned" && (
+          <>
+            <h5 className="reference-lab-results__expand-heading">
+              <FormattedMessage id="referral.expand.result" />
+            </h5>
+            <p className="reference-lab-results__expand-hint">
+              <FormattedMessage id="referral.expand.receptionHint" />
+            </p>
+            {row.results && row.results.length > 0 ? (
+              <div className="reference-lab-results__result-cards">
+                {row.results.map((result, index) => (
+                  <ResultCard key={index} result={result} intl={intl} />
+                ))}
+              </div>
+            ) : (
+              <p className="reference-lab-results__expand-hint">
+                <FormattedMessage id="referral.expand.noResultPayload" />
+              </p>
+            )}
+            <div className="reference-lab-results__expand-actions">
+              <Button
+                kind="primary"
+                size="sm"
+                renderIcon={CheckmarkOutline}
+                onClick={() => onAccept && onAccept(row)}
+              >
+                <FormattedMessage id="referral.action.acceptToAnalysis" />
+              </Button>
+              <Button
+                kind="danger--ghost"
+                size="sm"
+                renderIcon={WarningAlt}
+                onClick={() => onReject && onReject(row)}
+              >
+                <FormattedMessage id="referral.action.reject" />
+              </Button>
+            </div>
+            {row.labNumber && (
+              <CarbonLink
+                href={`/result?accessionNumber=${row.labNumber}`}
+                className="reference-lab-results__result-entry-link"
+              >
+                <FormattedMessage id="referral.action.openResultEntry" />
+              </CarbonLink>
+            )}
           </>
         )}
         {mode === "history" && (

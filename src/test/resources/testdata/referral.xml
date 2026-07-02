@@ -85,6 +85,13 @@
     <status_of_sample id="8" description="Test Canceled"
         code="6" status_type="ANALYSIS" lastupdated="2025-03-18"
         name="Test Canceled" />
+    <!-- Maps to AnalysisStatus.RejectedByReferenceLab via StatusService.addToAnalysisMap
+        (matches by name). Required so rejectLinkedAnalysis can resolve a real status
+        id during OGC-804 reject. -->
+    <status_of_sample id="9"
+        description="Rejected by reference lab" code="7"
+        status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="RejectedByReferenceLab" />
 
     <!-- Test Section -->
     <test_section id="1" name="Chemistry"

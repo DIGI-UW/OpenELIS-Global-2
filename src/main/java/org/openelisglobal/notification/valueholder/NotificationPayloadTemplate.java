@@ -1,9 +1,8 @@
 package org.openelisglobal.notification.valueholder;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,7 +17,7 @@ public class NotificationPayloadTemplate extends BaseObject<Integer> {
     private static final long serialVersionUID = 3273600381468746329L;
 
     public enum NotificationPayloadType {
-        TEST_RESULT, REFERRAL_OUT, SUBCONTRACT_DISPATCHED
+        TEST_RESULT, REFERRAL_OUT, SUBCONTRACT_DISPATCHED, REFERRAL_REJECTED_NEEDS_RECOLLECTION, REFERRAL_NUDGE
     }
 
     @Id
@@ -27,7 +26,7 @@ public class NotificationPayloadTemplate extends BaseObject<Integer> {
     private Integer id;
 
     @Column(unique = true)
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = NotificationPayloadTypeConverter.class)
     private NotificationPayloadType type;
 
     @Column(name = "message_template")

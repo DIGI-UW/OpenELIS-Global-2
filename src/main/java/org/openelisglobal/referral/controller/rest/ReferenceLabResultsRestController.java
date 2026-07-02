@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -77,6 +78,56 @@ public class ReferenceLabResultsRestController extends BaseRestController {
         }
     }
 
+    @PutMapping("/referrals/{referralId}/accept")
+    public ResponseEntity<?> acceptReferral(@PathVariable String referralId, HttpServletRequest request) {
+        try {
+            referenceLabResultsService.acceptReferral(referralId, getSysUserId(request));
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PutMapping("/referrals/{referralId}/reject")
+    public ResponseEntity<?> rejectReferral(@PathVariable String referralId, @Valid @RequestBody RejectRequest body,
+            BindingResult result, HttpServletRequest request) {
+        if (result.hasErrors()) {
+            return ResponseEntity.badRequest().body(result.getAllErrors());
+        }
+        try {
+            referralService.markReferralRejected(referralId, body.getReasonCode(), body.getReasonText(),
+                    getSysUserId(request));
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/referrals/{referralId}/notify")
+    public ResponseEntity<?> notifyReferenceLab(@PathVariable String referralId,
+            @RequestBody(required = false) NotifyRequest body, HttpServletRequest request) {
+        try {
+            String message = body == null ? null : body.getMessage();
+            referralService.nudgeReferenceLab(referralId, message, getSysUserId(request));
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     private DashboardView parseView(String raw) {
         return switch (raw == null ? "" : raw.toLowerCase()) {
         case "outstanding" -> DashboardView.OUTSTANDING;
@@ -96,6 +147,41 @@ public class ReferenceLabResultsRestController extends BaseRestController {
 
         public void setReason(String reason) {
             this.reason = reason;
+        }
+    }
+
+    public static class NotifyRequest {
+        private String message;
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+    }
+
+    public static class RejectRequest {
+        private String reasonCode;
+
+        @NotBlank
+        private String reasonText;
+
+        public String getReasonCode() {
+            return reasonCode;
+        }
+
+        public void setReasonCode(String reasonCode) {
+            this.reasonCode = reasonCode;
+        }
+
+        public String getReasonText() {
+            return reasonText;
+        }
+
+        public void setReasonText(String reasonText) {
+            this.reasonText = reasonText;
         }
     }
 }

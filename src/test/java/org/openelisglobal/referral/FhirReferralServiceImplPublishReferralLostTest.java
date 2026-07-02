@@ -29,6 +29,7 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.referral.fhir.service.FhirReferralServiceImpl;
+import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -61,6 +62,7 @@ public class FhirReferralServiceImplPublishReferralLostTest {
     private FhirTransformService fhirTransformService;
     private FhirPersistanceService fhirPersistanceService;
     private FhirConfig fhirConfig;
+    private ReferralService referralService;
 
     @Before
     public void setUp() {
@@ -69,11 +71,13 @@ public class FhirReferralServiceImplPublishReferralLostTest {
         fhirTransformService = mock(FhirTransformService.class);
         fhirPersistanceService = mock(FhirPersistanceService.class);
         fhirConfig = mock(FhirConfig.class);
+        referralService = mock(ReferralService.class);
 
         ReflectionTestUtils.setField(service, "sampleHumanService", sampleHumanService);
         ReflectionTestUtils.setField(service, "fhirTransformService", fhirTransformService);
         ReflectionTestUtils.setField(service, "fhirPersistanceService", fhirPersistanceService);
         ReflectionTestUtils.setField(service, "fhirConfig", fhirConfig);
+        ReflectionTestUtils.setField(service, "referralService", referralService);
 
         when(fhirConfig.getOeFhirSystem()).thenReturn("https://fhir.example/oe");
         // createReferralTask invokes createReferenceFor on the resources it links —
@@ -196,6 +200,10 @@ public class FhirReferralServiceImplPublishReferralLostTest {
         if (referralFhirUuid != null) {
             referral.setFhirUuid(referralFhirUuid);
         }
+        // publishReferralLost re-fetches by id (REQUIRES_NEW re-attach for lazy
+        // safety); echo this hand-built graph back so the unit test still drives the
+        // real method body.
+        when(referralService.getReferralById(REFERRAL_ID)).thenReturn(referral);
         return referral;
     }
 
