@@ -569,4 +569,7 @@
   <!-- OGC-704: per-test TEa for Westgard sigma metrics -->
   <include relativeToChangelogFile="true" file="085-add-test-tea-column.xml"/>
 
+  <!-- OGC-427 / OGC-811 M1: batch workplan foundation -->
+  <include relativeToChangelogFile="true" file="104-batch-workplan-foundation.xml"/>
+
 </databaseChangeLog>
