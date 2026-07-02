@@ -53,6 +53,7 @@ import {
 } from "./api";
 import AlertDetailModal from "./AlertDetailModal";
 import DeviceHistoryExpansion from "./DeviceHistoryExpansion";
+import { toDate, formatDuration } from "./shared/timeUtils";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 
@@ -116,18 +117,8 @@ const toNumber = (value) => {
 };
 
 const formatDateTime = (value) => {
-  if (!value) {
-    return "—";
-  }
-  try {
-    // If value is a number and appears to be in seconds (Unix timestamp < year 2100 in milliseconds)
-    // convert it to milliseconds
-    const timestamp =
-      typeof value === "number" && value < 4102444800000 ? value * 1000 : value;
-    return new Date(timestamp).toLocaleString();
-  } catch (error) {
-    return value;
-  }
+  const date = toDate(value);
+  return date ? date.toLocaleString() : "—";
 };
 
 const normalizeUnit = (unit) => ({
@@ -155,16 +146,9 @@ const normalizeAlert = (alert) => {
   const currentTemp = toNumber(contextData.temperature);
 
   let durationSeconds = null;
-  let durationMinutes = null;
-  if (alert.startTime) {
-    try {
-      const startTime = new Date(alert.startTime);
-      const now = new Date();
-      durationSeconds = Math.floor((now - startTime) / 1000);
-      durationMinutes = Math.max(1, Math.round(durationSeconds / 60));
-    } catch (e) {
-      console.warn("Failed to calculate alert duration:", alert.startTime);
-    }
+  const startTime = toDate(alert.startTime);
+  if (startTime) {
+    durationSeconds = Math.floor((Date.now() - startTime.getTime()) / 1000);
   }
 
   return {
@@ -175,7 +159,6 @@ const normalizeAlert = (alert) => {
     location: alert.freezer?.code ?? "Unknown location",
     currentTemp,
     durationSeconds,
-    durationMinutes,
     startedAt: alert.startTime,
   };
 };
@@ -744,9 +727,9 @@ function FreezerMonitoringDashboard({ intl }) {
                                   temperature: formatTemperatureDisplay(
                                     alert.currentTemp,
                                   ),
-                                  duration: alert.durationMinutes
-                                    ? `${alert.durationMinutes} min`
-                                    : "—",
+                                  duration: formatDuration(
+                                    alert.durationSeconds,
+                                  ),
                                   startedAt: formatDateTime(alert.startedAt),
                                   status: alert.status,
                                   _alert: alert,
