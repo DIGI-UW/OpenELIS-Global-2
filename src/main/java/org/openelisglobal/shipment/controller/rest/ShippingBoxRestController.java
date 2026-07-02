@@ -75,7 +75,27 @@ public class ShippingBoxRestController extends BaseRestController {
     @GetMapping
     public ResponseEntity<List<ShippingBoxForm>> getAllBoxes() {
         try {
-            List<ShippingBox> boxes = shippingBoxService.getAllActiveBoxes();
+            List<ShippingBox> boxes = shippingBoxService.getActiveOutboundBoxes();
+            List<ShippingBoxForm> forms = new ArrayList<>();
+
+            for (ShippingBox box : boxes) {
+                forms.add(convertToForm(box));
+            }
+
+            return ResponseEntity.ok(forms);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get incoming (FHIR-imported) shipping boxes for the reception workflow
+     */
+    @GetMapping("/incoming")
+    public ResponseEntity<List<ShippingBoxForm>> getIncomingBoxes() {
+        try {
+            List<ShippingBox> boxes = shippingBoxService.getIncomingBoxes();
             List<ShippingBoxForm> forms = new ArrayList<>();
 
             for (ShippingBox box : boxes) {
@@ -678,7 +698,7 @@ public class ShippingBoxRestController extends BaseRestController {
     @GetMapping("/statistics")
     public ResponseEntity<java.util.Map<String, Integer>> getStatistics() {
         try {
-            List<ShippingBox> allBoxes = shippingBoxService.getAllActiveBoxes();
+            List<ShippingBox> allBoxes = shippingBoxService.getActiveOutboundBoxes();
 
             int inTransitCount = 0;
             int deliveredCount = 0;
@@ -733,6 +753,8 @@ public class ShippingBoxRestController extends BaseRestController {
         form.setReconciledDate(box.getReconciledDate());
         form.setArchived(box.getArchived());
         form.setArchivedDate(box.getArchivedDate());
+        form.setInbound(box.getInbound());
+        form.setOriginFacilityName(box.getOriginFacilityName());
 
         if (box.getDestinationFacility() != null && box.getDestinationFacility().getId() != null) {
             try {

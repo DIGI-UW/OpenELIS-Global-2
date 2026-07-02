@@ -252,6 +252,19 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     }
 
     @Override
+    public Optional<Specimen> getSpecimenByUuid(String uuid) {
+        Bundle bundle = localFhirClient.search() //
+                .forResource(Specimen.class) //
+                .returnBundle(Bundle.class) //
+                .where(Specimen.RES_ID.exactly().identifier(uuid)) //
+                .execute();
+        if (bundle.hasEntry()) {
+            return Optional.of((Specimen) bundle.getEntryFirstRep().getResource());
+        }
+        return Optional.empty();
+    }
+
+    @Override
     public Optional<ServiceRequest> getServiceRequestBySpecimenUuid(String specimenUuid) {
         Bundle bundle = localFhirClient.search() //
                 .forResource(ServiceRequest.class) //

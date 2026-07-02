@@ -18,6 +18,7 @@ import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliveryStatus;
 import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliverySuppliedItemComponent;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -50,6 +51,7 @@ public class ShippingBoxFhirTransform {
     private static final String EXT_SPECIMEN_TYPE_SUMMARY = "http://openelis.org/fhir/extension/shipment-specimen-type-summary";
     private static final String EXT_NON_CONFORMITY = "http://openelis.org/fhir/extension/shipment-non-conformity";
     private static final String EXT_DESTINATION_ORG = "http://openelis.org/fhir/extension/shipment-destination-org";
+    private static final String EXT_SOURCE_ORG = "http://openelis.org/fhir/extension/shipment-source-org";
 
     @Autowired
     private BoxSampleItemDAO boxSampleItemDAO;
@@ -128,6 +130,13 @@ public class ShippingBoxFhirTransform {
                         "Destination facility '" + box.getDestinationFacility().getOrganizationName()
                                 + "' has no FHIR UUID — remote sites may not be able to match it");
             }
+        }
+
+        // Extension — source org (sending lab name for receiver display)
+        String configName = ConfigurationProperties.getInstance()
+                .getPropertyValue(ConfigurationProperties.Property.configurationName);
+        if (configName != null && !configName.isBlank()) {
+            supplyDelivery.addExtension(new Extension(EXT_SOURCE_ORG, new StringType(configName)));
         }
 
         // Extensions — temperature requirement

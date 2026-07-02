@@ -53,6 +53,32 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ShippingBox> getActiveOutboundBoxes() {
+        try {
+            List<ShippingBox> boxes = shippingBoxDAO.findActiveByInbound(false);
+            boxes.forEach(this::initializeLazyAssociations);
+            return boxes;
+        } catch (Exception e) {
+            logger.error("Error getting active outbound shipping boxes", e);
+            throw new LIMSRuntimeException("Error getting active outbound shipping boxes", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShippingBox> getIncomingBoxes() {
+        try {
+            List<ShippingBox> boxes = shippingBoxDAO.findActiveByInbound(true);
+            boxes.forEach(this::initializeLazyAssociations);
+            return boxes;
+        } catch (Exception e) {
+            logger.error("Error getting incoming shipping boxes", e);
+            throw new LIMSRuntimeException("Error getting incoming shipping boxes", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ShippingBox getBoxById(Integer id) {
         try {
             ShippingBox box = shippingBoxDAO.get(id).orElse(null);
@@ -280,7 +306,7 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getBoxesForDashboard() {
         try {
-            List<ShippingBox> boxes = shippingBoxDAO.findAllActive();
+            List<ShippingBox> boxes = shippingBoxDAO.findActiveByInbound(false);
             List<Map<String, Object>> result = new ArrayList<>();
 
             // Compile all DTOs within transaction

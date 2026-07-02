@@ -2,13 +2,18 @@ package org.openelisglobal.shipment.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ServiceRequest;
+import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -16,6 +21,8 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.shipment.dto.ExpectedSpecimenDTO;
 import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +50,15 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
     @Autowired
     private SampleItemService sampleItemService;
 
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private LocalizationService localizationService;
+
+    @Autowired
+    private FhirConfig fhirConfig;
+
     @Override
     @Transactional
     public List<ExpectedSpecimenDTO> reconcileAndGetExpectedSpecimens(Integer shippingBoxId, Integer systemUserId) {
@@ -69,6 +85,8 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
             if (specimenUuid == null) {
                 continue;
             }
+
+            ensureSampleTypeExists(specimenUuid);
 
             ExpectedSpecimenDTO dto = new ExpectedSpecimenDTO();
             dto.setSpecimenUuid(specimenUuid);
@@ -141,10 +159,40 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
 
     private String resolveExternalOrderNumber(String specimenUuid) {
         ServiceRequest sr = fhirPersistanceService.getServiceRequestBySpecimenUuid(specimenUuid).orElse(null);
-        if (sr == null || !sr.hasIdentifier()) {
+        if (sr == null) {
             return null;
         }
-        return sr.getIdentifierFirstRep().getValue();
+
+        // Try identifierFirstRep first (works when the SR itself is the original
+        // referral)
+        if (sr.hasIdentifier()) {
+            String candidateId = sr.getIdentifierFirstRep().getValue();
+            if (candidateId != null && !electronicOrderService.getElectronicOrdersByExternalId(candidateId).isEmpty()) {
+                return candidateId;
+            }
+        }
+
+        // Follow basedOn — the SR may be the sender's completed SR that references
+        // the original referral SR via basedOn
+        if (sr.hasBasedOn()) {
+            for (Reference basedOnRef : sr.getBasedOn()) {
+                String refId = extractIdFromReference(basedOnRef.getReference());
+                if (refId != null && !electronicOrderService.getElectronicOrdersByExternalId(refId).isEmpty()) {
+                    return refId;
+                }
+            }
+        }
+
+        // Last resort: return identifierFirstRep even without e-order match
+        return sr.hasIdentifier() ? sr.getIdentifierFirstRep().getValue() : null;
+    }
+
+    private String extractIdFromReference(String reference) {
+        if (reference == null) {
+            return null;
+        }
+        int slashIdx = reference.lastIndexOf('/');
+        return slashIdx >= 0 ? reference.substring(slashIdx + 1) : reference;
     }
 
     private Sample findSampleByReferringId(String referringId) {
@@ -154,6 +202,55 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
             LogEvent.logWarn(this.getClass().getSimpleName(), "findSampleByReferringId",
                     "lookup failed for referringId " + referringId + ": " + e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Read the Specimen FHIR resource and ensure the sample type exists locally. If
+     * the sender's abbreviation is unknown, create a new TypeOfSample so that
+     * LabOrderSearchProvider can resolve it when pre-populating the form.
+     */
+    private void ensureSampleTypeExists(String specimenUuid) {
+        try {
+            Specimen specimen = fhirPersistanceService.getSpecimenByUuid(specimenUuid).orElse(null);
+            if (specimen == null || !specimen.hasType()) {
+                return;
+            }
+            String sampleTypeSystem = fhirConfig.getOeFhirSystem() + "/sampleType";
+            for (Coding coding : specimen.getType().getCoding()) {
+                if (!sampleTypeSystem.equals(coding.getSystem()) || coding.getCode() == null) {
+                    continue;
+                }
+                String abbreviation = coding.getCode();
+                String existingId = typeOfSampleService.getTypeOfSampleIdForLocalAbbreviation(abbreviation);
+                if (existingId != null && !existingId.isBlank()) {
+                    return; // already exists
+                }
+                String displayName = coding.hasDisplay() ? coding.getDisplay() : abbreviation;
+
+                Localization localization = new Localization();
+                localization.setDescription("sampleType name: " + displayName);
+                localization.setLocalizedValue("en", displayName);
+                localization.setSysUserId("1");
+                localizationService.insert(localization);
+
+                TypeOfSample newType = new TypeOfSample();
+                newType.setLocalAbbreviation(abbreviation);
+                newType.setDescription(displayName);
+                newType.setDomain("H");
+                newType.setIsActive(true);
+                newType.setSortOrder(Integer.MAX_VALUE);
+                newType.setLocalization(localization);
+                newType.setSysUserId("1");
+                typeOfSampleService.insert(newType);
+                typeOfSampleService.clearCache();
+                LogEvent.logInfo(this.getClass().getSimpleName(), "ensureSampleTypeExists",
+                        "Created local TypeOfSample: " + abbreviation + " (" + newType.getDescription() + ")");
+                return;
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "ensureSampleTypeExists",
+                    "Could not ensure sample type for specimen " + specimenUuid + ": " + e.getMessage());
         }
     }
 

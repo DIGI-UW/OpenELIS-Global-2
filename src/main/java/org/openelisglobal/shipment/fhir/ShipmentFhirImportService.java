@@ -47,6 +47,7 @@ public class ShipmentFhirImportService {
     private static final String EXT_CAPACITY = "http://openelis.org/fhir/extension/shipment-capacity";
     private static final String EXT_NOTES = "http://openelis.org/fhir/extension/shipment-notes";
     private static final String EXT_DESTINATION_ORG = "http://openelis.org/fhir/extension/shipment-destination-org";
+    private static final String EXT_SOURCE_ORG = "http://openelis.org/fhir/extension/shipment-source-org";
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -206,6 +207,10 @@ public class ShipmentFhirImportService {
             if (notes != null) {
                 box.setNotes(notes);
             }
+
+            // Direction + origin
+            box.setInbound(true);
+            box.setOriginFacilityName(extractExtensionString(delivery, EXT_SOURCE_ORG));
 
             // Specimen count from supplied item quantity
             if (delivery.hasSuppliedItem() && delivery.getSuppliedItem().hasQuantity()) {

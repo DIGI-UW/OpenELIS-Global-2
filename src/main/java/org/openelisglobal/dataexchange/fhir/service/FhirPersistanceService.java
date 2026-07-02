@@ -35,6 +35,8 @@ public interface FhirPersistanceService {
 
     Optional<Specimen> getSpecimenBySampleItemUuid(String uuid);
 
+    Optional<Specimen> getSpecimenByUuid(String uuid);
+
     Optional<ServiceRequest> getServiceRequestBySpecimenUuid(String specimenUuid);
 
     Optional<org.hl7.fhir.r4.model.SupplyDelivery> getSupplyDeliveryByUuid(String uuid);

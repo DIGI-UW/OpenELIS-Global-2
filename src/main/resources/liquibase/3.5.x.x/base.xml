@@ -59,6 +59,7 @@
   <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-017-add-referral-stuck-threshold-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-018-add-inbound-and-origin.xml"/>
 
   <!-- Analyzer import diagnostics: structured reason for unmapped/failed staging rows -->
   <include relativeToChangelogFile="true" file="005-analyzer-results-import-issue-reason.xml"/>

@@ -95,11 +95,6 @@ const Index = () => {
 
   let SampleTypes = [];
   let sampleTypeMap = {};
-  let CrossPanels = [];
-  let CrossTests = [];
-  let sampleTypeOrder;
-  let crossSampleTypeMap = {};
-  let crossSampleTypeOrderMap = {};
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -196,8 +191,6 @@ const Index = () => {
     let newOrderFormValues = { ...orderFormValues };
 
     SampleTypes = [];
-    CrossPanels = [];
-    CrossTests = [];
     sampleTypeMap = {};
 
     if (message === "valid") {
@@ -243,11 +236,6 @@ const Index = () => {
         alert(order.user_alert);
       }
 
-      // initialize objects and globals
-      sampleTypeOrder = -1;
-      crossSampleTypeMap = {};
-      crossSampleTypeOrderMap = {};
-
       if (order.sampleTypes != "") {
         parseSampletypes(
           newOrderFormValues,
@@ -256,6 +244,29 @@ const Index = () => {
             : [{ sampleType: order.sampleTypes.sampleType }],
           SampleTypes,
         );
+      }
+
+      // Referred tests/panels whose sample type can't be auto-resolved come back
+      // as crosstests/crosspanels (test/panel is known, but valid for several
+      // local sample types). The form can't hold a test with a blank type, so
+      // instead of silently dropping them we name them and let the tech pick.
+      const toArray = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
+      const ambiguousItems = [
+        ...toArray(order.crosstests?.crosstest),
+        ...toArray(order.crosspanels?.crosspanel),
+      ]
+        .map((item) => item.name)
+        .filter(Boolean);
+      if (ambiguousItems.length > 0) {
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage(
+            { id: "order.referral.sampleType.ambiguous" },
+            { items: ambiguousItems.join(", ") },
+          ),
+        });
+        setNotificationVisible(true);
       }
 
       const urlParams = new URLSearchParams(window.location.search);
@@ -271,7 +282,7 @@ const Index = () => {
         },
       };
       setOrderFormValues(newOrderFormValues);
-      setSamples(SampleTypes);
+      setSamples(SampleTypes.length > 0 ? SampleTypes : [{ ...sampleObject }]);
 
       // Set initial step based on resolved domain
       const resolvedDomain = order.domain;
@@ -300,10 +311,10 @@ const Index = () => {
       getFromOpenElisServer(
         "/rest/practitioner?providerId=" + providerId,
         (data) => {
-          setOrderFormValues({
-            ...orderFormValues,
+          setOrderFormValues((prev) => ({
+            ...prev,
             sampleOrderItems: {
-              ...orderFormValues.sampleOrderItems,
+              ...prev.sampleOrderItems,
               providerId: data.id,
               providerPersonId: data.person.id,
               providerFirstName: data.person.firstName,
@@ -312,7 +323,7 @@ const Index = () => {
               providerEmail: data.person.email,
               providerFax: data.person.fax,
             },
-          });
+          }));
         },
       );
     } else {
@@ -419,9 +430,6 @@ const Index = () => {
   }
 
   function getNodeNamesByTagName(elements, tag) {
-    let allTestsMap = {};
-    let panelTestsMap = {};
-
     if (elements[tag] === undefined) {
       return [];
     }
@@ -454,12 +462,6 @@ const Index = () => {
         }
       } else if (tag == "test") {
         objList[j] = newTest(id, name);
-        allTestsMap[id] = name;
-      } else if (tag == "crosssampletype") {
-        let testtag = nodes[j].testid;
-        if (testtag) {
-          objList[j] = newCrossSampleType(id, name, testtag);
-        } else objList[j] = newCrossSampleType(id, name);
       }
     }
 
@@ -505,28 +507,6 @@ const Index = () => {
   };
   const newTest = (id, name) => {
     return { id: "" + id, name: name };
-  };
-  const newCrossSampleType = (id, name, testId) => {
-    return {
-      id: "" + id,
-      name: name,
-      testId: testId,
-    };
-  };
-  const newCrossPanel = (id, name) => {
-    return {
-      id: "" + id,
-      name: name,
-      sampleTypes: [],
-      typeMap: [],
-    };
-  };
-  const newCrossTest = (name) => {
-    return {
-      name: name,
-      sampleTypes: [],
-      typeMap: [],
-    };
   };
 
   const showAlertMessage = (msg, kind) => {
@@ -639,7 +619,7 @@ const Index = () => {
     const schema = createOrderEntryValidationSchema(domain);
     schema
       .validate(orderFormValues, { abortEarly: false })
-      .then((validData) => {
+      .then(() => {
         setErrors([]);
       })
       .catch((errors) => {
@@ -651,14 +631,13 @@ const Index = () => {
     const labNumber = new URLSearchParams(window.location.search).get(
       "labNumber",
     );
-    const newOrderFormValues = {
-      ...orderFormValues,
+    setOrderFormValues((prev) => ({
+      ...prev,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...prev.sampleOrderItems,
         labNo: labNumber ? labNumber : "",
       },
-    };
-    setOrderFormValues(newOrderFormValues);
+    }));
   }, []);
 
   const attacheSamplesToFormValues = () => {
