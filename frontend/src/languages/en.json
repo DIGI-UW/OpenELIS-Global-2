@@ -4487,6 +4487,8 @@
   "label.testCatalog.list.col.sampleType": "Sample Type",
   "button.testCatalog.newTest": "New test",
   "button.testCatalog.editRelated": "Edit related tests together",
+  "button.testCatalog.editRelatedFromEditor": "Edit related tests…",
+  "label.testCatalog.editor.noRelated": "No related tests share this test's name.",
   "label.testCatalog.editingNTests": "Editing {count} tests",
   "label.testCatalog.perTestIdentity": "Identity & LOINC (per test)",
   "state.testCatalog.differsAcrossTests": "Differs across tests",

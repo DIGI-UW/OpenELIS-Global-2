@@ -830,6 +830,44 @@ public class TestCatalogEditorRestController {
     // URL) — no stored family entity. Identity + LOINC stay per test (FR-12);
     // shared config (here: Ranges) is written to every selected test (FR-11).
 
+    /**
+     * Active tests sharing this test's name stem (the analyte's specimen siblings)
+     * — the suggested set for "Edit related tests together" (FR-7). Includes self.
+     */
+    @GetMapping(value = "/tests/{testId}/siblings", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<TestListRow> siblings(@PathVariable String testId) {
+        List<TestListRow> out = new ArrayList<>();
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return out;
+        }
+        String stem = nameStem(test);
+        if (stem.isEmpty()) {
+            return out;
+        }
+        for (Test other : testService.getAllActiveTests(false)) {
+            if (stem.equalsIgnoreCase(nameStem(other))) {
+                TestListRow row = new TestListRow();
+                row.testId = other.getId();
+                row.name = TestServiceImpl.getLocalizedTestNameWithType(other);
+                TypeOfSample sampleTypeOfTest = testService.getTypeOfSample(other);
+                row.sampleType = sampleTypeOfTest != null ? sampleTypeOfTest.getLocalizedName() : null;
+                out.add(row);
+            }
+        }
+        return out;
+    }
+
+    /** The test name without its "(SampleType)" augmentation — the analyte stem. */
+    private String nameStem(Test test) {
+        String name = TestServiceImpl.getLocalizedTestNameWithType(test);
+        if (name == null) {
+            return "";
+        }
+        int paren = name.lastIndexOf('(');
+        return (paren > 0 ? name.substring(0, paren) : name).trim();
+    }
+
     public static class GroupTestSummary {
         public String testId;
         public String name;

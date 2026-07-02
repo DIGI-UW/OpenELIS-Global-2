@@ -101,6 +101,31 @@ const TestCatalogEditor = () => {
     history.push(`${base}/TestCatalogList`);
   };
 
+  // FR-7: open the combined editor over this test's specimen siblings (tests
+  // sharing its name stem). Falls back to a notice when there are none.
+  const editRelatedTests = () => {
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/siblings`,
+      (res) => {
+        const ids = Array.isArray(res) ? res.map((r) => r.testId) : [];
+        if (ids.length >= 2) {
+          history.push(
+            `${base}/TestCatalogEditor/group/${ids.join(",")}/ranges`,
+          );
+        } else {
+          setNotificationVisible(true);
+          addNotification({
+            kind: "info",
+            title: intl.formatMessage({ id: "label.testCatalog.editor" }),
+            message: intl.formatMessage({
+              id: "label.testCatalog.editor.noRelated",
+            }),
+          });
+        }
+      },
+    );
+  };
+
   const handleSavePlaceholder = (messageId) => {
     // Section save + clone are wired in their own milestones (M4+ / OGC-944).
     setNotificationVisible(true);
@@ -206,6 +231,13 @@ const TestCatalogEditor = () => {
                 }
               >
                 <FormattedMessage id="label.testCatalog.editor.saveAsNew" />
+              </Button>
+              <Button
+                kind="ghost"
+                data-testid="edit-related-tests"
+                onClick={editRelatedTests}
+              >
+                <FormattedMessage id="button.testCatalog.editRelatedFromEditor" />
               </Button>
               <Button kind="ghost" onClick={handleCancel}>
                 <FormattedMessage id="label.button.cancel" />
