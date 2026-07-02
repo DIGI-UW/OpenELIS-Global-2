@@ -168,4 +168,39 @@ describe("TestCatalogList", () => {
       vi.useRealTimers();
     }
   });
+
+  it("shows the sample type in its own column", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/tests")) {
+        cb(
+          pageOf([
+            {
+              testId: "7",
+              name: "Glucose (Serum)",
+              sampleType: "Serum",
+              code: "GLU",
+              domain: "CLINICAL",
+              active: true,
+            },
+          ]),
+        );
+      } else {
+        cb([]);
+      }
+    });
+    renderList();
+    expect(await screen.findByText("Serum")).toBeInTheDocument();
+  });
+
+  it("New test button opens create-in-place", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.includes("/tests") ? pageOf([]) : []),
+    );
+    renderList();
+    const button = await screen.findByTestId("new-test-button");
+    fireEvent.click(button);
+    expect(mockHistory.push).toHaveBeenCalledWith(
+      "/MasterListsPage/TestCatalogEditor/new/basic-info",
+    );
+  });
 });

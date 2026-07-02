@@ -140,6 +140,7 @@ public class TestCatalogEditorRestController {
     public static class TestListRow {
         public String testId;
         public String name;
+        public String sampleType;
         public String code;
         public String domain;
         public boolean active;
@@ -219,10 +220,14 @@ public class TestCatalogEditorRestController {
         int to = Math.min(from + result.pageSize, filtered.size());
         result.rows = new ArrayList<>(filtered.subList(from, to));
         // Augment each name with its sample type — e.g. "Covid-PCR (Urine)" — using
-        // the same helper the rest of the app uses (respects augmentTestNameWithType).
-        // Done on the page slice only (≤ pageSize lookups).
+        // the same helper the rest of the app uses (respects augmentTestNameWithType),
+        // and surface the specimen in its own column (FR-39). Done on the page slice
+        // only (≤ pageSize lookups).
         for (TestListRow row : result.rows) {
-            row.name = TestServiceImpl.getLocalizedTestNameWithType(row.testId);
+            Test test = testService.getTestById(row.testId);
+            row.name = TestServiceImpl.getLocalizedTestNameWithType(test);
+            TypeOfSample sampleTypeOfRow = testService.getTypeOfSample(test);
+            row.sampleType = sampleTypeOfRow != null ? sampleTypeOfRow.getLocalizedName() : null;
         }
         return result;
     }
