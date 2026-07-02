@@ -9,12 +9,22 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 
+interface NotificationContextValue {
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (notification: {
+    kind: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
 function SearchIndexManagement() {
   const [loading, setLoading] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
+    useContext(NotificationContext) as NotificationContextValue;
   const intl = useIntl();
-  const rebuildIndex = async (res) => {
+  const rebuildIndex = async (res: unknown) => {
     setNotificationVisible(true);
     if (res) {
       addNotification({

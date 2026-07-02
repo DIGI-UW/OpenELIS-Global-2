@@ -175,15 +175,15 @@ describe("SiteBrandingConfig", () => {
    */
   test("shows loading state while fetching branding", () => {
     // Arrange: Mock slow API response
-    getBranding.mockImplementation((callback) => {
+    getBranding.mockImplementation((_callback) => {
       // Don't call callback immediately to simulate loading
     });
 
     // Act: Render component
-    renderWithIntl(<SiteBrandingConfig />);
+    const { container } = renderWithIntl(<SiteBrandingConfig />);
 
     // Assert: Loading indicator should be visible (if component shows one)
-    // This test may need adjustment based on actual component implementation
+    expect(container.querySelector(".cds--loading")).toBeInTheDocument();
   });
 
   /**

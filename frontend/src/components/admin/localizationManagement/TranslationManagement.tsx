@@ -13,21 +13,15 @@ import {
   TableToolbarContent,
   TableToolbarSearch,
   Modal,
-  TextInput,
   TextArea,
   Select,
   SelectItem,
   Loading,
   ProgressBar,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
   Tag,
   Pagination,
 } from "@carbon/react";
-import { Edit, Download, Upload, WarningAlt } from "@carbon/icons-react";
+import { Edit, Download, WarningAlt } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -36,19 +30,45 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
+interface SupportedLocale {
+  localeCode: string;
+  displayName: string;
+  fallback: boolean;
+}
+
+interface LocalizationItem {
+  id: string;
+  description?: string;
+  fallbackValue?: string;
+  translatedValue?: string;
+  translations?: Record<string, string>;
+}
+
+interface LocaleTranslationStats {
+  displayName: string;
+  translated: number;
+  missing: number;
+  percentage: number;
+}
+
+interface TranslationStats {
+  totalEntries: number;
+  localeStats?: Record<string, LocaleTranslationStats>;
+}
+
 const TranslationManagement = () => {
   const intl = useIntl();
   const { addNotification } = useContext(NotificationContext);
 
-  const [locales, setLocales] = useState([]);
-  const [localizations, setLocalizations] = useState([]);
-  const [stats, setStats] = useState(null);
+  const [locales, setLocales] = useState<SupportedLocale[]>([]);
+  const [localizations, setLocalizations] = useState<LocalizationItem[]>([]);
+  const [stats, setStats] = useState<TranslationStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedLocale, setSelectedLocale] = useState("");
   const [searchText, setSearchText] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  const [editValues, setEditValues] = useState({});
+  const [editingItem, setEditingItem] = useState<LocalizationItem | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [filterMissing, setFilterMissing] = useState(false);
@@ -65,25 +85,31 @@ const TranslationManagement = () => {
   }, [selectedLocale, filterMissing]);
 
   const fetchLocales = () => {
-    getFromOpenElisServer("/rest/supportedlocales/active", (response) => {
-      if (response) {
-        setLocales(response);
-        if (response.length > 0) {
-          // Default to first non-fallback locale, or first locale
-          const defaultLocale =
-            response.find((l) => !l.fallback) || response[0];
-          setSelectedLocale(defaultLocale.localeCode);
+    getFromOpenElisServer(
+      "/rest/supportedlocales/active",
+      (response?: SupportedLocale[]) => {
+        if (response) {
+          setLocales(response);
+          if (response.length > 0) {
+            // Default to first non-fallback locale, or first locale
+            const defaultLocale =
+              response.find((locale) => !locale.fallback) || response[0];
+            setSelectedLocale(defaultLocale.localeCode);
+          }
         }
-      }
-    });
+      },
+    );
   };
 
   const fetchStats = () => {
-    getFromOpenElisServer("/rest/localizations/stats", (response) => {
-      if (response) {
-        setStats(response);
-      }
-    });
+    getFromOpenElisServer(
+      "/rest/localizations/stats",
+      (response?: TranslationStats) => {
+        if (response) {
+          setStats(response);
+        }
+      },
+    );
   };
 
   const fetchLocalizations = () => {
@@ -92,7 +118,7 @@ const TranslationManagement = () => {
       ? `/rest/localizations/missing/${selectedLocale}`
       : "/rest/localizations";
 
-    getFromOpenElisServer(url, (response) => {
+    getFromOpenElisServer(url, (response?: LocalizationItem[]) => {
       if (response) {
         setLocalizations(response);
       }
@@ -100,7 +126,7 @@ const TranslationManagement = () => {
     });
   };
 
-  const handleEdit = (item) => {
+  const handleEdit = (item: LocalizationItem) => {
     setEditingItem(item);
     setEditValues(item.translations || {});
     setIsEditModalOpen(true);
@@ -112,7 +138,7 @@ const TranslationManagement = () => {
     putToOpenElisServerFullResponse(
       `/rest/localizations/${editingItem.id}/translations`,
       JSON.stringify(editValues),
-      (response) => {
+      (response: Response) => {
         if (response.ok) {
           addNotification({
             kind: "success",
@@ -150,7 +176,7 @@ const TranslationManagement = () => {
 
     getFromOpenElisServer(
       `/rest/localizations/export/${selectedLocale}`,
-      (response) => {
+      (response?: LocalizationItem[]) => {
         if (response) {
           // Convert to CSV
           const headers = [
@@ -392,14 +418,7 @@ const TranslationManagement = () => {
           ) : (
             <>
               <DataTable rows={paginatedLocalizations} headers={headers}>
-                {({
-                  rows,
-                  headers,
-                  getTableProps,
-                  getHeaderProps,
-                  getRowProps,
-                  onInputChange,
-                }) => (
+                {({ headers, getTableProps, getHeaderProps }) => (
                   <TableContainer>
                     <TableToolbar>
                       <TableToolbarContent>
