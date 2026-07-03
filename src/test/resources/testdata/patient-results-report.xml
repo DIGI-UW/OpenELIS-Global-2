@@ -105,7 +105,8 @@
     <!-- Test Setup -->
     <test_section id="1" name="Biochemistry"
         description="Biochemistry Section" is_active="Y"
-        name_localization_id="1" lastupdated="2024-02-12 10:00:00" />
+        name_localization_id="1" lastupdated="2024-02-12 10:00:00"
+        domain="CLINICAL" />
     <test id="1" name="Glucose" description="Serum Glucose"
         test_section_id="1" is_active="Y" is_reportable="Y"
         name_localization_id="2" guid="glucose-test-guid"

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
@@ -23,6 +23,7 @@ import {
 } from "../../common/CustomNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import VectorSection from "./sections/VectorSection";
+import RequesterSection from "./sections/RequesterSection";
 import ProgramSection from "./sections/ProgramSection";
 import SampleTestSection from "./sections/SampleTestSection";
 import "../order-workflow.scss";
@@ -32,6 +33,7 @@ const WORKFLOW_TYPE = "vector";
 const VectorOrderEnter = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const componentMounted = useRef(true);
   const {
     orderData,
@@ -43,17 +45,28 @@ const VectorOrderEnter = () => {
     markStepComplete,
     isReadOnly,
     isEditMode,
+    resetOrder,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const [localLabNumber, setLocalLabNumber] = useState(
-    labNumber || orderData?.sampleOrderItems?.labNo || "",
-  );
+  // Initialise empty — populated by the sync effect below after the mount
+  // reset guard runs, preventing stale cross-domain lab numbers from bleeding in.
+  const [localLabNumber, setLocalLabNumber] = useState("");
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [showNceForm, setShowNceForm] = useState(false);
+
+  // Reset on mount for new orders. Only skip reset when ?order= is present
+  // AND the URL path belongs to this workflow.
+  useEffect(() => {
+    const orderParam = new URLSearchParams(location.search).get("order");
+    const pathMatchesWorkflow = location.pathname.startsWith("/order/vector");
+    if (!isEditMode && !(orderParam && pathMatchesWorkflow)) {
+      resetOrder();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed workflowType + clear patient status on mount.
   useEffect(() => {
@@ -81,10 +94,14 @@ const VectorOrderEnter = () => {
   // Sync local lab number when context changes.
   useEffect(() => {
     const contextLabNo = labNumber || orderData?.sampleOrderItems?.labNo;
+    const pathMatchesWorkflow = location.pathname.startsWith("/order/vector");
+    if (!pathMatchesWorkflow) return;
     if (contextLabNo && contextLabNo !== localLabNumber) {
       setLocalLabNumber(contextLabNo);
+    } else if (!contextLabNo && localLabNumber) {
+      setLocalLabNumber("");
     }
-  }, [labNumber, orderData?.sampleOrderItems?.labNo]);
+  }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -176,7 +193,11 @@ const VectorOrderEnter = () => {
     try {
       await saveOrderEntry(false);
       markStepComplete("enter");
-      history.push("/order/vector/label");
+      history.push(
+        labNumber
+          ? `/order/vector/label?order=${encodeURIComponent(labNumber)}`
+          : "/order/vector/label",
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -383,6 +404,13 @@ const VectorOrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+        />
+
+        <RequesterSection
+          orderData={orderData}
+          setOrderData={setOrderData}
+          isReadOnly={isReadOnly && !isEditMode}
+          workflowType={WORKFLOW_TYPE}
         />
 
         {/* Program Selection */}

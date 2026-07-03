@@ -34,6 +34,7 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+import { getPhoneFormatHint } from "../../patient/phoneFormatHint";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -446,10 +447,9 @@ function ProviderMenu() {
                 id: "patient.label.primaryphone",
                 defaultMessage: "Phone: {PHONE_FORMAT}",
               },
-              {
-                PHONE_FORMAT: configurationProperties.PHONE_FORMAT,
-              },
+              { PHONE_FORMAT: "" },
             )}
+            helperText={getPhoneFormatHint(intl, configurationProperties)}
             value={telephone}
             onChange={(e) => handleTelephoneChange(e)}
             onBlur={(e) => handlePhoneValidation(e)}
@@ -517,10 +517,9 @@ function ProviderMenu() {
                 id: "patient.label.primaryphone",
                 defaultMessage: "Phone: {PHONE_FORMAT}",
               },
-              {
-                PHONE_FORMAT: configurationProperties.PHONE_FORMAT,
-              },
+              { PHONE_FORMAT: "" },
             )}
+            helperText={getPhoneFormatHint(intl, configurationProperties)}
             value={telephone}
             onChange={(e) => handleTelephoneChange(e)}
             onBlur={(e) => handlePhoneValidation(e)}

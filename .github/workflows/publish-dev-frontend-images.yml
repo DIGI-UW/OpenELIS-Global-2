@@ -7,7 +7,7 @@ name: Publishing / Dev Images / Frontend
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, demo-silnas]
   workflow_dispatch:
 
 env:
@@ -28,25 +28,37 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image_name: ${{ steps.prep.outputs.image_name }}
     steps:
       - name: Prepare
+        id: prep
         run: |
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR_FRONTEND=${platform//\//-}" >> $GITHUB_ENV
+          branch="${{ github.ref_name }}"
+          if [ "$branch" = "develop" ]; then
+            image_name="${{ env.DOCKER_NAME }}-frontend-dev"
+          else
+            slug="${branch//\//-}"
+            image_name="${{ env.DOCKER_NAME }}-frontend-dev-${slug}"
+          fi
+          echo "BRANCH_IMAGE_NAME=${image_name}" >> $GITHUB_ENV
+          echo "image_name=${image_name}" >> $GITHUB_OUTPUT
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
         # Add support for more platforms with QEMU (optional)
         # https://github.com/docker/setup-qemu-action
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to DockerHub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ vars.DOCKERHUB_USERNAME }}
@@ -54,9 +66,9 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
-          images: ${{ env.DOCKER_NAME }}-frontend-dev
+          images: ${{ env.BRANCH_IMAGE_NAME }}
 
       - name: Build and push Docker image
         id: build
@@ -72,16 +84,16 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           # tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-dev:${{ matrix.platform }}-buildcache-dev
-          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-dev:${{ matrix.platform }}-buildcache-dev,mode=max
-          outputs: type=image,name=${{ env.DOCKER_NAME }}-frontend-dev,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=${{ env.BRANCH_IMAGE_NAME }}:${{ matrix.platform }}-buildcache-dev
+          cache-to: type=registry,ref=${{ env.BRANCH_IMAGE_NAME }}:${{ matrix.platform }}-buildcache-dev,mode=max
+          outputs: type=image,name=${{ env.BRANCH_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
       - name: Export digest
         run: |
           mkdir -p /tmp/digests/frontend
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/frontend/${digest#sha256:}"
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: digests-${{ env.PLATFORM_PAIR_FRONTEND }}-frontend
           path: /tmp/digests/frontend/*
@@ -95,23 +107,23 @@ jobs:
       - build-and-push-image-frontend-dev
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: /tmp/digests/frontend
           pattern: digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
-          images: ${{ env.DOCKER_NAME }}-frontend-dev
+          images: ${{ needs.build-and-push-image-frontend-dev.outputs.image_name }}
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -120,8 +132,8 @@ jobs:
         working-directory: /tmp/digests/frontend
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.DOCKER_NAME }}-frontend-dev@sha256:%s ' *)
+            $(printf '${{ needs.build-and-push-image-frontend-dev.outputs.image_name }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_NAME }}-frontend-dev:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ needs.build-and-push-image-frontend-dev.outputs.image_name }}:${{ steps.meta.outputs.version }}

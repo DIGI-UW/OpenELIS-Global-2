@@ -189,7 +189,7 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
 
     @Override
     @Transactional()
-    public void deactivateReflexRule(String id) {
+    public boolean deactivateReflexRule(String id) {
         Optional<ReflexRule> rule = reflexRuleDAO.get(Integer.valueOf(id));
         if (rule.isPresent()) {
             // clear all the existing reflex tests
@@ -202,7 +202,23 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
             }
             rule.get().setActive(false);
             reflexRuleDAO.update(rule.get());
+            return true;
         }
+        return false;
+    }
+
+    @Override
+    @Transactional()
+    public boolean activateReflexRule(String id) {
+        Optional<ReflexRule> rule = reflexRuleDAO.get(Integer.valueOf(id));
+        if (rule.isPresent()) {
+            ReflexRule loaded = rule.get();
+            loaded.setActive(true);
+            processReflexRule(loaded);
+            reflexRuleDAO.update(loaded);
+            return true;
+        }
+        return false;
     }
 
     private void processReflexRule(ReflexRule rule) {

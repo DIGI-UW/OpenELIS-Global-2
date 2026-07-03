@@ -161,6 +161,12 @@ export const VectorSpeciesAPI = {
         ? `${SPECIES_BASE}?sampleTypeId=${encodeURIComponent(sampleTypeId)}`
         : SPECIES_BASE,
     ),
+
+  /** Lifecycle stages valid for a given sample type, derived from species lifecycle categories */
+  getLifecycleStagesBySampleType: (sampleTypeId) =>
+    get(
+      `${SPECIES_BASE}/lifecycle-stages?sampleTypeId=${encodeURIComponent(sampleTypeId)}`,
+    ),
 };
 
 export const VectorSamplingSiteAPI = {

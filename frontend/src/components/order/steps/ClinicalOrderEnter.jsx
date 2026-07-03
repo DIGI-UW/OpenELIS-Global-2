@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
@@ -33,6 +33,7 @@ const WORKFLOW_TYPE = "clinical";
 const ClinicalOrderEnter = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const componentMounted = useRef(true);
   const {
     orderData,
@@ -44,13 +45,14 @@ const ClinicalOrderEnter = () => {
     markStepComplete,
     isReadOnly,
     isEditMode,
+    resetOrder,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const [localLabNumber, setLocalLabNumber] = useState(
-    labNumber || orderData?.sampleOrderItems?.labNo || "",
-  );
+  // Initialise empty — populated by the sync effect below after the mount
+  // reset guard runs, preventing stale cross-domain lab numbers from bleeding in.
+  const [localLabNumber, setLocalLabNumber] = useState("");
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
@@ -58,6 +60,17 @@ const ClinicalOrderEnter = () => {
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
   });
+
+  // Reset on mount for new orders. Only skip reset when ?order= is present
+  // AND the URL path belongs to this workflow — prevents a stale ?order= from
+  // a different domain blocking the reset when switching between workflows.
+  useEffect(() => {
+    const orderParam = new URLSearchParams(location.search).get("order");
+    const pathMatchesWorkflow = location.pathname.startsWith("/order/clinical");
+    if (!isEditMode && !(orderParam && pathMatchesWorkflow)) {
+      resetOrder();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed workflowType into orderData on mount (or when editing an existing order
   // that already has a workflowType — keep it so it is not reset on re-render).
@@ -85,10 +98,14 @@ const ClinicalOrderEnter = () => {
   // Sync local lab number when context changes (e.g., order loaded from dashboard)
   useEffect(() => {
     const contextLabNo = labNumber || orderData?.sampleOrderItems?.labNo;
+    const pathMatchesWorkflow = location.pathname.startsWith("/order/clinical");
+    if (!pathMatchesWorkflow) return;
     if (contextLabNo && contextLabNo !== localLabNumber) {
       setLocalLabNumber(contextLabNo);
+    } else if (!contextLabNo && localLabNumber) {
+      setLocalLabNumber("");
     }
-  }, [labNumber, orderData?.sampleOrderItems?.labNo]);
+  }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -180,7 +197,11 @@ const ClinicalOrderEnter = () => {
     try {
       await saveOrderEntry(false);
       markStepComplete("enter");
-      history.push("/order/clinical/collect");
+      history.push(
+        labNumber
+          ? `/order/clinical/collect?order=${encodeURIComponent(labNumber)}`
+          : "/order/clinical/collect",
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,

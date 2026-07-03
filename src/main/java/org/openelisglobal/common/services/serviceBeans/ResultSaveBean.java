@@ -20,6 +20,8 @@ public class ResultSaveBean {
 
     private boolean hasQualifiedResult;
     private String resultType;
+    private java.math.BigDecimal expandedUncertainty;
+    private java.math.BigDecimal coverageFactor;
     private String multiSelectResultValues;
     private String testId;
     private String qualifiedResultId;
@@ -134,5 +136,21 @@ public class ResultSaveBean {
 
     public void setSignificantDigits(int significantDigits) {
         this.significantDigits = significantDigits;
+    }
+
+    public java.math.BigDecimal getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(java.math.BigDecimal expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public java.math.BigDecimal getCoverageFactor() {
+        return coverageFactor;
+    }
+
+    public void setCoverageFactor(java.math.BigDecimal coverageFactor) {
+        this.coverageFactor = coverageFactor;
     }
 }

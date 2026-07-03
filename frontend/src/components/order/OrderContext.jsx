@@ -221,6 +221,7 @@ const getInitialOrderData = (workflowType = "clinical") => {
 export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const { configurationProperties } = useContext(ConfigurationContext);
   const isDayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+  const location = useLocation();
 
   const [orderId, setOrderId] = useState(null);
   const [labNumber, setLabNumber] = useState(null);
@@ -848,7 +849,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       setError(null);
 
       // For Step 1, we send empty sampleXML - sample types will be saved as requests
-      const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+      const envFields = {
+        ...(orderData?.sampleOrderItems?.environmentalFields || {}),
+      };
       const workflowType = envFields.workflowType || "clinical";
 
       // For vector orders, stamp today's date/time on each sample and map
@@ -1283,6 +1286,28 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       }
     });
   }, []);
+
+  // On mount (and on refresh), if ?order=<labNumber> is in the URL and the
+  // path prefix matches this provider's workflowType, auto-load the order.
+  // After load, if the order's workflowType doesn't match this provider's
+  // (e.g. a clinical ?order= carried into the environmental provider), strip
+  // the param and reset so the form starts clean.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const orderParam = params.get("order");
+    if (!orderParam || orderId) return;
+
+    const path = location.pathname;
+    const pathWorkflow = path.startsWith("/order/vector")
+      ? "vector"
+      : path.startsWith("/order/environmental")
+        ? "environmental"
+        : "clinical";
+
+    if (pathWorkflow !== workflowType) return;
+
+    loadOrder(orderParam, false); // eslint-disable-line react-hooks/set-state-in-effect
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Auto-save effect - saves every 30 seconds if form is dirty and has minimum required data.

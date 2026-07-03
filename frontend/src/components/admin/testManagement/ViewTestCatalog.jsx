@@ -357,7 +357,7 @@ const TestCatalog = () => {
       <br />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <br />
-      <div className="orderLegendBody">
+      <div className="orderLegendBody" style={{ minHeight: "80vh" }}>
         <Grid fullWidth={true}>
           <Column lg={12} md={6} sm={3}>
             <h1>

@@ -47,6 +47,9 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
 
     private static final String ADDRESS_HIERARCHY_DEFAULT_PREFIX = "AddrHierarchyDefault_";
     private static final String ADDRESS_HIERARCHY_INPUT_TYPE_PREFIX = "AddrHierarchyInputType_";
+    private static final String ADDRESS_HIERARCHY_DISPLAY_KEY_PREFIX = "AddrHierarchyDisplayKey_";
+    private static final String ADDRESS_HIERARCHY_SORT_ORDER_PREFIX = "AddrHierarchySortOrder_";
+    private static final String ADDRESS_HIERARCHY_BIND_KEY_PREFIX = "AddrHierarchyBindKey_";
 
     @Autowired
     private OrganizationTypeService organizationTypeService;
@@ -97,6 +100,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int defaultValueIndex = findColumnIndex(headers, "defaultValue");
         int inputTypeIndex = findColumnIndex(headers, "inputType");
+        int bindKeyIndex = findColumnIndex(headers, "bindKey");
 
         List<OrganizationType> processedTypes = new ArrayList<>();
         String line;
@@ -111,7 +115,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             try {
                 String[] values = parseCsvLine(line);
                 OrganizationType orgType = processCsvLine(values, levelIndex, typeNameIndex, displayKeyIndex,
-                        sortOrderIndex, defaultValueIndex, inputTypeIndex);
+                        sortOrderIndex, defaultValueIndex, inputTypeIndex, bindKeyIndex);
                 if (orgType != null) {
                     processedTypes.add(orgType);
                 }
@@ -182,12 +186,15 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     }
 
     private OrganizationType processCsvLine(String[] values, int levelIndex, int typeNameIndex, int displayKeyIndex,
-            int sortOrderIndex, int defaultValueIndex, int inputTypeIndex) {
+            int sortOrderIndex, int defaultValueIndex, int inputTypeIndex, int bindKeyIndex) {
 
         String levelStr = getValueOrEmpty(values, levelIndex);
         String typeName = getValueOrEmpty(values, typeNameIndex);
+        String displayKey = getValueOrEmpty(values, displayKeyIndex);
+        String sortOrder = getValueOrEmpty(values, sortOrderIndex);
         String defaultValue = getValueOrEmpty(values, defaultValueIndex);
         String inputType = getValueOrEmpty(values, inputTypeIndex);
+        String bindKey = getValueOrEmpty(values, bindKeyIndex);
 
         if (levelStr.isEmpty()) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Skipping row with missing level");
@@ -214,8 +221,11 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             updateOrganizationType(existingType, level, values, displayKeyIndex);
             organizationTypeService.update(existingType);
             updateSiteInformationLabel(level, typeName);
+            updateDisplayKey(level, displayKey);
+            updateSortOrder(level, sortOrder);
             updateDefaultValue(level, defaultValue);
             updateInputType(level, inputType);
+            updateBindKey(level, bindKey);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Updated existing organization type: " + typeName + " at level " + level);
             return existingType;
@@ -228,8 +238,11 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             String typeId = organizationTypeService.insert(newType);
             newType.setId(typeId);
             updateSiteInformationLabel(level, typeName);
+            updateDisplayKey(level, displayKey);
+            updateSortOrder(level, sortOrder);
             updateDefaultValue(level, defaultValue);
             updateInputType(level, inputType);
+            updateBindKey(level, bindKey);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Created new organization type: " + typeName + " at level " + level);
             return newType;
@@ -289,6 +302,49 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateDefaultValue",
                     "Created default for level " + level + ": " + defaultValue);
         }
+    }
+
+    private void updateDisplayKey(int level, String displayKey) {
+        updateOptionalMetadata(level, displayKey, ADDRESS_HIERARCHY_DISPLAY_KEY_PREFIX,
+                "Address hierarchy display key for level " + level);
+    }
+
+    private void updateSortOrder(int level, String sortOrder) {
+        updateOptionalMetadata(level, sortOrder, ADDRESS_HIERARCHY_SORT_ORDER_PREFIX,
+                "Address hierarchy display order for level " + level);
+    }
+
+    private void updateBindKey(int level, String bindKey) {
+        updateOptionalMetadata(level, bindKey, ADDRESS_HIERARCHY_BIND_KEY_PREFIX,
+                "Address hierarchy form binding key for level " + level);
+    }
+
+    private void updateOptionalMetadata(int level, String rawValue, String prefix, String description) {
+        if (rawValue == null || rawValue.trim().isEmpty()) {
+            return;
+        }
+
+        String value = rawValue.trim();
+        String siteInfoName = prefix + level;
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
+        if (siteInfo != null) {
+            siteInfo.setValue(value);
+            siteInfo.setSysUserId("1");
+            siteInformationService.update(siteInfo);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "updateOptionalMetadata",
+                    "Updated " + siteInfoName + " to: " + value);
+            return;
+        }
+
+        siteInfo = new SiteInformation();
+        siteInfo.setName(siteInfoName);
+        siteInfo.setValue(value);
+        siteInfo.setDescription(description);
+        siteInfo.setValueType("text");
+        siteInfo.setSysUserId("1");
+        siteInformationService.insert(siteInfo);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "updateOptionalMetadata",
+                "Created " + siteInfoName + ": " + value);
     }
 
     private void updateInputType(int level, String inputType) {
@@ -396,5 +452,17 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
      */
     public static String getInputTypeSiteInfoName(int level) {
         return ADDRESS_HIERARCHY_INPUT_TYPE_PREFIX + level;
+    }
+
+    public static String getDisplayKeySiteInfoName(int level) {
+        return ADDRESS_HIERARCHY_DISPLAY_KEY_PREFIX + level;
+    }
+
+    public static String getSortOrderSiteInfoName(int level) {
+        return ADDRESS_HIERARCHY_SORT_ORDER_PREFIX + level;
+    }
+
+    public static String getBindKeySiteInfoName(int level) {
+        return ADDRESS_HIERARCHY_BIND_KEY_PREFIX + level;
     }
 }

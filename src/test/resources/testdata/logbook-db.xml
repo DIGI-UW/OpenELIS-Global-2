@@ -123,16 +123,16 @@
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
         lastupdated="2025-03-20 12:00:00.0" sort_order="2147483647"
-        name_localization_id="1" display_key="TestKey1" />
+        name_localization_id="1" display_key="TestKey1" domain="CLINICAL" />
     <test_section id="2" name="TestSection2"
         description="SectionDescription2" org_id="4" is_external="N"
         lastupdated="2025-03-21 13:00:00.0" sort_order="2147483646"
-        name_localization_id="2" display_key="TestKey2" />
+        name_localization_id="2" display_key="TestKey2" domain="CLINICAL" />
 
     <test_formats id="1" lastupdated="2025-03-21 12:00:00" />
     <test_formats id="2" lastupdated="2025-03-21 12:00:00" />
@@ -323,7 +323,7 @@
 
     <test_reflex id="2" tst_rslt_id="2" flags="R"
         lastupdated="2025-08-06 10:10:00" test_analyte_id="2" test_id="2"
-        add_test_id="1" sibling_reflex="1001" scriptlet_id="2"
+        add_test_id="1" sibling_reflex="1" scriptlet_id="2"
         non_dictionary_value="14.5" relation="EQUALS"
         internal_note="Reflex Internal B" external_note="Reflex External B" />
 

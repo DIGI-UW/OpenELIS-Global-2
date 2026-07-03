@@ -75,10 +75,13 @@ const FieldMapping = () => {
 
     const storageKey = `fieldMapping.${analyzerId}.scrollY`;
     const storedScrollY = sessionStorage.getItem(storageKey);
+    let scrollRestoreTimer = null;
     if (storedScrollY) {
       try {
-        setTimeout(() => {
-          window.scrollTo(0, parseInt(storedScrollY, 10));
+        scrollRestoreTimer = setTimeout(() => {
+          if (typeof window !== "undefined") {
+            window.scrollTo(0, parseInt(storedScrollY, 10));
+          }
         }, 100);
       } catch (_) {
         // ignore
@@ -143,6 +146,9 @@ const FieldMapping = () => {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
+      if (scrollRestoreTimer) {
+        clearTimeout(scrollRestoreTimer);
+      }
       window.removeEventListener("beforeunload", onBeforeUnload);
       sessionStorage.setItem(
         `fieldMapping.${analyzerId}.scrollY`,

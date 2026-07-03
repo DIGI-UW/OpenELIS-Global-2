@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Add Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) to Lab Unit (test_section).
+    CFG-6: Existing rows default to CLINICAL. Column becomes NOT NULL after backfill.
+    -->
+
+    <!-- Step 1: Add nullable column -->
+    <changeSet id="OGC-361-add-domain-nullable" author="OGC">
+        <addColumn schemaName="clinlims" tableName="test_section">
+            <column name="domain" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_section" columnName="domain"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Step 2: Backfill all existing rows to CLINICAL -->
+    <changeSet id="OGC-361-backfill-domain-clinical" author="OGC">
+        <update schemaName="clinlims" tableName="test_section">
+            <column name="domain" value="CLINICAL"/>
+            <where>domain IS NULL</where>
+        </update>
+        <rollback/>
+    </changeSet>
+
+    <!-- Step 3: Enforce NOT NULL and restrict to valid values -->
+    <changeSet id="OGC-361-domain-not-null-and-check" author="OGC">
+        <addNotNullConstraint schemaName="clinlims" tableName="test_section"
+            columnName="domain" columnDataType="VARCHAR(20)"/>
+        <sql>
+            ALTER TABLE clinlims.test_section
+            ADD CONSTRAINT ck_test_section_domain
+            CHECK (domain IN ('CLINICAL', 'ENVIRONMENTAL', 'VECTOR'));
+        </sql>
+        <rollback>
+            <dropNotNullConstraint schemaName="clinlims" tableName="test_section"
+                columnName="domain" columnDataType="VARCHAR(20)"/>
+            <sql>
+                ALTER TABLE clinlims.test_section
+                DROP CONSTRAINT IF EXISTS ck_test_section_domain;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -6,7 +6,6 @@ import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.barcode.util.BarcodeConfigUtil;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
-import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.StringUtil;
@@ -17,8 +16,12 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.vector.service.VectorSamplingSiteService;
+import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 
 /**
  * Stores values and formatting for Order Labels
@@ -127,26 +130,86 @@ public class OrderLabel extends Label {
         ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
         String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
                 sample.getId());
-        // Provider is saved the same way for all workflows via sampleOrderItems
-        SampleOrderService sampleOrderService = new SampleOrderService(sample);
-        org.openelisglobal.sample.bean.SampleOrderItem orderItem = sampleOrderService.getSampleOrderItem();
+        // Provider is stored in sample_human.provider_id — use SampleHumanService.
+        // Use getData() with a fresh Person shell (id only) so session.get() loads it
+        // directly by PK — avoids HQL type-mismatch and detached-proxy issues.
+        SampleHumanService sampleHumanService = SpringContext.getBean(SampleHumanService.class);
+        Provider sampleProvider = sampleHumanService.getProviderForSample(sample);
         String requesterName = "";
-        String firstName = StringUtil.replaceNullWithEmptyString(orderItem.getProviderFirstName());
-        String lastName = StringUtil.replaceNullWithEmptyString(orderItem.getProviderLastName());
-        String fullName = (firstName + " " + lastName).trim();
-        if (!fullName.isEmpty()) {
-            requesterName = StringUtils.substring(fullName, 0, 30);
+        if (sampleProvider != null) {
+            Person rawPerson = sampleProvider.getPerson();
+            if (rawPerson != null) {
+                String personId = rawPerson.getId();
+                if (!StringUtil.isNullorNill(personId)) {
+                    Person personShell = new Person();
+                    personShell.setId(personId);
+                    SpringContext.getBean(PersonService.class).getData(personShell);
+                    if (!StringUtil.isNullorNill(personShell.getId())) {
+                        String firstName = StringUtil.replaceNullWithEmptyString(personShell.getFirstName());
+                        String lastName = StringUtil.replaceNullWithEmptyString(personShell.getLastName());
+                        String fullName = (firstName + " " + lastName).trim();
+                        if (!fullName.isEmpty()) {
+                            requesterName = StringUtils.substring(fullName, 0, 30);
+                        }
+                    }
+                }
+            }
         }
 
-        // Site name differs by workflow: vector uses collection site observation,
-        // others use the referring site from the requester section
+        // Site name differs by workflow: each domain stores it under its own
+        // observation key.
+        // Vector → VS_COLLECTION_SITE_NAME
+        // Environmental → ENV_SAMPLING_SITE_NAME, with fallback to
+        // VS_COLLECTION_SITE_NAME
+        // Clinical → referring site from the requester section.
         String referringFacility;
-        if ("vector".equals(workflowType) || "environmental".equals(workflowType)) {
+        String envSiteType = null;
+        if ("vector".equals(workflowType)) {
             String vecSiteName = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME,
                     sample.getId());
             referringFacility = StringUtil.replaceNullWithEmptyString(vecSiteName);
+            String vecSiteIdStr = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_SITE_ID,
+                    sample.getId());
+            if (!StringUtil.isNullorNill(vecSiteIdStr)) {
+                try {
+                    VectorSamplingSite vecSite = SpringContext.getBean(VectorSamplingSiteService.class)
+                            .get(Integer.valueOf(vecSiteIdStr.trim()));
+                    if (vecSite != null && !StringUtil.isNullorNill(vecSite.getType())) {
+                        envSiteType = vecSite.getType();
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        } else if ("environmental".equals(workflowType)) {
+            String envSiteName = observationHistoryService.getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_NAME,
+                    sample.getId());
+            if (StringUtil.isNullorNill(envSiteName)) {
+                envSiteName = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME,
+                        sample.getId());
+            }
+            referringFacility = StringUtil.replaceNullWithEmptyString(envSiteName);
+            envSiteType = observationHistoryService.getRawValueForSample(ObservationType.ENV_SITE_TYPE, sample.getId());
+            // If type was not stored on the order (e.g. created before type was added,
+            // or site type was blank at entry time), look it up live from the site record.
+            if (StringUtil.isNullorNill(envSiteType)) {
+                String siteIdStr = observationHistoryService.getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_ID,
+                        sample.getId());
+                if (!StringUtil.isNullorNill(siteIdStr)) {
+                    try {
+                        VectorSamplingSiteService siteService = SpringContext.getBean(VectorSamplingSiteService.class);
+                        VectorSamplingSite site = siteService.get(Integer.valueOf(siteIdStr.trim()));
+                        if (site != null) {
+                            envSiteType = site.getType();
+                        }
+                    } catch (NumberFormatException ignored) {
+                        // non-numeric id — skip lookup
+                    }
+                }
+            }
         } else {
-            referringFacility = StringUtil.replaceNullWithEmptyString(orderItem.getReferringSiteName());
+            org.openelisglobal.common.services.RequesterService requesterService = new org.openelisglobal.common.services.RequesterService(
+                    sample.getId());
+            referringFacility = StringUtil.replaceNullWithEmptyString(requesterService.getReferringSiteName());
         }
 
         // Handle patient information - may be null for generic samples
@@ -199,11 +262,12 @@ public class OrderLabel extends Label {
             aboveFields.add(requesterField);
         }
 
-        if (sample != null && sample.hasGpsCoordinates()) {
-            LabelField gpsField = new LabelField(MessageUtil.getMessage("barcode.label.info.gps"),
-                    sample.getGpsCoordinatesDisplay(), 12);
-            gpsField.setDisplayFieldName(true);
-            aboveFields.add(gpsField);
+        if (!StringUtil.isNullorNill(envSiteType)) {
+            LabelField siteTypeField = new LabelField(
+                    MessageUtil.getMessageOrDefault("barcode.label.info.siteType", null, "Site Type"),
+                    StringUtils.substring(envSiteType, 0, 20), 12);
+            siteTypeField.setDisplayFieldName(true);
+            aboveFields.add(siteTypeField);
         }
 
         // adding bar code

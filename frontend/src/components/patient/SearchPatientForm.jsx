@@ -605,6 +605,13 @@ function SearchPatientForm(props) {
                         ?.value || "";
                     const patientName =
                       `${firstName} ${lastName}`.trim() || "Patient";
+                    const sourcePatient = patientSearchResults.find(
+                      (p) => p.patientID === row.id,
+                    );
+                    const isMerged = sourcePatient?.isMerged === true;
+                    const mergedIntoLabel =
+                      sourcePatient?.mergedIntoNationalId ||
+                      sourcePatient?.mergedIntoPatientId;
 
                     return (
                       <TableRow
@@ -628,6 +635,23 @@ function SearchPatientForm(props) {
                                 hasPhoto={true}
                                 patientName={patientName}
                               />
+                              {isMerged && (
+                                <Tag
+                                  type="magenta"
+                                  size="sm"
+                                  title={
+                                    mergedIntoLabel
+                                      ? `Merged into ${mergedIntoLabel}`
+                                      : "Merged"
+                                  }
+                                  style={{ marginLeft: "0.5rem" }}
+                                >
+                                  <FormattedMessage
+                                    id="patient.search.merged.tag"
+                                    defaultMessage="Merged"
+                                  />
+                                </Tag>
+                              )}
                             </div>
                           ) : (
                             <span></span>

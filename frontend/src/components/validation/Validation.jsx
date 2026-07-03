@@ -142,6 +142,14 @@ const Validation = (props) => {
       width: "8rem",
     },
     {
+      id: "uncertainty",
+      name: intl.formatMessage({ id: "column.name.uncertainty" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "8rem",
+    },
+    {
       id: "save",
       name: intl.formatMessage({ id: "column.name.save" }),
       cell: (row, index, column, id) => {
@@ -473,6 +481,24 @@ const Validation = (props) => {
             </div>
           </>
         );
+
+      case "uncertainty": {
+        const uVal = row.expandedUncertainty;
+        if (!uVal) return null;
+        return (
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>
+            <span
+              style={{
+                color: "var(--cds-text-secondary, #525252)",
+                marginRight: "0.125rem",
+              }}
+            >
+              {intl.formatMessage({ id: "results.uncertainty.value.prefix" })}
+            </span>
+            {uVal}
+          </span>
+        );
+      }
 
       case "result": {
         const holdingStatus = getHoldingStatus(row);

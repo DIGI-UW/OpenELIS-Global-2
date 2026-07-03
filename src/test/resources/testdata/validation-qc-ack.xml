@@ -39,7 +39,7 @@
     <test_section id="1" name="Environmental"
         description="Environmental Testing" is_external="N"
         lastupdated="2025-01-01 12:00:00" sort_order="1"
-        name_localization_id="1" display_key="env" />
+        name_localization_id="1" display_key="env" domain="ENVIRONMENTAL" />
 
     <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
 

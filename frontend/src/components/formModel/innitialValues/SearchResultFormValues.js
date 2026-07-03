@@ -87,6 +87,8 @@ export default {
       showSampleDetails: "",
       siblingReflexKey: "",
       significantDigits: "",
+      expandedUncertainty: "",
+      coverageFactor: "",
       technician: "",
       technicianSignatureId: "",
       testDate: "",

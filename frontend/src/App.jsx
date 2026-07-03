@@ -142,6 +142,7 @@ import CytologyCaseView from "./components/cytology/CytologyCaseView";
 import PathologyCaseView from "./components/pathology/PathologyCaseView";
 import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
 import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
+import EnvironmentalDashboard from "./components/compliance/EnvironmentalDashboard";
 const RoutedResultsViewer = lazyWithRetry(
   () => import("./components/patient/resultsViewer/results-viewer.tsx"),
 );
@@ -153,6 +154,7 @@ import PrintBarcode from "./components/printBarcode/Index";
 import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
+import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder";
@@ -511,6 +513,12 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
+                  path="/EnvironmentalDashboard"
+                  exact
+                  component={() => <EnvironmentalDashboard />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookEntryForm />}
@@ -804,7 +812,7 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
-                  path="/PatientManagement"
+                  path="/PatientManagement/:patientId?"
                   exact
                   component={() => <PatientManagement />}
                   role={Roles.RECEPTION}
@@ -1404,6 +1412,12 @@ export default function App() {
                   path="/TATReport"
                   exact
                   component={() => <TATReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/LaporanHasil"
+                  exact
+                  component={() => <LaporanHasilReport />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute

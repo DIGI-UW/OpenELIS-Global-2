@@ -96,16 +96,25 @@
 .reference-lab-results__filters .cds--date-picker--range {
   gap: 0.5rem;
 }
-.reference-lab-results__filters .cds--date-picker--range .cds--date-picker-container {
+.reference-lab-results__filters
+  .cds--date-picker--range
+  .cds--date-picker-container {
   flex: 1 1 0;
   min-width: 0;
 }
-.reference-lab-results__filters .cds--date-picker--range .cds--date-picker-input__wrapper,
-.reference-lab-results__filters .cds--date-picker--range .cds--date-picker-input__wrapper > span {
+.reference-lab-results__filters
+  .cds--date-picker--range
+  .cds--date-picker-input__wrapper,
+.reference-lab-results__filters
+  .cds--date-picker--range
+  .cds--date-picker-input__wrapper
+  > span {
   width: 100%;
   min-width: 0;
 }
-.reference-lab-results__filters .cds--date-picker--range .cds--date-picker__input {
+.reference-lab-results__filters
+  .cds--date-picker--range
+  .cds--date-picker__input {
   width: 100%;
   min-width: 0;
   max-width: 100%;

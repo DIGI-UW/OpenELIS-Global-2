@@ -55,6 +55,10 @@
 
         <property name="sortOrderInt" column="sort_order"
             type="integer" />
+
+        <property name="domain" type="java.lang.String">
+            <column name="domain" length="20" not-null="true" />
+        </property>
     </class>
     <!-- <query name="testsection.getNext"> -->
     <!-- from TestSection ts order by ts.organization.organizationName, -->

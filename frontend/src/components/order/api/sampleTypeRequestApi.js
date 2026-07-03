@@ -177,36 +177,38 @@ export const convertRequestsToSamples = (pendingRequests) => {
     }));
   };
 
-  return pendingRequests.map((request, index) => ({
-    index: index,
-    sampleTypeRequestId: request.id, // Track the original request
-    sampleItemId: "", // Will be populated when collected
-    sampleRejected: false,
-    rejectionReason: "",
-    sampleTypeId: request.typeOfSampleId,
-    sampleTypeName: request.typeOfSampleName,
-    // Panels need to be objects with id and name properties for the UI
-    panels: zipIdsAndNames(
-      request.requestedPanels,
-      request.requestedPanelNames,
-    ),
-    // Tests need to be objects with id and name properties for the UI
-    tests: zipIdsAndNames(request.requestedTests, request.requestedTestNames),
-    referralItems: [],
-    quantity: request.requestedQuantity?.toString() || "1",
-    quantityUnit: request.unitOfMeasureId || "",
-    collectionConditions: "",
-    collectionDate: "",
-    collectionTime: "",
-    collectorId: "",
-    labPerformedSampling: false,
-    receivedDate: "",
-    receivedTime: "",
-    receivedBy: "",
-    hasNCE: false,
-    nceId: "",
-    qcMetadata: null,
-    // Status from request
-    status: request.status,
-  }));
+  return pendingRequests
+    .filter((request) => request.status !== "CANCELLED")
+    .map((request, index) => ({
+      index: index,
+      sampleTypeRequestId: request.id, // Track the original request
+      sampleItemId: "", // Will be populated when collected
+      sampleRejected: false,
+      rejectionReason: "",
+      sampleTypeId: request.typeOfSampleId,
+      sampleTypeName: request.typeOfSampleName,
+      // Panels need to be objects with id and name properties for the UI
+      panels: zipIdsAndNames(
+        request.requestedPanels,
+        request.requestedPanelNames,
+      ),
+      // Tests need to be objects with id and name properties for the UI
+      tests: zipIdsAndNames(request.requestedTests, request.requestedTestNames),
+      referralItems: [],
+      quantity: request.requestedQuantity?.toString() || "1",
+      quantityUnit: request.unitOfMeasureId || "",
+      collectionConditions: "",
+      collectionDate: "",
+      collectionTime: "",
+      collectorId: "",
+      labPerformedSampling: false,
+      receivedDate: "",
+      receivedTime: "",
+      receivedBy: "",
+      hasNCE: false,
+      nceId: "",
+      qcMetadata: null,
+      // Status from request
+      status: request.status,
+    }));
 };

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!--
+      S-09 (OGC-580): immutable per-specimen Sample Acceptance Record.
+
+      Keyed to sample_item (one physical specimen), so a receiving tech accepts /
+      reviews each specimen individually at the Collect (reception) step rather than
+      the whole order. Append-only: each assessment of a specimen inserts a NEW row
+      (corrections never overwrite; the latest row by id is the current decision,
+      earlier rows are the audit trail). Distinct from sample_qa_checklist (OGC-356),
+      which is a single mutable boolean record per sample. Answers are PASS/FAIL/NA +
+      note, snapshotting the item label and the order's resolved domain at assessment
+      time.
+    -->
+    <changeSet id="OGC-580-create-sample-acceptance-record" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_acceptance_record" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sample_acceptance_record" schemaName="clinlims">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_sample_acceptance_record_sample_item"
+                    references="clinlims.sample_item(id)"
+                    deleteCascade="true"/>
+            </column>
+            <!-- Resolved domain snapshot (CLINICAL/ENVIRONMENTAL/VECTOR), null = lab-wide -->
+            <column name="domain" type="VARCHAR(20)"/>
+            <!-- JSON array: [{ "itemKey", "label", "answer": PASS|FAIL|NA, "note" }] -->
+            <column name="answers" type="TEXT"/>
+            <!-- ACCEPTED (all PASS/NA) | REVIEW (any FAIL) | PENDING (unanswered) -->
+            <column name="overall_status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assessed_by_user_id" type="numeric(10,0)"/>
+            <column name="assessed_at" type="TIMESTAMP"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <createSequence sequenceName="sample_acceptance_record_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createIndex tableName="sample_acceptance_record" indexName="idx_sample_acceptance_record_sample_item_id"
+            schemaName="clinlims">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="sample_acceptance_record" indexName="idx_sample_acceptance_record_sample_item_id"
+                schemaName="clinlims"/>
+            <dropSequence sequenceName="sample_acceptance_record_seq" schemaName="clinlims"/>
+            <dropTable tableName="sample_acceptance_record" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

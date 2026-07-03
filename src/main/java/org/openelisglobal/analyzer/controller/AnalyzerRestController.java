@@ -49,6 +49,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -91,6 +92,10 @@ public class AnalyzerRestController extends BaseRestController {
     @Autowired
     private AnalyzerQcRuleService analyzerQcRuleService;
 
+    // Optional — null in older deployments before control-lot support.
+    @Autowired(required = false)
+    private org.openelisglobal.qc.service.QCControlLotService qcControlLotService;
+
     @Autowired
     private AnalyzerErrorService analyzerErrorService;
 
@@ -115,6 +120,9 @@ public class AnalyzerRestController extends BaseRestController {
      */
     @Value("${analyzer.bridge.url:}")
     private String analyzerBridgeUrl;
+
+    @Value("${analyzer.profiles.dir:}")
+    private String analyzerProfilesDir;
 
     /**
      * GET /rest/analyzer/analyzers Retrieve all analyzers with their
@@ -701,6 +709,35 @@ public class AnalyzerRestController extends BaseRestController {
         // FR-15: Active QC rules for bridge consumption
         List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(analyzer.getId());
         map.put("qcRules", qcRules);
+
+        // Active QC control lots for bridge consumption — bridge attaches
+        // matching lotNumber to inbound QC samples (FILE: substring scan
+        // sample-name; ASTM: cross-check Q-segment field 3) so OE's Tier 1
+        // resolver picks the right lot when multiple are active per analyzer.
+        // Always emit `controlLots` (empty list if no data) so the bridge
+        // contract is stable — missing field would mean "key absent" rather
+        // than "no active lots".
+        List<Map<String, Object>> lotsPayload = new ArrayList<>();
+        if (qcControlLotService != null) {
+            // analyzer.getId() is String + LIMSStringNumberUserType, matching
+            // QCControlLot.instrumentId's typing — no parsing/bridging needed.
+            List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
+                    .getActiveControlLotsByInstrument(analyzer.getId());
+            for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
+                if (lot.getLotNumber() == null || lot.getLotNumber().isBlank())
+                    continue;
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("lotNumber", lot.getLotNumber());
+                if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
+                    m.put("controlLevel", lot.getControlLevel());
+                }
+                if (lot.getTestId() != null) {
+                    m.put("testId", lot.getTestId());
+                }
+                lotsPayload.add(m);
+            }
+        }
+        map.put("controlLots", lotsPayload);
 
         return map;
     }
@@ -1298,6 +1335,45 @@ public class AnalyzerRestController extends BaseRestController {
         }
     }
 
+    @PostMapping("/analyzers/{id}/profiles/{protocol}/{name}/apply")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> applyProfileToAnalyzer(@PathVariable String id,
+            @PathVariable String protocol, @PathVariable String name, HttpServletRequest request) {
+        try {
+            Analyzer analyzer = analyzerService.get(id);
+            if (analyzer == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(AnalyzerControllerHelper.wrapError("Analyzer not found: " + id));
+            }
+
+            Map<String, Object> configData = loadDefaultConfigFile(protocol + "/" + name);
+            if (configData == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        AnalyzerControllerHelper.wrapError("Analyzer profile not found: " + protocol + "/" + name));
+            }
+
+            String sysUserId = getSysUserId(request);
+            analyzerService.autoCreateTestMappings(id, configData, sysUserId);
+            if (isFileProtocol(configData)) {
+                fileImportService.autoCreateFromProfile(id, configData, analyzer.getName(), sysUserId);
+            }
+
+            Analyzer updatedAnalyzer = analyzerService.getWithType(id).orElse(analyzer);
+            boolean bridgeRegistered = registerWithBridge(updatedAnalyzer);
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("analyzerId", id);
+            response.put("profileId", protocol + "/" + name);
+            response.put("applied", true);
+            response.put("bridgeRegistered", bridgeRegistered);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error applying analyzer profile {}/{} to analyzer {}", protocol, name, id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        }
+    }
+
     /**
      * Resolve a pluginTypeId that may be numeric (database ID) or a well-known
      * alias like "generic-astm". Returns null if unresolvable.
@@ -1363,12 +1439,7 @@ public class AnalyzerRestController extends BaseRestController {
         }
 
         String filename = name.endsWith(".json") ? name : name + ".json";
-        String defaultsDir = System.getenv("ANALYZER_PROFILES_DIR");
-        if (defaultsDir == null || defaultsDir.isEmpty()) {
-            defaultsDir = "/data/analyzer-profiles";
-        }
-
-        Path baseDir = Path.of(defaultsDir);
+        Path baseDir = getAnalyzerProfilesBaseDir();
         Path templateFile = baseDir.resolve(protocol).resolve(filename).normalize();
         if (!templateFile.startsWith(baseDir.normalize())) {
             return null;
@@ -1418,6 +1489,17 @@ public class AnalyzerRestController extends BaseRestController {
             return "FILE".equalsIgnoreCase(name instanceof String ? (String) name : null);
         }
         return false;
+    }
+
+    private Path getAnalyzerProfilesBaseDir() {
+        String configuredDir = analyzerProfilesDir;
+        if (configuredDir == null || configuredDir.isBlank()) {
+            configuredDir = System.getenv("ANALYZER_PROFILES_DIR");
+        }
+        if (configuredDir == null || configuredDir.isBlank()) {
+            configuredDir = "/data/analyzer-profiles";
+        }
+        return Path.of(configuredDir);
     }
 
     /**

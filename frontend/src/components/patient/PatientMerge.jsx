@@ -1,5 +1,6 @@
 import React, { useState, useContext } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import {
   ProgressIndicator,
   ProgressStep,
@@ -34,6 +35,7 @@ const STEP_CONFIRM = 2;
 
 function PatientMerge() {
   const intl = useIntl();
+  const history = useHistory();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -116,10 +118,17 @@ function PatientMerge() {
       });
       setNotificationVisible(true);
 
-      // Reset to initial state after successful merge
+      // After a successful merge, navigate to the consolidated record so
+      // the user can immediately see the surviving primary patient.
+      const surviving = result?.primaryPatientId;
       setTimeout(() => {
         resetWizard();
-      }, 3000);
+        if (surviving) {
+          history.push(`/PatientManagement/${surviving}`);
+        } else {
+          history.push("/PatientManagement");
+        }
+      }, 1500);
     } catch (err) {
       const errorMsg = getErrorMessage(err, intl);
       setError(errorMsg);
@@ -182,7 +191,7 @@ function PatientMerge() {
 
   const handleCancel = () => {
     resetWizard();
-    window.location.href = "/";
+    history.push("/PatientManagement");
   };
 
   // Handle patient selection

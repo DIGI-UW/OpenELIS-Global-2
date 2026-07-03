@@ -6,14 +6,14 @@ import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 
 /**
- * Regression: CSV-driven address hierarchy renders the right control per
- * `level.inputType` from `/rest/address-hierarchy/levels`.
+ * Regression: CSV-driven address hierarchy renders the right control and order
+ * from metadata returned by `/rest/address-hierarchy/levels`.
  *
  * Distro `madagascar-levels.csv` declares 5 levels (3 dropdown + 2 freetext);
- * the OE2 handler exposes per-level `inputType` via the levels API; the
- * renderer in `CreatePatientForm.jsx` branches on `level.inputType`:
- *   - "freetext" → <TextInput> bound by typeName→bindKey lookup
- *     (`FREETEXT_HIERARCHY_BIND_KEYS` at module scope)
+ * the OE2 handler exposes per-level `inputType`, `displayKey`, `sortOrder`,
+ * and `bindKey` via the levels API; the renderer in `CreatePatientForm.jsx`
+ * branches on that metadata:
+ *   - "freetext" → <TextInput> bound by configured bindKey
  *   - "dropdown" (default) → cascading <Select>
  *
  * If the renderer regresses (e.g. someone reverts to unconditional Select
@@ -29,16 +29,48 @@ const mockedDisplayLists = {
 
 // Madagascar shape per distro PR #9 madagascar-levels.csv: 3 dropdown, 2 freetext.
 const mockedAddressHierarchyLevels = [
-  { level: 1, typeId: "13", typeName: "Province", inputType: "dropdown" },
-  { level: 2, typeId: "8", typeName: "Health Region", inputType: "dropdown" },
+  {
+    level: 1,
+    typeId: "13",
+    typeName: "Province",
+    inputType: "dropdown",
+    displayKey: "patient.address.province",
+    sortOrder: 3,
+  },
+  {
+    level: 2,
+    typeId: "8",
+    typeName: "Health Region",
+    inputType: "dropdown",
+    displayKey: "patient.address.healthregion",
+    sortOrder: 4,
+  },
   {
     level: 3,
     typeId: "7",
     typeName: "Health District",
     inputType: "dropdown",
+    displayKey: "patient.address.healthdistrict",
+    sortOrder: 5,
   },
-  { level: 4, typeId: "14", typeName: "Fokontany", inputType: "freetext" },
-  { level: 5, typeId: "15", typeName: "Hamlet/Lot", inputType: "freetext" },
+  {
+    level: 4,
+    typeId: "14",
+    typeName: "Neighborhood",
+    inputType: "freetext",
+    displayKey: "patient.address.fokontany",
+    sortOrder: 1,
+    bindKey: "addressHierarchy_3",
+  },
+  {
+    level: 5,
+    typeId: "15",
+    typeName: "Local Lot",
+    inputType: "freetext",
+    displayKey: "patient.address.hamletOrLot",
+    sortOrder: 2,
+    bindKey: "addressHierarchy_4",
+  },
 ];
 
 vi.mock("../../utils/Utils", () => ({
@@ -124,6 +156,11 @@ const renderForm = () =>
 // Wait one microtask so useEffect callbacks fire and populate state.
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+const position = (element) =>
+  Array.from(document.querySelectorAll("input, select, textarea")).indexOf(
+    element,
+  );
+
 describe("CreatePatientForm CSV-driven address hierarchy (OGC-669 regression)", () => {
   test("renders 3 cascading Selects for dropdown levels", async () => {
     renderForm();
@@ -141,23 +178,25 @@ describe("CreatePatientForm CSV-driven address hierarchy (OGC-669 regression)", 
     }
   });
 
-  test("renders TextInput for Fokontany freetext level (bindKey=fokontany)", async () => {
+  test("renders TextInput for configured Fokontany bindKey", async () => {
     renderForm();
     await flush();
 
-    const fokontany = document.getElementById("fokontany");
+    const fokontany = document.getElementById("addressHierarchy_3");
     expect(fokontany, "fokontany TextInput must render").not.toBeNull();
     expect(fokontany.tagName).toBe("INPUT");
     expect(fokontany.getAttribute("type") || "text").toMatch(/text/i);
+    expect(screen.getByLabelText("Fokontany")).toBe(fokontany);
   });
 
-  test("renders TextInput for Hamlet/Lot freetext level (bindKey=hamletOrLot)", async () => {
+  test("renders TextInput for configured Hamlet/Lot bindKey", async () => {
     renderForm();
     await flush();
 
-    const hamletOrLot = document.getElementById("hamletOrLot");
+    const hamletOrLot = document.getElementById("addressHierarchy_4");
     expect(hamletOrLot, "hamletOrLot TextInput must render").not.toBeNull();
     expect(hamletOrLot.tagName).toBe("INPUT");
+    expect(screen.getByLabelText("Hamlet / Lot")).toBe(hamletOrLot);
   });
 
   test("freetext field updates on user typing (regression for hardcoded reversion)", async () => {
@@ -165,52 +204,31 @@ describe("CreatePatientForm CSV-driven address hierarchy (OGC-669 regression)", 
     renderForm();
     await flush();
 
-    const fokontany = document.getElementById("fokontany");
+    const fokontany = document.getElementById("addressHierarchy_3");
     expect(fokontany).not.toBeNull();
 
     await user.type(fokontany, "Ankorondrano");
     expect(fokontany).toHaveValue("Ankorondrano");
   });
 
-  test("does NOT render TextInput for an unknown freetext typeName (defensive guard)", async () => {
-    // Override the levels API for this test to include an unknown freetext
-    // level — the renderer's `if (!bindKey) return null` guard should skip it.
-    const { getFromOpenElisServer } = await import("../../utils/Utils");
-    getFromOpenElisServer.mockImplementationOnce((url, callback) => {});
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (typeof callback !== "function") return;
-      if (url === "/rest/address-hierarchy/levels") {
-        callback([
-          ...mockedAddressHierarchyLevels,
-          {
-            level: 6,
-            typeId: "99",
-            typeName: "UnknownTypeName",
-            inputType: "freetext",
-          },
-        ]);
-        return;
-      }
-      if (url.startsWith("/rest/address-hierarchy/level/")) {
-        callback([]);
-        return;
-      }
-      if (url.startsWith("/rest/address-hierarchy/children")) {
-        callback([]);
-        return;
-      }
-      callback(mockedDisplayLists[url] ?? []);
-    });
-
+  test("sortOrder controls render order without changing hierarchy cascade order", async () => {
     renderForm();
     await flush();
 
-    // Known freetext bindKeys still render.
-    expect(document.getElementById("fokontany")).not.toBeNull();
-    expect(document.getElementById("hamletOrLot")).not.toBeNull();
-    // Unknown typeName "UnknownTypeName" has no entry in
-    // FREETEXT_HIERARCHY_BIND_KEYS so the renderer returns null. There's no
-    // input/select with that id.
-    expect(document.getElementById("UnknownTypeName")).toBeNull();
+    const search = screen.getByTestId("address-search-mock");
+    const fokontany = document.getElementById("addressHierarchy_3");
+    const hamletOrLot = document.getElementById("addressHierarchy_4");
+    const province = document.getElementById("address_hierarchy_0");
+    const region = document.getElementById("address_hierarchy_1");
+    const district = document.getElementById("address_hierarchy_2");
+
+    expect(
+      search.compareDocumentPosition(fokontany) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(position(fokontany)).toBeLessThan(position(hamletOrLot));
+    expect(position(hamletOrLot)).toBeLessThan(position(province));
+    expect(position(province)).toBeLessThan(position(region));
+    expect(position(region)).toBeLessThan(position(district));
   });
 });

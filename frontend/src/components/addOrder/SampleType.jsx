@@ -539,6 +539,13 @@ const SampleType = (props) => {
       displayReferralOrgOptions,
     );
     repopulateUI();
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    getFromOpenElisServer(sampleTypesEndpoint, fetchSamplesTypes);
     return () => {
       componentMounted.current = false;
     };

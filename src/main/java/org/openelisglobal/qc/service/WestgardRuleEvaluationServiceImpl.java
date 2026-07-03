@@ -64,7 +64,7 @@ public class WestgardRuleEvaluationServiceImpl implements WestgardRuleEvaluation
     @Override
     @Transactional(readOnly = true)
     public List<RuleEvaluationResult> evaluateAllRules(QCResult currentResult, List<QCResult> historicalResults,
-            Integer testId, Integer instrumentId) {
+            String testId, String instrumentId) {
 
         List<RuleEvaluationResult> results = new ArrayList<>();
 

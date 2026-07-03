@@ -5,6 +5,10 @@
         first_name="John" is_active="Y" is_employee="Y"
         lastupdated="2025-01-01 12:00:00" />
 
+    <!-- Status of sample referenced by sample, sample_item, and analysis rows -->
+    <status_of_sample id="1" code="1" status_type="S"
+        description="Test Status" />
+
     <!-- Localization -->
     <localization id="1" description="Test Name" />
     <localization_value id="1" localization_id="1"
@@ -21,7 +25,7 @@
     <test_section id="1" name="Environmental"
         description="Environmental Testing" is_external="N"
         lastupdated="2025-01-01 12:00:00" sort_order="1"
-        name_localization_id="1" display_key="env" />
+        name_localization_id="1" display_key="env" domain="ENVIRONMENTAL" />
 
     <!-- Test formats -->
     <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
@@ -42,6 +46,10 @@
         recovery_window_pct="20.00000" sys_user_id="1"
         last_updated="2025-01-01 12:00:00" />
     <!-- No threshold for pH (test id=2) — evaluation should return N_A -->
+
+    <!-- Status of sample referenced by sample, sample_item, and analysis rows -->
+    <status_of_sample id="1" code="1" status_type="S"
+        description="Test Status" />
 
     <!-- Sample -->
     <sample id="1" accession_number="QC-TEST-001" status_id="1"

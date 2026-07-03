@@ -74,7 +74,7 @@ const ViewAuditModal = ({ open, sample, onClose }) => {
       }),
     },
     {
-      key: "movedByUserId",
+      key: "movedBy",
       header: intl.formatMessage({
         id: "storage.audit.movedBy",
         defaultMessage: "Moved By",
@@ -106,7 +106,11 @@ const ViewAuditModal = ({ open, sample, onClose }) => {
   const rows = movements.map((m) => ({
     id: String(m.id),
     movementDate: m.movementDate || "",
-    movedByUserId: m.movedByUserId != null ? String(m.movedByUserId) : "",
+    // OGC-738a: backend now resolves the user name; fall back to the numeric
+    // id when an older row predates user-resolution.
+    movedBy:
+      (m.movedByUserName && m.movedByUserName.trim()) ||
+      (m.movedByUserId != null ? String(m.movedByUserId) : ""),
     from: formatLocation(
       m.previousLocationType,
       m.previousLocationId,

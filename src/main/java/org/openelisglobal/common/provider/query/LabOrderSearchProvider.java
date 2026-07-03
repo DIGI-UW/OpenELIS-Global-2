@@ -512,7 +512,9 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             if (typeOfSample == null) {
                 List<TypeOfSample> configuredTypes = typeOfSampleService.getTypeOfSampleForTest(test.getId());
                 if (!GenericValidator.isBlankOrNull(sampleTypeDisplay)) {
-                    typeOfSample = configuredTypes.stream().filter(t -> sampleTypeDisplay.equals(t.getDescription()))
+                    typeOfSample = configuredTypes.stream()
+                            .filter(t -> sampleTypeDisplay.equals(t.getDescription())
+                                    || sampleTypeDisplay.equals(t.getLocalizedName()))
                             .findFirst().orElse(configuredTypes.get(0));
                 } else {
                     typeOfSample = configuredTypes.get(0);
@@ -567,7 +569,9 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     for (Test test : tests) {
                         List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
                         Optional<TypeOfSample> matchingSampleType = typeOfSamples.stream()
-                                .filter(e -> e.getDescription().equals(testRequest.getSampleType())).findFirst();
+                                .filter(e -> e.getDescription().equals(testRequest.getSampleType())
+                                        || e.getLocalizedName().equals(testRequest.getSampleType()))
+                                .findFirst();
                         if (matchingSampleType.isPresent()) {
                             hasSingleSampleType = true;
                             singleSampleType = matchingSampleType.get();

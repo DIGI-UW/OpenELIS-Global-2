@@ -396,6 +396,12 @@ const RequesterSection = ({
           defaultMessage="Requester / Ordering Provider"
         />
       </h4>
+      <p className="helper-text">
+        <FormattedMessage
+          id="order.requester.section.helper"
+          defaultMessage="Select the facility that ordered the tests and the responsible provider."
+        />
+      </p>
 
       {/* Site Search */}
       {workflowType !== "vector" && (
@@ -450,6 +456,11 @@ const RequesterSection = ({
                   id: "site.name.placeholder",
                   defaultMessage: "Enter site name",
                 })}
+                helperText={intl.formatMessage({
+                  id: "site.search.helper",
+                  defaultMessage:
+                    "Type at least 2 characters to auto-search. Required for routing results back to the requesting site.",
+                })}
                 value={siteSearchTerm}
                 onChange={(e) => setSiteSearchTerm(e.target.value)}
                 disabled={isReadOnly || selectedSite}
@@ -464,6 +475,11 @@ const RequesterSection = ({
                 })}
                 value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
                 onChange={handlePriorityChange}
+                helperText={intl.formatMessage({
+                  id: "order.priority.helper",
+                  defaultMessage:
+                    "ROUTINE: standard turnaround. STAT: process immediately.",
+                })}
                 disabled={isReadOnly}
               >
                 {priorityOptions.map((opt) => (
@@ -606,6 +622,12 @@ const RequesterSection = ({
             defaultMessage="Provider Search"
           />
         </h5>
+        <p className="helper-text">
+          <FormattedMessage
+            id="provider.search.helper"
+            defaultMessage="Enter provider name or phone number and press Search."
+          />
+        </p>
 
         <Grid>
           <Column lg={6} md={4} sm={4}>
@@ -773,13 +795,6 @@ const RequesterSection = ({
             </div>
           </div>
         )}
-
-        <p className="helper-text">
-          <FormattedMessage
-            id="provider.search.helper"
-            defaultMessage="Enter provider name or phone number and press Search."
-          />
-        </p>
       </div>
     </Tile>
   );

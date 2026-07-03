@@ -285,7 +285,16 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.ACCESSION_NUMBER_PREFIX, "");
         properties.setPropertyValue(Property.NOTE_EXTERNAL_ONLY_FOR_VALIDATION, "false");
         properties.setPropertyValue(Property.PHONE_FORMAT, "(ddd) dddd-dddd");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_CLINICAL, "OPTIONAL");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL, "OPTIONAL");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR, "OPTIONAL");
+        properties.setPropertyValue(Property.PHONE_FORMAT_LABEL, "");
+        properties.setPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION, "NONE");
+        properties.setPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL, "");
         properties.setPropertyValue(Property.VALIDATE_PHONE_FORMAT, "true");
+        properties.setPropertyValue(Property.PATIENT_ALIAS_ENABLED, "false");
+        properties.setPropertyValue(Property.PATIENT_ALIAS_LABEL, "");
+        properties.setPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL, "");
         properties.setPropertyValue(Property.ALLOW_DUPLICATE_SUBJECT_NUMBERS, "true");
         properties.setPropertyValue(Property.ALLOW_DUPLICATE_NATIONAL_IDS, "false");
 

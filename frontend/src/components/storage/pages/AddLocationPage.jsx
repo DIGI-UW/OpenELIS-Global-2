@@ -318,7 +318,12 @@ export default function AddLocationPage({ type }) {
         <Button
           kind="primary"
           onClick={handleSubmit}
-          disabled={saving || (type === "device" && !formData.type)}
+          disabled={
+            saving ||
+            !formData[meta.nameField]?.trim() ||
+            (type === "device" && !formData.type) ||
+            (type === "rack" && !formData[meta.parentField])
+          }
         >
           <FormattedMessage id="label.add" defaultMessage="Add" />
         </Button>

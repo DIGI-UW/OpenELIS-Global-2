@@ -201,7 +201,12 @@ const OrderEnter = () => {
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasPatientOrSite =
     workflowType === "environmental"
-      ? !!(envFields.vecCollectionSiteId || envFields.vecCollectionSiteName)
+      ? !!(
+          envFields.samplingSiteId ||
+          envFields.samplingSiteName ||
+          envFields.vecCollectionSiteId ||
+          envFields.vecCollectionSiteName
+        )
       : workflowType === "vector"
         ? !!(
             envFields.vecCollectionSiteId ||

@@ -32,6 +32,7 @@ import { mapTestCatBeanToFormData } from "./customComponents/TestFormData";
 import SearchTestNames from "./SearchTestNames";
 import TestModifyFilters from "./TestModifyFilters";
 import TestComplianceThresholds from "../complianceStandards/TestComplianceThresholds";
+import MethodsSection from "./MethodsSection";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -428,6 +429,9 @@ function TestModifyEntry() {
                     </Tag>
                   )}
                 </Tab>
+                <Tab>
+                  <FormattedMessage id="admin.testCatalog.methods.title" />
+                </Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
@@ -445,6 +449,9 @@ function TestModifyEntry() {
                     embeddedTestId={selectedTestIdToEdit}
                     onCountChange={setComplianceThresholdCount}
                   />
+                </TabPanel>
+                <TabPanel>
+                  <MethodsSection testId={selectedTestIdToEdit} />
                 </TabPanel>
               </TabPanels>
             </Tabs>

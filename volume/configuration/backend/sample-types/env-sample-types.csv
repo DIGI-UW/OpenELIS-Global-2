@@ -22,7 +22,7 @@ Alat masak,ALMA,E,Y,202,Cooking Utensil,Ustensile de Cuisson,Utensilio de Cocina
 Buah,BU,E,Y,203,Fruit,Fruit,Fruta,Buah
 Makanan,MA,E,Y,204,Food,Aliment,Alimento,Makanan
 Makanan (daging),MA(D,E,Y,205,Food (Meat),Aliment (Viande),Alimento (Carne),Makanan (daging)
-Pangan,PA,E,Y,206,Food,Aliment,Alimento,Pangan
+Pangan,PA,E,Y,206,Pangan (Staple Food),Aliment de Base,Alimento Básico,Pangan
 Sayur,SA,E,Y,207,Vegetable,Légume,Verdura,Sayur
 Susu/produk susu,SUPRSU,E,Y,208,Milk/Dairy Product,Lait/Produit Laitier,Leche/Producto Lácteo,Susu/produk susu
 Tangan,TA,E,Y,209,Hand,Main,Mano,Tangan

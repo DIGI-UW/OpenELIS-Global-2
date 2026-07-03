@@ -272,12 +272,12 @@ public class BarcodeLabelMaker {
                 labels.add(orderLabel);
             }
 
-            // 1 specimen label per sampleitem
+            // 1 specimen label per sampleitem — use getSampleItemsBySampleId (no status
+            // filter) for all workflows. The status filter was meant to exclude drafts but
+            // at the label step the order is already submitted, and clinical items may not
+            // be in Entered status depending on the save path.
+            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleId(sample.getId());
             boolean isEnvOrVector = isEnvOrVectorSample(sample);
-            // Environmental/vector sample items are not in Entered status at the label
-            // step, so fetch all items without a status filter for those workflows.
-            List<SampleItem> sampleItemList = isEnvOrVector ? sampleItemService.getSampleItemsBySampleId(sample.getId())
-                    : sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = isEnvOrVector ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
                         : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
@@ -313,8 +313,9 @@ public class BarcodeLabelMaker {
             }
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             boolean isEnvOrVectorSpec = isEnvOrVectorSample(sample);
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+            List<SampleItem> sampleItemList = isEnvOrVectorSpec
+                    ? sampleItemService.getSampleItemsBySampleId(sample.getId())
+                    : sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 // when no specimen number was supplied, print labels for every sample item;
                 // otherwise only for the matching sort order
@@ -334,8 +335,9 @@ public class BarcodeLabelMaker {
         } else if ("specimenOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             boolean isEnvOrVectorSpecOrder = isEnvOrVectorSample(sample);
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+            List<SampleItem> sampleItemList = isEnvOrVectorSpecOrder
+                    ? sampleItemService.getSampleItemsBySampleId(sample.getId())
+                    : sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = isEnvOrVectorSpecOrder ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
                         : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
@@ -464,11 +466,8 @@ public class BarcodeLabelMaker {
     }
 
     private SpecimenLabel buildEnvSpecimenLabel(Sample sample, SampleItem sampleItem, String labNo) {
-        ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
-        String sampleType = resolveSpecimenTypeForItem(sampleItem);
-        String siteName = StringUtils.defaultString(observationHistoryService
-                .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, sample.getId()));
-        return new SpecimenLabel(sampleItem, labNo, sampleType, null, siteName);
+        SampleService sampleService = SpringContext.getBean(SampleService.class);
+        return new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
     }
 
     private String resolveBlockIdContext(PathologySample pathologySample) {
@@ -560,9 +559,12 @@ public class BarcodeLabelMaker {
                     // Tolerate concurrent print requests racing to update the same label row
                     LogEvent.logWarn("BarcodeLabelMaker", "createLabelsAsStreamWithMaximumPrints",
                             "Optimistic lock on label print count (concurrent request): " + e.getMessage());
+                } catch (jakarta.persistence.PersistenceException e) {
+                    // Unique-constraint violation — a concurrent request inserted the same code
+                    // between our getDataByCode check and our insert. Recover by merging into
+                    // the winning row instead of failing the whole print request.
+                    mergePrintIncrementAfterRace(label, e);
                 } catch (RuntimeException e) {
-                    // DB connectivity, other constraint violations, etc. — rethrow so the caller
-                    // knows
                     throw e;
                 }
             }

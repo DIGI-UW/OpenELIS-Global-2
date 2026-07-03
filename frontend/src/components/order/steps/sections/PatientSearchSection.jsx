@@ -290,6 +290,12 @@ const PatientSearchSection = ({
       <h4 className="section-title">
         <FormattedMessage id="banner.menu.patient" defaultMessage="Patient" />
       </h4>
+      <p className="helper-text">
+        <FormattedMessage
+          id="patient.search.section.helper"
+          defaultMessage="Search by any combination of fields — partial matches accepted. 'External Search' queries the Client Registry and requires at minimum a name and date of birth."
+        />
+      </p>
 
       {/* Tab Buttons */}
       <div className="section-tabs">
@@ -331,6 +337,11 @@ const PatientSearchSection = ({
                 placeholder={intl.formatMessage({
                   id: "patient.id.placeholder",
                   defaultMessage: "Enter Patient Id",
+                })}
+                helperText={intl.formatMessage({
+                  id: "patient.id.helper",
+                  defaultMessage:
+                    "Enter subject number, national ID, or ST number.",
                 })}
                 value={searchFields.patientId}
                 onChange={(e) => handleFieldChange("patientId", e.target.value)}
@@ -544,6 +555,10 @@ const PatientSearchSection = ({
                         const patient = searchResults.find(
                           (p) => p.patientID === row.id || p.id === row.id,
                         );
+                        const isMerged = patient?.isMerged === true;
+                        const mergedIntoLabel =
+                          patient?.mergedIntoNationalId ||
+                          patient?.mergedIntoPatientId;
                         return (
                           <TableRow key={row.id} {...getRowProps({ row })}>
                             {row.cells.map((cell) => {
@@ -569,6 +584,27 @@ const PatientSearchSection = ({
                                 return (
                                   <TableCell key={cell.id}>
                                     {cell.value || "Local"}
+                                  </TableCell>
+                                );
+                              }
+                              if (cell.info.header === "lastName" && isMerged) {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    {cell.value}{" "}
+                                    <Tag
+                                      type="magenta"
+                                      size="sm"
+                                      title={
+                                        mergedIntoLabel
+                                          ? `Merged into ${mergedIntoLabel}`
+                                          : "Merged"
+                                      }
+                                    >
+                                      <FormattedMessage
+                                        id="patient.search.merged.tag"
+                                        defaultMessage="Merged"
+                                      />
+                                    </Tag>
                                   </TableCell>
                                 );
                               }
@@ -627,6 +663,7 @@ const PatientSearchSection = ({
       {activeTab === "new" && (
         <div className="new-patient-content">
           <CreatePatientForm
+            key={(selectedPatient && selectedPatient.patientPK) || "new"}
             showActionsButton={false}
             selectedPatient={
               selectedPatient || {

@@ -82,6 +82,13 @@
         <property name="clinicalOrderId"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
             column="clinical_order_id" />
+        <!-- S-09 (OGC-580) Resample linkage: original <-> replacement order -->
+        <property name="resampledFromSampleId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="resampled_from_sample_id" precision="10" />
+        <property name="resampledToSampleId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="resampled_to_sample_id" precision="10" />
         <property name="isConfirmation" column="is_confirmation"
             type="java.lang.Boolean" />
         <property name="requiredBy" column="required_by"

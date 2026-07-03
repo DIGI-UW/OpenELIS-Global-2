@@ -282,7 +282,7 @@ const Index = () => {
         },
       };
       setOrderFormValues(newOrderFormValues);
-      setSamples(SampleTypes.length > 0 ? SampleTypes : [{ ...sampleObject }]);
+      setSamples(SampleTypes);
 
       // Set initial step based on resolved domain
       const resolvedDomain = order.domain;
@@ -317,11 +317,11 @@ const Index = () => {
               ...prev.sampleOrderItems,
               providerId: data.id,
               providerPersonId: data.person.id,
-              providerFirstName: data.person.firstName,
-              providerLastName: data.person.lastName,
-              providerWorkPhone: data.person.workPhone,
-              providerEmail: data.person.email,
-              providerFax: data.person.fax,
+              providerFirstName: data.person.firstName ?? "",
+              providerLastName: data.person.lastName ?? "",
+              providerWorkPhone: data.person.workPhone ?? "",
+              providerEmail: data.person.email ?? "",
+              providerFax: data.person.fax ?? "",
             },
           }));
         },
@@ -329,11 +329,11 @@ const Index = () => {
     } else {
       newOrderFormValues.sampleOrderItems = {
         ...newOrderFormValues.sampleOrderItems,
-        providerFirstName: requester.firstName,
-        providerLastName: requester.lastName,
-        providerWorkPhone: requester.phone,
-        providerEmail: requester.email,
-        providerFax: requester.fax,
+        providerFirstName: requester.firstName ?? "",
+        providerLastName: requester.lastName ?? "",
+        providerWorkPhone: requester.phone ?? "",
+        providerEmail: requester.email ?? "",
+        providerFax: requester.fax ?? "",
       };
     }
   };
@@ -430,6 +430,9 @@ const Index = () => {
   }
 
   function getNodeNamesByTagName(elements, tag) {
+    let allTestsMap = {};
+    let panelTestsMap = {};
+
     if (elements[tag] === undefined) {
       return [];
     }
@@ -616,16 +619,19 @@ const Index = () => {
   }, [currentStep]);
 
   useEffect(() => {
-    const schema = createOrderEntryValidationSchema(domain);
+    const schema = createOrderEntryValidationSchema(
+      configurationProperties,
+      domain,
+    );
     schema
       .validate(orderFormValues, { abortEarly: false })
-      .then(() => {
+      .then((validData) => {
         setErrors([]);
       })
       .catch((errors) => {
         setErrors(errors);
       });
-  }, [changed, orderFormValues, domain]);
+  }, [changed, configurationProperties, orderFormValues, domain]);
 
   useEffect(() => {
     const labNumber = new URLSearchParams(window.location.search).get(

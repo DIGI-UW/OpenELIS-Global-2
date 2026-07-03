@@ -139,11 +139,14 @@ const OrderDashboardContent = () => {
   };
 
   const handleContinueOrder = async (order) => {
-    // Load the order into context, then navigate to the appropriate step
+    // Load the order into context, then navigate to the appropriate step.
+    // Include ?order= so a refresh reloads the order automatically.
     try {
       await loadOrder(order.labNumber, false); // false = editable
       const nextStep = getNextStep(order);
-      history.push(`${workflowPrefix}/${nextStep}`);
+      history.push(
+        `${workflowPrefix}/${nextStep}?order=${encodeURIComponent(order.labNumber)}`,
+      );
     } catch (error) {
       console.error("handleContinueOrder: Error loading order", error);
       addNotification({
@@ -161,7 +164,9 @@ const OrderDashboardContent = () => {
   const handleAcceptExternal = async (order) => {
     try {
       await loadOrder(order.labNumber, false);
-      history.push(`${workflowPrefix}/enter`);
+      history.push(
+        `${workflowPrefix}/enter?order=${encodeURIComponent(order.labNumber)}`,
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -176,11 +181,13 @@ const OrderDashboardContent = () => {
   };
 
   const handleFixIssue = async (order) => {
-    // Load the order into context, then navigate to the step that needs fixing
+    // Load the order into context, then navigate to the step that needs fixing.
     try {
       await loadOrder(order.labNumber, false); // false = editable
       const returnedStep = order.returnedToStep || "enter";
-      history.push(`${workflowPrefix}/${returnedStep}`);
+      history.push(
+        `${workflowPrefix}/${returnedStep}?order=${encodeURIComponent(order.labNumber)}`,
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,

@@ -31,8 +31,9 @@
     <!-- test section -->
     <test_section id="9001" name="Water"
         description="Water Testing Section" is_external="N"
-        lastupdated="2025-03-20 12:00:00.0" sort_order="2147483647"
-        is_active="Y" name_localization_id="9001" display_key="TestKey9001" />
+        domain="ENVIRONMENTAL" lastupdated="2025-03-20 12:00:00.0"
+        sort_order="2147483647" is_active="Y" name_localization_id="9001"
+        display_key="TestKey9001" />
 
     <!-- 1 test with LOINC 5685-3 mapped to 3 sample types -->
     <test id="9001" method_id="9001" description="Mercury in water"

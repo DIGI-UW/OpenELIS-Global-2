@@ -113,8 +113,22 @@ export const NCECorrectiveAction = () => {
     }
   };
 
+  const actionLogIsBlank =
+    !formData.actionLog.correctiveAction &&
+    !formData.actionLog.personResponsible &&
+    !formData.dateCompleted &&
+    !formData.actionLog.actionType;
+
+  const actionLogIsComplete =
+    !!formData.actionLog.correctiveAction?.trim() &&
+    !!formData.actionLog.personResponsible?.trim() &&
+    !!formData.dateCompleted &&
+    !!formData.actionLog.actionType?.split(",").filter(Boolean).length;
+
+  const canSubmit = !!submit && (actionLogIsBlank || actionLogIsComplete);
+
   const handleNCEFormSubmit = () => {
-    if (!submit) {
+    if (!canSubmit) {
       return;
     }
 
@@ -124,10 +138,11 @@ export const NCECorrectiveAction = () => {
 
     formData.actionLog.turnAroundTime = turnAroundTime;
 
-    // correctiveAction
     let body = {
       id: data.id,
-      actionLog: [...data["actionLog"], formData["actionLog"]],
+      actionLog: actionLogIsBlank
+        ? data["actionLog"]
+        : [...data["actionLog"], formData["actionLog"]],
 
       dateCompleted: formData[`dateCompleted`] ?? "",
       discussionDate: formData[`discussionDate`] ?? "",
@@ -877,9 +892,18 @@ export const NCECorrectiveAction = () => {
                   </div>
                 )}
 
+                {!!submit && !actionLogIsBlank && !actionLogIsComplete && (
+                  <div style={{ color: "#c62828", margin: "4px 0" }}>
+                    <FormattedMessage
+                      id="nonconform.corrective.requiredFields"
+                      defaultMessage="Fill all corrective-action fields (action, person responsible, date completed, and at least one action type), or leave the row entirely empty."
+                    />
+                  </div>
+                )}
+
                 <Button
                   type="button"
-                  disabled={!submit}
+                  disabled={!canSubmit}
                   onClick={handleNCEFormSubmit}
                   data-testid="nce-submit-button"
                 >

@@ -94,7 +94,20 @@
   <include relativeToChangelogFile="true" file="026-compliance-threshold-value-map.xml"/>
   <include relativeToChangelogFile="true" file="027-compliance-frs-data-model-alignment.xml"/>
   <!-- OGC-669 (LO-01-01): add Madagascar address columns (province, fokontany, hamlet_or_lot) on person -->
+  <!-- OGC-650 (LO-01-01): admin toggle for patient GPS capture (Patient Configuration Menu) -->
+  <include relativeToChangelogFile="true" file="027-add-patient-gps-capture-config.xml"/>
+
+  <!-- Repoint 'Accession number prefix' to siteIdentity domain so it shows up under Admin > General Configuration > Site Information. -->
+  <include relativeToChangelogFile="true" file="028-backfill-accession-prefix-domain.xml"/>
+
+  <!-- OGC-669 (LO-01-01): historical Madagascar address columns on person; 024 migrates these to generic identities. -->
   <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
+  <include relativeToChangelogFile="true" file="024-migrate-madagascar-address-fields-to-identities.xml"/>
+
+  <include relativeToChangelogFile="true" file="026-register-audit-ref-tables-for-p0-services.xml"/>
+
+  <!-- Fix typo on the legacy "Urine prenancy test" -->
+  <include relativeToChangelogFile="true" file="030-fix-urine-pregnancy-test-typo.xml"/>
 
   <include relativeToChangelogFile="true" file="028-vector-pool-fanout.xml"/>
 
@@ -136,6 +149,22 @@
   <!-- Add lab_performed_sampling flag to sample_item (Environmental Order Entry) -->
   <include relativeToChangelogFile="true" file="037-add-lab-performed-sampling-to-sample-item.xml"/>
 
+  <!-- Method shortcode column + test_method join table -->
+  <include relativeToChangelogFile="true" file="039-test-method-links.xml"/>
+
+  <!-- Laporan Hasil: track when compliance report PDFs are generated per sample -->
+  <include relativeToChangelogFile="true" file="040-compliance-report-generation.xml"/>
+
+  <!-- Laporan Hasil: add Environmental Reports folder + Laporan Hasil entry to the Reports menu -->
+  <include relativeToChangelogFile="true" file="041-laporan-hasil-menu.xml"/>
+  <!-- Expanded measurement uncertainty + coverage factor on result -->
+  <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
+  <!-- Compliance dashboard: composite index on observation_history for JOIN performance -->
+  <include relativeToChangelogFile="true" file="034-compliance-dashboard-indexes.xml"/>
+
+  <!-- Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) on test_section -->
+  <include relativeToChangelogFile="true" file="042-test-section-domain.xml"/>
+
   <!-- OGC-624 (S-14): subcontract metadata + lifecycle status on referral -->
   <include relativeToChangelogFile="true" file="040-referral-subcontract-metadata.xml"/>
 
@@ -157,6 +186,16 @@
   <!-- coc_contact_email so COC_CONTACT recipient resolves to an email address -->
   <include relativeToChangelogFile="true" file="046-coc-contact-email.xml"/>
 
+  <!-- S-09 (OGC-580): Sample Acceptance Checklist categories + per-domain enforcement settings -->
+  <include relativeToChangelogFile="true" file="047-sample-acceptance-checklist.xml"/>
+
+  <!-- S-09 (OGC-580): immutable per-sample Sample Acceptance Record -->
+  <include relativeToChangelogFile="true" file="048-sample-acceptance-record.xml"/>
+
+  <!-- S-09 (OGC-580): Resample linkage columns on sample -->
+  <include relativeToChangelogFile="true" file="049-sample-resample-links.xml"/>
+  <include relativeToChangelogFile="true" file="050-resample-notification-trigger.xml"/>
+
   <!-- OGC-799: manually_entered flag for Referral (Manual Entry path) -->
   <include relativeToChangelogFile="true" file="048-referral-manually-entered.xml"/>
 
@@ -174,5 +213,6 @@
 
   <!-- OGC-810: REFERRAL_NUDGE notification trigger seed (notify reference lab) -->
   <include relativeToChangelogFile="true" file="053-referral-nudge-trigger.xml"/>
+
 
 </databaseChangeLog>

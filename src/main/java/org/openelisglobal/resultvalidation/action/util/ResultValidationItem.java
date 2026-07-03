@@ -85,6 +85,7 @@ public class ResultValidationItem implements ResultItem, Serializable {
     private String patientName;
     private double lowerCritical;
     private double higherCritical;
+    private String expandedUncertainty;
 
     @Override
     public String getAccessionNumber() {
@@ -296,6 +297,9 @@ public class ResultValidationItem implements ResultItem, Serializable {
         } else {
             setResultId(result.getId());
             setResultValue(result.getValue());
+            if (result.getExpandedUncertainty() != null) {
+                this.expandedUncertainty = result.getExpandedUncertainty().stripTrailingZeros().toPlainString();
+            }
         }
 
         this.result = result;
@@ -481,5 +485,13 @@ public class ResultValidationItem implements ResultItem, Serializable {
 
     public void setHigherCritical(double higherCritical) {
         this.higherCritical = higherCritical;
+    }
+
+    public String getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(String expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
     }
 }

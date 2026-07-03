@@ -116,4 +116,8 @@ public interface FhirTransformService {
 
     List<Test> resolveTestsFromServiceRequest(ServiceRequest serviceRequest);
 
+    Specimen transformToSpecimen(String sampleItemId);
+
+    SampleItem createSampleItemFromSpecimen(Specimen specimen, String sysuserId);
+
 }

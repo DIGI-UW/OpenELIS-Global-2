@@ -29,6 +29,13 @@ public class BridgeRegistrationService {
     @Autowired(required = false)
     private AnalyzerQcRuleService analyzerQcRuleService;
 
+    // Optional — null in older deployments without control-lot support.
+    // Used to publish active lot inventory to the bridge so the bridge can
+    // disambiguate in-message lot encodings (ASTM Q-segment, FILE sample
+    // names containing the lot number).
+    @Autowired(required = false)
+    private org.openelisglobal.qc.service.QCControlLotService qcControlLotService;
+
     public BridgeRegistrationService() {
         HttpClient client;
         try {
@@ -65,6 +72,8 @@ public class BridgeRegistrationService {
             payload.put("sourceId", ip);
             payload.put("name", name);
             payload.put("protocol", protocol != null ? protocol : "ASTM");
+            attachQcRules(payload, oeAnalyzerId);
+            attachControlLots(payload, oeAnalyzerId);
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -106,30 +115,8 @@ public class BridgeRegistrationService {
             if (testMappings != null && !testMappings.isEmpty()) {
                 payload.put("testMappings", testMappings);
             }
-            // Pull QC identification rules from the analyzer's profile and
-            // include them in the registration payload. The bridge's
-            // FileResultParser routes through these to classify QC samples
-            // (e.g. SPECIMEN_ID_PREFIX matches like CNEG/CPOS/LPC/HPC).
-            // Without this the bridge falls back to its hardcoded prefix
-            // list and silently mis-classifies any sample that uses a
-            // non-default prefix as a patient sample.
-            if (analyzerQcRuleService != null) {
-                java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
-                if (qcRules != null && !qcRules.isEmpty()) {
-                    java.util.List<java.util.Map<String, Object>> qcRulesPayload = new java.util.ArrayList<>(
-                            qcRules.size());
-                    for (QcRuleDto r : qcRules) {
-                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-                        m.put("ruleType", r.ruleType());
-                        if (r.targetField() != null) {
-                            m.put("targetField", r.targetField());
-                        }
-                        m.put("operand", r.operand());
-                        qcRulesPayload.add(m);
-                    }
-                    payload.put("qcRules", qcRulesPayload);
-                }
-            }
+            attachQcRules(payload, oeAnalyzerId);
+            attachControlLots(payload, oeAnalyzerId);
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -281,6 +268,81 @@ public class BridgeRegistrationService {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Attach the analyzer's active QC classification rules (e.g.
+     * {@code SPECIMEN_ID_PREFIX QC} for HL7, {@code FIELD_EQUALS O.12 Q} for ASTM,
+     * {@code SPECIMEN_ID_PREFIX LPC/HPC} for FILE) so the bridge can classify QC vs
+     * patient samples without falling back to its hardcoded default prefix list.
+     *
+     * <p>
+     * Package-private so {@link AnalyzerBridgeStartupRegistrar}'s full-state sync
+     * can reuse the same payload shape — without this the sync would push entries
+     * with no qcRules / controlLots and the bridge would lose its classification +
+     * lot inventory on every restart.
+     */
+    void attachQcRules(java.util.Map<String, Object> payload, String oeAnalyzerId) {
+        if (analyzerQcRuleService == null) {
+            return;
+        }
+        // Always attach `qcRules` (empty list when no active rules) so a sync
+        // payload can distinguish "no rules — clear bridge state" from
+        // "field absent — leave bridge state alone". Mirrors attachControlLots.
+        java.util.List<java.util.Map<String, Object>> qcRulesPayload = new java.util.ArrayList<>();
+        java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
+        if (qcRules != null) {
+            for (QcRuleDto r : qcRules) {
+                java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("ruleType", r.ruleType());
+                if (r.targetField() != null) {
+                    m.put("targetField", r.targetField());
+                }
+                m.put("operand", r.operand());
+                qcRulesPayload.add(m);
+            }
+        }
+        payload.put("qcRules", qcRulesPayload);
+    }
+
+    /**
+     * Attach the analyzer's active control lots so the bridge can disambiguate lot
+     * encodings carried in inbound messages — FILE sample names whose sampleId
+     * contains the lot number, ASTM Q-segment field 3 components. Without this the
+     * bridge has no way to surface lot identity, and OE's Tier 1 lot match falls
+     * through to Tier 2/3 (controlLevel match or single-active-lot fallback).
+     */
+    void attachControlLots(java.util.Map<String, Object> payload, String oeAnalyzerId) {
+        // Always attach `controlLots` (empty list when no data) so the bridge
+        // contract is stable — a missing key would let downstream sync logic
+        // treat "absent" as "do not change", which conflicts with the
+        // intended "no active lots, clear them" semantics.
+        java.util.List<java.util.Map<String, Object>> lotsPayload = new java.util.ArrayList<>();
+        if (qcControlLotService != null) {
+            // oeAnalyzerId is a String matching Analyzer.id / QCControlLot.instrumentId
+            // typing — pass through, no parsing needed.
+            if (oeAnalyzerId != null && !oeAnalyzerId.isBlank()) {
+                java.util.List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
+                        .getActiveControlLotsByInstrument(oeAnalyzerId);
+                if (lots != null) {
+                    for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
+                        if (lot.getLotNumber() == null || lot.getLotNumber().isBlank()) {
+                            continue;
+                        }
+                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                        m.put("lotNumber", lot.getLotNumber());
+                        if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
+                            m.put("controlLevel", lot.getControlLevel());
+                        }
+                        if (lot.getTestId() != null) {
+                            m.put("testId", lot.getTestId());
+                        }
+                        lotsPayload.add(m);
+                    }
+                }
+            }
+        }
+        payload.put("controlLots", lotsPayload);
     }
 
 }

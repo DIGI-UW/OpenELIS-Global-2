@@ -17,7 +17,8 @@ public class NotificationPayloadTemplate extends BaseObject<Integer> {
     private static final long serialVersionUID = 3273600381468746329L;
 
     public enum NotificationPayloadType {
-        TEST_RESULT, REFERRAL_OUT, SUBCONTRACT_DISPATCHED, REFERRAL_REJECTED_NEEDS_RECOLLECTION, REFERRAL_NUDGE
+        TEST_RESULT, REFERRAL_OUT, SUBCONTRACT_DISPATCHED, REFERRAL_REJECTED_NEEDS_RECOLLECTION, REFERRAL_NUDGE,
+        SAMPLE_RESAMPLED
     }
 
     @Id

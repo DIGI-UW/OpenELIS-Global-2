@@ -127,6 +127,10 @@ public class TestResultItem implements ResultItem, Serializable {
 
     private int significantDigits = 0;
 
+    private String expandedUncertainty;
+
+    private String coverageFactor;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String shadowResultValue;
 
@@ -248,6 +252,9 @@ public class TestResultItem implements ResultItem, Serializable {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String forceTechApproval;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    private String forceTechApprovalNote;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String reflexJSONResult;
@@ -1062,6 +1069,14 @@ public class TestResultItem implements ResultItem, Serializable {
         this.forceTechApproval = forceTechApproval;
     }
 
+    public String getForceTechApprovalNote() {
+        return forceTechApprovalNote;
+    }
+
+    public void setForceTechApprovalNote(String forceTechApprovalNote) {
+        this.forceTechApprovalNote = forceTechApprovalNote;
+    }
+
     public String getReflexJSONResult() {
         return reflexJSONResult;
     }
@@ -1084,6 +1099,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setSignificantDigits(int significantDigits) {
         this.significantDigits = significantDigits;
+    }
+
+    public String getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(String expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public String getCoverageFactor() {
+        return coverageFactor;
+    }
+
+    public void setCoverageFactor(String coverageFactor) {
+        this.coverageFactor = coverageFactor;
     }
 
     public boolean isServingAsTestGroupIdentifier() {

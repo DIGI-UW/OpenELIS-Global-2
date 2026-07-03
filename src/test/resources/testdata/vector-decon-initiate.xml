@@ -31,7 +31,8 @@
     <test_section id="700" name="V-03"
         description="Vector Identification" org_id="700" is_external="N"
         sort_order="1" name_localization_id="700"
-        display_key="testSection.V03" lastupdated="2026-05-13 00:00:00" />
+        display_key="testSection.V03" lastupdated="2026-05-13 00:00:00"
+        domain="VECTOR" />
 
     <test_formats id="700" lastupdated="2026-05-13 00:00:00" />
 

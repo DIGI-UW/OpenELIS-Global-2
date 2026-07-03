@@ -85,15 +85,16 @@ public class PatientManagementRestController extends BaseRestController {
                 return ResponseEntity.badRequest().body(Map.of("error", message));
             }
             try {
-                patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
+                String sysUserId = getSysUserId(request);
+                patientService.persistPatientData(patientInfo, patient, sysUserId);
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
-                photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+                photoService.savePhoto(patient.getId(), patientInfo.getPhoto(), sysUserId);
                 if (patientInfo.getIdDocuments() != null) {
                     for (PatientIdDocumentInfo docInfo : patientInfo.getIdDocuments()) {
                         if (docInfo.getId() == null && docInfo.getData() != null) {
                             idDocumentService.saveDocument(patient.getId(), docInfo.getData(), docInfo.getCategory(),
-                                    docInfo.getDescription());
+                                    docInfo.getDescription(), sysUserId);
                         }
                     }
                 }
@@ -119,6 +120,12 @@ public class PatientManagementRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(Map.of("error", StringUtils.defaultIfBlank(e.getMessage(), "Failed to save patient")));
             }
+        }
+        // Return the saved patient id so the frontend can navigate to
+        // the saved record's results page (or skip the redirect for the
+        // NO_ACTION path where the patient row wasn't actually written).
+        if (patient.getId() != null) {
+            return ResponseEntity.ok(Map.of("status", "success", "patientId", patient.getId()));
         }
         return ResponseEntity.ok(Map.of("status", "success"));
     }
@@ -167,10 +174,10 @@ public class PatientManagementRestController extends BaseRestController {
 
     @PutMapping("patient-id-documents/{documentId}")
     @ResponseBody
-    public ResponseEntity<Map<String, String>> updateIdDocument(@PathVariable Integer documentId,
-            @RequestBody PatientIdDocumentInfo docInfo) throws LIMSRuntimeException {
+    public ResponseEntity<Map<String, String>> updateIdDocument(HttpServletRequest request,
+            @PathVariable Integer documentId, @RequestBody PatientIdDocumentInfo docInfo) throws LIMSRuntimeException {
         PatientIdDocument updated = idDocumentService.updateDocument(documentId, docInfo.getData(),
-                docInfo.getCategory(), docInfo.getDescription());
+                docInfo.getCategory(), docInfo.getDescription(), getSysUserId(request));
         if (updated != null) {
             return ResponseEntity.ok(Map.of("status", "success"));
         }
@@ -179,9 +186,9 @@ public class PatientManagementRestController extends BaseRestController {
 
     @DeleteMapping("patient-id-documents/{documentId}")
     @ResponseBody
-    public ResponseEntity<Map<String, String>> deleteIdDocument(@PathVariable Integer documentId)
-            throws LIMSRuntimeException {
-        idDocumentService.softDeleteDocument(documentId);
+    public ResponseEntity<Map<String, String>> deleteIdDocument(HttpServletRequest request,
+            @PathVariable Integer documentId) throws LIMSRuntimeException {
+        idDocumentService.softDeleteDocument(documentId, getSysUserId(request));
         return ResponseEntity.ok(Map.of("status", "success"));
     }
 

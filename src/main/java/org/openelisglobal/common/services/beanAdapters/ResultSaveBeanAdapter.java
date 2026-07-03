@@ -16,6 +16,8 @@
 
 package org.openelisglobal.common.services.beanAdapters;
 
+import java.math.BigDecimal;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
@@ -38,6 +40,16 @@ public class ResultSaveBeanAdapter {
         bean.setLowerNormalRange(item.getLowerNormalRange());
         bean.setUpperNormalRange(item.getUpperNormalRange());
         bean.setSignificantDigits(item.getSignificantDigits());
+        if (!GenericValidator.isBlankOrNull(item.getExpandedUncertainty())) {
+            try {
+                BigDecimal u = new BigDecimal(item.getExpandedUncertainty());
+                if (u.compareTo(BigDecimal.ZERO) >= 0) {
+                    bean.setExpandedUncertainty(u);
+                    bean.setCoverageFactor(BigDecimal.valueOf(2.0));
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
 
         return bean;
     }

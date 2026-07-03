@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import CreatePatientValidationSchema from "./CreatePatientValidationShema";
+import { createPatientValidationSchema } from "./CreatePatientValidationShema";
 
 const sampleOrderItemsSchema = Yup.object()
   .shape({
@@ -17,7 +17,12 @@ const sampleOrderItemsSchema = Yup.object()
     return !!referringSiteName || !!referringSiteId;
   });
 
-export const createOrderEntryValidationSchema = (domain) => {
+// domain is optional: E/V skip patient validation; clinical orders validate
+// patients using configurationProperties.
+export const createOrderEntryValidationSchema = (
+  configurationProperties = {},
+  domain,
+) => {
   const isNonClinical = domain === "E" || domain === "V";
 
   const shape = {
@@ -26,7 +31,9 @@ export const createOrderEntryValidationSchema = (domain) => {
   };
 
   if (!isNonClinical) {
-    shape.patientProperties = CreatePatientValidationSchema;
+    shape.patientProperties = createPatientValidationSchema(
+      configurationProperties,
+    );
   }
 
   return Yup.object().shape(shape);

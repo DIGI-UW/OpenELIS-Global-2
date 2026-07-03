@@ -53,6 +53,7 @@ import { Warning } from "@carbon/icons-react";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
+import AcceptUnconditionallyGuard from "./AcceptUnconditionallyGuard";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -1070,7 +1071,8 @@ export function SearchResults(props) {
   const [pageSize, setPageSize] = useState(100);
   const [acceptAsIs, setAcceptAsIs] = useState([]);
   const [referalOrganizations, setReferalOrganizations] = useState([]);
-  const [methods, setMethods] = useState([]);
+  const [methodsByTestId, setMethodsByTestId] = useState({});
+  const [defaultMethodByTestId, setDefaultMethodByTestId] = useState({});
   const [referralReasons, setReferralReasons] = useState([]);
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
@@ -1086,6 +1088,7 @@ export function SearchResults(props) {
 
   const componentMounted = useRef(false);
   const holdingTimeNotifiedRows = useRef(new Set());
+  const [uncertaintyFocusedId, setUncertaintyFocusedId] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -1094,7 +1097,7 @@ export function SearchResults(props) {
       "/rest/displayList/REFERRAL_ORGANIZATIONS",
       loadReferalOrganizations,
     );
-    getFromOpenElisServer("/rest/displayList/METHODS", loadMethods);
+    // methods loaded per-test on demand (see loadMethodsForTest)
     getFromOpenElisServer(
       "/rest/displayList/REFERRAL_REASONS",
       loadReferalReasons,
@@ -1114,6 +1117,17 @@ export function SearchResults(props) {
       componentMounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (props.results.testResult) {
+      const uniqueTestIds = [
+        ...new Set(
+          props.results.testResult.map((r) => r.testId).filter(Boolean),
+        ),
+      ];
+      uniqueTestIds.forEach((testId) => loadMethodsForTest(testId));
+    }
+  }, [props.results.testResult]);
 
   useEffect(() => {
     if (props.results.testResult) {
@@ -1179,10 +1193,21 @@ export function SearchResults(props) {
     }
   };
 
-  const loadMethods = (values) => {
-    if (componentMounted.current) {
-      setMethods(values);
-    }
+  const loadMethodsForTest = (testId) => {
+    if (!testId || methodsByTestId[testId]) return;
+    getFromOpenElisServer(`/rest/methods-for-test/${testId}`, (res) => {
+      if (componentMounted.current) {
+        const methods = res?.methods || res || [];
+        const defaultMethodId = res?.defaultMethodId || null;
+        setMethodsByTestId((prev) => ({ ...prev, [testId]: methods }));
+        if (defaultMethodId) {
+          setDefaultMethodByTestId((prev) => ({
+            ...prev,
+            [testId]: defaultMethodId,
+          }));
+        }
+      }
+    });
   };
 
   const loadReferalReasons = (values) => {
@@ -1328,9 +1353,6 @@ export function SearchResults(props) {
     {
       id: "testDate",
       name: intl.formatMessage({ id: "column.name.testDate" }),
-      // OGC-653 (LO-05-01 manual results): testDate is editable. The string
-      // is "<date>" or "<date> HH:mm". Backend's lenient parser
-      // (DateUtil.convertStringDateToTimestampLenient) accepts both.
       cell: (row) => {
         const raw = (row.testDate || "").trim();
         const parts = raw.split(/\s+/);
@@ -1382,7 +1404,7 @@ export function SearchResults(props) {
       },
       selector: (row) => row.testDate,
       sortable: true,
-      width: "11rem",
+      width: "15rem",
     },
 
     {
@@ -1400,7 +1422,7 @@ export function SearchResults(props) {
         return renderCell(row, index, column, id);
       },
       sortable: true,
-      width: "15rem",
+      width: "10rem",
     },
     {
       id: "normalRange",
@@ -1442,7 +1464,7 @@ export function SearchResults(props) {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "5rem",
+      width: "7rem",
     },
     {
       id: "result",
@@ -1451,6 +1473,14 @@ export function SearchResults(props) {
         return renderCell(row, index, column, id);
       },
       width: "20rem",
+    },
+    {
+      id: "uncertainty",
+      name: intl.formatMessage({ id: "column.name.uncertainty" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "8rem",
     },
     {
       id: "currentResult",
@@ -1641,6 +1671,13 @@ export function SearchResults(props) {
                 />
               )}
             </Field>
+
+            <AcceptUnconditionallyGuard
+              rowId={row.id}
+              accepted={!!acceptAsIs[row.id]}
+              onAccept={(reason) => handleAcceptUnconditionally(row.id, reason)}
+              onUnaccept={() => handleUnacceptUnconditionally(row.id)}
+            />
           </>
         );
 
@@ -1843,6 +1880,65 @@ export function SearchResults(props) {
           default:
             return row.resultValue;
         }
+      }
+
+      case "uncertainty": {
+        const uVal = row.expandedUncertainty;
+        const isFocused = uncertaintyFocusedId === row.id;
+        const hasValue = uVal !== "" && uVal !== null && uVal !== undefined;
+        if (!isFocused && hasValue) {
+          return (
+            <span
+              style={{
+                fontVariantNumeric: "tabular-nums",
+                cursor: "text",
+                color: "var(--cds-text-primary, #161616)",
+                display: "inline-block",
+                minWidth: "4rem",
+              }}
+              onClick={() => setUncertaintyFocusedId(row.id)}
+            >
+              <span
+                style={{
+                  color: "var(--cds-text-secondary, #525252)",
+                  marginRight: "0.125rem",
+                }}
+              >
+                {intl.formatMessage({ id: "results.uncertainty.value.prefix" })}
+              </span>
+              {uVal}
+            </span>
+          );
+        }
+        return (
+          <TextInput
+            id={"expandedUncertainty" + row.id}
+            name={"testResult[" + row.id + "].expandedUncertainty"}
+            labelText=""
+            type="number"
+            min={0}
+            step={0.001}
+            autoFocus={isFocused}
+            defaultValue={uVal ?? ""}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const form = { ...props.results };
+              const rows = [...form.testResult];
+              rows[row.id] = {
+                ...rows[row.id],
+                expandedUncertainty: val,
+                isModified: "true",
+              };
+              form.testResult = rows;
+              props.setResultForm(form);
+              setUncertaintyFocusedId(null);
+            }}
+            invalid={hasValue && Number(uVal) < 0}
+            invalidText={intl.formatMessage({
+              id: "results.uncertainty.validation.negative",
+            })}
+          />
+        );
       }
 
       case "currentResult":
@@ -2055,16 +2151,20 @@ export function SearchResults(props) {
                 id: "referral.label.testmethod",
               })}
               onChange={(e) => handleChange(e, data.id)}
-              value={data.testMethod}
+              value={
+                data.testMethod || defaultMethodByTestId[data.testId] || ""
+              }
             >
               <SelectItem text="" value="" />
-              {methods.map((method, method_index) => (
-                <SelectItem
-                  text={method.value}
-                  value={method.id}
-                  key={method_index}
-                />
-              ))}
+              {(methodsByTestId[data.testId] || []).map(
+                (method, method_index) => (
+                  <SelectItem
+                    text={method.value}
+                    value={method.id}
+                    key={method_index}
+                  />
+                ),
+              )}
             </Select>
           </Column>
           <Column lg={2}>
@@ -2175,12 +2275,23 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
-        {/* Storage location — modal variant. This row is inside a
-            deeply-nested expand, so page navigation would be jarring;
-            the picker opens in a modal when the trigger below is
-            clicked. */}
         <Grid style={{ marginTop: "1rem" }}>
-          <Column lg={16}>
+          <Column lg={3}>
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              renderIcon={Warning}
+              onClick={() =>
+                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
+              }
+            >
+              <FormattedMessage
+                id="nce.button.reportNce"
+                defaultMessage="Report NCE"
+              />
+            </Button>
+          </Column>
+          <Column lg={13}>
             <div className="result-entry-storage-section">
               <div className="result-entry-storage-current">
                 <strong>
@@ -2268,23 +2379,7 @@ export function SearchResults(props) {
           </Column>
         </Grid>
         {/* Report NCE */}
-        <Grid style={{ marginTop: "1rem" }}>
-          <Column lg={16}>
-            <Button
-              kind="danger--tertiary"
-              size="sm"
-              renderIcon={Warning}
-              onClick={() =>
-                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
-              }
-            >
-              <FormattedMessage
-                id="nce.button.reportNce"
-                defaultMessage="Report NCE"
-              />
-            </Button>
-          </Column>
-        </Grid>
+
         {nceFormOpenRow === data.id && (
           <InlineNceForm
             resultRow={data}
@@ -2506,21 +2601,30 @@ export function SearchResults(props) {
     }
   };
 
-  const handleAcceptAsIsChange = (e, rowId) => {
-    console.debug("handleAcceptAsIsChange:" + acceptAsIs[rowId]);
-    handleChange(e, rowId);
-    if (acceptAsIs[rowId] == undefined) {
-      alert(intl.formatMessage({ id: "result.acceptasis.warning" }));
-      addNotification({
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "result.acceptasis.warning" }),
-        kind: NotificationKinds.warning,
-      });
-      setNotificationVisible(true);
-    }
-    var newAcceptAsIs = acceptAsIs;
-    newAcceptAsIs[rowId] = !acceptAsIs[rowId];
-    setAcceptAsIs(newAcceptAsIs);
+  const handleAcceptUnconditionally = (rowId, reason) => {
+    const form = { ...props.results };
+    jpSet(form, "testResult[" + rowId + "].forceTechApproval", "true");
+    jpSet(form, "testResult[" + rowId + "].forceTechApprovalNote", reason);
+    jpSet(form, "testResult[" + rowId + "].isModified", "true");
+    props.setResultForm(form);
+
+    const next = [...acceptAsIs];
+    next[rowId] = true;
+    setAcceptAsIs(next);
+  };
+
+  const handleUnacceptUnconditionally = (rowId) => {
+    const form = { ...props.results };
+    // BE's ResultUtil.isForcedToAcceptance treats non-blank as forced —
+    // clearing requires "" / null, not "false".
+    jpSet(form, "testResult[" + rowId + "].forceTechApproval", "");
+    jpSet(form, "testResult[" + rowId + "].forceTechApprovalNote", "");
+    jpSet(form, "testResult[" + rowId + "].isModified", "true");
+    props.setResultForm(form);
+
+    const next = [...acceptAsIs];
+    next[rowId] = false;
+    setAcceptAsIs(next);
   };
 
   const buildSignContext = () => {
