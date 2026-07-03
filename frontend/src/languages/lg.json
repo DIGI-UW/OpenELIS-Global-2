@@ -1,7 +1,7 @@
 {
-  "accept.action.button": "Accept",
-  "accessDenied.message": "You do not have access to this module ,please contact your system administrator",
-  "accessDenied.okButton": "OK",
+  "accept.action.button": "kiriza",
+  "accessDenied.message": "Tolina beetu nalukusa lwakukozesa mutendera guno, saba era yogera n’omukulu w’enkola eno.",
+  "accessDenied.okButton": "kaale",
   "accessDenied.title": "tokirizibwa kweyongerayo kusukka mutendera guno.",
   "accession.entry": "Accession Number Entry",
   "activityReportByPanel": "Activity report By Panel",
