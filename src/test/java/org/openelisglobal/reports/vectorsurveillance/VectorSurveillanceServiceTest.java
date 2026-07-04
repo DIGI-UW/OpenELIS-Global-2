@@ -18,10 +18,13 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.reports.vectorsurveillance.dao.VectorSurveillanceDAO;
 import org.openelisglobal.reports.vectorsurveillance.service.VectorSurveillanceService;
 import org.openelisglobal.reports.vectorsurveillance.service.VectorSurveillanceServiceImpl;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.DensityAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SporozoiteAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO.DensityRow;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO.MirRow;
 
 /**
@@ -86,6 +89,34 @@ public class VectorSurveillanceServiceTest {
     private MirRow firstMirRow(SurveillanceIndicesDTO dto) {
         assertEquals(1, dto.getMirBySpecies().size());
         return dto.getMirBySpecies().get(0);
+    }
+
+    // ---- collection density: site-name resolution --------------------------
+
+    // Guards ONLY the service-side null->name join: density rows arrive with siteId
+    // set but siteName
+    // null, and the service resolves the name from the sampling-site catalog. Red
+    // on the old null
+    // pass-through. This does NOT verify that the grouped collectionLocationId
+    // shares a key space with
+    // SiteOption.id, nor the density HQL grouping — those are integration-level
+    // (see
+    // VectorSurveillancePositivityIntegrationTest.collectionDensity_groupsPerSite_andSiteIdsResolveToCatalogNames).
+    @Test
+    public void collectionDensity_resolvesSiteNameFromSiteCatalog() {
+        when(dao.getSites()).thenReturn(List.of(new SiteOption(10, "S-A", "Site A North"),
+                new SiteOption(11, "S-B", "Site B South")));
+        when(dao.getCollectionDensity(any(), any(), any()))
+                .thenReturn(List.of(new DensityAggregate("2026-W28", 10, null, 3, 28),
+                        new DensityAggregate("2026-W28", 11, null, 4, 37),
+                        new DensityAggregate("2026-W29", 10, null, 1, 10)));
+
+        List<DensityRow> rows = service.getIndices(FROM, TO, null).getCollectionDensity();
+
+        assertEquals(3, rows.size());
+        assertEquals("Site A North", rows.get(0).getSiteName());
+        assertEquals("Site B South", rows.get(1).getSiteName());
+        assertEquals("Site A North", rows.get(2).getSiteName());
     }
 
     // ---- classical MIR -----------------------------------------------------

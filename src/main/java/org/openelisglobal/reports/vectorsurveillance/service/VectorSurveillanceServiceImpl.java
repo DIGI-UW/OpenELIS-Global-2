@@ -53,9 +53,18 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
         dto.setMirBySpecies(dao.getMirAggregates(from, to, siteId).stream().map(a -> toMirRow(a, speciesTotals))
                 .collect(Collectors.toList()));
 
+        // Collection density is per-site/period; the density rows carry only the site
+        // id, so resolve
+        // the name (the chart groups/labels each site's series by it).
+        Map<Integer, String> siteNames = new HashMap<>();
+        for (SiteOption s : dao.getSites()) {
+            if (s.getId() != null) {
+                siteNames.put(s.getId(), s.getName());
+            }
+        }
         dto.setCollectionDensity(dao
                 .getCollectionDensity(from, to, siteId).stream().map(d -> new DensityRow(d.getPeriodLabel(),
-                        d.getSiteId(), d.getSiteName(), d.getPoolCount(), d.getSpecimenCount()))
+                        d.getSiteId(), siteNames.get(d.getSiteId()), d.getPoolCount(), d.getSpecimenCount()))
                 .collect(Collectors.toList()));
 
         dto.setPathogenPositivity(dao

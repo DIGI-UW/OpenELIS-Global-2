@@ -8,10 +8,15 @@ import static org.junit.Assert.assertTrue;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.reports.vectorsurveillance.dao.VectorSurveillanceDAO;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.DensityAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.PositivityAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
@@ -292,5 +297,31 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
         // The positive pools (malaria-POSITIVE 901, CSP-POSITIVE 902) both collect at
         // site A — one distinct site with a positive pool; the Culex site B has none.
         assertEquals("one distinct site holds a positive pool", 1L, dao.countSitesWithPositives(FROM, TO, null));
+    }
+
+    @Test
+    public void collectionDensity_groupsPerSite_andSiteIdsResolveToCatalogNames() {
+        // Integration guard for the two things the service unit test structurally can't
+        // see: (1) the
+        // HQL groups density per (period, collectionLocationId); (2) that grouped
+        // collectionLocationId
+        // shares a key space with VectorSamplingSite.id so the service can resolve a
+        // name. If that key
+        // space diverges, the name map returns null and the chart collapses to one "All
+        // sites" series
+        // (the zigzag) — this fails; the mocked-DAO unit test would not.
+        List<DensityAggregate> density = dao.getCollectionDensity(FROM, TO, null);
+        assertFalse("fixture has vector collection density in scope", density.isEmpty());
+
+        Set<Integer> densitySites = density.stream().map(DensityAggregate::getSiteId).collect(Collectors.toSet());
+        assertTrue("density is grouped per site (fixture has 2 collection locations, not collapsed)",
+                densitySites.size() >= 2);
+
+        Map<Integer, String> catalogNames = dao.getSites().stream().filter(s -> s.getId() != null)
+                .collect(Collectors.toMap(SiteOption::getId, SiteOption::getName, (a, b) -> a));
+        for (Integer sid : densitySites) {
+            assertNotNull("density collectionLocationId " + sid + " must resolve to a catalog site name",
+                    catalogNames.get(sid));
+        }
     }
 }

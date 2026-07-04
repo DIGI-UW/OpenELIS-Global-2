@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Grid,
   Column,
@@ -19,12 +19,13 @@ import {
   TableContainer,
 } from "@carbon/react";
 import { Download } from "@carbon/react/icons";
-import { LineChart, DonutChart, SimpleBarChart } from "@carbon/charts-react";
+import { StackedAreaChart, DonutChart, SimpleBarChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { encodeDate } from "../../utils/Utils";
+import { useUrlFilters } from "../../common/useUrlFilters";
 import {
   getSurveillanceIndices,
   getSurveillanceSites,
@@ -45,9 +46,16 @@ const isEmptyPayload = (data) =>
 function VectorSurveillanceDashboard() {
   const intl = useIntl();
 
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [siteId, setSiteId] = useState("");
+  // Filters round-trip through the URL so a filtered report is shareable +
+  // reload-safe; state is seeded from the URL on first render.
+  const { values, hasParams, setUrlFilters } = useUrlFilters({
+    dateFrom: "",
+    dateTo: "",
+    siteId: "",
+  });
+  const [dateFrom, setDateFrom] = useState(values.dateFrom);
+  const [dateTo, setDateTo] = useState(values.dateTo);
+  const [siteId, setSiteId] = useState(values.siteId);
   const [sites, setSites] = useState([]);
   const [appliedScope, setAppliedScope] = useState(null);
   const [indices, setIndices] = useState(null);
@@ -62,6 +70,7 @@ function VectorSurveillanceDashboard() {
   }, []);
 
   const handleApply = useCallback(() => {
+    setUrlFilters({ dateFrom, dateTo, siteId });
     const scope = {
       dateFrom: encodeDate(dateFrom),
       dateTo: encodeDate(dateTo),
@@ -80,7 +89,17 @@ function VectorSurveillanceDashboard() {
       }
       setLoading(false);
     });
-  }, [dateFrom, dateTo, siteId, sites, intl]);
+  }, [dateFrom, dateTo, siteId, sites, intl, setUrlFilters]);
+
+  // A shared/bookmarked link (filters already in the URL) renders its report on
+  // load, once — otherwise arriving at a filtered URL shows an empty dashboard.
+  const autoApplied = useRef(false);
+  useEffect(() => {
+    if (hasParams && !autoApplied.current) {
+      autoApplied.current = true;
+      handleApply();
+    }
+  }, [hasParams, handleApply]);
 
   const handleExport = useCallback(() => {
     if (!indices || !appliedScope) return;
@@ -278,13 +297,13 @@ function VectorSurveillanceDashboard() {
                   <FormattedMessage id="vectorReport.density.title" />
                 </h4>
                 {densityData.length > 0 ? (
-                  <LineChart
+                  <StackedAreaChart
                     data={densityData}
                     options={{
                       title: "",
                       axes: {
                         bottom: { mapsTo: "key", scaleType: "labels" },
-                        left: { mapsTo: "value", scaleType: "linear" },
+                        left: { mapsTo: "value", scaleType: "linear", stacked: true },
                       },
                       legend: { position: "bottom" },
                       height: chartHeight,

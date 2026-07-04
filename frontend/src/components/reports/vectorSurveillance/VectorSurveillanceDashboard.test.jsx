@@ -20,8 +20,8 @@ vi.mock("./VectorSurveillanceService", () => ({
 // irrelevant to these assertions — replace each chart with a marker that echoes
 // its data so we can assert the figures fed into it come from the payload.
 vi.mock("@carbon/charts-react", () => ({
-  LineChart: ({ data }) => (
-    <div data-testid="line-chart">{JSON.stringify(data)}</div>
+  StackedAreaChart: ({ data }) => (
+    <div data-testid="area-chart">{JSON.stringify(data)}</div>
   ),
   DonutChart: ({ data }) => (
     <div data-testid="donut-chart">{JSON.stringify(data)}</div>
@@ -178,8 +178,8 @@ describe("VectorSurveillanceDashboard", () => {
     });
     expect(screen.getByTestId("donut-chart")).toHaveTextContent("300");
 
-    // Line chart fed with the density specimenCount (480).
-    expect(screen.getByTestId("line-chart")).toHaveTextContent("480");
+    // Density stacked-area fed with the specimenCount (480).
+    expect(screen.getByTestId("area-chart")).toHaveTextContent("480");
 
     // Bar chart fed with the positivity pct (16.7).
     expect(screen.getByTestId("bar-chart")).toHaveTextContent("16.7");
