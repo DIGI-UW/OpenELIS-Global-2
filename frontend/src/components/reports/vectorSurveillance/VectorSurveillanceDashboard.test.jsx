@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import VectorSurveillanceDashboard from "./VectorSurveillanceDashboard";
 import {
@@ -46,11 +47,15 @@ vi.mock("../../common/PageBreadCrumb", () => ({
   default: () => <nav data-testid="breadcrumb" />,
 }));
 
+// The dashboard is a routed page and now reads filters from the URL, so it
+// needs Router context just as it has in the running app.
 const renderWithIntl = (component) =>
   render(
-    <IntlProvider locale="en" messages={messages}>
-      {component}
-    </IntlProvider>,
+    <MemoryRouter>
+      <IntlProvider locale="en" messages={messages}>
+        {component}
+      </IntlProvider>
+    </MemoryRouter>,
   );
 
 const mockIndices = {
@@ -276,5 +281,33 @@ describe("VectorSurveillanceDashboard", () => {
     });
     // Rendered freshness contains the localized payload timestamp's year.
     expect(screen.getByTestId("vector-freshness")).toHaveTextContent("2026");
+  });
+
+  test("shared link with URL filters auto-runs the report once on load (no Apply click)", async () => {
+    getSurveillanceIndices.mockImplementation((scope, cb) => cb(mockIndices));
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          "/VectorSurveillanceReport?dateFrom=01%2F06%2F2026&dateTo=07%2F06%2F2026&siteId=7",
+        ]}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <VectorSurveillanceDashboard />
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    // The report runs because the link carried filters — exactly once (pushing
+    // the same filters back to the URL must not trigger a second query).
+    await waitFor(() => {
+      expect(getSurveillanceIndices).toHaveBeenCalledTimes(1);
+    });
+    const scope = getSurveillanceIndices.mock.calls[0][0];
+    expect(scope.dateFrom).toBe("01%2F06%2F2026");
+    expect(scope.dateTo).toBe("07%2F06%2F2026");
+    expect(scope.siteId).toBe("7");
+    // The payload rendered without any interaction.
+    expect(screen.getByTestId("donut-chart")).toBeInTheDocument();
   });
 });

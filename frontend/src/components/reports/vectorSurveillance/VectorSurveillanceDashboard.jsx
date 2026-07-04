@@ -92,14 +92,16 @@ function VectorSurveillanceDashboard() {
   }, [dateFrom, dateTo, siteId, sites, intl, setUrlFilters]);
 
   // A shared/bookmarked link (filters already in the URL) renders its report on
-  // load, once — otherwise arriving at a filtered URL shows an empty dashboard.
+  // load, once. The presence is snapshotted at mount so that pushing filters to
+  // the URL on Apply doesn't feed back in as a second, redundant query.
   const autoApplied = useRef(false);
+  const [linkHadFilters] = useState(hasParams);
   useEffect(() => {
-    if (hasParams && !autoApplied.current) {
+    if (linkHadFilters && !autoApplied.current) {
       autoApplied.current = true;
       handleApply();
     }
-  }, [hasParams, handleApply]);
+  }, [linkHadFilters, handleApply]);
 
   const handleExport = useCallback(() => {
     if (!indices || !appliedScope) return;
