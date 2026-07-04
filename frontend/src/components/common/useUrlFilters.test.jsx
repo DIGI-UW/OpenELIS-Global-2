@@ -1,7 +1,7 @@
 import React from "react";
 import { renderHook, act } from "@testing-library/react-hooks";
 import { MemoryRouter } from "react-router-dom";
-import { useUrlFilters } from "./useUrlFilters";
+import { useUrlFilters, useUrlFilterAutoRun } from "./useUrlFilters";
 
 // Router context so useLocation/useHistory resolve; initialEntries seeds the URL.
 const routerWrapper =
@@ -53,5 +53,50 @@ describe("useUrlFilters", () => {
     expect(result.current.values.siteIds).toEqual(["10", "11"]);
     expect(result.current.values.dateTo).toBe("");
     expect(result.current.hasParams).toBe(true);
+  });
+});
+
+describe("useUrlFilterAutoRun", () => {
+  it("runs once on mount when shouldRun is true at mount", () => {
+    const run = vi.fn();
+    renderHook(() => useUrlFilterAutoRun(true, run), {
+      wrapper: routerWrapper(["/report?dateFrom=x"]),
+    });
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it("never runs when shouldRun is false at mount", () => {
+    const run = vi.fn();
+    renderHook(() => useUrlFilterAutoRun(false, run), {
+      wrapper: routerWrapper(["/report"]),
+    });
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("does not run again when shouldRun flips true after mount (the double-fetch guard)", () => {
+    const run = vi.fn();
+    // shouldRun starts false; rerender with true (as happens when an Apply pushes
+    // filters to the URL). The mount snapshot must keep it from firing.
+    const { rerender } = renderHook(
+      ({ shouldRun }) => useUrlFilterAutoRun(shouldRun, run),
+      {
+        wrapper: routerWrapper(["/report"]),
+        initialProps: { shouldRun: false },
+      },
+    );
+    rerender({ shouldRun: true });
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("runs only once across re-renders when the run identity changes", () => {
+    let run = vi.fn();
+    const { rerender } = renderHook(() => useUrlFilterAutoRun(true, run), {
+      wrapper: routerWrapper(["/report?dateFrom=x"]),
+    });
+    const firstRun = run;
+    run = vi.fn(); // new identity, as a fresh useCallback each render would be
+    rerender();
+    expect(firstRun).toHaveBeenCalledTimes(1);
+    expect(run).not.toHaveBeenCalled();
   });
 });
