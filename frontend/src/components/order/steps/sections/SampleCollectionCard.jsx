@@ -9,7 +9,6 @@ import {
   Button,
   Select,
   SelectItem,
-  NumberInput,
   TextInput,
   DatePicker,
   DatePickerInput,
@@ -226,19 +225,19 @@ const SampleCollectionCard = ({
 
         {/* Quantity */}
         <Column lg={4} md={4} sm={2}>
-          <NumberInput
+          <TextInput
             id={`quantity-${sampleIndex}`}
-            label={intl.formatMessage({
+            labelText={intl.formatMessage({
               id: "collect.sample.quantity",
               defaultMessage: "Quantity",
             })}
-            value={sample.quantity || ""}
-            onChange={(e, { value }) => handleFieldChange("quantity", value)}
+            type="number"
+            min="0"
+            step="0.5"
+            value={sample.quantity ?? ""}
+            onChange={(e) => handleFieldChange("quantity", e.target.value)}
             onWheel={(e) => e.target.blur()}
-            min={0}
-            step={0.5}
             disabled={isReadOnly}
-            hideSteppers
           />
         </Column>
 
@@ -286,7 +285,7 @@ const SampleCollectionCard = ({
         <Column lg={4} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
-            maxDate={new Date().toISOString()}
+            maxDate={new Date()}
             value={formatDateForPicker(sample.collectionDate)}
             onChange={(dates) => {
               if (dates && dates[0]) {
@@ -390,7 +389,7 @@ const SampleCollectionCard = ({
           <Column lg={4} md={4} sm={4}>
             <DatePicker
               datePickerType="single"
-              maxDate={new Date().toISOString()}
+              maxDate={new Date()}
               onChange={(dates) => {
                 if (dates && dates[0]) {
                   const month = String(dates[0].getMonth() + 1).padStart(

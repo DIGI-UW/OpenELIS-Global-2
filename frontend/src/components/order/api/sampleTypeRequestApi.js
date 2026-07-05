@@ -101,7 +101,7 @@ export const createRequestsForSamples = async (sampleId, sampleTypes) => {
       sampleId: sampleId,
       typeOfSampleId: sample.sampleTypeId,
       sortOrder: i,
-      requestedQuantity: parseFloat(sample.quantity) || 1,
+      requestedQuantity: parseFloat(sample.quantity) || null,
       unitOfMeasureId: sample.quantityUnit || null,
       requestedTests: sample.tests?.map((t) => t.id || t).join(",") || "",
       requestedPanels: sample.panels?.map((p) => p.id || p).join(",") || "",
@@ -195,7 +195,7 @@ export const convertRequestsToSamples = (pendingRequests) => {
       // Tests need to be objects with id and name properties for the UI
       tests: zipIdsAndNames(request.requestedTests, request.requestedTestNames),
       referralItems: [],
-      quantity: request.requestedQuantity?.toString() || "1",
+      quantity: "",
       quantityUnit: request.unitOfMeasureId || "",
       collectionConditions: "",
       collectionDate: "",
