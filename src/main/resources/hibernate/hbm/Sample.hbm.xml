@@ -115,6 +115,13 @@
             column="consent_recorded_at" type="java.sql.Timestamp" />
         <property name="consentRecordedBy"
             column="consent_recorded_by" type="java.lang.String" length="255" />
+        <!--LHU report-level amendment metadata -->
+        <property name="amendsLhuNumber" column="amends_lhu_number"
+            type="java.lang.String" />
+        <property name="amendmentNumber" column="amendment_number"
+            type="java.lang.Integer" />
+        <property name="amendmentReason" column="amendment_reason"
+            type="java.lang.String" />
 
         <!-- <set name="sampleOrganizations" inverse="true"> <key> <column name="SAMP_ID"
             precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"

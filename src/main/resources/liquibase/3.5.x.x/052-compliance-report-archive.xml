@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    PDF archival for ISO 17025 §7.8.8 compliance.
+    Stores the rendered PDF bytes + SHA-256 hash keyed to (sample_id, amendment_number).
+    amendment_number = 0 is the original released report; 1..N are amendments.
+    Unique constraint on (sample_id, amendment_number) enforces immutability at the DB level —
+    once a row exists it cannot be overwritten. Archive ONLY on release/reissue, never on preview.
+    Keep this table separate from any table the report listing SELECTs — the bytea is read only
+    on audit retrieval. See tasks.md Phase 5 T-502.
+  -->
+
+  <changeSet id="3.5.0.0-create-compliance-report-archive" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists schemaName="clinlims" tableName="compliance_report_archive"/>
+      </not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="compliance_report_archive">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="sample_id" type="BIGINT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="amendment_number" type="INTEGER" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+      <column name="pdf_content" type="BYTEA">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sha256_hash" type="VARCHAR(64)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="generated_at" type="TIMESTAMPTZ">
+        <constraints nullable="false"/>
+      </column>
+      <column name="generated_by_user_id" type="VARCHAR(255)"/>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-compliance-report-archive-add-last-updated" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="compliance_report_archive"/>
+      <not>
+        <columnExists schemaName="clinlims" tableName="compliance_report_archive" columnName="last_updated"/>
+      </not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="compliance_report_archive">
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-compliance-report-archive-unique" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <indexExists schemaName="clinlims" tableName="compliance_report_archive"
+                     indexName="uq_compliance_report_archive_sample_amendment"/>
+      </not>
+    </preConditions>
+    <addUniqueConstraint
+      schemaName="clinlims"
+      tableName="compliance_report_archive"
+      columnNames="sample_id, amendment_number"
+      constraintName="uq_compliance_report_archive_sample_amendment"/>
+  </changeSet>
+
+</databaseChangeLog>

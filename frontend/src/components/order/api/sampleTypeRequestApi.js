@@ -101,7 +101,7 @@ export const createRequestsForSamples = async (sampleId, sampleTypes) => {
       sampleId: sampleId,
       typeOfSampleId: sample.sampleTypeId,
       sortOrder: i,
-      requestedQuantity: parseFloat(sample.quantity) || 1,
+      requestedQuantity: parseFloat(sample.quantity) || null,
       unitOfMeasureId: sample.quantityUnit || null,
       requestedTests: sample.tests?.map((t) => t.id || t).join(",") || "",
       requestedPanels: sample.panels?.map((p) => p.id || p).join(",") || "",
@@ -162,7 +162,6 @@ export const cancelRequest = (requestId) => {
  */
 export const convertRequestsToSamples = (pendingRequests) => {
   if (!pendingRequests || !Array.isArray(pendingRequests)) {
-    console.error("convertRequestsToSamples: invalid input", pendingRequests);
     return [];
   }
 

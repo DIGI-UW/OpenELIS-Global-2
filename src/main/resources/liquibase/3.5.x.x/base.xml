@@ -194,4 +194,10 @@
   <include relativeToChangelogFile="true" file="049-sample-resample-links.xml"/>
   <include relativeToChangelogFile="true" file="050-resample-notification-trigger.xml"/>
 
+  <!-- LHU report-level amendment metadata on sample -->
+  <include relativeToChangelogFile="true" file="051-sample-amendment-metadata.xml"/>
+
+  <!-- LHU PDF archival for ISO 17025 §7.8.8 compliance -->
+  <include relativeToChangelogFile="true" file="052-compliance-report-archive.xml"/>
+
 </databaseChangeLog>
