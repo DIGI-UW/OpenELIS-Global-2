@@ -38,7 +38,8 @@ public class UnassignedSampleServiceTest extends BaseWebContextSensitiveTest {
         for (Map<String, Object> sample : samples) {
             String destFacilityId = (String) sample.get("destinationFacilityId");
             if (destFacilityId != null) {
-                assertEquals("All samples should have the requested facility ID", facilityId.toString(), destFacilityId);
+                assertEquals("All samples should have the requested facility ID", facilityId.toString(),
+                        destFacilityId);
             }
         }
     }

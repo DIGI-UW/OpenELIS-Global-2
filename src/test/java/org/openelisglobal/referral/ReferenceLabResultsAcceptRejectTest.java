@@ -117,7 +117,8 @@ public class ReferenceLabResultsAcceptRejectTest extends BaseWebContextSensitive
         Assert.assertEquals(ReferralStatus.COMPLETED, latest.getFromStatus());
         Assert.assertEquals(ReferralStatus.COMPLETED, latest.getToStatus());
         Assert.assertEquals(ACTOR_USER_ID, latest.getChangedByUserId());
-        Assert.assertEquals("REFERRAL_RESULT_RECEIVED {\"analysisId\":\"" + LINKED_ANALYSIS_ID + "\",\"source\":\"fhir\"}",
+        Assert.assertEquals(
+                "REFERRAL_RESULT_RECEIVED {\"analysisId\":\"" + LINKED_ANALYSIS_ID + "\",\"source\":\"fhir\"}",
                 latest.getNotes());
     }
 

@@ -91,7 +91,8 @@ public class LabOrderShipmentAcceptanceTest extends BaseWebContextSensitiveTest 
     public void setUp() throws Exception {
         super.setUp();
 
-        // Sibling fixtures truncate status_of_sample, wiping the base-dump EXTERNAL_ORDER
+        // Sibling fixtures truncate status_of_sample, wiping the base-dump
+        // EXTERNAL_ORDER
         // statuses. This test loads no DbUnit dataset of its own, so re-seed "Entered"
         // and refresh the cache before getStatusID resolves it below.
         ensureExternalOrderEnteredStatus();
@@ -152,8 +153,10 @@ public class LabOrderShipmentAcceptanceTest extends BaseWebContextSensitiveTest 
         when(fhirStub.getSpecimenByUuid(SPECIMEN_UUID)).thenReturn(Optional.of(specimen));
     }
 
-    // Idempotently ensure the EXTERNAL_ORDER "Entered" status exists (sibling fixtures
-    // truncate status_of_sample and don't reseed it). No id is hard-coded — getStatusID
+    // Idempotently ensure the EXTERNAL_ORDER "Entered" status exists (sibling
+    // fixtures
+    // truncate status_of_sample and don't reseed it). No id is hard-coded —
+    // getStatusID
     // resolves whatever id this row gets after refreshCache.
     private void ensureExternalOrderEnteredStatus() throws SQLException {
         try (Connection conn = dataSource.getConnection();
