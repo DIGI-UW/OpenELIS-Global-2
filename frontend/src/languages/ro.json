@@ -1370,6 +1370,8 @@
   "database.clean.success": "Database cleaned successfully.",
   "database.clean.warning": "This will permanently delete all patient data, sample data, and results from the database.",
   "date.created": "Date Created",
+  "datepicker.placeholder.dmy": "dd/mm/yyyy",
+  "datepicker.placeholder.mdy": "mm/dd/yyyy",
   "delete.error.msg": "Eroare la ștergere",
   "delete.success.msg": "Șters cu succes",
   "description.active": "Dacă testul este activ poate fi comandat. Altfel, nu poate fi comandat sau inclus în algoritmi",

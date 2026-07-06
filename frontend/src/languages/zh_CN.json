@@ -1370,6 +1370,8 @@
   "database.clean.success": "数据库清理成功",
   "database.clean.warning": "此操作将永久删除数据，请谨慎操作",
   "date.created": "创建日期",
+  "datepicker.placeholder.dmy": "dd/mm/yyyy",
+  "datepicker.placeholder.mdy": "mm/dd/yyyy",
   "delete.error.msg": "删除时出错",
   "delete.success.msg": "删除成功",
   "description.active": "如果检测处于活跃状态，它可以在订单表单上订购或作为检测算法的一部分。如果不活跃，则不能订购或作为检测算法的一部分",

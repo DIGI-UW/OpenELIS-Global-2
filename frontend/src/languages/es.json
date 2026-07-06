@@ -1370,6 +1370,8 @@
   "database.clean.success": "Database cleaned successfully.",
   "database.clean.warning": "This will permanently delete all patient data, sample data, and results from the database.",
   "date.created": "Date Created",
+  "datepicker.placeholder.dmy": "dd/mm/yyyy",
+  "datepicker.placeholder.mdy": "mm/dd/yyyy",
   "delete.error.msg": "Error al eliminar",
   "delete.success.msg": "Eliminado correctamente",
   "description.active": " Si la prueba está activa, puede solicitarse en el formulario de órdenes o como parte de un algoritmo de prueba. Si no está activa, no puede solicitarse ni formar parte de un algoritmo de prueba",
