@@ -21,16 +21,17 @@ test.describe("Analyzer Plugin Config", () => {
     await list.goto();
     await list.expectLoaded();
 
-    // Open form and select plugin. When running in parallel with other tests
-    // that also hit /analyzers, the modal can close from session interference.
-    // Retry the full open→select flow if the dropdown isn't reachable.
-    let selectedPlugin = false;
+    // Open the inline setup panel and select a profile. When running in
+    // parallel with other tests that also hit /analyzers, the panel can
+    // close from session interference. Retry the full open→select flow if
+    // the profile dropdown isn't reachable.
+    let selectedProfile = false;
     for (let attempt = 1; attempt <= 3; attempt++) {
       await list.clickAdd();
       await form.expectOpen();
 
       try {
-        await expect(form.pluginTypeDropdown).toBeVisible({
+        await expect(form.defaultConfigDropdown).toBeVisible({
           timeout: SHORT_TIMEOUT,
         });
       } catch {
@@ -46,12 +47,12 @@ test.describe("Analyzer Plugin Config", () => {
       }
 
       try {
-        await form.selectPluginType("Generic ASTM");
-        selectedPlugin = true;
+        await form.selectProfile("GeneXpert");
+        selectedProfile = true;
       } catch {
         // Selection failed (e.g. options not rendered) — retry
       }
-      if (selectedPlugin) break;
+      if (selectedProfile) break;
 
       // Close form and retry
       if (await form.modal.isVisible()) {
@@ -61,16 +62,17 @@ test.describe("Analyzer Plugin Config", () => {
       }
     }
     expect(
-      selectedPlugin,
-      "Generic ASTM plugin option should be selectable",
+      selectedProfile,
+      "GeneXpert profile option should be selectable",
     ).toBeTruthy();
 
-    await expect(form.defaultConfigDropdown).toBeVisible();
-    await form.selectDefaultConfig("GeneXpert");
-
-    // Selecting the profile should prefill key analyzer fields.
-    await expect(form.identifierPatternInput).toHaveValue(/GENEXPERT/i);
-    await expect(form.typeDropdown).toContainText(/Molecular/i);
+    // Selecting the profile should prefill the summary with its resolved
+    // protocol and analyzer-type category — the inline flow has no separate
+    // identifier-pattern/analyzer-type fields to inspect directly.
+    await expect(form.profileSummary).toBeVisible();
+    await expect(form.profileSummary).toContainText(/GeneXpert/i);
+    await expect(form.profileSummary).toContainText("ASTM");
+    await expect(form.profileSummary).toContainText(/MOLECULAR/i);
     await form.cancelButton.click();
     await expect(form.modal).not.toBeVisible();
   });
@@ -94,6 +96,15 @@ test.describe("Analyzer Plugin Config", () => {
     await expect(page).toHaveURL(
       new RegExp(`/analyzers/${analyzerId}/mappings`),
     );
+
+    // The raw plugin-config JSON snapshot is an advanced/debug view gated
+    // behind `?advanced=1` — reload with it to exercise the panel.
+    await page.goto(`/analyzers/${analyzerId}/mappings?advanced=1`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator('[data-testid="field-mapping"]')).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
 
     const snapshotTile = page.locator('[data-testid="plugin-config-snapshot"]');
     await expect(snapshotTile).toBeVisible({ timeout: LONG_TIMEOUT });

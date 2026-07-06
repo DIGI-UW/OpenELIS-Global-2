@@ -32,6 +32,12 @@ test.describe("Analyzer Simulator", () => {
     await expect(page).toHaveURL(
       new RegExp(`/analyzers/${GENEXPERT_ID}/mappings`),
     );
+
+    // Reload with the advanced/debug query param so the page-level plugin
+    // config snapshot card is available as a fallback assertion below.
+    await page.goto(`/analyzers/${GENEXPERT_ID}/mappings?advanced=1`, {
+      waitUntil: "domcontentloaded",
+    });
     await expect(page.locator('[data-testid="field-mapping"]')).toBeVisible();
 
     await page

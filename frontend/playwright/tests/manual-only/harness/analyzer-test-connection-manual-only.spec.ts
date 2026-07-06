@@ -47,9 +47,9 @@ test.describe("Real GeneXpert Test Connection (Manual Only)", () => {
 
     await form.fillName(analyzerName);
 
-    await form.selectPluginType("Generic ASTM");
-
-    await form.selectType("Molecular");
+    // Inline setup has no plugin-type/analyzer-type dropdowns — the profile
+    // resolves both automatically.
+    await form.selectProfile("Cepheid GeneXpert (ASTM Mode)");
     await form.fillIpAddress(GENEXPERT_HOST!);
     await form.fillPort(GENEXPERT_PORT);
 

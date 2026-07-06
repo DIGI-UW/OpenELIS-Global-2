@@ -4,7 +4,14 @@ import { UI_TIMEOUT } from "../helpers/timeouts";
 /**
  * AnalyzerForm Page Object
  *
- * Encapsulates interactions with the analyzer create/edit modal (AnalyzerForm component).
+ * Encapsulates interactions with the AnalyzerForm component, which renders in two modes:
+ * - Inline lab-facing setup (`/analyzers?add=1`): name + profile + connection fields only.
+ *   `typeDropdown`, `pluginTypeDropdown`, `statusDropdown`, `protocolVersionDropdown`,
+ *   `identifierPatternInput`, and `communicationModeDropdown` are NOT rendered in this mode
+ *   (see `AnalyzerForm.jsx`'s `labFacingSetup` gate) — use `selectProfile()` instead, which
+ *   auto-derives plugin type and analyzer type from the chosen profile.
+ * - Full form (edit mode, `/analyzers/:id/edit`): all fields rendered, legacy dropdowns apply.
+ *
  * Uses data-testid selectors that match the component's DOM structure.
  */
 export class AnalyzerFormPage {
@@ -23,6 +30,7 @@ export class AnalyzerFormPage {
   readonly statusDropdown: Locator;
   readonly connectionFields: Locator;
   readonly fileProtocolInfo: Locator;
+  readonly profileSummary: Locator;
   readonly saveButton: Locator;
   readonly cancelButton: Locator;
   readonly notification: Locator;
@@ -62,6 +70,9 @@ export class AnalyzerFormPage {
     );
     this.fileProtocolInfo = page.locator(
       '[data-testid="analyzer-form-file-protocol-info"]',
+    );
+    this.profileSummary = page.locator(
+      '[data-testid="analyzer-form-profile-summary"]',
     );
     this.saveButton = page.locator('[data-testid="analyzer-form-save-button"]');
     this.cancelButton = page.locator(
@@ -123,6 +134,17 @@ export class AnalyzerFormPage {
   /** Select a default config template from the dropdown */
   async selectDefaultConfig(configText: string) {
     await this.selectDropdownItem(this.defaultConfigDropdown, configText);
+  }
+
+  /**
+   * Select a shipped analyzer profile (inline setup flow).
+   *
+   * Same underlying dropdown as `selectDefaultConfig` — inline mode always
+   * renders it unfiltered by plugin type, since the profile itself resolves
+   * plugin type, analyzer type, and (for FILE) import defaults server-side.
+   */
+  async selectProfile(profileText: string) {
+    await this.selectDropdownItem(this.defaultConfigDropdown, profileText);
   }
 
   /** Fill the IP address field */

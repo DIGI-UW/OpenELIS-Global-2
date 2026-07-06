@@ -1,12 +1,17 @@
 /**
  * Create an analyzer via the UI using a profile for auto-fill.
  *
- * Handles the full creation flow:
+ * Handles the full creation flow (inline lab-facing setup at `/analyzers?add=1`):
  * 1. (TCP only) Create mock network to get unique analyzer IP
  * 2. Open dashboard → click Add
- * 3. Select plugin type → select profile → fill name
+ * 3. Select profile (auto-resolves plugin type + analyzer type) → fill name
  * 4. (TCP only) Fill IP address and port
  * 5. Save → verify success
+ *
+ * The inline form does not expose plugin-type/analyzer-type dropdowns — the
+ * profile selection alone drives those fields server-side (see
+ * `AnalyzerForm.jsx`'s `labFacingSetup` gate), so every `AnalyzerTestConfig`
+ * used here must declare a `profileName`.
  *
  * Returns the IP assigned to the analyzer (for TCP push destinations).
  */
@@ -174,18 +179,16 @@ export async function createAnalyzerFromProfile(
     await form.expectOpen();
   }
 
-  // Select plugin type
-  await form.selectPluginType(config.pluginType);
-  await presentation.pause(500);
-
-  // Select profile (auto-fills fields)
-  if (config.profileName) {
-    await form.selectDefaultConfig(config.profileName);
-    await presentation.pause(500);
+  // Select profile — auto-resolves plugin type, analyzer type, identifier
+  // pattern, and (for FILE) import defaults. The inline form has no separate
+  // plugin-type/analyzer-type dropdowns to drive.
+  if (!config.profileName) {
+    throw new Error(
+      `AnalyzerTestConfig "${config.name}" has no profileName; the inline setup flow requires a profile.`,
+    );
   }
-
-  // Select analyzer type (may already be set by profile)
-  await form.selectType(config.analyzerType);
+  await form.selectProfile(config.profileName);
+  await presentation.pause(500);
 
   // Fill name
   await form.fillName(config.name);

@@ -6,7 +6,9 @@ import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
  * Analyzer Form E2E Tests
  *
  * Tests core form workflows: open/close, validation, and create/edit.
- * Designed to run in standard CI (no analyzer harness or default configs required).
+ * Designed to run in standard CI (no analyzer harness required) — the
+ * `create`/`edit` cases rely on the GeneXpert shipped profile, which ships
+ * with the core build stack (mounted analyzer-profiles + generic plugins).
  */
 test.describe("Analyzer Form", () => {
   test.describe.configure({ mode: "serial" });
@@ -55,9 +57,11 @@ test.describe("Analyzer Form", () => {
     await list.clickAdd();
     await form.expectOpen();
 
-    // Fill only required fields
+    // The inline setup flow (`/analyzers?add=1`) requires a shipped profile —
+    // it has no standalone analyzer-type dropdown. Selecting a profile
+    // auto-resolves plugin type and analyzer type server-side.
     await form.fillName(analyzerName);
-    await form.selectType("Molecular");
+    await form.selectProfile("Cepheid GeneXpert (ASTM Mode)");
 
     // Save
     await form.save();
