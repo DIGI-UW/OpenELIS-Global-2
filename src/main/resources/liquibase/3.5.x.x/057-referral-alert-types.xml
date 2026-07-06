@@ -10,7 +10,7 @@
     REFERRAL_CRITICAL_RESULT (Critical/Abnormal returned result on Accept) and
     REFERRAL_REJECTED (lab-side acknowledgment when a returned result is rejected).
   -->
-  <changeSet id="3.5.0.0-055-referral-alert-types" author="samuelmale">
+  <changeSet id="3.5.0.0-057-referral-alert-types" author="samuelmale">
     <preConditions onFail="MARK_RAN">
       <tableExists schemaName="clinlims" tableName="alert"/>
     </preConditions>

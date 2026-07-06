@@ -12,7 +12,7 @@
     just entered it themselves, so it's already reconciled).
   -->
 
-  <changeSet id="3.5.0.0-051-referral-add-manually-entered" author="samuelmale">
+  <changeSet id="3.5.0.0-053-referral-add-manually-entered" author="samuelmale">
     <preConditions onFail="MARK_RAN">
       <not>
         <columnExists tableName="referral" columnName="manually_entered" schemaName="clinlims"/>

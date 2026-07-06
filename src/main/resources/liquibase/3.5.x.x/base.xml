@@ -196,23 +196,28 @@
   <include relativeToChangelogFile="true" file="049-sample-resample-links.xml"/>
   <include relativeToChangelogFile="true" file="050-resample-notification-trigger.xml"/>
 
+  <!-- LHU report-level amendment metadata on sample -->
+  <include relativeToChangelogFile="true" file="051-sample-amendment-metadata.xml"/>
+
+  <!-- LHU PDF archival for ISO 17025 §7.8.8 compliance -->
+  <include relativeToChangelogFile="true" file="052-compliance-report-archive.xml"/>
+
   <!-- OGC-799: manually_entered flag for Referral (Manual Entry path) -->
-  <include relativeToChangelogFile="true" file="051-referral-manually-entered.xml"/>
+  <include relativeToChangelogFile="true" file="053-referral-manually-entered.xml"/>
 
   <!-- OGC-803/804: reception action columns on referral (reconcile + reject) -->
-  <include relativeToChangelogFile="true" file="052-referral-reception-actions.xml"/>
+  <include relativeToChangelogFile="true" file="054-referral-reception-actions.xml"/>
 
   <!-- OGC-804: RejectedByReferenceLab terminal ANALYSIS status -->
-  <include relativeToChangelogFile="true" file="053-rejected-by-reference-lab-status.xml"/>
+  <include relativeToChangelogFile="true" file="055-rejected-by-reference-lab-status.xml"/>
 
   <!-- OGC-804: REFERRAL_REJECTED_NEEDS_RECOLLECTION notification trigger seed -->
-  <include relativeToChangelogFile="true" file="054-referral-rejected-trigger.xml"/>
+  <include relativeToChangelogFile="true" file="056-referral-rejected-trigger.xml"/>
 
   <!-- OGC-803/804: in-app Alerts feature types for referral reception -->
-  <include relativeToChangelogFile="true" file="055-referral-alert-types.xml"/>
+  <include relativeToChangelogFile="true" file="057-referral-alert-types.xml"/>
 
   <!-- OGC-810: REFERRAL_NUDGE notification trigger seed (notify reference lab) -->
-  <include relativeToChangelogFile="true" file="056-referral-nudge-trigger.xml"/>
-
+  <include relativeToChangelogFile="true" file="058-referral-nudge-trigger.xml"/>
 
 </databaseChangeLog>
