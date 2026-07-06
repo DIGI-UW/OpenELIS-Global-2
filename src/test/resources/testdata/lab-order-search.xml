@@ -84,7 +84,15 @@
     <patient id="9001" person_id="9001" gender="M"
         lastupdated="2023-01-01 00:00:00" />
 
-    <!-- electronic orders (use existing status_id 21 = Entered) -->
+    <!-- EXTERNAL_ORDER "Entered" status referenced by the electronic_orders below.
+         Seeded here (id 21, matching the base dump) because sibling fixtures truncate
+         status_of_sample and don't reseed the EXTERNAL_ORDER rows. -->
+    <status_of_sample id="21" name="Entered" status_type="EXTERNAL_ORDER" code="1"
+        description="The electronic order has been entered into OE"
+        display_key="status.sample.entered" is_active="Y"
+        lastupdated="2013-04-10 16:00:05.19233" />
+
+    <!-- electronic orders (status_id 21 = EXTERNAL_ORDER Entered, seeded above) -->
     <electronic_order id="9001"
         external_id="ORD-MULTI-SAMPLE" patient_id="9001" status_id="21"
         order_timestamp="2024-06-01 12:00:00" data=""

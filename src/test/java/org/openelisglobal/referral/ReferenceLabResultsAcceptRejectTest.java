@@ -117,7 +117,8 @@ public class ReferenceLabResultsAcceptRejectTest extends BaseWebContextSensitive
         Assert.assertEquals(ReferralStatus.COMPLETED, latest.getFromStatus());
         Assert.assertEquals(ReferralStatus.COMPLETED, latest.getToStatus());
         Assert.assertEquals(ACTOR_USER_ID, latest.getChangedByUserId());
-        Assert.assertEquals("Accepted to patient record (reconciled)", latest.getNotes());
+        Assert.assertEquals("REFERRAL_RESULT_RECEIVED {\"analysisId\":\"" + LINKED_ANALYSIS_ID + "\",\"source\":\"fhir\"}",
+                latest.getNotes());
     }
 
     @Test
@@ -183,7 +184,7 @@ public class ReferenceLabResultsAcceptRejectTest extends BaseWebContextSensitive
         ReferralStatusHistory latest = history.get(history.size() - 1);
         Assert.assertEquals(ReferralStatus.COMPLETED, latest.getFromStatus());
         Assert.assertEquals(ReferralStatus.REJECTED, latest.getToStatus());
-        Assert.assertEquals("Rejected: Specimen clotted", latest.getNotes());
+        Assert.assertEquals("REFERRAL_RESULT_REJECTED [clotted] Specimen clotted", latest.getNotes());
     }
 
     @Test

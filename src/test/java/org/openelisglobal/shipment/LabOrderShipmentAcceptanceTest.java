@@ -7,10 +7,14 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ServiceRequest;
@@ -61,6 +65,9 @@ public class LabOrderShipmentAcceptanceTest extends BaseWebContextSensitiveTest 
     private IStatusService statusService;
 
     @Autowired
+    private DataSource dataSource;
+
+    @Autowired
     private TypeOfSampleService typeOfSampleService;
 
     @Autowired
@@ -83,6 +90,12 @@ public class LabOrderShipmentAcceptanceTest extends BaseWebContextSensitiveTest 
     @Before
     public void setUp() throws Exception {
         super.setUp();
+
+        // Sibling fixtures truncate status_of_sample, wiping the base-dump EXTERNAL_ORDER
+        // statuses. This test loads no DbUnit dataset of its own, so re-seed "Entered"
+        // and refresh the cache before getStatusID resolves it below.
+        ensureExternalOrderEnteredStatus();
+        statusService.refreshCache();
 
         // Electronic order in DB (as if imported by referral polling)
         ElectronicOrder eOrder = new ElectronicOrder();
@@ -137,6 +150,20 @@ public class LabOrderShipmentAcceptanceTest extends BaseWebContextSensitiveTest 
                 .addCoding(new org.hl7.fhir.r4.model.Coding().setSystem(fhirConfig.getOeFhirSystem() + "/sampleType")
                         .setCode(SENDER_SAMPLE_TYPE_CODE).setDisplay(SENDER_SAMPLE_TYPE_DISPLAY));
         when(fhirStub.getSpecimenByUuid(SPECIMEN_UUID)).thenReturn(Optional.of(specimen));
+    }
+
+    // Idempotently ensure the EXTERNAL_ORDER "Entered" status exists (sibling fixtures
+    // truncate status_of_sample and don't reseed it). No id is hard-coded — getStatusID
+    // resolves whatever id this row gets after refreshCache.
+    private void ensureExternalOrderEnteredStatus() throws SQLException {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement("INSERT INTO clinlims.status_of_sample"
+                        + " (id, name, status_type, code, description, is_active, lastupdated)"
+                        + " SELECT nextval('clinlims.status_of_sample_seq'), 'Entered', 'EXTERNAL_ORDER', '1',"
+                        + " 'Entered', 'Y', now() WHERE NOT EXISTS (SELECT 1 FROM clinlims.status_of_sample"
+                        + " WHERE name = 'Entered' AND status_type = 'EXTERNAL_ORDER')")) {
+            ps.executeUpdate();
+        }
     }
 
     /**
