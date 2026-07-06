@@ -4,6 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -56,11 +60,42 @@ public class SamplePatientEntryServiceTest extends BaseWebContextSensitiveTest {
     private PatientService patientService;
 
     @Autowired
-    private PatientManagementUpdate patientManagementUpdate;
+    private DataSource dataSource;
 
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/samplepatiententry.xml");
+        // Reset singleton caches to avoid stale identity type IDs from previous tests
+        org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap.reset();
+        // Ensure the address_part rows PatientManagementUpdate resolves at
+        // @PostConstruct time exist, regardless of what other test classes'
+        // fixtures have done to this shared table.
+        ensureAddressPart("department");
+        ensureAddressPart("commune");
+        ensureAddressPart("village");
+    }
+
+    private void ensureAddressPart(String partName) throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement select = conn
+                        .prepareStatement("SELECT id FROM clinlims.address_part WHERE part_name = ?")) {
+            select.setString(1, partName);
+            try (ResultSet rs = select.executeQuery()) {
+                if (rs.next()) {
+                    return;
+                }
+            }
+        }
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement insert = conn.prepareStatement(
+                        "INSERT INTO clinlims.address_part (id, part_name) VALUES (nextval('clinlims.address_part_seq'), ?)")) {
+            insert.setString(1, partName);
+            insert.executeUpdate();
+        }
+    }
+
+    private PatientManagementUpdate newPatientManagementUpdate() {
+        return webApplicationContext.getBean(PatientManagementUpdate.class);
     }
 
     @Test
@@ -149,6 +184,7 @@ public class SamplePatientEntryServiceTest extends BaseWebContextSensitiveTest {
         SamplePatientEntryForm patientEntryForm = new SamplePatientEntryForm();
         patientEntryForm.setPatientProperties(patientInfo);
 
+        PatientManagementUpdate patientManagementUpdate = newPatientManagementUpdate();
         patientManagementUpdate.setPatientUpdateStatus(patientInfo);
 
         SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
