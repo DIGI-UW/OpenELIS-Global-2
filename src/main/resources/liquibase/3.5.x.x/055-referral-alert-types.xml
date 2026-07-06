@@ -10,7 +10,10 @@
     REFERRAL_CRITICAL_RESULT (Critical/Abnormal returned result on Accept) and
     REFERRAL_REJECTED (lab-side acknowledgment when a returned result is rejected).
   -->
-  <changeSet id="OGC-803-804-referral-alert-types" author="samuelmale">
+  <changeSet id="3.5.0.0-055-referral-alert-types" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="alert"/>
+    </preConditions>
     <sql>
       ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
       ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
@@ -20,6 +23,15 @@
         'REQUIRED_BY_DEADLINE', 'REFERRAL_CRITICAL_RESULT', 'REFERRAL_REJECTED'
       ));
     </sql>
+    <rollback>
+      ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+      ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+      CHECK (alert_type IN (
+        'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+        'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+        'REQUIRED_BY_DEADLINE'
+      ));
+    </rollback>
   </changeSet>
 
 </databaseChangeLog>

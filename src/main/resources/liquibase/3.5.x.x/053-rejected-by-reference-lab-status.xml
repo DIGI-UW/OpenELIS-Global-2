@@ -10,7 +10,7 @@
     AnalysisStatus.RejectedByReferenceLab by this exact name.
   -->
 
-  <changeSet id="3.5.0.0-050-add-rejected-by-reference-lab-status" author="samuelmale">
+  <changeSet id="3.5.0.0-053-add-rejected-by-reference-lab-status" author="samuelmale">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="0">
         SELECT count(*) FROM clinlims.status_of_sample
