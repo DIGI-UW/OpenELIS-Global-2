@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   Stack,
   TextInput,
@@ -7,6 +8,7 @@ import {
   RadioButton,
   Toggle,
   Button,
+  ComboBox,
   Loading,
   InlineNotification,
   Modal,
@@ -14,6 +16,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../../utils/Utils";
@@ -21,36 +24,52 @@ import { NotificationContext } from "../../../layout/Layout";
 import ActivationAckModal from "./ActivationAckModal";
 
 /**
- * OGC-949 M4 / OGC-748 — Basic Info section.
+ * OGC-949 / OGC-1112 — Basic Info section.
  *
- * This slice persists the v2.5-new fields (Domain, AMR) plus the status flags
- * against the M1 schema. Name/Code/Description render read-only here (editing
- * them is OGC-950, which touches localization); the coverage-gated activation
- * modal is OGC-953, wired when Ranges (M7) lands.
+ * Edits Domain / AMR / status plus (OGC-1112 dependency 8) the Code and
+ * Description; the display name is edited in the Localization section. When
+ * opened as `testId === "new"` it renders a blank create form (FR-2): Name,
+ * Reporting name, Code (auto-suggested), Lab Unit, Sample type, Domain, toggles,
+ * Description — Save creates the test Inactive (FR-3) and lands on its editor.
  */
 const DOMAINS = ["CLINICAL", "ENVIRONMENTAL", "VECTOR"];
 
 const BasicInfoSection = ({ testId }) => {
   const intl = useIntl();
+  const history = useHistory();
+  const location = useLocation();
+  const base = location.pathname.startsWith("/admin")
+    ? "/admin"
+    : "/MasterListsPage";
+  const isCreate = testId === "new";
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isCreate);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
-  // Domain change is confirmed via a modal before it is applied (US4 AC#1).
   const [pendingDomain, setPendingDomain] = useState(null);
-  // Carbon's RadioButtonGroup caches its own selection and only re-reads
-  // valueSelected when that prop changes. Cancelling a domain change leaves
-  // valueSelected unchanged, so bumping this key remounts the group to re-sync
-  // it to the current (unchanged) domain — otherwise the radio would stay
-  // visually stuck on the rejected choice.
   const [domainRadioKey, setDomainRadioKey] = useState(0);
-  // Activation coverage gate (OGC-973): toggling Active on routes through the
-  // coverage check; uncovered ranges surface an acknowledgment modal.
   const [ackModalOpen, setAckModalOpen] = useState(false);
   const [coverageReport, setCoverageReport] = useState(null);
+
+  // Create-mode state (FR-2).
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    reportingName: "",
+    code: "",
+    labUnitId: "",
+    sampleTypeId: "",
+    domain: "CLINICAL",
+    antimicrobialResistance: false,
+    orderable: false,
+    description: "",
+  });
+  const [codeEdited, setCodeEdited] = useState(false);
+  const [codeError, setCodeError] = useState(false);
+  const [labUnits, setLabUnits] = useState([]);
+  const [sampleTypes, setSampleTypes] = useState([]);
 
   const cancelDomainChange = () => {
     setPendingDomain(null);
@@ -58,7 +77,7 @@ const BasicInfoSection = ({ testId }) => {
   };
 
   useEffect(() => {
-    if (!testId) {
+    if (!testId || isCreate) {
       return;
     }
     setLoading(true);
@@ -74,9 +93,88 @@ const BasicInfoSection = ({ testId }) => {
         setForm(res);
       },
     );
-  }, [testId]);
+  }, [testId, isCreate]);
+
+  // Create form needs the Lab Unit + Sample type reference lists.
+  useEffect(() => {
+    if (!isCreate) {
+      return;
+    }
+    getFromOpenElisServer("/rest/test-catalog/lab-units", (res) =>
+      setLabUnits(Array.isArray(res) ? res : []),
+    );
+    getFromOpenElisServer("/rest/test-catalog/sample-types", (res) =>
+      setSampleTypes(Array.isArray(res) ? res : []),
+    );
+  }, [isCreate]);
 
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+  const updateCreate = (patch) =>
+    setCreateForm((prev) => ({ ...prev, ...patch }));
+
+  // ── Create (FR-2/FR-3/FR-4) ───────────────────────────────────────────────
+
+  const createValid =
+    createForm.name.trim() &&
+    createForm.reportingName.trim() &&
+    createForm.code.trim() &&
+    createForm.sampleTypeId &&
+    createForm.domain;
+
+  const handleCreate = () => {
+    if (!createValid) {
+      return;
+    }
+    setSaving(true);
+    setCodeError(false);
+    // The create endpoint expects `amr` (not `antimicrobialResistance`); map the
+    // form's field names to the request body.
+    const payload = {
+      name: createForm.name,
+      reportingName: createForm.reportingName,
+      code: createForm.code,
+      labUnitId: createForm.labUnitId,
+      sampleTypeId: createForm.sampleTypeId,
+      domain: createForm.domain,
+      amr: createForm.antimicrobialResistance,
+      orderable: createForm.orderable,
+      description: createForm.description,
+    };
+    postToOpenElisServerFullResponse(
+      "/rest/test-catalog/tests",
+      JSON.stringify(payload),
+      (response) => {
+        setSaving(false);
+        if (response && response.status === 201) {
+          response.json().then((created) => {
+            setNotificationVisible(true);
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({
+                id: "label.testCatalog.section.basic-info",
+              }),
+              message: intl.formatMessage(
+                { id: "notification.testCatalog.testCreated" },
+                { name: createForm.name },
+              ),
+            });
+            history.push(
+              `${base}/TestCatalogEditor/${created.testId}/basic-info`,
+            );
+          });
+        } else if (response && response.status === 409) {
+          setCodeError(true);
+        } else {
+          setNotificationVisible(true);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "error.title" }),
+            message: intl.formatMessage({ id: "server.error.msg" }),
+          });
+        }
+      },
+    );
+  };
 
   const handleSave = () => {
     setSaving(true);
@@ -113,7 +211,6 @@ const BasicInfoSection = ({ testId }) => {
       JSON.stringify(gapsAcknowledged ? { gapsAcknowledged } : {}),
       (res) => {
         if (res && (res.status === 409 || res.statusCode === 409)) {
-          // Uncovered age windows → require acknowledgment before activating.
           setCoverageReport(res);
           setAckModalOpen(true);
         } else if (res && !res.error) {
@@ -146,6 +243,142 @@ const BasicInfoSection = ({ testId }) => {
     setAckModalOpen(false);
     setCoverageReport(null);
   };
+
+  if (isCreate) {
+    return (
+      <Stack gap={6}>
+        <TextInput
+          id="basic-info-name"
+          labelText={intl.formatMessage({ id: "label.testCatalog.testName" })}
+          value={createForm.name}
+          onChange={(e) => {
+            const name = e.target.value;
+            // Auto-suggest the code from the name until the admin edits it (FR-2).
+            updateCreate(codeEdited ? { name } : { name, code: name });
+          }}
+        />
+        <TextInput
+          id="basic-info-reporting-name"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.reportingName",
+          })}
+          value={createForm.reportingName}
+          onChange={(e) => updateCreate({ reportingName: e.target.value })}
+        />
+        <TextInput
+          id="basic-info-code"
+          labelText={intl.formatMessage({ id: "label.testCatalog.testCode" })}
+          value={createForm.code}
+          invalid={codeError}
+          invalidText={intl.formatMessage({
+            id: "error.testCatalog.codeExists",
+          })}
+          onChange={(e) => {
+            setCodeEdited(true);
+            setCodeError(false);
+            updateCreate({ code: e.target.value });
+          }}
+        />
+        <ComboBox
+          id="basic-info-lab-unit"
+          titleText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.labUnit",
+          })}
+          items={labUnits}
+          itemToString={(item) => (item ? item.name : "")}
+          selectedItem={labUnits.find((u) => u.id === createForm.labUnitId)}
+          onChange={({ selectedItem }) =>
+            updateCreate({ labUnitId: selectedItem ? selectedItem.id : "" })
+          }
+        />
+        <ComboBox
+          id="basic-info-sample-type"
+          titleText={intl.formatMessage({
+            id: "label.testCatalog.specimenType",
+          })}
+          items={sampleTypes}
+          itemToString={(item) => (item ? item.name : "")}
+          selectedItem={
+            sampleTypes.find((s) => s.id === createForm.sampleTypeId) || null
+          }
+          onChange={({ selectedItem }) =>
+            updateCreate({ sampleTypeId: selectedItem ? selectedItem.id : "" })
+          }
+        />
+        <RadioButtonGroup
+          name="basic-info-create-domain"
+          legendText={intl.formatMessage({ id: "label.testCatalog.domain" })}
+          valueSelected={createForm.domain}
+          onChange={(value) => updateCreate({ domain: value })}
+        >
+          {DOMAINS.map((d) => (
+            <RadioButton
+              key={d}
+              id={`create-domain-${d}`}
+              value={d}
+              labelText={intl.formatMessage({
+                id: `label.testCatalog.basicInfo.domain.${d}`,
+              })}
+            />
+          ))}
+        </RadioButtonGroup>
+        <Toggle
+          id="basic-info-create-amr"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.amr",
+          })}
+          labelA={intl.formatMessage({ id: "label.no" })}
+          labelB={intl.formatMessage({ id: "label.yes" })}
+          toggled={createForm.antimicrobialResistance}
+          onToggle={(checked) =>
+            updateCreate({ antimicrobialResistance: checked })
+          }
+        />
+        <Toggle
+          id="basic-info-create-orderable"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.orderable",
+          })}
+          labelA={intl.formatMessage({ id: "label.no" })}
+          labelB={intl.formatMessage({ id: "label.yes" })}
+          toggled={createForm.orderable}
+          onToggle={(checked) => updateCreate({ orderable: checked })}
+        />
+        <TextArea
+          id="basic-info-create-description"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.description",
+          })}
+          value={createForm.description}
+          onChange={(e) => updateCreate({ description: e.target.value })}
+          rows={2}
+        />
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.createInactiveHint",
+          })}
+        />
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button
+            kind="primary"
+            disabled={saving || !createValid}
+            onClick={handleCreate}
+          >
+            <FormattedMessage id="label.button.save" />
+          </Button>
+          <Button
+            kind="ghost"
+            onClick={() => history.push(`${base}/TestCatalogList`)}
+          >
+            <FormattedMessage id="label.button.cancel" />
+          </Button>
+        </div>
+      </Stack>
+    );
+  }
 
   if (loading) {
     return (
@@ -188,7 +421,7 @@ const BasicInfoSection = ({ testId }) => {
           id: "label.testCatalog.basicInfo.code",
         })}
         value={form.code || ""}
-        readOnly
+        onChange={(e) => update({ code: e.target.value })}
       />
       <TextArea
         id="basic-info-description"
@@ -196,7 +429,7 @@ const BasicInfoSection = ({ testId }) => {
           id: "label.testCatalog.basicInfo.description",
         })}
         value={form.description || ""}
-        readOnly
+        onChange={(e) => update({ description: e.target.value })}
         rows={2}
       />
 
@@ -208,9 +441,6 @@ const BasicInfoSection = ({ testId }) => {
         })}
         valueSelected={form.domain || "CLINICAL"}
         onChange={(value) => {
-          // Hold the change until the modal confirms it. The selection is
-          // reconciled via valueSelected (on confirm) or the remount key (on
-          // cancel) — see domainRadioKey.
           if (value !== form.domain) {
             setPendingDomain(value);
           }
@@ -248,7 +478,6 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.active}
         onToggle={(checked) => {
           if (checked && !form.active) {
-            // Activation is coverage-gated (OGC-973) — never set directly.
             handleActivate(null);
           } else {
             update({ active: checked });

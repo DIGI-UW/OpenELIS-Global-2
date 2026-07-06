@@ -133,4 +133,22 @@ describe("TerminologySection", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("shows the LOINC integrity warnings (no-LOINC + duplicate) from the endpoint", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/loinc-integrity")) {
+        cb({
+          loinc: "1558-6",
+          active: true,
+          noLoinc: true,
+          duplicates: [{ testId: "9", name: "Glucose (Serum)" }],
+        });
+      } else {
+        cb({ testId: "42", mappings: [] });
+      }
+    });
+    renderSection();
+    expect(await screen.findByTestId("no-loinc-warning")).toBeInTheDocument();
+    expect(screen.getByTestId("duplicate-loinc-warning")).toBeInTheDocument();
+  });
 });

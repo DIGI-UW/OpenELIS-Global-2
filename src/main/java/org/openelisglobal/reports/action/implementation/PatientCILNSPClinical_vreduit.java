@@ -70,6 +70,9 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
         analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
         analysisStatusIds
                 .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
+        // Include samples rejected at order entry so they appear on the report
+        // (as "Rejected order") rather than being silently omitted (OGC #3).
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.SampleRejected));
         validatedAnalysisStatusIds
                 .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
     }
@@ -142,6 +145,10 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                 if (analysis.getTest() != null) {
                     currentAnalysis = analysis;
                     ClinicalPatientData resultsData = buildClinicalPatientData(hasParentResult);
+                    // Reflect the analysis's real status (in progress / waiting
+                    // validation / validated / rejected) rather than always "in
+                    // progress" and blank-for-validated.
+                    resultsData.setAnalysisStatus(reportAnalysisStatus(currentAnalysis));
                     if (isConfirmationSample) {
                         String alerts = resultsData.getAlerts();
                         if (!GenericValidator.isBlankOrNull(alerts)) {
@@ -175,6 +182,33 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
     @Override
     protected void setEmptyResult(ClinicalPatientData data) {
         data.setAnalysisStatus(MessageUtil.getMessage("report.test.status.inProgress"));
+    }
+
+    /**
+     * The report status for an analysis: Validated (finalized), Rejected
+     * (technical/biologist rejected), Waiting validation (results entered,
+     * technically accepted), else In progress.
+     */
+    private String reportAnalysisStatus(Analysis analysis) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        String statusId = analysisService.getStatusId(analysis);
+        if (statusService.matches(statusId, AnalysisStatus.Finalized)) {
+            return MessageUtil.getMessage("report.test.status.validated");
+        }
+        if (statusService.matches(statusId, AnalysisStatus.SampleRejected)) {
+            return MessageUtil.getMessage("report.test.status.rejectedOrder");
+        }
+        if (statusService.matches(statusId, AnalysisStatus.TechnicalRejected)
+                || statusService.matches(statusId, AnalysisStatus.BiologistRejected)) {
+            return MessageUtil.getMessage("report.test.status.rejected");
+        }
+        if (statusService.matches(statusId, AnalysisStatus.Canceled)) {
+            return MessageUtil.getMessage("report.test.status.canceled");
+        }
+        if (statusService.matches(statusId, AnalysisStatus.TechnicalAcceptance)) {
+            return MessageUtil.getMessage("report.test.status.waitingValidation");
+        }
+        return MessageUtil.getMessage("report.test.status.inProgress");
     }
 
     @Override

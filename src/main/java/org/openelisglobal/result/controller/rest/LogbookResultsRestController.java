@@ -132,6 +132,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private NotificationDAO notificationDAO;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private org.openelisglobal.notifications.service.HeaderNotificationService headerNotificationService;
+    @Autowired
+    private org.openelisglobal.testalertrule.service.TestAlertEvaluationService testAlertEvaluationService;
 
     private final String REFERRAL_CONFORMATION_ID;
     private static final String REFLEX_ACCESSIONS = "reflex_accessions";
@@ -492,6 +496,32 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                     } catch (Exception e) {
                     }
                 }
+            }
+
+            String currentUser = getSysUserId(request);
+            // Reflex / calculated tests triggered by this result entry: surface in
+            // the header bell (not just the transient toast on the results page).
+            List<String> reflexAccessions = reflexMap.get("reflex");
+            if (reflexAccessions != null && !reflexAccessions.isEmpty()) {
+                headerNotificationService.notifyUser(currentUser, MessageUtil.getMessage("notification.reflex.created")
+                        + " " + String.join(", ", reflexAccessions));
+            }
+            List<String> calcAccessions = reflexMap.get("calculated");
+            if (calcAccessions != null && !calcAccessions.isEmpty()) {
+                headerNotificationService.notifyUser(currentUser,
+                        MessageUtil.getMessage("notification.calculated.created") + " "
+                                + String.join(", ", calcAccessions));
+            }
+            // OGC-763: evaluate per-test alert rules on the newly entered results and
+            // dispatch matches to the header bell + SMS/Email senders.
+            if (testAlertEvaluationService != null) {
+                actionDataSet.getNewResults().forEach(rs -> {
+                    try {
+                        testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
+                    } catch (RuntimeException ex) {
+                        LogEvent.logError(ex);
+                    }
+                });
             }
         } catch (LIMSRuntimeException e) {
             String errorMsg;

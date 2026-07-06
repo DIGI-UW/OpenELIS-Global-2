@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -16,6 +18,9 @@ import org.openelisglobal.testresultcomponent.dao.TestResultComponentDAO;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
+import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceImpl<TestResultComponent, String>
         implements TestResultComponentService {
+
+    private static final String PRIMARY_CODE = "PRIMARY";
 
     @Autowired
     protected TestResultComponentDAO baseObjectDAO;
@@ -35,6 +42,12 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
 
     @Autowired
     private TestResultService testResultService;
+
+    @Autowired
+    private UnitOfMeasureService unitOfMeasureService;
+
+    @Autowired
+    private ResultLimitService resultLimitService;
 
     TestResultComponentServiceImpl() {
         super(TestResultComponent.class);
@@ -74,9 +87,10 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         }
         Set<String> keptIds = new HashSet<>();
         for (TestResultComponent d : desired) {
-            TestResultComponent match = d.getId() == null ? null : existingById.get(d.getId());
+            TestResultComponent match = (d.getId() != null && existingById.containsKey(d.getId()))
+                    ? baseObjectDAO.get(d.getId()).orElse(null)
+                    : null;
             if (match != null) {
-                // Update the service-loaded (managed) row, never a request-bound entity.
                 match.setCode(d.getCode());
                 match.setLabel(d.getLabel());
                 match.setDisplayOrder(d.getDisplayOrder());
@@ -116,9 +130,12 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         }
         for (TestResultComponent e : existing) {
             if (!keptIds.contains(e.getId())) {
-                e.setIsActive("N");
-                e.setSysUserId(sysUserId);
-                update(e);
+                TestResultComponent fresh = baseObjectDAO.get(e.getId()).orElse(null);
+                if (fresh != null) {
+                    fresh.setIsActive("N");
+                    fresh.setSysUserId(sysUserId);
+                    update(fresh);
+                }
             }
         }
         return baseObjectDAO.getActiveComponentsByTestId(testId);
@@ -154,7 +171,186 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 }
             }
         }
+        syncLegacyTestFields(testId, sysUserId);
         return baseObjectDAO.getActiveComponentsByTestId(testId);
+    }
+
+    /**
+     * Mirror the PRIMARY component's unit-of-measure and significant digits back
+     * onto the legacy columns the old Test Modify page still reads from
+     * ({@code test.uom_id} and {@code test_result.significant_digits}). The M1
+     * backfill seeded the PRIMARY component <em>from</em> those columns; this is
+     * the inverse, keeping both editors consistent during the OGC-949 transition.
+     * Falls back to the lowest-display-order component when no PRIMARY code exists.
+     */
+    private void syncLegacyTestFields(String testId, String sysUserId) {
+        TestResultComponent primary = findPrimaryComponent(testId);
+        if (primary == null) {
+            return;
+        }
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return;
+        }
+        UnitOfMeasure uom = primary.getUomId() == null ? null
+                : unitOfMeasureService.getUnitOfMeasureById(primary.getUomId());
+        test.setUnitOfMeasure(uom);
+        test.setSysUserId(sysUserId);
+        testService.update(test);
+
+        String significantDigits = primary.getSignificantDigits() == null ? null
+                : String.valueOf(primary.getSignificantDigits());
+        List<TestResult> testResults = testResultService.getAllActiveTestResultsPerTest(test);
+        if (testResults.isEmpty()) {
+            // A test created in the new editor has no legacy test_result row yet, so
+            // getResultType() would fall back to ALPHA. For non-dictionary types
+            // (numeric / free text / titer / alpha) seed a single row carrying the
+            // component's result type; dictionary types get their rows from options.
+            String resultType = primary.getResultType();
+            if (resultType != null && !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(resultType)) {
+                TestResult tr = new TestResult();
+                tr.setTest(test);
+                tr.setTestResultType(resultType);
+                tr.setSortOrder("1");
+                tr.setIsActive(true);
+                tr.setSignificantDigits(significantDigits);
+                tr.setSysUserId(sysUserId);
+                testResultService.insert(tr);
+            }
+        } else {
+            boolean dictionary = primary.getResultType() != null
+                    && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(primary.getResultType());
+            for (TestResult tr : testResults) {
+                boolean hasValue = tr.getValue() != null && !tr.getValue().trim().isEmpty();
+                if (dictionary && !hasValue) {
+                    tr.setIsActive(false);
+                    tr.setSysUserId(sysUserId);
+                    testResultService.update(tr);
+                    continue;
+                }
+                tr.setSignificantDigits(significantDigits);
+                if (primary.getResultType() != null) {
+                    tr.setTestResultType(primary.getResultType());
+                }
+                tr.setSysUserId(sysUserId);
+                testResultService.update(tr);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void syncPrimaryComponentFromLegacy(String testId, String sysUserId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return;
+        }
+        List<TestResult> testResults = new ArrayList<>(testResultService.getActiveTestResultsByTest(testId));
+        testResults.sort((a, b) -> Long.compare(parseId(b.getId()), parseId(a.getId())));
+        String uomId = test.getUnitOfMeasure() == null ? null : test.getUnitOfMeasure().getId();
+        String resultType = latestResultType(testResults);
+        Integer significantDigits = latestSignificantDigits(testResults);
+
+        TestResultComponent primary = findPrimaryComponent(testId);
+        if (primary == null) {
+            // Legacy created this test outside the new editor (or before the M1
+            // backfill ran), so it has no component yet — create its PRIMARY.
+            primary = new TestResultComponent();
+            primary.setTestId(testId);
+            primary.setCode(PRIMARY_CODE);
+            primary.setLabel(primaryLabel(test));
+            primary.setDisplayOrder(0);
+            primary.setResultType(resultType);
+            primary.setUomId(uomId);
+            primary.setSignificantDigits(significantDigits);
+            primary.setIsActive("Y");
+            primary.setSysUserId(sysUserId);
+            insert(primary);
+        } else {
+            primary.setUomId(uomId);
+            primary.setResultType(resultType);
+            primary.setSignificantDigits(significantDigits);
+            primary.setSysUserId(sysUserId);
+            update(primary);
+        }
+
+        // Legacy writes options (test_result) and ranges (result_limits) with a NULL
+        // component_id; repoint those onto the PRIMARY component so the new editor,
+        // which scopes both by component_id, surfaces them.
+        String primaryId = primary.getId();
+        for (TestResult tr : testResults) {
+            if (tr.getComponentId() == null) {
+                tr.setComponentId(primaryId);
+                tr.setSysUserId(sysUserId);
+                testResultService.update(tr);
+            }
+        }
+        for (ResultLimit rl : resultLimitService.getAllResultLimitsForTest(testId)) {
+            if (rl.getComponentId() == null) {
+                rl.setComponentId(primaryId);
+                rl.setSysUserId(sysUserId);
+                resultLimitService.update(rl);
+            }
+        }
+    }
+
+    private TestResultComponent findPrimaryComponent(String testId) {
+        List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
+        if (components.isEmpty()) {
+            return null;
+        }
+        for (TestResultComponent c : components) {
+            if (PRIMARY_CODE.equals(c.getCode())) {
+                return c;
+            }
+        }
+        return components.get(0);
+    }
+
+    private static String latestResultType(List<TestResult> newestFirst) {
+        for (TestResult tr : newestFirst) {
+            if (tr.getTestResultType() != null && !tr.getTestResultType().trim().isEmpty()) {
+                return tr.getTestResultType();
+            }
+        }
+        return null;
+    }
+
+    private static Integer latestSignificantDigits(List<TestResult> newestFirst) {
+        for (TestResult tr : newestFirst) {
+            Integer parsed = parseSignificantDigits(tr.getSignificantDigits());
+            if (parsed != null) {
+                return parsed;
+            }
+        }
+        return null;
+    }
+
+    private static long parseId(String id) {
+        if (id == null) {
+            return Long.MIN_VALUE;
+        }
+        try {
+            return Long.parseLong(id.trim());
+        } catch (NumberFormatException e) {
+            return Long.MIN_VALUE;
+        }
+    }
+
+    private static String primaryLabel(Test test) {
+        String name = test.getName();
+        return name == null || name.trim().isEmpty() ? PRIMARY_CODE : name;
+    }
+
+    private static Integer parseSignificantDigits(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @Override
