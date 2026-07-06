@@ -1,0 +1,416 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- preserve unused declarations from the original JavaScript */
+import React, { useContext, useState, useEffect, useRef } from "react";
+import {
+  Heading,
+  Button,
+  Grid,
+  Column,
+  Section,
+  Loading,
+  Modal,
+  TextInput,
+} from "@carbon/react";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
+
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript let declaration
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "master.lists.page.test.management",
+    link: "/MasterListsPage/testManagementConfigMenu",
+  },
+  {
+    label: "configuration.selectList.rename",
+    link: "/MasterListsPage/SelectListRenameEntry",
+  },
+];
+
+interface NotificationContextValue {
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (notification: {
+    kind: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
+function SelectListRenameEntry() {
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext) as NotificationContextValue;
+
+  const intl = useIntl();
+
+  const componentMounted = useRef(false);
+  const modalHeading = intl.formatMessage({
+    id: "selectListRenameEntry.selectListEdit",
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [finished, setFinished] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [confirmationStep, setConfirmationStep] = useState(false);
+  const [inputError, setInputError] = useState(false);
+  const [selectListRename, setSelectListRename] = useState({});
+  const [selectListRenameListShow, setSelectListRenameListShow] = useState([]);
+  const [displayValueList, setDisplayValueList] = useState([]);
+  const [selectListRenamePost, setSelectListRenamePost] = useState({});
+  const [selectedItem, setSelectedItem] = useState<{
+    id?: string;
+    displayValueEnglish?: string;
+    displayValueFrench?: string;
+  }>({});
+  const [selectedItemChange, setSelectedItemChange] = useState<{
+    id?: string;
+    displayValueEnglish?: string;
+    displayValueFrench?: string;
+  }>({});
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [entityId, setEntityId] = useState();
+
+  useEffect(() => {
+    componentMounted.current = true;
+    getFromOpenElisServer(
+      "/rest/SelectListRenameEntry",
+      handleSelectListRename,
+    );
+    return () => {
+      componentMounted.current = false;
+    };
+  }, []);
+
+  const handleSelectListRename = (res) => {
+    if (!res) {
+      setIsLoading(true);
+    } else {
+      setSelectListRename(res);
+      setSelectListRenamePost(res);
+      setSelectListRenameListShow(res.resultSelectOptionList);
+    }
+  };
+
+  function selectListRenameUpdatePost() {
+    setIsLoading(true);
+    if (confirmationStep) {
+      postToOpenElisServerJsonResponse(
+        `/rest/SelectListRenameEntry`,
+        JSON.stringify(selectListRenamePost),
+        (res) => {
+          selectListRenameUpdatePostCallback(res);
+        },
+      );
+    } else {
+      setConfirmationStep(true);
+    }
+  }
+
+  function selectListRenameUpdatePostCallback(res) {
+    if (res) {
+      setIsLoading(false);
+      setFinished(false);
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "notification.user.post.save.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      setNotificationVisible(true);
+      setIsAddModalOpen(false);
+      setTimeout(() => {
+        window.location.reload();
+      }, 10);
+    } else {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "server.error.msg" }),
+      });
+      setNotificationVisible(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 200);
+    }
+  }
+
+  const openAppModle = (item, index) => {
+    setConfirmationStep(false);
+    setIsAddModalOpen(true);
+    setSelectedItem(item);
+    setSelectedItemChange(item);
+    setSelectedIndex(index);
+    setEntityId(item.id);
+  };
+
+  useEffect(() => {
+    if (entityId) {
+      getFromOpenElisServer(
+        `/rest/EntityNamesProvider?entityId=${entityId}&entityName=resultSelectOption`,
+        handleEntityNames,
+      );
+    }
+  }, [entityId]);
+
+  /**
+   * The option list carries only the name of the locale it was read in, so the
+   * stored translations have to be fetched before either field can be shown —
+   * otherwise saving sends whatever was on screen as every language.
+   */
+  const handleEntityNames = (res) => {
+    const names = (res && res.name) || {};
+    const merge = (prev) => ({
+      ...prev,
+      displayValueEnglish: names.english ?? prev.displayValueEnglish,
+      // An option whose name has never been translated has no French to show.
+      displayValueFrench: names.french ?? "",
+    });
+    setSelectedItem(merge);
+    setSelectedItemChange(merge);
+  };
+
+  const onInputChangeEn = (e) => {
+    e.preventDefault();
+    const updatedValue = e.target.value;
+    setDisplayValueList((prevList) =>
+      prevList.map((item, i) =>
+        i === selectedIndex
+          ? { ...item, displayValueEnglish: updatedValue }
+          : item,
+      ),
+    );
+    // setSelectedItem((prev) => ({ ...prev, displayValueEnglish: updatedValue }));
+    setSelectedItemChange((prev) => ({
+      ...prev,
+      displayValueEnglish: updatedValue,
+    }));
+    setInputError(false);
+  };
+
+  const onInputChangeFr = (e) => {
+    e.preventDefault();
+    const updatedValue = e.target.value;
+    setDisplayValueList((prevList) =>
+      prevList.map((item, i) =>
+        i === selectedIndex
+          ? { ...item, displayValueFrench: updatedValue }
+          : item,
+      ),
+    );
+    // setSelectedItem((prev) => ({ ...prev, displayValueFrench: updatedValue }));
+    setSelectedItemChange((prev) => ({
+      ...prev,
+      displayValueFrench: updatedValue,
+    }));
+    setInputError(false);
+  };
+
+  useEffect(() => {
+    if (selectedItemChange) {
+      setSelectListRenamePost((prev) => ({
+        ...prev,
+        resultSelectOptionId: selectedItemChange.id,
+        nameEnglish: selectedItemChange.displayValueEnglish,
+        nameFrench: selectedItemChange.displayValueFrench,
+      }));
+    }
+  }, [selectedItemChange]);
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (selectListRenameListShow && selectListRenameListShow.length > 0) {
+      const extractedValues = selectListRenameListShow.map((item) => ({
+        id: item.id,
+        displayValueEnglish: item.displayValue,
+        // Filled from the stored translations when the option is opened. Copying
+        // the displayed name here would submit it as the French one.
+        displayValueFrench: "",
+      }));
+      setDisplayValueList(extractedValues);
+    }
+  }, [selectListRenameListShow]);
+
+  return (
+    <>
+      {notificationVisible === true ? <AlertDialog /> : ""}
+      <div className="adminPageContent">
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <div className="orderLegendBody">
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="configuration.selectList.rename" />
+                </Heading>
+              </Section>
+            </Column>
+          </Grid>
+          <br />
+          <hr />
+          <br />
+          {displayValueList ? (
+            <Grid fullWidth={true}>
+              {displayValueList.map((valueItem, index) => (
+                <Column key={index} lg={5} md={2} sm={2}>
+                  <Button
+                    id={`button-${index}`}
+                    kind="ghost"
+                    type="button"
+                    onClick={() => {
+                      openAppModle(valueItem, index);
+                    }}
+                    style={{
+                      color: "#000000",
+                      width: "auto",
+                      whiteSpace: "pre-line",
+                    }}
+                  >
+                    {valueItem.displayValueEnglish}
+                  </Button>
+                </Column>
+              ))}
+              <Modal
+                open={isAddModalOpen}
+                size="md"
+                modalHeading={`${modalHeading} : ${selectedItem?.displayValueEnglish}`} // secondary lable
+                primaryButtonText={
+                  confirmationStep ? (
+                    <>
+                      <FormattedMessage id="column.name.accept" />
+                    </>
+                  ) : (
+                    <>
+                      <FormattedMessage id="column.name.save" />
+                    </>
+                  )
+                }
+                secondaryButtonText={
+                  confirmationStep ? (
+                    <>
+                      <FormattedMessage id="header.reject" />
+                    </>
+                  ) : (
+                    <>
+                      <FormattedMessage id="label.button.cancel" />
+                    </>
+                  )
+                }
+                onRequestSubmit={selectListRenameUpdatePost}
+                onRequestClose={closeAddModal}
+              >
+                {displayValueList &&
+                selectedItem &&
+                selectedItem.id &&
+                selectedItem.displayValueEnglish ? (
+                  <Grid fullWidth={true}>
+                    <Column lg={16} md={8} sm={4}>
+                      <Section>
+                        <Section>
+                          <Heading>
+                            <FormattedMessage id="banner.menu.patientEdit" />
+                          </Heading>
+                        </Section>
+                      </Section>
+                      <br />
+                      <Section>
+                        <Section>
+                          <Section>
+                            <Heading>
+                              <FormattedMessage id="selectListRenameEntry.selectList" />
+                            </Heading>
+                          </Section>
+                        </Section>
+                      </Section>
+                      <br />
+                      <>
+                        <FormattedMessage id="english.current" /> :{" "}
+                        {selectedItem.displayValueEnglish}
+                      </>
+                      <br />
+                      <br />
+                      <TextInput
+                        id={`eng`}
+                        labelText=""
+                        hideLabel
+                        value={selectedItemChange.displayValueEnglish || ""}
+                        onChange={(e) => {
+                          onInputChangeEn(e);
+                        }}
+                        required
+                        invalid={inputError}
+                        invalidText={
+                          <FormattedMessage id="required.invalidtext" />
+                        }
+                      />
+                      <br />
+                      <>
+                        <FormattedMessage id="french.current" /> :{" "}
+                        {selectedItem.displayValueFrench}
+                      </>
+                      <br />
+                      <br />
+                      <TextInput
+                        id={`fr`}
+                        labelText=""
+                        hideLabel
+                        value={selectedItemChange.displayValueFrench || ""}
+                        onChange={(e) => {
+                          onInputChangeFr(e);
+                        }}
+                        invalid={inputError}
+                        invalidText={
+                          <FormattedMessage id="required.invalidtext" />
+                        }
+                      />
+                    </Column>
+                  </Grid>
+                ) : (
+                  <>
+                    <div>
+                      <Loading />
+                    </div>
+                  </>
+                )}
+                <br />
+                {confirmationStep && (
+                  <>
+                    <Section>
+                      <Section>
+                        <Section>
+                          <Heading>
+                            <FormattedMessage id="confirmation.rename" />
+                          </Heading>
+                        </Section>
+                      </Section>
+                    </Section>
+                  </>
+                )}
+              </Modal>
+            </Grid>
+          ) : (
+            <>
+              <Loading active={isLoading} />
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default injectIntl(SelectListRenameEntry);
