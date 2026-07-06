@@ -321,8 +321,8 @@ public class OrderSearchRestController extends BaseRestController {
                     });
                 }
 
-                // QA is complete if all checklist items are verified
-                boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+                // QA is complete if the QA step has been saved (checklist record exists)
+                boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
 
                 // Determine order status
                 String orderStatus;
@@ -811,8 +811,9 @@ public class OrderSearchRestController extends BaseRestController {
             }
             stepProgress.put("label", labelComplete);
 
-            // QA is complete if all checklist items are verified
-            boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+            // QA is complete if the QA step has been saved (checklist record exists),
+            // regardless of whether all items are checked (checklist is advisory)
+            boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
             stepProgress.put("qa", qaComplete);
             response.put("stepProgress", stepProgress);
 

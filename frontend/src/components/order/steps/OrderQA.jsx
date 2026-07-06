@@ -233,9 +233,7 @@ const OrderQA = () => {
     setIsSaving(true);
     try {
       await saveChecklist();
-      if (allItemsComplete) {
-        markStepComplete("qa");
-      }
+      markStepComplete("qa");
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -396,7 +394,7 @@ const OrderQA = () => {
   return (
     <OrderWorkflowLayout
       title="order.step.qa"
-      canProceed={allItemsComplete && !acceptanceBlocked}
+      canProceed={!acceptanceBlocked}
       onSave={handleSave}
       onSaveAndNext={handleSubmit}
       extraButtons={
@@ -462,11 +460,11 @@ const OrderQA = () => {
 
           {!allItemsComplete && (
             <InlineNotification
-              kind="warning"
+              kind="info"
               title={intl.formatMessage({
                 id: "qa.checklist.incomplete",
                 defaultMessage:
-                  "Please complete all QA checks before submitting",
+                  "QA checklist incomplete — you may still proceed",
               })}
               hideCloseButton
               lowContrast
