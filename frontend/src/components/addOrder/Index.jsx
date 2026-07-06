@@ -23,7 +23,7 @@ import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "sidenav.label.addorder", link: "/SamplePatientEntry" },
+  { label: "breadcrumb.label.addOrder", link: "/SamplePatientEntry" },
 ];
 
 export let sampleObject = {

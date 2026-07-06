@@ -21,10 +21,13 @@ import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
+import org.openelisglobal.testcatalog.service.TestCatalogCreationService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
@@ -112,6 +115,14 @@ public class TestCatalogEditorRestController {
     @Autowired(required = false)
     private DictionaryService dictionaryService;
 
+    // Field-injected (optional) for the create-in-place flow (FR-2) and the Lab
+    // Unit picker; keeps the existing test constructor unchanged.
+    @Autowired(required = false)
+    private TestCatalogCreationService testCatalogCreationService;
+
+    @Autowired(required = false)
+    private TestSectionService testSectionService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
@@ -140,6 +151,7 @@ public class TestCatalogEditorRestController {
     public static class TestListRow {
         public String testId;
         public String name;
+        public String sampleType;
         public String code;
         public String domain;
         public boolean active;
@@ -219,10 +231,14 @@ public class TestCatalogEditorRestController {
         int to = Math.min(from + result.pageSize, filtered.size());
         result.rows = new ArrayList<>(filtered.subList(from, to));
         // Augment each name with its sample type — e.g. "Covid-PCR (Urine)" — using
-        // the same helper the rest of the app uses (respects augmentTestNameWithType).
-        // Done on the page slice only (≤ pageSize lookups).
+        // the same helper the rest of the app uses (respects augmentTestNameWithType),
+        // and surface the specimen in its own column (FR-39). Done on the page slice
+        // only (≤ pageSize lookups).
         for (TestListRow row : result.rows) {
-            row.name = TestServiceImpl.getLocalizedTestNameWithType(row.testId);
+            Test test = testService.getTestById(row.testId);
+            row.name = TestServiceImpl.getLocalizedTestNameWithType(test);
+            TypeOfSample sampleTypeOfRow = testService.getTypeOfSample(test);
+            row.sampleType = sampleTypeOfRow != null ? sampleTypeOfRow.getLocalizedName() : null;
         }
         return result;
     }
@@ -233,6 +249,80 @@ public class TestCatalogEditorRestController {
         public String code;
         public String domain;
         public List<String> applicableSections;
+    }
+
+    // ── Create a new test (OGC-1112 FR-2..4) ──────────────────────────────────
+
+    /** A selectable Lab Unit (test_section) for the create form. */
+    public static class LabUnitOption {
+        public String id;
+        public String name;
+    }
+
+    @GetMapping(value = "/lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<LabUnitOption> listLabUnits() {
+        List<LabUnitOption> options = new ArrayList<>();
+        if (testSectionService == null) {
+            return options;
+        }
+        for (TestSection section : testSectionService.getAllTestSections()) {
+            LabUnitOption option = new LabUnitOption();
+            option.id = section.getId();
+            option.name = section.getLocalizedName();
+            options.add(option);
+        }
+        options.sort((a, b) -> {
+            String an = a.name == null ? "" : a.name;
+            String bn = b.name == null ? "" : b.name;
+            return an.compareToIgnoreCase(bn);
+        });
+        return options;
+    }
+
+    /** Create-in-place request body (FR-2). */
+    public static class CreateTestRequest {
+        public String name;
+        public String reportingName;
+        public String code;
+        public String labUnitId;
+        public String sampleTypeId;
+        public String domain;
+        public Boolean amr;
+        public Boolean orderable;
+        public String description;
+    }
+
+    public static class CreatedTest {
+        public String testId;
+    }
+
+    @PostMapping(value = "/tests", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CreatedTest> createTest(@RequestBody CreateTestRequest body, HttpServletRequest request) {
+        if (testCatalogCreationService == null) {
+            return ResponseEntity.status(503).build();
+        }
+        if (body == null || isBlank(body.name) || isBlank(body.reportingName) || isBlank(body.code)
+                || isBlank(body.domain) || !DOMAINS.contains(body.domain) || isBlank(body.sampleTypeId)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        // Code uniqueness (FR-4) → 409 so the UI can flag the field.
+        if (testCatalogCreationService.codeInUse(body.code)) {
+            return ResponseEntity.status(409).build();
+        }
+        TestCatalogCreationService.CreateTestParams params = new TestCatalogCreationService.CreateTestParams();
+        params.name = body.name;
+        params.reportingName = body.reportingName;
+        params.code = body.code;
+        params.labUnitId = body.labUnitId;
+        params.sampleTypeId = body.sampleTypeId;
+        params.domain = body.domain;
+        params.amr = body.amr;
+        params.orderable = body.orderable;
+        params.description = body.description;
+        String newId = testCatalogCreationService.createInactiveTest(params, ControllerUtills.getSysUserId(request));
+        CreatedTest created = new CreatedTest();
+        created.testId = newId;
+        return ResponseEntity.status(201).body(created);
     }
 
     @GetMapping(value = "/tests/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -292,6 +382,49 @@ public class TestCatalogEditorRestController {
         return ResponseEntity.ok(refs);
     }
 
+    // ── LOINC integrity (OGC-1112 FR-15..18) ──────────────────────────────────
+    // Analyzer / electronic-order results route by first-matching LOINC across the
+    // whole active catalog (getActiveTestsByLoinc → get(0)); surface the two ways
+    // that silently mis-routes: a test with no LOINC, or two active tests sharing
+    // one. Warnings only — never a hard block.
+
+    public static class TestRef {
+        public String testId;
+        public String name;
+    }
+
+    public static class LoincIntegrity {
+        public String loinc;
+        public boolean active;
+        public boolean noLoinc;
+        public List<TestRef> duplicates = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/tests/{testId}/loinc-integrity", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LoincIntegrity> getLoincIntegrity(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        LoincIntegrity integrity = new LoincIntegrity();
+        integrity.loinc = test.getLoinc();
+        integrity.active = test.isActive();
+        // A test that should receive results (active + orderable) but has no LOINC
+        // can never be matched by the resolver.
+        integrity.noLoinc = test.isActive() && Boolean.TRUE.equals(test.getOrderable()) && isBlank(test.getLoinc());
+        if (!isBlank(test.getLoinc())) {
+            for (Test other : testService.getActiveTestsByLoinc(test.getLoinc())) {
+                if (other.getId() != null && !other.getId().equals(testId)) {
+                    TestRef ref = new TestRef();
+                    ref.testId = other.getId();
+                    ref.name = TestServiceImpl.getLocalizedTestNameWithType(other);
+                    integrity.duplicates.add(ref);
+                }
+            }
+        }
+        return ResponseEntity.ok(integrity);
+    }
+
     private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
 
     /** OGC-748 Basic Info — identity + domain + AMR flag + status. */
@@ -325,11 +458,17 @@ public class TestCatalogEditorRestController {
         if (body.domain != null && !DOMAINS.contains(body.domain)) {
             return ResponseEntity.unprocessableEntity().build();
         }
-        // Name/code/description are not editable here (deferred to OGC-950) — reject
-        // an attempt to change them rather than silently dropping the edit.
-        if (changesImmutableField(body.name, test.getName()) || changesImmutableField(body.code, test.getLocalCode())
-                || changesImmutableField(body.description, test.getDescription())) {
+        // The display name is localized — it is edited in the Localization section
+        // (which owns the per-locale + English values), so it stays immutable here.
+        // Code and description ARE editable here now (OGC-1112 dependency 8).
+        if (changesImmutableField(body.name, test.getName())) {
             return ResponseEntity.unprocessableEntity().build();
+        }
+        if (body.code != null && !body.code.isBlank()) {
+            test.setLocalCode(body.code);
+        }
+        if (body.description != null) {
+            test.setDescription(body.description);
         }
         // Boxed flags: apply only what the caller actually sent, so a partial PUT
         // can't silently deactivate / clear AMR / un-orderable a test.
@@ -658,8 +797,15 @@ public class TestCatalogEditorRestController {
                 return ResponseEntity.unprocessableEntity().build();
             }
         }
+        resultLimitService.saveRangesForTest(testId, toResultLimits(body.ranges),
+                ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toRanges(testId));
+    }
+
+    /** Maps range DTOs to ResultLimits (shared by single-test + group saves). */
+    private List<ResultLimit> toResultLimits(List<RangeDto> ranges) {
         List<ResultLimit> desired = new ArrayList<>();
-        for (RangeDto r : body.ranges) {
+        for (RangeDto r : ranges) {
             ResultLimit limit = new ResultLimit();
             if (!isBlank(r.id)) {
                 limit.setId(r.id);
@@ -676,8 +822,130 @@ public class TestCatalogEditorRestController {
             // whatever the existing row already had (see saveRangesForTest).
             desired.add(limit);
         }
-        resultLimitService.saveRangesForTest(testId, desired, ControllerUtills.getSysUserId(request));
-        return ResponseEntity.ok(toRanges(testId));
+        return desired;
+    }
+
+    // ── Edit related tests together (OGC-1112 FR-7..14) ───────────────────────
+    // A "group" is defined by the admin's selection (comma-separated ids in the
+    // URL) — no stored family entity. Identity + LOINC stay per test (FR-12);
+    // shared config (here: Ranges) is written to every selected test (FR-11).
+
+    /**
+     * Active tests sharing this test's name stem (the analyte's specimen siblings)
+     * — the suggested set for "Edit related tests together" (FR-7). Includes self.
+     */
+    @GetMapping(value = "/tests/{testId}/siblings", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<TestListRow> siblings(@PathVariable String testId) {
+        List<TestListRow> out = new ArrayList<>();
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return out;
+        }
+        String stem = nameStem(test);
+        if (stem.isEmpty()) {
+            return out;
+        }
+        for (Test other : testService.getAllActiveTests(false)) {
+            if (stem.equalsIgnoreCase(nameStem(other))) {
+                TestListRow row = new TestListRow();
+                row.testId = other.getId();
+                row.name = TestServiceImpl.getLocalizedTestNameWithType(other);
+                TypeOfSample sampleTypeOfTest = testService.getTypeOfSample(other);
+                row.sampleType = sampleTypeOfTest != null ? sampleTypeOfTest.getLocalizedName() : null;
+                out.add(row);
+            }
+        }
+        return out;
+    }
+
+    /** The test name without its "(SampleType)" augmentation — the analyte stem. */
+    private String nameStem(Test test) {
+        String name = TestServiceImpl.getLocalizedTestNameWithType(test);
+        if (name == null) {
+            return "";
+        }
+        int paren = name.lastIndexOf('(');
+        return (paren > 0 ? name.substring(0, paren) : name).trim();
+    }
+
+    public static class GroupTestSummary {
+        public String testId;
+        public String name;
+        public String code;
+        public String sampleType;
+        public String loinc;
+        public boolean active;
+    }
+
+    @GetMapping(value = "/group/summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<GroupTestSummary> groupSummary(@RequestParam String ids) {
+        List<GroupTestSummary> out = new ArrayList<>();
+        for (String rawId : ids.split(",")) {
+            String id = rawId.trim();
+            if (id.isEmpty()) {
+                continue;
+            }
+            Test test = testService.getTestById(id);
+            if (test == null) {
+                continue;
+            }
+            GroupTestSummary summary = new GroupTestSummary();
+            summary.testId = test.getId();
+            summary.name = TestServiceImpl.getLocalizedTestNameWithType(test);
+            summary.code = test.getLocalCode();
+            summary.loinc = test.getLoinc();
+            summary.active = test.isActive();
+            TypeOfSample sampleTypeOfTest = testService.getTypeOfSample(test);
+            summary.sampleType = sampleTypeOfTest != null ? sampleTypeOfTest.getLocalizedName() : null;
+            out.add(summary);
+        }
+        return out;
+    }
+
+    public static class GroupRangesUpdate {
+        public List<String> testIds = new ArrayList<>();
+        public List<RangeDto> ranges = new ArrayList<>();
+    }
+
+    @PutMapping(value = "/group/ranges", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> saveGroupRanges(@RequestBody GroupRangesUpdate body, HttpServletRequest request) {
+        if (body == null || body.testIds == null || body.testIds.isEmpty()) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        for (RangeDto r : body.ranges) {
+            if (r.gender != null && !r.gender.isBlank() && !RANGE_GENDERS.contains(r.gender)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            double min = r.minAge != null ? r.minAge : 0d;
+            double max = r.maxAge != null ? r.maxAge : Double.POSITIVE_INFINITY;
+            if (min < 0d || max <= min) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+        }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        for (String testId : body.testIds) {
+            Test test = testService.getTestById(testId);
+            if (test == null) {
+                continue;
+            }
+            // New rows per test: the ids in the shared set belong to no single test,
+            // so drop them and let each test insert its own (FR-11 per-test write).
+            List<RangeDto> perTest = new ArrayList<>();
+            for (RangeDto r : body.ranges) {
+                RangeDto copy = new RangeDto();
+                copy.componentId = r.componentId;
+                copy.gender = r.gender;
+                copy.minAge = r.minAge;
+                copy.maxAge = r.maxAge;
+                copy.lowNormal = r.lowNormal;
+                copy.highNormal = r.highNormal;
+                copy.lowCritical = r.lowCritical;
+                copy.highCritical = r.highCritical;
+                perTest.add(copy);
+            }
+            resultLimitService.saveRangesForTest(testId, toResultLimits(perTest), sysUserId);
+        }
+        return ResponseEntity.ok().build();
     }
 
     private RangesResponse toRanges(String testId) {
@@ -749,6 +1017,12 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
+        TestSampleHandling saved = handlingService.saveForTest(testId, toHandling(body),
+                ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toStorage(testId, saved));
+    }
+
+    private TestSampleHandling toHandling(StorageDto body) {
         TestSampleHandling desired = new TestSampleHandling();
         desired.setStorageCondition(isBlank(body.storageCondition) ? null : body.storageCondition);
         desired.setStorageConditionCustom(isBlank(body.storageConditionCustom) ? null : body.storageConditionCustom);
@@ -763,8 +1037,26 @@ public class TestCatalogEditorRestController {
         desired.setDisposalUnit(isBlank(body.disposalUnit) ? null : body.disposalUnit);
         desired.setSpecialInstructions(isBlank(body.specialInstructions) ? null : body.specialInstructions);
         desired.setOverrideRestricted(Boolean.TRUE.equals(body.overrideRestricted));
-        TestSampleHandling saved = handlingService.saveForTest(testId, desired, ControllerUtills.getSysUserId(request));
-        return ResponseEntity.ok(toStorage(testId, saved));
+        return desired;
+    }
+
+    public static class GroupStorageUpdate {
+        public List<String> testIds = new ArrayList<>();
+        public StorageDto storage;
+    }
+
+    @PutMapping(value = "/group/storage", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> saveGroupStorage(@RequestBody GroupStorageUpdate body, HttpServletRequest request) {
+        if (body == null || body.testIds == null || body.testIds.isEmpty() || body.storage == null) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        for (String testId : body.testIds) {
+            if (testService.getTestById(testId) != null) {
+                handlingService.saveForTest(testId, toHandling(body.storage), sysUserId);
+            }
+        }
+        return ResponseEntity.ok().build();
     }
 
     private StorageDto toStorage(String testId, TestSampleHandling h) {
@@ -1064,6 +1356,32 @@ public class TestCatalogEditorRestController {
             options.add(o);
         }
         return options;
+    }
+
+    /**
+     * Name-only inline panel create (OGC-1112 FR-43). Further config is done in
+     * Panel Management.
+     */
+    public static class CreatePanelRequest {
+        public String name;
+    }
+
+    @PostMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PanelOption> createPanel(@RequestBody CreatePanelRequest body, HttpServletRequest request) {
+        if (body == null || isBlank(body.name)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        Panel panel = new Panel();
+        panel.setPanelName(body.name.trim());
+        panel.setDescription(body.name.trim());
+        panel.setIsActive("Y");
+        panel.setSortOrderInt(Integer.MAX_VALUE);
+        panel.setSysUserId(ControllerUtills.getSysUserId(request));
+        String id = panelService.insert(panel);
+        PanelOption created = new PanelOption();
+        created.id = id;
+        created.name = panel.getPanelName();
+        return ResponseEntity.status(201).body(created);
     }
 
     @GetMapping(value = "/tests/{testId}/panels", produces = MediaType.APPLICATION_JSON_VALUE)

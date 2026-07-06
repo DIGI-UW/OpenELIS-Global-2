@@ -18,6 +18,7 @@ import org.openelisglobal.testresultcomponent.dao.TestResultComponentDAO;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -199,13 +200,41 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
 
         String significantDigits = primary.getSignificantDigits() == null ? null
                 : String.valueOf(primary.getSignificantDigits());
-        for (TestResult tr : testResultService.getAllActiveTestResultsPerTest(test)) {
-            tr.setSignificantDigits(significantDigits);
-            if (primary.getResultType() != null) {
-                tr.setTestResultType(primary.getResultType());
+        List<TestResult> testResults = testResultService.getAllActiveTestResultsPerTest(test);
+        if (testResults.isEmpty()) {
+            // A test created in the new editor has no legacy test_result row yet, so
+            // getResultType() would fall back to ALPHA. For non-dictionary types
+            // (numeric / free text / titer / alpha) seed a single row carrying the
+            // component's result type; dictionary types get their rows from options.
+            String resultType = primary.getResultType();
+            if (resultType != null && !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(resultType)) {
+                TestResult tr = new TestResult();
+                tr.setTest(test);
+                tr.setTestResultType(resultType);
+                tr.setSortOrder("1");
+                tr.setIsActive(true);
+                tr.setSignificantDigits(significantDigits);
+                tr.setSysUserId(sysUserId);
+                testResultService.insert(tr);
             }
-            tr.setSysUserId(sysUserId);
-            testResultService.update(tr);
+        } else {
+            boolean dictionary = primary.getResultType() != null
+                    && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(primary.getResultType());
+            for (TestResult tr : testResults) {
+                boolean hasValue = tr.getValue() != null && !tr.getValue().trim().isEmpty();
+                if (dictionary && !hasValue) {
+                    tr.setIsActive(false);
+                    tr.setSysUserId(sysUserId);
+                    testResultService.update(tr);
+                    continue;
+                }
+                tr.setSignificantDigits(significantDigits);
+                if (primary.getResultType() != null) {
+                    tr.setTestResultType(primary.getResultType());
+                }
+                tr.setSysUserId(sysUserId);
+                testResultService.update(tr);
+            }
         }
     }
 

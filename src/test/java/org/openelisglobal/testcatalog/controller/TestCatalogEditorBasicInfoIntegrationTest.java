@@ -228,19 +228,23 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     }
 
     @org.junit.Test
-    public void basicInfo_rejectsImmutableCodeChange() {
-        BasicInfo bad = new BasicInfo();
-        bad.code = "NEWCODE" + TEST_ID;
-        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), bad, authedRequest());
-        assertEquals(422, resp.getStatusCode().value());
+    public void basicInfo_persistsCodeChange() {
+        // OGC-1112 dependency 8: Code is editable in Basic Info now.
+        BasicInfo body = new BasicInfo();
+        body.code = "NEWCODE" + TEST_ID;
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), body, authedRequest());
+        assertEquals(200, resp.getStatusCode().value());
+        assertEquals("NEWCODE" + TEST_ID, testService.getTestById(String.valueOf(TEST_ID)).getLocalCode());
     }
 
     @org.junit.Test
-    public void basicInfo_rejectsImmutableDescriptionChange() {
-        BasicInfo bad = new BasicInfo();
-        bad.description = "Changed description";
-        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), bad, authedRequest());
-        assertEquals(422, resp.getStatusCode().value());
+    public void basicInfo_persistsDescriptionChange() {
+        // OGC-1112 dependency 8: Description is editable in Basic Info now.
+        BasicInfo body = new BasicInfo();
+        body.description = "Changed description";
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), body, authedRequest());
+        assertEquals(200, resp.getStatusCode().value());
+        assertEquals("Changed description", testService.getTestById(String.valueOf(TEST_ID)).getDescription());
     }
 
     @org.junit.Test

@@ -1080,10 +1080,12 @@ export function SearchResults(props) {
     {
       id: "result",
       name: intl.formatMessage({ id: "column.name.result" }),
-      cell: (row, index, column, id) => {
-        return renderCell(row, index, column, id);
-      },
-      width: "20rem",
+      cell: (row, index, column, id) => (
+        <div style={{ paddingLeft: "1.5rem", width: "100%" }}>
+          {renderCell(row, index, column, id)}
+        </div>
+      ),
+      width: "14rem",
     },
     {
       id: "currentResult",
@@ -1190,7 +1192,7 @@ export function SearchResults(props) {
 
       case "accept":
         return (
-          <div style={{ paddingRight: "1.5rem", marginRight: "0.5rem" }}>
+          <div style={{ paddingRight: "2rem", marginRight: "1rem" }}>
             <AcceptUnconditionallyGuard
               rowId={row.id}
               accepted={!!acceptAsIs[row.id]}

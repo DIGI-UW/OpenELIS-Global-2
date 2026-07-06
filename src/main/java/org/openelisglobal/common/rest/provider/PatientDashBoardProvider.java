@@ -436,10 +436,12 @@ public class PatientDashBoardProvider {
             analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
             return convertAnalysesToUserOrdersBean(analyses);
         case ORDERS_REJECTED_TODAY:
-            java.sql.Date rejectedToday = DateUtil.getNowAsSqlDate();
-            java.sql.Date rejectedTomorrow = new java.sql.Date(rejectedToday.getTime() + 86400000L);
-            analyses = analysisService.getAnalysisStartedOnRangeByStatusId(rejectedToday, rejectedTomorrow,
-                    iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+            // Use the same predicate as the count metric so the tile number and its
+            // drill-down list agree (previously a BETWEEN-range query that could
+            // diverge from the count's DATE(startedDate) = today).
+            List<String> rejectedStatusIds = new ArrayList<>();
+            rejectedStatusIds.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+            analyses = analysisService.getAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), rejectedStatusIds);
             return convertAnalysesToOrderBean(analyses);
         case UN_PRINTED_RESULTS:
             return convertAnalysesToOrderBean(unprintedResults());

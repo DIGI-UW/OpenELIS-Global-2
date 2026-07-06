@@ -57,17 +57,19 @@ const TestCatalogEditor = () => {
   const [error, setError] = useState(false);
   const [envelope, setEnvelope] = useState(null);
 
+  // Create-in-place (FR-2): testId "new" opens a blank Basic Info, no fetch.
+  const isCreate = testId === "new";
   // The active section is driven entirely by the URL.
   const activeSection = isValidSection(section) ? section : DEFAULT_SECTION;
 
   useEffect(() => {
-    if (!testId) {
+    if (!testId || isCreate) {
       return;
     }
     setLoading(true);
     setError(false);
     getFromOpenElisServer(`/rest/test-catalog/tests/${testId}`, handleEnvelope);
-  }, [testId]);
+  }, [testId, isCreate]);
 
   // Canonicalize the section into the URL so deep-links + the SideNav agree.
   useEffect(() => {
@@ -97,6 +99,31 @@ const TestCatalogEditor = () => {
 
   const handleCancel = () => {
     history.push(`${base}/TestCatalogList`);
+  };
+
+  // FR-7: open the combined editor over this test's specimen siblings (tests
+  // sharing its name stem). Falls back to a notice when there are none.
+  const editRelatedTests = () => {
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/siblings`,
+      (res) => {
+        const ids = Array.isArray(res) ? res.map((r) => r.testId) : [];
+        if (ids.length >= 2) {
+          history.push(
+            `${base}/TestCatalogEditor/group/${ids.join(",")}/ranges`,
+          );
+        } else {
+          setNotificationVisible(true);
+          addNotification({
+            kind: "info",
+            title: intl.formatMessage({ id: "label.testCatalog.editor" }),
+            message: intl.formatMessage({
+              id: "label.testCatalog.editor.noRelated",
+            }),
+          });
+        }
+      },
+    );
   };
 
   const handleSavePlaceholder = (messageId) => {
@@ -170,38 +197,54 @@ const TestCatalogEditor = () => {
         <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>
-              {envelope?.name || (
-                <FormattedMessage id="label.testCatalog.editor" />
+              {isCreate ? (
+                <FormattedMessage id="title.testCatalog.createTest" />
+              ) : (
+                envelope?.name || (
+                  <FormattedMessage id="label.testCatalog.editor" />
+                )
               )}
             </Heading>
           </Section>
         </Column>
 
-        {/* Header CTAs (Save / Save as new test… / Cancel). Save + clone wire in M4+/OGC-944. */}
-        <Column lg={16} md={8} sm={4}>
-          <div style={{ display: "flex", gap: "0.5rem", margin: "1rem 0" }}>
-            <Button
-              kind="primary"
-              onClick={() =>
-                handleSavePlaceholder("label.testCatalog.editor.save.pending")
-              }
-            >
-              <FormattedMessage id="label.button.save" />
-            </Button>
-            <Button
-              kind="secondary"
-              data-cy="save-as-new-test"
-              onClick={() =>
-                handleSavePlaceholder("label.testCatalog.editor.clone.pending")
-              }
-            >
-              <FormattedMessage id="label.testCatalog.editor.saveAsNew" />
-            </Button>
-            <Button kind="ghost" onClick={handleCancel}>
-              <FormattedMessage id="label.button.cancel" />
-            </Button>
-          </div>
-        </Column>
+        {/* Header CTAs (Save / Save as new test… / Cancel). Save + clone wire in M4+/OGC-944.
+            Create-in-place owns its own Save/Cancel in the Basic Info section. */}
+        {!isCreate && (
+          <Column lg={16} md={8} sm={4}>
+            <div style={{ display: "flex", gap: "0.5rem", margin: "1rem 0" }}>
+              <Button
+                kind="primary"
+                onClick={() =>
+                  handleSavePlaceholder("label.testCatalog.editor.save.pending")
+                }
+              >
+                <FormattedMessage id="label.button.save" />
+              </Button>
+              <Button
+                kind="secondary"
+                data-cy="save-as-new-test"
+                onClick={() =>
+                  handleSavePlaceholder(
+                    "label.testCatalog.editor.clone.pending",
+                  )
+                }
+              >
+                <FormattedMessage id="label.testCatalog.editor.saveAsNew" />
+              </Button>
+              <Button
+                kind="ghost"
+                data-testid="edit-related-tests"
+                onClick={editRelatedTests}
+              >
+                <FormattedMessage id="button.testCatalog.editRelatedFromEditor" />
+              </Button>
+              <Button kind="ghost" onClick={handleCancel}>
+                <FormattedMessage id="label.button.cancel" />
+              </Button>
+            </div>
+          </Column>
+        )}
 
         {/* Section nav lives in the global AdminSideNav (URL-routed, #3504) —
             the editor renders only the active section's content, full width. */}
@@ -209,11 +252,32 @@ const TestCatalogEditor = () => {
           <Tile>
             <Heading>
               <FormattedMessage
-                id={`label.testCatalog.section.${activeSection}`}
+                id={`label.testCatalog.section.${
+                  isCreate ? "basic-info" : activeSection
+                }`}
               />
             </Heading>
             <div style={{ marginTop: "1rem" }}>
-              {activeSection === "basic-info" ? (
+              {isCreate ? (
+                // Create-in-place: only Basic Info is usable; the other sections
+                // need a persisted test, so guide the user to save first (FR-3)
+                // rather than showing Basic Info under another section's title.
+                activeSection === "basic-info" ? (
+                  <BasicInfoSection testId={testId} />
+                ) : (
+                  <InlineNotification
+                    kind="info"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "label.testCatalog.editor.createSaveFirst.title",
+                    })}
+                    subtitle={intl.formatMessage({
+                      id: "label.testCatalog.editor.createSaveFirst",
+                    })}
+                  />
+                )
+              ) : activeSection === "basic-info" ? (
                 <BasicInfoSection testId={testId} />
               ) : activeSection === "sample-results" ? (
                 <SampleResultsSection testId={testId} />
