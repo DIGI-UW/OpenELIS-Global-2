@@ -46,6 +46,9 @@ public class TestAlertRuleRestControllerIntegrationTest extends BaseWebContextSe
     private TestService testService;
 
     @Autowired
+    private org.openelisglobal.role.service.RoleService roleService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private TestAlertRuleRestController controller;
@@ -56,7 +59,7 @@ public class TestAlertRuleRestControllerIntegrationTest extends BaseWebContextSe
     public void setUp() throws Exception {
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
-        controller = new TestAlertRuleRestController(alertRuleService, testService);
+        controller = new TestAlertRuleRestController(alertRuleService, testService, roleService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"

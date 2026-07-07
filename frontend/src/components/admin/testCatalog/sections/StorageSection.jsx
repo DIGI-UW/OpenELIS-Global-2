@@ -40,10 +40,16 @@ const toInt = (v) => {
   return Number.isNaN(n) ? null : n;
 };
 
-const StorageSection = ({ testId }) => {
+const StorageSection = ({ testId, groupTestIds }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
+
+  // Group mode (FR-8): edit shared storage across N tests. Load the first test's
+  // values as the shared starting point; save writes the full form to each test.
+  const isGroup = Array.isArray(groupTestIds) && groupTestIds.length > 0;
+  const primaryId = isGroup ? groupTestIds[0] : testId;
+  const groupKey = isGroup ? groupTestIds.join(",") : "";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -55,7 +61,7 @@ const StorageSection = ({ testId }) => {
     setLoading(true);
     setError(false);
     getFromOpenElisServer(
-      `/rest/test-catalog/tests/${testId}/storage`,
+      `/rest/test-catalog/tests/${primaryId}/storage`,
       (res) => {
         setLoading(false);
         if (!res) {
@@ -68,48 +74,48 @@ const StorageSection = ({ testId }) => {
   };
 
   useEffect(() => {
-    if (!testId) {
+    if (!primaryId) {
       return;
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testId]);
+  }, [testId, groupKey]);
 
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
 
   const handleSave = () => {
     setSaving(true);
-    const payload = {
+    const storage = {
       ...form,
       storageDuration: toInt(form.storageDuration),
       disposalTimeframe: toInt(form.disposalTimeframe),
     };
-    putToOpenElisServer(
-      `/rest/test-catalog/tests/${testId}/storage`,
-      JSON.stringify(payload),
-      (status) => {
-        setSaving(false);
-        setNotificationVisible(true);
-        if (status === 200) {
-          addNotification({
-            kind: "success",
-            title: intl.formatMessage({
-              id: "label.testCatalog.section.storage",
-            }),
-            message: intl.formatMessage({
-              id: "label.testCatalog.storage.saved",
-            }),
-          });
-          load();
-        } else {
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "error.title" }),
-            message: intl.formatMessage({ id: "server.error.msg" }),
-          });
-        }
-      },
-    );
+    const url = isGroup
+      ? "/rest/test-catalog/group/storage"
+      : `/rest/test-catalog/tests/${testId}/storage`;
+    const payload = isGroup ? { testIds: groupTestIds, storage } : storage;
+    putToOpenElisServer(url, JSON.stringify(payload), (status) => {
+      setSaving(false);
+      setNotificationVisible(true);
+      if (status === 200) {
+        addNotification({
+          kind: "success",
+          title: intl.formatMessage({
+            id: "label.testCatalog.section.storage",
+          }),
+          message: intl.formatMessage({
+            id: "label.testCatalog.storage.saved",
+          }),
+        });
+        load();
+      } else {
+        addNotification({
+          kind: "error",
+          title: intl.formatMessage({ id: "error.title" }),
+          message: intl.formatMessage({ id: "server.error.msg" }),
+        });
+      }
+    });
   };
 
   if (loading) {
@@ -143,22 +149,28 @@ const StorageSection = ({ testId }) => {
 
   return (
     <Stack gap={6} data-testid="storage-section">
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={RecentlyViewed}
-          onClick={() => setHistoryOpen(true)}
-          data-testid="storage-history-button"
-        >
-          {intl.formatMessage({ id: "label.testCatalog.storage.history.view" })}
-        </Button>
-      </div>
-      <StorageHistoryModal
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        testId={testId}
-      />
+      {!isGroup && (
+        <>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={RecentlyViewed}
+              onClick={() => setHistoryOpen(true)}
+              data-testid="storage-history-button"
+            >
+              {intl.formatMessage({
+                id: "label.testCatalog.storage.history.view",
+              })}
+            </Button>
+          </div>
+          <StorageHistoryModal
+            open={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+            testId={testId}
+          />
+        </>
+      )}
       <h5>
         <FormattedMessage id="label.testCatalog.storage.storageHeading" />
       </h5>

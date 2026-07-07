@@ -128,6 +128,15 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 SOURCE_ID, "SampleResultsCopySrc", "copy source", UUID.randomUUID().toString());
+        // Give the test a localized name so the shared name builder
+        // (getLocalizedTestNameWithType) resolves a name to augment with the sample
+        // type — mirrors production, where every test has a name localization.
+        Localization testNameLocalization = LocalizationServiceImpl.createNewLocalization("SampleResultsIT",
+                "SampleResultsIT", LocalizationServiceImpl.LocalizationType.TEST_NAME);
+        testNameLocalization.setSysUserId("1");
+        String testNameLocalizationId = localizationService.insert(testNameLocalization);
+        jdbc.update("UPDATE clinlims.test SET name_localization_id = ? WHERE id = ?",
+                Long.parseLong(testNameLocalizationId), TEST_ID);
         // Self-seed the dictionary entry + sample type these tests need; CI's DB does
         // not ship seed rows for them. The dictionary needs only an id; the sample
         // type needs a (cascade-managed) name localization, created via the service.
@@ -150,8 +159,21 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     private void cleanup() {
+        // Capture the test's name localization before the row is deleted, so it can
+        // be removed afterwards (its FK would otherwise block / orphan it).
+        java.util.List<Long> testNameLocalizationIds = jdbc
+                .queryForList("SELECT name_localization_id FROM clinlims.test WHERE id = ?", Long.class, TEST_ID);
         cleanupTest(TEST_ID);
         cleanupTest(SOURCE_ID);
+        for (Long localizationId : testNameLocalizationIds) {
+            if (localizationId != null) {
+                try {
+                    localizationService.delete(String.valueOf(localizationId), "1");
+                } catch (RuntimeException ignored) {
+                    // localization may already be gone; ignore
+                }
+            }
+        }
         jdbc.update("DELETE FROM clinlims.unit_of_measure WHERE id = ?", UOM_ID);
         // sampletype_test rows referencing the seeded sample type are removed by
         // cleanupTest (by test_id). Drop the sample type, then its name localization
@@ -546,12 +568,12 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (?, ?, ?)", 952060L,
                 SAMPLE_TYPE_ID, TEST_ID);
 
-        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, "SampleResultsIT",
-                1, 25);
+        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null,
+                "SampleResultsIT", 1, 25);
         TestCatalogEditorRestController.TestListRow row = page.rows.stream()
                 .filter(r -> r.testId.equals(String.valueOf(TEST_ID))).findFirst().orElseThrow();
         assertTrue("test name must be disambiguated by its sample type, got: " + row.name,
-                row.name.endsWith(" (" + SAMPLE_TYPE_DESC + ")"));
+                row.name.endsWith("(" + SAMPLE_TYPE_DESC + ")"));
     }
 
     @org.junit.Test

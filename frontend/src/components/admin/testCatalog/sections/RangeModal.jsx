@@ -50,14 +50,19 @@ const displayAge = (range) => {
   };
 };
 
-const RangeModal = ({ range, onSave, onCancel }) => {
+const RangeModal = ({ range, components = [], onSave, onCancel }) => {
   const intl = useIntl();
   const editing = !!(range && range.id);
+
+  // Default a range to the test's only component so a single-component test's
+  // ranges are never saved unassociated (FR-19).
+  const defaultComponentId = components.length === 1 ? components[0].id : "";
 
   const [draft, setDraft] = useState(() => {
     if (!range) {
       return {
         id: undefined,
+        componentId: defaultComponentId,
         gender: "",
         ageUnit: "years",
         minAgeValue: "0",
@@ -70,6 +75,8 @@ const RangeModal = ({ range, onSave, onCancel }) => {
     }
     return {
       id: range.id,
+      // Preserve the existing association; fall back to the sole component.
+      componentId: range.componentId || defaultComponentId,
       gender: range.gender || "",
       ...displayAge(range),
       lowNormal: numOrEmpty(range.lowNormal),
@@ -98,6 +105,7 @@ const RangeModal = ({ range, onSave, onCancel }) => {
     }
     onSave({
       id: draft.id,
+      componentId: draft.componentId || null,
       gender: draft.gender || null,
       minAge: minDays,
       maxAge: maxDays,
@@ -133,6 +141,27 @@ const RangeModal = ({ range, onSave, onCancel }) => {
       onSecondarySubmit={onCancel}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {components.length > 1 && (
+          <Select
+            id="range-component"
+            labelText={intl.formatMessage({
+              id: "label.testCatalog.ranges.modal.component",
+            })}
+            value={draft.componentId || ""}
+            onChange={(e) => set({ componentId: e.target.value })}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "label.testCatalog.ranges.modal.component.all",
+              })}
+            />
+            {components.map((c) => (
+              <SelectItem key={c.id} value={c.id} text={c.label} />
+            ))}
+          </Select>
+        )}
+
         <Select
           id="range-sex"
           labelText={intl.formatMessage({

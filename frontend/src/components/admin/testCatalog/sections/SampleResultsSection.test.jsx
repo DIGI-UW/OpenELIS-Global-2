@@ -46,7 +46,9 @@ const SAMPLE_RESULTS = {
       code: "SYS",
       label: "Systolic",
       displayOrder: 1,
-      resultType: "N",
+      // Select-list type so the options + interpretations editors render (they are
+      // progressively disclosed by type — options show for D/M/C, FR-30).
+      resultType: "D",
       significantDigits: 0,
       defaultResult: "",
       allowMultipleReadings: false,
@@ -123,10 +125,12 @@ beforeEach(() => {
 
 describe("SampleResultsSection", () => {
   it("renders loaded components with their options and interpretations", async () => {
-    renderSection();
+    const { container } = renderSection();
     expect(await screen.findByDisplayValue("SYS")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Systolic")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Male")).toBeInTheDocument(); // option value
+    // The editable option input (scoped so it doesn't collide with the live
+    // preview's dropdown, which also shows the option label).
+    expect(container.querySelector("#opt-value-0-0").value).toBe("Male");
     expect(screen.getByDisplayValue(">140")).toBeInTheDocument(); // interpretation match
     expect(screen.getByDisplayValue("High")).toBeInTheDocument(); // interpretation text
   });
@@ -180,13 +184,20 @@ describe("SampleResultsSection", () => {
   });
 
   it("adds a component and includes it in the saved payload", async () => {
-    renderSection();
+    const { container } = renderSection();
     await screen.findByDisplayValue("SYS");
 
     fireEvent.click(screen.getByTestId("add-component"));
+    // A component needs a label to save (code defaults to the label).
+    fireEvent.change(container.querySelector("#comp-label-1"), {
+      target: { value: "Diastolic" },
+    });
     fireEvent.click(saveButton());
 
-    expect(savedPayload().components).toHaveLength(2);
+    const components = savedPayload().components;
+    expect(components).toHaveLength(2);
+    // Code defaults to the label when left blank.
+    expect(components[1].code).toBe("Diastolic");
   });
 
   it("adds a dictionary option via the search box and includes it in the payload", async () => {
@@ -273,6 +284,21 @@ describe("SampleResultsSection", () => {
   });
 
   it("picks a unit of measure from the master list and persists it", async () => {
+    // Unit of measure only applies to Numeric components (progressive disclosure).
+    const numericTest = {
+      testId: "7",
+      components: [
+        {
+          id: "C1",
+          code: "SYS",
+          label: "Systolic",
+          displayOrder: 1,
+          resultType: "N",
+          options: [],
+          interpretations: [],
+        },
+      ],
+    };
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url === "/rest/test-list") {
         cb([]);
@@ -282,16 +308,17 @@ describe("SampleResultsSection", () => {
           { id: "6", value: "mg/dL" },
         ]);
       } else {
-        cb(clone(SAMPLE_RESULTS));
+        cb(clone(numericTest));
       }
     });
-    renderSection();
+    const { container } = renderSection();
     await screen.findByDisplayValue("SYS");
 
-    fireEvent.change(
-      screen.getByLabelText(messages["label.testCatalog.sampleResults.uom"]),
-      { target: { value: "5" } },
-    );
+    // Unit is a typeahead ComboBox: filter, then pick the option.
+    fireEvent.change(container.querySelector("#comp-uom-0"), {
+      target: { value: "mmHg" },
+    });
+    fireEvent.click(await screen.findByText("mmHg"));
     fireEvent.click(saveButton());
 
     expect(savedPayload().components[0].uomId).toBe("5");
@@ -308,15 +335,14 @@ describe("SampleResultsSection", () => {
         cb(clone(SAMPLE_RESULTS));
       }
     });
-    renderSection();
+    const { container } = renderSection();
     await screen.findByDisplayValue("SYS");
 
-    fireEvent.change(
-      screen.getByLabelText(
-        messages["label.testCatalog.sampleResults.copyFrom"],
-      ),
-      { target: { value: "9" } },
-    );
+    // "Start from another test" is a typeahead ComboBox.
+    fireEvent.change(container.querySelector("#copy-from-test"), {
+      target: { value: "Other" },
+    });
+    fireEvent.click(await screen.findByText("Other Test"));
     fireEvent.click(
       screen.getByRole("button", {
         name: messages["label.testCatalog.sampleResults.copyFromButton"],
