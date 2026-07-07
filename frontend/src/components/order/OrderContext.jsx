@@ -924,6 +924,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         orderEntryOnly: true, // Flag for backend to skip sample validation
         sampleOrderItems: {
           ...orderData.sampleOrderItems,
+          // Use the merged envFields so vector per-sample observations
+          // (trap-count/nights, lifecycle, trap-type) reach the backend; the
+          // original orderData.environmentalFields is missing that merge.
+          environmentalFields: envFields,
           priorityList: [],
           programList: [],
           referringSiteList: [],

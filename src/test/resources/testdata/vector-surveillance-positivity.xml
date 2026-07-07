@@ -96,8 +96,7 @@
     <!-- Pool 900: CONFIRMED-NEGATIVE Anopheles (the inversion guard). -->
     <sample id="900" accession_number="VS-NEG-900" domain="V"
         status_id="900" entered_date="2026-07-06 00:00:00"
-        received_date="2026-07-06 00:00:00"
-        collection_date="2026-07-06 00:00:00" revision="0"
+        received_date="2026-07-06 00:00:00" revision="0"
         is_confirmation="false" lastupdated="2026-07-06 00:00:00" />
     <sample_item id="900" samp_id="900" sort_order="1"
         status_id="900" typeosamp_id="900" quantity="10"
@@ -117,8 +116,7 @@
         positive leaf (sample_item 903). -->
     <sample id="901" accession_number="VS-POS-901" domain="V"
         status_id="900" entered_date="2026-07-06 00:00:00"
-        received_date="2026-07-06 00:00:00"
-        collection_date="2026-07-06 00:00:00" revision="0"
+        received_date="2026-07-06 00:00:00" revision="0"
         is_confirmation="false" lastupdated="2026-07-06 00:00:00" />
     <sample_item id="901" samp_id="901" sort_order="1"
         status_id="900" typeosamp_id="900" quantity="10"
@@ -146,8 +144,7 @@
     <!-- Pool 902: POSITIVE Anopheles CSP-ELISA (sporozoite guard). -->
     <sample id="902" accession_number="VS-SPO-902" domain="V"
         status_id="900" entered_date="2026-07-06 00:00:00"
-        received_date="2026-07-06 00:00:00"
-        collection_date="2026-07-06 00:00:00" revision="0"
+        received_date="2026-07-06 00:00:00" revision="0"
         is_confirmation="false" lastupdated="2026-07-06 00:00:00" />
     <sample_item id="902" samp_id="902" sort_order="1"
         status_id="900" typeosamp_id="900" quantity="8"
@@ -166,8 +163,7 @@
     <!-- Pool 903: Culex at site B (site-filter guard; out of Anopheles scope). -->
     <sample id="903" accession_number="VS-CULEX-903" domain="V"
         status_id="900" entered_date="2026-07-06 00:00:00"
-        received_date="2026-07-06 00:00:00"
-        collection_date="2026-07-06 00:00:00" revision="0"
+        received_date="2026-07-06 00:00:00" revision="0"
         is_confirmation="false" lastupdated="2026-07-06 00:00:00" />
     <sample_item id="904" samp_id="903" sort_order="1"
         status_id="900" typeosamp_id="900" quantity="5"

@@ -106,13 +106,13 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
     @Override
     public List<DensityAggregate> getCollectionDensity(LocalDate fromDate, LocalDate toDate, Integer siteId) {
         try {
-            String hql = "select function('to_char', s.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId,"
+            String hql = "select function('to_char', si.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId,"
                     + " count(distinct p.id), coalesce(sum(si.quantity), 0)"
                     + " from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si"
                     + " where s.id = p.sampleId and p.parentPool is null and vpm.pool = p"
-                    + " and vpm.sampleItem = si and p.active = true" + " and s.collectionDate between :from and :to"
+                    + " and vpm.sampleItem = si and p.active = true" + " and si.collectionDate between :from and :to"
                     + siteClause(siteId) + QC_EXCLUDE_SI
-                    + " group by function('to_char', s.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId"
+                    + " group by function('to_char', si.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId"
                     + " order by 1";
             List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
             List<DensityAggregate> out = new ArrayList<>();
@@ -133,7 +133,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
             // Trap-count and trap-nights are literal observations on the pool's Sample
             // (mirroring vecTrapTypeId). Group by pool so a multi-member pool is not
             // counted once per member; the service sums (traps x nights) per site/period.
-            String hql = "select function('to_char', s.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId,"
+            String hql = "select function('to_char', si.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId,"
                     + " tc.value, tn.value" + " from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si,"
                     + " ObservationHistory tc, ObservationHistoryType octc,"
                     + " ObservationHistory tn, ObservationHistoryType octn"
@@ -142,9 +142,9 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " and tc.sampleId = s.id and octc.id = tc.observationHistoryTypeId"
                     + " and octc.typeName = 'vecTrapCount'"
                     + " and tn.sampleId = s.id and octn.id = tn.observationHistoryTypeId"
-                    + " and octn.typeName = 'vecTrapNights'" + " and s.collectionDate between :from and :to"
+                    + " and octn.typeName = 'vecTrapNights'" + " and si.collectionDate between :from and :to"
                     + siteClause(siteId) + QC_EXCLUDE_SI
-                    + " group by function('to_char', s.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId, p.id,"
+                    + " group by function('to_char', si.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId, p.id,"
                     + " tc.value, tn.value";
             List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
             List<EffortAggregate> out = new ArrayList<>();
@@ -166,7 +166,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " from VectorSpecimenIdentification vsi, SampleItem si, Sample s, VectorSpecies sp"
                     + " where vsi.sampleItemId = cast(si.id as long) and si.sample.id = s.id"
                     + " and vsi.vectorSpeciesId = sp.id and vsi.confidence = 'CONFIRMED'"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI
+                    + " and si.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI
                     + " group by sp.id, sp.genus, sp.species order by 4 desc";
             List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
             List<SpeciesAggregate> out = new ArrayList<>();
@@ -205,7 +205,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " and vsi.confidence = 'CONFIRMED'"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.test = t and tr.significance = :positive"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI
+                    + " and si.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI
                     + " group by sp.id, sp.genus, sp.species, t.id, t.description";
             List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
 
@@ -249,7 +249,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " and r.testResult = tr and tr.test.id = :testId and tr.significance = :positive"
                     + " and vsi.sampleItemId = cast(si.id as long) and vsi.vectorSpeciesId = :speciesId"
                     + " and vsi.confidence = 'CONFIRMED' and si.sample.id = s.id"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
+                    + " and si.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
             Query q = entityManager.createQuery(hql);
             q.setParameter("positive", POSITIVE);
             // Test.id is mapped as a String (LIMSStringNumberUserType), so bind the
@@ -277,11 +277,11 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
             // subset (POSITIVE catalog result). Site filter applied via the pool members.
             String hql = "select t.description,"
                     + " count(distinct case when tr.significance = :positive then p.id else null end),"
-                    + " count(distinct p.id)"
-                    + " from VectorPool p, Sample s, Analysis a, Result r, TestResult tr, Test t"
-                    + " where s.id = p.sampleId and p.parentPool is null"
+                    + " count(distinct p.id)" + " from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si,"
+                    + " Analysis a, Result r, TestResult tr, Test t"
+                    + " where s.id = p.sampleId and p.parentPool is null and vpm.pool = p and vpm.sampleItem = si"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
-                    + " and r.testResult = tr and tr.test = t" + " and s.collectionDate between :from and :to"
+                    + " and r.testResult = tr and tr.test = t" + " and si.collectionDate between :from and :to"
                     + sitePoolClause(siteId) + QC_EXCLUDE_POOL + " group by t.description order by t.description";
             Query q = entityManager.createQuery(hql);
             q.setParameter("positive", POSITIVE);
@@ -325,7 +325,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " and vsi.confidence = 'CONFIRMED' and lower(sp.genus) = 'anopheles'"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.test = t and tr.significance = :positive" + testMatch
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
+                    + " and si.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
             Query posQ = entityManager.createQuery(posHql);
             posQ.setParameter("positive", POSITIVE);
             posQ.setParameter("from", from(fromDate));
@@ -340,7 +340,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " from VectorSpecimenIdentification vsi, SampleItem si, Sample s, VectorSpecies sp"
                     + " where vsi.sampleItemId = cast(si.id as long) and vsi.vectorSpeciesId = sp.id"
                     + " and vsi.confidence = 'CONFIRMED' and lower(sp.genus) = 'anopheles'"
-                    + " and si.sample.id = s.id and s.collectionDate between :from and :to" + siteClause(siteId)
+                    + " and si.sample.id = s.id and si.collectionDate between :from and :to" + siteClause(siteId)
                     + QC_EXCLUDE_SI;
             Query totQ = entityManager.createQuery(totHql);
             totQ.setParameter("from", from(fromDate));
@@ -366,11 +366,12 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
     @Override
     public boolean isPositivityClassificationPresent(LocalDate fromDate, LocalDate toDate, Integer siteId) {
         try {
-            String hql = "select count(r.id) from VectorPool p, Sample s, Analysis a, Result r, TestResult tr"
-                    + " where s.id = p.sampleId and p.parentPool is null"
+            String hql = "select count(r.id) from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si,"
+                    + " Analysis a, Result r, TestResult tr"
+                    + " where s.id = p.sampleId and p.parentPool is null and vpm.pool = p and vpm.sampleItem = si"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.significance is not null"
-                    + " and s.collectionDate between :from and :to" + sitePoolClause(siteId);
+                    + " and si.collectionDate between :from and :to" + sitePoolClause(siteId);
             Query q = entityManager.createQuery(hql);
             q.setParameter("from", from(fromDate));
             q.setParameter("to", to(toDate));
@@ -387,11 +388,12 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
     @Override
     public boolean hasUnrecognizedPositivityClassification(LocalDate fromDate, LocalDate toDate, Integer siteId) {
         try {
-            String hql = "select count(r.id) from VectorPool p, Sample s, Analysis a, Result r, TestResult tr"
-                    + " where s.id = p.sampleId and p.parentPool is null"
+            String hql = "select count(r.id) from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si,"
+                    + " Analysis a, Result r, TestResult tr"
+                    + " where s.id = p.sampleId and p.parentPool is null and vpm.pool = p and vpm.sampleItem = si"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.significance is not null"
-                    + " and tr.significance not in (:recognized)" + " and s.collectionDate between :from and :to"
+                    + " and tr.significance not in (:recognized)" + " and si.collectionDate between :from and :to"
                     + sitePoolClause(siteId);
             Query q = entityManager.createQuery(hql);
             q.setParameter("recognized", RECOGNIZED_SIGNIFICANCE);
@@ -419,7 +421,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " where s.id = p.sampleId and p.parentPool is null and vpm.pool = p and vpm.sampleItem = si"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.significance = :positive"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
+                    + " and si.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
             return lng(bind(hql, fromDate, toDate, siteId).getSingleResult());
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -430,12 +432,16 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
     @Override
     public QcAggregate getQcPassRate(LocalDate fromDate, LocalDate toDate, Integer siteId) {
         try {
-            String total = "select count(distinct a.id) from Analysis a, VectorPool p, Sample s"
+            String total = "select count(distinct a.id) from Analysis a, VectorPool p, Sample s,"
+                    + " VectorPoolMember vpm, SampleItem si"
                     + " where cast(a.vectorPoolId as integer) = p.id and p.parentPool is null and s.id = p.sampleId"
-                    + " and s.collectionDate between :from and :to" + sitePoolClause(siteId);
-            String failed = "select count(distinct aqe.analysis.id) from AnalysisQaEvent aqe, VectorPool p, Sample s"
+                    + " and vpm.pool = p and vpm.sampleItem = si" + " and si.collectionDate between :from and :to"
+                    + sitePoolClause(siteId);
+            String failed = "select count(distinct aqe.analysis.id) from AnalysisQaEvent aqe, VectorPool p, Sample s,"
+                    + " VectorPoolMember vpm, SampleItem si"
                     + " where cast(aqe.analysis.vectorPoolId as integer) = p.id and p.parentPool is null"
-                    + " and s.id = p.sampleId and s.collectionDate between :from and :to" + sitePoolClause(siteId);
+                    + " and vpm.pool = p and vpm.sampleItem = si"
+                    + " and s.id = p.sampleId and si.collectionDate between :from and :to" + sitePoolClause(siteId);
             long totalCount = lng(bind(total, fromDate, toDate, siteId).getSingleResult());
             long failedCount = lng(bind(failed, fromDate, toDate, siteId).getSingleResult());
             return new QcAggregate(Math.max(0, totalCount - failedCount), totalCount);
