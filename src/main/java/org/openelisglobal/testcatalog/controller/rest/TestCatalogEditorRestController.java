@@ -759,6 +759,8 @@ public class TestCatalogEditorRestController {
         public Double highNormal;
         public Double lowCritical;
         public Double highCritical;
+        public Double lowValid;
+        public Double highValid;
         public Double lowReporting;
         public Double highReporting;
     }
@@ -818,8 +820,10 @@ public class TestCatalogEditorRestController {
             limit.setHighNormal(unbox(r.highNormal, Double.POSITIVE_INFINITY));
             limit.setLowCritical(unbox(r.lowCritical, Double.POSITIVE_INFINITY));
             limit.setHighCritical(unbox(r.highCritical, Double.POSITIVE_INFINITY));
-            // Valid / reporting ranges are not edited here; the service preserves
-            // whatever the existing row already had (see saveRangesForTest).
+            limit.setLowValid(unbox(r.lowValid, Double.NEGATIVE_INFINITY));
+            limit.setHighValid(unbox(r.highValid, Double.POSITIVE_INFINITY));
+            // Reporting range is per-Method (not edited in this dialog); the service
+            // preserves whatever the existing row already had (see saveRangesForTest).
             desired.add(limit);
         }
         return desired;
@@ -941,6 +945,8 @@ public class TestCatalogEditorRestController {
                 copy.highNormal = r.highNormal;
                 copy.lowCritical = r.lowCritical;
                 copy.highCritical = r.highCritical;
+                copy.lowValid = r.lowValid;
+                copy.highValid = r.highValid;
                 perTest.add(copy);
             }
             resultLimitService.saveRangesForTest(testId, toResultLimits(perTest), sysUserId);
@@ -963,6 +969,8 @@ public class TestCatalogEditorRestController {
             d.highNormal = finiteOrNull(l.getHighNormal());
             d.lowCritical = finiteOrNull(l.getLowCritical());
             d.highCritical = finiteOrNull(l.getHighCritical());
+            d.lowValid = finiteOrNull(l.getLowValid());
+            d.highValid = finiteOrNull(l.getHighValid());
             d.lowReporting = finiteOrNull(l.getLowReportingRange());
             d.highReporting = finiteOrNull(l.getHighReportingRange());
             resp.ranges.add(d);

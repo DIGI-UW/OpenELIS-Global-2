@@ -71,6 +71,8 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
         highNormal: "",
         lowCritical: "",
         highCritical: "",
+        lowValid: "",
+        highValid: "",
       };
     }
     return {
@@ -83,6 +85,8 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       highNormal: numOrEmpty(range.highNormal),
       lowCritical: numOrEmpty(range.lowCritical),
       highCritical: numOrEmpty(range.highCritical),
+      lowValid: numOrEmpty(range.lowValid),
+      highValid: numOrEmpty(range.highValid),
     };
   });
   const [ageError, setAgeError] = useState(false);
@@ -113,6 +117,8 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       highNormal: parseOrNull(draft.highNormal),
       lowCritical: parseOrNull(draft.lowCritical),
       highCritical: parseOrNull(draft.highCritical),
+      lowValid: parseOrNull(draft.lowValid),
+      highValid: parseOrNull(draft.highValid),
     });
   };
 
@@ -229,6 +235,10 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
             "highCritical",
             "label.testCatalog.ranges.modal.highCritical",
           )}
+        </div>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          {numField("lowValid", "label.testCatalog.ranges.modal.lowValid")}
+          {numField("highValid", "label.testCatalog.ranges.modal.highValid")}
         </div>
       </div>
     </Modal>

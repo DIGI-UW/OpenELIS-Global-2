@@ -135,4 +135,7 @@
   <!-- OGC-949 / OGC-766: cascade test_sample_handling_history when its handling row is deleted -->
   <include relativeToChangelogFile="true" file="050-tsh-history-fk-cascade.xml"/>
 
+  <!-- OGC-749 / OGC-963 (FR-29): code + UCUM columns for the inline unit-create form -->
+  <include relativeToChangelogFile="true" file="051-uom-code-ucum.xml"/>
+
 </databaseChangeLog>

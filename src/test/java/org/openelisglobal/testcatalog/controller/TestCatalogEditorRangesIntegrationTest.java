@@ -167,6 +167,19 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     }
 
     @org.junit.Test
+    public void saveRanges_validBoundsRoundTrip() {
+        // OGC-1117: the Valid range is now editable in this dialog and must persist.
+        RangeDto r = range(null, "M", 0d, 30d);
+        r.lowValid = 2d;
+        r.highValid = 20d;
+        controller.saveRanges(testId(), body(r), authedRequest());
+
+        RangeDto loaded = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(Double.valueOf(2d), loaded.lowValid);
+        assertEquals(Double.valueOf(20d), loaded.highValid);
+    }
+
+    @org.junit.Test
     public void saveRanges_openEndedMaxAgeRoundTripsAsNull_andCoversToInfinity() {
         // maxAge null → open-ended; a single 0..∞ all-sex range fully covers both.
         controller.saveRanges(testId(), body(range(null, null, 0d, null)), authedRequest());
