@@ -74,6 +74,8 @@ export const generateVectorSurveillancePDF = (indices, scope, formatMessage) => 
         t("vectorReport.density.site"),
         t("vectorReport.density.pools"),
         t("vectorReport.density.specimens"),
+        t("vectorReport.density.trapNights"),
+        t("vectorReport.density.perTrapNight"),
       ],
     ],
     body: (indices.collectionDensity || []).map((r) => [
@@ -81,6 +83,10 @@ export const generateVectorSurveillancePDF = (indices, scope, formatMessage) => 
       r.siteName || "-",
       r.poolCount,
       r.specimenCount,
+      r.trapNights ?? "-",
+      r.density != null
+        ? Number(r.density).toFixed(2)
+        : t("vectorReport.density.effortNotRecorded"),
     ]),
     theme: "striped",
     styles: { fontSize: 9 },

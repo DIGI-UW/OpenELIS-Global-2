@@ -1416,6 +1416,12 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleId);
         if (vecTrapTypeId != null)
             envFields.put("vecTrapTypeId", vecTrapTypeId);
+        String vecTrapCount = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_COUNT, sampleId);
+        if (vecTrapCount != null)
+            envFields.put("vecTrapCount", vecTrapCount);
+        String vecTrapNights = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_NIGHTS, sampleId);
+        if (vecTrapNights != null)
+            envFields.put("vecTrapNights", vecTrapNights);
         String vecTimeOfDay = observationHistoryService.getRawValueForSample(ObservationType.VS_TIME_OF_DAY, sampleId);
         if (vecTimeOfDay != null)
             envFields.put("vecTimeOfDay", vecTimeOfDay);

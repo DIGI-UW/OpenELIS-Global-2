@@ -126,6 +126,42 @@ public final class SurveillanceAggregates {
         }
     }
 
+    /**
+     * Trapping effort for one collection pool: the raw trap-count and trap-nights
+     * observation values at a site/period. The service parses and multiplies these
+     * (traps x nights) and sums over pools to form the sampling-effort denominator
+     * for effort-normalized collection density.
+     */
+    public static class EffortAggregate {
+        private String periodLabel;
+        private Integer siteId;
+        private String trapCount;
+        private String trapNights;
+
+        public EffortAggregate(String periodLabel, Integer siteId, String trapCount, String trapNights) {
+            this.periodLabel = periodLabel;
+            this.siteId = siteId;
+            this.trapCount = trapCount;
+            this.trapNights = trapNights;
+        }
+
+        public String getPeriodLabel() {
+            return periodLabel;
+        }
+
+        public Integer getSiteId() {
+            return siteId;
+        }
+
+        public String getTrapCount() {
+            return trapCount;
+        }
+
+        public String getTrapNights() {
+            return trapNights;
+        }
+    }
+
     /** Specimen count per identified species (CONFIRMED), for distribution. */
     public static class SpeciesAggregate {
         private Integer speciesId;

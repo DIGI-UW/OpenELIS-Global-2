@@ -214,4 +214,7 @@
   <!-- LHU PDF archival for ISO 17025 §7.8.8 compliance -->
   <include relativeToChangelogFile="true" file="052-compliance-report-archive.xml"/>
 
+  <!-- V-04 (OGC-585) collection density: trap-count + trap-nights observation types (sampling effort) -->
+  <include relativeToChangelogFile="true" file="053-vector-trap-effort-observation-types.xml"/>
+
 </databaseChangeLog>

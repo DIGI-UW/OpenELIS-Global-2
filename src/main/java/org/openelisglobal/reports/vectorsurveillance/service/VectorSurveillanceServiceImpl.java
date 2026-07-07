@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.reports.vectorsurveillance.dao.VectorSurveillanceDAO;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.EffortAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
@@ -62,10 +63,30 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
                 siteNames.put(s.getId(), s.getName());
             }
         }
-        dto.setCollectionDensity(dao
-                .getCollectionDensity(from, to, siteId).stream().map(d -> new DensityRow(d.getPeriodLabel(),
-                        d.getSiteId(), siteNames.get(d.getSiteId()), d.getPoolCount(), d.getSpecimenCount()))
-                .collect(Collectors.toList()));
+        // Sampling effort per (period, site): sum of (traps x nights) over the pools
+        // that recorded trap effort. Density = abundance / effort. When no effort was
+        // recorded, density is left null and the dashboard shows abundance only — never
+        // a fabricated rate (the WHO/CDC abundance-vs-density distinction).
+        Map<String, Long> effortByKey = new HashMap<>();
+        for (EffortAggregate e : dao.getCollectionEffort(from, to, siteId)) {
+            Integer traps = parsePositiveInt(e.getTrapCount());
+            Integer nights = parsePositiveInt(e.getTrapNights());
+            if (traps == null || nights == null) {
+                continue;
+            }
+            effortByKey.merge(densityKey(e.getPeriodLabel(), e.getSiteId()), (long) traps * nights, Long::sum);
+        }
+
+        dto.setCollectionDensity(dao.getCollectionDensity(from, to, siteId).stream().map(d -> {
+            DensityRow row = new DensityRow(d.getPeriodLabel(), d.getSiteId(), siteNames.get(d.getSiteId()),
+                    d.getPoolCount(), d.getSpecimenCount());
+            Long effort = effortByKey.get(densityKey(d.getPeriodLabel(), d.getSiteId()));
+            if (effort != null && effort > 0) {
+                row.setTrapNights(effort);
+                row.setDensity((double) d.getSpecimenCount() / effort);
+            }
+            return row;
+        }).collect(Collectors.toList()));
 
         dto.setPathogenPositivity(dao
                 .getPathogenPositivity(from, to, siteId).stream().map(p -> new PositivityRow(p.getPathogen(),
@@ -135,5 +156,25 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
 
     private static double pct(long numerator, long denominator) {
         return denominator > 0 ? ((double) numerator / denominator) * 100.0 : 0.0;
+    }
+
+    private static String densityKey(String periodLabel, Integer siteId) {
+        return periodLabel + "|" + siteId;
+    }
+
+    /**
+     * Parses a positive integer observation value; null if blank, non-numeric, or
+     * <= 0.
+     */
+    private static Integer parsePositiveInt(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        try {
+            int value = Integer.parseInt(raw.trim());
+            return value > 0 ? value : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

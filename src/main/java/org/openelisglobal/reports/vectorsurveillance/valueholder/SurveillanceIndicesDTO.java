@@ -121,6 +121,12 @@ public class SurveillanceIndicesDTO {
         private String siteName;
         private long poolCount;
         private long specimenCount;
+        // Sampling effort (sum of traps x nights over the period/site's pools) and the
+        // effort-normalized density (organisms per trap-night). density is null when no
+        // effort was recorded — the dashboard then shows abundance, not a fabricated
+        // rate.
+        private Long trapNights;
+        private Double density;
 
         public DensityRow() {
         }
@@ -151,6 +157,22 @@ public class SurveillanceIndicesDTO {
 
         public long getSpecimenCount() {
             return specimenCount;
+        }
+
+        public Long getTrapNights() {
+            return trapNights;
+        }
+
+        public void setTrapNights(Long trapNights) {
+            this.trapNights = trapNights;
+        }
+
+        public Double getDensity() {
+            return density;
+        }
+
+        public void setDensity(Double density) {
+            this.density = density;
         }
     }
 

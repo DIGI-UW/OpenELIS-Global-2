@@ -810,6 +810,12 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "vecTrapTypeId"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TRAP_TYPE_ID),
                 ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecTrapCount"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TRAP_COUNT),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecTrapNights"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TRAP_NIGHTS),
+                ValueType.LITERAL);
         createObservation(getStringValue(envFields, "vecPoolingMethod"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_POOLING_METHOD),
                 ValueType.LITERAL);

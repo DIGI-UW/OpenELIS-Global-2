@@ -176,6 +176,9 @@ public class SampleAddService {
                 item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
                 item.setGpsLongitude(sampleItem.attributeValue("gpsLongitude"));
                 item.setLabPerformedSampling(Boolean.parseBoolean(sampleItem.attributeValue("labPerformedSampling")));
+                // Vector collection site stamped at intake (order-level site → per-item
+                // location) so the surveillance dashboard groups by site immediately.
+                item.setCollectionLocationId(sampleItem.attributeValue("collectionLocationId"));
 
                 String receivedDateStr = sampleItem.attributeValue("receivedDate");
                 String receivedTimeStr = sampleItem.attributeValue("receivedTime");

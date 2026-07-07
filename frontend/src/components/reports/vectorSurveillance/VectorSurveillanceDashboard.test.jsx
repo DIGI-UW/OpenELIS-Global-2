@@ -325,6 +325,48 @@ describe("VectorSurveillanceDashboard", () => {
     ).toBeInTheDocument();
   });
 
+  test("density panel shows both abundance and per-trap-night density, with an effort-not-recorded fallback", async () => {
+    getSurveillanceIndices.mockImplementation((scope, cb) =>
+      cb({
+        ...mockIndices,
+        collectionDensity: [
+          {
+            periodLabel: "2026-W23",
+            siteId: 7,
+            siteName: "Denpasar",
+            poolCount: 12,
+            specimenCount: 480,
+            trapNights: 96,
+            density: 5.0,
+          },
+          {
+            periodLabel: "2026-W23",
+            siteId: 9,
+            siteName: "Surabaya",
+            poolCount: 4,
+            specimenCount: 60,
+            trapNights: null,
+            density: null,
+          },
+        ],
+      }),
+    );
+
+    renderWithIntl(<VectorSurveillanceDashboard />);
+    applyFilters();
+
+    const panel = await screen.findByTestId("panel-density");
+    // Abundance (raw specimen counts) is always present.
+    expect(within(panel).getByText("480")).toBeInTheDocument();
+    expect(within(panel).getByText("60")).toBeInTheDocument();
+    // Density (organisms per trap-night) shown when effort was recorded: 480 / 96 = 5.00.
+    expect(within(panel).getByText("5.00")).toBeInTheDocument();
+    // Degrade: the site with no recorded effort shows the fallback, not a fabricated rate.
+    expect(
+      within(panel).getByText(messages["vectorReport.density.effortNotRecorded"]),
+    ).toBeInTheDocument();
+  });
+
   test("sporozoite tile carries the deconvolution-confidence caveat", async () => {
     getSurveillanceIndices.mockImplementation((scope, cb) => cb(mockIndices));
 

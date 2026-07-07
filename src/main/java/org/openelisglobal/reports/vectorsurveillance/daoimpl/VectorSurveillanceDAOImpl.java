@@ -15,6 +15,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.reports.vectorsurveillance.dao.VectorSurveillanceDAO;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.DensityAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.EffortAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.PositivityAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
@@ -118,6 +119,38 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
             for (Object row : rows) {
                 Object[] r = (Object[]) row;
                 out.add(new DensityAggregate((String) r[0], integer(r[1]), null, lng(r[2]), lng(r[3])));
+            }
+            return out;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
+    public List<EffortAggregate> getCollectionEffort(LocalDate fromDate, LocalDate toDate, Integer siteId) {
+        try {
+            // Trap-count and trap-nights are literal observations on the pool's Sample
+            // (mirroring vecTrapTypeId). Group by pool so a multi-member pool is not
+            // counted once per member; the service sums (traps x nights) per site/period.
+            String hql = "select function('to_char', s.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId,"
+                    + " tc.value, tn.value" + " from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si,"
+                    + " ObservationHistory tc, ObservationHistoryType octc,"
+                    + " ObservationHistory tn, ObservationHistoryType octn"
+                    + " where s.id = p.sampleId and p.parentPool is null and p.active = true"
+                    + " and vpm.pool = p and vpm.sampleItem = si"
+                    + " and tc.sampleId = s.id and octc.id = tc.observationHistoryTypeId"
+                    + " and octc.typeName = 'vecTrapCount'"
+                    + " and tn.sampleId = s.id and octn.id = tn.observationHistoryTypeId"
+                    + " and octn.typeName = 'vecTrapNights'" + " and s.collectionDate between :from and :to"
+                    + siteClause(siteId) + QC_EXCLUDE_SI
+                    + " group by function('to_char', s.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId, p.id,"
+                    + " tc.value, tn.value";
+            List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
+            List<EffortAggregate> out = new ArrayList<>();
+            for (Object row : rows) {
+                Object[] r = (Object[]) row;
+                out.add(new EffortAggregate((String) r[0], integer(r[1]), (String) r[2], (String) r[3]));
             }
             return out;
         } catch (RuntimeException e) {

@@ -59,6 +59,33 @@ public class VectorPoolFanOutServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void fanOut_shouldCopyCollectionLocationIdToEachSibling() {
+        // The collection site is stamped on the parent at intake; fan-out replaces the
+        // parent with individual-organism siblings, so it must carry the site onto each
+        // one — otherwise the density dashboard (which groups by collectionLocationId)
+        // buckets the collection under a null site.
+        SampleItem parent = sampleItemService.get(PARENT_SAMPLE_ITEM_ID);
+        parent.setCollectionLocationId("500"); // the fixture's vector_sampling_site (FK target)
+
+        List<SampleItem> siblings = vectorPoolFanOutService.fanOut(parent, List.of(), 3, SYS_USER_ID);
+
+        Assert.assertEquals(3, siblings.size());
+        for (SampleItem sibling : siblings) {
+            Assert.assertEquals("each sibling must inherit the parent's collection site", "500",
+                    sibling.getCollectionLocationId());
+        }
+        // Persisted, not just in-memory: the density query reads it from the DB.
+        List<Integer> persistedLocs = jdbcTemplate.queryForList(
+                "SELECT collection_location_id FROM clinlims.sample_item WHERE samp_id = ? AND voided = false",
+                Integer.class, Integer.valueOf(SAMPLE_ID));
+        Assert.assertFalse("siblings must be persisted with a collection site", persistedLocs.isEmpty());
+        for (Integer loc : persistedLocs) {
+            Assert.assertEquals("persisted sibling collection_location_id must be the parent's site",
+                    Integer.valueOf(500), loc);
+        }
+    }
+
+    @Test
     public void fanOut_shouldGiveSiblingsDistinctSortOrdersGreaterThanParent() {
         SampleItem parent = sampleItemService.get(PARENT_SAMPLE_ITEM_ID);
         int parentSortOrder = Integer.parseInt(parent.getSortOrder());

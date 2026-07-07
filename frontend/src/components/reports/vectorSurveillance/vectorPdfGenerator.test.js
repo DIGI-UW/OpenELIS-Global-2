@@ -60,4 +60,40 @@ describe("generateVectorSurveillancePDF", () => {
       expect(requested).toContain(id);
     }
   });
+
+  it("adds trap-nights + per-trap-night density columns with an effort-not-recorded fallback", () => {
+    const fmt = vi.fn(({ id }) => id);
+    const withDensity = {
+      ...indices,
+      collectionDensity: [
+        {
+          periodLabel: "2026-W23",
+          siteName: "Kupang",
+          poolCount: 12,
+          specimenCount: 480,
+          trapNights: 96,
+          density: 5.0,
+        },
+        {
+          periodLabel: "2026-W23",
+          siteName: "Ende",
+          poolCount: 4,
+          specimenCount: 60,
+          trapNights: null,
+          density: null,
+        },
+      ],
+    };
+
+    expect(() =>
+      generateVectorSurveillancePDF(withDensity, scope, fmt),
+    ).not.toThrow();
+
+    const requested = fmt.mock.calls.map((c) => c[0].id);
+    // Both effort columns are in the density section header.
+    expect(requested).toContain("vectorReport.density.trapNights");
+    expect(requested).toContain("vectorReport.density.perTrapNight");
+    // The effort-less row degrades to the fallback, not a fabricated rate.
+    expect(requested).toContain("vectorReport.density.effortNotRecorded");
+  });
 });

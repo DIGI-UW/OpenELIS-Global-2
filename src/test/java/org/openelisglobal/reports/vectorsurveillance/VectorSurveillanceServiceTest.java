@@ -20,6 +20,7 @@ import org.openelisglobal.reports.vectorsurveillance.service.VectorSurveillanceS
 import org.openelisglobal.reports.vectorsurveillance.service.VectorSurveillanceServiceImpl;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.DensityAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.EffortAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SporozoiteAggregate;
@@ -117,6 +118,69 @@ public class VectorSurveillanceServiceTest {
         assertEquals("Site A North", rows.get(0).getSiteName());
         assertEquals("Site B South", rows.get(1).getSiteName());
         assertEquals("Site A North", rows.get(2).getSiteName());
+    }
+
+    // ---- collection density: effort-normalized density + degrade ------------
+
+    /**
+     * Effort-normalized density = abundance / (sum of traps x nights over the
+     * period/site's pools). Two distinct pools recorded effort: (2 x 1)=2 and
+     * (2 x 2)=4 -> 6 trap-nights; abundance 28 -> density 28/6. Distinct pools must
+     * be summed, not collapsed. Red if the effort join is dropped (density null) or
+     * the formula is wrong.
+     */
+    @Test
+    public void collectionDensity_computesOrganismsPerTrapNight_summingEffortOverPools() {
+        when(dao.getSites()).thenReturn(List.of(new SiteOption(10, "S-A", "Site A")));
+        when(dao.getCollectionDensity(any(), any(), any()))
+                .thenReturn(List.of(new DensityAggregate("2026-W28", 10, null, 3, 28)));
+        when(dao.getCollectionEffort(any(), any(), any())).thenReturn(List.of(
+                new EffortAggregate("2026-W28", 10, "2", "1"), new EffortAggregate("2026-W28", 10, "2", "2")));
+
+        DensityRow row = service.getIndices(FROM, TO, null).getCollectionDensity().get(0);
+
+        assertEquals("abundance is always present", 28, row.getSpecimenCount());
+        assertEquals(Long.valueOf(6), row.getTrapNights());
+        assertEquals(28.0 / 6.0, row.getDensity(), 0.001);
+    }
+
+    /**
+     * Degrade contract: when no trap effort is recorded, density must be null (the
+     * dashboard then shows abundance) — never a fabricated rate. Abundance (15) is
+     * still reported. Red if the service ever invents a density from missing effort.
+     */
+    @Test
+    public void collectionDensity_degradesToNullDensity_whenNoEffortRecorded() {
+        when(dao.getSites()).thenReturn(List.of(new SiteOption(11, "S-B", "Site B")));
+        when(dao.getCollectionDensity(any(), any(), any()))
+                .thenReturn(List.of(new DensityAggregate("2026-W28", 11, null, 1, 15)));
+        when(dao.getCollectionEffort(any(), any(), any())).thenReturn(Collections.emptyList());
+
+        DensityRow row = service.getIndices(FROM, TO, null).getCollectionDensity().get(0);
+
+        assertEquals("abundance still shown when effort is absent", 15, row.getSpecimenCount());
+        assertNull("no effort recorded must yield null density, never a fabricated rate", row.getDensity());
+        assertNull(row.getTrapNights());
+    }
+
+    /**
+     * Non-positive / blank / non-numeric effort values are not usable as a
+     * denominator and must be skipped, degrading to null density (not a divide-by-0
+     * or a garbage rate). Red if a "0" or "abc" ever produces a density.
+     */
+    @Test
+    public void collectionDensity_ignoresBlankZeroOrNonNumericEffort() {
+        when(dao.getSites()).thenReturn(List.of(new SiteOption(10, "S-A", "Site A")));
+        when(dao.getCollectionDensity(any(), any(), any()))
+                .thenReturn(List.of(new DensityAggregate("2026-W28", 10, null, 1, 20)));
+        when(dao.getCollectionEffort(any(), any(), any())).thenReturn(
+                List.of(new EffortAggregate("2026-W28", 10, "0", "3"), new EffortAggregate("2026-W28", 10, "2", ""),
+                        new EffortAggregate("2026-W28", 10, "abc", "2")));
+
+        DensityRow row = service.getIndices(FROM, TO, null).getCollectionDensity().get(0);
+
+        assertEquals(20, row.getSpecimenCount());
+        assertNull("non-positive / non-numeric effort must not produce a density", row.getDensity());
     }
 
     // ---- classical MIR -----------------------------------------------------

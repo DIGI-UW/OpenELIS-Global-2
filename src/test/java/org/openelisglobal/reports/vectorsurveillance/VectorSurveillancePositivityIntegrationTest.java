@@ -3,6 +3,7 @@ package org.openelisglobal.reports.vectorsurveillance;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
@@ -15,13 +16,16 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.reports.vectorsurveillance.dao.VectorSurveillanceDAO;
+import org.openelisglobal.reports.vectorsurveillance.service.VectorSurveillanceService;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.DensityAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.EffortAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.PositivityAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SporozoiteAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO.DensityRow;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -55,6 +59,9 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
 
     @Autowired
     private VectorSurveillanceDAO dao;
+
+    @Autowired
+    private VectorSurveillanceService service;
 
     // Scope covers the fixture's collection_date 2026-07-06.
     private static final LocalDate FROM = LocalDate.of(2026, 7, 1);
@@ -161,6 +168,20 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
     private void insertQcProfile(String id, long sampleItemId, String qcType) {
         jdbcTemplate.update("INSERT INTO clinlims.sample_item_qc_profile"
                 + " (id, sample_item_id, qc_type, sys_user_id) VALUES (?, ?, ?, 1)", id, sampleItemId, qcType);
+    }
+
+    /** Inserts a LITERAL observation on a sample, resolving the type id by name. */
+    private void insertObservation(long id, long sampleId, String typeName, String value) {
+        Long typeId = jdbcTemplate.queryForObject(
+                "SELECT id FROM clinlims.observation_history_type WHERE type_name = ?", Long.class, typeName);
+        jdbcTemplate.update("INSERT INTO clinlims.observation_history"
+                + " (id, sample_id, observation_history_type_id, value_type, value, lastupdated)"
+                + " VALUES (?, ?, ?, 'L', ?, now())", id, sampleId, typeId, value);
+    }
+
+    private DensityRow densityRowForSite(List<DensityRow> rows, int siteId) {
+        return rows.stream().filter(d -> Integer.valueOf(siteId).equals(d.getSiteId())).findFirst()
+                .orElseThrow(() -> new AssertionError("expected a density row for site " + siteId));
     }
 
     private PositivityAggregate malariaRow(List<PositivityAggregate> panel) {
@@ -416,6 +437,52 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
                 dao.hasUnrecognizedPositivityClassification(FROM, TO, 900));
         assertFalse("site B carries only recognized values, so it must not be flagged",
                 dao.hasUnrecognizedPositivityClassification(FROM, TO, 901));
+    }
+
+    // ---- Collection density: trap-night effort (organisms per trap-night) -----
+
+    // The effort HQL joins vecTrapCount/vecTrapNights observations to each pool's
+    // Sample; only a real Postgres exercises the id user-types + observation join.
+    // Site A pools 900/901 record both effort values; pool 902 records none here.
+    @Test
+    public void getCollectionEffort_returnsRecordedTrapEffortPerPool() {
+        insertObservation(9201, 900, "vecTrapCount", "2");
+        insertObservation(9202, 900, "vecTrapNights", "1");
+        insertObservation(9203, 901, "vecTrapCount", "2");
+        insertObservation(9204, 901, "vecTrapNights", "2");
+
+        List<EffortAggregate> effort = dao.getCollectionEffort(FROM, TO, null);
+
+        long siteAEffort = effort.stream().filter(e -> Integer.valueOf(900).equals(e.getSiteId()))
+                .mapToLong(e -> Long.parseLong(e.getTrapCount()) * Long.parseLong(e.getTrapNights())).sum();
+        assertEquals("2x1 (pool 900) + 2x2 (pool 901) = 6 trap-nights at site A", 6L, siteAEffort);
+        assertFalse("site B recorded no trap effort",
+                effort.stream().anyMatch(e -> Integer.valueOf(901).equals(e.getSiteId())));
+    }
+
+    // End-to-end: the service divides abundance by the summed effort (organisms per
+    // trap-night) and degrades to null when a site recorded no effort — never a
+    // fabricated rate. Site A abundance 28 / (2x1 + 2x2 + 2x1)=8 -> 3.5.
+    @Test
+    public void collectionDensity_isEffortNormalized_andDegradesWithoutEffort() {
+        insertObservation(9211, 900, "vecTrapCount", "2");
+        insertObservation(9212, 900, "vecTrapNights", "1");
+        insertObservation(9213, 901, "vecTrapCount", "2");
+        insertObservation(9214, 901, "vecTrapNights", "2");
+        insertObservation(9215, 902, "vecTrapCount", "2");
+        insertObservation(9216, 902, "vecTrapNights", "1");
+        // Site B pool 903 records no trap effort.
+
+        List<DensityRow> density = service.getIndices(FROM, TO, null).getCollectionDensity();
+
+        DensityRow siteA = densityRowForSite(density, 900);
+        assertEquals("site A abundance (10+10+8)", 28L, siteA.getSpecimenCount());
+        assertEquals("site A trap-nights (2+4+2)", Long.valueOf(8), siteA.getTrapNights());
+        assertEquals("organisms per trap-night 28/8", 3.5, siteA.getDensity(), 0.001);
+
+        DensityRow siteB = densityRowForSite(density, 901);
+        assertEquals("site B abundance still present", 5L, siteB.getSpecimenCount());
+        assertNull("site B recorded no effort -> density degrades to null, not a fabricated rate", siteB.getDensity());
     }
 
     // ---- Site filter (positivity scoped by collection location) ---------------

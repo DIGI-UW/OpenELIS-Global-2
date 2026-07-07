@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.DensityAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.EffortAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.PositivityAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
@@ -20,6 +21,15 @@ import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAgg
 public interface VectorSurveillanceDAO {
 
     List<DensityAggregate> getCollectionDensity(LocalDate from, LocalDate to, Integer siteId);
+
+    /**
+     * Trapping effort per collection pool (raw trap-count/trap-nights observation
+     * values) for the density denominator. One row per pool x site; the service
+     * sums the parsed product (traps x nights) per period/site. Empty when no
+     * effort is recorded, which degrades density to "effort not recorded" rather
+     * than zero.
+     */
+    List<EffortAggregate> getCollectionEffort(LocalDate from, LocalDate to, Integer siteId);
 
     List<SpeciesAggregate> getSpeciesDistribution(LocalDate from, LocalDate to, Integer siteId);
 

@@ -308,6 +308,56 @@ function VectorSurveillanceDashboard() {
                     <FormattedMessage id="vectorReport.empty" />
                   </p>
                 )}
+                {(indices?.collectionDensity || []).length > 0 && (
+                  <div
+                    data-testid="density-table"
+                    style={{ marginTop: "1.5rem" }}
+                  >
+                    <h5 style={{ marginBottom: "0.5rem" }}>
+                      <FormattedMessage id="vectorReport.density.bySite" />
+                    </h5>
+                    <Table size="sm">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>
+                            <FormattedMessage id="vectorReport.density.period" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="vectorReport.density.site" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="vectorReport.density.specimens" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="vectorReport.density.trapNights" />
+                          </TableHeader>
+                          <TableHeader>
+                            <FormattedMessage id="vectorReport.density.perTrapNight" />
+                          </TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {(indices.collectionDensity || []).map((r, i) => (
+                          <TableRow key={`${r.periodLabel}-${r.siteId}-${i}`}>
+                            <TableCell>{r.periodLabel}</TableCell>
+                            <TableCell>{r.siteName || "-"}</TableCell>
+                            <TableCell>{r.specimenCount}</TableCell>
+                            <TableCell>{r.trapNights ?? "-"}</TableCell>
+                            <TableCell>
+                              {r.density != null ? (
+                                Number(r.density).toFixed(2)
+                              ) : (
+                                <span style={{ color: "var(--cds-text-helper)" }}>
+                                  <FormattedMessage id="vectorReport.density.effortNotRecorded" />
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </Tile>
             </Column>
 
