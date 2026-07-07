@@ -7,9 +7,9 @@ import java.util.List;
 /**
  * The reporting period's surveillance numbers in field-map order (US4). Each
  * row pairs a configured field-map entry (metricKey, label, portalTag) with the
- * value derived from the surveillance indices. The sporozoite row is
- * {@code gated=true} (value null) when {@code positiveResolutionPct < 95%};
- * otherwise its computed rate is shown.
+ * value derived from the surveillance indices. The sporozoite row is flagged
+ * {@code lowConfidence=true} when {@code positiveResolutionPct < 95%}; its rate
+ * is still shown, accompanied by a caveat, rather than withheld.
  */
 public class ManualEntryViewDTO {
 
@@ -64,17 +64,17 @@ public class ManualEntryViewDTO {
         private String label;
         private String portalTag;
         private String value;
-        private boolean gated;
+        private boolean lowConfidence;
 
         public Row() {
         }
 
-        public Row(String metricKey, String label, String portalTag, String value, boolean gated) {
+        public Row(String metricKey, String label, String portalTag, String value, boolean lowConfidence) {
             this.metricKey = metricKey;
             this.label = label;
             this.portalTag = portalTag;
             this.value = value;
-            this.gated = gated;
+            this.lowConfidence = lowConfidence;
         }
 
         public String getMetricKey() {
@@ -109,12 +109,12 @@ public class ManualEntryViewDTO {
             this.value = value;
         }
 
-        public boolean isGated() {
-            return gated;
+        public boolean isLowConfidence() {
+            return lowConfidence;
         }
 
-        public void setGated(boolean gated) {
-            this.gated = gated;
+        public void setLowConfidence(boolean lowConfidence) {
+            this.lowConfidence = lowConfidence;
         }
     }
 }

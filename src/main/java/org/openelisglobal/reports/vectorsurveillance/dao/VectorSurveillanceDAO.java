@@ -37,6 +37,14 @@ public interface VectorSurveillanceDAO {
      */
     boolean isPositivityClassificationPresent(LocalDate from, LocalDate to, Integer siteId);
 
+    /**
+     * True when a vector pool result in scope carries a non-null significance that
+     * is not a recognized classification (a typo or legacy value that can never be
+     * counted); drives a distinct "unrecognized classification" dashboard warning
+     * so a mixed catalog is not silently trusted.
+     */
+    boolean hasUnrecognizedPositivityClassification(LocalDate from, LocalDate to, Integer siteId);
+
     QcAggregate getQcPassRate(LocalDate from, LocalDate to, Integer siteId);
 
     /**

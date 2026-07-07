@@ -3,7 +3,6 @@ package org.openelisglobal.reports.vectorsurveillance.manualentry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -30,9 +29,9 @@ import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceInd
 /**
  * Unit tests for the Manual Entry view composition: the field map (order +
  * visibility) drives which rows appear and in what order, and the sporozoite
- * row is gated (value null) when resolution &lt; 95% (US4-3). Inversion guard
- * (Constitution V.6): replacing the gating predicate / ordering with a constant
- * MUST fail these.
+ * row is flagged low-confidence (its value is still shown) when resolution &lt;
+ * 95% (US4-3). Inversion guard (Constitution V.6): replacing the low-confidence
+ * predicate / ordering with a constant MUST fail these.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class ManualEntryViewServiceTest {
@@ -112,30 +111,35 @@ public class ManualEntryViewServiceTest {
         assertEquals(ManualEntryMetricKeys.POOLS_POSITIVE, view.getRows().get(0).getMetricKey());
     }
 
-    // US4-3: resolution < 95% → sporozoite row gated, value null.
+    // US4-3: resolution < 95% → sporozoite row is flagged low-confidence, but its
+    // value is STILL shown (show + caveat, not withheld).
     @Test
-    public void sporozoiteRow_isGatedAndNull_whenResolutionBelow95() {
+    public void sporozoiteRow_isLowConfidenceButShown_whenResolutionBelow95() {
         when(fieldMapService.getVisibleOrdered())
                 .thenReturn(List.of(field(ManualEntryMetricKeys.SPOROZOITE_RATE, 1, true)));
-        when(surveillanceService.getIndices(any(), any(), any())).thenReturn(indicesWith(mir(3, 600, 80.0)));
+        SurveillanceIndicesDTO indices = indicesWith(mir(3, 600, 80.0));
+        indices.setSporozoiteRatePct(2.0);
+        when(surveillanceService.getIndices(any(), any(), any())).thenReturn(indices);
 
         ManualEntryViewDTO.Row sporozoite = service.getView(START, END, null).getRows().get(0);
 
-        assertTrue("sporozoite must be gated when resolution < 95%", sporozoite.isGated());
-        assertNull("gated sporozoite value must be null", sporozoite.getValue());
+        assertTrue("sporozoite must be flagged low-confidence when resolution < 95%", sporozoite.isLowConfidence());
+        assertEquals("the rate is still shown with a caveat, not withheld", "2.00", sporozoite.getValue());
     }
 
-    // US4-3 boundary: resolution >= 95% → sporozoite NOT gated (value present).
+    // US4-3 boundary: resolution >= 95% → sporozoite NOT flagged (value present).
     @Test
-    public void sporozoiteRow_isNotGated_whenResolutionAtOrAbove95() {
+    public void sporozoiteRow_isNotLowConfidence_whenResolutionAtOrAbove95() {
         when(fieldMapService.getVisibleOrdered())
                 .thenReturn(List.of(field(ManualEntryMetricKeys.SPOROZOITE_RATE, 1, true)));
-        when(surveillanceService.getIndices(any(), any(), any())).thenReturn(indicesWith(mir(3, 600, 95.0)));
+        SurveillanceIndicesDTO indices = indicesWith(mir(3, 600, 95.0));
+        indices.setSporozoiteRatePct(2.0);
+        when(surveillanceService.getIndices(any(), any(), any())).thenReturn(indices);
 
         ManualEntryViewDTO.Row sporozoite = service.getView(START, END, null).getRows().get(0);
 
-        assertFalse("sporozoite must not be gated at resolution >= 95%", sporozoite.isGated());
-        assertNotNull("non-gated sporozoite value must be present", sporozoite.getValue());
+        assertFalse("sporozoite must not be low-confidence at resolution >= 95%", sporozoite.isLowConfidence());
+        assertNotNull("non-low-confidence sporozoite value must be present", sporozoite.getValue());
     }
 
     // Pools-positive value is derived from the indices, not the field map — proves
@@ -150,7 +154,7 @@ public class ManualEntryViewServiceTest {
         ManualEntryViewDTO.Row row = service.getView(START, END, null).getRows().get(0);
 
         assertEquals("7", row.getValue());
-        assertFalse(row.isGated());
+        assertFalse(row.isLowConfidence());
     }
 
     // A1: SITES_WITH_POSITIVES reflects the indices' real per-site count, not a
@@ -168,10 +172,10 @@ public class ManualEntryViewServiceTest {
         assertEquals("3", row.getValue());
     }
 
-    // A3: an ungated sporozoite row shows the computed rate, not a placeholder "—"
-    // (red on the old hardcoded value).
+    // A3: a normal-confidence sporozoite row shows the computed rate, not a dash
+    // placeholder (red on the old hardcoded value).
     @Test
-    public void sporozoiteValue_isTheComputedRate_whenNotGated() {
+    public void sporozoiteValue_isTheComputedRate_whenNotLowConfidence() {
         when(fieldMapService.getVisibleOrdered())
                 .thenReturn(List.of(field(ManualEntryMetricKeys.SPOROZOITE_RATE, 1, true)));
         SurveillanceIndicesDTO indices = indicesWith(mir(3, 600, 100.0));
@@ -180,7 +184,7 @@ public class ManualEntryViewServiceTest {
 
         ManualEntryViewDTO.Row row = service.getView(START, END, null).getRows().get(0);
 
-        assertFalse(row.isGated());
+        assertFalse(row.isLowConfidence());
         assertEquals("1.50", row.getValue());
     }
 

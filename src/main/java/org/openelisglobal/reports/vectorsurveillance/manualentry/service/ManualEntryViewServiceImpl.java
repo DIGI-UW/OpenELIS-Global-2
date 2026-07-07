@@ -19,11 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Derives the eight default Manual Entry metrics from the computed
  * {@link SurveillanceIndicesDTO} and projects them through the field map (order
- * + visibility). The sporozoite row is gated (value withheld) when the overall
+ * + visibility). The sporozoite row is flagged low-confidence when the overall
  * positive resolution is below {@value #SPOROZOITE_RESOLUTION_THRESHOLD_PCT}%
- * (US4-3); otherwise its computed rate is shown. Each metric reads its source
- * list directly, falling back to a MIR-derived value when a richer source list
- * is unavailable.
+ * (US4-3); its computed rate is still shown, with a caveat, rather than
+ * withheld. Each metric reads its source list directly, falling back to a
+ * MIR-derived value when a richer source list is unavailable.
  */
 @Service
 public class ManualEntryViewServiceImpl implements ManualEntryViewService {
@@ -46,23 +46,25 @@ public class ManualEntryViewServiceImpl implements ManualEntryViewService {
         ManualEntryViewDTO dto = new ManualEntryViewDTO(periodStart, periodEnd, siteId);
         SurveillanceIndicesDTO indices = surveillanceService.getIndices(periodStart, periodEnd, siteId);
 
-        boolean sporozoiteGated = isSporozoiteGated(indices);
+        boolean sporozoiteLowConfidence = isSporozoiteLowConfidence(indices);
 
         for (ManualEntryFieldMap field : fieldMapService.getVisibleOrdered()) {
             String metricKey = field.getMetricKey();
-            boolean gated = ManualEntryMetricKeys.SPOROZOITE_RATE.equals(metricKey) && sporozoiteGated;
-            String value = gated ? null : deriveValue(metricKey, indices);
-            dto.getRows()
-                    .add(new ManualEntryViewDTO.Row(metricKey, field.getLabel(), field.getPortalTag(), value, gated));
+            boolean lowConfidence = ManualEntryMetricKeys.SPOROZOITE_RATE.equals(metricKey) && sporozoiteLowConfidence;
+            // The value is always derived and shown; below the resolution threshold
+            // it is flagged low-confidence for a UI caveat, never withheld.
+            String value = deriveValue(metricKey, indices);
+            dto.getRows().add(new ManualEntryViewDTO.Row(metricKey, field.getLabel(), field.getPortalTag(), value,
+                    lowConfidence));
         }
         return dto;
     }
 
     /**
-     * Sporozoite gating (US4-3): withheld when the overall positive resolution is
-     * below threshold. With no MIR rows there is nothing to gate (not gated).
+     * Sporozoite low-confidence (US4-3): true when the overall positive resolution
+     * is below threshold. With no MIR rows there is nothing to flag.
      */
-    private boolean isSporozoiteGated(SurveillanceIndicesDTO indices) {
+    private boolean isSporozoiteLowConfidence(SurveillanceIndicesDTO indices) {
         List<MirRow> mir = indices.getMirBySpecies();
         if (mir == null || mir.isEmpty()) {
             return false;
@@ -99,7 +101,7 @@ public class ManualEntryViewServiceImpl implements ManualEntryViewService {
         case ManualEntryMetricKeys.SITES_WITH_POSITIVES:
             return Long.toString(indices.getSitesWithPositives());
         case ManualEntryMetricKeys.SPOROZOITE_RATE:
-            // Reached only when not gated (resolution >= threshold).
+            // Always shown; below the resolution threshold it is flagged low-confidence.
             Double sporozoite = indices.getSporozoiteRatePct();
             return sporozoite == null ? "—" : format(sporozoite);
         default:

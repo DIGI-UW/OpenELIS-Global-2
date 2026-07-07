@@ -26,6 +26,12 @@ public class SurveillanceIndicesDTO {
      * positivity-dependent panels rather than misleading zeros.
      */
     private boolean positivityConfigured = true;
+    /**
+     * True when a result in scope carries a non-null significance outside the
+     * recognized set (a typo or legacy value that cannot be counted); drives a
+     * distinct data-quality warning so a mixed catalog is not silently trusted.
+     */
+    private boolean positivityClassificationUnrecognized = false;
     /** Distinct sampling sites with at least one positive pool in scope. */
     private long sitesWithPositives;
 
@@ -91,6 +97,14 @@ public class SurveillanceIndicesDTO {
 
     public void setPositivityConfigured(boolean positivityConfigured) {
         this.positivityConfigured = positivityConfigured;
+    }
+
+    public boolean isPositivityClassificationUnrecognized() {
+        return positivityClassificationUnrecognized;
+    }
+
+    public void setPositivityClassificationUnrecognized(boolean positivityClassificationUnrecognized) {
+        this.positivityClassificationUnrecognized = positivityClassificationUnrecognized;
     }
 
     public long getSitesWithPositives() {

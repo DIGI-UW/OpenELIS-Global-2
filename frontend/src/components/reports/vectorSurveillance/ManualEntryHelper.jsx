@@ -66,8 +66,8 @@ function currentIsoWeek() {
 
 function MetricTile({ row, onCopy }) {
   const intl = useIntl();
-  const gated = row.gated;
-  const value = gated ? "" : (row.value ?? "");
+  const lowConfidence = row.lowConfidence;
+  const value = row.value ?? "";
 
   return (
     <Tile style={{ marginBottom: "0.75rem" }}>
@@ -88,34 +88,32 @@ function MetricTile({ row, onCopy }) {
               </Tag>
             )}
           </p>
-          {gated ? (
+          <p style={{ fontSize: "1.5rem", fontWeight: 400 }}>{value || "—"}</p>
+          {lowConfidence && (
             <InlineNotification
               kind="info"
               lowContrast
               hideCloseButton
               title={intl.formatMessage({
-                id: "vectorReport.manualEntry.gated",
-                defaultMessage: "Needs ≥ 95% coverage",
+                id: "vectorReport.manualEntry.lowConfidence",
+                defaultMessage:
+                  "Confidence reduced (pool deconvolution below 95%)",
               })}
               subtitle=""
             />
-          ) : (
-            <p style={{ fontSize: "1.5rem", fontWeight: 400 }}>{value || "—"}</p>
           )}
         </div>
-        {!gated && (
-          <IconButton
-            kind="ghost"
-            label={intl.formatMessage({
-              id: "vectorReport.manualEntry.copy",
-              defaultMessage: "Copy value",
-            })}
-            onClick={() => onCopy(value)}
-            disabled={!value}
-          >
-            <Copy />
-          </IconButton>
-        )}
+        <IconButton
+          kind="ghost"
+          label={intl.formatMessage({
+            id: "vectorReport.manualEntry.copy",
+            defaultMessage: "Copy value",
+          })}
+          onClick={() => onCopy(value)}
+          disabled={!value}
+        >
+          <Copy />
+        </IconButton>
       </div>
     </Tile>
   );
@@ -170,7 +168,7 @@ export default function ManualEntryHelper() {
     setSubmitting(true);
     const valueSnapshot = {};
     (view.rows || []).forEach((r) => {
-      valueSnapshot[r.metricKey] = r.gated ? "" : (r.value ?? "");
+      valueSnapshot[r.metricKey] = r.value ?? "";
     });
     postToOpenElisServerFullResponse(
       SUBMIT_URL,

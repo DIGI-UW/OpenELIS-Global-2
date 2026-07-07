@@ -7,8 +7,10 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.reports.vectorsurveillance.dao.VectorSurveillanceDAO;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
@@ -48,6 +50,13 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
 
     /** Catalog classification marking a positive surveillance result. */
     private static final String POSITIVE = TestResultSignificance.POSITIVE.name();
+
+    /**
+     * Every countable classification; a significance outside this set is
+     * unrecognized.
+     */
+    private static final List<String> RECOGNIZED_SIGNIFICANCE = Arrays.stream(TestResultSignificance.values())
+            .map(Enum::name).collect(Collectors.toList());
 
     // A sample_item flagged in sample_item_qc_profile is a lab QC sample (blank,
     // control, or duplicate replicate), not a field observation, so it is excluded
@@ -330,6 +339,29 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " and r.testResult = tr and tr.significance is not null"
                     + " and s.collectionDate between :from and :to" + sitePoolClause(siteId);
             Query q = entityManager.createQuery(hql);
+            q.setParameter("from", from(fromDate));
+            q.setParameter("to", to(toDate));
+            if (siteId != null) {
+                q.setParameter("siteId", siteId.longValue());
+            }
+            return lng(q.getSingleResult()) > 0;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean hasUnrecognizedPositivityClassification(LocalDate fromDate, LocalDate toDate, Integer siteId) {
+        try {
+            String hql = "select count(r.id) from VectorPool p, Sample s, Analysis a, Result r, TestResult tr"
+                    + " where s.id = p.sampleId and p.parentPool is null"
+                    + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
+                    + " and r.testResult = tr and tr.significance is not null"
+                    + " and tr.significance not in (:recognized)" + " and s.collectionDate between :from and :to"
+                    + sitePoolClause(siteId);
+            Query q = entityManager.createQuery(hql);
+            q.setParameter("recognized", RECOGNIZED_SIGNIFICANCE);
             q.setParameter("from", from(fromDate));
             q.setParameter("to", to(toDate));
             if (siteId != null) {

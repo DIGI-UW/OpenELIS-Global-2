@@ -8,6 +8,7 @@ import {
   Button,
   Tile,
   Tag,
+  InlineNotification,
   SkeletonText,
   DataTable,
   Table,
@@ -362,6 +363,25 @@ function VectorSurveillanceDashboard() {
                 )}
               </Tile>
             </Column>
+
+            {/* Data-quality guard: some result carries a significance value outside
+                the recognized set (a typo / legacy value that cannot be counted).
+                Warn so the positivity figures are not read as complete. */}
+            {indices?.positivityClassificationUnrecognized && (
+              <Column lg={16} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+                <div data-testid="vector-positivity-unrecognized">
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "vectorReport.positivity.unrecognized",
+                    })}
+                    subtitle=""
+                  />
+                </div>
+              </Column>
+            )}
 
             {/* Positivity-dependent panels (sporozoite, positivity, MIR) need the
                 catalog significance classification. When it is absent, show a clear

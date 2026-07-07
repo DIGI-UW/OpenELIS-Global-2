@@ -391,6 +391,20 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
                 dao.isPositivityClassificationPresent(FROM, TO, null));
     }
 
+    // Data-quality guard: a non-null significance outside the recognized set (a
+    // typo or legacy value that can never be counted) must be detected so the
+    // dashboard warns instead of silently trusting a mixed catalog.
+    @Test
+    public void unrecognizedClassification_isDetected_forDataQualityGuard() {
+        assertFalse("baseline: every seeded significance is a recognized classification",
+                dao.hasUnrecognizedPositivityClassification(FROM, TO, null));
+
+        jdbcTemplate.update("UPDATE clinlims.test_result SET significance = 'POSITIF' WHERE id = 9001");
+
+        assertTrue("a non-null significance outside the recognized set must be flagged",
+                dao.hasUnrecognizedPositivityClassification(FROM, TO, null));
+    }
+
     // ---- Site filter (positivity scoped by collection location) ---------------
 
     @Test

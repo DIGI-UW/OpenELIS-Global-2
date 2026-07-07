@@ -7,8 +7,8 @@ import org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.Man
  * Composes the Manual Entry Helper view (US4): field-map rows (ordered,
  * visible) each carrying the metric value derived from the M1
  * {@code VectorSurveillanceService.getIndices(...)} for the period. The
- * sporozoite row is gated (value null) when
- * {@code positiveResolutionPct < 95%}.
+ * sporozoite row is flagged low-confidence (rate shown with a caveat, not
+ * withheld) when {@code positiveResolutionPct < 95%}.
  */
 public interface ManualEntryViewService {
 

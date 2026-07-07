@@ -15,21 +15,21 @@ const MOCK_VIEW = {
       label: "Pools tested",
       portalTag: "PT",
       value: "12",
-      gated: false,
+      lowConfidence: false,
     },
     {
       metricKey: "POOLS_POSITIVE",
       label: "Pools positive",
       portalTag: null,
       value: "3",
-      gated: false,
+      lowConfidence: false,
     },
     {
       metricKey: "SPOROZOITE_RATE",
       label: "Sporozoite rate",
       portalTag: null,
-      value: null,
-      gated: true,
+      value: "1.20",
+      lowConfidence: true,
     },
   ],
 };
@@ -81,12 +81,13 @@ describe("ManualEntryHelper", () => {
     expect(screen.getAllByText("PT").length).toBeGreaterThan(0);
   });
 
-  it("shows the gated coverage state for the sporozoite tile (no value, no copy)", () => {
+  it("shows the sporozoite value with a low-confidence caveat (not withheld)", () => {
     renderWithIntl(<ManualEntryHelper />);
-    expect(
-      screen.getAllByText(/Needs ≥ 95% coverage/i).length,
-    ).toBeGreaterThan(0);
-    // gated tile must not expose the (null) value as a copyable number
+    // The rate is shown...
+    expect(screen.getAllByText("1.20").length).toBeGreaterThan(0);
+    // ...accompanied by the caveat (superseding the old "withheld" behavior),
+    // and the literal null is never rendered.
+    expect(screen.getAllByText(/Confidence reduced/i).length).toBeGreaterThan(0);
     expect(screen.queryByText("null")).not.toBeInTheDocument();
   });
 
@@ -118,9 +119,9 @@ describe("ManualEntryHelper", () => {
     const body = JSON.parse(payload);
     expect(body.periodStart).toBe("2026-02-02");
     expect(body.periodEnd).toBe("2026-02-08");
-    // snapshot carries the non-gated figures and a blank for the gated row
+    // snapshot carries the actual figures, including the low-confidence sporozoite value
     expect(body.valueSnapshot.POOLS_TESTED).toBe("12");
-    expect(body.valueSnapshot.SPOROZOITE_RATE).toBe("");
+    expect(body.valueSnapshot.SPOROZOITE_RATE).toBe("1.20");
     expect(screen.getByText(/Week marked submitted/i)).toBeInTheDocument();
   });
 });

@@ -338,4 +338,32 @@ describe("VectorSurveillanceDashboard", () => {
       within(spo).getByText(messages["vectorReport.mir.sporozoiteNote"]),
     ).toBeInTheDocument();
   });
+
+  test("warns when a result carries an unrecognized significance classification", async () => {
+    getSurveillanceIndices.mockImplementation((scope, cb) =>
+      cb({ ...mockIndices, positivityClassificationUnrecognized: true }),
+    );
+
+    renderWithIntl(<VectorSurveillanceDashboard />);
+    applyFilters();
+
+    const warning = await screen.findByTestId("vector-positivity-unrecognized");
+    expect(warning).toHaveTextContent(
+      messages["vectorReport.positivity.unrecognized"],
+    );
+  });
+
+  test("no unrecognized-classification warning when every significance is recognized", async () => {
+    getSurveillanceIndices.mockImplementation((scope, cb) => cb(mockIndices));
+
+    renderWithIntl(<VectorSurveillanceDashboard />);
+    applyFilters();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("donut-chart")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByTestId("vector-positivity-unrecognized"),
+    ).not.toBeInTheDocument();
+  });
 });

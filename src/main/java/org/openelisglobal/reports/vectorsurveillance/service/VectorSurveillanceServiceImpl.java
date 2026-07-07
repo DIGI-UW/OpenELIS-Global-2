@@ -90,6 +90,9 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
         // Degradation: when no result carries a significance classification the
         // positivity-dependent panels must show "not configured", not fake zeros.
         dto.setPositivityConfigured(dao.isPositivityClassificationPresent(from, to, siteId));
+        // Data-quality guard: surface a warning when a result carries a significance
+        // value outside the recognized set (never silently trust a mixed catalog).
+        dto.setPositivityClassificationUnrecognized(dao.hasUnrecognizedPositivityClassification(from, to, siteId));
         return dto;
     }
 
