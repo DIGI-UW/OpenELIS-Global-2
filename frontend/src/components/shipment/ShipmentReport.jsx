@@ -22,8 +22,11 @@ import { DocumentPdf, Download } from "@carbon/icons-react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { applyPlugin } from "jspdf-autotable";
 import ExcelJS from "exceljs";
+
+// jspdf-autotable v4+ no longer patches jsPDF on a bare import; restore doc.autoTable.
+applyPlugin(jsPDF);
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
