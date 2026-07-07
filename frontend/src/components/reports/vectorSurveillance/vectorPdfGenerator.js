@@ -1,5 +1,9 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { applyPlugin } from "jspdf-autotable";
+
+// jspdf-autotable v4+ does not patch the jsPDF prototype on a bare import;
+// applyPlugin restores the doc.autoTable() / doc.lastAutoTable used below.
+applyPlugin(jsPDF);
 
 /**
  * Client-side PDF export of the Vector Surveillance dashboard (US3 / FR-006).
