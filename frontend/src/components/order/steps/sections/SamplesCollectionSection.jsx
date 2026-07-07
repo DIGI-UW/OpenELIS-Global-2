@@ -111,7 +111,9 @@ const SamplesCollectionSection = ({
       <Stack gap={5}>
         {/* Sample Cards — only regular (non-QC) samples get full collection forms */}
         {samples.map((sample, index) =>
-          sample.qcMetadata?.qcType ? null : (
+          // Skip QC summaries and rejected/resampled specimens — a rejected
+          // specimen is read-only in the QA acceptance table, not collected here.
+          sample.qcMetadata?.qcType || sample.sampleRejected ? null : (
             <div key={index}>
               <SampleCollectionCard
                 sample={sample}

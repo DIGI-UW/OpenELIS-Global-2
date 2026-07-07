@@ -300,7 +300,14 @@ public abstract class ConfigurationProperties {
         ORDER_ENTRY_WORKFLOW_TYPE("orderEntryWorkflowType", "text"), // Controls order entry workflow: "Clinical",
                                                                      // "Environmental", or "Both"
         ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
-        ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"); // signing session inactivity timeout
+        ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"), // signing session inactivity timeout
+
+        // S-09 (OGC-580) Sample Acceptance Checklist — per-domain enforcement
+        // (MANDATORY/OPTIONAL/OFF, default OPTIONAL)
+        // dbName capped at 32 chars (site_information.name is varchar(32))
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_CLINICAL("sampleAcceptCheck.clinical", "text"),
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL("sampleAcceptCheck.environmental", "text"),
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text");
 
         // visible on
         // the ui

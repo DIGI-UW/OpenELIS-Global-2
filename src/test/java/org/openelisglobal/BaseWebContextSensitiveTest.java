@@ -356,4 +356,38 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             throw new RuntimeException("Failed to ensure a site_information row", e);
         }
     }
+
+    /**
+     * Idempotently ensure the named {@code clinlims.site_information} row exists
+     * with the given value, inserting it (value_type {@code 'text'}, null domain)
+     * via raw JDBC if absent. For config-backed tests that read a migration-seeded
+     * site_information row but do not own that seed: a sibling fixture's
+     * {@code TRUNCATE site_information ... CASCADE} runs committed on a separate
+     * connection (outside the test's {@code @Rollback} transaction), so it
+     * permanently deletes the row for the rest of the JVM run. {@code domain_id} is
+     * nullable and unused by {@code ConfigurationProperties}, so it is left null.
+     * Insert-if-absent only — an existing row's value is left untouched.
+     */
+    protected void ensureSiteInformation(String name, String value) {
+        try (Connection conn = dataSource.getConnection()) {
+            try (java.sql.PreparedStatement check = conn
+                    .prepareStatement("SELECT 1 FROM clinlims.site_information WHERE name = ?")) {
+                check.setString(1, name);
+                try (java.sql.ResultSet rs = check.executeQuery()) {
+                    if (rs.next()) {
+                        return;
+                    }
+                }
+            }
+            try (java.sql.PreparedStatement insert = conn.prepareStatement(
+                    "INSERT INTO clinlims.site_information (id, name, value, value_type, lastupdated) "
+                            + "VALUES (nextval('clinlims.site_information_seq'), ?, ?, 'text', now())")) {
+                insert.setString(1, name);
+                insert.setString(2, value);
+                insert.executeUpdate();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to ensure site_information row for " + name, e);
+        }
+    }
 }

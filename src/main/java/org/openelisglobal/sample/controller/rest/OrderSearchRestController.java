@@ -321,8 +321,8 @@ public class OrderSearchRestController extends BaseRestController {
                     });
                 }
 
-                // QA is complete if all checklist items are verified
-                boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+                // QA is complete if the QA step has been saved (checklist record exists)
+                boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
 
                 // Determine order status
                 String orderStatus;
@@ -538,6 +538,15 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("voided", sampleItem.isVoided());
                 if (sampleItem.getVoidReason() != null) {
                     sampleItemData.put("voidReason", sampleItem.getVoidReason());
+                }
+                // S-09 (OGC-580): expose the per-specimen rejected flag so the workflow can
+                // surface a rejected/resampled specimen (read-only "Rejected" in the QA
+                // intake-acceptance table, with its replacement-order link) while keeping it
+                // out of the Collect / Label & Store action lists — visible, not silently
+                // dropped.
+                sampleItemData.put("sampleRejected", sampleItem.isRejected());
+                if (sampleItem.getRejectReasonId() != null) {
+                    sampleItemData.put("rejectionReason", sampleItem.getRejectReasonId());
                 }
 
                 // Vector pool membership: expose the stable pool id + size so the
@@ -802,8 +811,9 @@ public class OrderSearchRestController extends BaseRestController {
             }
             stepProgress.put("label", labelComplete);
 
-            // QA is complete if all checklist items are verified
-            boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+            // QA is complete if the QA step has been saved (checklist record exists),
+            // regardless of whether all items are checked (checklist is advisory)
+            boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
             stepProgress.put("qa", qaComplete);
             response.put("stepProgress", stepProgress);
 

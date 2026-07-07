@@ -109,8 +109,7 @@ public class SampleTypeRequestRestController {
             sampleTypeRequest.setSample(sample);
             sampleTypeRequest.setTypeOfSample(typeOfSample);
             sampleTypeRequest.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
-            sampleTypeRequest
-                    .setRequestedQuantity(dto.getRequestedQuantity() != null ? dto.getRequestedQuantity() : 1.0);
+            sampleTypeRequest.setRequestedQuantity(dto.getRequestedQuantity());
             sampleTypeRequest.setRequestedTests(dto.getRequestedTests());
             sampleTypeRequest.setRequestedPanels(dto.getRequestedPanels());
             sampleTypeRequest.setStatus(SampleTypeRequest.Status.REQUESTED);

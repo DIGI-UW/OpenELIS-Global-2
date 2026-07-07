@@ -75,6 +75,7 @@ import ExternalConnectionMenu from "./externalConnections/ExternalConnectionMenu
 import ExternalConnectionAddModify from "./externalConnections/ExternalConnectionAddModify";
 import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
+import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
 
 function Admin() {
@@ -329,6 +330,10 @@ function Admin() {
       <Route
         path={`${path}/vectorSurveillanceSetup`}
         component={VectorSurveillanceSetup}
+      />
+      <Route
+        path={`${path}/SampleAcceptanceChecklist`}
+        component={SampleAcceptanceChecklistSetup}
       />
       <Route
         path={path}

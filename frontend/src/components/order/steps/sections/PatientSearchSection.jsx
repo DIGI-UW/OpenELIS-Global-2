@@ -290,6 +290,12 @@ const PatientSearchSection = ({
       <h4 className="section-title">
         <FormattedMessage id="banner.menu.patient" defaultMessage="Patient" />
       </h4>
+      <p className="helper-text">
+        <FormattedMessage
+          id="patient.search.section.helper"
+          defaultMessage="Search by any combination of fields — partial matches accepted. 'External Search' queries the Client Registry and requires at minimum a name and date of birth."
+        />
+      </p>
 
       {/* Tab Buttons */}
       <div className="section-tabs">
@@ -331,6 +337,11 @@ const PatientSearchSection = ({
                 placeholder={intl.formatMessage({
                   id: "patient.id.placeholder",
                   defaultMessage: "Enter Patient Id",
+                })}
+                helperText={intl.formatMessage({
+                  id: "patient.id.helper",
+                  defaultMessage:
+                    "Enter subject number, national ID, or ST number.",
                 })}
                 value={searchFields.patientId}
                 onChange={(e) => handleFieldChange("patientId", e.target.value)}
