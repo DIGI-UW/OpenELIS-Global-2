@@ -183,6 +183,47 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
         assertEquals(Long.valueOf(1L), rowCount("LOINC", "1558-6"));
     }
 
+    private String legacyLoinc() {
+        return jdbc.queryForObject("SELECT loinc FROM clinlims.test WHERE id = ?", String.class, TEST_ID);
+    }
+
+    @org.junit.Test
+    public void saveTerminology_mirrorsLoincToLegacyTestColumn() {
+        // New editor → legacy: the SAME_AS LOINC mapping populates test.loinc.
+        put(mapping("LOINC", "1558-6", "SAME_AS"));
+        assertEquals("1558-6", legacyLoinc());
+        // Clearing the LOINC mapping clears the legacy column.
+        put();
+        assertEquals(null, legacyLoinc());
+    }
+
+    @org.junit.Test
+    public void syncLegacyLoinc_mirrorsLegacyLoincIntoMappings_andLeavesOtherSourcesAlone() {
+        // Seed a non-LOINC mapping that legacy LOINC edits must not disturb.
+        put(mapping("SNOMED", "271649006", "SAME_AS"));
+
+        // Legacy → new editor: a legacy LOINC edit surfaces as a LOINC/SAME_AS row.
+        terminologyService.syncLegacyLoinc(testId(), "4548-4", "1");
+        TerminologyResponse loaded = controller.getTerminology(testId()).getBody();
+        assertEquals(2, loaded.mappings.size());
+        MappingDto loinc = loaded.mappings.stream().filter(m -> "LOINC".equals(m.source)).findFirst().get();
+        assertEquals("4548-4", loinc.code);
+        assertEquals("SAME_AS", loinc.relationship);
+        assertTrue(loaded.mappings.stream().anyMatch(m -> "SNOMED".equals(m.source) && "271649006".equals(m.code)));
+
+        // Changing the legacy LOINC retires the old code and surfaces the new one.
+        terminologyService.syncLegacyLoinc(testId(), "1558-6", "1");
+        TerminologyResponse changed = controller.getTerminology(testId()).getBody();
+        assertEquals(1L, changed.mappings.stream().filter(m -> "LOINC".equals(m.source)).count());
+        assertEquals("1558-6", changed.mappings.stream().filter(m -> "LOINC".equals(m.source)).findFirst().get().code);
+
+        // Clearing the legacy LOINC soft-deletes the LOINC mapping but keeps SNOMED.
+        terminologyService.syncLegacyLoinc(testId(), null, "1");
+        TerminologyResponse cleared = controller.getTerminology(testId()).getBody();
+        assertTrue(cleared.mappings.stream().noneMatch(m -> "LOINC".equals(m.source)));
+        assertTrue(cleared.mappings.stream().anyMatch(m -> "SNOMED".equals(m.source)));
+    }
+
     @org.junit.Test
     public void terminology_unknownTestReturns404() {
         assertEquals(404, controller.getTerminology("99999999").getStatusCode().value());

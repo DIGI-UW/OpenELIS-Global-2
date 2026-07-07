@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
@@ -61,6 +61,10 @@ function SearchPatientForm(props) {
   );
   const [prevfirstName, setPrevfirstName] = useState("");
   const [prevlastName, setPrevlastName] = useState("");
+  // When a lab-number deep link drives the search, auto-select the matched
+  // patient once results arrive (so the user lands on the patient page, not the
+  // search results). Manual searches leave this false and just list results.
+  const autoSelectOnResults = useRef(false);
 
   const handlePatientImport = (patientId) => {
     console.log("Import button clicked, patientId:", patientId);
@@ -206,6 +210,18 @@ function SearchPatientForm(props) {
     if (patientsResults.length > 0) {
       patientsResults.forEach((item) => (item.id = item.patientID));
       setPatientSearchResults(patientsResults);
+      if (autoSelectOnResults.current) {
+        autoSelectOnResults.current = false;
+        const localPatient =
+          patientsResults.find((p) => p.dataSourceName === "OpenElis") ||
+          patientsResults[0];
+        if (localPatient) {
+          getFromOpenElisServer(
+            "/rest/patient-details?patientID=" + localPatient.patientID,
+            fetchPatientDetails,
+          );
+        }
+      }
     } else {
       setPatientSearchResults([]);
       addNotification({
@@ -297,12 +313,20 @@ function SearchPatientForm(props) {
     }
   };
   useEffect(() => {
-    let patientId = new URLSearchParams(window.location.search).get(
-      "patientId",
-    );
+    const params = new URLSearchParams(window.location.search);
+    let patientId = params.get("patientId");
     if (patientId) {
       const searchEndPoint = "/rest/patient-details?patientID=" + patientId;
       getFromOpenElisServer(searchEndPoint, fetchPatientDetails);
+      return;
+    }
+    // Deep link from elsewhere (e.g. the Validation page) — prefill the lab
+    // number and run the search so the matching patient surfaces immediately.
+    let labNumber = params.get("labNumber");
+    if (labNumber) {
+      autoSelectOnResults.current = true;
+      setSearchFormValues({ ...SearchPatientFormValues, labNumber });
+      handleSubmit({ ...SearchPatientFormValues, labNumber });
     }
   }, []);
   return (

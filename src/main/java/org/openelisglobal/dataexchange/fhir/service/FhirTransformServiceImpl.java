@@ -6,6 +6,7 @@ import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,6 +84,17 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
+import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
+import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
@@ -100,6 +112,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private SampleService sampleService;
     @Autowired
     private AnalysisService analysisService;
+    @Autowired
+    private TestService testService;
+    @Autowired
+    private TestTerminologyMappingService testTerminologyMappingService;
     @Autowired
     private ResultService resultService;
     @Autowired
@@ -576,6 +592,207 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Override
     public ServiceRequest transformToServiceRequest(String analysisId) {
         return serviceRequestTransformService.transformToServiceRequest(analysisService.get(analysisId));
+    public ServiceRequest transformToServiceRequest(String anlaysisId) {
+        return this.transformToServiceRequest(analysisService.get(anlaysisId));
+    }
+
+    private ServiceRequest transformToServiceRequest(Analysis analysis) {
+        LogEvent.logTrace(this.getClass().getSimpleName(), "transformToServiceRequest",
+                "transformToServiceRequest called");
+
+        Sample sample = analysis.getSampleItem().getSample();
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        Provider provider = sampleHumanService.getProviderForSample(sample);
+
+        Organization organization = sampleService.getOrganizationRequester(sample,
+                TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
+        Organization organizationDepartment = sampleService.getOrganizationRequester(sample,
+                TableIdService.getInstance().REFERRING_ORG_DEPARTMENT_TYPE_ID);
+
+        Test test = analysis.getTest();
+        ServiceRequest serviceRequest = new ServiceRequest();
+        serviceRequest.setId(analysis.getFhirUuidAsString());
+        serviceRequest.addIdentifier(
+                this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analysis_uuid", analysis.getFhirUuidAsString()));
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            serviceRequest.addIdentifier(facilityId);
+        }
+        serviceRequest.setRequisition(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/samp_labNo",
+                analysis.getSampleItem().getSample().getAccessionNumber()));
+        if (organization != null) {
+            serviceRequest.addLocationReference(
+                    this.createReferenceFor(ResourceType.Location, organization.getFhirUuidAsString()));
+        }
+        if (organizationDepartment != null) {
+            serviceRequest.addLocationReference(
+                    this.createReferenceFor(ResourceType.Location, organizationDepartment.getFhirUuidAsString()));
+        }
+
+        List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(sample.getReferringId());
+
+        if (eOrders.size() <= 0) {
+            serviceRequest.setIntent(ServiceRequestIntent.ORIGINALORDER);
+        } else if (ElectronicOrderType.FHIR.equals(eOrders.get(eOrders.size() - 1).getType())) {
+            serviceRequest.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, sample.getReferringId()));
+            serviceRequest.setIntent(ServiceRequestIntent.ORDER);
+        } else if (ElectronicOrderType.HL7_V2.equals(eOrders.get(eOrders.size() - 1).getType())) {
+            serviceRequest.setIntent(ServiceRequestIntent.ORDER);
+        }
+
+        if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.NotStarted))) {
+            serviceRequest.setStatus(ServiceRequestStatus.ACTIVE);
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance))) {
+            serviceRequest.setStatus(ServiceRequestStatus.ACTIVE);
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.TechnicalRejected))) {
+            serviceRequest.setStatus(ServiceRequestStatus.REVOKED);
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.Finalized))) {
+            serviceRequest.setStatus(ServiceRequestStatus.COMPLETED);
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.Canceled))) {
+            serviceRequest.setStatus(ServiceRequestStatus.REVOKED);
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.SampleRejected))) {
+            serviceRequest.setStatus(ServiceRequestStatus.ENTEREDINERROR);
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
+            serviceRequest.setStatus(ServiceRequestStatus.ACTIVE);
+        } else {
+            serviceRequest.setStatus(ServiceRequestStatus.UNKNOWN);
+        }
+        ObservationHistory program = observationHistoryService.getObservationHistoriesBySampleIdAndType(sample.getId(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.PROGRAM));
+        if (program != null && !GenericValidator.isBlankOrNull(program.getValue())) {
+            serviceRequest.addCategory(transformSampleProgramToCodeableConcept(program));
+        }
+        serviceRequest.setPriority(convertToServiceRequestPriority(sample.getPriority()));
+        serviceRequest.setCode(transformTestToCodeableConcept(test.getId()));
+        serviceRequest.setAuthoredOn(new Date());
+        for (Note note : noteService.getNotes(analysis)) {
+            serviceRequest.addNote(transformNoteToAnnotation(note));
+        }
+        // TODO performer type?
+
+        serviceRequest.addSpecimen(
+                this.createReferenceFor(ResourceType.Specimen, analysis.getSampleItem().getFhirUuidAsString()));
+        // OGC-356: Environmental samples don't have a patient
+        if (patient != null) {
+            serviceRequest.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        }
+        if (provider != null && provider.getFhirUuid() != null) {
+            serviceRequest
+                    .setRequester(this.createReferenceFor(ResourceType.Practitioner, provider.getFhirUuidAsString()));
+        }
+
+        return serviceRequest;
+    }
+
+    private CodeableConcept transformSampleProgramToCodeableConcept(ObservationHistory program) {
+        LogEvent.logTrace(this.getClass().getSimpleName(), "transformSampleProgramToCodeableConcept",
+                "transformSampleProgramToCodeableConcept called");
+
+        CodeableConcept codeableConcept = new CodeableConcept();
+        String programDisplay = "";
+        String programCode = "";
+        if ("D".equals(program.getValueType())) {
+            Dictionary dictionary = dictionaryService.get(program.getValue());
+            if (dictionary != null) {
+                programCode = dictionary.getDictEntry();
+                programDisplay = dictionary.getDictEntry();
+            }
+        } else {
+            programCode = program.getValue();
+            programDisplay = program.getValue();
+        }
+        codeableConcept
+                .addCoding(new Coding(fhirConfig.getOeFhirSystem() + "/sample_program", programCode, programDisplay));
+        return codeableConcept;
+    }
+
+    private CodeableConcept transformTestToCodeableConcept(String testId) {
+        return transformTestToCodeableConcept(testService.get(testId));
+    }
+
+    private CodeableConcept transformTestToCodeableConcept(Test test) {
+        LogEvent.logTrace(this.getClass().getSimpleName(), "transformTestToCodeableConcept",
+                "transformTestToCodeableConcept test called");
+
+        String display = test.getLocalizedTestName() != null ? test.getLocalizedTestName().getEnglish()
+                : test.getName();
+        CodeableConcept codeableConcept = new CodeableConcept();
+
+        // Group the configured terminology mappings (the editor's Terminology section
+        // is the source of truth) by their FHIR system, keeping only those with a
+        // recognized system and a code. The legacy test.loinc value participates as a
+        // LOINC SAME_AS candidate — it is kept in sync with the LOINC SAME_AS mapping
+        // and also covers tests not yet migrated to the terminology editor.
+        Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
+        for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
+            String system = terminologySystemUrl(mapping.getSource());
+            if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
+                continue;
+            }
+            bySystem.computeIfAbsent(system, k -> new ArrayList<>())
+                    .add(new Candidate(mapping.getCode(), "SAME_AS".equalsIgnoreCase(mapping.getRelationship())));
+        }
+        if (!GenericValidator.isBlankOrNull(test.getLoinc())) {
+            bySystem.computeIfAbsent("http://loinc.org", k -> new ArrayList<>())
+                    .add(new Candidate(test.getLoinc(), true));
+        }
+
+        // Emit one system's codings at a time. Within a system the SAME_AS mapping is
+        // the equivalent concept, so it wins; with no SAME_AS we keep the rest. A test
+        // thus maps to multiple terminology systems at once (LOINC + SNOMED + ...).
+        for (Map.Entry<String, List<Candidate>> entry : bySystem.entrySet()) {
+            String system = entry.getKey();
+            List<Candidate> candidates = entry.getValue();
+            boolean hasSameAs = candidates.stream().anyMatch(c -> c.sameAs);
+            Set<String> seenCodes = new HashSet<>();
+            for (Candidate candidate : candidates) {
+                if (hasSameAs && !candidate.sameAs) {
+                    continue;
+                }
+                if (seenCodes.add(candidate.code)) {
+                    codeableConcept.addCoding(new Coding(system, candidate.code, display));
+                }
+            }
+        }
+        return codeableConcept;
+    }
+
+    /**
+     * A candidate code for one terminology system, flagged if it is a SAME_AS
+     * mapping.
+     */
+    private static final class Candidate {
+        private final String code;
+        private final boolean sameAs;
+
+        private Candidate(String code, boolean sameAs) {
+            this.code = code;
+            this.sameAs = sameAs;
+        }
+    }
+
+    /**
+     * Canonical FHIR system URI for a terminology mapping source. LOINC and SNOMED
+     * use the HL7-registered URIs already used elsewhere in this service; CIEL and
+     * OCL use their OpenConceptLab canonical URLs. Returns {@code null} for an
+     * unrecognized source so it is skipped rather than emitting a bogus system.
+     */
+    private String terminologySystemUrl(String source) {
+        if (source == null) {
+            return null;
+        }
+        switch (source.toUpperCase()) {
+        case "LOINC":
+            return "http://loinc.org";
+        case "SNOMED":
+            return "http://snomed.info/sct";
+        case "CIEL":
+            return "https://openconceptlab.org/orgs/CIEL/sources/CIEL";
+        case "OCL":
+            return "https://openconceptlab.org";
+        default:
+            return null;
+        }
     }
 
     private Specimen transformToFhirSpecimen(SampleTestCollection sampleTest) {

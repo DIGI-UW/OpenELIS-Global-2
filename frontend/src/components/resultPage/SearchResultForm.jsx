@@ -1080,10 +1080,12 @@ export function SearchResults(props) {
     {
       id: "result",
       name: intl.formatMessage({ id: "column.name.result" }),
-      cell: (row, index, column, id) => {
-        return renderCell(row, index, column, id);
-      },
-      width: "20rem",
+      cell: (row, index, column, id) => (
+        <div style={{ paddingLeft: "1.5rem", width: "100%" }}>
+          {renderCell(row, index, column, id)}
+        </div>
+      ),
+      width: "14rem",
     },
     {
       id: "currentResult",
@@ -1190,12 +1192,14 @@ export function SearchResults(props) {
 
       case "accept":
         return (
-          <AcceptUnconditionallyGuard
-            rowId={row.id}
-            accepted={!!acceptAsIs[row.id]}
-            onAccept={(reason) => handleAcceptUnconditionally(row.id, reason)}
-            onUnaccept={() => handleUnacceptUnconditionally(row.id)}
-          />
+          <div style={{ paddingRight: "2rem", marginRight: "1rem" }}>
+            <AcceptUnconditionallyGuard
+              rowId={row.id}
+              accepted={!!acceptAsIs[row.id]}
+              onAccept={(reason) => handleAcceptUnconditionally(row.id, reason)}
+              onUnaccept={() => handleUnacceptUnconditionally(row.id)}
+            />
+          </div>
         );
 
       case "reject":
@@ -1629,6 +1633,13 @@ export function SearchResults(props) {
             )}
           </Column>
           <Column lg={2}>
+            <span
+              className="cds--label"
+              aria-hidden="true"
+              style={{ display: "block" }}
+            >
+              &nbsp;
+            </span>
             <Checkbox
               labelText={intl.formatMessage({ id: "results.label.refer" })}
               name={"testResult[" + data.id + "].refer"}
@@ -1715,7 +1726,7 @@ export function SearchResults(props) {
           </Column>
         </Grid>
         <Grid style={{ marginTop: "1rem" }}>
-          <Column lg={3}>
+          <Column lg={16}>
             <Button
               kind="danger--tertiary"
               size="sm"
@@ -1730,9 +1741,20 @@ export function SearchResults(props) {
               />
             </Button>
           </Column>
-          <Column lg={13}>
-            <div className="result-entry-storage-section">
-              <div className="result-entry-storage-current">
+          <Column lg={16} style={{ marginTop: "1rem" }}>
+            <div
+              className="result-entry-storage-section"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "0.75rem",
+              }}
+            >
+              <div
+                className="result-entry-storage-current"
+                style={{ minWidth: 0, flex: "0 1 auto" }}
+              >
                 <strong>
                   <FormattedMessage
                     id="storage.location.current"
@@ -2215,6 +2237,7 @@ export function SearchResults(props) {
                 expandableRowsComponent={renderReferral}
               ></DataTable>
               <Pagination
+                style={{ marginTop: "1.5rem" }}
                 onChange={handlePageChange}
                 page={page}
                 pageSize={pageSize}

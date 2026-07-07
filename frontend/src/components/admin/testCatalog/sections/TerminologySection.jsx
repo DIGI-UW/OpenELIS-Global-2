@@ -49,11 +49,19 @@ const TerminologySection = ({ testId }) => {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mappings, setMappings] = useState([]);
+  const [loincIntegrity, setLoincIntegrity] = useState(null);
   const [draft, setDraft] = useState({
     source: "",
     code: "",
     relationship: "",
   });
+
+  const loadLoincIntegrity = () => {
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/loinc-integrity`,
+      (res) => setLoincIntegrity(res || null),
+    );
+  };
 
   useEffect(() => {
     if (!testId) {
@@ -72,6 +80,8 @@ const TerminologySection = ({ testId }) => {
         setMappings(res.mappings || []);
       },
     );
+    loadLoincIntegrity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
   const addMapping = () => {
@@ -158,6 +168,35 @@ const TerminologySection = ({ testId }) => {
       <p>
         <FormattedMessage id="label.testCatalog.terminology.intro" />
       </p>
+
+      {loincIntegrity && loincIntegrity.noLoinc && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          data-testid="no-loinc-warning"
+          title={intl.formatMessage({ id: "warning.testCatalog.noLoinc" })}
+        />
+      )}
+      {loincIntegrity &&
+        loincIntegrity.duplicates &&
+        loincIntegrity.duplicates.length > 0 && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            data-testid="duplicate-loinc-warning"
+            title={intl.formatMessage(
+              { id: "warning.testCatalog.duplicateLoinc" },
+              {
+                code: loincIntegrity.loinc,
+                testName: loincIntegrity.duplicates
+                  .map((d) => d.name)
+                  .join(", "),
+              },
+            )}
+          />
+        )}
 
       {mappings.length === 0 ? (
         <InlineNotification

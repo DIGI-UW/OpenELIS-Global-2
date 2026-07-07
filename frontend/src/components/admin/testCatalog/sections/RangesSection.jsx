@@ -41,6 +41,7 @@ const RangesSection = ({ testId }) => {
   const [saving, setSaving] = useState(false);
   const [ranges, setRanges] = useState([]);
   const [coverage, setCoverage] = useState(null);
+  const [components, setComponents] = useState([]);
   // null = modal closed; -1 = adding a new range; >=0 = editing ranges[idx].
   const [editingIndex, setEditingIndex] = useState(null);
 
@@ -66,6 +67,21 @@ const RangesSection = ({ testId }) => {
       return;
     }
     load();
+    // The range→component association (FR-19) needs the test's components to
+    // offer a picker and to default a single-component test's ranges.
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/sample-results`,
+      (res) => {
+        if (res && Array.isArray(res.components)) {
+          setComponents(
+            res.components.map((c) => ({
+              id: c.id,
+              label: c.label || c.code || c.id,
+            })),
+          );
+        }
+      },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
@@ -276,6 +292,7 @@ const RangesSection = ({ testId }) => {
       {editingIndex !== null && (
         <RangeModal
           range={editingIndex >= 0 ? ranges[editingIndex] : null}
+          components={components}
           onSave={handleSaveRange}
           onCancel={() => setEditingIndex(null)}
         />

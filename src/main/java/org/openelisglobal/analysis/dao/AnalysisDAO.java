@@ -241,6 +241,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
 
+    List<Analysis> getAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
+
     /**
      * Find an analysis by sample item ID and test ID.
      *

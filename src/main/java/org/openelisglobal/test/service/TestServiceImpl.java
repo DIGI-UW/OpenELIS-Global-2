@@ -825,4 +825,23 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         return getAllMatching("antimicrobialResistance", Boolean.TRUE).stream()
                 .filter(e -> TestReflexUtil.isTriggeringReflexTestId(e.getId())).collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, String> getNameLocalizationIds(String testId) {
+        Map<String, String> ids = new HashMap<>();
+        Test test = get(testId);
+        if (test == null) {
+            return ids;
+        }
+        Localization name = test.getLocalizedTestName();
+        if (name != null) {
+            ids.put("name", name.getId());
+        }
+        Localization reportingName = test.getLocalizedReportingName();
+        if (reportingName != null) {
+            ids.put("reportingName", reportingName.getId());
+        }
+        return ids;
+    }
 }

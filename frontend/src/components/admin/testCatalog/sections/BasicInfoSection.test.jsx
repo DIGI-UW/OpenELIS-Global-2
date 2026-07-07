@@ -22,6 +22,7 @@ vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   putToOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -30,6 +31,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import BasicInfoSection from "./BasicInfoSection";
 import {
   getFromOpenElisServer,
@@ -38,11 +40,17 @@ import {
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
-const renderSection = () =>
+const renderSection = (testId = "42") =>
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <BasicInfoSection testId="42" />
-    </IntlProvider>,
+    <MemoryRouter
+      initialEntries={[
+        `/MasterListsPage/TestCatalogEditor/${testId}/basic-info`,
+      ]}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <BasicInfoSection testId={testId} />
+      </IntlProvider>
+    </MemoryRouter>,
   );
 
 // The domain the section persists on Save is the source of truth for whether
@@ -196,5 +204,28 @@ describe("BasicInfoSection domain-switch modal", () => {
     expect(
       await screen.findByText(messages["label.testCatalog.editor.loadError"]),
     ).toBeInTheDocument();
+  });
+});
+
+describe("BasicInfoSection create mode (testId=new)", () => {
+  beforeEach(() => {
+    // Create mode fetches the Lab Unit + Sample type reference lists only.
+    getFromOpenElisServer.mockImplementation((url, cb) => cb([]));
+  });
+
+  it("renders a blank create form and gates Save until required fields are filled", async () => {
+    renderSection("new");
+    // Test name field is present (create-only label).
+    expect(
+      await screen.findByLabelText(messages["label.testCatalog.testName"]),
+    ).toBeInTheDocument();
+    // Save is disabled with an empty form (name/reportingName/code/sampleType required).
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    // It does not fetch the edit-mode basic-info payload.
+    expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+      "/rest/test-catalog/tests/new/basic-info",
+      expect.anything(),
+    );
   });
 });

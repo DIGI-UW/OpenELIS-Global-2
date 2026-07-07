@@ -27,6 +27,7 @@ import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
 import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
+import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
@@ -41,7 +42,6 @@ import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd";
-import TestAdd from "./testManagementConfigMenu/TestAdd";
 import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry";
 import TestOrderability from "./testManagementConfigMenu/TestOrderability";
 import MethodCreate from "./testManagementConfigMenu/MethodCreate";
@@ -89,6 +89,10 @@ function Admin() {
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
+      <Route
+        path={`${path}/TestCatalogEditor/group/:ids/:section?`}
+        component={CombinedTestEditor}
+      />
       <Route
         path={`${path}/TestCatalogEditor/:testId?/:section?`}
         component={TestCatalogEditor}
@@ -153,7 +157,14 @@ function Admin() {
         path={`${path}/ResultSelectListAdd`}
         component={ResultSelectListAdd}
       />
-      <Route path={`${path}/TestAdd`} component={TestAdd} />
+      {/* OGC-1112 FR-38: the legacy 7-step create wizard is retired in favor of
+          create-in-place; any link to it lands on the unified New test flow. */}
+      <Route
+        path={`${path}/TestAdd`}
+        render={() => (
+          <Redirect to={`${path}/TestCatalogEditor/new/basic-info`} />
+        )}
+      />
       <Route path={`${path}/TestModifyEntry`} component={TestModifyEntry} />
       <Route path={`${path}/TestOrderability`} component={TestOrderability} />
       <Route path={`${path}/MethodCreate`} component={MethodCreate} />
