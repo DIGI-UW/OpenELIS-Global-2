@@ -193,4 +193,41 @@ public class TestResultConfigurationHandlerSignificanceTest {
         verify(testResultService, times(1)).insert(captor.capture());
         assertNull(captor.getValue().getSignificance());
     }
+
+    // --- Unrecognized value (typo / localized) -> rejected to null, never stored
+    // The headline data bug: positivity matches an exact "POSITIVE", so a
+    // localized "POSITIF" (French) or a typo would silently undercount if
+    // persisted. An unrecognized value must be rejected to null (and logged).
+
+    @Test
+    public void create_unrecognizedSignificance_isRejectedToNull() throws Exception {
+        String body = "testName,resultType,resultValue,significance\n" + "Plasmodium CSP-ELISA,A,reactive,POSITIF\n";
+        when(testResultService.getActiveTestResultsByTest("42")).thenReturn(Collections.emptyList());
+
+        handler.processConfiguration(csv(body), "test-results.csv");
+
+        ArgumentCaptor<TestResult> captor = insertCaptor();
+        verify(testResultService, times(1)).insert(captor.capture());
+        assertNull("an unrecognized significance (e.g. localized 'POSITIF') must be rejected to null, "
+                + "never stored as a value positivity can never match", captor.getValue().getSignificance());
+    }
+
+    @Test
+    public void update_unrecognizedSignificance_clearsRatherThanStoresBadValue() throws Exception {
+        String body = "testName,resultType,resultValue,significance\n" + "Plasmodium CSP-ELISA,A,reactive,PRESENT\n";
+
+        TestResult existing = new TestResult();
+        existing.setId("777");
+        existing.setTestResultType("A");
+        existing.setValue("reactive");
+        existing.setSignificance("POSITIVE");
+        when(testResultService.getActiveTestResultsByTest("42")).thenReturn(List.of(existing));
+        when(testResultService.update(any(TestResult.class))).thenReturn(existing);
+
+        handler.processConfiguration(csv(body), "test-results.csv");
+
+        assertNull("an unrecognized significance must not overwrite with a non-matchable value; it clears to null",
+                existing.getSignificance());
+        verify(testResultService, times(1)).update(existing);
+    }
 }

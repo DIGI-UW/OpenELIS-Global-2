@@ -14,6 +14,7 @@ import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresult.valueholder.TestResultSignificance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -320,6 +321,27 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         return resultsCreated;
     }
 
+    /**
+     * Normalizes a catalog significance cell: blank -&gt; null; a recognized value
+     * (case-insensitive) -&gt; its canonical upper form; anything else is rejected
+     * with a clear error and stored as null. Positivity indices match the exact
+     * canonical name, so an unrecognized value (e.g. a typo or a localized
+     * "POSITIF") could never be counted and must not be silently persisted.
+     */
+    private String normalizeSignificance(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        String normalized = raw.toUpperCase();
+        if (TestResultSignificance.isRecognized(normalized)) {
+            return normalized;
+        }
+        LogEvent.logError(this.getClass().getSimpleName(), "normalizeSignificance",
+                "CONFIGURATION ERROR: unrecognized test_result significance '" + raw
+                        + "'. Expected one of POSITIVE, NEGATIVE, INDETERMINATE. Storing null (unclassified).");
+        return null;
+    }
+
     private String getValueOrEmpty(String[] values, int index) {
         if (index >= 0 && index < values.length) {
             String value = values[index];
@@ -449,8 +471,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         // A missing column (legacy catalog) leaves the prior value untouched; a
         // present-but-blank cell explicitly clears it to null.
         if (significanceIndex != -1) {
-            String significance = getValueOrEmpty(values, significanceIndex);
-            testResult.setSignificance(significance.isEmpty() ? null : significance.toUpperCase());
+            testResult.setSignificance(normalizeSignificance(getValueOrEmpty(values, significanceIndex)));
         }
 
         testResult.setSysUserId("1");
@@ -517,8 +538,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
         // Consistent with the update path: a present-but-blank cell sets null.
         if (significanceIndex != -1) {
-            String significance = getValueOrEmpty(values, significanceIndex);
-            testResult.setSignificance(significance.isEmpty() ? null : significance.toUpperCase());
+            testResult.setSignificance(normalizeSignificance(getValueOrEmpty(values, significanceIndex)));
         }
 
         testResult.setSysUserId("1");
