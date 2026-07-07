@@ -399,10 +399,23 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
         assertFalse("baseline: every seeded significance is a recognized classification",
                 dao.hasUnrecognizedPositivityClassification(FROM, TO, null));
 
-        jdbcTemplate.update("UPDATE clinlims.test_result SET significance = 'POSITIF' WHERE id = 9001");
+        // INDETERMINATE is the third recognized classification; it must NOT be flagged
+        // (guards against RECOGNIZED_SIGNIFICANCE dropping an enum value).
+        jdbcTemplate.update("UPDATE clinlims.test_result SET significance = 'INDETERMINATE' WHERE id = 9002");
+        assertFalse("INDETERMINATE is a recognized classification and must not be flagged",
+                dao.hasUnrecognizedPositivityClassification(FROM, TO, null));
 
+        // A non-null significance outside the recognized set (typo/legacy) must be
+        // flagged. 9001 is the malaria POSITIVE result on pool 901, which collects at
+        // site 900 (A); pool 903 at site 901 (B) carries only recognized values.
+        jdbcTemplate.update("UPDATE clinlims.test_result SET significance = 'POSITIF' WHERE id = 9001");
         assertTrue("a non-null significance outside the recognized set must be flagged",
                 dao.hasUnrecognizedPositivityClassification(FROM, TO, null));
+
+        assertTrue("the unrecognized value is at site A and must be flagged when scoped there",
+                dao.hasUnrecognizedPositivityClassification(FROM, TO, 900));
+        assertFalse("site B carries only recognized values, so it must not be flagged",
+                dao.hasUnrecognizedPositivityClassification(FROM, TO, 901));
     }
 
     // ---- Site filter (positivity scoped by collection location) ---------------

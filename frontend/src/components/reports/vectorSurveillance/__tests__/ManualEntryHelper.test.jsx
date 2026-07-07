@@ -98,6 +98,17 @@ describe("ManualEntryHelper", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("12");
   });
 
+  it("keeps the low-confidence sporozoite row copyable (copy button not hidden)", () => {
+    renderWithIntl(<ManualEntryHelper />);
+    const copyButtons = screen.getAllByRole("button", { name: /Copy value/i });
+    // All three rows expose a copy button now — including the low-confidence
+    // sporozoite row (row 2), which the old code hid while it was gated. A
+    // regression to conditional rendering would drop this to 2 buttons.
+    expect(copyButtons.length).toBe(3);
+    fireEvent.click(copyButtons[2]);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("1.20");
+  });
+
   it("POSTs a snapshot when the week is marked submitted", async () => {
     renderWithIntl(<ManualEntryHelper />);
 
