@@ -156,6 +156,17 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
         return String.format("00000000-0000-4000-8000-%012d", id);
     }
 
+    /** Flags a sample_item as a lab QC control/blank (the exclusion trigger). */
+    private void insertQcProfile(String id, long sampleItemId, String qcType) {
+        jdbcTemplate.update("INSERT INTO clinlims.sample_item_qc_profile"
+                + " (id, sample_item_id, qc_type, sys_user_id) VALUES (?, ?, ?, 1)", id, sampleItemId, qcType);
+    }
+
+    private PositivityAggregate malariaRow(List<PositivityAggregate> panel) {
+        return panel.stream().filter(p -> PATHOGEN_MALARIA.equals(p.getPathogen())).findFirst()
+                .orElseThrow(() -> new AssertionError("expected a Malaria positivity row"));
+    }
+
     // ---- THE INVERSION GUARD --------------------------------------------------
 
     @Test
@@ -187,6 +198,26 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
         assertEquals("all malaria-tested intake pools are counted as tested", 3L, malaria.getPoolsTested());
         assertEquals("only the catalog-POSITIVE pool is positive; confirmed-negative pools must not count", 1L,
                 malaria.getPoolsPositive());
+    }
+
+    // ---- QC-sample exclusion (FR-002 / SC-005) --------------------------------
+
+    // A pool whose member sample_item is flagged as a lab QC control/blank
+    // (sample_item_qc_profile.qc_type) is not a field observation and must leave
+    // BOTH the numerator and the denominator of every surveillance index. This is
+    // the inversion test for SC-005: adding the QC flag to the one POSITIVE malaria
+    // pool (901) drops it from tested AND positive counts.
+    @Test
+    public void qcControlPool_isExcludedFromPositivity_numeratorAndDenominator_SC005() {
+        PositivityAggregate before = malariaRow(dao.getPathogenPositivity(FROM, TO, null));
+        assertEquals("baseline: 3 malaria-tested pools", 3L, before.getPoolsTested());
+        assertEquals("baseline: 1 positive malaria pool (901)", 1L, before.getPoolsPositive());
+
+        insertQcProfile("qc-901", 901, "CONTROL");
+
+        PositivityAggregate after = malariaRow(dao.getPathogenPositivity(FROM, TO, null));
+        assertEquals("QC control pool excluded from the tested denominator", 2L, after.getPoolsTested());
+        assertEquals("QC control pool's POSITIVE excluded from the numerator", 0L, after.getPoolsPositive());
     }
 
     // ---- Per-pathogen grouping ------------------------------------------------

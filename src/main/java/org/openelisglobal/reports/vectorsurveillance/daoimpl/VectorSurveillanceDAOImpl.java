@@ -48,6 +48,16 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
     /** Catalog classification marking a positive surveillance result. */
     private static final String POSITIVE = "POSITIVE";
 
+    // A pool member flagged as a QC control/blank (sample_item_qc_profile.qc_type)
+    // is a lab QC sample, not a field observation; exclude it from surveillance
+    // numerators AND denominators (FR-002/SC-005). Two forms: one for queries with
+    // the sample-item alias 'si' in scope, one correlated to the pool 'p'.
+    private static final String QC_EXCLUDE_SI = " and not exists (select 1 from SampleItemQcProfile qp"
+            + " where qp.sampleItemId = cast(si.id as long) and qp.qcType in ('BLANK', 'CONTROL'))";
+    private static final String QC_EXCLUDE_POOL = " and not exists (select 1 from VectorPoolMember vpmq,"
+            + " SampleItem siq, SampleItemQcProfile qp where vpmq.pool = p and vpmq.sampleItem = siq"
+            + " and qp.sampleItemId = cast(siq.id as long) and qp.qcType in ('BLANK', 'CONTROL'))";
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -87,8 +97,9 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
             String hql = "select function('to_char', s.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId,"
                     + " count(distinct p.id), coalesce(sum(si.quantity), 0)"
                     + " from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si"
-                    + " where s.id = p.sampleId and vpm.pool = p and vpm.sampleItem = si and p.active = true"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId)
+                    + " where s.id = p.sampleId and p.parentPool is null and vpm.pool = p"
+                    + " and vpm.sampleItem = si and p.active = true" + " and s.collectionDate between :from and :to"
+                    + siteClause(siteId) + QC_EXCLUDE_SI
                     + " group by function('to_char', s.collectionDate, 'IYYY-\"W\"IW'), si.collectionLocationId"
                     + " order by 1";
             List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
@@ -150,7 +161,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " and vsi.confidence = 'CONFIRMED'"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.test = t and tr.significance = :positive"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId)
+                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI
                     + " group by sp.id, sp.genus, sp.species, t.id, t.description";
             List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
 
@@ -227,7 +238,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " where s.id = p.sampleId and p.parentPool is null"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.test = t" + " and s.collectionDate between :from and :to"
-                    + sitePoolClause(siteId) + " group by t.description order by t.description";
+                    + sitePoolClause(siteId) + QC_EXCLUDE_POOL + " group by t.description order by t.description";
             Query q = entityManager.createQuery(hql);
             q.setParameter("positive", POSITIVE);
             q.setParameter("from", from(fromDate));
@@ -270,7 +281,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " and vsi.confidence = 'CONFIRMED' and lower(sp.genus) = 'anopheles'"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.test = t and tr.significance = :positive" + testMatch
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId);
+                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
             Query posQ = entityManager.createQuery(posHql);
             posQ.setParameter("positive", POSITIVE);
             posQ.setParameter("from", from(fromDate));
@@ -285,7 +296,8 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " from VectorSpecimenIdentification vsi, SampleItem si, Sample s, VectorSpecies sp"
                     + " where vsi.sampleItemId = cast(si.id as long) and vsi.vectorSpeciesId = sp.id"
                     + " and vsi.confidence = 'CONFIRMED' and lower(sp.genus) = 'anopheles'"
-                    + " and si.sample.id = s.id and s.collectionDate between :from and :to" + siteClause(siteId);
+                    + " and si.sample.id = s.id and s.collectionDate between :from and :to" + siteClause(siteId)
+                    + QC_EXCLUDE_SI;
             Query totQ = entityManager.createQuery(totHql);
             totQ.setParameter("from", from(fromDate));
             totQ.setParameter("to", to(toDate));
