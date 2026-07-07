@@ -300,14 +300,57 @@ WHONET readiness; incomplete cases show blockers.
 - [x] T141 [M7] Run final documentation consistency update in `specs/782-ogc-782-microbiology-mvp-spec/tasks.md`, `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`, and `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`.
 - [x] T142 [M7] Open draft PR #3789 for `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` to the M6 stack branch with TDD, Playwright trace/screenshot, and demo video evidence linked from PR #3782.
 
+## Phase 8: MVP-Gap Remediation (FR-002, M-11, M-05)
+
+**Branch**: `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`
+(same held branch as M7; not a new milestone branch — held for one combined
+MVP delivery per
+`specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-gap-analysis-2026-07-03.md`).
+
+**Goal**: Close the three confirmed MVP-scope gaps identified by the gap
+analysis before merging #3789: FR-002 order-detail capture, M-11 Alerts
+Dashboard integration (reconciling FR-018), and M-05 per-run
+breakpoint-standard selection.
+
+### FR-002: Order-detail capture
+
+- [x] T157 [P] Add failing service test for order-detail create/update/read in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseOrderDetailServiceTest.java`.
+- [x] T158 [P] Add failing case-detail compilation tests for order-detail inclusion in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseServiceTest.java`.
+- [x] T159 [P] Add failing controller test for the order-detail save endpoint in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
+- [x] T160 [P] Add failing routing-overload tests for order-detail pass-through in `src/test/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceTest.java`.
+- [x] T161 [P] Add failing frontend tests for `OrderDetailPanel` in `frontend/src/components/microbiology/__tests__/OrderDetailPanel.test.jsx`.
+- [x] T162 Add `micro_case_order_detail` table in `src/main/resources/liquibase/3.5.x.x/055-microbiology-order-detail.xml`; add `MicroCaseOrderDetail` valueholder, DAO, `MicroCaseOrderDetailService`, controller endpoint, `OrderDetailPanel.jsx`, and `MicrobiologyService.saveOrderDetail`; register the entity in `persistence/persistence.xml` and `persistence/test-persistence.xml`.
+- [x] T163 Wire an optional order-detail overload on `MicroOrderRoutingService.routeAnalysesForSampleItem` so a future order-entry integration can supply it atomically with case creation, without changing the existing 3-arg signature. Document the deliberate scoping decision (legacy `SamplePatientEntryServiceImpl` order-entry flow is not threaded through this session) in the gap-analysis doc.
+
+### M-11: Alerts Dashboard integration (reconciles FR-018)
+
+- [x] T164 [P] Add failing `AlertService`/`AlertDAO` tests for string-keyed (`alertEntityRef`) alerts and Freezer/Equipment/Sample regression coverage in `src/test/java/org/openelisglobal/alert/service/AlertServiceTest.java`.
+- [x] T165 [P] Add failing tests for critical-communication-to-Alert projection and acknowledgment sync in `src/test/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceTest.java`.
+- [x] T166 [P] Add a failing end-to-end DB integration test in `src/test/java/org/openelisglobal/microbiology/MicroCriticalCommunicationAlertIntegrationTest.java`.
+- [x] T167 [P] Add failing frontend test for the `MICROBIOLOGY_CRITICAL` filter/row in `frontend/src/components/alerts/__tests__/AlertsDashboard.test.jsx`.
+- [x] T168 Add `alert_entity_ref` column plus `chk_alert_entity_id_or_ref`/`chk_alert_type` constraint updates in `src/main/resources/liquibase/3.5.x.x/057-alert-entity-ref.xml` (additive; does not alter the existing `alert_entity_id` column's use by Freezer/Equipment/Sample callers); add `AlertType.MICROBIOLOGY_CRITICAL`, `Alert.alertEntityRef`, `AlertDAO.getAlertsByEntityRef`, `AlertService.createAlert(..., String entityRef, ...)`/`getAlertsByEntityRef`.
+- [x] T169 Wire `MicroCriticalCommunicationServiceImpl.logCommunication`/`acknowledge` to project into/acknowledge the corresponding `Alert` row (log-plus-projection, no dual-write per Constitution Principle X); add the `MICROBIOLOGY_CRITICAL` filter option to `AlertsDashboard.jsx`.
+- [x] T170 Update `FR-018` in `specs/782-ogc-782-microbiology-mvp-spec/spec.md` to describe the reconciled log-plus-projection approach.
+- [x] T171 Run alert regression suite `mvn -q -Dtest='AlertServiceTest,FreezerAlertServiceTest,AlertFlowIntegrationTest,QCAlertServiceTest,QCAlertServiceIntegrationTest,EQAAlertRestControllerTest' test` to confirm numeric-keyed alert callers are unaffected.
+
+### M-05: Per-run breakpoint-standard selection
+
+- [x] T172 [P] Add failing service tests for `startRun` with an explicit standard and `recordReading` interpreting against the run's snapshotted standard (with default-fallback) in `src/test/java/org/openelisglobal/microbiology/service/MicroAstServiceTest.java`.
+- [x] T173 [P] Add a failing DB-level integration test proving two runs against different standards interpret the same raw value differently in `src/test/java/org/openelisglobal/microbiology/MicroAstIntegrationTest.java`.
+- [x] T174 [P] Add failing service test for `MicroBreakpointService.getActiveStandards()` in `src/test/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceTest.java`.
+- [x] T175 [P] Add failing frontend test for the breakpoint-standard selector in `frontend/src/components/microbiology/__tests__/AstEntryPanel.test.jsx`.
+- [x] T176 Add `breakpoint_standard_id` column to `micro_ast_run` in `src/main/resources/liquibase/3.5.x.x/056-microbiology-ast-breakpoint-standard.xml`; add the field to `MicroAstRun`; add the `startRun` overload and standard-resolution fallback in `MicroAstServiceImpl`; add the `/rest/microbiology/reference/breakpoint-standards` endpoint; wire the `AstEntryPanel.jsx` selector and `MicrobiologyService.getBreakpointStandards`.
+- [x] T177 Run focused validation `mvn -q -Dtest='Micro*Test' test` and `cd frontend && npx vitest run Microbiology` to confirm no regression across the full microbiology suite.
+
 ## Final MVP Acceptance Gate
 
-**Purpose**: Prove the full implemented MVP behaves as specified after M7.
+**Purpose**: Prove the full implemented MVP (M1-M7 core + FR-002/M-11/M-05 gap
+remediation) behaves as specified before merging the held #3789.
 
-- [ ] T143 [MVP] Run the complete focused backend suite `mvn -q -Dtest='Micro*Test,*Micro*IntegrationTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T144 [MVP] Run the complete focused frontend suite `cd frontend && npm test -- --runInBand Microbiology` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [ ] T145 [MVP] Validate all microbiology Playwright specs with `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts frontend/playwright/tests/foundational/core/microbiology-mvp-release-readiness.spec.ts frontend/playwright/tests/demo/core/microbiology-mvp-demo.spec.ts`.
-- [ ] T146 [MVP] Run all microbiology foundational Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-*.spec.ts --project=core-app`.
+- [x] T143 [MVP] Run the complete focused backend suite `mvn -q -Dtest='Micro*Test,*Micro*IntegrationTest,AlertServiceTest,FreezerAlertServiceTest,AlertFlowIntegrationTest,QCAlertServiceTest,QCAlertServiceIntegrationTest,EQAAlertRestControllerTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`. Passed: 24 microbiology + alert test classes, 0 failures.
+- [x] T144 [MVP] Run the complete focused frontend suite `cd frontend && npx vitest run Microbiology AlertsDashboard` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2/frontend`. Passed: 8 test files, 19 tests.
+- [x] T145 [MVP] Validate the real registered microbiology Playwright specs. `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` validates via `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` (run from `frontend/`), matching `core-app`/`core-demo`/`core-demo-video`. The two `foundational/core/` specs (`microbiology-case-workbench.spec.ts`, `microbiology-worklist-critical.spec.ts`) register via the `CORE_FOUNDATIONAL_TESTS` glob (`**/foundational/core/**/*.spec.ts`) in `frontend/playwright.config.ts`, which `validate-playwright-project.py` does not recognize as a named testMatch constant (pre-existing script limitation, not specific to microbiology); confirmed registration by inspecting `playwright.config.ts` directly instead. (Note: manual-AST and release-readiness coverage live inside the `ogc-782-microbiology-mvp.spec.ts` demo per the M7 code-qa spec-alignment note; there are no separate `microbiology-manual-ast.spec.ts` / `microbiology-mvp-release-readiness.spec.ts` / `microbiology-mvp-demo.spec.ts` files.)
+- [x] T146 [MVP] Ran all microbiology foundational Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-*.spec.ts --project=core-app` against a real dev stack (WAR rebuilt, containers up, all 3 new Liquibase migrations applied). 3 passed. Also ran the demo spec on `core-demo` (2 passed). During this run, fixed two pre-existing stale Playwright selectors (`microbiology-case-workbench.spec.ts`, `microbiology-worklist-critical.spec.ts` expected raw enum text like `SETUP_RECORDED`/`OPEN` where the UI renders formatted labels like `Setup Recorded`/`Open`) and one pre-existing production bug discovered by the demo spec's final-release step (see `evidence/mvp-gap-analysis-2026-07-03.md` "Discovered during acceptance gate" section): `MicroReportReleaseServiceImpl.releaseFinal` required a `MicroCase.stage` state-machine transition that nothing in the isolate/AST flow ever satisfies; fixed to set `stage` directly once readiness passes, matching `releasePreliminary`.
 - [x] T147 [MVP] Run all microbiology demo Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo`.
 - [x] T148 [MVP] Record final MVP video evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video`.
 - [x] T149 [MVP] Record final Playwright screenshots, video evidence, and code-qa evidence bundle in `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`.
@@ -329,7 +372,9 @@ WHONET readiness; incomplete cases show blockers.
 - M6 depends on M5 because worklist urgency and review flags include AST state.
 - M7 depends on M6 because release/readiness includes critical communication and
   worklist-visible blockers.
-- Final MVP acceptance depends on M7.
+- Phase 8 (MVP-gap remediation) depends on M7 because it extends the same held
+  branch/PR with FR-002, M-11, and M-05 gap coverage before merge.
+- Final MVP acceptance depends on Phase 8.
 
 ## Parallel Opportunities
 

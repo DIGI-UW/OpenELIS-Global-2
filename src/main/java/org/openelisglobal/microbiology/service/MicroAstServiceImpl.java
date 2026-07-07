@@ -46,12 +46,19 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Override
     @Transactional
     public MicroAstRun startRun(String isolateId, String panelId, String performedBy) {
+        return startRun(isolateId, panelId, null, performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String performedBy) {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         MicroAstRun run = new MicroAstRun();
         run.setIsolateId(isolateId);
         run.setPanelId(panelId);
+        run.setBreakpointStandardId(breakpointStandardId);
         run.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
         run.setStartedAt(MicroCaseServiceImpl.now());
         run.setStartedBy(performedBy);
@@ -73,7 +80,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = runDAO.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
-        MicroBreakpointRule rule = findRule(isolate, antibioticId, method);
+        MicroBreakpointRule rule = findRule(run, isolate, antibioticId, method);
         MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
 
         MicroAstReading reading = new MicroAstReading();
@@ -140,13 +147,24 @@ public class MicroAstServiceImpl implements MicroAstService {
         return readingDAO.getByRunId(runId);
     }
 
-    private MicroBreakpointRule findRule(MicroIsolate isolate, String antibioticId, MicroAstMethod method) {
-        MicroBreakpointStandard standard = breakpointService.getActiveStandard(DEFAULT_BREAKPOINT_AUTHORITY,
-                DEFAULT_BREAKPOINT_VERSION);
-        if (standard == null) {
-            return null;
+    /**
+     * Resolves the breakpoint standard to interpret against: the run's snapshotted
+     * choice (M-05: selected at setup) when present, otherwise the configured
+     * default so runs started before this field existed, or without an explicit
+     * choice, keep working.
+     */
+    private MicroBreakpointRule findRule(MicroAstRun run, MicroIsolate isolate, String antibioticId,
+            MicroAstMethod method) {
+        String standardId = run.getBreakpointStandardId();
+        if (standardId == null || standardId.trim().isEmpty()) {
+            MicroBreakpointStandard standard = breakpointService.getActiveStandard(DEFAULT_BREAKPOINT_AUTHORITY,
+                    DEFAULT_BREAKPOINT_VERSION);
+            if (standard == null) {
+                return null;
+            }
+            standardId = standard.getId();
         }
-        return breakpointService.findBreakpointRule(standard.getId(), isolate.getOrganismId(), null, antibioticId,
+        return breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(), null, antibioticId,
                 method.name(), null, method.name());
     }
 

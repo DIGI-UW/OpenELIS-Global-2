@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.method.valueholder.Method;
+import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
@@ -19,16 +20,26 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
 
     private final MicroCaseService caseService;
     private final MicrobiologyReferenceService referenceService;
+    private final MicroCaseOrderDetailService orderDetailService;
 
-    public MicroOrderRoutingServiceImpl(MicroCaseService caseService, MicrobiologyReferenceService referenceService) {
+    public MicroOrderRoutingServiceImpl(MicroCaseService caseService, MicrobiologyReferenceService referenceService,
+            MicroCaseOrderDetailService orderDetailService) {
         this.caseService = caseService;
         this.referenceService = referenceService;
+        this.orderDetailService = orderDetailService;
     }
 
     @Override
     @Transactional
     public List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses,
             String performedBy) {
+        return routeAnalysesForSampleItem(sampleItem, analyses, performedBy, null);
+    }
+
+    @Override
+    @Transactional
+    public List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses,
+            String performedBy, MicroCaseOrderDetailRequestForm orderDetail) {
         if (sampleItem == null || sampleItem.getId() == null || analyses == null || analyses.isEmpty()) {
             return List.of();
         }
@@ -51,8 +62,12 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
 
         List<MicroCase> routedCases = new ArrayList<>();
         for (Map.Entry<MicroWorkflowType, String> entry : cultureMethodsByWorkflow.entrySet()) {
-            routedCases.add(
-                    caseService.createOrGetCase(sampleItem.getId(), entry.getKey(), entry.getValue(), performedBy));
+            MicroCase routedCase = caseService.createOrGetCase(sampleItem.getId(), entry.getKey(), entry.getValue(),
+                    performedBy);
+            routedCases.add(routedCase);
+            if (orderDetail != null) {
+                orderDetailService.saveOrderDetail(routedCase.getId(), orderDetail, performedBy);
+            }
         }
         return routedCases;
     }

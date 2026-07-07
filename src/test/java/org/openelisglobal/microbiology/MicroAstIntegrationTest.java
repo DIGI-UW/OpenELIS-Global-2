@@ -62,6 +62,37 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void astRunInterpretsAgainstItsSnapshottedBreakpointStandard() {
+        fixtures.insertAltBreakpointStandard();
+        try {
+            MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
+                    MicrobiologyTestFixtures.DEFAULT_USER_ID);
+            MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
+                    MicrobiologyTestFixtures.ORGANISM_ID, "Escherichia coli",
+                    MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicrobiologyTestFixtures.DEFAULT_USER_ID);
+
+            MicroAstRun defaultRun = astService.startRun(isolate.getId(), MicrobiologyTestFixtures.PANEL_ID,
+                    MicrobiologyTestFixtures.DEFAULT_USER_ID);
+            MicroAstReading defaultReading = astService.recordReading(defaultRun.getId(),
+                    MicrobiologyTestFixtures.ANTIBIOTIC_ID, MicroAstMethod.MIC, new BigDecimal("4"),
+                    MicrobiologyTestFixtures.DEFAULT_USER_ID);
+
+            MicroAstRun altRun = astService.startRun(isolate.getId(), MicrobiologyTestFixtures.PANEL_ID,
+                    MicrobiologyTestFixtures.ALT_STANDARD_ID, MicrobiologyTestFixtures.DEFAULT_USER_ID);
+            MicroAstReading altReading = astService.recordReading(altRun.getId(),
+                    MicrobiologyTestFixtures.ANTIBIOTIC_ID, MicroAstMethod.MIC, new BigDecimal("4"),
+                    MicrobiologyTestFixtures.DEFAULT_USER_ID);
+
+            assertEquals(MicrobiologyTestFixtures.ALT_STANDARD_ID, altRun.getBreakpointStandardId());
+            assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), defaultReading.getInterpretation());
+            assertEquals(MicroAstInterpretation.INTERMEDIATE.name(), altReading.getInterpretation());
+        } finally {
+            fixtures.deleteCaseDataForSampleItem(sampleItemId);
+            fixtures.deleteAltBreakpointStandard();
+        }
+    }
+
+    @Test
     public void astRunStoresReadingsInterpretationOverrideAndReview() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
                 MicrobiologyTestFixtures.DEFAULT_USER_ID);

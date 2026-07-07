@@ -4,13 +4,16 @@ import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseActivityForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
+import org.openelisglobal.microbiology.form.MicroCaseOrderDetailForm;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
+import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
@@ -23,11 +26,14 @@ public class MicroCaseServiceImpl implements MicroCaseService {
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
     private final MicroIsolateDAO isolateDAO;
+    private final MicroCaseOrderDetailDAO orderDetailDAO;
 
-    public MicroCaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroIsolateDAO isolateDAO) {
+    public MicroCaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroIsolateDAO isolateDAO,
+            MicroCaseOrderDetailDAO orderDetailDAO) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.isolateDAO = isolateDAO;
+        this.orderDetailDAO = orderDetailDAO;
     }
 
     @Override
@@ -91,6 +97,10 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         for (MicroIsolate isolate : isolateDAO.getByCaseId(caseId)) {
             form.isolates.add(toIsolateForm(isolate));
         }
+        MicroCaseOrderDetail orderDetail = orderDetailDAO.getByCaseId(caseId);
+        if (orderDetail != null) {
+            form.orderDetail = toOrderDetailForm(orderDetail);
+        }
         return form;
     }
 
@@ -141,6 +151,17 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         form.performedBy = activity.getPerformedBy();
         form.note = activity.getNote();
         form.structuredData = activity.getStructuredData();
+        return form;
+    }
+
+    private MicroCaseOrderDetailForm toOrderDetailForm(MicroCaseOrderDetail orderDetail) {
+        MicroCaseOrderDetailForm form = new MicroCaseOrderDetailForm();
+        form.caseId = orderDetail.getCaseId();
+        form.patientOrigin = orderDetail.getPatientOrigin();
+        form.numberOfSets = orderDetail.getNumberOfSets();
+        form.clinicalHistory = orderDetail.getClinicalHistory();
+        form.antibioticExposure = orderDetail.getAntibioticExposure();
+        form.criticalNotificationPreference = orderDetail.getCriticalNotificationPreference();
         return form;
     }
 

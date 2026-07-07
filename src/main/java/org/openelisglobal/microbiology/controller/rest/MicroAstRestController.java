@@ -47,8 +47,8 @@ public class MicroAstRestController extends BaseRestController {
     @PostMapping("/runs")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request) {
-        return ResponseEntity
-                .ok(toRunForm(astService.startRun(request.isolateId, request.panelId, request.performedBy)));
+        return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
+                request.breakpointStandardId, request.performedBy)));
     }
 
     @PostMapping("/runs/{runId}/readings")
@@ -90,6 +90,7 @@ public class MicroAstRestController extends BaseRestController {
         form.id = run.getId();
         form.isolateId = run.getIsolateId();
         form.panelId = run.getPanelId();
+        form.breakpointStandardId = run.getBreakpointStandardId();
         form.status = run.getStatus();
         form.startedAt = run.getStartedAt();
         form.startedBy = run.getStartedBy();

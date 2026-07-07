@@ -291,6 +291,14 @@ or missing mapping for export.
   method, acknowledgment state, and follow-up.
 - **FR-018**: Critical communications MUST surface through the existing
   operational alerts workflow rather than a parallel alerts experience.
+  Implementation note: the clinical call/read-back log stays the record of
+  truth (recipient, message, follow-up, acknowledgment); each logged or
+  acknowledged communication also projects into the generic Alert entity so it
+  is visible and actionable from the existing Alerts Dashboard, kept in step
+  with the clinical record rather than duplicating it (see
+  `MicroCriticalCommunicationServiceImpl` and
+  `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-gap-analysis-2026-07-03.md`
+  row 3).
 - **FR-019**: The system MUST support reference data needed for MVP
   microbiology work: organisms, antibiotics, AST panels, culture setup recipes,
   breakpoint standards, patient origin, specimen mapping, and reagent/lot

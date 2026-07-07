@@ -44,6 +44,14 @@ export const getAntibiotics = () =>
     getFromOpenElisServer("/rest/microbiology/reference/antibiotics", resolve);
   });
 
+export const getBreakpointStandards = () =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      "/rest/microbiology/reference/breakpoint-standards",
+      resolve,
+    );
+  });
+
 export const getAstRunsForIsolate = (isolateId) =>
   new Promise((resolve) => {
     getFromOpenElisServer(
@@ -157,6 +165,21 @@ export const releaseFinalReport = (caseId) =>
     );
   });
 
+export const saveOrderDetail = (caseId, payload) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/cases/${caseId}/order-detail`,
+      JSON.stringify({ performedBy: DEFAULT_USER_ID, ...payload }),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
 export const getWhonetReadiness = (caseId) =>
   new Promise((resolve) => {
     getFromOpenElisServer(
@@ -171,6 +194,7 @@ const MicrobiologyService = {
   createIsolate,
   getAstPanels,
   getAntibiotics,
+  getBreakpointStandards,
   getAstRunsForIsolate,
   startAstRun,
   recordAstReading,
@@ -183,6 +207,7 @@ const MicrobiologyService = {
   acknowledgeCriticalCommunication,
   releasePreliminaryReport,
   releaseFinalReport,
+  saveOrderDetail,
   getWhonetReadiness,
 };
 

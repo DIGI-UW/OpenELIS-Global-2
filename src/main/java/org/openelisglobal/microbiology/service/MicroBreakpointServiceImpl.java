@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.service;
 
+import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
@@ -22,6 +23,12 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
     @Transactional(readOnly = true)
     public MicroBreakpointStandard getActiveStandard(String authority, String version) {
         return standardDAO.getActiveStandard(authority, version);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroBreakpointStandard> getActiveStandards() {
+        return standardDAO.getActiveStandards();
     }
 
     @Override

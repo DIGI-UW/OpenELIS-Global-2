@@ -26,8 +26,10 @@ const AstEntryPanel = ({
   const [selectedIsolateId, setSelectedIsolateId] = useState("");
   const [panels, setPanels] = useState([]);
   const [antibiotics, setAntibiotics] = useState([]);
+  const [breakpointStandards, setBreakpointStandards] = useState([]);
   const [selectedPanelId, setSelectedPanelId] = useState("");
   const [selectedAntibioticId, setSelectedAntibioticId] = useState("");
+  const [selectedStandardId, setSelectedStandardId] = useState("");
   const [method, setMethod] = useState("MIC");
   const [rawValue, setRawValue] = useState("4");
   const [overrideInterpretation, setOverrideInterpretation] =
@@ -57,6 +59,12 @@ const AstEntryPanel = ({
       setAntibiotics(items);
       if (items.length > 0) {
         setSelectedAntibioticId((current) => current || items[0].id);
+      }
+    });
+    service.getBreakpointStandards().then((items = []) => {
+      setBreakpointStandards(items);
+      if (items.length > 0) {
+        setSelectedStandardId((current) => current || items[0].id);
       }
     });
   }, [service, workflowType]);
@@ -118,6 +126,7 @@ const AstEntryPanel = ({
       service.startAstRun({
         isolateId: selectedIsolateId,
         panelId: selectedPanelId,
+        breakpointStandardId: selectedStandardId,
       }),
     );
 
@@ -213,6 +222,22 @@ const AstEntryPanel = ({
                     key={panel.id}
                     value={panel.id}
                     text={panel.label}
+                  />
+                ))}
+              </Select>
+              <Select
+                id="microbiology-ast-breakpoint-standard"
+                labelText={intl.formatMessage({
+                  id: "microbiology.ast.breakpointStandard",
+                })}
+                value={selectedStandardId}
+                onChange={(event) => setSelectedStandardId(event.target.value)}
+              >
+                {breakpointStandards.map((standard) => (
+                  <SelectItem
+                    key={standard.id}
+                    value={standard.id}
+                    text={standard.label}
                   />
                 ))}
               </Select>

@@ -6,6 +6,8 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.microbiology.form.MicroCaseActivityRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
+import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
+import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -16,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,10 +30,13 @@ public class MicroCaseRestController extends BaseRestController {
 
     private final MicroCaseService caseService;
     private final MicroCaseStateService stateService;
+    private final MicroCaseOrderDetailService orderDetailService;
 
-    public MicroCaseRestController(MicroCaseService caseService, MicroCaseStateService stateService) {
+    public MicroCaseRestController(MicroCaseService caseService, MicroCaseStateService stateService,
+            MicroCaseOrderDetailService orderDetailService) {
         this.caseService = caseService;
         this.stateService = stateService;
+        this.orderDetailService = orderDetailService;
     }
 
     @GetMapping("/{caseId}")
@@ -58,6 +64,14 @@ public class MicroCaseRestController extends BaseRestController {
     public ResponseEntity<MicroCaseDetailForm> recordActivity(@PathVariable String caseId,
             @RequestBody MicroCaseActivityRequestForm request) {
         stateService.advanceStage(caseId, MicroCaseStage.valueOf(request.nextStage), request.performedBy, request.note);
+        return ResponseEntity.ok(caseService.getCaseDetail(caseId));
+    }
+
+    @PutMapping("/{caseId}/order-detail")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MicroCaseDetailForm> saveOrderDetail(@PathVariable String caseId,
+            @RequestBody MicroCaseOrderDetailRequestForm request) {
+        orderDetailService.saveOrderDetail(caseId, request, request.performedBy);
         return ResponseEntity.ok(caseService.getCaseDetail(caseId));
     }
 

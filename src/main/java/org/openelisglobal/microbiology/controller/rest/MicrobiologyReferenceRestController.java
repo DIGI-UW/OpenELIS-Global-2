@@ -4,9 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
+import org.openelisglobal.microbiology.service.MicroBreakpointService;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,9 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class MicrobiologyReferenceRestController extends BaseRestController {
 
     private final MicrobiologyReferenceService referenceService;
+    private final MicroBreakpointService breakpointService;
 
-    public MicrobiologyReferenceRestController(MicrobiologyReferenceService referenceService) {
+    public MicrobiologyReferenceRestController(MicrobiologyReferenceService referenceService,
+            MicroBreakpointService breakpointService) {
         this.referenceService = referenceService;
+        this.breakpointService = breakpointService;
     }
 
     @GetMapping("/ast-panels")
@@ -43,6 +48,24 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
             forms.add(toAntibioticForm(antibiotic));
         }
         return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/breakpoint-standards")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getBreakpointStandards() {
+        List<MicroReferenceOptionForm> forms = new ArrayList<>();
+        for (MicroBreakpointStandard standard : breakpointService.getActiveStandards()) {
+            forms.add(toStandardForm(standard));
+        }
+        return ResponseEntity.ok(forms);
+    }
+
+    private MicroReferenceOptionForm toStandardForm(MicroBreakpointStandard standard) {
+        MicroReferenceOptionForm form = new MicroReferenceOptionForm();
+        form.id = standard.getId();
+        form.label = standard.getAuthority() + " " + standard.getVersion();
+        form.code = standard.getAuthority();
+        return form;
     }
 
     private MicroReferenceOptionForm toPanelForm(MicroAstPanel panel) {

@@ -49,5 +49,12 @@ public enum AlertType {
     /**
      * Critical alert unacknowledged for more than 4 hours
      */
-    CRITICAL_UNACKNOWLEDGED
+    CRITICAL_UNACKNOWLEDGED,
+
+    /**
+     * Microbiology critical communication requiring acknowledgment (OGC-782 M-11,
+     * FR-018): surfaces the clinical call/read-back log through the existing alerts
+     * workflow rather than a parallel alerts experience.
+     */
+    MICROBIOLOGY_CRITICAL
 }

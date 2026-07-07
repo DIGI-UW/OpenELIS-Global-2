@@ -20,8 +20,8 @@ test.describe("Microbiology case workbench", () => {
       await expect(caseHeader.getByText("RECEIVED")).toBeVisible();
 
       await page.getByLabel("Activity note").fill("setup complete");
-      await page.getByRole("button", { name: "Record activity" }).click();
-      await expect(caseHeader.getByText("SETUP_RECORDED")).toBeVisible({
+      await page.getByRole("button", { name: "Start inoculation" }).click();
+      await expect(caseHeader.getByText("Setup Recorded")).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
       await expect(page.getByText(/setup complete/)).toBeVisible();
@@ -31,7 +31,7 @@ test.describe("Microbiology case workbench", () => {
       await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
-      await expect(page.getByText(/ISOLATE_CREATED/)).toBeVisible();
+      await expect(page.getByText(/Isolate Created/)).toBeVisible();
     } finally {
       cleanupMicrobiologyCase(seeded);
     }

@@ -1,12 +1,13 @@
 package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -22,6 +23,15 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 
+/**
+ * Final release is gated by {@link MicroCaseReadinessService} (isolate + AST
+ * review + critical follow-up state), not by {@code MicroCase.stage}. Nothing
+ * in the isolate/AST flow advances {@code stage} through the intermediate
+ * culture stages, so requiring a specific source stage here (as a prior
+ * revision did via {@code MicroCaseStateService.advanceStage}) made a
+ * readiness-eligible case unreleasable. {@code releaseFinal} now sets
+ * {@code stage} directly, consistent with {@code releasePreliminary}.
+ */
 @RunWith(MockitoJUnitRunner.class)
 public class MicroReportReleaseServiceTest {
 
@@ -35,17 +45,13 @@ public class MicroReportReleaseServiceTest {
     private MicroCaseReadinessService readinessService;
 
     @Mock
-    private MicroCaseStateService stateService;
-
-    @Mock
     private MicroCriticalCommunicationDAO communicationDAO;
 
     private MicroReportReleaseService service;
 
     @Before
     public void setUp() {
-        service = new MicroReportReleaseServiceImpl(caseDAO, activityDAO, readinessService, stateService,
-                communicationDAO);
+        service = new MicroReportReleaseServiceImpl(caseDAO, activityDAO, readinessService, communicationDAO);
     }
 
     @Test
@@ -66,24 +72,50 @@ public class MicroReportReleaseServiceTest {
 
     @Test
     public void finalReleaseUpdatesCaseAndRecordsHistory() {
-        MicroCase transitionedCase = new MicroCase();
-        transitionedCase.setId("case-1");
-        transitionedCase.setStage(MicroCaseStage.FINAL_RELEASED.name());
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setStage(MicroCaseStage.SETUP_RECORDED.name());
         MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
         readiness.caseId = "case-1";
         readiness.finalReleaseReady = true;
         when(readinessService.getReadiness("case-1")).thenReturn(readiness);
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
-        when(stateService.advanceStage("case-1", MicroCaseStage.FINAL_RELEASED, "1", "Final report released"))
-                .thenReturn(transitionedCase);
-        when(caseDAO.update(transitionedCase)).thenReturn(transitionedCase);
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseDAO.update(microCase)).thenReturn(microCase);
 
         MicroCase released = service.releaseFinal("case-1", "1");
 
         assertEquals(MicroCaseFinalReleaseState.FINAL_RELEASED.name(), released.getFinalReleaseState());
         assertEquals(MicroCaseStage.FINAL_RELEASED.name(), released.getStage());
-        verify(stateService).advanceStage("case-1", MicroCaseStage.FINAL_RELEASED, "1", "Final report released");
+        assertNotNull(released.getClosedAt());
+        assertEquals("1", released.getClosedBy());
+        verify(caseDAO).update(microCase);
         verify(activityDAO).insert(org.mockito.ArgumentMatchers.any());
+    }
+
+    /**
+     * Regression for the bug this revision fixes: a case can be readiness-eligible
+     * (isolate present, AST reviewed, no open critical follow-up) while its raw
+     * {@code stage} is still an early culture stage, because nothing in the
+     * isolate/AST flow advances it. Final release must not require a specific
+     * source stage.
+     */
+    @Test
+    public void finalReleaseSucceedsRegardlessOfCurrentStageOnceReadinessPasses() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setStage(MicroCaseStage.SETUP_RECORDED.name());
+        MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
+        readiness.caseId = "case-1";
+        readiness.finalReleaseReady = true;
+        when(readinessService.getReadiness("case-1")).thenReturn(readiness);
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseDAO.update(microCase)).thenReturn(microCase);
+
+        MicroCase released = service.releaseFinal("case-1", "1");
+
+        assertEquals(MicroCaseStage.FINAL_RELEASED.name(), released.getStage());
     }
 
     @Test
@@ -105,23 +137,4 @@ public class MicroReportReleaseServiceTest {
         }
     }
 
-    @Test
-    public void finalReleaseUsesCaseStateTransitionGuard() {
-        MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
-        readiness.caseId = "case-1";
-        readiness.finalReleaseReady = true;
-        when(readinessService.getReadiness("case-1")).thenReturn(readiness);
-        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
-        when(stateService.advanceStage("case-1", MicroCaseStage.FINAL_RELEASED, "1", "Final report released"))
-                .thenThrow(new IllegalArgumentException("Invalid microbiology case stage transition"));
-
-        try {
-            service.releaseFinal("case-1", "1");
-            fail("Expected final release to use the case transition guard");
-        } catch (IllegalArgumentException expected) {
-            assertEquals("Invalid microbiology case stage transition", expected.getMessage());
-        }
-
-        verify(caseDAO, org.mockito.Mockito.never()).update(any());
-    }
 }

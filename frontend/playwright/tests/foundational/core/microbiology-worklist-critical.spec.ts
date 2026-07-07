@@ -27,7 +27,7 @@ test.describe("microbiology worklist and critical communication", () => {
       await page.getByRole("button", { name: "Log communication" }).click();
       await expect(
         page.getByTestId("microbiology-critical-status"),
-      ).toContainText("OPEN", { timeout: LONG_TIMEOUT });
+      ).toContainText("Open", { timeout: LONG_TIMEOUT });
 
       await page.goto("/MicrobiologyWorklist", {
         waitUntil: "domcontentloaded",
@@ -47,7 +47,7 @@ test.describe("microbiology worklist and critical communication", () => {
       await page.getByRole("button", { name: "Acknowledge" }).click();
       await expect(
         page.getByTestId("microbiology-critical-status"),
-      ).toContainText("ACKNOWLEDGED", { timeout: LONG_TIMEOUT });
+      ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
     } finally {
       cleanupMicrobiologyMvpCase(seeded);
     }

@@ -14,10 +14,13 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
+import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
@@ -33,6 +36,9 @@ public class MicroCaseServiceTest {
     @Mock
     private MicroIsolateDAO isolateDAO;
 
+    @Mock
+    private MicroCaseOrderDetailDAO orderDetailDAO;
+
     @Test
     public void createOrGetCaseReturnsExistingCaseWithoutDuplicateActivity() {
         MicroCase existing = new MicroCase();
@@ -40,7 +46,7 @@ public class MicroCaseServiceTest {
         existing.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         when(caseDAO.getBySampleItemAndWorkflow("1001", MicroWorkflowType.BACTERIOLOGY.name())).thenReturn(existing);
 
-        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO);
+        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO);
         MicroCase result = service.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
 
         assertEquals(existing, result);
@@ -50,7 +56,7 @@ public class MicroCaseServiceTest {
 
     @Test
     public void createOrGetCaseCreatesReceivedCaseAndTimelineActivity() {
-        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO);
+        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO);
 
         MicroCase result = service.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
 
@@ -63,5 +69,41 @@ public class MicroCaseServiceTest {
         verify(activityDAO).insert(activityCaptor.capture());
         assertEquals(result.getId(), activityCaptor.getValue().getCaseId());
         assertEquals(MicroCaseActivityType.CASE_CREATED.name(), activityCaptor.getValue().getActivityType());
+    }
+
+    @Test
+    public void getCaseDetailCompilesOrderDetailWhenCaptured() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        MicroCaseOrderDetail detail = new MicroCaseOrderDetail();
+        detail.setCaseId("case-1");
+        detail.setPatientOrigin("Emergency department");
+        detail.setNumberOfSets(2);
+        when(orderDetailDAO.getByCaseId("case-1")).thenReturn(detail);
+
+        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO);
+        MicroCaseDetailForm form = service.getCaseDetail("case-1");
+
+        assertNotNull(form.orderDetail);
+        assertEquals("Emergency department", form.orderDetail.patientOrigin);
+        assertEquals(Integer.valueOf(2), form.orderDetail.numberOfSets);
+    }
+
+    @Test
+    public void getCaseDetailLeavesOrderDetailNullWhenNotCaptured() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(orderDetailDAO.getByCaseId("case-1")).thenReturn(null);
+
+        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO);
+        MicroCaseDetailForm form = service.getCaseDetail("case-1");
+
+        assertEquals(null, form.orderDetail);
     }
 }

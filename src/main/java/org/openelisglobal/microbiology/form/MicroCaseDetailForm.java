@@ -17,6 +17,7 @@ public class MicroCaseDetailForm {
     public Timestamp closedAt;
     public String closedBy;
     public String finalReleaseState;
+    public MicroCaseOrderDetailForm orderDetail;
     public List<MicroCaseActivityForm> activities = new ArrayList<>();
     public List<MicroIsolateForm> isolates = new ArrayList<>();
 }

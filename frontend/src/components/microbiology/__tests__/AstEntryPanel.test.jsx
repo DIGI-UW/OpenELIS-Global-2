@@ -74,6 +74,10 @@ describe("AstEntryPanel", () => {
           label: "Ciprofloxacin",
         },
       ]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([
+        { id: "std-clsi", label: "CLSI 2026" },
+        { id: "std-eucast", label: "EUCAST 2026" },
+      ]),
       getAstRunsForIsolate: vi
         .fn()
         .mockResolvedValueOnce([])
@@ -119,8 +123,16 @@ describe("AstEntryPanel", () => {
         screen.getByRole("button", { name: "Start AST run" }),
       ).not.toBeDisabled(),
     );
+    fireEvent.change(screen.getByLabelText("Breakpoint standard"), {
+      target: { value: "std-eucast" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Start AST run" }));
 
+    expect(service.startAstRun).toHaveBeenCalledWith({
+      isolateId: "iso-1",
+      panelId: "panel-1",
+      breakpointStandardId: "std-eucast",
+    });
     expect(await screen.findByText("In Progress")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Record AST reading" }));
 

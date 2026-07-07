@@ -29,7 +29,9 @@ const renderCase = (service) =>
 const astServiceStubs = {
   getAstPanels: vi.fn().mockResolvedValue([]),
   getAntibiotics: vi.fn().mockResolvedValue([]),
+  getBreakpointStandards: vi.fn().mockResolvedValue([]),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+  saveOrderDetail: vi.fn().mockResolvedValue({}),
   getCaseReadiness: vi.fn().mockResolvedValue({
     finalReleaseReady: true,
     blockers: [],

@@ -14,6 +14,8 @@ public class MicrobiologyTestFixtures {
     public static final String ANTIBIOTIC_ID = "ogc782-abx";
     public static final String STANDARD_ID = "ogc782-std";
     public static final String RULE_ID = "ogc782-rule";
+    public static final String ALT_STANDARD_ID = "ogc782-alt-std";
+    public static final String ALT_RULE_ID = "ogc782-alt-rule";
     public static final String PANEL_ID = "ogc782-panel";
     public static final String SETUP_ID = "ogc782-setup";
     public static final String TB_SETUP_ID = "ogc782-tb-setup";
@@ -87,6 +89,31 @@ public class MicrobiologyTestFixtures {
                 + " (id, method_id, name, workflow_type, media_defaults, incubation_defaults, atmosphere_defaults,"
                 + " is_active, lastupdated) VALUES (?, ?, 'Urine culture', 'BACTERIOLOGY', 'Blood agar',"
                 + " '18-24h', 'Ambient', 'Y', NOW())", SETUP_ID, Long.valueOf(methodId));
+    }
+
+    /**
+     * A second, stricter breakpoint standard (M-05: per-run standard selection).
+     * Its MIC thresholds (susceptible &lt;=2, resistant &gt;=8) differ from the
+     * default CLSI 2026 rule (susceptible &lt;=8, resistant &gt;=32) so a run
+     * started against this standard interprets the same raw value differently,
+     * proving the run's snapshotted choice is actually honored end-to-end.
+     */
+    public void insertAltBreakpointStandard() {
+        jdbc.update(
+                "INSERT INTO clinlims.micro_breakpoint_standard"
+                        + " (id, authority, version, is_active, lastupdated) VALUES (?, 'EUCAST', '2026', 'Y', NOW())",
+                ALT_STANDARD_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.micro_breakpoint_rule"
+                        + " (id, standard_id, organism_id, organism_group, antibiotic_id, method, breakpoint_type,"
+                        + " susceptible_value, resistant_value, is_active, lastupdated)"
+                        + " VALUES (?, ?, ?, 'Enterobacterales', ?, 'MIC', 'MIC', 2.0000, 8.0000, 'Y', NOW())",
+                ALT_RULE_ID, ALT_STANDARD_ID, ORGANISM_ID, ANTIBIOTIC_ID);
+    }
+
+    public void deleteAltBreakpointStandard() {
+        jdbc.update("DELETE FROM clinlims.micro_breakpoint_rule WHERE id = ?", ALT_RULE_ID);
+        jdbc.update("DELETE FROM clinlims.micro_breakpoint_standard WHERE id = ?", ALT_STANDARD_ID);
     }
 
     public void insertTbCultureSetup(String methodId) {

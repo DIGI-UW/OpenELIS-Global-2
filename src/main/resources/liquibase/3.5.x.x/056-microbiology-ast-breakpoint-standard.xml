@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- M-05 FRS: breakpoint standard is selectable per AST run and snapshotted
+       at setup, rather than always interpreting against one implicit
+       default. Nullable so existing rows and runs started without an
+       explicit choice keep using the configured default authority/version. -->
+  <changeSet id="OGC-782-micro-ast-run-breakpoint-standard" author="OGC">
+    <addColumn tableName="micro_ast_run" schemaName="clinlims">
+      <column name="breakpoint_standard_id" type="varchar(36)"/>
+    </addColumn>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="micro_ast_run"
+      baseColumnNames="breakpoint_standard_id"
+      constraintName="fk_micro_ast_run_breakpoint_standard"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="micro_breakpoint_standard"
+      referencedColumnNames="id"/>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_run"
+        constraintName="fk_micro_ast_run_breakpoint_standard"/>
+      <dropColumn tableName="micro_ast_run" schemaName="clinlims" columnName="breakpoint_standard_id"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

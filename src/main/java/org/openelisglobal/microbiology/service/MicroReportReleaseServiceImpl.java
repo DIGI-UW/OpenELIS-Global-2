@@ -20,16 +20,13 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
     private final MicroCaseReadinessService readinessService;
-    private final MicroCaseStateService stateService;
     private final MicroCriticalCommunicationDAO communicationDAO;
 
     public MicroReportReleaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
-            MicroCaseReadinessService readinessService, MicroCaseStateService stateService,
-            MicroCriticalCommunicationDAO communicationDAO) {
+            MicroCaseReadinessService readinessService, MicroCriticalCommunicationDAO communicationDAO) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.readinessService = readinessService;
-        this.stateService = stateService;
         this.communicationDAO = communicationDAO;
     }
 
@@ -55,8 +52,12 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         if (hasOpenCriticalFollowUp(caseId)) {
             throw new IllegalStateException("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
         }
-        MicroCase microCase = stateService.advanceStage(caseId, MicroCaseStage.FINAL_RELEASED, performedBy,
-                "Final report released");
+        // Readiness (isolate + AST review + critical follow-up state), not the raw
+        // culture stage, is the release gate: nothing in the isolate/AST flow
+        // advances stage through the intermediate culture stages, so a
+        // readiness-eligible case is not guaranteed to be in a particular stage.
+        MicroCase microCase = getCase(caseId);
+        microCase.setStage(MicroCaseStage.FINAL_RELEASED.name());
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
         microCase.setClosedAt(MicroCaseServiceImpl.now());
         microCase.setClosedBy(performedBy);

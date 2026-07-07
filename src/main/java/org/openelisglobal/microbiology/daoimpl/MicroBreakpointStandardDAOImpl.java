@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.daoimpl;
 
+import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -26,5 +27,14 @@ public class MicroBreakpointStandardDAOImpl extends BaseDAOImpl<MicroBreakpointS
         query.setParameter("authority", authority);
         query.setParameter("version", version);
         return query.uniqueResultOptional().orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroBreakpointStandard> getActiveStandards() {
+        Query<MicroBreakpointStandard> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroBreakpointStandard s where s.isActive = 'Y' order by s.authority, s.version",
+                MicroBreakpointStandard.class);
+        return query.list();
     }
 }

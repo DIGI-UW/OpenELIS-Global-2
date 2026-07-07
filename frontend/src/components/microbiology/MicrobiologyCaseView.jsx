@@ -8,6 +8,7 @@ import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
+import OrderDetailPanel from "./OrderDetailPanel";
 import ReportReadinessPanel from "./ReportReadinessPanel";
 import "./MicrobiologyCaseView.css";
 
@@ -214,6 +215,12 @@ const MicrobiologyCaseView = ({
             </span>
           </section>
           <Stack gap={5}>
+            <OrderDetailPanel
+              caseId={caseDetail.id}
+              orderDetail={caseDetail.orderDetail}
+              service={service}
+              onSaved={() => loadCase({ showLoading: false })}
+            />
             <CaseTimelinePanel
               activities={caseDetail.activities}
               onRecordActivity={recordActivity}

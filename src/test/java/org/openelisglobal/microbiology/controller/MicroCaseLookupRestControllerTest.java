@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
+import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -23,7 +24,8 @@ public class MicroCaseLookupRestControllerTest {
         when(service.getSiblingCases("1001")).thenReturn(List.of(bacteriology, tb));
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service,
-                org.mockito.Mockito.mock(MicroCaseStateService.class)).getCasesForSampleItem("1001");
+                org.mockito.Mockito.mock(MicroCaseStateService.class),
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCasesForSampleItem("1001");
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(2, response.getBody().size());

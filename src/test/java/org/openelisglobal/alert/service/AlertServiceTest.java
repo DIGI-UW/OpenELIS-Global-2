@@ -105,4 +105,48 @@ public class AlertServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Duplicate count should be 1", Integer.valueOf(1), alert.getDuplicateCount());
         assertNotNull("Last duplicate time should be set", alert.getLastDuplicateTime());
     }
+
+    /**
+     * M-11: microbiology criticals key by a UUID string, not a numeric entity id.
+     * The entity-ref path must round-trip through Alert without touching the
+     * numeric alert_entity_id column, so Freezer/Equipment alerts stay unaffected.
+     */
+    @Test
+    public void testCreateAlert_WithStringEntityRef_PersistsWithoutNumericEntityId() {
+        Alert result = alertService.createAlert(AlertType.MICROBIOLOGY_CRITICAL, "MicrobiologyCriticalCommunication",
+                "comm-uuid-1234", AlertSeverity.CRITICAL, "Positive blood culture called",
+                "{\"caseId\":\"case-uuid-1\"}");
+
+        assertNotNull("Alert should not be null", result);
+        assertNotNull("Alert ID should not be null", result.getId());
+        assertEquals("comm-uuid-1234", result.getAlertEntityRef());
+        assertNull("Numeric entity id must stay null for ref-keyed alerts", result.getAlertEntityId());
+        assertEquals(AlertStatus.OPEN, result.getStatus());
+    }
+
+    @Test
+    public void testGetAlertsByEntityRef_ReturnsOnlyMatchingRefAlerts() {
+        alertService.createAlert(AlertType.MICROBIOLOGY_CRITICAL, "MicrobiologyCriticalCommunication", "comm-a",
+                AlertSeverity.CRITICAL, "Message A", "{}");
+        alertService.createAlert(AlertType.MICROBIOLOGY_CRITICAL, "MicrobiologyCriticalCommunication", "comm-b",
+                AlertSeverity.CRITICAL, "Message B", "{}");
+
+        List<Alert> alerts = alertService.getAlertsByEntityRef("MicrobiologyCriticalCommunication", "comm-a");
+
+        assertEquals(1, alerts.size());
+        assertEquals("comm-a", alerts.get(0).getAlertEntityRef());
+    }
+
+    @Test
+    public void testCreateAlert_WithDuplicateEntityRefInWindow_IncrementsDuplicateCount() {
+        alertService.createAlert(AlertType.MICROBIOLOGY_CRITICAL, "MicrobiologyCriticalCommunication", "comm-dup",
+                AlertSeverity.CRITICAL, "Positive blood culture called", "{}");
+
+        alertService.createAlert(AlertType.MICROBIOLOGY_CRITICAL, "MicrobiologyCriticalCommunication", "comm-dup",
+                AlertSeverity.CRITICAL, "Positive blood culture called", "{}");
+
+        List<Alert> alerts = alertService.getAlertsByEntityRef("MicrobiologyCriticalCommunication", "comm-dup");
+        assertEquals("Should only have 1 alert (deduplicated)", 1, alerts.size());
+        assertEquals(Integer.valueOf(1), alerts.get(0).getDuplicateCount());
+    }
 }

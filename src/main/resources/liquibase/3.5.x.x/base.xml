@@ -189,4 +189,13 @@
   <include relativeToChangelogFile="true" file="053-microbiology-manual-ast.xml"/>
   <include relativeToChangelogFile="true" file="054-microbiology-worklists-critical.xml"/>
 
+  <!-- OGC-782 M7 MVP-gap: microbiology order-detail capture (FR-002) -->
+  <include relativeToChangelogFile="true" file="055-microbiology-order-detail.xml"/>
+
+  <!-- OGC-782 M7 MVP-gap: per-run breakpoint-standard selection (M-05) -->
+  <include relativeToChangelogFile="true" file="056-microbiology-ast-breakpoint-standard.xml"/>
+
+  <!-- OGC-782 M7 MVP-gap: alert_entity_ref for string-keyed alerts (M-11) -->
+  <include relativeToChangelogFile="true" file="057-alert-entity-ref.xml"/>
+
 </databaseChangeLog>

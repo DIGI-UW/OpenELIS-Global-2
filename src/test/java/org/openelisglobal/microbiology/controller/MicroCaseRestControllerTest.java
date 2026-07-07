@@ -9,12 +9,15 @@ import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
 import org.openelisglobal.microbiology.form.MicroCaseActivityRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
+import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
+import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
@@ -31,7 +34,8 @@ public class MicroCaseRestControllerTest {
         when(service.getCaseDetail("case-1")).thenReturn(detail);
 
         ResponseEntity<MicroCaseDetailForm> response = new MicroCaseRestController(service,
-                org.mockito.Mockito.mock(MicroCaseStateService.class)).getCaseDetail("case-1");
+                org.mockito.Mockito.mock(MicroCaseStateService.class),
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCaseDetail("case-1");
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals("case-1", response.getBody().id);
@@ -43,7 +47,8 @@ public class MicroCaseRestControllerTest {
         MicroCaseService service = org.mockito.Mockito.mock(MicroCaseService.class);
 
         ResponseEntity<MicroCaseDetailForm> response = new MicroCaseRestController(service,
-                org.mockito.Mockito.mock(MicroCaseStateService.class)).getCaseDetail("missing");
+                org.mockito.Mockito.mock(MicroCaseStateService.class),
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCaseDetail("missing");
 
         assertEquals(404, response.getStatusCode().value());
     }
@@ -66,11 +71,32 @@ public class MicroCaseRestControllerTest {
         request.note = "setup complete";
         request.performedBy = "1";
 
-        ResponseEntity<MicroCaseDetailForm> response = new MicroCaseRestController(caseService, stateService)
-                .recordActivity("case-1", request);
+        ResponseEntity<MicroCaseDetailForm> response = new MicroCaseRestController(caseService, stateService,
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).recordActivity("case-1", request);
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(MicroCaseStage.SETUP_RECORDED.name(), response.getBody().stage);
+    }
+
+    @Test
+    public void saveOrderDetailReturnsUpdatedCaseDetail() {
+        MicroCaseService caseService = org.mockito.Mockito.mock(MicroCaseService.class);
+        MicroCaseStateService stateService = org.mockito.Mockito.mock(MicroCaseStateService.class);
+        MicroCaseOrderDetailService orderDetailService = org.mockito.Mockito.mock(MicroCaseOrderDetailService.class);
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "Emergency department";
+        request.performedBy = "1";
+        when(orderDetailService.saveOrderDetail(eq("case-1"), eq(request), eq("1")))
+                .thenReturn(new MicroCaseOrderDetail());
+        MicroCaseDetailForm detail = new MicroCaseDetailForm();
+        detail.id = "case-1";
+        when(caseService.getCaseDetail("case-1")).thenReturn(detail);
+
+        ResponseEntity<MicroCaseDetailForm> response = new MicroCaseRestController(caseService, stateService,
+                orderDetailService).saveOrderDetail("case-1", request);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("case-1", response.getBody().id);
     }
 
     @Test

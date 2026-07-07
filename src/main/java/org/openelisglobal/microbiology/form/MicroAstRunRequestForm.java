@@ -4,5 +4,6 @@ public class MicroAstRunRequestForm {
 
     public String isolateId;
     public String panelId;
+    public String breakpointStandardId;
     public String performedBy;
 }
