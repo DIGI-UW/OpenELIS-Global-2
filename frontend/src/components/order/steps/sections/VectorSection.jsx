@@ -13,7 +13,10 @@ import {
   DatePickerInput,
 } from "@carbon/react";
 import { ChevronDown, ChevronUp } from "@carbon/icons-react";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../../utils/Utils";
 import { useOrderContext } from "../../OrderContext";
 
 const todayIso = () => {
@@ -141,6 +144,9 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const [siteResults, setSiteResults] = useState([]);
   const [selectedSite, setSelectedSite] = useState(null);
   const [collectionContextOpen, setCollectionContextOpen] = useState(false);
+  const [showAddSite, setShowAddSite] = useState(false);
+  const [newSite, setNewSite] = useState({ code: "", name: "" });
+  const [addSiteError, setAddSiteError] = useState("");
 
   const initialCollectionDate =
     orderData?.sampleOrderItems?.environmentalFields?.[COLLECTION_DATE_KEY] ||
@@ -283,6 +289,35 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
         },
       },
     }));
+  };
+
+  // Create a sampling site inline (code + name are the only required fields, per
+  // the admin form) and select it, so order entry never needs the admin screen.
+  const handleCreateSite = () => {
+    const code = newSite.code.trim();
+    const name = newSite.name.trim();
+    if (!code || !name) return;
+    setAddSiteError("");
+    postToOpenElisServerJsonResponse(
+      "/rest/admin/vector/sampling-sites",
+      JSON.stringify({ code, name }),
+      (resp) => {
+        if (resp && resp.id) {
+          setSites((prev) => [...prev, resp]);
+          handleSelectSite(resp);
+          setShowAddSite(false);
+          setNewSite({ code: "", name: "" });
+        } else {
+          setAddSiteError(
+            intl.formatMessage({
+              id: "vector.order.site.addNew.error",
+              defaultMessage:
+                "Could not create the site — a site with that code may already exist.",
+            }),
+          );
+        }
+      },
+    );
   };
 
   const handleClearSite = () => {
@@ -454,6 +489,105 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
                 </>
               )}
             />
+            {/* Inline site creation — code + name only, so a non-admin can add a
+                site here instead of the admin screen (both vector and ENV). */}
+            <div style={{ marginTop: "0.75rem" }}>
+              {!showAddSite ? (
+                <Link
+                  onClick={() => !isReadOnly && setShowAddSite(true)}
+                  disabled={isReadOnly}
+                >
+                  <FormattedMessage
+                    id="vector.order.site.addNew"
+                    defaultMessage="Can't find it? Add a new site"
+                  />
+                </Link>
+              ) : (
+                <div
+                  style={{
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    padding: "1rem",
+                    background: "#f4f4f4",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "1rem",
+                    }}
+                  >
+                    <TextInput
+                      id="vec-new-site-code"
+                      labelText={intl.formatMessage({
+                        id: "vector.admin.samplingSite.code",
+                        defaultMessage: "Site code",
+                      })}
+                      value={newSite.code}
+                      onChange={(e) =>
+                        setNewSite((s) => ({ ...s, code: e.target.value }))
+                      }
+                    />
+                    <TextInput
+                      id="vec-new-site-name"
+                      labelText={intl.formatMessage({
+                        id: "vector.admin.samplingSite.name",
+                        defaultMessage: "Site name or code",
+                      })}
+                      value={newSite.name}
+                      onChange={(e) =>
+                        setNewSite((s) => ({ ...s, name: e.target.value }))
+                      }
+                    />
+                  </div>
+                  {addSiteError && (
+                    <p
+                      style={{
+                        color: "#da1e28",
+                        fontSize: "0.75rem",
+                        marginTop: "0.5rem",
+                      }}
+                    >
+                      {addSiteError}
+                    </p>
+                  )}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "0.5rem",
+                      marginTop: "0.75rem",
+                    }}
+                  >
+                    <Button
+                      kind="primary"
+                      size="sm"
+                      id="vec-new-site-create"
+                      onClick={handleCreateSite}
+                      disabled={!newSite.code.trim() || !newSite.name.trim()}
+                    >
+                      <FormattedMessage
+                        id="vector.order.site.addNew.create"
+                        defaultMessage="Create & select"
+                      />
+                    </Button>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowAddSite(false);
+                        setAddSiteError("");
+                      }}
+                    >
+                      <FormattedMessage
+                        id="label.button.cancel"
+                        defaultMessage="Cancel"
+                      />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

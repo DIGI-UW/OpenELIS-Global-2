@@ -45,7 +45,6 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
     const quantity = 12;
     const traps = 6;
     const nights = 2; // trap-nights = 12 → density = 12 / 12 = 1.00
-    const collectionDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     await test.step("Title card", async () => {
       await demo.title(
@@ -147,6 +146,31 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       await expect(cells.nth(4)).toHaveText(/^\d+\.\d{2}$/);
 
       await demo.evidence("372-4-density-by-site");
+    });
+  });
+
+  test("adding a sampling site inline selects it without leaving the order form", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    const stamp = Date.now().toString().slice(-6);
+    const siteCode = `E2E-INLINE-${stamp}`;
+    const siteName = `E2E Inline Site ${stamp}`;
+
+    await page.goto("/order/vector/enter");
+    await expect(page.locator("#vec-site-search")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // No admin screen, no navigation away — add the site inline (code + name).
+    await page.getByText(/Add a new site/i).click();
+    await page.locator("#vec-new-site-code").fill(siteCode);
+    await page.locator("#vec-new-site-name").fill(siteName);
+    await page.locator("#vec-new-site-create").click();
+
+    // On create the site is auto-selected on the same screen.
+    await expect(page.getByText(`${siteCode} — ${siteName}`)).toBeVisible({
+      timeout: 15_000,
     });
   });
 });
