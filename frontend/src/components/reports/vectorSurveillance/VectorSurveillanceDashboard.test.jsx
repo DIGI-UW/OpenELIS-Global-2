@@ -310,4 +310,32 @@ describe("VectorSurveillanceDashboard", () => {
     // The payload rendered without any interaction.
     expect(screen.getByTestId("donut-chart")).toBeInTheDocument();
   });
+
+  test("density panel shows the honest 'specimen counts' label, not 'collection density'", async () => {
+    getSurveillanceIndices.mockImplementation((scope, cb) => cb(mockIndices));
+
+    renderWithIntl(<VectorSurveillanceDashboard />);
+    applyFilters();
+
+    // The title must render the current honest key. Reverting to a hardcoded
+    // "Collection density" (which overstates raw counts as effort-normalized) fails here.
+    const density = await screen.findByTestId("panel-density");
+    expect(
+      within(density).getByText(messages["vectorReport.density.title"]),
+    ).toBeInTheDocument();
+  });
+
+  test("sporozoite tile carries the deconvolution-confidence caveat", async () => {
+    getSurveillanceIndices.mockImplementation((scope, cb) => cb(mockIndices));
+
+    renderWithIntl(<VectorSurveillanceDashboard />);
+    applyFilters();
+
+    // The caveat must accompany the sporozoite figure (superseding the old
+    // "withheld until 95%" wording). Dropping the note fails this test.
+    const spo = await screen.findByTestId("vector-sporozoite");
+    expect(
+      within(spo).getByText(messages["vectorReport.mir.sporozoiteNote"]),
+    ).toBeInTheDocument();
+  });
 });

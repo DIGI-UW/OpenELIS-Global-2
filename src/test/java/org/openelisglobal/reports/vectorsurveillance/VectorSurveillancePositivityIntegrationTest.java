@@ -19,6 +19,7 @@ import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.DensityAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.PositivityAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SporozoiteAggregate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -167,6 +168,22 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
                 .orElseThrow(() -> new AssertionError("expected a Malaria positivity row"));
     }
 
+    private SpeciesMirAggregate anophelesMalariaMir(List<SpeciesMirAggregate> mir) {
+        return mir.stream()
+                .filter(a -> SPECIES_ANOPHELES.equals(a.getSpeciesId()) && PATHOGEN_MALARIA.equals(a.getPathogen()))
+                .findFirst().orElseThrow(() -> new AssertionError("expected the Anopheles x Malaria MIR row"));
+    }
+
+    private long siteADensitySpecimens(List<DensityAggregate> density) {
+        return density.stream().filter(d -> Integer.valueOf(900).equals(d.getSiteId()))
+                .mapToLong(DensityAggregate::getSpecimenCount).sum();
+    }
+
+    private long anophelesSpecimens(List<SpeciesAggregate> dist) {
+        return dist.stream().filter(s -> "Anopheles".equals(s.getGenus())).mapToLong(SpeciesAggregate::getSpecimenCount)
+                .sum();
+    }
+
     // ---- THE INVERSION GUARD --------------------------------------------------
 
     @Test
@@ -218,6 +235,90 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
         PositivityAggregate after = malariaRow(dao.getPathogenPositivity(FROM, TO, null));
         assertEquals("QC control pool excluded from the tested denominator", 2L, after.getPoolsTested());
         assertEquals("QC control pool's POSITIVE excluded from the numerator", 0L, after.getPoolsPositive());
+    }
+
+    // A DUPLICATE is a QC replicate of a real specimen (reproducibility check), not
+    // a
+    // second field observation, so it is a QC artifact too. Guards both the
+    // collection-density path and the DUPLICATE qc_type; removing DUPLICATE from
+    // the
+    // exclusion predicate makes this test fail.
+    @Test
+    public void qcSample_isExcludedFromCollectionDensity_coversDuplicateQcType_SC005() {
+        assertEquals("baseline: site A density sums its three pool members 10+10+8", 28L,
+                siteADensitySpecimens(dao.getCollectionDensity(FROM, TO, null)));
+
+        insertQcProfile("qc-dens-900", 900, "DUPLICATE");
+
+        assertEquals("QC DUPLICATE member (qty 10) must leave the density specimen count", 18L,
+                siteADensitySpecimens(dao.getCollectionDensity(FROM, TO, null)));
+    }
+
+    @Test
+    public void qcSample_isExcludedFromMirNumerator_SC005() {
+        assertNotNull("baseline: the POSITIVE malaria pool 901 yields an Anopheles x Malaria MIR row",
+                anophelesMalariaMir(dao.getMirAggregates(FROM, TO, null)));
+
+        insertQcProfile("qc-mir-901", 901, "CONTROL");
+
+        boolean present = dao.getMirAggregates(FROM, TO, null).stream()
+                .anyMatch(a -> SPECIES_ANOPHELES.equals(a.getSpeciesId()) && PATHOGEN_MALARIA.equals(a.getPathogen()));
+        assertFalse("the only POSITIVE malaria pool is now a QC control; its MIR row must disappear", present);
+    }
+
+    // Leaf sample_item 903 is the deconvoluted individual positive counted by the
+    // observed-organism numerator (an item-anchored analysis). Flagging the leaf
+    // (not
+    // its parent pool member 901) leaves the pool-level MIR row intact but must
+    // drop
+    // the individual from the observed count — guards the observedPositiveOrganisms
+    // path.
+    @Test
+    public void qcSample_isExcludedFromObservedOrganismCount_SC005() {
+        assertEquals("baseline: one observed positive individual (leaf 903)", 1L,
+                anophelesMalariaMir(dao.getMirAggregates(FROM, TO, null)).getObservedPositiveOrganisms());
+
+        insertQcProfile("qc-leaf-903", 903, "CONTROL");
+
+        assertEquals("QC-flagged individual leaf must leave the observed-organism numerator", 0L,
+                anophelesMalariaMir(dao.getMirAggregates(FROM, TO, null)).getObservedPositiveOrganisms());
+    }
+
+    @Test
+    public void qcSample_isExcludedFromSporozoite_numeratorAndDenominator_SC005() {
+        SporozoiteAggregate before = dao.getSporozoiteAggregate(FROM, TO, null);
+        assertEquals("baseline: one CSP-ELISA POSITIVE Anopheles pool", 1L, before.getPositivePools());
+        assertEquals("baseline: 29 Anopheles specimens in scope", 29L, before.getTotalSpecimens());
+
+        insertQcProfile("qc-spo-902", 902, "CONTROL");
+
+        SporozoiteAggregate after = dao.getSporozoiteAggregate(FROM, TO, null);
+        assertEquals("QC pool must leave the sporozoite numerator", 0L, after.getPositivePools());
+        assertEquals("QC specimens (qty 8) must leave the sporozoite denominator", 21L, after.getTotalSpecimens());
+    }
+
+    @Test
+    public void qcSample_isExcludedFromSpeciesDistribution_SC005() {
+        assertEquals("baseline: Anopheles specimens 10+10+8+1", 29L,
+                anophelesSpecimens(dao.getSpeciesDistribution(FROM, TO, null)));
+
+        insertQcProfile("qc-species-900", 900, "BLANK");
+
+        assertEquals("QC blank (qty 10) must leave the species-distribution count", 19L,
+                anophelesSpecimens(dao.getSpeciesDistribution(FROM, TO, null)));
+    }
+
+    @Test
+    public void qcSample_isExcludedFromSitesWithPositives_SC005() {
+        assertEquals("baseline: site A holds a positive pool", 1L, dao.countSitesWithPositives(FROM, TO, null));
+
+        // Site A's only positives are pools 901 (malaria) and 902 (CSP); flag both
+        // members.
+        insertQcProfile("qc-site-901", 901, "CONTROL");
+        insertQcProfile("qc-site-902", 902, "CONTROL");
+
+        assertEquals("with both positive pools QC-flagged, no site has a countable positive", 0L,
+                dao.countSitesWithPositives(FROM, TO, null));
     }
 
     // ---- Per-pathogen grouping ------------------------------------------------

@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import { applyPlugin } from "jspdf-autotable";
 
-// jspdf-autotable v4+ does not patch the jsPDF prototype on a bare import;
+// jspdf-autotable v5 does not patch the jsPDF prototype on a bare import;
 // applyPlugin restores the doc.autoTable() / doc.lastAutoTable used below.
 applyPlugin(jsPDF);
 

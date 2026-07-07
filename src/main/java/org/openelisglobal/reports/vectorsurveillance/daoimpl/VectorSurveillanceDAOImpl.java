@@ -18,6 +18,7 @@ import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAgg
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SporozoiteAggregate;
+import org.openelisglobal.testresult.valueholder.TestResultSignificance;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,17 +47,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
 
     /** Catalog classification marking a positive surveillance result. */
-    private static final String POSITIVE = "POSITIVE";
+    private static final String POSITIVE = TestResultSignificance.POSITIVE.name();
 
-    // A pool member flagged as a QC control/blank (sample_item_qc_profile.qc_type)
-    // is a lab QC sample, not a field observation; exclude it from surveillance
-    // numerators AND denominators (FR-002/SC-005). Two forms: one for queries with
-    // the sample-item alias 'si' in scope, one correlated to the pool 'p'.
+    // A sample_item flagged in sample_item_qc_profile is a lab QC sample (blank,
+    // control, or duplicate replicate), not a field observation, so it is excluded
+    // from every surveillance numerator and denominator. Two forms: one for queries
+    // with the sample-item alias si in scope, one correlated to the pool p.
+    private static final String QC_TYPES = "('BLANK', 'CONTROL', 'DUPLICATE')";
     private static final String QC_EXCLUDE_SI = " and not exists (select 1 from SampleItemQcProfile qp"
-            + " where qp.sampleItemId = cast(si.id as long) and qp.qcType in ('BLANK', 'CONTROL'))";
+            + " where qp.sampleItemId = cast(si.id as long) and qp.qcType in " + QC_TYPES + ")";
     private static final String QC_EXCLUDE_POOL = " and not exists (select 1 from VectorPoolMember vpmq,"
             + " SampleItem siq, SampleItemQcProfile qp where vpmq.pool = p and vpmq.sampleItem = siq"
-            + " and qp.sampleItemId = cast(siq.id as long) and qp.qcType in ('BLANK', 'CONTROL'))";
+            + " and qp.sampleItemId = cast(siq.id as long) and qp.qcType in " + QC_TYPES + ")";
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -122,7 +124,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " from VectorSpecimenIdentification vsi, SampleItem si, Sample s, VectorSpecies sp"
                     + " where vsi.sampleItemId = cast(si.id as long) and si.sample.id = s.id"
                     + " and vsi.vectorSpeciesId = sp.id and vsi.confidence = 'CONFIRMED'"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId)
+                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI
                     + " group by sp.id, sp.genus, sp.species order by 4 desc";
             List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
             List<SpeciesAggregate> out = new ArrayList<>();
@@ -205,7 +207,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " and r.testResult = tr and tr.test.id = :testId and tr.significance = :positive"
                     + " and vsi.sampleItemId = cast(si.id as long) and vsi.vectorSpeciesId = :speciesId"
                     + " and vsi.confidence = 'CONFIRMED' and si.sample.id = s.id"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId);
+                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
             Query q = entityManager.createQuery(hql);
             q.setParameter("positive", POSITIVE);
             // Test.id is mapped as a String (LIMSStringNumberUserType), so bind the
@@ -352,7 +354,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " where s.id = p.sampleId and p.parentPool is null and vpm.pool = p and vpm.sampleItem = si"
                     + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
                     + " and r.testResult = tr and tr.significance = :positive"
-                    + " and s.collectionDate between :from and :to" + siteClause(siteId);
+                    + " and s.collectionDate between :from and :to" + siteClause(siteId) + QC_EXCLUDE_SI;
             return lng(bind(hql, fromDate, toDate, siteId).getSingleResult());
         } catch (RuntimeException e) {
             LogEvent.logError(e);

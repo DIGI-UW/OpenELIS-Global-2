@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import { applyPlugin } from "jspdf-autotable";
 import bwipjs from "bwip-js";
 
-// jspdf-autotable v4+ no longer patches jsPDF on a bare import; restore doc.autoTable.
+// jspdf-autotable v5 no longer patches jsPDF on a bare import; restore doc.autoTable.
 applyPlugin(jsPDF);
 
 /**
