@@ -247,6 +247,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.restrictFreeTextRefSiteEntry, "false");
         properties.setPropertyValue(Property.restrictFreeTextMethodEntry, "false");
         properties.setPropertyValue(Property.restrictFreeTextProviderEntry, "false");
+        properties.setPropertyValue(Property.restrictFreeTextRequestorEntry, "false");
         properties.setPropertyValue(Property.autoFillTechNameBox, "false");
         properties.setPropertyValue(Property.autoFillTechNameUser, "false");
         properties.setPropertyValue(Property.failedValidationMarker, "true");

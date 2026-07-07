@@ -676,6 +676,9 @@ public class OrganizationRestController extends BaseController {
                 orgData.put("streetAddress", org.getStreetAddress());
                 orgData.put("city", org.getCity() != null ? org.getCity() : "");
                 orgData.put("state", org.getState());
+                orgData.put("phone", org.getPhone());
+                orgData.put("fax", org.getFax());
+                orgData.put("email", org.getEmail());
                 orgData.put("isActive", "Y".equals(org.getIsActive()));
 
                 List<String> typeIds = organizationService.getTypeIdsForOrganizationId(org.getId());

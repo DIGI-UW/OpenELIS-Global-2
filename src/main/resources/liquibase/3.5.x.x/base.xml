@@ -200,4 +200,10 @@
   <!-- LHU PDF archival for ISO 17025 §7.8.8 compliance -->
   <include relativeToChangelogFile="true" file="052-compliance-report-archive.xml"/>
 
+  <!-- OGC-1074: Requester element revamp — Organization contact fields, Person department, requestor_contact requester_type -->
+  <include relativeToChangelogFile="true" file="053-requester-element-revamp.xml"/>
+
+  <!-- OGC-1074 task #4: restrictFreeTextRequestorEntry admin config for the Requestor "+ Add new" affordance -->
+  <include relativeToChangelogFile="true" file="054-requestor-free-text-restriction.xml"/>
+
 </databaseChangeLog>

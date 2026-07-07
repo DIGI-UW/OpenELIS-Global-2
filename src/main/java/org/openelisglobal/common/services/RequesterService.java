@@ -18,6 +18,7 @@ package org.openelisglobal.common.services;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.organization.valueholder.OrganizationType;
@@ -51,6 +52,7 @@ public class RequesterService {
 
     private String sampleId;
     private Person person;
+    private Person requestorPerson;
     private List<SampleRequester> requesters;
     private Organization organization;
     private Organization organizationDepartment;
@@ -148,6 +150,48 @@ public class RequesterService {
         return person;
     }
 
+    /**
+     * OGC-1074: the standalone Environmental/Vector Requestor contact, distinct
+     * from {@link #getPerson()} (the Clinical Provider). Lazily resolved the same
+     * way as person/organization above, via
+     * {@code TableIdService.REQUESTOR_CONTACT_REQUESTER_TYPE_ID}.
+     */
+    public Person getRequestorPerson() {
+        if (requestorPerson == null) {
+            buildRequesters();
+        }
+
+        return requestorPerson;
+    }
+
+    public String getRequestorPersonId() {
+        return getRequestorPerson() == null ? null : getRequestorPerson().getId();
+    }
+
+    public String getRequestorFirstName() {
+        return getRequestorPerson() == null ? null : personService.getFirstName(getRequestorPerson());
+    }
+
+    public String getRequestorLastName() {
+        return getRequestorPerson() == null ? null : personService.getLastName(getRequestorPerson());
+    }
+
+    public String getRequestorPhone() {
+        return getRequestorPerson() == null ? null : personService.getWorkPhone(getRequestorPerson());
+    }
+
+    public String getRequestorFax() {
+        return getRequestorPerson() == null ? null : personService.getFax(getRequestorPerson());
+    }
+
+    public String getRequestorEmail() {
+        return getRequestorPerson() == null ? null : personService.getEmail(getRequestorPerson());
+    }
+
+    public String getRequestorDepartment() {
+        return getRequestorPerson() == null ? null : getRequestorPerson().getDepartment();
+    }
+
     public Organization getOrganization() {
         if (organization == null) {
             buildRequesters();
@@ -199,6 +243,21 @@ public class RequesterService {
         requesters = sampleRequesterService.getRequestersForSampleId(sampleId);
         Sample sample = sampleService.get(sampleId);
         person = sampleService.getPersonRequester(sample);
+        // OGC-1074-DEPLOY-CHECK: only present in the build that reads back the
+        // Requestor contact on edit-load. If this line is absent from a
+        // running container's logs after opening an order for edit, the
+        // deployed jar predates this fix. logWarn (not logDebug) so it's
+        // visible at this deployment's default `info` log4j2 level without
+        // needing a config change. Safe to remove once confirmed live.
+        LogEvent.logWarn(this.getClass().getName(), "buildRequesters",
+                "OGC-1074-DEPLOY-CHECK: resolving requestor_contact for sampleId=" + sampleId + " requesterTypeId="
+                        + TableIdService.getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID);
+        requestorPerson = sampleService.getPersonRequester(sample,
+                TableIdService.getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID);
+        LogEvent.logWarn(this.getClass().getName(), "buildRequesters",
+                "OGC-1074-DEPLOY-CHECK: requestorPerson=" + (requestorPerson == null ? "null (not found)"
+                        : "id=" + requestorPerson.getId() + " firstName=" + requestorPerson.getFirstName()
+                                + " lastName=" + requestorPerson.getLastName()));
         organization = sampleService.getOrganizationRequester(sampleService.get(sampleId),
                 TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
         organizationDepartment = sampleService.getOrganizationRequester(sampleService.get(sampleId),

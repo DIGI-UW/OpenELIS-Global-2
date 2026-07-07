@@ -22,6 +22,7 @@ import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
@@ -196,6 +197,32 @@ public class SampleOrderService {
             sampleOrder.setReferringSiteDepartmentId(requesterService.getReferringDepartmentId());
             sampleOrder.setReferringSiteCode(requesterService.getReferringSiteCode());
             sampleOrder.setReferringSiteName(requesterService.getReferringSiteName());
+            if (requesterService.getOrganization() != null) {
+                sampleOrder.setReferringSitePhone(requesterService.getOrganization().getPhone());
+                sampleOrder.setReferringSiteFax(requesterService.getOrganization().getFax());
+                sampleOrder.setReferringSiteEmail(requesterService.getOrganization().getEmail());
+            }
+
+            // OGC-1074: Env/Vector Requestor contact — independent of Provider above
+            sampleOrder.setRequestorPersonId(requesterService.getRequestorPersonId());
+            sampleOrder.setRequestorFirstName(requesterService.getRequestorFirstName());
+            sampleOrder.setRequestorLastName(requesterService.getRequestorLastName());
+            sampleOrder.setRequestorPhone(requesterService.getRequestorPhone());
+            sampleOrder.setRequestorFax(requesterService.getRequestorFax());
+            sampleOrder.setRequestorEmail(requesterService.getRequestorEmail());
+            sampleOrder.setRequestorDepartment(requesterService.getRequestorDepartment());
+            // OGC-1074-DEPLOY-CHECK: only present in the build that reads the
+            // Requestor contact back onto the SampleOrderItem sent to the
+            // frontend on edit-load. Absent from a running container's logs
+            // after opening an order for edit => deployed jar predates this
+            // fix. logWarn (not logDebug) so it's visible at this
+            // deployment's default `info` log4j2 level without needing a
+            // config change. Safe to remove once confirmed live.
+            LogEvent.logWarn(this.getClass().getName(), "getSampleOrderItem",
+                    "OGC-1074-DEPLOY-CHECK: sampleId=" + sample.getId() + " requestorPersonId="
+                            + sampleOrder.getRequestorPersonId() + " requestorFirstName="
+                            + sampleOrder.getRequestorFirstName() + " requestorLastName="
+                            + sampleOrder.getRequestorLastName());
 
             // Map consent audit fields
             if (sample.getConsentRecordedAt() != null) {
