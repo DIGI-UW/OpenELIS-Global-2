@@ -1,0 +1,141 @@
+/**
+ * QIDashboard / QITile styles — matches designs/quality/qa-v1-preview.html
+ * (gray backdrop, white bordered cards, auto-fill tile grid).
+ */
+
+.qi-dashboard {
+  background: var(--cds-layer-01, #f4f4f4);
+  padding: 0.5rem 2rem 2rem;
+  min-height: calc(100vh - 3rem);
+}
+
+.qi-dashboard__subtitle {
+  font-size: 0.9375rem;
+  color: var(--cds-text-secondary, #525252);
+  margin: 0.25rem 0 1.5rem;
+}
+
+.qi-dashboard__controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: #fff;
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  margin: 1.25rem 0 1rem;
+  flex-wrap: wrap;
+}
+
+.qi-dashboard__refresh {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.qi-dashboard__refreshed {
+  font-size: 0.8125rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.qi-dashboard__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.qi-tile {
+  background: #fff;
+  padding: 1.125rem;
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  border-top: 3px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition:
+    background 0.12s,
+    box-shadow 0.12s;
+}
+
+.qi-tile--clickable {
+  cursor: pointer;
+}
+
+.qi-tile--clickable:hover {
+  background: #fafafa;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.qi-tile--blue {
+  border-top-color: var(--cds-link-primary, #0f62fe);
+}
+
+.qi-tile--gray {
+  border-top-color: #a8a8a8;
+}
+
+.qi-tile--gray .qi-tile__title,
+.qi-tile--gray .qi-tile__message {
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.qi-tile__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qi-tile__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.qi-tile__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.qi-tile__value {
+  font-size: 1.75rem;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--cds-text-primary, #161616);
+  line-height: 1.2;
+}
+
+.qi-tile__delta {
+  font-size: 0.8125rem;
+}
+
+.qi-tile__delta--good {
+  color: var(--cds-support-success, #198038);
+}
+
+.qi-tile__delta--bad {
+  color: var(--cds-support-error, #da1e28);
+}
+
+.qi-tile__delta--flat {
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.qi-tile__target,
+.qi-tile__secondary,
+.qi-tile__message {
+  font-size: 0.8125rem;
+  color: var(--cds-text-secondary, #525252);
+  margin: 0;
+}
+
+.qi-tile__target {
+  font-size: 0.75rem;
+}
+
+.qi-tile__detail-link {
+  margin-top: auto;
+  padding-top: 0.25rem;
+  font-size: 0.75rem;
+}
