@@ -6013,6 +6013,8 @@
   "qa.overview.week.auditEntries": "Audit log entries",
   "qa.overview.week.signatureEvents": "Signature events",
   "qa.overview.activity.feed": "Attested actions across all pillars",
+  "qa.overview.ncePulse.criticalPending": "critical pending",
+  "qa.overview.ncePulse.inCorrectiveAction": "{count} in corrective action",
   "qa.overview.inspector.q1": "Are runs in control?",
   "qa.overview.inspector.q2": "How did EQA perform last cycle?",
   "qa.overview.inspector.q3": "Are QIs on target?",
