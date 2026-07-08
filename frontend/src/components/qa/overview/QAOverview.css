@@ -1,0 +1,91 @@
+.qa-overview-subtitle {
+  color: #525252;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 1.5rem;
+}
+
+.qa-overview-section {
+  margin-bottom: 2rem;
+}
+
+.qa-sec-head {
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.qa-sec-head h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ComingSoon placeholders — deliberately muted (gray, ticket-annotated) */
+.qa-overview-section .qa-cs {
+  background-color: #f4f4f4;
+  color: #525252;
+  min-height: 0;
+}
+
+.qa-cs-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.qa-cs-caption {
+  color: #8d8d8d;
+  font-size: 0.75rem;
+  margin-top: 0.125rem;
+}
+
+.qa-cs-ticket {
+  flex-shrink: 0;
+  margin: 0.5rem 0 0;
+}
+
+.qa-cs-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qa-cs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-left: 3px solid #c6c6c6;
+  padding: 0.625rem 1rem;
+}
+
+.qa-cs-row .qa-cs-ticket {
+  margin: 0;
+}
+
+.qa-cs-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.qa-cs-grid-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+
+.qa-cs-grid-stats {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+}
+
+.qa-cs-grid-pillars {
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+}
+
+.qa-cs-tile.cds--tile {
+  min-height: 6.5rem;
+}
+
+.qa-cs-stat.cds--tile {
+  min-height: 4.5rem;
+  padding: 0.75rem 1rem;
+}
