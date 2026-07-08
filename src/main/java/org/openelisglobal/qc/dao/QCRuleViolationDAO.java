@@ -33,6 +33,12 @@ public interface QCRuleViolationDAO extends BaseDAO<QCRuleViolation, String> {
             throws LIMSRuntimeException;
 
     /**
+     * Get violations across all instruments within a date range (QA Overview
+     * aggregation).
+     */
+    List<QCRuleViolation> findByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
+
+    /**
      * Get unresolved violations for a specific instrument.
      */
     List<QCRuleViolation> findUnresolvedByInstrument(String instrumentId) throws LIMSRuntimeException;

@@ -1,5 +1,6 @@
 package org.openelisglobal.esig.service;
 
+import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
@@ -71,6 +72,24 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @return list of signatures ordered by most recent first
      */
     List<ElectronicSignature> getSignaturesByMeaning(SignatureMeaning meaning);
+
+    /**
+     * Get signatures within a date range (QA Overview activity feed).
+     *
+     * @param startDate start of range (inclusive)
+     * @param endDate   end of range (inclusive)
+     * @return list of signatures ordered by most recent first
+     */
+    List<ElectronicSignature> getSignaturesInDateRange(Timestamp startDate, Timestamp endDate);
+
+    /**
+     * Count signatures within a date range (QA Overview weekly counter).
+     *
+     * @param startDate start of range (inclusive)
+     * @param endDate   end of range (inclusive)
+     * @return number of signatures executed in the range
+     */
+    long countSignaturesInDateRange(Timestamp startDate, Timestamp endDate);
 
     // ========================
     // First-Use Certification
