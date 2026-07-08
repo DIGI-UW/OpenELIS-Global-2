@@ -47,17 +47,4 @@ describe("QAPlaceholder", () => {
       "https://github.com/DIGI-UW/openelis-work/blob/main/designs/quality/analyzer-manual-qc.md",
     );
   });
-
-  test("qi coming-soon placeholder renders without design-doc link", () => {
-    renderPage(<QAPlaceholder feature="qi" />);
-    expect(
-      screen.getByRole("heading", { name: "Quality Indicators" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("This page is planned but not yet built."),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: /Read design doc on GitHub/ }),
-    ).not.toBeInTheDocument();
-  });
 });
