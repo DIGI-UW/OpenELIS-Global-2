@@ -35,7 +35,8 @@
 # USAGE
 #   ./scripts/deploy-vector-demo.sh status          # auth + instance + HTTPS + deployed commit (read-only)
 #   ./scripts/deploy-vector-demo.sh connect [cmd…]  # open a shell (or run a remote command)
-#   ./scripts/deploy-vector-demo.sh deploy --yes    # DESTRUCTIVE: full reset -> rebuild latest -> reseed -> verify
+#   ./scripts/deploy-vector-demo.sh deploy --yes    # DESTRUCTIVE: full reset -> rebuild latest -> reseed -> verify (detached + polled)
+#   ./scripts/deploy-vector-demo.sh logs            # tail the detached deploy log + status (resume a poll)
 #   ./scripts/deploy-vector-demo.sh seed            # reseed only (seed-vector-demo.sh --clean)
 #   ./scripts/deploy-vector-demo.sh provision       # break-glass: recreate the instance if it is gone
 #
@@ -52,6 +53,14 @@ OE_BRANCH="${OE_BRANCH:-372-vector-surveillance-reporting}"
 DISTRO_BRANCH="${DISTRO_BRANCH:-feat/vector-result-significance}"
 AMI="${AMI:-ami-0e1601cee784a69a2}"       # Ubuntu 22.04 (us-west-2); provision only
 
+# The reset+rebuild is long (~10-20 min) and destructive, so it runs DETACHED on
+# the VM (nohup) writing to REMOTE_LOG; deploy/logs then poll. This survives a
+# dropped SSH/tool timeout without leaving a half-wiped stack.
+REMOTE_RUNNER="/home/${OS_USER}/vector-demo-deploy.run.sh"
+REMOTE_LOG="/home/${OS_USER}/vector-demo-deploy.log"
+DONE_MARK="VDEMO_DEPLOY_DONE_OK"
+DEPLOY_TIMEOUT="${DEPLOY_TIMEOUT:-2400}"  # seconds to poll before giving up (40 min)
+
 C_INFO=$'\033[1;36m'; C_WARN=$'\033[1;33m'; C_ERR=$'\033[1;31m'; C_OFF=$'\033[0m'
 log()  { printf '%s>> %s%s\n' "$C_INFO" "$*" "$C_OFF"; }
 warn() { printf '%s!! %s%s\n' "$C_WARN" "$*" "$C_OFF" >&2; }
@@ -60,6 +69,7 @@ die()  { printf '%s!! %s%s\n' "$C_ERR" "$*" "$C_OFF" >&2; exit 1; }
 # Ephemeral SSH key, created per run under a private temp dir, removed on exit.
 KEYDIR=""; KEY=""
 _mktmpkey() {
+  [ -n "$KEYDIR" ] && rm -rf "$KEYDIR"
   KEYDIR="$(mktemp -d)"; KEY="$KEYDIR/id_ephemeral"
   # shellcheck disable=SC2064
   trap "rm -rf '$KEYDIR'" EXIT
@@ -145,28 +155,61 @@ cmd_seed() {
   log "done — check https://$HOST/VectorSurveillanceReport"
 }
 
+# Write the detached deploy runner to the VM. Local vars ($OE_BRANCH etc.)
+# interpolate here; \$(...) runs on the VM. On success it prints DONE_MARK.
+_write_runner() {
+  remote "cat > '$REMOTE_RUNNER'" <<RUNNER
+#!/usr/bin/env bash
+set -euo pipefail
+echo "[deploy] start \$(date -u)"
+cd ~/OpenELIS-Global-2 && git fetch --depth 1 origin '$OE_BRANCH' && git checkout -f '$OE_BRANCH' && git reset --hard 'origin/$OE_BRANCH' && git submodule update --init --depth 1 dataexport tools/openelis-analyzer-bridge
+cd ~/openelis-indonesia-distro && git fetch --depth 1 origin '$DISTRO_BRANCH' && git checkout -f '$DISTRO_BRANCH' && git reset --hard 'origin/$DISTRO_BRANCH'
+echo "[deploy] OE -> \$(git -C ~/OpenELIS-Global-2 rev-parse --short HEAD); distro -> \$(git -C ~/openelis-indonesia-distro rev-parse --short HEAD)"
+cd ~/openelis-madagascar-test-harness
+DISTRO_REPO=~/openelis-indonesia-distro OE_REPO=~/OpenELIS-Global-2 BRIDGE_REPO=~/OpenELIS-Global-2/tools/openelis-analyzer-bridge sudo -E ./scripts/restart-stack.sh --clean --rebuild
+echo "[deploy] stack rebuilt; seeding"
+sudo DB_CONTAINER=openelisglobal-database bash ~/openelis-indonesia-distro/scripts/seed-vector-demo.sh --clean
+echo "$DONE_MARK \$(date -u)"
+RUNNER
+  remote "chmod +x '$REMOTE_RUNNER'"
+}
+
+# Poll the remote log until the runner finishes (re-establishing SSH each round,
+# since Instance Connect keys expire in ~60s). 0 = success, 1 = failed/timeout.
+_poll_deploy() {
+  local deadline=$(( $(date +%s) + DEPLOY_TIMEOUT )) out
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    sleep 45
+    _mktmpkey; allow_ssh_ingress >/dev/null 2>&1 || true; push_key >/dev/null 2>&1 || { warn "instance-connect push failed; retrying"; continue; }
+    out="$(remote "tail -4 '$REMOTE_LOG' 2>/dev/null; echo ---; grep -q '$DONE_MARK' '$REMOTE_LOG' 2>/dev/null && echo VDEMO_OK; pgrep -f vector-demo-deploy.run.sh >/dev/null && echo VDEMO_RUNNING || echo VDEMO_STOPPED" 2>/dev/null || echo VDEMO_SSHFAIL)"
+    printf '%s\n' "$out" | grep -v '^VDEMO_' | sed 's/^/   /'
+    if printf '%s' "$out" | grep -q VDEMO_OK; then
+      local code; code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 20 "https://$HOST/" 2>/dev/null || echo 000)"
+      log "runner finished; https://$HOST/ -> HTTP $code"; return 0
+    fi
+    if printf '%s' "$out" | grep -q VDEMO_STOPPED; then
+      warn "runner stopped WITHOUT success marker — deploy failed. Inspect: ./scripts/deploy-vector-demo.sh logs"; return 1
+    fi
+    log "still building… (polling every 45s, up to ${DEPLOY_TIMEOUT}s)"
+  done
+  warn "poll deadline reached; runner may still be going. Check: ./scripts/deploy-vector-demo.sh logs"; return 1
+}
+
 cmd_deploy() {
   [ "${1:-}" = "--yes" ] || die "deploy is DESTRUCTIVE (wipes the VM DB via --clean). Re-run with: deploy --yes"
   connect_setup
-  log "updating repos on the VM to the target branches"
-  remote "set -e
-    cd ~/OpenELIS-Global-2 && git fetch --depth 1 origin '$OE_BRANCH' && git checkout -f '$OE_BRANCH' && git reset --hard 'origin/$OE_BRANCH' && git submodule update --init --depth 1 dataexport tools/openelis-analyzer-bridge
-    cd ~/openelis-indonesia-distro && git fetch --depth 1 origin '$DISTRO_BRANCH' && git checkout -f '$DISTRO_BRANCH' && git reset --hard 'origin/$DISTRO_BRANCH'
-    echo \"   OE -> \$(git -C ~/OpenELIS-Global-2 rev-parse --short HEAD); distro -> \$(git -C ~/openelis-indonesia-distro rev-parse --short HEAD)\""
-  log "full reset + rebuild (restart-stack.sh --clean --rebuild) — this takes several minutes"
-  remote "cd ~/openelis-madagascar-test-harness && \
-    DISTRO_REPO=~/openelis-indonesia-distro OE_REPO=~/OpenELIS-Global-2 BRIDGE_REPO=~/OpenELIS-Global-2/tools/openelis-analyzer-bridge \
-    sudo -E ./scripts/restart-stack.sh --clean --rebuild 2>&1 | tail -30"
-  log "waiting for HTTPS to answer"
-  local code=000 deadline=$(( $(date +%s) + 240 ))
-  while [ "$(date +%s)" -lt "$deadline" ]; do
-    code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 15 "https://$HOST/" 2>/dev/null || echo 000)"
-    case "$code" in 200|301|302) break;; esac; sleep 10
-  done
-  log "https://$HOST/ -> HTTP $code"
-  [ "$code" = 200 ] || [ "$code" = 302 ] || [ "$code" = 301 ] || warn "app did not return a healthy code ($code) — check 'connect' + restart-stack logs before seeding"
-  cmd_seed
-  log "deploy complete -> https://$HOST/VectorSurveillanceReport"
+  log "writing detached deploy runner to the VM"
+  _write_runner
+  log "launching reset+rebuild+reseed detached (nohup) — target OE branch $OE_BRANCH"
+  remote "cd ~ && nohup bash '$REMOTE_RUNNER' > '$REMOTE_LOG' 2>&1 & echo \"   launched pid \$!\""
+  log "polling until complete (safe to Ctrl-C; the VM keeps building — resume with 'logs')"
+  _poll_deploy && log "DEPLOY COMPLETE -> https://$HOST/VectorSurveillanceReport"
+}
+
+cmd_logs() {
+  connect_setup
+  log "remote deploy log ($REMOTE_LOG):"
+  remote "tail -40 '$REMOTE_LOG' 2>/dev/null || echo '(no deploy log yet)'; echo ---; grep -q '$DONE_MARK' '$REMOTE_LOG' 2>/dev/null && echo 'STATUS: DONE_OK' || (pgrep -f vector-demo-deploy.run.sh >/dev/null && echo 'STATUS: RUNNING' || echo 'STATUS: STOPPED (no success marker)')"
 }
 
 cmd_provision() {
@@ -208,11 +251,12 @@ main() {
     status)    cmd_status ;;
     connect)   cmd_connect "$@" ;;
     deploy)    cmd_deploy "$@" ;;
+    logs)      cmd_logs ;;
     seed)      cmd_seed ;;
     provision) cmd_provision ;;
     help|-h|--help)
       sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//' ;;
-    *) die "unknown subcommand '$sub' (try: status | connect | deploy --yes | seed | provision | help)" ;;
+    *) die "unknown subcommand '$sub' (try: status | connect | deploy --yes | logs | seed | provision | help)" ;;
   esac
 }
 main "$@"
