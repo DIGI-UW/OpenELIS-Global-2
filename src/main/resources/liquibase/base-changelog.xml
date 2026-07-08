@@ -33,4 +33,7 @@
 
   <!-- QA Menu v0.5 (IA Rehome) -->
   <include file="liquibase/qa/001-add-qa-menu-items.xml" />
+
+  <!-- QA v1 MVP -->
+  <include file="liquibase/qa/002-add-qi-dashboard-menu.xml" />
 </databaseChangeLog>

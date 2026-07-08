@@ -9,7 +9,9 @@ import TATTrendsTab from "./TATTrendsTab";
 import TATExport from "./TATExport";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
-function TATReport() {
+// `breadcrumbs` overrides the default Reports-context breadcrumb when the
+// report is mounted elsewhere (e.g. /qa/qi/tat, OGC-696).
+function TATReport({ breadcrumbs }) {
   const intl = useIntl();
   const [filters, setFilters] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
@@ -47,7 +49,7 @@ function TATReport() {
     [buildQueryString, intl],
   );
 
-  const breadcrumb = [
+  const breadcrumb = breadcrumbs || [
     { label: "home.label", link: "/" },
     { label: "reports.tat.title", link: "/TATReport" },
   ];

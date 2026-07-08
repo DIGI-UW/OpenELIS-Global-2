@@ -4,7 +4,6 @@
  * Static placeholder pages for the QA menu (QA v0.5 IA rehome):
  * - FUTURE features (Reagent QC, Analyzer Manual QC) — design exists, build not
  *   scheduled; cross-links to the public design doc so UAT can reference it.
- * - Coming-soon leaves (Quality Indicators) — populated by the v1 MVP.
  */
 
 import React from "react";
@@ -32,10 +31,6 @@ const CONTENT = {
     summaryKey: "qa.future.manualQc.summary",
     whyKey: "qa.future.manualQc.why",
     docUrl: `${DESIGN_DOC_BASE}/analyzer-manual-qc.md`,
-  },
-  qi: {
-    titleKey: "sideNav.label.qa.qi",
-    bodyKey: "qa.comingSoon.qi.body",
   },
 };
 

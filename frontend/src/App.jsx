@@ -35,6 +35,7 @@ import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
 import QAPlaceholder from "./components/qa/QAPlaceholder";
 import QAOverview from "./components/qa/overview/QAOverview";
+import QIDashboard from "./components/qa/qi/QIDashboard";
 import InventoryManagement from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
@@ -193,6 +194,15 @@ import {
   OrderLabel,
   OrderQA,
 } from "./components/order";
+
+// QA-context breadcrumb for the TAT report mounted at /qa/qi/tat (OGC-696).
+// Labels are i18n keys resolved by PageBreadCrumb.
+const qaTatBreadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "sideNav.label.qa", link: "" },
+  { label: "sideNav.label.qa.qi.dashboard", link: "/qa/qi/dashboard" },
+  { label: "reports.tat.title", link: "" },
+];
 
 export default function App() {
   const defaultLocale =
@@ -803,11 +813,20 @@ export default function App() {
                   component={() => <QAPlaceholder feature="manual-qc" />}
                   role={Roles.LAB_SUPERVISOR}
                 />
+                {/* QA v1 MVP (OGC-695/696): QI Dashboard replaces the pillar
+                    placeholder; the pillar menu entry is now expand-only. */}
+                <Redirect exact from="/qa/qi" to="/qa/qi/dashboard" />
                 <SecureRoute
-                  path="/qa/qi"
+                  path="/qa/qi/dashboard"
                   exact
-                  component={() => <QAPlaceholder feature="qi" />}
+                  component={() => <QIDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qi/tat"
+                  exact
+                  component={() => <TATReport breadcrumbs={qaTatBreadcrumbs} />}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
                 />
                 <SecureRoute
                   path="/qa/qms/nce-register"

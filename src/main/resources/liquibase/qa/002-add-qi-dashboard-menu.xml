@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- QA v1 MVP — OGC-695: QI Dashboard.
+         Converts the Quality Indicators pillar into an expand-only parent
+         (matching the Statistical QC pillar) and adds its first child,
+         the QI Dashboard. -->
+
+    <changeSet author="openelisglobal" id="qa-015-make-menu-qa-qi-parent">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qi' AND action_url = '/qa/qi'
+            </sqlCheck>
+        </preConditions>
+        <comment>Quality Indicators pillar becomes expand-only now that it has a child</comment>
+        <sql>
+            UPDATE clinlims.menu SET action_url = '' WHERE element_id = 'menu_qa_qi';
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.menu SET action_url = '/qa/qi' WHERE element_id = 'menu_qa_qi';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-016-add-menu-qa-qi-dashboard">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qi_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds QI Dashboard under Quality Indicators</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qi')" />
+            <column name="presentation_order" value="10" />
+            <column name="element_id" value="menu_qa_qi_dashboard" />
+            <column name="action_url" value="/qa/qi/dashboard" />
+            <column name="display_key" value="sideNav.label.qa.qi.dashboard" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qi.dashboard" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
