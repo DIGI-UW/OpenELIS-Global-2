@@ -34,6 +34,7 @@ import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
 import QAPlaceholder from "./components/qa/QAPlaceholder";
+import QAOverview from "./components/qa/overview/QAOverview";
 import InventoryManagement from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
@@ -781,13 +782,13 @@ export default function App() {
                   component={() => <EQADistributionDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
-                {/* QA v0.5 IA rehome (OGC-688/692): placeholder leaves.
+                {/* QA menu (OGC-688): Overview shell + placeholder leaves.
                     No pillar-landing routes: sidenav parents expand-only
                     (never navigate), so landing pages would be unreachable. */}
                 <SecureRoute
                   path="/qa/overview"
                   exact
-                  component={() => <QAPlaceholder feature="overview" />}
+                  component={() => <QAOverview />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
