@@ -1,5 +1,6 @@
 import { test, expect, Page } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import { seedVectorPositivity } from "../../../helpers/seed-vector-data";
 
 /**
  * OGC-585 / V-04 — Vector Surveillance Reporting demo story proof.
@@ -25,13 +26,9 @@ async function assertDashboardHasData(page: Page): Promise<void> {
       .locator('[data-testid="panel-mir"], [data-testid="vector-empty"]')
       .first(),
   ).toBeVisible({ timeout: 15_000 });
-  // Degrade-safe: a fresh DB without seeded vector data (e.g. core CI fixtures)
-  // legitimately renders the empty state — skip the data-dependent story there
-  // rather than fail. Where data exists (demo-silnas / local) the demo runs fully.
-  test.skip(
-    await page.locator('[data-testid="vector-empty"]').isVisible(),
-    "no vector-surveillance data seeded in this environment",
-  );
+  // beforeAll seeds a POSITIVE Anopheles pool, so the dashboard must render data,
+  // not the empty state — assert it rather than skipping.
+  await expect(page.locator('[data-testid="vector-empty"]')).toHaveCount(0);
 }
 
 /**
@@ -100,6 +97,21 @@ async function assertPositivityRemediation(page: Page): Promise<boolean> {
 test.describe("OGC-585: Vector Surveillance Reporting (V-04)", () => {
   // One worker, in order, so the demo narration flows as a single story.
   test.describe.configure({ mode: "serial" });
+
+  // Seed a POSITIVE Anopheles pool (order -> identify -> POSITIVE results, no SQL)
+  // so the dashboard has real MIR / positivity / sporozoite data. The spec then
+  // asserts the configured branch instead of skipping on an empty core DB.
+  test.beforeAll(async ({ browser }) => {
+    const context = await browser.newContext({
+      storageState: "playwright/.auth/user.json",
+    });
+    const page = await context.newPage();
+    try {
+      await seedVectorPositivity(page);
+    } finally {
+      await context.close();
+    }
+  });
 
   test("US1 — Dashboard renders computed surveillance indices", async ({
     page,
