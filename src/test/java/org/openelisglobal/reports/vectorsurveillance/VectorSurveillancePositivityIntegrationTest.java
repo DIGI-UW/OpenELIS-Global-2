@@ -170,13 +170,37 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
                 + " (id, sample_item_id, qc_type, sys_user_id) VALUES (?, ?, ?, 1)", id, sampleItemId, qcType);
     }
 
-    /** Inserts a LITERAL observation on a sample, resolving the type id by name. */
+    /**
+     * Inserts a LITERAL observation on a sample, resolving (or seeding) the type id
+     * by name.
+     */
     private void insertObservation(long id, long sampleId, String typeName, String value) {
-        Long typeId = jdbcTemplate.queryForObject(
-                "SELECT id FROM clinlims.observation_history_type WHERE type_name = ?", Long.class, typeName);
+        Long typeId = ensureObservationHistoryType(typeName);
         jdbcTemplate.update("INSERT INTO clinlims.observation_history"
                 + " (id, sample_id, observation_history_type_id, value_type, value, lastupdated)"
                 + " VALUES (?, ?, ?, 'L', ?, now())", id, sampleId, typeId, value);
+    }
+
+    /**
+     * Resolve the observation_history_type id by name, inserting the type row if
+     * absent. The vecTrapCount/vecTrapNights types are Liquibase-seeded (053), but
+     * a sibling test's {@code TRUNCATE ... CASCADE} wipes that seed for the rest of
+     * the suite and Liquibase never re-seeds mid-run — so this mirrors the base
+     * test's {@code ensureReferenceTable}/{@code ensureAuditSystemUser}
+     * resolve-or-insert resilience rather than assuming the seed survives.
+     */
+    private Long ensureObservationHistoryType(String typeName) {
+        List<Long> ids = jdbcTemplate.queryForList(
+                "SELECT id FROM clinlims.observation_history_type WHERE type_name = ?", Long.class, typeName);
+        if (!ids.isEmpty()) {
+            return ids.get(0);
+        }
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)"
+                        + " VALUES (nextval('clinlims.observation_history_type_seq'), ?, ?, now())",
+                typeName, typeName);
+        return jdbcTemplate.queryForObject("SELECT id FROM clinlims.observation_history_type WHERE type_name = ?",
+                Long.class, typeName);
     }
 
     private DensityRow densityRowForSite(List<DensityRow> rows, int siteId) {
