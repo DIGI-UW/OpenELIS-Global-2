@@ -1036,11 +1036,26 @@ public class OrderSearchRestController extends BaseRestController {
             sampleOrderItems.put("referringSiteId", referringSite.getId());
             sampleOrderItems.put("referringSiteName", referringSite.getOrganizationName());
             sampleOrderItems.put("referringSiteCode", referringSite.getShortName());
+            sampleOrderItems.put("referringSitePhone", referringSite.getPhone());
+            sampleOrderItems.put("referringSiteFax", referringSite.getFax());
+            sampleOrderItems.put("referringSiteEmail", referringSite.getEmail());
         }
 
         if (department != null) {
             sampleOrderItems.put("referringSiteDepartmentId", department.getId());
             sampleOrderItems.put("referringSiteDepartmentName", department.getOrganizationName());
+        }
+
+        // Env/Vector Requestor contact — independent of Provider above.
+        Person requestorPerson = requesterService.getRequestorPerson();
+        if (requestorPerson != null) {
+            sampleOrderItems.put("requestorPersonId", requestorPerson.getId());
+            sampleOrderItems.put("requestorFirstName", requestorPerson.getFirstName());
+            sampleOrderItems.put("requestorLastName", requestorPerson.getLastName());
+            sampleOrderItems.put("requestorPhone", requestorPerson.getWorkPhone());
+            sampleOrderItems.put("requestorFax", requestorPerson.getFax());
+            sampleOrderItems.put("requestorEmail", requestorPerson.getEmail());
+            sampleOrderItems.put("requestorDepartment", requestorPerson.getDepartment());
         }
 
         // Program - Try multiple approaches to find program info

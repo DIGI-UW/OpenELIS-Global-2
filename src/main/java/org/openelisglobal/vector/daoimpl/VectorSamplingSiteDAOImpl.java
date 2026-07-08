@@ -60,4 +60,21 @@ public class VectorSamplingSiteDAOImpl extends BaseDAOImpl<VectorSamplingSite, I
             throw new LIMSRuntimeException("Error in VectorSamplingSiteDAOImpl.getByCode()", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VectorSamplingSite> search(String searchTerm) throws LIMSRuntimeException {
+        try {
+            TypedQuery<VectorSamplingSite> query = entityManager
+                    .createQuery("select s from VectorSamplingSite s where s.active = true "
+                            + "and (upper(s.name) like upper(:term) or upper(s.code) like upper(:term)) "
+                            + "order by s.name", VectorSamplingSite.class);
+            query.setParameter("term", "%" + searchTerm + "%");
+            query.setMaxResults(10);
+            return query.getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in VectorSamplingSiteDAOImpl.search()", e);
+        }
+    }
 }

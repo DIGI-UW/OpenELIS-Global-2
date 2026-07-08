@@ -67,8 +67,31 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * and was masked until PR #3591 (2026-05-13) opted 14 P0 services into
      * audit-emit. Filter at the loader so the seed is untouchable regardless of
      * which fixture declares which rows.
+     *
+     * <p>
+     * {@code requester_type} is the same class of bug (2026-07-07):
+     * {@code TableIdService} resolves {@code ORGANIZATION_REQUESTER_TYPE_ID} /
+     * {@code PROVIDER_REQUESTER_TYPE_ID} /
+     * {@code REQUESTOR_CONTACT_REQUESTER_TYPE_ID} once, from the Liquibase-seeded
+     * rows, at Spring context startup. Several fixtures
+     * ({@code testdata/facade-servicerequest.xml}, {@code testdata/requester.xml})
+     * declare their own fictional {@code <requester_type>} rows (with ids/names
+     * that don't match the real seed at all — e.g.
+     * {@code LABORATORY/CLINIC/HOSPITAL}) purely so their own
+     * {@code <sample_requester>} rows have *some* id to reference; without this
+     * protection, loading one of those fixtures truncates the real seed
+     * ({@code RESTART IDENTITY CASCADE}) and replaces it with the fixture's
+     * fictional rows, permanently corrupting {@code requester_type} — including
+     * deleting {@code requestor_contact} — for every later test class in the same
+     * Surefire fork, since {@code TableIdService} never re-resolves. Protect the
+     * seed the same way. Note the real seeded id for {@code requestor_contact} is
+     * {@code 4}, not {@code 3} — the {@code 2.6.x.x/fix_sequences.xml} changeset
+     * runs before {@code 3.5.x.x/053-requester-element-revamp.xml} in the changelog
+     * and advances {@code requester_type_seq} to {@code MAX(id)+1=3} (i.e. the next
+     * {@code nextval()} returns {@code 4}) as it does for every sequence in the
+     * schema on a fresh test DB.
      */
-    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables" };
+    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "requester_type" };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the

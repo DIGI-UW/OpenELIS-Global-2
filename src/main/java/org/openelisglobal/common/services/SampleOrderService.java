@@ -196,6 +196,20 @@ public class SampleOrderService {
             sampleOrder.setReferringSiteDepartmentId(requesterService.getReferringDepartmentId());
             sampleOrder.setReferringSiteCode(requesterService.getReferringSiteCode());
             sampleOrder.setReferringSiteName(requesterService.getReferringSiteName());
+            if (requesterService.getOrganization() != null) {
+                sampleOrder.setReferringSitePhone(requesterService.getOrganization().getPhone());
+                sampleOrder.setReferringSiteFax(requesterService.getOrganization().getFax());
+                sampleOrder.setReferringSiteEmail(requesterService.getOrganization().getEmail());
+            }
+
+            // Env/Vector Requestor contact — independent of Provider above
+            sampleOrder.setRequestorPersonId(requesterService.getRequestorPersonId());
+            sampleOrder.setRequestorFirstName(requesterService.getRequestorFirstName());
+            sampleOrder.setRequestorLastName(requesterService.getRequestorLastName());
+            sampleOrder.setRequestorPhone(requesterService.getRequestorPhone());
+            sampleOrder.setRequestorFax(requesterService.getRequestorFax());
+            sampleOrder.setRequestorEmail(requesterService.getRequestorEmail());
+            sampleOrder.setRequestorDepartment(requesterService.getRequestorDepartment());
 
             // Map consent audit fields
             if (sample.getConsentRecordedAt() != null) {

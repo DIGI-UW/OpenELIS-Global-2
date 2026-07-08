@@ -57,6 +57,15 @@
         <property name="cliaNum" type="java.lang.String">
             <column name="CLIA_NUM" length="12" />
         </property>
+        <property name="phone" type="java.lang.String">
+            <column name="phone" length="20" />
+        </property>
+        <property name="fax" type="java.lang.String">
+            <column name="fax" length="20" />
+        </property>
+        <property name="email" type="java.lang.String">
+            <column name="email" length="255" />
+        </property>
         <property name="pwsId" type="java.lang.String">
             <column name="PWS_ID" length="15" />
         </property>
