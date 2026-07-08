@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Principled per-test opt-in for the Molecular Biology (PCR) capture
+         fields. Gating on test_section.name (or any localizable/renameable
+         display value) is unsafe across deployments — an admin renaming a
+         section or a French-first install storing "Biologie moléculaire" as
+         the raw name would silently break the gate. This flag lives with the
+         test itself: PCR tests carry target_gene + ct_value, everything else
+         doesn't, regardless of which section they land in. -->
+    <changeSet author="openelis" id="test-add-supports-target-gene-ct">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test" columnName="supports_target_gene_ct" />
+            </not>
+        </preConditions>
+        <comment>Add supports_target_gene_ct flag to test for per-test PCR capture opt-in.</comment>
+        <addColumn schemaName="clinlims" tableName="test">
+            <column name="supports_target_gene_ct" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Backfill: stock DB assigns all PCR tests to test_section_id=136
+         ("Molecular Biology"). Flip the flag on for every test in that
+         section as a starting point; admins can adjust per-test afterwards
+         through the test catalog. Idempotent-ish via preConditions: skips if
+         the flag has already been touched (any row set to true). -->
+    <changeSet author="openelis" id="test-seed-supports-target-gene-ct-molecular-section">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.test WHERE supports_target_gene_ct = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed the PCR flag on for every test currently in the Molecular Biology section (id=136).</comment>
+        <sql>
+            UPDATE clinlims.test
+               SET supports_target_gene_ct = true
+             WHERE test_section_id = 136;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

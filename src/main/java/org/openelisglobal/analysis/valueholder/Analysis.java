@@ -88,6 +88,8 @@ public class Analysis extends BaseObject<String> implements NoteObject {
     private ValueHolderInterface method;
     private ResultFile resultFile;
     private String analyzerId;
+    private String targetGene;
+    private String ctValue;
 
     public Analysis() {
         super();
@@ -561,6 +563,22 @@ public class Analysis extends BaseObject<String> implements NoteObject {
 
     public void setAnalyzerId(String analyzerId) {
         this.analyzerId = analyzerId;
+    }
+
+    public String getTargetGene() {
+        return targetGene;
+    }
+
+    public void setTargetGene(String targetGene) {
+        this.targetGene = targetGene;
+    }
+
+    public String getCtValue() {
+        return ctValue;
+    }
+
+    public void setCtValue(String ctValue) {
+        this.ctValue = ctValue;
     }
 
 }

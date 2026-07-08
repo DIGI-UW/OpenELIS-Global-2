@@ -937,6 +937,14 @@ public abstract class PatientReport extends Report {
             data.setSampleType(analysisService.getTypeOfSample(currentAnalysis).getLocalizedName());
             data.setCollectionDateTime(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(
                     currentAnalysis.getSampleItem().getCollectionDate()));
+            // Molecular Biology (PCR) capture. Null for non-molecular analyses;
+            // rendered empty (or hidden via printWhenExpression) on the report
+            // based on the per-test supportsTargetGeneCt flag.
+            data.setTargetGene(currentAnalysis.getTargetGene());
+            data.setCtValue(currentAnalysis.getCtValue());
+            if (currentAnalysis.getTest() != null) {
+                data.setSupportsTargetGeneCt(currentAnalysis.getTest().getSupportsTargetGeneCt());
+            }
         }
         if (AccessionFormat.ALPHANUM.toString()
                 .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat))) {

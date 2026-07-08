@@ -48,7 +48,11 @@ const Validation = (props) => {
     };
   }, []);
 
-  const columns = [
+  const hasMolecularRow = (props.results?.resultList || []).some(
+    (r) => r.supportsTargetGeneCt === true,
+  );
+
+  let columns = [
     {
       id: "sampleInfo",
       name: intl.formatMessage({ id: "column.name.sampleInfo" }),
@@ -68,6 +72,18 @@ const Validation = (props) => {
       },
       sortable: true,
       width: "15rem",
+    },
+    {
+      id: "targetGene",
+      name: intl.formatMessage({ id: "column.name.targetGene" }),
+      cell: (row, index, column, id) => renderCell(row, index, column, id),
+      width: "9rem",
+    },
+    {
+      id: "ctValue",
+      name: intl.formatMessage({ id: "column.name.ctValue" }),
+      cell: (row, index, column, id) => renderCell(row, index, column, id),
+      width: "6rem",
     },
     {
       id: "normalRange",
@@ -117,6 +133,13 @@ const Validation = (props) => {
       width: "28rem",
     },
   ];
+
+  // drop the two extra columns whenever no row in the current page carries a molecular test
+  if (!hasMolecularRow) {
+    columns = columns.filter(
+      (c) => c.id !== "targetGene" && c.id !== "ctValue",
+    );
+  }
 
   const buildSignContext = () => {
     const results = (props.results && props.results.resultList) || [];
@@ -392,6 +415,12 @@ const Validation = (props) => {
           default:
             return row.result;
         }
+
+      case "targetGene":
+        return row.targetGene ?? "";
+
+      case "ctValue":
+        return row.ctValue ?? "";
 
       default:
     }

@@ -246,6 +246,14 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean isEqaSample = false;
     private String eqaPriority;
 
+    // Molecular Biology (PCR) per-analysis capture. supportsTargetGeneCt is
+    // the gate the frontend reads to decide whether to render the two columns
+    // — sourced from the analysis's Test.supportsTargetGeneCt flag, so
+    // gating stays with the domain object (not a display string).
+    private String targetGene;
+    private String ctValue;
+    private boolean supportsTargetGeneCt = false;
+
     private ReferralItem referralItem;
     private ResultFileForm resultFile;
 
@@ -903,6 +911,30 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setEqaPriority(String eqaPriority) {
         this.eqaPriority = eqaPriority;
+    }
+
+    public String getTargetGene() {
+        return targetGene;
+    }
+
+    public void setTargetGene(String targetGene) {
+        this.targetGene = targetGene;
+    }
+
+    public String getCtValue() {
+        return ctValue;
+    }
+
+    public void setCtValue(String ctValue) {
+        this.ctValue = ctValue;
+    }
+
+    public boolean getSupportsTargetGeneCt() {
+        return supportsTargetGeneCt;
+    }
+
+    public void setSupportsTargetGeneCt(boolean supportsTargetGeneCt) {
+        this.supportsTargetGeneCt = supportsTargetGeneCt;
     }
 
     public String getQualifiedDictionaryId() {

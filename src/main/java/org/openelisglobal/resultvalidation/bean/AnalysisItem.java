@@ -193,6 +193,14 @@ public class AnalysisItem implements Serializable {
 
     private boolean isNormal;
 
+    // Molecular Biology (PCR) capture, echoed onto the validation grid as
+    // read-only. Not bound on POST — validation never edits these; values are
+    // set on the results-entry page and only surfaced here for confirmation.
+    // supportsTargetGeneCt drives the frontend column gate.
+    private String targetGene;
+    private String ctValue;
+    private boolean supportsTargetGeneCt = false;
+
     public String getRejectReasonId() {
         return rejectReasonId;
     }
@@ -818,5 +826,29 @@ public class AnalysisItem implements Serializable {
 
     public void setPatientInfo(String patientInfo) {
         this.patientInfo = patientInfo;
+    }
+
+    public String getTargetGene() {
+        return targetGene;
+    }
+
+    public void setTargetGene(String targetGene) {
+        this.targetGene = targetGene;
+    }
+
+    public String getCtValue() {
+        return ctValue;
+    }
+
+    public void setCtValue(String ctValue) {
+        this.ctValue = ctValue;
+    }
+
+    public boolean getSupportsTargetGeneCt() {
+        return supportsTargetGeneCt;
+    }
+
+    public void setSupportsTargetGeneCt(boolean supportsTargetGeneCt) {
+        this.supportsTargetGeneCt = supportsTargetGeneCt;
     }
 }

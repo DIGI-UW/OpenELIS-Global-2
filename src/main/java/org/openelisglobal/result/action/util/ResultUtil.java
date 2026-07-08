@@ -235,8 +235,19 @@ public class ResultUtil {
                     analysis.setResultFile(resultFile);
                 }
             }
+            applyMolecularFields(analysis, testResultItem);
             actionDataSet.getModifiedAnalysis().add(analysis);
         }
+    }
+
+    // Molecular Biology capture: persist target_gene / ct_value alongside the
+    // other per-analysis metadata. Nulls are permitted so non-molecular rows
+    // that come back through the save path do not overwrite unrelated data.
+    // Package-private so unit tests can verify the mapping without a Spring
+    // context (the enclosing methods depend on SpringContext-injected beans).
+    static void applyMolecularFields(Analysis analysis, TestResultItem testResultItem) {
+        analysis.setTargetGene(testResultItem.getTargetGene());
+        analysis.setCtValue(testResultItem.getCtValue());
     }
 
     public static void createResultsFromItems(ResultsUpdateDataSet actionDataSet, boolean supportReferrals,
@@ -265,6 +276,7 @@ public class ResultUtil {
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
+            applyMolecularFields(analysis, testResultItem);
             actionDataSet.getModifiedAnalysis().add(analysis);
 
             actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,

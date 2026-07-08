@@ -135,6 +135,9 @@
 
         <property name="antimicrobialResistance"
             type="java.lang.Boolean" column="antimicrobial_resistance" />
+
+        <property name="supportsTargetGeneCt" type="boolean"
+            column="supports_target_gene_ct" />
     </class>
     <!-- <query name="test.getNext"> -->
     <!-- from Test t order by t.testSection.testSectionName, t.testName -->

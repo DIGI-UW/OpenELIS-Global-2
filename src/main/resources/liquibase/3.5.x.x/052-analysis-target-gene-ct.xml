@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Molecular Biology (PCR) per-analysis capture: target gene + Ct value.
+         Nullable so non-molecular analyses are unaffected. ct_value is varchar
+         because clinical entry may be "N/D", "Undet.", or numeric with units. -->
+    <changeSet author="openelis" id="analysis-add-target-gene-ct">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="analysis" columnName="target_gene" />
+            </not>
+        </preConditions>
+        <comment>Add target_gene + ct_value columns to analysis for molecular biology result entry.</comment>
+        <addColumn schemaName="clinlims" tableName="analysis">
+            <column name="target_gene" type="varchar(255)" />
+            <column name="ct_value" type="varchar(50)" />
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -105,6 +105,13 @@ public class Test extends EnumValueItemImpl {
 
     private Boolean orderable;
 
+    // Molecular Biology (PCR) per-test opt-in for target_gene + ct_value
+    // capture on the results grid, validation grid, and patient PDF. Gating
+    // per-test (not per-section) keeps the invariant local to the object
+    // whose semantics actually change, and avoids coupling to a display
+    // string. Not nullable at the DB level; treated as boolean here.
+    private boolean supportsTargetGeneCt = false;
+
     private ValueHolder localizedTestName;
 
     private ValueHolder localizedReportingName;
@@ -549,6 +556,14 @@ public class Test extends EnumValueItemImpl {
 
     public Boolean getAntimicrobialResistance() {
         return antimicrobialResistance;
+    }
+
+    public boolean getSupportsTargetGeneCt() {
+        return supportsTargetGeneCt;
+    }
+
+    public void setSupportsTargetGeneCt(boolean supportsTargetGeneCt) {
+        this.supportsTargetGeneCt = supportsTargetGeneCt;
     }
 
     @Override

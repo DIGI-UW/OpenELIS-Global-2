@@ -84,6 +84,14 @@ public final class ClinicalPatientData {
     private String tbFollowupPeriodLine1;
     private String tbFollowupPeriodLine2;
 
+    // Molecular Biology (PCR) — populated only for analyses whose Test has
+    // supports_target_gene_ct = true. Surfaced as two extra columns on the
+    // CILNSP patient PDF; the flag also lets the JRXML hide the data cells
+    // on non-molecular rows via printWhenExpression.
+    private String targetGene;
+    private String ctValue;
+    private boolean supportsTargetGeneCt = false;
+
     public ClinicalPatientData() {
     }
 
@@ -668,5 +676,29 @@ public final class ClinicalPatientData {
 
     public void setPrescriber(String prescriber) {
         this.prescriber = prescriber;
+    }
+
+    public String getTargetGene() {
+        return targetGene;
+    }
+
+    public void setTargetGene(String targetGene) {
+        this.targetGene = targetGene;
+    }
+
+    public String getCtValue() {
+        return ctValue;
+    }
+
+    public void setCtValue(String ctValue) {
+        this.ctValue = ctValue;
+    }
+
+    public boolean getSupportsTargetGeneCt() {
+        return supportsTargetGeneCt;
+    }
+
+    public void setSupportsTargetGeneCt(boolean supportsTargetGeneCt) {
+        this.supportsTargetGeneCt = supportsTargetGeneCt;
     }
 }

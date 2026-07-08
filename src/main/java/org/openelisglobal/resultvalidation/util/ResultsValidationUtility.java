@@ -683,6 +683,17 @@ public class ResultsValidationUtility {
         analysisResultItem.setQualifiedResultId(testResultItem.getQualificationResultId());
         analysisResultItem.setHasQualifiedResult(testResultItem.isHasQualifiedResult());
 
+        // Molecular Biology (PCR) — surface target_gene / ct_value read-only on
+        // the validation grid, gated on the per-test supportsTargetGeneCt flag.
+        Analysis sourceAnalysis = testResultItem.getAnalysis();
+        if (sourceAnalysis != null) {
+            analysisResultItem.setTargetGene(sourceAnalysis.getTargetGene());
+            analysisResultItem.setCtValue(sourceAnalysis.getCtValue());
+            if (sourceAnalysis.getTest() != null) {
+                analysisResultItem.setSupportsTargetGeneCt(sourceAnalysis.getTest().getSupportsTargetGeneCt());
+            }
+        }
+
         return analysisResultItem;
     }
 

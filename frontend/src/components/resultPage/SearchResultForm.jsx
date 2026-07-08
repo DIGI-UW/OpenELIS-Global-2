@@ -968,15 +968,16 @@ export function SearchResults(props) {
 
     if (configurationProperties.allowResultRejection == "true") {
       if (columns) {
-        const updatedList = [
-          ...columns.slice(0, 8),
-          resultColumn,
-          ...columns.slice(8),
-        ];
-        columns = updatedList;
+        const notesIdx = columns.findIndex((c) => c.id === "notes");
+        const insertAt = notesIdx === -1 ? columns.length : notesIdx;
+        columns = columns.toSpliced(insertAt, 0, resultColumn);
       }
     }
   };
+
+  const hasMolecularRow = (props.results?.testResult || []).some(
+    (r) => r.supportsTargetGeneCt === true,
+  );
 
   var columns = [
     {
@@ -1063,6 +1064,18 @@ export function SearchResults(props) {
       width: "10rem",
     },
     {
+      id: "targetGene",
+      name: intl.formatMessage({ id: "column.name.targetGene" }),
+      cell: (row, index, column, id) => renderCell(row, index, column, id),
+      width: "9rem",
+    },
+    {
+      id: "ctValue",
+      name: intl.formatMessage({ id: "column.name.ctValue" }),
+      cell: (row, index, column, id) => renderCell(row, index, column, id),
+      width: "6rem",
+    },
+    {
       id: "normalRange",
       name: intl.formatMessage({ id: "column.name.normalRange" }),
       selector: (row) => row.normalRange,
@@ -1104,6 +1117,13 @@ export function SearchResults(props) {
       width: "25rem",
     },
   ];
+
+  // drop the two extra columns whenever no row in the current page carries a molecular test
+  if (!hasMolecularRow) {
+    columns = columns.filter(
+      (c) => c.id !== "targetGene" && c.id !== "ctValue",
+    );
+  }
 
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
@@ -1236,6 +1256,34 @@ export function SearchResults(props) {
               </Select>
             )}
           </div>
+        );
+
+      case "targetGene":
+        return (
+          <TextInput
+            id={"targetGene" + row.id}
+            name={"testResult[" + row.id + "].targetGene"}
+            labelText=""
+            value={row.targetGene ?? ""}
+            onChange={(e) => {
+              row.targetGene = e.target.value;
+              handleChange(e, row.id);
+            }}
+          />
+        );
+
+      case "ctValue":
+        return (
+          <TextInput
+            id={"ctValue" + row.id}
+            name={"testResult[" + row.id + "].ctValue"}
+            labelText=""
+            value={row.ctValue ?? ""}
+            onChange={(e) => {
+              row.ctValue = e.target.value;
+              handleChange(e, row.id);
+            }}
+          />
         );
 
       case "notes":

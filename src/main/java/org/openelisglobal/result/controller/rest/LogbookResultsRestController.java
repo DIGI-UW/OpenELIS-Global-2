@@ -104,7 +104,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.resultFile", "testResult*.resultFile.fileName", "testResult*.resultFile.fileType",
             "testResult*.resultFile.base64Content", "testResult*.refer", "testResult*.referralItem.referralReasonId",
             "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate" };
+            "testResult*.referralItem.referredSendDate",
+            // Molecular Biology per-analysis capture (frontend renders these
+            // only when the row's testSectionName matches a molecular section).
+            "testResult*.targetGene", "testResult*.ctValue" };
 
     @Autowired
     private TestSectionService testSectionService;

@@ -756,6 +756,11 @@ public class ResultsLoadUtility {
         testItem.setResultDisplayType(resultDisplayType);
         testItem.setAnalysisMethod(analysisService.getAnalysisType(analysis));
         testItem.setTestMethod(analysisService.getMethodId(analysis));
+        testItem.setTargetGene(analysis.getTargetGene());
+        testItem.setCtValue(analysis.getCtValue());
+        if (test != null) {
+            testItem.setSupportsTargetGeneCt(test.getSupportsTargetGeneCt());
+        }
         testItem.setResult(result);
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));

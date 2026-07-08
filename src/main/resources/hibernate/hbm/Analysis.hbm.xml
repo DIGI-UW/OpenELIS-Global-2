@@ -123,6 +123,12 @@
         <property name="analyzerId"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
             column="analyzer_id" precision="10" />
+        <property name="targetGene" type="java.lang.String">
+            <column name="target_gene" length="255" />
+        </property>
+        <property name="ctValue" type="java.lang.String">
+            <column name="ct_value" length="50" />
+        </property>
 
     </class>
 
