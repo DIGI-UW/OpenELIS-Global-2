@@ -85,6 +85,75 @@
   min-height: 6.5rem;
 }
 
+/* Live (wired) tiles and rows */
+.qa-live-tile.cds--tile {
+  min-height: 6.5rem;
+  cursor: pointer;
+}
+
+.qa-live-count {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.qa-live-green {
+  color: #198038;
+}
+
+.qa-live-amber {
+  color: #b28600;
+}
+
+.qa-live-red {
+  color: #da1e28;
+}
+
+.qa-live-caption {
+  color: #525252;
+  font-size: 0.75rem;
+}
+
+.qa-live-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  border: none;
+  border-left: 3px solid #c6c6c6;
+  background: #ffffff;
+  padding: 0.625rem 1rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qa-live-row-alert {
+  border-left-color: #da1e28;
+}
+
+.qa-live-row-alert .qa-live-badge {
+  background: #da1e28;
+  color: #ffffff;
+}
+
+.qa-live-badge {
+  min-width: 1.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: #e0e0e0;
+  color: #161616;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.qa-live-arrow {
+  margin-left: auto;
+  color: #525252;
+}
+
 .qa-cs-stat.cds--tile {
   min-height: 4.5rem;
   padding: 0.75rem 1rem;
