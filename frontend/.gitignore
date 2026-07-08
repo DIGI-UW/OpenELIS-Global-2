@@ -37,3 +37,6 @@ cypress/screenshots/
 
 # Dev scratch artifacts (local test-output, never commit)
 current_failures.txt
+
+# jsdom PDF-export test writes this to the CWD (generated, not source)
+/vector-surveillance.pdf
