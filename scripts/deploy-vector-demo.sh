@@ -18,12 +18,17 @@
 #
 # WHAT RUNS ON THE VM (built on the box, not host-mounted)
 #   ~/OpenELIS-Global-2            (branch 372-vector-surveillance-reporting)
-#   ~/openelis-indonesia-distro    (branch feat/vector-result-significance; the demo distro + seed)
+#   ~/openelis-indonesia-distro    (branch feat/vector-result-significance; the demo distro config)
 #   ~/openelis-madagascar-test-harness  (orchestrator: scripts/restart-stack.sh)
 #   Deploy  = restart-stack.sh --clean --rebuild   (--clean wipes volumes = full reset;
 #             --rebuild rebuilds the WAR + frontend from OE_REPO at the checked-out branch)
-#   Seed    = openelis-indonesia-distro/scripts/seed-vector-demo.sh --clean
-#             (psql via docker exec openelisglobal-database; Indonesian dataset, id>=970000)
+#   Catalog = config-import from the distro's configs/configuration/backend CSVs
+#             (sample types, pathogen tests, species) — created at boot, NOT seeded.
+#             The rebuild deletes stale *-checksums.properties so config-import
+#             re-imports the vector CSVs from scratch (Reagan's step).
+#   Seed    = client-side Playwright (frontend/playwright vector-surveillance-seed),
+#             transactional data ONLY (sites, backdated collections, identifications,
+#             results) via the REST API against BASE_URL — NO SQL, NO psql.
 #
 # ACCESS MODEL
 #   No long-lived .pem is kept. Each run generates an ephemeral SSH keypair,
@@ -35,9 +40,9 @@
 # USAGE
 #   ./scripts/deploy-vector-demo.sh status          # auth + instance + HTTPS + deployed commit (read-only)
 #   ./scripts/deploy-vector-demo.sh connect [cmd…]  # open a shell (or run a remote command)
-#   ./scripts/deploy-vector-demo.sh deploy --yes    # DESTRUCTIVE: full reset -> rebuild latest -> reseed -> verify (detached + polled)
+#   ./scripts/deploy-vector-demo.sh deploy --yes    # DESTRUCTIVE: full reset -> rebuild latest (config-import catalog) -> API seed -> verify (detached rebuild + polled)
 #   ./scripts/deploy-vector-demo.sh logs            # tail the detached deploy log + status (resume a poll)
-#   ./scripts/deploy-vector-demo.sh seed            # reseed only (seed-vector-demo.sh --clean)
+#   ./scripts/deploy-vector-demo.sh seed            # (re)seed transactional data only via the REST API (client-side Playwright)
 #   ./scripts/deploy-vector-demo.sh provision       # break-glass: recreate the instance if it is gone
 #
 # Every value below is overridable via env (e.g. OE_BRANCH=some-branch ./deploy-vector-demo.sh deploy --yes).
@@ -148,11 +153,22 @@ cmd_connect() {
   fi
 }
 
+# Seed transactional data (sites, backdated collections, identifications,
+# results) via the REST API — client-side, NO SSH, NO SQL. Runs the guarded
+# vector-surveillance-seed Playwright spec on THIS machine against the remote
+# BASE_URL. The catalog it references is created on the VM by config-import.
 cmd_seed() {
-  connect_setup
-  log "reseeding (seed-vector-demo.sh --clean) — Indonesian vector demo dataset"
-  remote 'sudo DB_CONTAINER=openelisglobal-database bash ~/openelis-indonesia-distro/scripts/seed-vector-demo.sh --clean 2>&1 | tail -20'
-  log "done — check https://$HOST/VectorSurveillanceReport"
+  local fe; fe="$(cd "$(dirname "$0")/../frontend" && pwd)"
+  [ -d "$fe/node_modules" ] || die "frontend deps missing — run 'npm ci' in $fe first"
+  : "${TEST_USER:=admin}"
+  : "${TEST_PASS:=adminADMIN!}"   # standard OE demo admin password (override via env)
+  : "${VECTOR_SEED_WEEKS:=5}"
+  log "seeding https://$HOST via the REST API (client-side Playwright, NO SQL) — ${VECTOR_SEED_WEEKS} weeks"
+  ( cd "$fe" && BASE_URL="https://$HOST" TEST_USER="$TEST_USER" TEST_PASS="$TEST_PASS" \
+      VECTOR_SEED=1 VECTOR_SEED_WEEKS="$VECTOR_SEED_WEEKS" \
+      npm run pw:test:core-demo -- vector-surveillance-seed --workers=1 ) \
+    || die "seed run failed — inspect the Playwright output above"
+  log "seeded — check https://$HOST/VectorSurveillanceReport"
 }
 
 # Write the detached deploy runner to the VM. Local vars ($OE_BRANCH etc.)
@@ -165,10 +181,24 @@ echo "[deploy] start \$(date -u)"
 cd ~/OpenELIS-Global-2 && git fetch --depth 1 origin '$OE_BRANCH' && git checkout -f '$OE_BRANCH' && git reset --hard 'origin/$OE_BRANCH' && git submodule update --init --depth 1 dataexport tools/openelis-analyzer-bridge tools/analyzer-mock-server
 cd ~/openelis-indonesia-distro && git fetch --depth 1 origin '$DISTRO_BRANCH' && git checkout -f '$DISTRO_BRANCH' && git reset --hard 'origin/$DISTRO_BRANCH'
 echo "[deploy] OE -> \$(git -C ~/OpenELIS-Global-2 rev-parse --short HEAD); distro -> \$(git -C ~/openelis-indonesia-distro rev-parse --short HEAD)"
+# Reagan's step: delete config-import checksum files so a from-scratch rebuild
+# re-imports the (new/changed) vector catalog CSVs instead of skipping them.
+sudo find ~/openelis-indonesia-distro/configs/configuration -name '*checksum*.properties' -delete 2>/dev/null || true
+sudo find ~/OpenELIS-Global-2/volume/configuration -name '*checksum*.properties' -delete 2>/dev/null || true
 cd ~/openelis-madagascar-test-harness
 DISTRO_REPO=~/openelis-indonesia-distro OE_REPO=~/OpenELIS-Global-2 BRIDGE_REPO=~/OpenELIS-Global-2/tools/openelis-analyzer-bridge sudo -E ./scripts/restart-stack.sh --clean --rebuild
-echo "[deploy] stack rebuilt; seeding"
-sudo DB_CONTAINER=openelisglobal-database bash ~/openelis-indonesia-distro/scripts/seed-vector-demo.sh --clean
+# Known post-rebuild gotchas on this VM: autoheal churns the docker network in a
+# restart loop, and the proxy is sometimes left in Created. Best-effort fixes.
+sudo docker stop autoheal-oe 2>/dev/null || true
+sudo docker start openelisglobal-proxy 2>/dev/null || true
+# Gate DONE on the webapp actually being healthy (its container has a healthcheck)
+# so the client-side API seed that runs next doesn't hit a half-up stack.
+echo "[deploy] waiting for webapp health (up to 15 min)"
+for i in \$(seq 1 90); do
+  st=\$(sudo docker inspect -f '{{.State.Health.Status}}' openelisglobal-webapp 2>/dev/null || echo none)
+  [ "\$st" = healthy ] && { echo "[deploy] webapp healthy after ~\$((i*10))s"; break; }
+  sleep 10
+done
 echo "$DONE_MARK \$(date -u)"
 RUNNER
   remote "chmod +x '$REMOTE_RUNNER'"
@@ -200,10 +230,13 @@ cmd_deploy() {
   connect_setup
   log "writing detached deploy runner to the VM"
   _write_runner
-  log "launching reset+rebuild+reseed detached (nohup) — target OE branch $OE_BRANCH"
+  log "launching reset+rebuild detached (nohup) — target OE branch $OE_BRANCH"
   remote "cd ~ && nohup bash '$REMOTE_RUNNER' > '$REMOTE_LOG' 2>&1 & echo \"   launched pid \$!\""
-  log "polling until complete (safe to Ctrl-C; the VM keeps building — resume with 'logs')"
-  _poll_deploy && log "DEPLOY COMPLETE -> https://$HOST/VectorSurveillanceReport"
+  log "polling until the rebuild is complete (safe to Ctrl-C; the VM keeps building — resume with 'logs')"
+  _poll_deploy || die "rebuild did not complete cleanly; NOT seeding. Inspect: ./scripts/deploy-vector-demo.sh logs"
+  log "rebuild complete + webapp healthy; seeding transactional data via the REST API (client-side)"
+  cmd_seed
+  log "DEPLOY COMPLETE -> https://$HOST/VectorSurveillanceReport"
 }
 
 cmd_logs() {
