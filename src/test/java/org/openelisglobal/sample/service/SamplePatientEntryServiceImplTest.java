@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,6 +47,18 @@ public class SamplePatientEntryServiceImplTest {
 
     private SamplePatientEntryServiceImpl service;
 
+    // TableIdService.INSTANCE is a process-wide static field, not scoped to a
+    // Spring context — overwriting it here without restoring leaks into every
+    // other test class that shares this Surefire fork. Confirmed live (2026-07-08):
+    // this leaked a bare TableIdService (ORGANIZATION_REQUESTER_TYPE_ID left at
+    // the Java default 0, since this test never sets it) that permanently
+    // replaced the real Spring-initialized singleton, causing
+    // ServiceRequestFacadeTest's createServiceRequest_* tests to fail with
+    // "insert or update on table sample_requester violates foreign key
+    // constraint requester_type_fk ... Key (requester_type_id)=(0)" whenever
+    // this test class ran earlier in the same fork.
+    private TableIdService originalTableIdServiceInstance;
+
     @Before
     public void setUp() {
         service = new SamplePatientEntryServiceImpl();
@@ -61,11 +74,18 @@ public class SamplePatientEntryServiceImplTest {
         // test class in the same JVM happened to initialize it first — which
         // made this file order-dependent rather than actually passing on its
         // own. Wire a real instance with the one id persistRequesterData
-        // reads directly.
+        // reads directly, saving whatever was there before so it can be
+        // restored afterward.
+        originalTableIdServiceInstance = TableIdService.getInstance();
         TableIdService tableIdService = new TableIdService();
         tableIdService.REQUESTOR_CONTACT_REQUESTER_TYPE_ID = 4L;
         tableIdService.PROVIDER_REQUESTER_TYPE_ID = 2L;
         ReflectionTestUtils.setField(tableIdService, "INSTANCE", tableIdService);
+    }
+
+    @After
+    public void tearDown() {
+        ReflectionTestUtils.setField(new TableIdService(), "INSTANCE", originalTableIdServiceInstance);
     }
 
     /**
