@@ -25,8 +25,11 @@ test.describe("Vector Surveillance — full user story", () => {
     test.setTimeout(240_000);
     const demo = createDemoPresentation(page, testInfo);
 
-    const siteCode = "IDN-BKS-01";
-    const siteName = "Bekasi Riverside";
+    // Site is env-overridable so the demo can be re-recorded against an
+    // instance that already has the default site (adding a site with a code
+    // that already exists would fail the inline-create step).
+    const siteCode = process.env.DEMO_SITE_CODE || "IDN-BKS-01";
+    const siteName = process.env.DEMO_SITE_NAME || "Bekasi Riverside";
     const quantity = 24;
     const traps = 6;
     const nights = 2; // trap-nights = 12 → density = 24 / 12 = 2.00

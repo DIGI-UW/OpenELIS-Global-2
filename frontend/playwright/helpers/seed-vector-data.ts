@@ -150,26 +150,7 @@ export async function seedVectorPositivity(
   });
 
   // 3. Enter POSITIVE results for both pathogen analyses via LogbookResults.
-  const logbook = await apiGet<{
-    testResult?: Array<Record<string, unknown>>;
-  }>(page, `/rest/LogbookResults?labNumber=${labNo}`);
-  const body = JSON.parse(JSON.stringify(logbook));
-  for (const item of body.testResult ?? []) {
-    const dict = (item.dictionaryResults ?? []) as Array<{
-      id: string;
-      value: string;
-    }>;
-    const positive = dict.find((d) =>
-      (d.value || "").toLowerCase().startsWith("positive"),
-    );
-    if (!positive) continue;
-    item.reportable = item.reportable === "N" ? false : true;
-    item.resultValue = positive.id;
-    item.shadowResultValue = positive.id;
-    item.isModified = true;
-    delete item.result;
-  }
-  await apiPost(page, "/rest/LogbookResults", body);
+  await enterResult(page, labNo, true);
 
   return { labNo, siteName };
 }
@@ -218,26 +199,7 @@ export async function identifyAndResolvePositive(
     confidence: "CONFIRMED",
   });
 
-  const logbook = await apiGet<{
-    testResult?: Array<Record<string, unknown>>;
-  }>(page, `/rest/LogbookResults?labNumber=${labNumber}`);
-  const body = JSON.parse(JSON.stringify(logbook));
-  for (const item of body.testResult ?? []) {
-    const dict = (item.dictionaryResults ?? []) as Array<{
-      id: string;
-      value: string;
-    }>;
-    const positive = dict.find((d) =>
-      (d.value || "").toLowerCase().startsWith("positive"),
-    );
-    if (!positive) continue;
-    item.reportable = item.reportable === "N" ? false : true;
-    item.resultValue = positive.id;
-    item.shadowResultValue = positive.id;
-    item.isModified = true;
-    delete item.result;
-  }
-  await apiPost(page, "/rest/LogbookResults", body);
+  await enterResult(page, labNumber, true);
 }
 
 /** N most-recent Mondays (ISO yyyy-mm-dd), oldest first — backdated collection weeks. */
