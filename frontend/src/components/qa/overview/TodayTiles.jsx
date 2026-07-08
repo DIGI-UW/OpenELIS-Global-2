@@ -1,13 +1,13 @@
 import React from "react";
 import { useIntl } from "react-intl";
 import ComingSoon from "./ComingSoon";
+import NcePulseTile from "./NcePulseTile";
 
 const TILES = [
   { titleKey: "qa.overview.tile.tat", ticket: "OGC-696" },
   { titleKey: "qa.overview.tile.rejectionRate", ticket: "OGC-697" },
   { titleKey: "qa.overview.tile.amendmentRate", ticket: "OGC-698" },
   { titleKey: "qa.overview.tile.criticalCallback", ticket: "OGC-714" },
-  { titleKey: "qa.overview.tile.ncePulse", ticket: "OGC-699" },
 ];
 
 const TodayTiles = () => {
@@ -22,6 +22,7 @@ const TodayTiles = () => {
         {TILES.map((tile) => (
           <ComingSoon key={tile.titleKey} variant="tile" {...tile} />
         ))}
+        <NcePulseTile />
       </div>
     </section>
   );
