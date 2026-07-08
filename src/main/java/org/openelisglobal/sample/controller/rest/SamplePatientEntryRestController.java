@@ -276,6 +276,17 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // workflow
         SampleOrderItem sampleOrder = form.getSampleOrderItems();
         String workflowType = sampleOrder != null ? sampleOrder.getEnvironmentalFieldAsString("workflowType") : null;
+        if (logger.isDebugEnabled()) {
+            logger.debug(
+                    "SamplePatientEntry save: workflowType={} environmentalFields={} referringSiteId={} "
+                            + "referringSiteName={} requestorPersonId={} requestorFirstName={} requestorLastName={}",
+                    workflowType, sampleOrder != null ? sampleOrder.getEnvironmentalFields() : null,
+                    sampleOrder != null ? sampleOrder.getReferringSiteId() : null,
+                    sampleOrder != null ? sampleOrder.getReferringSiteName() : null,
+                    sampleOrder != null ? sampleOrder.getRequestorPersonId() : null,
+                    sampleOrder != null ? sampleOrder.getRequestorFirstName() : null,
+                    sampleOrder != null ? sampleOrder.getRequestorLastName() : null);
+        }
 
         formValidator.validate(form, result);
 
@@ -344,6 +355,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         updateData.setReferringId(sampleOrder.getExternalOrderNumber());
         updateData.setPriority(sampleOrder.getPriority());
         updateData.initProvider(sampleOrder);
+        updateData.initRequestorContact(sampleOrder);
 
         // initSampleData MUST be called before initProgramQuestions so that the sample
         // object is loaded (for updates) before we try to load the existing
@@ -376,7 +388,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // They will be added in a later step (Collect Sample)
         boolean requireSampleItems = !form.isOrderEntryOnly();
 
-        updateData.validateSample(result, requireSampleItems);
+        updateData.validateSample(result, requireSampleItems, sampleOrder, workflowType);
 
         // OGC-356: For environmental/vector workflow, ignore patient-related validation
         // errors

@@ -102,6 +102,13 @@ public abstract class ConfigurationProperties {
         restrictFreeTextProviderEntry("restrictFreeTextProviderEntry", "text"), // If true then a user cannot enter new
         // providers during sample entry and must choose
         // from list provided
+        restrictFreeTextRequestorEntry("restrictFreeTextRequestorEntry", "text"), // if true then a user
+        // cannot enter new Environmental/Vector Requestor contacts during
+        // sample entry and must choose from the existing requestor_contact
+        // list provided
+        restrictFreeTextSampSiteEntry("restrictFreeTextSampSiteEntry", "text"), // if true then a user
+        // cannot enter new Vector/Environmental Sampling Sites during sample
+        // entry and must choose from the existing sampling site list provided
         autoFillTechNameBox("autoFillTechNameBox", "text"), // If true a box will be provided to auto-fill technicians
                                                             // name for
         // all results on page

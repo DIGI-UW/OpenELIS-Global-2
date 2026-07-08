@@ -321,8 +321,8 @@ public class OrderSearchRestController extends BaseRestController {
                     });
                 }
 
-                // QA is complete if all checklist items are verified
-                boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+                // QA is complete if the QA step has been saved (checklist record exists)
+                boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
 
                 // Determine order status
                 String orderStatus;
@@ -810,8 +810,9 @@ public class OrderSearchRestController extends BaseRestController {
             }
             stepProgress.put("label", labelComplete);
 
-            // QA is complete if all checklist items are verified
-            boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+            // QA is complete if the QA step has been saved (checklist record exists),
+            // regardless of whether all items are checked (checklist is advisory)
+            boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
             stepProgress.put("qa", qaComplete);
             response.put("stepProgress", stepProgress);
 
@@ -1034,11 +1035,26 @@ public class OrderSearchRestController extends BaseRestController {
             sampleOrderItems.put("referringSiteId", referringSite.getId());
             sampleOrderItems.put("referringSiteName", referringSite.getOrganizationName());
             sampleOrderItems.put("referringSiteCode", referringSite.getShortName());
+            sampleOrderItems.put("referringSitePhone", referringSite.getPhone());
+            sampleOrderItems.put("referringSiteFax", referringSite.getFax());
+            sampleOrderItems.put("referringSiteEmail", referringSite.getEmail());
         }
 
         if (department != null) {
             sampleOrderItems.put("referringSiteDepartmentId", department.getId());
             sampleOrderItems.put("referringSiteDepartmentName", department.getOrganizationName());
+        }
+
+        // Env/Vector Requestor contact — independent of Provider above.
+        Person requestorPerson = requesterService.getRequestorPerson();
+        if (requestorPerson != null) {
+            sampleOrderItems.put("requestorPersonId", requestorPerson.getId());
+            sampleOrderItems.put("requestorFirstName", requestorPerson.getFirstName());
+            sampleOrderItems.put("requestorLastName", requestorPerson.getLastName());
+            sampleOrderItems.put("requestorPhone", requestorPerson.getWorkPhone());
+            sampleOrderItems.put("requestorFax", requestorPerson.getFax());
+            sampleOrderItems.put("requestorEmail", requestorPerson.getEmail());
+            sampleOrderItems.put("requestorDepartment", requestorPerson.getDepartment());
         }
 
         // Program - Try multiple approaches to find program info

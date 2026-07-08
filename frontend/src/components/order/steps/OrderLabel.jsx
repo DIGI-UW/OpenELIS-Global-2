@@ -673,6 +673,9 @@ const OrderLabel = () => {
     try {
       await savePendingStorageAssignments();
       await updateStorageNotes();
+      if (!allSamplesHaveStorage && !storageSkipped) {
+        handleStorageSkippedChange(true);
+      }
       markStepComplete("label");
       addNotification({
         kind: NotificationKinds.success,
@@ -695,6 +698,9 @@ const OrderLabel = () => {
     try {
       await savePendingStorageAssignments();
       await updateStorageNotes();
+      if (!allSamplesHaveStorage && !storageSkipped) {
+        handleStorageSkippedChange(true);
+      }
       markStepComplete("label");
       setCurrentStep(3);
       history.push(
@@ -718,11 +724,8 @@ const OrderLabel = () => {
     samples.length > 0 &&
     samples.every((s, idx) => s.storageLocationId || assignedStorage[idx]);
 
-  // Vector workflow has no collection step and no storage requirement
-  const canProceed = isVectorWorkflow
-    ? true
-    : (printedLabels.has("order") || printedLabels.has("sample")) &&
-      (allSamplesHaveStorage || storageSkipped);
+  // Label printing and storage are both optional — users can skip directly to QA Review
+  const canProceed = true;
 
   // Don't render if no order loaded (will redirect)
   if (!orderId && !labNumber) {

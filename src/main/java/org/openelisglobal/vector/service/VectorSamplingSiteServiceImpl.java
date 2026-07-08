@@ -44,6 +44,12 @@ public class VectorSamplingSiteServiceImpl extends AuditableBaseObjectServiceImp
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<VectorSamplingSite> search(String searchTerm) {
+        return getBaseObjectDAO().search(searchTerm);
+    }
+
+    @Override
     @Transactional
     public VectorSamplingSite patchUpdate(Integer id, VectorSamplingSite patch, String sysUserId) {
         VectorSamplingSite existing = getBaseObjectDAO().get(id)

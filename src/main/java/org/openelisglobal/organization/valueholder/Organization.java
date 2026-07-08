@@ -15,6 +15,7 @@ package org.openelisglobal.organization.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import java.util.HashSet;
 import java.util.Set;
@@ -35,6 +36,15 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String cliaNum;
+
+    @Pattern(regexp = ValidationHelper.PHONE_REGEX)
+    private String phone;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String fax;
+
+    @Email
+    private String email;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String id;
@@ -101,6 +111,30 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
 
     public String getCliaNum() {
         return cliaNum;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getFax() {
+        return fax;
+    }
+
+    public void setFax(String fax) {
+        this.fax = fax;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     @Override

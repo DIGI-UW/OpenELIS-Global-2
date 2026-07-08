@@ -921,6 +921,17 @@
     line-height: 1.4;
   }
 
+  /* OGC-1074 task #4: "+ Add new X" admin-restriction messaging — same
+     helper-text sizing, but visually distinct (warning tone) so a disabled
+     add-new affordance reads as an intentional restriction, not stray copy. */
+  .admin-restricted-message {
+    /* Carbon's --cds-support-warning-inverse token resolves to the same
+       low-contrast #f1c21b yellow as --cds-support-warning in this theme,
+       despite the "-inverse" name — so it's hardcoded here instead. */
+    color: #8a3800;
+    font-style: italic;
+  }
+
   .required-indicator {
     color: var(--cds-support-error);
   }
