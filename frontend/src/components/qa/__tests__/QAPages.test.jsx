@@ -48,10 +48,10 @@ describe("QAPlaceholder", () => {
     );
   });
 
-  test("overview and qi coming-soon placeholders render without design-doc link", () => {
-    renderPage(<QAPlaceholder feature="overview" />);
+  test("qi coming-soon placeholder renders without design-doc link", () => {
+    renderPage(<QAPlaceholder feature="qi" />);
     expect(
-      screen.getByRole("heading", { name: "QA Overview" }),
+      screen.getByRole("heading", { name: "Quality Indicators" }),
     ).toBeInTheDocument();
     expect(
       screen.getByText("This page is planned but not yet built."),
@@ -59,10 +59,5 @@ describe("QAPlaceholder", () => {
     expect(
       screen.queryByRole("link", { name: /Read design doc on GitHub/ }),
     ).not.toBeInTheDocument();
-
-    renderPage(<QAPlaceholder feature="qi" />);
-    expect(
-      screen.getByRole("heading", { name: "Quality Indicators" }),
-    ).toBeInTheDocument();
   });
 });
