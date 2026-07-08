@@ -32,7 +32,7 @@ import "./QCDashboard.css";
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-const QCDashboard = () => {
+const QCDashboard = ({ initialTab = 0 }) => {
   const intl = useIntl();
   const intlRef = useRef(intl);
   intlRef.current = intl;
@@ -191,7 +191,7 @@ const QCDashboard = () => {
       <QCSummaryTiles summary={summary || {}} loading={loading} />
 
       {/* Tabbed Content */}
-      <Tabs>
+      <Tabs defaultSelectedIndex={initialTab}>
         <TabList contained aria-label="QC Dashboard tabs">
           <Tab data-testid="qc-tab-instruments">
             {intl.formatMessage({ id: "qc.dashboard.tab.instruments" })}
