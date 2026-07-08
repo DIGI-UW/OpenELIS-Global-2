@@ -50,8 +50,12 @@ test.describe("Order workflow — Label & Store storage picker", () => {
       findInProgressLabNumber(request));
 
     await test.step("deep-link into the order at Step 3", async () => {
+      // Order routing is split by workflow (/order/{clinical,environmental,
+      // vector}/label); the flat /order/label no longer exists. OrderLabel
+      // deep-links by ?labNumber regardless of workflow, and in-progress seed
+      // orders are clinical.
       await page.goto(
-        `/order/label?labNumber=${encodeURIComponent(labNumber)}`,
+        `/order/clinical/label?labNumber=${encodeURIComponent(labNumber)}`,
         { waitUntil: "domcontentloaded", timeout: LONG_TIMEOUT },
       );
     });
