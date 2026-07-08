@@ -145,6 +145,44 @@ describe("RangesSection", () => {
     expect(body.ranges[0].lowNormal).toBe(4);
   });
 
+  it("blocks a range whose bounds are not nested outward", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({ testId: "42", ranges: [], coverage: emptyCoverage }),
+    );
+    renderSection();
+    await screen.findByText(messages["label.testCatalog.ranges.empty"]);
+
+    fireEvent.click(screen.getByTestId("add-range"));
+    const dialog = await screen.findByRole("dialog");
+    // Normal 4–11, but critical high 5 (< normal high 11) — invalid nesting.
+    fireEvent.change(
+      within(dialog).getByLabelText(
+        messages["label.testCatalog.ranges.modal.lowNormal"],
+      ),
+      { target: { value: "4" } },
+    );
+    fireEvent.change(
+      within(dialog).getByLabelText(
+        messages["label.testCatalog.ranges.modal.highNormal"],
+      ),
+      { target: { value: "11" } },
+    );
+    fireEvent.change(
+      within(dialog).getByLabelText(
+        messages["label.testCatalog.ranges.modal.highCritical"],
+      ),
+      { target: { value: "5" } },
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    // Error shown, range not saved (dialog stays open, no row added).
+    expect(
+      within(dialog).getByText(
+        messages["label.testCatalog.ranges.modal.boundsError"],
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("edits a range's valid bounds and persists them (OGC-1117)", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url.endsWith("/sample-results")) {

@@ -70,6 +70,15 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
         if (!GenericValidator.isBlankOrNull(params.labUnitId)) {
             TestSection labUnit = testSectionService.get(params.labUnitId);
             if (labUnit != null) {
+                // Assigning a test to an inactive lab unit activates it, mirroring the
+                // legacy Test Section assignment flow. Otherwise the section stays
+                // inactive and the test is filtered out of Add Order, which lists only
+                // tests whose section is among the user's active sections (OGC-1116).
+                if ("N".equals(labUnit.getIsActive())) {
+                    labUnit.setIsActive("Y");
+                    labUnit.setSysUserId(sysUserId);
+                    testSectionService.update(labUnit);
+                }
                 test.setTestSection(labUnit);
             }
         }

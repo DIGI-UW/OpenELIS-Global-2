@@ -90,8 +90,14 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
     };
   });
   const [ageError, setAgeError] = useState(false);
+  const [boundsError, setBoundsError] = useState(false);
 
-  const set = (patch) => setDraft((prev) => ({ ...prev, ...patch }));
+  const set = (patch) =>
+    setDraft((prev) => {
+      setAgeError(false);
+      setBoundsError(false);
+      return { ...prev, ...patch };
+    });
 
   const handleSubmit = () => {
     const minDays =
@@ -106,6 +112,23 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
     if (maxDays !== null && maxDays <= minDays) {
       setAgeError(true);
       return;
+    }
+    // Bounds must nest outward: valid ⊇ critical ⊇ normal, i.e.
+    // lowValid ≤ lowCritical ≤ lowNormal ≤ highNormal ≤ highCritical ≤ highValid.
+    // Blank bounds are unbounded (skipped); the entered ones must stay in order.
+    const chain = [
+      parseOrNull(draft.lowValid),
+      parseOrNull(draft.lowCritical),
+      parseOrNull(draft.lowNormal),
+      parseOrNull(draft.highNormal),
+      parseOrNull(draft.highCritical),
+      parseOrNull(draft.highValid),
+    ].filter((v) => v !== null);
+    for (let i = 1; i < chain.length; i++) {
+      if (chain[i] < chain[i - 1]) {
+        setBoundsError(true);
+        return;
+      }
     }
     onSave({
       id: draft.id,
@@ -240,6 +263,16 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
           {numField("lowValid", "label.testCatalog.ranges.modal.lowValid")}
           {numField("highValid", "label.testCatalog.ranges.modal.highValid")}
         </div>
+        {boundsError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "label.testCatalog.ranges.modal.boundsError",
+            })}
+          />
+        )}
       </div>
     </Modal>
   );

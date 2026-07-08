@@ -12,6 +12,7 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -320,6 +321,13 @@ public class TestCatalogEditorRestController {
         params.orderable = body.orderable;
         params.description = body.description;
         String newId = testCatalogCreationService.createInactiveTest(params, ControllerUtills.getSysUserId(request));
+        // Creating a test may have activated a previously-inactive lab unit; refresh
+        // the cached section lists (which back the order-entry section filter) and
+        // clear the sample-type cache so the new sample-type link is picked up once
+        // the test is activated (OGC-1116). Runs post-commit — the service is done.
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        typeOfSampleService.clearCache();
         CreatedTest created = new CreatedTest();
         created.testId = newId;
         return ResponseEntity.status(201).body(created);
@@ -434,6 +442,8 @@ public class TestCatalogEditorRestController {
         public String code;
         public String description;
         public String domain;
+        public String labUnitId;
+        public String sampleTypeId;
         public Boolean antimicrobialResistance;
         public Boolean active;
         public Boolean orderable;
@@ -481,6 +491,20 @@ public class TestCatalogEditorRestController {
         if (body.orderable != null) {
             test.setOrderable(body.orderable);
         }
+        // Lab unit (test section) is editable on modify too (not just create).
+        // Assigning an inactive section activates it, mirroring the create flow and
+        // the legacy Test Section assignment, so the test surfaces on Add Order.
+        if (!isBlank(body.labUnitId) && testSectionService != null) {
+            TestSection section = testSectionService.get(body.labUnitId);
+            if (section != null) {
+                if ("N".equals(section.getIsActive())) {
+                    section.setIsActive("Y");
+                    section.setSysUserId(ControllerUtills.getSysUserId(request));
+                    testSectionService.update(section);
+                }
+                test.setTestSection(section);
+            }
+        }
         // Activation (N→Y) is gated on reference-range coverage (the H-03 safety
         // gate) and must go through POST .../activate; basic-info only persists a
         // deactivation, so it cannot be used to bypass the coverage acknowledgment.
@@ -489,7 +513,43 @@ public class TestCatalogEditorRestController {
         }
         test.setSysUserId(ControllerUtills.getSysUserId(request));
         Test updated = testService.update(test);
+        // Sample type is editable on modify too. The editor models one sample type
+        // per test, so reconcile the type_of_sample_test link to the chosen type
+        // (replace-all, matching the legacy modify flow).
+        if (!isBlank(body.sampleTypeId)) {
+            String sysUserId = ControllerUtills.getSysUserId(request);
+            List<TypeOfSampleTest> current = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId);
+            boolean alreadyLinked = current.size() == 1 && body.sampleTypeId.equals(current.get(0).getTypeOfSampleId());
+            if (!alreadyLinked) {
+                for (TypeOfSampleTest link : current) {
+                    typeOfSampleTestService.delete(link.getId(), sysUserId);
+                }
+                TypeOfSampleTest link = new TypeOfSampleTest();
+                link.setTypeOfSampleId(body.sampleTypeId);
+                link.setTestId(testId);
+                link.setSysUserId(sysUserId);
+                typeOfSampleTestService.insert(link);
+            }
+        }
+        // Reflect active / orderable / lab-unit / sample-type changes in the cached
+        // order-picker lists immediately; otherwise the change lags until an
+        // unrelated refresh (same stale-cache cause as OGC-1116).
+        if (body.active != null || body.orderable != null || !isBlank(body.labUnitId) || !isBlank(body.sampleTypeId)) {
+            refreshTestCaches();
+        }
         return ResponseEntity.ok(toBasicInfo(updated));
+    }
+
+    /**
+     * Rebuild the cached order-picker + section lists after a test/section change.
+     */
+    private void refreshTestCaches() {
+        testService.refreshTestNames();
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ALL_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ORDERABLE_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        typeOfSampleService.clearCache();
     }
 
     /**
@@ -510,6 +570,9 @@ public class TestCatalogEditorRestController {
         info.code = test.getLocalCode();
         info.description = test.getDescription();
         info.domain = test.getDomain();
+        info.labUnitId = test.getTestSection() == null ? null : test.getTestSection().getId();
+        TypeOfSample sampleType = testService.getTypeOfSample(test);
+        info.sampleTypeId = sampleType == null ? null : sampleType.getId();
         info.antimicrobialResistance = Boolean.TRUE.equals(test.getAntimicrobialResistance());
         info.active = test.isActive();
         info.orderable = Boolean.TRUE.equals(test.getOrderable());
