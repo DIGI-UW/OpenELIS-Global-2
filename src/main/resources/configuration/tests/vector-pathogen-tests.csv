@@ -1,0 +1,3 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,localization:en
+Malaria Parasite Detection,Vector Pathogen,Mosquito,32700-7,Y,Y,1,,Malaria Parasite Detection
+Pan-Plasmodium CSP ELISA,Vector Pathogen,Mosquito,71712-2,Y,Y,2,,Pan-Plasmodium CSP ELISA
