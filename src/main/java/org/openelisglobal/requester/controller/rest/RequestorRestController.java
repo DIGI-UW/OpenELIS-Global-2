@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * OGC-1074: search endpoint for the Environmental/Vector "Requestor" contact
- * person, independent of Provider (Clinical-only) and Organization. Mirrors
+ * Search endpoint for the Environmental/Vector "Requestor" contact person,
+ * independent of Provider (Clinical-only) and Organization. Mirrors
  * ProviderRestController's /provider/search shape so the frontend type-ahead
  * pattern is identical across all three requester domains.
  */

@@ -102,7 +102,7 @@ public abstract class ConfigurationProperties {
         restrictFreeTextProviderEntry("restrictFreeTextProviderEntry", "text"), // If true then a user cannot enter new
         // providers during sample entry and must choose
         // from list provided
-        restrictFreeTextRequestorEntry("restrictFreeTextRequestorEntry", "text"), // OGC-1074: if true then a user
+        restrictFreeTextRequestorEntry("restrictFreeTextRequestorEntry", "text"), // if true then a user
         // cannot enter new Environmental/Vector Requestor contacts during
         // sample entry and must choose from the existing requestor_contact
         // list provided

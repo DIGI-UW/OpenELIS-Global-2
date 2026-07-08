@@ -89,10 +89,9 @@ public class SamplePatientEntryServiceImplTest {
     }
 
     /**
-     * OGC-1074: a Requestor contact bound to an order (no Requesting Organization
-     * present) must be saved as a standalone SampleRequester row and must NOT
-     * attempt any OrganizationContact linking, since there is no organization to
-     * link it to.
+     * A Requestor contact bound to an order (no Requesting Organization present)
+     * must be saved as a standalone SampleRequester row and must NOT attempt any
+     * OrganizationContact linking, since there is no organization to link it to.
      */
     @Test
     public void persistRequesterData_requestorOnly_savesRequesterContactWithoutOrgLink() {
@@ -228,9 +227,9 @@ public class SamplePatientEntryServiceImplTest {
     }
 
     /**
-     * OGC-1074: when both a Requesting Organization and a Requestor contact are
-     * bound on the same order, an OrganizationContact link must be created for
-     * future "suggested contacts for this org" reuse.
+     * When both a Requesting Organization and a Requestor contact are bound on the
+     * same order, an OrganizationContact link must be created for future "suggested
+     * contacts for this org" reuse.
      */
     @Test
     public void persistRequesterData_orgAndRequestorBoth_linksOrganizationContact() {
@@ -269,9 +268,9 @@ public class SamplePatientEntryServiceImplTest {
     }
 
     /**
-     * OGC-1074: the OrganizationContact link must be idempotent — if this
-     * org+person pairing was already linked (e.g. a prior order for the same
-     * organization and contact), do not insert a duplicate row.
+     * The OrganizationContact link must be idempotent — if this org+person pairing
+     * was already linked (e.g. a prior order for the same organization and
+     * contact), do not insert a duplicate row.
      */
     @Test
     public void persistRequesterData_orgAndRequestorAlreadyLinked_doesNotDuplicateLink() {

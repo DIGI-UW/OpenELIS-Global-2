@@ -29,7 +29,7 @@ import { ConfigurationContext } from "../../../layout/Layout";
  * - ORD-8: Provider search with inline disambiguation
  * - ORD-8a: Department/Ward/Unit field (disabled until facility selected)
  * - XC-2: Unified search pattern for Site, Requestor, and Provider
- * - OGC-1074: Requester element revamp — Env/Vector use the same
+ * - Requester element revamp — Env/Vector use the same
  *   Requesting-Organization + Requestor-contact element (Vector no longer
  *   hides the organization search); Provider (Clinical) surfaces Fax/Email.
  */
@@ -45,7 +45,7 @@ const RequesterSection = ({
   const isEnvOrVector =
     workflowType === "environmental" || workflowType === "vector";
 
-  // OGC-1074 task #4: admin-gated "+ Add new" affordances. Each restrict flag
+  // Admin-gated "+ Add new" affordances. Each restrict flag
   // defaults to "false" (unrestricted) server-side, so a missing/loading
   // config context must NOT accidentally restrict everyone — compare
   // strictly against the "true" string rather than treating undefined as
@@ -63,7 +63,7 @@ const RequesterSection = ({
   const [siteResults, setSiteResults] = useState([]);
   const [isSearchingSites, setIsSearchingSites] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
-  // OGC-1074 task #5: edit-lock. A record pulled in from search/backend load
+  // Edit-lock. A record pulled in from search/backend load
   // (an existing registry entry) starts locked/read-only; "Edit details"
   // unlocks it in place. A brand-new record (via "+ Add new X") starts
   // unlocked, since there's nothing pre-existing to protect from an
@@ -267,7 +267,7 @@ const RequesterSection = ({
     }));
   };
 
-  // OGC-1074 task #5: unlock an existing (search-selected/loaded) org's
+  // Unlock an existing (search-selected/loaded) org's
   // contact info for editing in place, instead of clearing and re-searching.
   const handleUnlockSite = () => {
     setIsSiteLocked(false);
@@ -367,7 +367,7 @@ const RequesterSection = ({
     }));
   };
 
-  // OGC-1074 task #5: unlock an existing (search-selected/loaded) Requestor's
+  // Unlock an existing (search-selected/loaded) Requestor's
   // contact info for editing in place, instead of clearing and re-searching.
   const handleUnlockRequestor = () => {
     setIsRequestorLocked(false);
@@ -620,7 +620,7 @@ const RequesterSection = ({
     }));
   };
 
-  // OGC-1074 task #5: unlock an existing (search-selected/loaded) provider's
+  // Unlock an existing (search-selected/loaded) provider's
   // contact info for editing in place, instead of clearing and re-searching.
   const handleUnlockProvider = () => {
     setIsProviderLocked(false);
@@ -787,7 +787,7 @@ const RequesterSection = ({
       </Grid>
 
       {/* Requesting Organization / Site Search — same element for all three
-          domains. Env/Vector call it "Requesting Organization" per OGC-1074;
+          domains. Env/Vector call it "Requesting Organization";
           Vector previously had this entire block hidden and forced through
           Provider only, which mis-framed the requester as "always a doctor". */}
       <div className="subsection">
@@ -947,7 +947,7 @@ const RequesterSection = ({
 
         {/* "+ Add new organization" — shown once the user has typed a name
             that didn't match an existing site, so a fresh org can still be
-            created and saved. OGC-1074 task #4: gated by the
+            created and saved. Gated by the
             restrictFreeTextRefSiteEntry admin config — when restricted, the
             button stays visible but disabled with an explanatory message
             rather than being silently hidden. */}
@@ -1032,12 +1032,12 @@ const RequesterSection = ({
         )}
 
         {/* Requesting Organization contact info — its own phone/fax/email,
-            independent of any Requestor contact person below (OGC-1074).
-            OGC-1074 task #4: restrictFreeTextRefSiteEntry only blocks
+            independent of any Requestor contact person below.
+            restrictFreeTextRefSiteEntry only blocks
             CREATING a brand-new organization (no existing org selected from
             search yet); editing an already-selected organization's contact
             info is always allowed (subject to the edit-lock below).
-            OGC-1074 task #5: an org pulled in via search/backend load starts
+            An org pulled in via search/backend load starts
             read-only (isSiteLocked) until "Edit details" is clicked; a
             brand-new org (isNew) is never locked, since it has no prior
             saved state to protect. */}
@@ -1265,8 +1265,8 @@ const RequesterSection = ({
 
           {/* "+ Add new requestor" — shown once the user has typed a name
               that didn't match an existing Requestor, mirroring the
-              Organization/Provider "+ Add new" affordance. OGC-1074 task #4:
-              gated by the restrictFreeTextRequestorEntry admin config — when
+              Organization/Provider "+ Add new" affordance. Gated by the
+              restrictFreeTextRequestorEntry admin config — when
               restricted, the button stays visible but disabled with an
               explanatory message rather than being silently hidden. */}
           {!selectedRequestor &&
@@ -1355,12 +1355,12 @@ const RequesterSection = ({
           )}
 
           {/* New Requestor contact fields — used when not found in search.
-              OGC-1074 task #4: restrictFreeTextRequestorEntry only blocks
+              restrictFreeTextRequestorEntry only blocks
               CREATING a brand-new Requestor (no selection yet); editing an
               already-selected/loaded Requestor's details is always allowed —
               admins restrict free-text entry of new records, not edits to
               existing ones (subject to the edit-lock below).
-              OGC-1074 task #5: a Requestor pulled in via search/backend load
+              A Requestor pulled in via search/backend load
               starts read-only (isRequestorLocked) until "Edit details" is
               clicked. */}
           {(() => {
@@ -1497,7 +1497,7 @@ const RequesterSection = ({
       )}
 
       {/* Provider Search — Clinical only. Env/Vector use the Requestor
-          contact above instead (OGC-1074: Provider and Requestor are
+          contact above instead (Provider and Requestor are
           distinct domain concepts, not interchangeable). */}
       {!isEnvOrVector && (
         <div className="subsection">
@@ -1582,12 +1582,12 @@ const RequesterSection = ({
 
           {/* Provider contact info — First/Last Name (editable so a newly
               added provider's search-derived name split can be corrected)
-              plus Phone/Fax/Email (v1 dropped fax/email; OGC-1074).
-              OGC-1074 task #4: restrictFreeTextProviderEntry only blocks
+              plus Phone/Fax/Email (v1 dropped fax/email).
+              restrictFreeTextProviderEntry only blocks
               CREATING a brand-new provider (no existing provider selected
               from search yet); editing an already-selected provider's
               contact info is always allowed (subject to the edit-lock
-              below). OGC-1074 task #5: a provider pulled in via search/
+              below). A provider pulled in via search/
               backend load starts read-only (isProviderLocked) until
               "Edit details" is clicked. */}
           {(() => {
@@ -1786,7 +1786,7 @@ const RequesterSection = ({
 
           {/* "+ Add new provider" — shown once the user has typed a name
               that didn't match an existing provider, so a fresh provider can
-              still be created and saved. OGC-1074 task #4: gated by the
+              still be created and saved. Gated by the
               restrictFreeTextProviderEntry admin config — when restricted,
               the button stays visible but disabled with an explanatory
               message rather than being silently hidden. */}

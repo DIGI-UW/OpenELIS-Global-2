@@ -336,11 +336,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     }
 
     /**
-     * OGC-1074: saves the standalone Requestor contact Person for
-     * Environmental/Vector orders (built by
-     * {@code SamplePatientUpdateData.initRequestorContact}). Unlike the Provider
-     * path, there is no wrapper entity — Requestor is persisted as a bare Person
-     * and linked to the sample via a {@code requestor_contact}-typed
+     * Saves the standalone Requestor contact Person for Environmental/Vector orders
+     * (built by {@code SamplePatientUpdateData.initRequestorContact}). Unlike the
+     * Provider path, there is no wrapper entity — Requestor is persisted as a bare
+     * Person and linked to the sample via a {@code requestor_contact}-typed
      * SampleRequester row in {@link #persistRequesterData}.
      */
     private void persistRequestorContactData(SamplePatientUpdateData updateData) {
@@ -735,7 +734,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             sampleRequesterService.insert(updateData.getRequesterSiteDepartment());
         }
 
-        // OGC-1074: standalone Requestor contact (Environmental/Vector) — independent
+        // Standalone Requestor contact (Environmental/Vector) — independent
         // of the Requesting Organization/Provider handled above.
         String requestorOrganizationId = null;
         if (updateData.getRequestorPerson() != null && updateData.getRequesterContact() != null
@@ -767,7 +766,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     : String.valueOf(updateData.getRequesterSite().getRequesterId());
         }
 
-        // OGC-1074: when both a Requesting Organization and a Requestor contact are
+        // When both a Requesting Organization and a Requestor contact are
         // bound on the same order, link them via OrganizationContact for future
         // "suggested contacts for this org" reuse. Pure side-effect: does not gate
         // save and does not replace the two independent SampleRequester rows above.

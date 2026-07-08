@@ -5,7 +5,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <!--
-    OGC-1074: Requester element revamp. Env/Vector orders need a
+    Requester element revamp. Env/Vector orders need a
     "Requesting Organization" (name/address/city + its own phone/fax/email)
     independent from an optional "Requestor" contact person. Requestor is
     modeled as a plain Person (already has name/phone/fax/email) tagged via a

@@ -4,15 +4,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <!--
-    Admin-gated "+ Add new site" affordance for the Environmental/Vector
-    Sampling Site inline-create flow. Mirrors the pre-existing
-    restrictFreeTextRequestorEntry (054-requestor-free-text-restriction.xml)
-    and restrictFreeTextRefSiteEntry seed rows in the same site_information
-    domain (sampleEntryConfig) — same shape, new name, so the admin
-    "General Configuration" screen picks it up automatically alongside the
-    other restrict-free-text toggles.
-  -->
+  <!-- Admin-gated "+ Add new site" affordance for sampling site inline-create. -->
 
   <changeSet id="3.5.0-055-add-restrict-free-text-sampling-site-entry" author="reagan-meant">
     <preConditions onFail="MARK_RAN">

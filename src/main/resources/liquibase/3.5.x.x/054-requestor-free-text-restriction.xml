@@ -5,7 +5,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <!--
-    OGC-1074 task #4: admin-gated "+ Add new" affordance for the
+    Admin-gated "+ Add new" affordance for the
     Environmental/Vector Requestor contact. Mirrors the pre-existing
     restrictFreeTextProviderEntry (liquibase/2.6.x.x/provider.xml) and
     restrictFreeTextRefSiteEntry seed rows in the same site_information

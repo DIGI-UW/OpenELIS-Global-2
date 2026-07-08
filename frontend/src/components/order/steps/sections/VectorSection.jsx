@@ -35,10 +35,7 @@ const SITE_BY_ID_URL = "/rest/admin/vector/sampling-sites";
 const SITE_SEARCH_URL = "/rest/admin/vector/sampling-sites/search";
 const SITE_TYPES_URL = "/rest/vector/dictionary/sampling-site-types";
 
-// Client-side code generation for a deferred-create ("+ Add new site")
-// sampling site — mirrors the shape of codes created via the Admin
-// SiteForm, but has to be generated up front since nothing is persisted
-// until order save. Editable afterwards so the user can override it.
+// Generates an editable placeholder code for a not-yet-persisted site.
 const generateSiteCode = (name) => {
   const initials = (name || "")
     .trim()
@@ -257,9 +254,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
     [setOrderData],
   );
 
-  // Restore selected site when editing an existing order — resolves the
-  // single site by id instead of pulling the full active-sites list, so
-  // there is no mount-once fetch feeding this hydration path either.
+  // Restore selected site when editing an existing order.
   useEffect(() => {
     const envFields = orderData?.sampleOrderItems?.environmentalFields;
     const siteId = envFields?.[SITE_ID_KEY];
@@ -301,9 +296,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
     });
   }, [orderData?.sampleOrderItems?.environmentalFields]);
 
-  // Live server-side search, debounced — replaces the previous mount-once
-  // fetch-everything-then-filter-client-side approach, which went stale the
-  // moment another user created/edited a site after this component mounted.
+  // Live server-side search, debounced.
   useEffect(() => {
     if (selectedSite || isReadOnly) return;
 
@@ -354,11 +347,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
     }));
   };
 
-  // "+ Add new site" — deferred creation, mirrors Organization's
-  // newRequesterName flow: nothing is POSTed to
-  // /rest/admin/vector/sampling-sites here. SITE_ID_KEY stays blank; the
-  // backend (SamplePatientUpdateData.resolveOrCreateSamplingSiteId) resolves
-  // an existing site by code or creates a new one at order-save time.
+  // Deferred creation — resolved/created server-side at order-save time.
   const handleUseAsNewSite = (name) => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
@@ -395,9 +384,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
     updateEnvField(SITE_TYPE_KEY, type);
   };
 
-  // OGC-1074-style edit-lock: a site pulled in via search/backend load
-  // starts read-only until "Edit details" is clicked; a brand-new site is
-  // never locked, since it has no prior saved state to protect.
+  // Unlocks a selected site for editing.
   const handleUnlockSamplingSite = () => {
     setIsSamplingSiteLocked(false);
   };

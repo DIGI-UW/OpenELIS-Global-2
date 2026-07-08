@@ -99,8 +99,8 @@ public class SamplePatientUpdateDataValidateTest extends BaseWebContextSensitive
     }
 
     /**
-     * OGC-1074: env/vector orders need at least one of Requesting Organization or
-     * Requestor contact. Neither is present here, so validateSample must reject.
+     * Env/vector orders need at least one of Requesting Organization or Requestor
+     * contact. Neither is present here, so validateSample must reject.
      */
     @Test
     public void envVectorWorkflow_missingOrgAndRequestor_surfacesFieldError() {

@@ -94,7 +94,7 @@ public class SamplePatientUpdateData {
     private Organization currentOrganization;
     private ElectronicOrder electronicOrder = null;
 
-    // OGC-1074: Env/Vector Requestor contact — independent of provider/org above
+    // Env/Vector Requestor contact — independent of provider/org above
     private Person requestorPerson;
     private SampleRequester requesterContact;
 
@@ -333,8 +333,8 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * OGC-1074: env/vector orders require at least one of Requesting Organization
-     * or Requestor contact. sampleOrder/workflowType are optional (null skips this
+     * Env/vector orders require at least one of Requesting Organization or
+     * Requestor contact. sampleOrder/workflowType are optional (null skips this
      * check) so the other four callers of the 2-arg overload are unaffected.
      */
     public void validateSample(Errors errors, boolean requireSampleItems, SampleOrderItem sampleOrder,
@@ -372,7 +372,7 @@ public class SamplePatientUpdateData {
             boolean hasOrg = hasRequestingOrganization(sampleOrder);
             boolean hasRequestor = hasRequestorContact(sampleOrder);
             LogEvent.logDebug(this.getClass().getName(), "validateSample",
-                    "OGC-1074 org-or-requestor check: workflowType=" + workflowType + " hasOrganization=" + hasOrg
+                    "org-or-requestor check: workflowType=" + workflowType + " hasOrganization=" + hasOrg
                             + " (referringSiteId=" + sampleOrder.getReferringSiteId() + " referringSiteName="
                             + sampleOrder.getReferringSiteName() + " newRequesterName="
                             + sampleOrder.getNewRequesterName() + ") hasRequestor=" + hasRequestor
@@ -579,10 +579,10 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * OGC-1074: Requesting Organization's own phone/fax/email are updated whenever
-     * they differ from what's stored, independent of the referring-code change
-     * check in {@link #updateCurrentOrgIfNeeded}, so contact info stays fresh even
-     * when the code is unchanged.
+     * Requesting Organization's own phone/fax/email are updated whenever they
+     * differ from what's stored, independent of the referring-code change check in
+     * {@link #updateCurrentOrgIfNeeded}, so contact info stays fresh even when the
+     * code is unchanged.
      */
     public void updateOrganizationContactInfoIfNeeded(SampleOrderItem orderItem, String orgId) {
         Organization org = currentOrganization != null ? currentOrganization : orgService.getOrganizationById(orgId);
@@ -617,10 +617,10 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * OGC-1074: builds the standalone Requestor contact Person for
-     * Environmental/Vector orders. Mirrors {@link #initProvider} but does NOT wrap
-     * the person in a Provider — Requestor is a distinct domain concept
-     * (customer/company contact), not a clinical ordering provider.
+     * Builds the standalone Requestor contact Person for Environmental/Vector
+     * orders. Mirrors {@link #initProvider} but does NOT wrap the person in a
+     * Provider — Requestor is a distinct domain concept (customer/company contact),
+     * not a clinical ordering provider.
      *
      * <p>
      * Dedup mirrors {@link #confirmNewRequesterName} for Organization: a
@@ -919,8 +919,6 @@ public class SamplePatientUpdateData {
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WORKFLOW_TYPE),
                 ValueType.LITERAL);
 
-        // Sampling site fields — resolve-or-create when the frontend sent a
-        // new (not-yet-persisted) site by name/code instead of an existing id.
         String samplingSiteId = resolveOrCreateSamplingSiteId(getStringValue(envFields, "samplingSiteId"),
                 getStringValue(envFields, "samplingSiteName"), getStringValue(envFields, "samplingSiteCode"),
                 getStringValue(envFields, "siteType"));
@@ -1034,28 +1032,14 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * Resolve a sampling site id for the order's environmental observations. When
-     * the frontend already selected an existing site, {@code siteId} is returned
-     * unchanged. When the user instead used "+ Add new site" (deferred creation —
-     * mirrors Organization's {@code newRequesterName} flow), {@code siteId} is
-     * blank and a {@link VectorSamplingSite} is resolved-or-created here by its
-     * unique {@code code}: an existing active site with the same code is reused
-     * (dedup, same idiom as {@link #confirmNewRequesterName}), otherwise a new site
-     * row is persisted and its generated id used.
+     * Resolves an existing sampling site by id (applying any edited name/code/type
+     * in place), or resolves-or-creates one by code when {@code siteId} is blank
+     * (deferred "+ Add new site" creation).
      */
     private String resolveOrCreateSamplingSiteId(String siteId, String siteName, String siteCode, String siteType) {
         VectorSamplingSiteService samplingSiteService = SpringContext.getBean(VectorSamplingSiteService.class);
 
         if (!GenericValidator.isBlankOrNull(siteId)) {
-            // Existing site — "Edit details" in VectorSection.jsx unlocks the
-            // name/code/type fields for an already-selected site, so any
-            // change made there must be written back to the VectorSamplingSite
-            // row itself, not just to the per-order ObservationHistory
-            // snapshot (which only stores id + name). Update only name/code/
-            // type in place (not a full patchUpdate(), which unconditionally
-            // overwrites every other field — contactName, GPS, description,
-            // etc. — with whatever the caller passed, which would null those
-            // out here since this order-save path never carries them).
             try {
                 VectorSamplingSite existingSite = samplingSiteService.get(Integer.valueOf(siteId));
                 boolean changed = false;

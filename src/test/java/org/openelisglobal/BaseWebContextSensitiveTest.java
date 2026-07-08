@@ -69,7 +69,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * which fixture declares which rows.
      *
      * <p>
-     * {@code requester_type} is the same class of bug (OGC-1074, 2026-07-07):
+     * {@code requester_type} is the same class of bug (2026-07-07):
      * {@code TableIdService} resolves {@code ORGANIZATION_REQUESTER_TYPE_ID} /
      * {@code PROVIDER_REQUESTER_TYPE_ID} /
      * {@code REQUESTOR_CONTACT_REQUESTER_TYPE_ID} once, from the Liquibase-seeded

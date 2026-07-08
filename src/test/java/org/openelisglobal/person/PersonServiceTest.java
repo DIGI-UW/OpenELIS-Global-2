@@ -46,7 +46,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/person.xml");
         executeDataSetWithStateManagement("testdata/system-user.xml");
         // sample_requester isn't covered by either dataset above, so rows
-        // inserted by one OGC-1074 requestor_contact test would otherwise leak
+        // inserted by one requestor_contact test would otherwise leak
         // into the next (this class extends BaseWebContextSensitiveTest with
         // @Transactional(NOT_SUPPORTED) — no auto-rollback between tests).
         cleanRowsInCurrentConnection(new String[] { "sample_requester" });
@@ -284,8 +284,8 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * OGC-1074 regression: getPagesOfSearchedRequestorContacts previously joined
-     * Person.id (LIMSStringNumberUserType, exposed as Java String) against
+     * Regression: getPagesOfSearchedRequestorContacts previously joined Person.id
+     * (LIMSStringNumberUserType, exposed as Java String) against
      * SampleRequester.requesterId (Java long) via an HQL cast(... as string), which
      * Hibernate translated into a Postgres "operator does not exist: numeric =
      * character varying" at runtime — never caught by the pure-Mockito unit tests
@@ -343,9 +343,9 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * OGC-1074: Requestor dedup mirrors Organization's confirmNewRequesterName —
-     * re-typing an existing Requestor's exact first+last name must resolve to the
-     * same Person rather than creating a duplicate.
+     * Requestor dedup mirrors Organization's confirmNewRequesterName — re-typing an
+     * existing Requestor's exact first+last name must resolve to the same Person
+     * rather than creating a duplicate.
      */
     @Test
     public void getRequestorContactByName_findsExactMatchAmongLinkedPersons() throws Exception {
@@ -395,9 +395,9 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * OGC-1074: end-to-end through SamplePatientUpdateData.initRequestorContact —
-     * re-typing an existing Requestor's exact name (no requestorPersonId) must
-     * reuse that Person, not create a duplicate, mirroring how
+     * End-to-end through SamplePatientUpdateData.initRequestorContact — re-typing
+     * an existing Requestor's exact name (no requestorPersonId) must reuse that
+     * Person, not create a duplicate, mirroring how
      * initSampleRequester/confirmNewRequesterName dedups Organization by name.
      */
     @Test

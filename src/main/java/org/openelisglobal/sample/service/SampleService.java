@@ -69,9 +69,9 @@ public interface SampleService extends BaseObjectService<Sample, String> {
     Person getPersonRequester(Sample sample);
 
     /**
-     * OGC-1074: generic form of getPersonRequester, taking an explicit
-     * requesterTypeId so callers can look up a Person requester of any type (e.g.
-     * the "requestor_contact" type used by Environmental/Vector Requestor contacts)
+     * Generic form of getPersonRequester, taking an explicit requesterTypeId so
+     * callers can look up a Person requester of any type (e.g. the
+     * "requestor_contact" type used by Environmental/Vector Requestor contacts)
      * rather than only the hardcoded "provider" type.
      */
     Person getPersonRequester(Sample sample, long requesterTypeId);

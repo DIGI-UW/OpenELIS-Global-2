@@ -1046,15 +1046,8 @@ public class OrderSearchRestController extends BaseRestController {
             sampleOrderItems.put("referringSiteDepartmentName", department.getOrganizationName());
         }
 
-        // OGC-1074: Env/Vector Requestor contact — independent of Provider above.
-        // buildSampleOrderItems previously had no read-back for this at all, so
-        // a saved Requestor never appeared when reopening the order for edit.
+        // Env/Vector Requestor contact — independent of Provider above.
         Person requestorPerson = requesterService.getRequestorPerson();
-        LogEvent.logWarn(this.getClass().getName(), "buildSampleOrderItems",
-                "OGC-1074-DEPLOY-CHECK: sampleId=" + sampleId + " requestorPerson="
-                        + (requestorPerson == null ? "null (not found)"
-                                : "id=" + requestorPerson.getId() + " firstName=" + requestorPerson.getFirstName()
-                                        + " lastName=" + requestorPerson.getLastName()));
         if (requestorPerson != null) {
             sampleOrderItems.put("requestorPersonId", requestorPerson.getId());
             sampleOrderItems.put("requestorFirstName", requestorPerson.getFirstName());

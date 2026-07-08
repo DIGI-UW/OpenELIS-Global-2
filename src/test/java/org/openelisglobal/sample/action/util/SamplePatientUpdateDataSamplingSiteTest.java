@@ -10,14 +10,7 @@ import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/**
- * Sampling Site inline-create: {@code resolveOrCreateSamplingSiteId} is the
- * deferred-creation resolve-or-create step invoked from
- * {@code addEnvironmentalObservations}/{@code addVectorObservations} at
- * order-save time — mirrors Organization's {@code newRequesterName} ->
- * {@code initSampleRequester} flow, but for {@link VectorSamplingSite} instead
- * of {@code Organization}.
- */
+/** Tests for {@code resolveOrCreateSamplingSiteId}. */
 public class SamplePatientUpdateDataSamplingSiteTest extends BaseWebContextSensitiveTest {
 
     private static final String METHOD = "resolveOrCreateSamplingSiteId";
@@ -29,9 +22,6 @@ public class SamplePatientUpdateDataSamplingSiteTest extends BaseWebContextSensi
 
     @Test
     public void existingSiteId_returnedUnchanged_whenNoMatchingSiteRow() {
-        // id "42" doesn't correspond to any persisted site in this test's schema;
-        // the lookup-and-maybe-update attempt must fail closed (log + no-op),
-        // not throw, and still return the given siteId unchanged.
         String result = invoke("42", "Some Site", "SOME-CODE", "Water");
 
         assertEquals("an already-selected site's id must pass through unchanged", "42", result);
@@ -39,12 +29,6 @@ public class SamplePatientUpdateDataSamplingSiteTest extends BaseWebContextSensi
 
     @Test
     public void existingSiteId_editedNameCodeType_persistedToTheSamplingSiteRow() {
-        // Bug: "Edit details" in VectorSection.jsx unlocks name/code/type for
-        // an already-selected site, but resolveOrCreateSamplingSiteId used to
-        // short-circuit on a non-blank siteId and never write the edits back
-        // to VectorSamplingSite — only the (unchanged) id and the per-order
-        // ObservationHistory name snapshot were persisted, silently discarding
-        // the edit.
         VectorSamplingSiteService siteService = SpringContext.getBean(VectorSamplingSiteService.class);
         String originalCode = "EDIT-ORIG-" + System.identityHashCode(this);
         VectorSamplingSite existing = new VectorSamplingSite();
@@ -69,9 +53,6 @@ public class SamplePatientUpdateDataSamplingSiteTest extends BaseWebContextSensi
 
     @Test
     public void existingSiteId_unchangedFields_doesNotIssueAnUpdate() {
-        // Re-selecting the same site without editing anything (locked fields,
-        // "Edit details" never clicked) must be a pure no-op against
-        // VectorSamplingSite — no spurious update/lastupdated churn.
         VectorSamplingSiteService siteService = SpringContext.getBean(VectorSamplingSiteService.class);
         String code = "NOCHANGE-" + System.identityHashCode(this);
         VectorSamplingSite existing = new VectorSamplingSite();

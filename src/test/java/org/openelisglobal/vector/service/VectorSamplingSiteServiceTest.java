@@ -10,14 +10,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
 
-/**
- * Sampling Site inline-create: covers the new
- * {@link VectorSamplingSiteService#search(String)} endpoint backing
- * VectorSection.jsx's live search, and the
- * {@link VectorSamplingSiteService#getByCode(String)} lookup that
- * {@code SamplePatientUpdateData.resolveOrCreateSamplingSiteId} uses to dedup a
- * deferred-create "+ Add new site" against an existing site.
- */
+/** Tests for {@link VectorSamplingSiteService#search} and {@code getByCode}. */
 public class VectorSamplingSiteServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired

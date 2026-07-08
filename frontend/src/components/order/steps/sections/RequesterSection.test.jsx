@@ -58,7 +58,7 @@ describe("RequesterSection", () => {
     getFromOpenElisServerMock.mockReset();
   });
 
-  // OGC-1074: Vector previously had the entire organization/site search block
+  // Vector previously had the entire organization/site search block
   // hidden via `workflowType !== "vector"`, forcing it through Provider only.
   it("renders the Requesting Organization search for vector orders (no longer hidden)", () => {
     renderSection({ workflowType: "vector" });
@@ -85,7 +85,7 @@ describe("RequesterSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  // OGC-1074: Provider is Clinical-only; env/vector use Requestor instead.
+  // Provider is Clinical-only; env/vector use Requestor instead.
   it("shows Provider search for clinical orders and hides Requestor search", () => {
     renderSection({ workflowType: "clinical" });
 
@@ -100,7 +100,7 @@ describe("RequesterSection", () => {
     expect(screen.queryByText("Provider Search")).not.toBeInTheDocument();
   });
 
-  // OGC-1074: Clinical Provider must surface Fax and Email (v1 dropped them).
+  // Clinical Provider must surface Fax and Email (v1 dropped them).
   it("renders Provider Fax and Email inputs for clinical orders", () => {
     renderSection({ workflowType: "clinical" });
 
@@ -122,7 +122,7 @@ describe("RequesterSection", () => {
     expect(result.sampleOrderItems.providerFax).toBe("555-1234");
   });
 
-  // OGC-1074: search & store — Requestor uses the same type-ahead mechanism
+  // Search & store — Requestor uses the same type-ahead mechanism
   // as Organization/Provider, against /rest/requestor/search.
   it("searches /rest/requestor/search and lets the user select a result", async () => {
     getFromOpenElisServerMock.mockImplementation((url, callback) => {
@@ -206,7 +206,7 @@ describe("RequesterSection", () => {
   // box — but Organization's equivalent contact fields were always editable.
   // Aligning Requestor with that so phone/email/etc. can be corrected without
   // clearing and re-searching.
-  // OGC-1074 task #5: a Requestor loaded from an existing order (via
+  // A Requestor loaded from an existing order (via
   // requestorPersonId) now starts read-only/locked — "Edit details" unlocks
   // it in place. Previously (pre-task-#5) these fields were always editable
   // once loaded; that behavior moved to the "Edit details" flow instead.
@@ -276,7 +276,7 @@ describe("RequesterSection", () => {
     expect(screen.queryByText("Selected")).not.toBeInTheDocument();
   });
 
-  // OGC-1074: Requesting Organization needs its own phone/fax/email, separate
+  // Requesting Organization needs its own phone/fax/email, separate
   // from any Requestor contact person.
   it("renders Organization contact fields for environmental/vector orders", () => {
     renderSection({ workflowType: "environmental" });
@@ -477,7 +477,7 @@ describe("RequesterSection", () => {
     expect(screen.getByLabelText("First Name")).not.toBeDisabled();
   });
 
-  // OGC-1074 task #4: admin-gated "+ Add new" affordances. All three must
+  // Admin-gated "+ Add new" affordances. All three must
   // stay VISIBLE when restricted (never silently hidden) but disabled, with
   // an explanatory message.
   describe("admin-gated add-new affordances", () => {
@@ -589,8 +589,8 @@ describe("RequesterSection", () => {
 
       // Now simulate an already-selected Requestor (e.g. loaded from an
       // existing order) — the restriction no longer applies since this isn't
-      // "creating new" anymore. It's disabled instead by the OGC-1074 task
-      // #5 edit-lock (a loaded record starts read-only); "Edit details"
+      // "creating new" anymore. It's disabled instead by the
+      // edit-lock (a loaded record starts read-only); "Edit details"
       // unlocks it, and unlocking must succeed despite the restriction flag,
       // since that flag only ever governs free-text creation of new records.
       rerender(
@@ -670,7 +670,7 @@ describe("RequesterSection", () => {
 
       // Simulate an already-selected organization (e.g. loaded from an
       // existing order) — the restriction no longer applies (not "creating
-      // new"), but the OGC-1074 task #5 edit-lock now disables it instead
+      // new"), but the edit-lock now disables it instead
       // until "Edit details" is clicked; unlocking must succeed despite the
       // restriction flag, since it only ever governs new-record creation.
       rerender(
@@ -742,7 +742,7 @@ describe("RequesterSection", () => {
 
       // Simulate an already-selected provider (e.g. loaded from an existing
       // order) — the restriction no longer applies (not "creating new"),
-      // but the OGC-1074 task #5 edit-lock now disables it instead until
+      // but the edit-lock now disables it instead until
       // "Edit details" is clicked; unlocking must succeed despite the
       // restriction flag, since it only ever governs new-record creation.
       rerender(
@@ -787,7 +787,7 @@ describe("RequesterSection", () => {
     });
   });
 
-  // OGC-1074 task #5: edit-lock. A record pulled in from search starts
+  // Edit-lock. A record pulled in from search starts
   // read-only; "Edit details" unlocks it in place. A brand-new record
   // (via "+ Add new X") starts editable immediately, since there's no
   // prior saved state to protect.
