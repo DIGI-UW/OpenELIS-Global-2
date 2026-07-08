@@ -68,6 +68,8 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.vector.service.VectorSamplingSiteService;
+import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.validation.Errors;
 
 /** */
@@ -917,8 +919,12 @@ public class SamplePatientUpdateData {
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WORKFLOW_TYPE),
                 ValueType.LITERAL);
 
-        // Sampling site fields
-        createObservation(getStringValue(envFields, "samplingSiteId"),
+        // Sampling site fields — resolve-or-create when the frontend sent a
+        // new (not-yet-persisted) site by name/code instead of an existing id.
+        String samplingSiteId = resolveOrCreateSamplingSiteId(getStringValue(envFields, "samplingSiteId"),
+                getStringValue(envFields, "samplingSiteName"), getStringValue(envFields, "samplingSiteCode"),
+                getStringValue(envFields, "siteType"));
+        createObservation(samplingSiteId,
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_ID),
                 ValueType.LITERAL);
         createObservation(getStringValue(envFields, "samplingSiteName"),
@@ -998,7 +1004,10 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "vecPathogensOfInterest"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_PATHOGENS_OF_INTEREST),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "vecCollectionSiteId"),
+        String vecCollectionSiteId = resolveOrCreateSamplingSiteId(getStringValue(envFields, "vecCollectionSiteId"),
+                getStringValue(envFields, "vecCollectionSiteName"), getStringValue(envFields, "vecCollectionSiteCode"),
+                getStringValue(envFields, "vecCollectionSiteType"));
+        createObservation(vecCollectionSiteId,
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_SITE_ID),
                 ValueType.LITERAL);
         createObservation(getStringValue(envFields, "vecCollectionSiteName"),
@@ -1022,6 +1031,73 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "vecCollectionNotes"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_NOTES),
                 ValueType.LITERAL);
+    }
+
+    /**
+     * Resolve a sampling site id for the order's environmental observations. When
+     * the frontend already selected an existing site, {@code siteId} is returned
+     * unchanged. When the user instead used "+ Add new site" (deferred creation —
+     * mirrors Organization's {@code newRequesterName} flow), {@code siteId} is
+     * blank and a {@link VectorSamplingSite} is resolved-or-created here by its
+     * unique {@code code}: an existing active site with the same code is reused
+     * (dedup, same idiom as {@link #confirmNewRequesterName}), otherwise a new site
+     * row is persisted and its generated id used.
+     */
+    private String resolveOrCreateSamplingSiteId(String siteId, String siteName, String siteCode, String siteType) {
+        VectorSamplingSiteService samplingSiteService = SpringContext.getBean(VectorSamplingSiteService.class);
+
+        if (!GenericValidator.isBlankOrNull(siteId)) {
+            // Existing site — "Edit details" in VectorSection.jsx unlocks the
+            // name/code/type fields for an already-selected site, so any
+            // change made there must be written back to the VectorSamplingSite
+            // row itself, not just to the per-order ObservationHistory
+            // snapshot (which only stores id + name). Update only name/code/
+            // type in place (not a full patchUpdate(), which unconditionally
+            // overwrites every other field — contactName, GPS, description,
+            // etc. — with whatever the caller passed, which would null those
+            // out here since this order-save path never carries them).
+            try {
+                VectorSamplingSite existingSite = samplingSiteService.get(Integer.valueOf(siteId));
+                boolean changed = false;
+                if (!GenericValidator.isBlankOrNull(siteName) && !siteName.equals(existingSite.getName())) {
+                    existingSite.setName(siteName);
+                    changed = true;
+                }
+                if (!GenericValidator.isBlankOrNull(siteCode) && !siteCode.equals(existingSite.getCode())) {
+                    existingSite.setCode(siteCode);
+                    changed = true;
+                }
+                if (!GenericValidator.isBlankOrNull(siteType) && !siteType.equals(existingSite.getType())) {
+                    existingSite.setType(siteType);
+                    changed = true;
+                }
+                if (changed) {
+                    existingSite.setSysUserId(currentUserId);
+                    samplingSiteService.update(existingSite);
+                }
+            } catch (NumberFormatException | org.hibernate.ObjectNotFoundException e) {
+                LogEvent.logError(this.getClass().getName(), "resolveOrCreateSamplingSiteId",
+                        "Could not update sampling site id=" + siteId + ": " + e.getMessage());
+            }
+            return siteId;
+        }
+        if (GenericValidator.isBlankOrNull(siteName) || GenericValidator.isBlankOrNull(siteCode)) {
+            return siteId;
+        }
+
+        VectorSamplingSite existing = samplingSiteService.getByCode(siteCode);
+        if (existing != null) {
+            return String.valueOf(existing.getId());
+        }
+
+        VectorSamplingSite newSite = new VectorSamplingSite();
+        newSite.setName(siteName);
+        newSite.setCode(siteCode);
+        newSite.setType(siteType);
+        newSite.setActive(true);
+        newSite.setSource("LOCAL");
+        Integer newId = samplingSiteService.insert(newSite);
+        return String.valueOf(newId);
     }
 
     /**

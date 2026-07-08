@@ -355,6 +355,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRequestorEntry));
         configs.put(Property.restrictFreeTextRefSiteEntry.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRefSiteEntry));
+        configs.put(Property.restrictFreeTextSampSiteEntry.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextSampSiteEntry));
         configs.put(Property.PHONE_FORMAT.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT));
         configs.put(Property.PHONE_FORMAT_LABEL.toString(),
