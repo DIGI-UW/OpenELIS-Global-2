@@ -34,7 +34,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import "./NceDashboard.css";
 
 const STATUS_CONFIG = {
@@ -68,11 +68,17 @@ export const NceDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [expandedRows, setExpandedRows] = useState({});
 
-  // Filters
+  // Filters — status/severity seed once from URL params so overview tiles
+  // can deep-link a pre-filtered register (e.g. ?severity=CRITICAL&status=Pending)
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(
+    () => new URLSearchParams(location.search).get("status") || "",
+  );
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState(
+    () => new URLSearchParams(location.search).get("severity") || "",
+  );
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
