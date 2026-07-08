@@ -15,7 +15,7 @@ import {
   Loading,
   InlineNotification,
 } from "@carbon/react";
-import { Add, TrashCan } from "@carbon/icons-react";
+import { Add, Checkmark, Edit, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -26,10 +26,12 @@ import { NotificationContext } from "../../../layout/Layout";
 /**
  * OGC-949 M10 / OGC-957..958 — Terminology Mappings section.
  *
- * Lists a test's terminology mappings (Source / Code / Relationship) and lets
- * the admin add or remove them via an inline form, persisting the whole set
- * with PUT /rest/test-catalog/tests/{id}/terminology. Source ∈ LOINC / SNOMED /
- * CIEL / OCL; relationship ∈ SAME_AS / BROADER_THAN / NARROWER_THAN.
+ * Lists a test's terminology mappings (Source / Code / Relationship). Rows are
+ * read-only until the admin clicks Edit; a row's fields are then editable in
+ * place. New rows are added via the bottom form (either "Add mapping" or just
+ * filling it and hitting Save). The whole set persists with PUT
+ * /rest/test-catalog/tests/{id}/terminology. Source ∈ LOINC / SNOMED / CIEL /
+ * OCL; relationship ∈ SAME_AS / BROADER_THAN / NARROWER_THAN.
  */
 const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL"];
 const RELATIONSHIPS = ["SAME_AS", "BROADER_THAN", "NARROWER_THAN"];
@@ -55,6 +57,20 @@ const TerminologySection = ({ testId }) => {
     code: "",
     relationship: "",
   });
+  // Row indices currently in edit mode; a row's fields are editable only after
+  // its Edit button is clicked.
+  const [editingRows, setEditingRows] = useState(() => new Set());
+
+  const toggleEdit = (index) =>
+    setEditingRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
 
   const loadLoincIntegrity = () => {
     getFromOpenElisServer(
@@ -63,12 +79,7 @@ const TerminologySection = ({ testId }) => {
     );
   };
 
-  useEffect(() => {
-    if (!testId) {
-      return;
-    }
-    setLoading(true);
-    setError(false);
+  const loadMappings = () => {
     getFromOpenElisServer(
       `/rest/test-catalog/tests/${testId}/terminology`,
       (res) => {
@@ -80,9 +91,24 @@ const TerminologySection = ({ testId }) => {
         setMappings(res.mappings || []);
       },
     );
+  };
+
+  useEffect(() => {
+    if (!testId) {
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    loadMappings();
     loadLoincIntegrity();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
+
+  // Edit an existing (or newly added) row in place.
+  const updateMapping = (index, patch) =>
+    setMappings((prev) =>
+      prev.map((m, i) => (i === index ? { ...m, ...patch } : m)),
+    );
 
   const addMapping = () => {
     if (!draft.source || !draft.code) {
@@ -100,14 +126,32 @@ const TerminologySection = ({ testId }) => {
     setDraft({ source: "", code: "", relationship: "" });
   };
 
-  const removeMapping = (index) =>
+  const removeMapping = (index) => {
     setMappings((prev) => prev.filter((_, i) => i !== index));
+    // Row indices shift after a removal; clear edit state to avoid the wrong row
+    // appearing editable.
+    setEditingRows(new Set());
+  };
 
   const handleSave = () => {
+    // Fold in a filled-but-not-yet-added draft so the admin can just type a row
+    // and hit Save without first clicking "Add mapping".
+    const all = [...mappings];
+    if (draft.source && draft.code) {
+      all.push({
+        id: null,
+        source: draft.source,
+        code: draft.code,
+        relationship: draft.relationship || null,
+      });
+    }
+    // Persist only complete rows (source + code); drop blank/partial ones.
+    const complete = all.filter((m) => m.source && m.code);
+
     setSaving(true);
     const payload = {
       testId,
-      mappings: mappings.map((m) => ({
+      mappings: complete.map((m) => ({
         id: m.id || null,
         source: m.source,
         code: m.code,
@@ -130,6 +174,12 @@ const TerminologySection = ({ testId }) => {
               id: "label.testCatalog.terminology.saved",
             }),
           });
+          // Refresh with server-assigned ids + recomputed LOINC integrity so the
+          // next edit updates in place rather than inserting duplicates.
+          setDraft({ source: "", code: "", relationship: "" });
+          setEditingRows(new Set());
+          loadMappings();
+          loadLoincIntegrity();
         } else {
           addNotification({
             kind: "error",
@@ -226,40 +276,112 @@ const TerminologySection = ({ testId }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {mappings.map((m, i) => (
-              <TableRow
-                key={m.id || `${m.source}-${m.code}-${i}`}
-                data-testid={`mapping-row-${m.id || i}`}
-              >
-                <TableCell>
-                  <Tag type={SOURCE_TAG[m.source] || "gray"}>{m.source}</Tag>
-                </TableCell>
-                <TableCell>
-                  <code>{m.code}</code>
-                </TableCell>
-                <TableCell>
-                  {m.relationship ? (
-                    <FormattedMessage
-                      id={`label.testCatalog.terminology.rel.${m.relationship}`}
+            {mappings.map((m, i) => {
+              const editing = editingRows.has(i);
+              return (
+                <TableRow
+                  key={m.id || `new-${i}`}
+                  data-testid={`mapping-row-${m.id || i}`}
+                >
+                  <TableCell>
+                    {editing ? (
+                      <Select
+                        id={`mapping-source-${i}`}
+                        labelText=""
+                        value={m.source || ""}
+                        onChange={(e) =>
+                          updateMapping(i, { source: e.target.value })
+                        }
+                      >
+                        <SelectItem value="" text="" />
+                        {SOURCES.map((s) => (
+                          <SelectItem key={s} value={s} text={s} />
+                        ))}
+                      </Select>
+                    ) : (
+                      <Tag type={SOURCE_TAG[m.source] || "gray"}>
+                        {m.source}
+                      </Tag>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editing ? (
+                      <TextInput
+                        id={`mapping-code-${i}`}
+                        labelText=""
+                        value={m.code || ""}
+                        onChange={(e) =>
+                          updateMapping(i, { code: e.target.value })
+                        }
+                      />
+                    ) : (
+                      <code>{m.code}</code>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editing ? (
+                      <Select
+                        id={`mapping-rel-${i}`}
+                        labelText=""
+                        value={m.relationship || ""}
+                        onChange={(e) =>
+                          updateMapping(i, {
+                            relationship: e.target.value || null,
+                          })
+                        }
+                      >
+                        <SelectItem
+                          value=""
+                          text={intl.formatMessage({
+                            id: "label.testCatalog.terminology.rel.none",
+                          })}
+                        />
+                        {RELATIONSHIPS.map((r) => (
+                          <SelectItem
+                            key={r}
+                            value={r}
+                            text={intl.formatMessage({
+                              id: `label.testCatalog.terminology.rel.${r}`,
+                            })}
+                          />
+                        ))}
+                      </Select>
+                    ) : m.relationship ? (
+                      <FormattedMessage
+                        id={`label.testCatalog.terminology.rel.${m.relationship}`}
+                      />
+                    ) : (
+                      ""
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      hasIconOnly
+                      renderIcon={editing ? Checkmark : Edit}
+                      data-testid={`edit-mapping-${i}`}
+                      iconDescription={intl.formatMessage({
+                        id: editing
+                          ? "label.button.close"
+                          : "label.button.edit",
+                      })}
+                      onClick={() => toggleEdit(i)}
                     />
-                  ) : (
-                    ""
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    kind="ghost"
-                    size="sm"
-                    hasIconOnly
-                    renderIcon={TrashCan}
-                    iconDescription={intl.formatMessage({
-                      id: "label.testCatalog.terminology.remove",
-                    })}
-                    onClick={() => removeMapping(i)}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      hasIconOnly
+                      renderIcon={TrashCan}
+                      iconDescription={intl.formatMessage({
+                        id: "label.testCatalog.terminology.remove",
+                      })}
+                      onClick={() => removeMapping(i)}
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}
