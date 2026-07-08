@@ -53,7 +53,10 @@ async function assertDashboardHasData(page: Page): Promise<void> {
  *
  * @returns true when the catalog was configured (positivity figures asserted).
  */
-async function assertPositivityRemediation(page: Page): Promise<boolean> {
+async function assertPositivityRemediation(
+  page: Page,
+  requireConfigured = false,
+): Promise<boolean> {
   const notConfigured = page.locator(
     '[data-testid="vector-positivity-not-configured"]',
   );
@@ -64,7 +67,12 @@ async function assertPositivityRemediation(page: Page): Promise<boolean> {
     notConfigured.or(mir.locator('[data-testid="mir-row"]').first()),
   ).toBeVisible({ timeout: 15_000 });
 
-  if (await notConfigured.isVisible()) {
+  // When the test guarantees positivity data (beforeAll seeded a POSITIVE pool +
+  // the significance catalog ships on the classpath), require the configured
+  // branch — the degrade banner would be a real failure, not an accepted state.
+  if (requireConfigured) {
+    await expect(notConfigured).toHaveCount(0);
+  } else if (await notConfigured.isVisible()) {
     // Degradation path (e.g. develop without the SILNAS catalog): the banner is
     // the reason there are no figures — NOT a silent zero-fill. Assert the
     // positivity-dependent panels are ABSENT (a deterministic state, not the
@@ -157,16 +165,12 @@ test.describe("OGC-585: Vector Surveillance Reporting (V-04)", () => {
     });
 
     await test.step("US1.4 — Per-pathogen MIR rows + real sporozoite value (V-04 positivity fix)", async () => {
-      // Asserts catalog-driven positivity actually produced figures (≥1
-      // per-pathogen MIR row + a non-withheld sporozoite %), or — on a catalog
-      // without significance metadata — the honest "not configured" banner with
-      // NO fabricated positivity. See assertPositivityRemediation.
-      // Degrade-safe: assertPositivityRemediation asserts the correct branch for
-      // the data present (configured → real per-pathogen figures; unconfigured →
-      // the honest "not configured" banner). We don't force configured, so this
-      // holds whether or not the SILNAS significance catalog is loaded — the PR's
-      // own "degrade, don't depend" contract.
-      await assertPositivityRemediation(page);
+      // beforeAll seeded a POSITIVE Anopheles pool and the significance catalog
+      // ships on the classpath, so positivity MUST be configured here: require ≥1
+      // per-pathogen MIR row + a non-withheld sporozoite %. The "not configured"
+      // banner would be a real failure, not an accepted degrade. (The degrade
+      // branch of assertPositivityRemediation still covers unseeded environments.)
+      await assertPositivityRemediation(page, true);
       await demo.evidence("US1.4-mir-per-pathogen-and-sporozoite");
       await demo.pause(2000);
     });
