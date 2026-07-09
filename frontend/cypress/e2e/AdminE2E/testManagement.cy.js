@@ -21,7 +21,7 @@ describe("Test Management", function () {
       testManagementPage.validatePageTitle("Test names");
       testManagementPage.clickButton("0");
       testManagementPage.button("Save");
-      testManagementPage.button("Accept");
+      testManagementPage.clickModalButton("Accept");
     });
   });
 
