@@ -1,0 +1,15 @@
+# Vector trap type configuration (generic core baseline)
+# Columns:
+#   name              - trap type name (required, used as the upsert key)
+#   description       - optional human-readable description
+#   isActive          - Y/N (default Y)
+#   sampleTypeAbbrevs - semicolon-separated localAbbreviation values of vector
+#                       sample types (domain=V) this trap collects. Each
+#                       abbreviation must already exist in type_of_sample.
+name,description,isActive,sampleTypeAbbrevs
+BG-Sentinel Trap,Biogents Sentinel trap for adult Aedes surveillance,Y,MOSQUITO
+CDC Light Trap,CDC miniature light trap for adult Anopheles and Culex collection,Y,MOSQUITO
+Gravid Trap,Gravid trap for egg-laying female mosquitoes,Y,MOSQUITO
+Human Landing Catch,Host-seeking adult mosquito collection,Y,MOSQUITO
+Larval Dipper,Standard dipper for aquatic larval sampling,Y,MOSQUITO
+Live Rodent Trap,Live-capture trap for rodent reservoir surveillance,Y,RODENT
