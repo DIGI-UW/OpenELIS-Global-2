@@ -74,6 +74,20 @@
   border-top-color: #a8a8a8;
 }
 
+/* Status accents for current-state tiles (NCE Pulse): green/amber/red by
+   threshold, per OGC-699. */
+.qi-tile--green {
+  border-top-color: var(--cds-support-success, #198038);
+}
+
+.qi-tile--amber {
+  border-top-color: #b28600;
+}
+
+.qi-tile--red {
+  border-top-color: var(--cds-support-error, #da1e28);
+}
+
 .qi-tile--gray .qi-tile__title,
 .qi-tile--gray .qi-tile__message {
   color: var(--cds-text-helper, #6f6f6f);
