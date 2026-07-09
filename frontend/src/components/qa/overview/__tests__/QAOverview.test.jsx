@@ -128,6 +128,8 @@ beforeEach(() => {
     } else if (url.includes("/rest/reports/tat/summary")) {
       // fetchTatRollup always requests the current window before the prior one
       callback(++tatCalls === 1 ? TAT_CURRENT : TAT_PRIOR);
+    } else if (url.includes("/rest/reports/amendment/summary")) {
+      callback({ amendedCount: 8, releasedCount: 2580, ratePercent: 0.31 });
     }
   });
 });
@@ -143,10 +145,12 @@ describe("QAOverview", () => {
       screen.getByText(/Daily snapshot for the QA Officer/),
     ).toBeInTheDocument();
 
-    // WS-F lit This Week / Pillars / Activity; these placeholders remain
+    // WS-F lit This Week / Pillars / Activity and the QC/EQA attention rows;
+    // WS-E lit the Today Amendment tile (NCE Pulse already live via WS-C).
+    // These placeholders remain.
     const slotCounts = {
       "Attention Required": 4,
-      Today: 4,
+      Today: 3,
       "This Week": 1,
       "Pillar Status": 1,
       "Recent Activity": 0,
@@ -156,8 +160,9 @@ describe("QAOverview", () => {
       expect(within(region).queryAllByText("Coming soon")).toHaveLength(slots);
     });
 
-    // All sections share one NCE fetch, one summary fetch, two TAT windows
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(4);
+    // One shared NCE fetch, one overview summary, two TAT windows, plus the
+    // Amendment tile's own summary fetch
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(5);
   });
 
   test("Today tiles carry the KPI titles, tickets, and the live NCE Pulse count", async () => {
@@ -173,7 +178,7 @@ describe("QAOverview", () => {
     ].forEach((title) => {
       expect(within(today).getByText(title)).toBeInTheDocument();
     });
-    ["OGC-696", "OGC-697", "OGC-698", "OGC-714"].forEach((ticket) => {
+    ["OGC-696", "OGC-697", "OGC-714"].forEach((ticket) => {
       expect(within(today).getByText(ticket)).toBeInTheDocument();
     });
     // NCE Pulse is live: no ticket tag, real counts from the mocked payload
@@ -182,6 +187,10 @@ describe("QAOverview", () => {
     expect(
       within(today).getByText("1 in corrective action"),
     ).toBeInTheDocument();
+    // Amendment Rate is live (WS-E): rate under the green threshold
+    expect(within(today).queryByText("OGC-698")).not.toBeInTheDocument();
+    expect(within(today).getByText("0.31%")).toHaveClass("qa-live-green");
+    expect(within(today).getByText("8 of 2580 released")).toBeInTheDocument();
   });
 
   test("attention queue: live NCE, QC-violation, and EQA-due rows with drill-throughs", async () => {
