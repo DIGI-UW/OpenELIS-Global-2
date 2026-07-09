@@ -1,6 +1,9 @@
 import { test, expect } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import { identifyAndResolvePositive } from "../../../helpers/seed-vector-data";
+import {
+  identifyAndResolvePositive,
+  addRequestingOrganization,
+} from "../../../helpers/seed-vector-data";
 
 /**
  * Vector Surveillance — full user story demo (single continuous take).
@@ -64,11 +67,11 @@ test.describe("Vector Surveillance — full user story", () => {
       });
 
       // The feature Casey asked for: add a sampling site without admin access or
-      // a second screen. Minimum fields — code + name.
-      await page.getByText(/Add a new site/i).click();
-      await page.locator("#vec-new-site-code").fill(siteCode);
-      await page.locator("#vec-new-site-name").fill(siteName);
-      await page.locator("#vec-new-site-create").click();
+      // a second screen. Search by name; with no match, create it inline — the
+      // site is persisted server-side when the order is saved.
+      await page.locator("#vec-site-search").fill(siteName);
+      await page.getByRole("button", { name: /Add new site/i }).click();
+      await page.locator("#vec-site-code").fill(siteCode);
       await expect(page.getByText(`${siteCode} — ${siteName}`)).toBeVisible({
         timeout: 15_000,
       });
@@ -85,6 +88,13 @@ test.describe("Vector Surveillance — full user story", () => {
         await page.locator("#testSearch-0").fill(term);
         await page.locator('label[for^="test-0-"]').first().click();
       }
+      // The requesting organization, added inline on the same form (no admin
+      // screen). Required to save an ENV/Vector order. Derived from the site
+      // name so it stays unique per recording.
+      await addRequestingOrganization(
+        page,
+        `${siteName} District Health Office`,
+      );
       await demo.evidence("story-3-collection-entered");
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await expect(

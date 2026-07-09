@@ -48,6 +48,27 @@ export async function seedVectorSite(
   return { id: body.id, code: site.code, name: site.name };
 }
 
+/**
+ * Add a free-text requesting organization inline on the ENV/Vector order form.
+ * ENV/Vector orders reject on save unless a requesting organization or a
+ * requestor contact is present. The RequesterSection "+ Add new organization"
+ * affordance sets newRequesterName; the backend creates the Organization at
+ * save time. Pass a unique name so the debounced org search finds no match and
+ * the create affordance appears.
+ */
+export async function addRequestingOrganization(
+  page: Page,
+  orgName: string,
+): Promise<void> {
+  await page.locator("#siteName").fill(orgName);
+  // Debounced auto-search (300ms) returns no match for a fresh name, revealing
+  // the inline "+ Add new organization" button.
+  await page.getByRole("button", { name: /Add new organization/i }).click();
+  await expect(
+    page.locator(".selected-entity-card", { hasText: orgName }),
+  ).toBeVisible({ timeout: 10_000 });
+}
+
 /** GET a JSON endpoint (session cookie carries auth); throws on non-2xx. */
 async function apiGet<T = unknown>(page: Page, path: string): Promise<T> {
   const res = await page.request.get(`${API_PREFIX}${path}`);
@@ -112,6 +133,8 @@ export async function seedVectorPositivity(
     await page.locator('label[for^="test-0-"]').first().click();
   }
   await page.locator("#collectedVolume-0").fill("8");
+  // A requesting organization (or requestor) is required to save an ENV/Vector order.
+  await addRequestingOrganization(page, `E2E Positivity Org ${stamp}`);
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
     page.getByText("Sample Order Entry has been saved successfully").first(),
@@ -245,6 +268,7 @@ export async function createVectorOrder(
     traps: number;
     nights: number;
     testName: string;
+    requesterName?: string;
   },
 ): Promise<string> {
   // Browser session context for the CSRF fetches (as createSampleOrder does).
@@ -323,7 +347,10 @@ export async function createVectorOrder(
       referringSiteId: "",
       providerId: "",
       programId: "",
-      newRequesterName: "",
+      // ENV/Vector orders require a requesting organization or requestor
+      // contact. A free-text newRequesterName is created as an Organization on
+      // save (mirrors the RequesterSection "+ Add new organization" affordance).
+      newRequesterName: o.requesterName || "Vector Surveillance Programme",
       orderTypes: [],
       referringSiteList: [],
       referringSiteDepartmentList: [],

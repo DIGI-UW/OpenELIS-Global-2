@@ -1,6 +1,9 @@
 import { test, expect } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import { seedVectorSite } from "../../../helpers/seed-vector-data";
+import {
+  seedVectorSite,
+  addRequestingOrganization,
+} from "../../../helpers/seed-vector-data";
 
 /**
  * Add-order → collection density end-to-end (vector surveillance).
@@ -106,6 +109,11 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       await demo.evidence("372-2-trap-effort-entered");
     });
 
+    await test.step("Add the requesting organization (required for ENV/Vector)", async () => {
+      await addRequestingOrganization(page, `E2E Vector Org ${stamp}`);
+      await demo.evidence("372-2b-requester-added");
+    });
+
     await test.step("Save the collection", async () => {
       await page.getByRole("button", { name: "Save", exact: true }).click();
       // Carbon renders the toast text in more than one node; assert at least one.
@@ -162,13 +170,14 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       timeout: 15_000,
     });
 
-    // No admin screen, no navigation away — add the site inline (code + name).
-    await page.getByText(/Add a new site/i).click();
-    await page.locator("#vec-new-site-code").fill(siteCode);
-    await page.locator("#vec-new-site-name").fill(siteName);
-    await page.locator("#vec-new-site-create").click();
+    // No admin screen, no navigation away — search by name, and when there's no
+    // match, create the site inline. It's persisted server-side at order-save.
+    await page.locator("#vec-site-search").fill(siteName);
+    await page.getByRole("button", { name: /Add new site/i }).click();
 
-    // On create the site is auto-selected on the same screen.
+    // The inline new site is selected with editable name/code; set our code.
+    await page.locator("#vec-site-code").fill(siteCode);
+    await expect(page.locator("#vec-site-name")).toHaveValue(siteName);
     await expect(page.getByText(`${siteCode} — ${siteName}`)).toBeVisible({
       timeout: 15_000,
     });
