@@ -146,11 +146,11 @@ describe("QAOverview", () => {
     ).toBeInTheDocument();
 
     // WS-F lit This Week / Pillars / Activity and the QC/EQA attention rows;
-    // WS-E lit the Today Amendment tile (NCE Pulse already live via WS-C).
-    // These placeholders remain.
+    // WS-E lit the Today Amendment tile, WS-G the Average TAT tile (NCE Pulse
+    // already live via WS-C). These placeholders remain.
     const slotCounts = {
       "Attention Required": 4,
-      Today: 3,
+      Today: 2,
       "This Week": 1,
       "Pillar Status": 1,
       "Recent Activity": 0,
@@ -165,7 +165,7 @@ describe("QAOverview", () => {
     expect(getFromOpenElisServer).toHaveBeenCalledTimes(5);
   });
 
-  test("Today tiles carry the KPI titles, tickets, and the live NCE Pulse count", async () => {
+  test("Today tiles carry the KPI titles, tickets, and the live TAT/Amendment/NCE values", async () => {
     await renderPage();
     const today = screen.getByRole("region", { name: "Today" });
 
@@ -178,9 +178,17 @@ describe("QAOverview", () => {
     ].forEach((title) => {
       expect(within(today).getByText(title)).toBeInTheDocument();
     });
-    ["OGC-696", "OGC-697", "OGC-714"].forEach((ticket) => {
+    ["OGC-697", "OGC-714"].forEach((ticket) => {
       expect(within(today).getByText(ticket)).toBeInTheDocument();
     });
+    // Average TAT is live (WS-G): value + prior-window delta, no ticket
+    expect(within(today).queryByText("OGC-696")).not.toBeInTheDocument();
+    const tatTile = within(today)
+      .getByText("Average TAT")
+      .closest(".cds--tile");
+    expect(within(tatTile).getByText("33h 20m")).toBeInTheDocument();
+    expect(tatTile).toHaveTextContent("↓ 6h 40m");
+    expect(within(tatTile).getByText(/vs prior 30 days/)).toBeInTheDocument();
     // NCE Pulse is live: no ticket tag, real counts from the mocked payload
     expect(within(today).queryByText("OGC-699")).not.toBeInTheDocument();
     expect(within(today).getByText("3")).toHaveClass("qa-live-amber");
