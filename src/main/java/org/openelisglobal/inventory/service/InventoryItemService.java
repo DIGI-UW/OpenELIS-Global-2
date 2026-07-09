@@ -2,12 +2,9 @@ package org.openelisglobal.inventory.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
-public interface InventoryItemService extends BaseObjectService<InventoryItem, Long> {
-
-    List<ItemType> getAllItemTypes();
+public interface InventoryItemService extends BaseObjectService<InventoryItem, String> {
 
     /**
      * Get all active inventory items
@@ -15,9 +12,10 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
     List<InventoryItem> getAllActive();
 
     /**
-     * Get items by item type (REAGENT, RDT, CARTRIDGE)
+     * Get items by item type code (e.g. "REAGENT", "RDT", "CARTRIDGE") — see
+     * {@link InventoryItemTypeService} for the admin-managed type list.
      */
-    List<InventoryItem> getByItemType(ItemType itemType);
+    List<InventoryItem> getByItemType(String itemType);
 
     /**
      * Get items by category
@@ -43,20 +41,20 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
     /**
      * Calculate total current stock quantity for an item across all available lots
      */
-    Double getTotalCurrentStock(Long itemId);
+    Double getTotalCurrentStock(String itemId);
 
     /**
      * Check if an item is currently in stock (has available lots)
      */
-    boolean isInStock(Long itemId);
+    boolean isInStock(String itemId);
 
     /**
      * Deactivate an item (soft delete)
      */
-    void deactivateItem(Long itemId, String sysUserId);
+    void deactivateItem(String itemId, String sysUserId);
 
     /**
      * Activate an item (restore from soft delete)
      */
-    void activateItem(Long itemId, String sysUserId);
+    void activateItem(String itemId, String sysUserId);
 }

@@ -7,23 +7,16 @@ import java.util.List;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> implements InventoryItemDAO {
+public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, String> implements InventoryItemDAO {
 
     public InventoryItemDAOImpl() {
         super(InventoryItem.class);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ItemType> getAllItemTypes() {
-        return java.util.Arrays.asList(ItemType.values());
     }
 
     @Override
@@ -44,7 +37,7 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryItem> getByItemType(ItemType itemType) throws LIMSRuntimeException {
+    public List<InventoryItem> getByItemType(String itemType) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
@@ -119,8 +112,8 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
             // or use a more complex Criteria API with subqueries
             // For now, using a simpler approach with native query
             String sql = "SELECT DISTINCT i.* FROM clinlims.inventory_item i "
-                    + "LEFT JOIN clinlims.inventory_lot l ON l.inventory_item_id = i.id "
-                    + "WHERE i.is_active = 'Y' AND i.low_stock_threshold IS NOT NULL " + "GROUP BY i.id "
+                    + "LEFT JOIN clinlims.inventory_lot l ON l.inventory_item_id = i.code "
+                    + "WHERE i.is_active = 'Y' AND i.low_stock_threshold IS NOT NULL " + "GROUP BY i.code "
                     + "HAVING COALESCE(SUM(l.current_quantity), 0) < i.low_stock_threshold " + "ORDER BY i.name";
 
             @SuppressWarnings("unchecked")

@@ -49,7 +49,7 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryUsage> getByInventoryItemId(Long itemId) {
+    public List<InventoryUsage> getByInventoryItemId(String itemId) {
         return inventoryUsageDAO.getByInventoryItemId(itemId);
     }
 
@@ -61,8 +61,8 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
 
     @Override
     @Transactional
-    public InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, Long testResultId, Long analysisId,
-            String sysUserId) {
+    public InventoryUsage recordUsage(Long lotId, String itemId, Double quantityUsed, Long testResultId,
+            Long analysisId, String sysUserId) {
 
         InventoryLot lot = inventoryLotDAO.get(lotId)
                 .orElseThrow(() -> new IllegalArgumentException("Lot not found: " + lotId));

@@ -6,7 +6,6 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.Rollback;
@@ -24,21 +23,21 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void get_shouldReturnInventoryItemWhenExists() {
-        InventoryItem item = inventoryItemService.get(1000L);
+        InventoryItem item = inventoryItemService.get("TEST_REAGENT_A");
 
         assertNotNull("Item should be loaded from dataset", item);
         assertEquals("Test Reagent A", item.getName());
-        assertEquals(ItemType.REAGENT, item.getItemType());
+        assertEquals("REAGENT", item.getItemType());
         assertEquals("Y", item.getIsActive());
     }
 
     @Test
     public void get_shouldReturnCorrectItemDetails() {
-        InventoryItem item = inventoryItemService.get(1001L);
+        InventoryItem item = inventoryItemService.get("TEST_RDT_KIT");
 
         assertNotNull("Should find test item 2", item);
         assertEquals("Test RDT Kit", item.getName());
-        assertEquals(ItemType.RDT, item.getItemType());
+        assertEquals("RDT", item.getItemType());
         assertEquals("QC", item.getCategory());
     }
 
@@ -53,7 +52,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
     @Test
     @org.junit.Ignore("Optimistic lock issue - needs investigation")
     public void update_shouldUpdateInventoryItem() {
-        InventoryItem item = inventoryItemService.get(1000L);
+        InventoryItem item = inventoryItemService.get("TEST_REAGENT_A");
         item.setDescription("Updated description for testing");
 
         InventoryItem updatedItem = inventoryItemService.update(item);
@@ -64,7 +63,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getTotalCurrentStock_shouldCalculateStockFromLots() {
-        Double totalStock = inventoryItemService.getTotalCurrentStock(1000L);
+        Double totalStock = inventoryItemService.getTotalCurrentStock("TEST_REAGENT_A");
 
         assertNotNull("Total stock should not be null", totalStock);
         assertEquals("Total stock should be sum of all lots", Double.valueOf(150.0), totalStock);
@@ -74,16 +73,17 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
     public void createInventoryItem_shouldInsertNewItem() {
         InventoryItem newItem = new InventoryItem();
         newItem.setName("Test Item Created");
-        newItem.setItemType(ItemType.RDT);
+        newItem.setItemType("RDT");
         newItem.setUnits("pieces");
         newItem.setIsActive("Y");
         newItem.setFhirUuid(java.util.UUID.randomUUID());
 
-        Long insertedId = inventoryItemService.insert(newItem);
+        String insertedCode = inventoryItemService.insert(newItem);
 
-        assertNotNull("Inserted ID should not be null", insertedId);
+        assertNotNull("Inserted code should not be null", insertedCode);
+        assertEquals("TEST_ITEM_CREATED", insertedCode);
 
-        InventoryItem savedItem = inventoryItemService.get(insertedId);
+        InventoryItem savedItem = inventoryItemService.get(insertedCode);
         assertNotNull("Saved item should be retrievable", savedItem);
         assertEquals("Test Item Created", savedItem.getName());
     }

@@ -60,7 +60,7 @@ public class InventoryUsageRestController extends BaseRestController {
     @GetMapping(value = "/item/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryUsage>> getByItemId(@PathVariable String itemId) {
         try {
-            List<InventoryUsage> usageList = usageService.getByInventoryItemId(Long.valueOf(itemId));
+            List<InventoryUsage> usageList = usageService.getByInventoryItemId(itemId);
             return ResponseEntity.ok(usageList);
         } catch (Exception e) {
             LogEvent.logError(e);

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-658 Part C: inventory_item's primary key changes from an opaque
+    auto-increment BIGINT id to a server-generated, human-readable string
+    code (see InventoryItemServiceImpl.insert()). This is an explicit clean
+    break per the story (Inventory has no production users yet) — existing
+    rows are dropped and recreated with auto-generated codes, not migrated.
+
+    TRUNCATE inventory_item CASCADE first (while the old FKs still exist) so
+    Postgres walks the whole dependency graph automatically — inventory_lot,
+    inventory_usage, test_reagent_link, and (transitively, via inventory_lot)
+    inventory_transaction — rather than us hand-listing every dependent
+    table and risking missing one as the schema grows.
+    -->
+    <changeSet id="OGC-658-part-c-migrate-inventory-item-pk-to-code" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="code" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>
+            Migrate inventory_item's PK from BIGINT id to a VARCHAR(64) code.
+            Clean break: pre-existing inventory_item rows (and everything that
+            transitively references them) are truncated, not migrated.
+        </comment>
+
+        <sql>TRUNCATE TABLE clinlims.inventory_item CASCADE;</sql>
+
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="inventory_lot"
+            constraintName="fk_lot_inventory_item"/>
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="inventory_usage"
+            constraintName="fk_usage_inventory_item"/>
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_reagent_link"
+            constraintName="fk_test_reagent_link_inventory_item"/>
+
+        <dropColumn tableName="inventory_item" schemaName="clinlims" columnName="id"/>
+        <dropSequence sequenceName="inventory_item_seq" schemaName="clinlims"/>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="code" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <addPrimaryKey tableName="inventory_item" schemaName="clinlims" columnNames="code"
+            constraintName="inventory_item_pkey"/>
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            ADD CONSTRAINT chk_inventory_item_code
+            CHECK (code ~ '^[A-Z0-9_]+$');
+        </sql>
+
+        <modifyDataType tableName="inventory_lot" schemaName="clinlims" columnName="inventory_item_id"
+            newDataType="VARCHAR(64)"/>
+        <modifyDataType tableName="inventory_usage" schemaName="clinlims" columnName="inventory_item_id"
+            newDataType="VARCHAR(64)"/>
+        <modifyDataType tableName="test_reagent_link" schemaName="clinlims" columnName="reagent_id"
+            newDataType="VARCHAR(64)"/>
+
+        <addForeignKeyConstraint constraintName="fk_lot_inventory_item"
+            baseTableSchemaName="clinlims" baseTableName="inventory_lot" baseColumnNames="inventory_item_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_item"
+            referencedColumnNames="code"/>
+        <addForeignKeyConstraint constraintName="fk_usage_inventory_item"
+            baseTableSchemaName="clinlims" baseTableName="inventory_usage" baseColumnNames="inventory_item_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_item"
+            referencedColumnNames="code"/>
+        <addForeignKeyConstraint constraintName="fk_test_reagent_link_inventory_item"
+            baseTableSchemaName="clinlims" baseTableName="test_reagent_link" baseColumnNames="reagent_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_item"
+            referencedColumnNames="code"/>
+
+        <rollback>
+            <!--
+            Best-effort only: the TRUNCATE above is not reversible, same as
+            any clean-break changeset in this codebase. This restores the
+            pre-migration shape (empty tables), not the pre-migration data.
+            -->
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="inventory_lot"
+                constraintName="fk_lot_inventory_item"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="inventory_usage"
+                constraintName="fk_usage_inventory_item"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_reagent_link"
+                constraintName="fk_test_reagent_link_inventory_item"/>
+
+            <sql>TRUNCATE TABLE clinlims.inventory_item CASCADE;</sql>
+
+            <modifyDataType tableName="inventory_lot" schemaName="clinlims" columnName="inventory_item_id"
+                newDataType="BIGINT"/>
+            <modifyDataType tableName="inventory_usage" schemaName="clinlims" columnName="inventory_item_id"
+                newDataType="BIGINT"/>
+            <modifyDataType tableName="test_reagent_link" schemaName="clinlims" columnName="reagent_id"
+                newDataType="BIGINT"/>
+
+            <sql>ALTER TABLE clinlims.inventory_item DROP CONSTRAINT IF EXISTS chk_inventory_item_code;</sql>
+            <dropColumn tableName="inventory_item" schemaName="clinlims" columnName="code"/>
+
+            <createSequence sequenceName="inventory_item_seq" schemaName="clinlims" startValue="1"
+                incrementBy="1"/>
+            <addColumn tableName="inventory_item" schemaName="clinlims">
+                <column name="id" type="BIGINT">
+                    <constraints primaryKey="true" nullable="false"/>
+                </column>
+            </addColumn>
+
+            <addForeignKeyConstraint constraintName="fk_lot_inventory_item"
+                baseTableSchemaName="clinlims" baseTableName="inventory_lot" baseColumnNames="inventory_item_id"
+                referencedTableSchemaName="clinlims" referencedTableName="inventory_item"
+                referencedColumnNames="id"/>
+            <addForeignKeyConstraint constraintName="fk_usage_inventory_item"
+                baseTableSchemaName="clinlims" baseTableName="inventory_usage" baseColumnNames="inventory_item_id"
+                referencedTableSchemaName="clinlims" referencedTableName="inventory_item"
+                referencedColumnNames="id"/>
+            <addForeignKeyConstraint constraintName="fk_test_reagent_link_inventory_item"
+                baseTableSchemaName="clinlims" baseTableName="test_reagent_link" baseColumnNames="reagent_id"
+                referencedTableSchemaName="clinlims" referencedTableName="inventory_item"
+                referencedColumnNames="id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

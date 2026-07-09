@@ -1,7 +1,6 @@
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
   postToOpenElisServerForBlob,
 } from "../utils/Utils";
 import config from "../../config.json";
@@ -240,109 +239,28 @@ export const InventoryManagementAPI = {
 };
 
 /**
- * Storage Location API
- * Uses inventory-specific storage locations (separate from sample storage)
+ * Inventory Lot Storage API (OGC-657)
+ * Assigns/moves an InventoryLot's location using the same
+ * sample_storage_assignment-backed endpoints and audit trail as sample
+ * storage, keyed by inventoryLotId instead of sampleItemId.
  */
-export const StorageLocationAPI = {
-  // Get all active locations
-  getAll: async () => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer("/rest/inventory-storage-locations", (response) => {
-        if (response) {
-          resolve(response);
-        } else {
-          reject(new Error("Failed to fetch storage locations"));
-        }
-      });
-    });
-  },
+const STORAGE_BASE_PATH = "/rest/storage/inventory-lots";
 
-  // Get location by ID
-  getById: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch storage location"));
-          }
-        },
-      );
-    });
-  },
+export const InventoryLotStorageAPI = {
+  // Get current location for a lot (empty object if unassigned)
+  getLocation: (lotId) =>
+    promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}`),
 
-  // Get top-level locations (no parent)
-  getTopLevel: async () => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        "/rest/inventory-storage-locations/top-level",
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch top-level locations"));
-          }
-        },
-      );
-    });
-  },
+  // List movement-audit rows for a lot
+  getMovements: (lotId) =>
+    promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}/movements`),
 
-  // Get child locations
-  getChildren: async (parentId) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${parentId}/children`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch child locations"));
-          }
-        },
-      );
-    });
-  },
-
-  // Get location path (hierarchical breadcrumb)
-  getPath: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/path`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch location path"));
-          }
-        },
-      );
-    });
-  },
-
-  // Check if location has active lots
-  hasActiveLots: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/has-active-lots`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to check active lots"));
-          }
-        },
-      );
-    });
-  },
-
-  // Create location
-  create: async (location) => {
-    return new Promise((resolve, reject) => {
+  // Assign a lot to a location for the first time
+  assignLocation: (payload) =>
+    new Promise((resolve, reject) => {
       postToOpenElisServerJsonResponse(
-        "/rest/inventory-storage-locations",
-        JSON.stringify(location),
+        `${STORAGE_BASE_PATH}/assign`,
+        JSON.stringify(payload),
         (json) => {
           if (json && (json.status >= 400 || json.statusCode >= 400)) {
             reject(
@@ -358,42 +276,108 @@ export const StorageLocationAPI = {
         },
         null,
       );
-    });
-  },
+    }),
 
-  // Update location
-  update: async (id, location) => {
-    return new Promise((resolve, reject) => {
-      putToOpenElisServer(
-        `/rest/inventory-storage-locations/${id}`,
-        JSON.stringify(location),
-        (status) => {
-          if (status >= 200 && status < 300) {
-            resolve({ success: true });
+  // Move an already-assigned lot to a new location
+  moveLocation: (payload) =>
+    new Promise((resolve, reject) => {
+      postToOpenElisServerJsonResponse(
+        `${STORAGE_BASE_PATH}/move`,
+        JSON.stringify(payload),
+        (json) => {
+          if (json && (json.status >= 400 || json.statusCode >= 400)) {
+            reject(
+              new Error(
+                json.message ||
+                  json.error ||
+                  `Request failed with status ${json.status || json.statusCode}`,
+              ),
+            );
           } else {
-            reject(new Error(`Failed to update location: HTTP ${status}`));
+            resolve(json);
           }
         },
+        null,
       );
-    });
-  },
+    }),
+};
 
-  // Deactivate location
-  deactivate: async (id) => {
-    return new Promise((resolve, reject) => {
-      putToOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/deactivate`,
-        "{}",
-        (status) => {
-          if (status >= 200 && status < 300) {
-            resolve({ success: true });
+/**
+ * Inventory Item Type API (OGC-658 Part A)
+ * Admin CRUD for the item-type lookup table backing the Inventory Catalog's
+ * "Type of Item" dropdown, replacing the old hardcoded enum.
+ */
+const ITEM_TYPE_BASE_PATH = "/rest/inventory-item-types";
+
+// PUT against an absolute path (item types live outside BASE_PATH's /rest/inventory prefix)
+const putAbsolute = (endpoint, data) => {
+  return new Promise((resolve, reject) => {
+    fetch(`${config.serverBaseUrl}${endpoint}`, {
+      credentials: "include",
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: data ? JSON.stringify(data) : null,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response
+            .json()
+            .catch(() => ({}))
+            .then((errorJson) => {
+              throw new Error(
+                errorJson.message ||
+                  errorJson.error ||
+                  `Failed to update: HTTP ${response.status}`,
+              );
+            });
+        }
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return response.json();
+        }
+        return {};
+      })
+      .then((json) => resolve(json))
+      .catch((error) => reject(error));
+  });
+};
+
+export const InventoryItemTypeAPI = {
+  // Admin list — all statuses, sorted by sortOrder
+  getAll: () => promisify(getFromOpenElisServer, ITEM_TYPE_BASE_PATH),
+
+  // Create a new item type ({ code, name, locale, sortOrder })
+  create: (payload) =>
+    new Promise((resolve, reject) => {
+      postToOpenElisServerJsonResponse(
+        ITEM_TYPE_BASE_PATH,
+        JSON.stringify(payload),
+        (json) => {
+          if (json && (json.status >= 400 || json.statusCode >= 400)) {
+            reject(
+              new Error(
+                json.message ||
+                  json.error ||
+                  `Request failed with status ${json.status || json.statusCode}`,
+              ),
+            );
           } else {
-            reject(new Error(`Failed to deactivate location: HTTP ${status}`));
+            resolve(json);
           }
         },
+        null,
       );
-    });
-  },
+    }),
+
+  // Update name (for the given locale) and sort order
+  update: (id, payload) => putAbsolute(`${ITEM_TYPE_BASE_PATH}/${id}`, payload),
+
+  // Deactivate (soft delete) — no reactivate endpoint in Part A
+  deactivate: (id) =>
+    putAbsolute(`${ITEM_TYPE_BASE_PATH}/${id}/deactivate`, {}),
 };
 
 /**

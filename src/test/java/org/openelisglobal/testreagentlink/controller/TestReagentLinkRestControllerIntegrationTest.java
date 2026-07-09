@@ -14,7 +14,6 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
@@ -60,8 +59,8 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
 
     private TestReagentLinkRestController controller;
     private JdbcTemplate jdbc;
-    private Long reagentId;
-    private Long nonReagentId;
+    private String reagentId;
+    private String nonReagentId;
 
     @Before
     @Override
@@ -70,17 +69,12 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestReagentLinkRestController(reagentLinkService, testService, inventoryItemService);
         cleanup();
-        // Other suites in the same run insert inventory_item rows with explicit
-        // ids; keep the sequence ahead of MAX(id) so our service-generated ids
-        // never collide (intermittent PK ConstraintViolation under suite order).
-        jdbc.queryForObject("SELECT setval('clinlims.inventory_item_seq',"
-                + " GREATEST((SELECT COALESCE(MAX(id), 1) FROM clinlims.inventory_item), 1))", Long.class);
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 TEST_ID, "ReagentLinkIT", "ReagentLinkIT desc", UUID.randomUUID().toString());
-        reagentId = createInventoryItem("ReagentLinkIT Reagent", ItemType.REAGENT);
-        nonReagentId = createInventoryItem("ReagentLinkIT RDT", ItemType.RDT);
+        reagentId = createInventoryItem("ReagentLinkIT Reagent", "REAGENT");
+        nonReagentId = createInventoryItem("ReagentLinkIT RDT", "RDT");
     }
 
     @After
@@ -88,7 +82,7 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
         cleanup();
     }
 
-    private Long createInventoryItem(String name, ItemType type) {
+    private String createInventoryItem(String name, String type) {
         InventoryItem item = new InventoryItem();
         item.setName(name);
         item.setItemType(type);
@@ -119,7 +113,7 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
         return String.valueOf(TEST_ID);
     }
 
-    private ReagentLinkRequest req(Long reagentId, String usageType, String qty, String unit) {
+    private ReagentLinkRequest req(String reagentId, String usageType, String qty, String unit) {
         ReagentLinkRequest body = new ReagentLinkRequest();
         body.reagentId = reagentId;
         body.usageType = usageType;
@@ -162,7 +156,7 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
     @Test
     public void link_unknownReagent_throwsNotFound() {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> controller.link(testId(), req(88888888L, "PRIMARY", "1", "mL"), authedRequest()));
+                () -> controller.link(testId(), req("88888888", "PRIMARY", "1", "mL"), authedRequest()));
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
     }
 

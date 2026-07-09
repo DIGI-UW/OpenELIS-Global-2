@@ -8,5 +8,5 @@ public interface TestReagentLinkService extends BaseObjectService<TestReagentLin
 
     List<TestReagentLink> getByTestId(String testId);
 
-    TestReagentLink getByTestIdAndReagentId(String testId, Long reagentId);
+    TestReagentLink getByTestIdAndReagentId(String testId, String reagentId);
 }

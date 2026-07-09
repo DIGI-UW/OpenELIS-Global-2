@@ -35,20 +35,14 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId) {
+    public List<InventoryLot> getAvailableLotsByItemFEFO(String itemId) {
         return inventoryLotDAO.getAvailableLotsByItemFEFO(itemId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByInventoryItemId(Long itemId) {
+    public List<InventoryLot> getByInventoryItemId(String itemId) {
         return inventoryLotDAO.getByInventoryItemId(itemId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) {
-        return inventoryLotDAO.getByStorageLocationId(locationId);
     }
 
     @Override
@@ -77,7 +71,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
-    public Double getTotalCurrentQuantity(Long itemId) {
+    public Double getTotalCurrentQuantity(String itemId) {
         Integer total = inventoryLotDAO.getTotalCurrentQuantity(itemId);
         return total != null ? total.doubleValue() : 0.0;
     }

@@ -40,7 +40,7 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void consumeInventoryFEFO_shouldConsumeFromEarliestExpiringLot() {
-        List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO(1L, 25.0, 1L, 1L, "1");
+        List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO("1", 25.0, 1L, 1L, "1");
 
         assertNotNull("Consumption records should not be null", records);
         assertEquals("Should have 1 consumption record", 1, records.size());
@@ -55,7 +55,7 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void consumeInventoryFEFO_shouldConsumeFromMultipleLotsWhenNeeded() {
-        List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO(1L, 120.0, 2L, 2L, "1");
+        List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO("1", 120.0, 2L, 2L, "1");
 
         assertNotNull("Consumption records should not be null", records);
         assertEquals("Should have 2 consumption records", 2, records.size());
@@ -72,7 +72,7 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void consumeInventoryFEFO_shouldCreateTransactionRecords() {
-        inventoryManagementService.consumeInventoryFEFO(1L, 25.0, 3L, 3L, "1");
+        inventoryManagementService.consumeInventoryFEFO("1", 25.0, 3L, 3L, "1");
 
         List<InventoryTransaction> transactions = transactionService.getByLotId(2L);
 
@@ -86,7 +86,7 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void consumeInventoryFEFO_shouldCreateUsageRecords() {
-        inventoryManagementService.consumeInventoryFEFO(1L, 25.0, 4L, 4L, "1");
+        inventoryManagementService.consumeInventoryFEFO("1", 25.0, 4L, 4L, "1");
 
         List<InventoryUsage> usageRecords = usageService.getByTestResultId(4L);
 
@@ -101,14 +101,14 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test(expected = IllegalStateException.class)
     public void consumeInventoryFEFO_shouldThrowExceptionWhenInsufficientStock() {
-        inventoryManagementService.consumeInventoryFEFO(1L, 200.0, // More than available
+        inventoryManagementService.consumeInventoryFEFO("1", 200.0, // More than available
                 5L, 5L, "1");
 
     }
 
     @Test
     public void getInventoryAlerts_shouldIdentifyLowStockItems() {
-        inventoryManagementService.consumeInventoryFEFO(1L, 145.0, null, null, "1");
+        inventoryManagementService.consumeInventoryFEFO("1", 145.0, null, null, "1");
 
         InventoryAlerts alerts = inventoryManagementService.getInventoryAlerts(30);
 
@@ -118,7 +118,7 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
     @Test
     public void receiveInventory_shouldCreateLotAndTransaction() {
         InventoryLot newLot = new InventoryLot();
-        newLot.setInventoryItem(inventoryItemService.get(1L));
+        newLot.setInventoryItem(inventoryItemService.get("1"));
         newLot.setLotNumber("LOT-NEW-001");
         newLot.setInitialQuantity(200.0);
         newLot.setCurrentQuantity(200.0);
@@ -141,13 +141,13 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void isSufficientInventoryAvailable_shouldReturnTrueWhenSufficient() {
-        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 100.0);
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable("1", 100.0);
         assertTrue("Should have sufficient inventory", available);
     }
 
     @Test
     public void isSufficientInventoryAvailable_shouldReturnFalseWhenInsufficient() {
-        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 200.0);
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable("1", 200.0);
         assertFalse("Should not have sufficient inventory", available);
     }
 }

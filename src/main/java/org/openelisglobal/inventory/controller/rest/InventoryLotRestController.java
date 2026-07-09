@@ -10,13 +10,12 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
-import org.openelisglobal.inventory.service.InventoryStorageLocationService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
-import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.storage.service.SampleStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -41,12 +40,13 @@ public class InventoryLotRestController extends BaseRestController {
     private InventoryItemService inventoryItemService;
 
     @Autowired
-    private InventoryStorageLocationService storageLocationService;
+    private SampleStorageService sampleStorageService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getAll() {
         try {
             List<InventoryLot> lots = inventoryLotService.getAll();
+            attachLocations(lots);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -61,6 +61,11 @@ public class InventoryLotRestController extends BaseRestController {
             if (lot == null) {
                 return ResponseEntity.notFound().build();
             }
+            java.util.Map<String, Object> location = sampleStorageService.getInventoryLotLocation(id);
+            // getInventoryLotLocation always returns a Map (empty, not null) when
+            // unassigned; normalize to null here so Jackson's Include.NON_NULL omits
+            // "location" entirely, consistent with the bulk lookup used by getAll().
+            lot.setLocation(location.isEmpty() ? null : location);
             return ResponseEntity.ok(lot);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -68,10 +73,29 @@ public class InventoryLotRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Bulk-attach each lot's current storage location (OGC-657), avoiding an N+1
+     * lookup against sample_storage_assignment for dashboard-sized lot lists.
+     */
+    private void attachLocations(List<InventoryLot> lots) {
+        if (lots == null || lots.isEmpty()) {
+            return;
+        }
+        List<Long> lotIds = lots.stream().map(InventoryLot::getId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList());
+        java.util.Map<String, java.util.Map<String, Object>> locationsByLotId = sampleStorageService
+                .getLocationsForInventoryLots(lotIds);
+        for (InventoryLot lot : lots) {
+            if (lot.getId() != null) {
+                lot.setLocation(locationsByLotId.get(lot.getId().toString()));
+            }
+        }
+    }
+
     @GetMapping(value = "/item/{itemId}/available", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getAvailableLotsFEFO(@PathVariable String itemId) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(Long.valueOf(itemId));
+            List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -82,18 +106,7 @@ public class InventoryLotRestController extends BaseRestController {
     @GetMapping(value = "/item/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getByItemId(@PathVariable String itemId) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getByInventoryItemId(Long.valueOf(itemId));
-            return ResponseEntity.ok(lots);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping(value = "/location/{locationId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getByLocationId(@PathVariable String locationId) {
-        try {
-            List<InventoryLot> lots = inventoryLotService.getByStorageLocationId(Long.valueOf(locationId));
+            List<InventoryLot> lots = inventoryLotService.getByInventoryItemId(itemId);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -140,7 +153,7 @@ public class InventoryLotRestController extends BaseRestController {
     @GetMapping(value = "/item/{itemId}/total-quantity", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<QuantityResponse> getTotalQuantity(@PathVariable String itemId) {
         try {
-            Double quantity = inventoryLotService.getTotalCurrentQuantity(Long.valueOf(itemId));
+            Double quantity = inventoryLotService.getTotalCurrentQuantity(itemId);
             return ResponseEntity.ok(new QuantityResponse(quantity));
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -162,22 +175,12 @@ public class InventoryLotRestController extends BaseRestController {
 
             // Fetch managed InventoryItem entity to avoid transient instance error
             if (lot.getInventoryItem() != null && lot.getInventoryItem().getId() != null) {
-                Long itemId = lot.getInventoryItem().getId();
+                String itemId = lot.getInventoryItem().getId();
                 InventoryItem managedItem = inventoryItemService.get(itemId);
                 if (managedItem == null) {
                     return ResponseEntity.badRequest().build();
                 }
                 lot.setInventoryItem(managedItem);
-            }
-
-            // Fetch managed StorageLocation entity if provided
-            if (lot.getStorageLocation() != null && lot.getStorageLocation().getId() != null) {
-                Long locationId = lot.getStorageLocation().getId();
-                InventoryStorageLocation managedLocation = storageLocationService.get(locationId);
-                if (managedLocation == null) {
-                    return ResponseEntity.badRequest().build();
-                }
-                lot.setStorageLocation(managedLocation);
             }
 
             InventoryLot savedLot = inventoryLotService.save(lot);
@@ -209,22 +212,12 @@ public class InventoryLotRestController extends BaseRestController {
 
             // Fetch managed InventoryItem entity to avoid transient instance error
             if (lot.getInventoryItem() != null && lot.getInventoryItem().getId() != null) {
-                Long itemId = lot.getInventoryItem().getId();
+                String itemId = lot.getInventoryItem().getId();
                 InventoryItem managedItem = inventoryItemService.get(itemId);
                 if (managedItem == null) {
                     return ResponseEntity.badRequest().build();
                 }
                 lot.setInventoryItem(managedItem);
-            }
-
-            // Fetch managed StorageLocation entity if provided
-            if (lot.getStorageLocation() != null && lot.getStorageLocation().getId() != null) {
-                Long locationId = lot.getStorageLocation().getId();
-                InventoryStorageLocation managedLocation = storageLocationService.get(locationId);
-                if (managedLocation == null) {
-                    return ResponseEntity.badRequest().build();
-                }
-                lot.setStorageLocation(managedLocation);
             }
 
             InventoryLot updatedLot = inventoryLotService.update(lot);

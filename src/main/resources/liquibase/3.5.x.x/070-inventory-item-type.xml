@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-658 Part A: replace the hardcoded InventoryEnums.ItemType Java enum with
+    an admin-manageable, localized inventory_item_type table. Seeds the 5
+    existing real codes (matching the enum's .name() values already stored in
+    inventory_item.item_type, so no data migration is needed for existing
+    rows) with en/fr/id translations via the generic localization/
+    localization_value tables (001-generic-localization-system.xml).
+    -->
+    <changeSet id="OGC-658-create-inventory-item-type-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_item_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="inventory_item_type_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable tableName="inventory_item_type" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name_localization_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_inventory_item_type_localization"
+                    references="clinlims.localization(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sort_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_seeded" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="numeric(10,0)"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+        <createIndex indexName="idx_inventory_item_type_active" tableName="inventory_item_type" schemaName="clinlims">
+            <column name="is_active"/>
+        </createIndex>
+        <createIndex indexName="idx_inventory_item_type_sort" tableName="inventory_item_type" schemaName="clinlims">
+            <column name="sort_order"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="inventory_item_type" schemaName="clinlims"/>
+            <dropSequence sequenceName="inventory_item_type_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-658-seed-inventory-item-types" author="OGC" runOnChange="false">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="inventory_item_type" schemaName="clinlims"/>
+                <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.inventory_item_type</sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Seed the 5 codes previously hardcoded in InventoryEnums.ItemType, with en/fr/id translations.</comment>
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                seed_type RECORD;
+                new_loc_id NUMERIC;
+                new_type_id BIGINT;
+            BEGIN
+                FOR seed_type IN
+                    SELECT * FROM (VALUES
+                        ('REAGENT', 10, 'Reagent', 'Réactif', 'Reagen'),
+                        ('RDT', 20, 'RDT (Rapid Diagnostic Test)', 'TDR (Test de diagnostic rapide)', 'RDT (Tes Diagnostik Cepat)'),
+                        ('CARTRIDGE', 30, 'Analyzer Cartridge', 'Cartouche d''analyseur', 'Kartrid Analisis'),
+                        ('HIV_KIT', 40, 'HIV Test Kit', 'Kit de test VIH', 'Kit Tes HIV'),
+                        ('SYPHILIS_KIT', 50, 'Syphilis Test Kit', 'Kit de test syphilis', 'Kit Tes Sifilis')
+                    ) AS t(code, sort_order, name_en, name_fr, name_id)
+                LOOP
+                    SELECT nextval('clinlims.localization_seq') INTO new_loc_id;
+                    INSERT INTO clinlims.localization (id, description, lastupdated)
+                    VALUES (new_loc_id, 'inventory item type: ' || seed_type.code, now());
+
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+                    VALUES (nextval('clinlims.localization_value_seq'), new_loc_id, 'en', seed_type.name_en, now());
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+                    VALUES (nextval('clinlims.localization_value_seq'), new_loc_id, 'fr', seed_type.name_fr, now());
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+                    VALUES (nextval('clinlims.localization_value_seq'), new_loc_id, 'id', seed_type.name_id, now());
+
+                    SELECT nextval('clinlims.inventory_item_type_seq') INTO new_type_id;
+                    INSERT INTO clinlims.inventory_item_type
+                        (id, code, name_localization_id, is_active, sort_order, is_seeded, lastupdated)
+                    VALUES
+                        (new_type_id, seed_type.code, new_loc_id, true, seed_type.sort_order, true, now());
+                END LOOP;
+            END $$;
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.localization_value WHERE localization_id IN (
+                    SELECT name_localization_id FROM clinlims.inventory_item_type WHERE is_seeded = true
+                );
+                DELETE FROM clinlims.localization WHERE id IN (
+                    SELECT name_localization_id FROM clinlims.inventory_item_type WHERE is_seeded = true
+                );
+                DELETE FROM clinlims.inventory_item_type WHERE is_seeded = true;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-658-swap-item-type-check-for-fk" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint WHERE conname = 'chk_item_type'
+                  AND conrelid = 'clinlims.inventory_item'::regclass;
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Replace the hardcoded CHECK constraint on inventory_item.item_type with
+            a real FK to inventory_item_type(code), now that the lookup table exists
+            and is seeded with the same 5 values the CHECK constraint allowed.
+        </comment>
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            DROP CONSTRAINT IF EXISTS chk_item_type;
+        </sql>
+        <addForeignKeyConstraint constraintName="fk_inventory_item_type_code"
+            baseTableSchemaName="clinlims" baseTableName="inventory_item" baseColumnNames="item_type"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_item_type"
+            referencedColumnNames="code"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="inventory_item"
+                constraintName="fk_inventory_item_type_code"/>
+            <sql>
+                ALTER TABLE clinlims.inventory_item
+                ADD CONSTRAINT chk_item_type
+                CHECK (item_type IN ('REAGENT', 'RDT', 'CARTRIDGE', 'HIV_KIT', 'SYPHILIS_KIT'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,7 @@
+code,sortOrder,active,localization:en,localization:fr,localization:id
+CONTROL,60,Y,Control Material,Matériel de contrôle,Bahan Kontrol
+CALIBRATOR,70,Y,Calibrator,Calibrateur,Kalibrator
+CONSUMABLE,80,Y,Consumable,Consommable,Bahan Habis Pakai
+GENERAL_SUPPLY,90,Y,General Supply,Fourniture générale,Perlengkapan Umum
+PPE,100,Y,Personal Protective Equipment,Équipement de protection individuelle,Alat Pelindung Diri
+STAIN,110,Y,Stain,Colorant,Pewarna

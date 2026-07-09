@@ -14,17 +14,12 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * Returns lots that are: - ACTIVE or IN_USE status - QC PASSED - Have quantity
      * > 0 - Sorted by earliest expiration date first
      */
-    List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId);
+    List<InventoryLot> getAvailableLotsByItemFEFO(String itemId);
 
     /**
      * Get lots by inventory item ID
      */
-    List<InventoryLot> getByInventoryItemId(Long itemId);
-
-    /**
-     * Get lots by storage location ID
-     */
-    List<InventoryLot> getByStorageLocationId(Long locationId);
+    List<InventoryLot> getByInventoryItemId(String itemId);
 
     /**
      * Get lots expiring within specified days
@@ -49,7 +44,7 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     /**
      * Get total current quantity for an item across all lots
      */
-    Double getTotalCurrentQuantity(Long itemId);
+    Double getTotalCurrentQuantity(String itemId);
 
     /**
      * Open a lot (marks as IN_USE and calculates expiry after opening for reagents)

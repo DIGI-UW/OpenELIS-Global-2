@@ -5,12 +5,7 @@ import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -19,22 +14,30 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "inventory_item")
 @Access(AccessType.FIELD)
-public class InventoryItem extends BaseObject<Long> {
+public class InventoryItem extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    // OGC-658 Part C: the PK is a server-generated UPPER_SNAKE code (see
+    // InventoryItemServiceImpl.insert()), not an auto-increment surrogate.
+    // The DB column is named "code" (matching inventory_item_type.code) but
+    // the Java property/JSON key stays "id" to satisfy BaseObject<PK>'s
+    // getId()/setId() contract and keep every existing JSON payload and the
+    // TestReagentLinkRestController.findItem() getAllMatching("id", ...)
+    // reflection lookup unchanged. Deliberately has NO @NotNull/@Size here:
+    // InventoryItemRestController binds @Valid directly to this entity, so a
+    // presence constraint would fail create requests before the code is
+    // ever assigned (code generation happens in the service layer, not at
+    // controller bind time).
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "inventory_item_generator")
-    @SequenceGenerator(name = "inventory_item_generator", sequenceName = "inventory_item_seq", allocationSize = 1)
-    @Column(name = "id")
-    private Long id;
+    @Column(name = "code", length = 64)
+    private String id;
 
     @Column(name = "fhir_uuid", nullable = false, unique = true)
     private UUID fhirUuid;
@@ -47,10 +50,12 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    // OGC-658 Part A: FK to inventory_item_type(code), not a Java enum — admins
+    // manage the type list at runtime via the Inventory Item Types admin page.
     @Column(name = "item_type", nullable = false, length = 50)
     @NotNull
-    @Enumerated(EnumType.STRING)
-    private ItemType itemType;
+    @Size(min = 1, max = 50)
+    private String itemType;
 
     @Column(name = "category", length = 100)
     private String category;
@@ -118,27 +123,27 @@ public class InventoryItem extends BaseObject<Long> {
     // Business logic helper methods
     @JsonIgnore
     public boolean isReagent() {
-        return itemType == ItemType.REAGENT;
+        return "REAGENT".equals(itemType);
     }
 
     @JsonIgnore
     public boolean isCartridge() {
-        return itemType == ItemType.CARTRIDGE;
+        return "CARTRIDGE".equals(itemType);
     }
 
     @JsonIgnore
     public boolean isRDT() {
-        return itemType == ItemType.RDT;
+        return "RDT".equals(itemType);
     }
 
     @JsonIgnore
     public boolean isHIVKit() {
-        return itemType == ItemType.HIV_KIT;
+        return "HIV_KIT".equals(itemType);
     }
 
     @JsonIgnore
     public boolean isSyphilisKit() {
-        return itemType == ItemType.SYPHILIS_KIT;
+        return "SYPHILIS_KIT".equals(itemType);
     }
 
     @JsonIgnore

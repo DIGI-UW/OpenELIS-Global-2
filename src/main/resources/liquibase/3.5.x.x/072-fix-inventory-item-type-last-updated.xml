@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-658 Part A fix: BaseObject's @Version field maps to a column
+    literally named "last_updated" (see BaseObject.java) for Hibernate
+    optimistic locking. 070-inventory-item-type.xml only created
+    "lastupdated" (no underscore) on inventory_item_type, so every
+    InventoryItemType query fails with "column ... last_updated does not
+    exist". Same fix already applied to the other inventory_* tables in
+    3.3.x.x/017-inventory-add-last-updated.xml — inventory_item_type just
+    didn't exist yet at that time.
+    -->
+    <changeSet id="OGC-658-fix-inventory-item-type-last-updated" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item_type" schemaName="clinlims" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Add last_updated column to inventory_item_type table for Hibernate optimistic locking</comment>
+        <addColumn tableName="inventory_item_type" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="inventory_item_type" schemaName="clinlims" columnName="last_updated"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

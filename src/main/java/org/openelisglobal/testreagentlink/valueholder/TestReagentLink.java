@@ -16,15 +16,17 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * <p>
  * A "reagent" is an {@code inventory_item} with {@code item_type = 'REAGENT'}
  * (see {@code org.openelisglobal.inventory}); there is no standalone reagent
- * table, so {@code reagentId} is a FK to {@code inventory_item.id}.
- * {@code test_id} (a {@code numeric(10)} FK to {@code test.id}) maps to String
- * via {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
- * {@code TestResultComponent}). {@code reagent_id} is a {@code bigint} FK to
- * {@code inventory_item.id} ({@code Long}) and is mapped as a plain
- * {@code Long} — {@code LIMSStringNumberUserType} is int-only and would
- * truncate it. The audit {@code @Version} column ({@code last_updated}) comes
- * from {@link BaseObject}; the table's separate {@code lastupdated} (DEFAULT
- * now()) is filled by the DB and not mapped here.
+ * table, so {@code reagentId} is a FK to {@code inventory_item}'s PK. Since
+ * OGC-658 Part C, that PK is a server-generated string code (not an
+ * auto-increment {@code Long}), so {@code reagent_id} is a plain {@code String}
+ * column — no {@code LIMSStringNumberUserType} needed at all (that UserType
+ * exists to map a numeric DB column to a Java String, which doesn't apply here
+ * since the column itself is now a string). {@code test_id} (a
+ * {@code numeric(10)} FK to {@code test.id}) still maps to String via
+ * {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
+ * {@code TestResultComponent}). The audit {@code @Version} column
+ * ({@code last_updated}) comes from {@link BaseObject}; the table's separate
+ * {@code lastupdated} (DEFAULT now()) is filled by the DB and not mapped here.
  */
 @Entity
 @Table(name = "test_reagent_link", schema = "clinlims")
@@ -40,10 +42,9 @@ public class TestReagentLink extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
-    // FK to inventory_item.id (Long, sequence-generated). Plain Long mapping —
-    // NOT LIMSStringNumberUserType, which is int-only and would truncate a bigint.
+    // FK to inventory_item's PK (a server-generated string code, OGC-658 Part C).
     @Column(name = "reagent_id", nullable = false)
-    private Long reagentId;
+    private String reagentId;
 
     @Column(name = "usage_type", nullable = false, length = 20)
     private String usageType;
@@ -77,11 +78,11 @@ public class TestReagentLink extends BaseObject<String> {
         this.testId = testId;
     }
 
-    public Long getReagentId() {
+    public String getReagentId() {
         return reagentId;
     }
 
-    public void setReagentId(Long reagentId) {
+    public void setReagentId(String reagentId) {
         this.reagentId = reagentId;
     }
 

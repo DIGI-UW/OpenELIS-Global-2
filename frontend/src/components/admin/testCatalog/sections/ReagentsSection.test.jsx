@@ -30,7 +30,7 @@ import messages from "../../../../languages/en.json";
 const TWO_REAGENTS = [
   {
     id: "link-1",
-    reagentId: 7,
+    reagentId: "GLUCOSE_REAGENT",
     reagentName: "Glucose Reagent",
     manufacturer: "Acme",
     usageType: "PRIMARY",
@@ -41,7 +41,7 @@ const TWO_REAGENTS = [
   },
   {
     id: "link-2",
-    reagentId: 9,
+    reagentId: "BUFFER_SOLUTION",
     reagentName: "Buffer Solution",
     manufacturer: "Acme",
     usageType: "SECONDARY",
@@ -129,7 +129,7 @@ describe("ReagentsSection", () => {
     fireEvent.click(save());
 
     expect(putToOpenElisServer).toHaveBeenCalledWith(
-      "/rest/test-catalog/42/reagents/7",
+      "/rest/test-catalog/42/reagents/GLUCOSE_REAGENT",
       expect.stringContaining('"usageType":"SECONDARY"'),
       expect.any(Function),
     );
@@ -174,7 +174,7 @@ describe("ReagentsSection", () => {
     fireEvent.click(confirmBtn);
 
     expect(deleteFromOpenElisServer).toHaveBeenCalledWith(
-      "/rest/test-catalog/42/reagents/7",
+      "/rest/test-catalog/42/reagents/GLUCOSE_REAGENT",
       expect.any(Function),
     );
   });

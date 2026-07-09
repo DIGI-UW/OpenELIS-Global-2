@@ -32,7 +32,7 @@ public class TestReagentLinkServiceImpl extends AuditableBaseObjectServiceImpl<T
 
     @Override
     @Transactional(readOnly = true)
-    public TestReagentLink getByTestIdAndReagentId(String testId, Long reagentId) {
+    public TestReagentLink getByTestIdAndReagentId(String testId, String reagentId) {
         return baseObjectDAO.getByTestIdAndReagentId(testId, reagentId);
     }
 }

@@ -70,6 +70,13 @@ const InventoryCatalog = () => {
 
   const headers = [
     {
+      key: "code",
+      header: intl.formatMessage({
+        id: "catalog.item.code",
+        defaultMessage: "Code",
+      }),
+    },
+    {
       key: "name",
       header: intl.formatMessage({ id: "catalog.item.name" }),
     },
@@ -105,8 +112,8 @@ const InventoryCatalog = () => {
             text: intl.formatMessage({ id: "inventory.filter.all" }),
           },
           ...types.map((type) => ({
-            id: type,
-            text: getItemTypeLabel(type),
+            id: type.code,
+            text: type.label,
           })),
         ];
         setItemTypes(formattedTypes);
@@ -120,17 +127,6 @@ const InventoryCatalog = () => {
   useEffect(() => {
     fetchItems();
   }, [typeFilter, statusFilter]);
-
-  const getItemTypeLabel = (type) => {
-    const labels = {
-      REAGENT: "Reagent",
-      RDT: "RDT (Rapid Diagnostic Test)",
-      CARTRIDGE: "Analyzer Cartridge",
-      HIV_KIT: "HIV Test Kit",
-      SYPHILIS_KIT: "Syphilis Test Kit",
-    };
-    return labels[type] || type;
-  };
 
   const fetchItems = async () => {
     setLoading(true);
@@ -159,8 +155,10 @@ const InventoryCatalog = () => {
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((item) =>
-        item.name?.toLowerCase().includes(searchLower),
+      filtered = filtered.filter(
+        (item) =>
+          item.name?.toLowerCase().includes(searchLower) ||
+          item.id?.toLowerCase().includes(searchLower),
       );
     }
 
@@ -188,6 +186,7 @@ const InventoryCatalog = () => {
 
   const rows = paginatedItems.map((item) => ({
     id: String(item.id),
+    code: item.id,
     name: item.name,
     itemType: item.itemType,
     units: item.units,

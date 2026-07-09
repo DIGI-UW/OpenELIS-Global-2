@@ -23,7 +23,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByInventoryItemId(Long itemId) throws LIMSRuntimeException {
+    public List<InventoryLot> getByInventoryItemId(String itemId) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryLot l WHERE l.inventoryItem.id = :itemId ORDER BY l.expirationDate";
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
@@ -36,7 +36,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId) throws LIMSRuntimeException {
+    public List<InventoryLot> getAvailableLotsByItemFEFO(String itemId) throws LIMSRuntimeException {
         try {
             // CRITICAL: FEFO (First Expired, First Out) query
             // Returns lots sorted by earliest expiration date first
@@ -134,19 +134,6 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryLot l WHERE l.storageLocation.id = :locationId ORDER BY l.expirationDate";
-            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("locationId", locationId);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting lots by storage location ID", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<InventoryLot> getByQCStatus(QCStatus qcStatus) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryLot l WHERE l.qcStatus = :qcStatus ORDER BY l.expirationDate";
@@ -173,7 +160,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public Integer getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException {
+    public Integer getTotalCurrentQuantity(String itemId) throws LIMSRuntimeException {
         try {
             String sql = "SELECT COALESCE(SUM(current_quantity), 0.0) FROM clinlims.inventory_lot "
                     + "WHERE inventory_item_id = ?1 " + "AND status IN ('ACTIVE', 'IN_USE')";

@@ -60,6 +60,45 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     @Override
     @Transactional(readOnly = true)
+    public SampleStorageAssignment findByInventoryLotId(Long inventoryLotId) {
+        if (inventoryLotId == null) {
+            return null;
+        }
+        try {
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.inventoryLotId = :inventoryLotId";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("inventoryLotId", inventoryLotId);
+            query.setMaxResults(1);
+            List<SampleStorageAssignment> results = query.list();
+            return results.isEmpty() ? null : results.getFirst();
+        } catch (Exception e) {
+            logger.error("Error finding SampleStorageAssignment by InventoryLot ID: {}", inventoryLotId, e);
+            throw new LIMSRuntimeException(
+                    "Error finding SampleStorageAssignment by InventoryLot ID: " + inventoryLotId, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleStorageAssignment> findByInventoryLotIds(List<Long> inventoryLotIds) {
+        if (inventoryLotIds == null || inventoryLotIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        try {
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.inventoryLotId IN (:inventoryLotIds)";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("inventoryLotIds", inventoryLotIds);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error finding SampleStorageAssignments by InventoryLot IDs", e);
+            throw new LIMSRuntimeException("Error finding SampleStorageAssignments by InventoryLot IDs", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public SampleStorageAssignment findByStorageBox(StorageBox box) {
         try {
             if (box == null) {

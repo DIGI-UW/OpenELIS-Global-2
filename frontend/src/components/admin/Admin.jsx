@@ -14,6 +14,7 @@ import {
   StudyMenuManagement,
   DictionaryManagement,
 } from "./menu";
+import InventoryItemTypeManagement from "./generalConfig/InventoryItemTypeManagement";
 import CalculatedValue from "./calculatedValue/CalculatedValueForm";
 import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
@@ -310,6 +311,10 @@ function Admin() {
         component={TestNotificationConfigEdit}
       />
       <Route path={`${path}/DictionaryMenu`} component={DictionaryManagement} />
+      <Route
+        path={`${path}/InventoryItemTypeManagement`}
+        component={InventoryItemTypeManagement}
+      />
       <Route path={`${path}/PluginFile`} component={PluginList} />
       <Route
         path={`${path}/SearchIndexManagement`}

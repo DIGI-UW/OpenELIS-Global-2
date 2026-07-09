@@ -184,4 +184,20 @@
   <!-- Sample Entry Config: requesterRequired toggle for Search Requester + First/Last Name -->
   <include relativeToChangelogFile="true" file="069-requester-required-config.xml"/>
 
+  <!-- OGC-657: generalize sample_storage_assignment/movement to support inventory-lot occupants,
+       and drop the non-functional inventory storage skeleton (inventory_storage_location) -->
+  <include relativeToChangelogFile="true" file="069-generalize-storage-assignment-occupant.xml"/>
+
+  <!-- OGC-658 Part A: admin-managed, localized inventory_item_type table, replacing
+       the hardcoded InventoryEnums.ItemType enum -->
+  <include relativeToChangelogFile="true" file="070-inventory-item-type.xml"/>
+
+  <!-- OGC-658 Part C: inventory_item's PK migrated from BIGINT id to a
+       server-generated VARCHAR(64) code -->
+  <include relativeToChangelogFile="true" file="071-inventory-item-code-pk.xml"/>
+
+  <!-- OGC-658 Part A fix: inventory_item_type was missing the last_updated
+       column BaseObject's @Version field requires -->
+  <include relativeToChangelogFile="true" file="072-fix-inventory-item-type-last-updated.xml"/>
+
 </databaseChangeLog>

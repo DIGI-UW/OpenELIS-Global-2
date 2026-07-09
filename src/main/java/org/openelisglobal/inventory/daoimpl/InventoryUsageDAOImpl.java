@@ -46,7 +46,7 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, Long> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryUsage> getByInventoryItemId(Long itemId) throws LIMSRuntimeException {
+    public List<InventoryUsage> getByInventoryItemId(String itemId) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryUsage u WHERE u.inventoryItem.id = :itemId ORDER BY u.usageDate DESC";
             Query<InventoryUsage> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryUsage.class);

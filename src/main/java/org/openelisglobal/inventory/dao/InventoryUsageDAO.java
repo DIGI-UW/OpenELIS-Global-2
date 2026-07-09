@@ -20,7 +20,7 @@ public interface InventoryUsageDAO extends BaseDAO<InventoryUsage, Long> {
     /**
      * Get usage records by inventory item ID
      */
-    List<InventoryUsage> getByInventoryItemId(Long itemId) throws LIMSRuntimeException;
+    List<InventoryUsage> getByInventoryItemId(String itemId) throws LIMSRuntimeException;
 
     /**
      * Get usage records by analysis ID

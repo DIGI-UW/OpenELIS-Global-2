@@ -31,6 +31,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
 
   // Form state
   const [formData, setFormData] = useState({
+    code: "",
     name: "",
     itemType: "REAGENT",
     category: "",
@@ -53,8 +54,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       try {
         const types = await InventoryItemAPI.getItemTypes();
         const formattedTypes = types.map((type) => ({
-          id: type,
-          text: getItemTypeLabel(type),
+          id: type.code,
+          text: type.label,
         }));
         setItemTypes(formattedTypes);
       } catch (err) {
@@ -69,21 +70,11 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     loadItemTypes();
   }, [notify, intl]);
 
-  const getItemTypeLabel = (type) => {
-    const labels = {
-      REAGENT: "Reagent",
-      RDT: "RDT (Rapid Diagnostic Test)",
-      CARTRIDGE: "Analyzer Cartridge",
-      HIV_KIT: "HIV Test Kit",
-      SYPHILIS_KIT: "Syphilis Test Kit",
-    };
-    return labels[type] || type;
-  };
-
   // Load item data if editing, reset if adding new
   useEffect(() => {
     if (item) {
       setFormData({
+        code: item.id || "",
         name: item.name || "",
         itemType: item.itemType || "REAGENT",
         category: item.category || "",
@@ -98,6 +89,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     } else {
       // Reset to initial state when adding new item
       setFormData({
+        code: "",
         name: "",
         itemType: "REAGENT",
         category: "",
@@ -206,6 +198,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       if (isEdit) {
         await InventoryItemAPI.update(item.id, sanitizedData);
       } else {
+        // Optional user-supplied code; blank means the server auto-generates
+        // one from the name. Locked once saved, so never sent on update.
+        sanitizedData.id = formData.code?.trim() || null;
         await InventoryItemAPI.create(sanitizedData);
       }
       setSaving(false);
@@ -249,6 +244,37 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           value={formData.name}
           onChange={(e) => handleChange("name", e.target.value)}
           required
+        />
+
+        <TextInput
+          id="code"
+          labelText={
+            <FormattedMessage id="catalog.item.code" defaultMessage="Code" />
+          }
+          value={formData.code}
+          disabled={isEdit}
+          placeholder={
+            isEdit
+              ? ""
+              : intl.formatMessage({
+                  id: "catalog.item.code.placeholder",
+                  defaultMessage: "Leave blank to auto-generate from name",
+                })
+          }
+          helperText={
+            isEdit
+              ? intl.formatMessage({
+                  id: "catalog.item.code.locked",
+                  defaultMessage:
+                    "Code is locked once saved so integrations and existing references keep working.",
+                })
+              : intl.formatMessage({
+                  id: "catalog.item.code.hint",
+                  defaultMessage:
+                    "Stable identifier used by integrations. Leave blank and we'll generate one from the name.",
+                })
+          }
+          onChange={(e) => handleChange("code", e.target.value.toUpperCase())}
         />
 
         <Dropdown

@@ -1824,10 +1824,10 @@ export function SearchResults(props) {
               </Button>
               <LocationPickerModal
                 isOpen={storageModalRow === data.id}
-                sample={{
-                  id: sampleItemId || data.accessionNumber,
-                  sampleAccessionNumber: data.accessionNumber,
-                  sampleType: data.sampleType || "",
+                occupantType="SAMPLE_ITEM"
+                occupant={{
+                  label: data.accessionNumber,
+                  type: data.sampleType || "",
                   status: data.sampleStatus || "Active",
                 }}
                 onConfirm={({ selection, position, reason, notes }) => {

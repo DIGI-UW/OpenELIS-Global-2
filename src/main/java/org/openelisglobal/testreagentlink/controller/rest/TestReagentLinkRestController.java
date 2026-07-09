@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -66,7 +65,7 @@ public class TestReagentLinkRestController extends BaseRestController {
 
     /** Request body for link create/update. */
     public static class ReagentLinkRequest {
-        public Long reagentId;
+        public String reagentId;
         public String usageType;
         public BigDecimal quantityPerTest;
         public String quantityUnit;
@@ -75,7 +74,7 @@ public class TestReagentLinkRestController extends BaseRestController {
     /** A linked reagent enriched with inventory display fields + current stock. */
     public static class ReagentLinkResponse {
         public String id;
-        public Long reagentId;
+        public String reagentId;
         public String reagentName;
         public String manufacturer;
         public String usageType;
@@ -118,7 +117,7 @@ public class TestReagentLinkRestController extends BaseRestController {
     }
 
     @PutMapping(value = "/{reagentId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ReagentLinkResponse update(@PathVariable String testId, @PathVariable Long reagentId,
+    public ReagentLinkResponse update(@PathVariable String testId, @PathVariable String reagentId,
             @RequestBody ReagentLinkRequest body, HttpServletRequest request) {
         requireTest(testId);
         TestReagentLink link = reagentLinkService.getByTestIdAndReagentId(testId, reagentId);
@@ -137,7 +136,7 @@ public class TestReagentLinkRestController extends BaseRestController {
     }
 
     @DeleteMapping(value = "/{reagentId}")
-    public ResponseEntity<Void> unlink(@PathVariable String testId, @PathVariable Long reagentId,
+    public ResponseEntity<Void> unlink(@PathVariable String testId, @PathVariable String reagentId,
             HttpServletRequest request) {
         requireTest(testId);
         TestReagentLink link = reagentLinkService.getByTestIdAndReagentId(testId, reagentId);
@@ -158,22 +157,22 @@ public class TestReagentLinkRestController extends BaseRestController {
         }
     }
 
-    private void requireReagent(Long reagentId) {
-        if (reagentId == null) {
+    private void requireReagent(String reagentId) {
+        if (reagentId == null || reagentId.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reagentId is required");
         }
         InventoryItem item = findItem(reagentId);
         if (item == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reagent not found: " + reagentId);
         }
-        if (item.getItemType() != ItemType.REAGENT) {
+        if (!"REAGENT".equals(item.getItemType())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Inventory item " + reagentId + " is not a reagent");
         }
     }
 
     /** Null-safe inventory_item lookup by id ({@code get()} throws on missing). */
-    private InventoryItem findItem(Long itemId) {
+    private InventoryItem findItem(String itemId) {
         List<InventoryItem> matches = inventoryItemService.getAllMatching("id", itemId);
         return matches.isEmpty() ? null : matches.get(0);
     }

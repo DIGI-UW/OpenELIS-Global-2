@@ -10,15 +10,19 @@ import {
   Stack,
   Button,
 } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryItemAPI,
   InventoryLotAPI,
   InventoryManagementAPI,
-  StorageLocationAPI,
+  InventoryLotStorageAPI,
 } from "./InventoryService";
-import StorageLocationModal from "./StorageLocationModal";
+import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
+import {
+  selectionToHierarchicalPath,
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../storage/LocationPicker/locationSelectionMapper";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
@@ -30,19 +34,24 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     currentQuantity: 0,
     expirationDate: null,
     receiptDate: new Date(),
-    storageLocation: null,
     qcStatus: "PENDING",
     status: "ACTIVE",
     barcode: "",
   });
 
   const [items, setItems] = useState([]);
-  const [locations, setLocations] = useState([]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [locationError, setLocationError] = useState(null);
 
-  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  // Edit mode: the lot's currently-assigned location, shaped for
+  // LocationPickerModal's currentLocation prop; null when unassigned.
+  const [currentLocation, setCurrentLocation] = useState(null);
+  // Create mode: a location picked before the lot exists in the DB,
+  // applied right after the lot is saved (see handleSave).
+  const [pendingAssignment, setPendingAssignment] = useState(null);
 
   const qcStatusOptions = [
     { id: "PENDING", text: "Pending" },
@@ -59,7 +68,6 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   useEffect(() => {
     fetchItems();
-    fetchLocations();
   }, []);
 
   useEffect(() => {
@@ -72,11 +80,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           ? new Date(lot.expirationDate)
           : null,
         receiptDate: lot.receiptDate ? new Date(lot.receiptDate) : new Date(),
-        storageLocation: lot.storageLocation,
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",
       });
+      fetchCurrentLocation(lot.id);
     }
   }, [lot]);
 
@@ -97,27 +105,24 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
-  const fetchLocations = async () => {
+  const fetchCurrentLocation = async (lotId) => {
     try {
-      const allLocations = await StorageLocationAPI.getAll();
-      const validLocations = Array.isArray(allLocations) ? allLocations : [];
-      setLocations(
-        validLocations.map((loc) => ({
-          id: loc.id,
-          text: loc.name,
-          location: loc,
-        })),
-      );
+      const location = await InventoryLotStorageAPI.getLocation(lotId);
+      if (location && location.hierarchicalPath) {
+        setCurrentLocation({
+          selection: {},
+          hierarchicalPath: location.hierarchicalPath,
+          position: location.positionCoordinate
+            ? { mode: "text", value: location.positionCoordinate }
+            : null,
+        });
+      } else {
+        setCurrentLocation(null);
+      }
     } catch (err) {
-      console.error("Error fetching locations:", err);
-      setLocations([]);
+      console.error("Error fetching lot location:", err);
+      setCurrentLocation(null);
     }
-  };
-
-  const handleLocationCreated = (newLocation) => {
-    setLocationModalOpen(false);
-    fetchLocations();
-    handleChange("storageLocation", newLocation);
   };
 
   const handleChange = (field, value) => {
@@ -146,12 +151,27 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       return false;
     }
 
-    if (!formData.storageLocation) {
-      setError("Please select a storage location");
+    if (!isEdit && !pendingAssignment) {
+      setError("Please assign a storage location");
       return false;
     }
 
     return true;
+  };
+
+  const buildLocationPayload = (inventoryLotId, assignment) => {
+    const deepest = getDeepestLocationSelection(assignment.selection, {
+      requireAssignable: true,
+    });
+    return {
+      inventoryLotId: String(inventoryLotId),
+      locationId: deepest ? String(deepest.value.id) : null,
+      locationType: deepest ? deepest.type : null,
+      positionCoordinate: positionToCoordinate(assignment.position, {
+        emptyValue: null,
+      }),
+      notes: assignment.notes || "",
+    };
   };
 
   const handleSave = async () => {
@@ -165,12 +185,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         await InventoryLotAPI.update(lot.id, {
           ...formData,
           inventoryItem: formData.inventoryItem,
-          storageLocation: formData.storageLocation,
           initialQuantity: lot.initialQuantity,
           version: lot.version,
         });
       } else {
-        await InventoryManagementAPI.receive({
+        const savedLot = await InventoryManagementAPI.receive({
           inventoryItem: { id: formData.inventoryItem.id },
           lotNumber: formData.lotNumber,
           currentQuantity: formData.currentQuantity,
@@ -179,11 +198,16 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             ? formData.expirationDate.toISOString()
             : null,
           receiptDate: formData.receiptDate.toISOString(),
-          storageLocation: { id: formData.storageLocation.id },
           qcStatus: formData.qcStatus,
           status: formData.status,
           barcode: formData.barcode || null,
         });
+
+        if (pendingAssignment && savedLot?.id) {
+          await InventoryLotStorageAPI.assignLocation(
+            buildLocationPayload(savedLot.id, pendingAssignment),
+          );
+        }
       }
       onSave();
     } catch (err) {
@@ -194,10 +218,47 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
+  const handleLocationConfirm = async ({ selection, position, notes }) => {
+    if (!isEdit) {
+      // Lot doesn't exist yet — defer the assignment call until handleSave.
+      setPendingAssignment({ selection, position, notes });
+      setLocationPickerOpen(false);
+      return;
+    }
+
+    setLocationError(null);
+    try {
+      const payload = buildLocationPayload(lot.id, {
+        selection,
+        position,
+        notes,
+      });
+      if (currentLocation) {
+        await InventoryLotStorageAPI.moveLocation({
+          ...payload,
+          reason: notes || "",
+        });
+      } else {
+        await InventoryLotStorageAPI.assignLocation(payload);
+      }
+      await fetchCurrentLocation(lot.id);
+      setLocationPickerOpen(false);
+    } catch (err) {
+      console.error("Error assigning lot location:", err);
+      setLocationError(err.message || "Error assigning storage location");
+    }
+  };
+
+  const locationSummary = isEdit
+    ? currentLocation?.hierarchicalPath || ""
+    : pendingAssignment
+      ? selectionToHierarchicalPath(pendingAssignment.selection)
+      : "";
+
   return (
     <>
       <Modal
-        open={open && !locationModalOpen}
+        open={open && !locationPickerOpen}
         onRequestClose={onClose}
         onRequestSubmit={handleSave}
         modalHeading={intl.formatMessage({
@@ -290,27 +351,36 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               <Button
                 kind="ghost"
                 size="sm"
-                renderIcon={Add}
-                onClick={() => setLocationModalOpen(true)}
+                onClick={() => {
+                  setLocationError(null);
+                  setLocationPickerOpen(true);
+                }}
               >
-                <FormattedMessage id="storage.location.add.button" />
+                <FormattedMessage
+                  id={
+                    locationSummary
+                      ? "storage.location.move"
+                      : "storage.location.assign"
+                  }
+                  defaultMessage={
+                    locationSummary
+                      ? "Move storage location"
+                      : "Assign storage location"
+                  }
+                />
               </Button>
             </div>
-            <Dropdown
-              id="storageLocation"
-              label="Select storage location"
-              items={locations}
-              itemToString={(item) => (item ? item.text : "")}
-              selectedItem={
-                formData.storageLocation
-                  ? locations.find((l) => l.id === formData.storageLocation.id)
-                  : null
-              }
-              onChange={({ selectedItem }) =>
-                handleChange("storageLocation", selectedItem.location)
-              }
-              required
-            />
+            <div>
+              {locationSummary || (
+                <FormattedMessage
+                  id="storage.location.notAssigned"
+                  defaultMessage="Not assigned"
+                />
+              )}
+            </div>
+            {locationError && (
+              <div style={{ color: "red" }}>{locationError}</div>
+            )}
           </div>
 
           <Dropdown
@@ -349,11 +419,17 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         </Stack>
       </Modal>
 
-      {/* Storage Location Creation Modal */}
-      <StorageLocationModal
-        open={locationModalOpen}
-        onClose={() => setLocationModalOpen(false)}
-        onSave={handleLocationCreated}
+      <LocationPickerModal
+        isOpen={locationPickerOpen}
+        occupantType="INVENTORY_LOT"
+        occupant={{
+          label: formData.lotNumber,
+          type: formData.inventoryItem?.name || "",
+          status: formData.status,
+        }}
+        currentLocation={isEdit ? currentLocation : null}
+        onConfirm={handleLocationConfirm}
+        onCancel={() => setLocationPickerOpen(false)}
       />
     </>
   );

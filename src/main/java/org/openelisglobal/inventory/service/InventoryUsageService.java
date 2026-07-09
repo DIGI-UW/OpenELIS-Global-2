@@ -19,7 +19,7 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
     /**
      * Get usage records by inventory item ID
      */
-    List<InventoryUsage> getByInventoryItemId(Long itemId);
+    List<InventoryUsage> getByInventoryItemId(String itemId);
 
     /**
      * Get usage records by analysis ID
@@ -37,6 +37,6 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
      * @param sysUserId    The user performing the action
      * @return The created usage record
      */
-    InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, Long testResultId, Long analysisId,
+    InventoryUsage recordUsage(Long lotId, String itemId, Double quantityUsed, Long testResultId, Long analysisId,
             String sysUserId);
 }

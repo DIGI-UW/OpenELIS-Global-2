@@ -8,7 +8,6 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
-import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +22,6 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
     private InventoryLotService inventoryLotService;
 
     @Autowired
-    private InventoryStorageLocationService storageLocationService;
-
-    @Autowired
     private InventoryTransactionService transactionService;
 
     @Autowired
@@ -33,7 +29,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Override
     @Transactional
-    public List<ConsumptionRecord> consumeInventoryFEFO(Long itemId, Double quantityNeeded, Long testResultId,
+    public List<ConsumptionRecord> consumeInventoryFEFO(String itemId, Double quantityNeeded, Long testResultId,
             Long analysisId, String sysUserId) {
 
         if (quantityNeeded <= 0) {
@@ -115,22 +111,12 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         }
 
         // Fetch managed InventoryItem entity to avoid transient instance error
-        Long itemId = lotData.getInventoryItem().getId();
+        String itemId = lotData.getInventoryItem().getId();
         InventoryItem managedItem = inventoryItemService.get(itemId);
         if (managedItem == null) {
             throw new IllegalArgumentException("Inventory item not found: " + itemId);
         }
         lotData.setInventoryItem(managedItem);
-
-        // Fetch managed StorageLocation entity if provided
-        if (lotData.getStorageLocation() != null && lotData.getStorageLocation().getId() != null) {
-            Long locationId = lotData.getStorageLocation().getId();
-            InventoryStorageLocation managedLocation = storageLocationService.get(locationId);
-            if (managedLocation == null) {
-                throw new IllegalArgumentException("Storage location not found: " + locationId);
-            }
-            lotData.setStorageLocation(managedLocation);
-        }
 
         // Set initial values
         lotData.setSysUserId(sysUserId);
@@ -153,7 +139,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isSufficientInventoryAvailable(Long itemId, Double quantityNeeded) {
+    public boolean isSufficientInventoryAvailable(String itemId, Double quantityNeeded) {
         if (quantityNeeded <= 0) {
             return true;
         }

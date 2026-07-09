@@ -16,8 +16,8 @@ public interface InventoryManagementService {
      * @param sysUserId      The user performing the action
      * @return List of lots consumed with quantities
      */
-    List<ConsumptionRecord> consumeInventoryFEFO(Long itemId, Double quantityNeeded, Long testResultId, Long analysisId,
-            String sysUserId);
+    List<ConsumptionRecord> consumeInventoryFEFO(String itemId, Double quantityNeeded, Long testResultId,
+            Long analysisId, String sysUserId);
 
     /**
      * Receive new inventory (creates new lot and records transaction)
@@ -35,7 +35,7 @@ public interface InventoryManagementService {
      * @param quantityNeeded The quantity needed
      * @return true if sufficient inventory is available
      */
-    boolean isSufficientInventoryAvailable(Long itemId, Double quantityNeeded);
+    boolean isSufficientInventoryAvailable(String itemId, Double quantityNeeded);
 
     /**
      * Get inventory alerts (low stock, expiring soon, expired)

@@ -28,7 +28,7 @@ public class TestReagentLinkDAOImpl extends BaseDAOImpl<TestReagentLink, String>
 
     @Override
     @Transactional(readOnly = true)
-    public TestReagentLink getByTestIdAndReagentId(String testId, Long reagentId) {
+    public TestReagentLink getByTestIdAndReagentId(String testId, String reagentId) {
         String hql = "from TestReagentLink l where l.testId = :testId and l.reagentId = :reagentId";
         Query<TestReagentLink> query = entityManager.unwrap(Session.class).createQuery(hql, TestReagentLink.class);
         query.setParameter("testId", testId);

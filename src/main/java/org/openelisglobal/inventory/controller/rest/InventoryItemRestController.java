@@ -3,12 +3,13 @@ package org.openelisglobal.inventory.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
+import org.openelisglobal.inventory.service.InventoryItemTypeService;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,10 +32,20 @@ public class InventoryItemRestController extends BaseRestController {
     @Autowired
     private InventoryItemService inventoryItemService;
 
+    @Autowired
+    private InventoryItemTypeService inventoryItemTypeService;
+
+    /**
+     * Active item types, sorted for display — sourced from the admin-managed
+     * {@code inventory_item_type} table (OGC-658 Part A), not a hardcoded enum.
+     * Labels are resolved for the current request locale so the frontend no longer
+     * needs its own hardcoded label map.
+     */
     @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<ItemType>> getAllItemTypes() {
+    public ResponseEntity<List<ItemTypeOption>> getAllItemTypes() {
         try {
-            List<ItemType> types = inventoryItemService.getAllItemTypes();
+            List<ItemTypeOption> types = inventoryItemTypeService.getAllActiveOrderedBySortOrder().stream()
+                    .map(type -> new ItemTypeOption(type.getCode(), type.getLabel())).collect(Collectors.toList());
             return ResponseEntity.ok(types);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -67,7 +78,7 @@ public class InventoryItemRestController extends BaseRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<InventoryItem> getById(@PathVariable String id) {
         try {
-            InventoryItem item = inventoryItemService.get(Long.valueOf(id));
+            InventoryItem item = inventoryItemService.get(id);
             if (item == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -79,7 +90,7 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/type/{itemType}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getByType(@PathVariable ItemType itemType) {
+    public ResponseEntity<List<InventoryItem>> getByType(@PathVariable String itemType) {
         try {
             List<InventoryItem> items = inventoryItemService.getByItemType(itemType);
             return ResponseEntity.ok(items);
@@ -125,8 +136,8 @@ public class InventoryItemRestController extends BaseRestController {
     @GetMapping(value = "/{id}/stock", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<StockResponse> getTotalStock(@PathVariable String id) {
         try {
-            Double stock = inventoryItemService.getTotalCurrentStock(Long.valueOf(id));
-            boolean inStock = inventoryItemService.isInStock(Long.valueOf(id));
+            Double stock = inventoryItemService.getTotalCurrentStock(id);
+            boolean inStock = inventoryItemService.isInStock(id);
             return ResponseEntity.ok(new StockResponse(stock, inStock));
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -135,7 +146,7 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryItem> create(@Valid @RequestBody InventoryItem item, HttpServletRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody InventoryItem item, HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -146,19 +157,34 @@ public class InventoryItemRestController extends BaseRestController {
                 item.setFhirUuid(java.util.UUID.randomUUID());
             }
 
-            InventoryItem savedItem = inventoryItemService.save(item);
+            // OGC-658 Part C: always insert here, never inventoryItemService.save()'s
+            // insert-vs-update heuristic — that heuristic treats a non-blank id as
+            // "this is an update", which is wrong for create-with-explicit-code and
+            // would skip insert()'s code normalization/collision handling entirely.
+            String code = inventoryItemService.insert(item);
+            InventoryItem savedItem = inventoryItemService.get(code);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            // OGC-658 Part C (C8): malformed/duplicate codes surface as a clean 400
+            // rather than a generic 500 — see InventoryItemServiceImpl.insert().
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody(e.getMessage()));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
+    private java.util.Map<String, Object> errorBody(String message) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("message", message);
+        return body;
+    }
+
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<InventoryItem> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
             HttpServletRequest request) {
         try {
-            InventoryItem existingItem = inventoryItemService.get(Long.valueOf(id));
+            InventoryItem existingItem = inventoryItemService.get(id);
             if (existingItem == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -195,7 +221,7 @@ public class InventoryItemRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
-            inventoryItemService.deactivateItem(Long.valueOf(id), sysUserId);
+            inventoryItemService.deactivateItem(id, sysUserId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -209,7 +235,7 @@ public class InventoryItemRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
-            inventoryItemService.activateItem(Long.valueOf(id), sysUserId);
+            inventoryItemService.activateItem(id, sysUserId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -228,6 +254,18 @@ public class InventoryItemRestController extends BaseRestController {
             this.inStock = inStock;
         }
 
+    }
+
+    @Setter
+    @Getter
+    public static class ItemTypeOption {
+        private String code;
+        private String label;
+
+        public ItemTypeOption(String code, String label) {
+            this.code = code;
+            this.label = label;
+        }
     }
 
 }

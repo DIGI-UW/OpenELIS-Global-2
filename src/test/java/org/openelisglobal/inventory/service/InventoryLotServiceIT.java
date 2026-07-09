@@ -48,7 +48,7 @@ public class InventoryLotServiceIT extends BaseWebContextSensitiveTest {
     public void getAvailableLotsByItemFEFO_shouldReturnLotsInFEFOOrder() {
         // test-lot-2 expires 2025-06-30 (earlier)
         // test-lot-1 expires 2025-12-31 (later)
-        List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(1L);
+        List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO("1");
 
         assertNotNull("Lots should not be null", lots);
         assertEquals("Should have 2 active lots", 2, lots.size());
