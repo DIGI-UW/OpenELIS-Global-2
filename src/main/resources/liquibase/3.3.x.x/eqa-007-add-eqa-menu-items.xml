@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- ============================================================ -->
+  <!-- 1. Parent Menu Item: EQA (top-level, order 35)               -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-01" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add top-level EQA parent menu item</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="presentation_order" value="35"/>
+      <column name="element_id" value="menu_eqa"/>
+      <column name="display_key" value="banner.menu.eqa"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 2. Child Menu Item: Alerts (under EQA, order 1)              -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-02" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_alerts'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add Alerts menu item under EQA</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')"/>
+      <column name="presentation_order" value="1"/>
+      <column name="element_id" value="menu_alerts"/>
+      <column name="action_url" value="/Alerts"/>
+      <column name="display_key" value="banner.menu.alerts"/>
+      <column name="tool_tip_key" value="banner.menu.alerts.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 3. Child Menu Item: EQA Management (under EQA, order 2)      -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-03" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_management'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add EQA Management menu item under EQA</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')"/>
+      <column name="presentation_order" value="2"/>
+      <column name="element_id" value="menu_eqa_management"/>
+      <column name="action_url" value="/EQAManagement"/>
+      <column name="display_key" value="banner.menu.eqa.management"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.management.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 4. Child Menu Item: EQA Distribution (under EQA, order 3)    -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-04" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_distribution'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add EQA Distribution menu item under EQA</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')"/>
+      <column name="presentation_order" value="3"/>
+      <column name="element_id" value="menu_eqa_distribution"/>
+      <column name="action_url" value="/EQADistribution"/>
+      <column name="display_key" value="banner.menu.eqa.distribution"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.distribution.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 5. Localization: English + French for all menu items         -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-05" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.localization WHERE description = 'banner.menu.eqa'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add localization entries for EQA menu items</comment>
+    <sql>
+      INSERT INTO clinlims.localization (id, description, english, french, lastupdated)
+      VALUES
+      (nextval('localization_seq'), 'banner.menu.eqa', 'EQA', 'EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.tooltip', 'External Quality Assurance', 'Assurance qualité externe', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.alerts', 'Alerts', 'Alertes', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.alerts.tooltip', 'Alerts and quality assurance dashboard', 'Tableau de bord des alertes et assurance qualité', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.management', 'EQA Programs', 'Programmes EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.management.tooltip', 'Create and manage EQA programs', 'Créer et gérer les programmes EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.distribution', 'EQA Distributions', 'Distributions EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.distribution.tooltip', 'Create and manage EQA distributions', 'Créer et gérer les distributions EQE', CURRENT_TIMESTAMP);
+    </sql>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 6. System Module: EQAView (covers Alerts + EQA + QC APIs)    -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-06" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'EQAView'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add system module for EQA/QC feature</comment>
+    <insert tableName="system_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_seq"/>
+      <column name="name" value="EQAView"/>
+      <column name="description" value="EQA alerts, programs, distributions, QC management"/>
+      <column name="has_select_flag" value="Y"/>
+      <column name="has_add_flag" value="Y"/>
+      <column name="has_update_flag" value="Y"/>
+      <column name="has_delete_flag" value="N"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 7. System Module URLs: frontend + REST endpoints             -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-07" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'EQAView'
+      </sqlCheck>
+    </preConditions>
+    <comment>Register all EQA/QC URLs with the EQAView module</comment>
+
+    <!-- Frontend pages -->
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/Alerts"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/EQAManagement"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/EQADistribution"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+
+    <!-- REST endpoints -->
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/rest/alerts"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/rest/eqa"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/rest/qc"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 8. Role Assignments: Reception, Results, Global Administrator -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-08" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'EQAView'
+      </sqlCheck>
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'
+      </sqlCheck>
+    </preConditions>
+    <comment>Assign EQAView module to Reception role</comment>
+    <insert tableName="system_role_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_role_module_seq"/>
+      <column name="has_select" value="Y"/>
+      <column name="has_add" value="Y"/>
+      <column name="has_update" value="Y"/>
+      <column name="has_delete" value="N"/>
+      <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="eqa-007-09" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'EQAView'
+      </sqlCheck>
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Results'
+      </sqlCheck>
+    </preConditions>
+    <comment>Assign EQAView module to Results role</comment>
+    <insert tableName="system_role_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_role_module_seq"/>
+      <column name="has_select" value="Y"/>
+      <column name="has_add" value="Y"/>
+      <column name="has_update" value="Y"/>
+      <column name="has_delete" value="N"/>
+      <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Results')"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="eqa-007-10" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'EQAView'
+      </sqlCheck>
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'
+      </sqlCheck>
+    </preConditions>
+    <comment>Assign EQAView module to Global Administrator role</comment>
+    <insert tableName="system_role_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_role_module_seq"/>
+      <column name="has_select" value="Y"/>
+      <column name="has_add" value="Y"/>
+      <column name="has_update" value="Y"/>
+      <column name="has_delete" value="N"/>
+      <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 9. Update alert_type CHECK constraint to include EQA types   -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-11" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="alert"/>
+    </preConditions>
+    <comment>Update alert_type CHECK constraint to include EQA/QC alert types</comment>
+    <sql>
+      ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+      ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+      CHECK (alert_type IN (
+        'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+        'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED'
+      ));
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

@@ -1,5 +1,6 @@
 package org.openelisglobal.externalconnections.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -26,10 +27,13 @@ public abstract class ExternalConnectionAuthenticationData extends BaseObject<In
     @JoinColumn(name = "external_connection_id", referencedColumnName = "id")
     private ExternalConnection externalConnection;
 
+    @JsonIgnore
     public abstract AuthType getAuthenticationType();
 
+    @JsonIgnore
     public abstract boolean hasAuthenticationString();
 
+    @JsonIgnore
     public abstract String getAuthenticationString();
 
     public ExternalConnection getExternalConnection() {

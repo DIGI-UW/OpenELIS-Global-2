@@ -74,10 +74,10 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
         try {
             Analyte analyte = ta.getAnalyte();
 
-            String sql = "from Result r where r.analysis = :analysisId and r.analyte = :analyteId";
+            String sql = "from Result r where r.analysis.id = :analysisId and r.analyte.id = :analyteId";
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("analysisId", Integer.parseInt(analysis.getId()));
-            query.setParameter("analyteId", Integer.parseInt(analyte.getId()));
+            query.setParameter("analysisId", analysis.getId());
+            query.setParameter("analyteId", analyte.getId());
 
             results = query.list();
             Result thisResult;
@@ -104,9 +104,9 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
     public List<Result> getResultsByAnalysis(Analysis analysis) throws LIMSRuntimeException {
         try {
 
-            String sql = "from Result r where r.analysis = :analysisId order by r.id";
+            String sql = "from Result r where r.analysis.id = :analysisId order by r.id";
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("analysisId", Integer.parseInt(analysis.getId()));
+            query.setParameter("analysisId", analysis.getId());
 
             List<Result> results = query.list();
             return results;
@@ -128,9 +128,9 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
     public void getResultByTestResult(Result result, TestResult testResult) throws LIMSRuntimeException {
         List<Result> results;
         try {
-            String sql = "from Result r where r.testResult = :testResultId";
+            String sql = "from Result r where r.testResult.id = :testResultId";
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("testResultId", Integer.parseInt(testResult.getId()));
+            query.setParameter("testResultId", testResult.getId());
 
             results = query.list();
             Result thisResult;
@@ -245,14 +245,14 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
 
     @Override
     @Transactional(readOnly = true)
-    public Result getResultForAnalyteInAnalysisSet(String analyteId, List<Integer> analysisIDList)
+    public Result getResultForAnalyteInAnalysisSet(String analyteId, List<String> analysisIDList)
             throws LIMSRuntimeException {
 
         try {
 
-            String sql = "from Result r where r.analyte = :analyteId and r.analysis in (:analysisIdList)";
+            String sql = "from Result r where r.analyte.id = :analyteId and r.analysis.id in (:analysisIdList)";
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("analyteId", Integer.parseInt(analyteId));
+            query.setParameter("analyteId", analyteId);
             query.setParameterList("analysisIdList", analysisIDList);
 
             List<Result> results = query.list();
@@ -275,8 +275,8 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
             String sql = "from Result r where r.analyte.id = :analyteId and r.analysis.sampleItem.id ="
                     + " :sampleItemId";
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("analyteId", Integer.parseInt(analyteId));
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("analyteId", analyteId);
+            query.setParameter("sampleItemId", sampleItemId);
 
             List<Result> results = query.list();
 
@@ -292,11 +292,11 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
 
     @Override
     @Transactional(readOnly = true)
-    public List<Result> getResultsForAnalysisIdList(List<Integer> analysisIdList) throws LIMSRuntimeException {
+    public List<Result> getResultsForAnalysisIdList(List<String> analysisIdList) throws LIMSRuntimeException {
         if (analysisIdList.isEmpty()) {
             return null;
         }
-        String sql = "from Result r where r.analysis IN (:analysisList)";
+        String sql = "from Result r where r.analysis.id IN (:analysisList)";
 
         try {
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
@@ -319,8 +319,8 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
 
         try {
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("testId", Integer.valueOf(testId));
-            query.setParameter("sampleId", Integer.valueOf(sampleId));
+            query.setParameter("testId", testId);
+            query.setParameter("sampleId", sampleId);
 
             List<Result> resultList = query.list();
 
@@ -338,7 +338,7 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
 
         try {
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("sampleId", Integer.parseInt(sample.getId()));
+            query.setParameter("sampleId", sample.getId());
             List<Result> results = query.list();
             return results;
         } catch (HibernateException e) {
@@ -354,7 +354,7 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
 
         try {
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("parentId", Integer.parseInt(resultId));
+            query.setParameter("parentId", resultId);
             List<Result> results = query.list();
             return results;
         } catch (HibernateException e) {
@@ -373,7 +373,7 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
 
         try {
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("testId", Integer.valueOf(testId));
+            query.setParameter("testId", testId);
             query.setParameter("lowDate", startDate);
             query.setParameter("highDate", endDate);
 
@@ -394,7 +394,7 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
 
         try {
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("panelId", Integer.valueOf(panelId));
+            query.setParameter("panelId", panelId);
             query.setParameter("lowDate", lowDate);
             query.setParameter("highDate", highDate);
 
@@ -415,7 +415,7 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
 
         try {
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("testSectionId", Integer.valueOf(testSectionId));
+            query.setParameter("testSectionId", testSectionId);
             query.setParameter("lowDate", lowDate);
             query.setParameter("highDate", highDate);
 

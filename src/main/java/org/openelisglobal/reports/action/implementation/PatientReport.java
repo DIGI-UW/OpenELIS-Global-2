@@ -314,9 +314,8 @@ public abstract class PatientReport extends Report {
         }
 
         if (onlyResults) {
-            Set<Integer> analysisStatusIds = new HashSet<>();
-            analysisStatusIds.add(Integer
-                    .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
+            Set<String> analysisStatusIds = new HashSet<>();
+            analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
             sampleList = sampleList.stream().filter(
                     e -> (analysisService.getAnalysesBySampleIdAndStatusId(e.getId(), analysisStatusIds).size() > 0))
                     .collect(Collectors.toList());

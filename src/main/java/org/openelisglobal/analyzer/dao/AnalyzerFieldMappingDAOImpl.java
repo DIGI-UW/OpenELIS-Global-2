@@ -16,8 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * Uses HQL queries with relationship navigation (e.g., afm.analyzer.id).
  * Relationships use JPA @ManyToOne annotations. Analyzer.id uses
- * LIMSStringNumberUserType (String in Java, INTEGER in DB), so we convert
- * String to Integer for parameter binding.
+ * LIMSStringNumberUserType (String in Java, INTEGER in DB), so HQL parameters
+ * must be passed as String to match the Java-side type.
  */
 @Component
 @Transactional
@@ -46,22 +46,14 @@ public class AnalyzerFieldMappingDAOImpl extends BaseDAOImpl<AnalyzerFieldMappin
     @Transactional(readOnly = true)
     public List<AnalyzerFieldMapping> findActiveMappingsByAnalyzerId(String analyzerId) {
         try {
-            // Convert String analyzerId to Integer for HQL parameter binding
-            // Analyzer.id uses LIMSStringNumberUserType: Java String, DB INTEGER
-            Integer analyzerIdInt;
-            try {
-                analyzerIdInt = Integer.parseInt(analyzerId);
-            } catch (NumberFormatException e) {
-                throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
-            }
-
             LogEvent.logDebug(this.getClass().getSimpleName(), "findActiveMappingsByAnalyzerId",
-                    "Querying with analyzerId=" + analyzerId + ", analyzerIdInt=" + analyzerIdInt);
+                    "Querying with analyzerId=" + analyzerId);
 
+            // Analyzer.id is String in Java (LIMSStringNumberUserType), so pass String
             String hql = "SELECT afm FROM AnalyzerFieldMapping afm LEFT JOIN FETCH afm.analyzerField WHERE afm.analyzer.id = :analyzerId AND afm.isActive = true";
             Query<AnalyzerFieldMapping> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerFieldMapping.class);
-            query.setParameter("analyzerId", analyzerIdInt); // Pass Integer, not String
+            query.setParameter("analyzerId", analyzerId);
             List<AnalyzerFieldMapping> results = query.list();
 
             LogEvent.logDebug(this.getClass().getSimpleName(), "findActiveMappingsByAnalyzerId",
@@ -82,19 +74,11 @@ public class AnalyzerFieldMappingDAOImpl extends BaseDAOImpl<AnalyzerFieldMappin
                 throw new LIMSRuntimeException("Analyzer ID cannot be null or empty");
             }
 
-            // Convert String analyzerId to Integer for HQL parameter binding
-            // Analyzer.id uses LIMSStringNumberUserType: Java String, DB INTEGER
-            Integer analyzerIdInt;
-            try {
-                analyzerIdInt = Integer.parseInt(analyzerId);
-            } catch (NumberFormatException e) {
-                throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
-            }
-
+            // Analyzer.id is String in Java (LIMSStringNumberUserType), so pass String
             String hql = "SELECT afm FROM AnalyzerFieldMapping afm LEFT JOIN FETCH afm.analyzerField WHERE afm.analyzer.id = :analyzerId";
             Query<AnalyzerFieldMapping> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerFieldMapping.class);
-            query.setParameter("analyzerId", analyzerIdInt); // Pass Integer, not String
+            query.setParameter("analyzerId", analyzerId);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding AnalyzerFieldMapping by analyzer ID", e);

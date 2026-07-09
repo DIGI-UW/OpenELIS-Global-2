@@ -8,6 +8,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -20,6 +22,9 @@ public class SampleItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     SampleItemService sampleItemService;
+
+    @Autowired
+    SampleService sampleService;
 
     @Before
     public void init() throws Exception {
@@ -100,12 +105,23 @@ public class SampleItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSampleItemsBySampleIdAndStatus_shouldReturnSampleItemsBySampleIdAndStatus() {
-        Set<Integer> includedStatusList = new HashSet<>();
-        includedStatusList.add(3);
+        Set<String> includedStatusList = new HashSet<>();
+        includedStatusList.add("3");
 
         List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleIdAndStatus("3", includedStatusList);
 
         Assert.assertEquals(1, sampleItems.size());
         Assert.assertEquals("plasma", sampleItems.get(0).getTypeOfSample().getDescription());
+    }
+
+    @Test
+    public void getDataBySample_shouldPopulateSampleItemFromSample() {
+        Sample sample = sampleService.get("1");
+        SampleItem item = new SampleItem();
+        item.setSample(sample);
+        sampleItemService.getDataBySample(item);
+
+        Assert.assertNotNull(item.getId());
+        Assert.assertEquals("1", item.getSortOrder());
     }
 }

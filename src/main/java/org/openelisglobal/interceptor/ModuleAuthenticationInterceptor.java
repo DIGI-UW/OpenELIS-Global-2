@@ -105,6 +105,10 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             sysModsByUrl = filterParamMatches(request, sysModsByUrl);
         }
         if (sysModsByUrl.isEmpty() && REQUIRE_MODULE) {
+            // SECURITY NOTE: REST endpoints without SystemModuleUrl DB entries are
+            // auto-allowed for any authenticated user. Admin-only controllers are
+            // protected via @PreAuthorize("hasRole('ADMIN')") (added in PR #2794).
+            // Full per-role module mappings are a future enhancement.
             if (isRestFullPath()) {
                 return true;
             }
@@ -163,7 +167,8 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     }
 
     private boolean isRestFullPath() {
-        if (path.startsWith("/rest") || path.startsWith("/Provider")) {
+        if (path.startsWith("/rest") || path.startsWith("/Provider") || path.startsWith("/dbImage")
+                || path.startsWith("/logging")) {
             return true;
         }
         return false;

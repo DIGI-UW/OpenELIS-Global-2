@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- EQA Program Table -->
+    <changeSet id="eqa-001-create-eqa-program-table" author="eqa-module-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="eqa_program"/>
+            </not>
+        </preConditions>
+        <createTable tableName="eqa_program">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createSequence sequenceName="eqa_program_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="eqa_program_seq"/>
+            <dropTable tableName="eqa_program"/>
+        </rollback>
+    </changeSet>
+
+    <!-- EQA Program Test Junction Table -->
+    <changeSet id="eqa-002-create-eqa-program-test-table" author="eqa-module-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="eqa_program_test"/>
+            </not>
+        </preConditions>
+        <createTable tableName="eqa_program_test">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="eqa_program_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_eqa_program_test_program"
+                    references="eqa_program(id)"/>
+            </column>
+            <column name="test_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_eqa_program_test_test"
+                    references="test(id)"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="eqa_program_test"
+            columnNames="eqa_program_id, test_id"
+            constraintName="uk_eqa_program_test"/>
+        <createSequence sequenceName="eqa_program_test_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="eqa_program_test_seq"/>
+            <dropTable tableName="eqa_program_test"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

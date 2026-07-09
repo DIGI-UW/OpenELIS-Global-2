@@ -35,9 +35,23 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
 
     List<ReflexRule> getAllReflexRules();
 
-    void deactivateReflexRule(String id);
+    /**
+     * Flip the rule's Active flag to {@code false}. Returns {@code true} when a
+     * rule with the given id existed and was updated; {@code false} when no such
+     * rule was found.
+     */
+    boolean deactivateReflexRule(String id);
+
+    /**
+     * Flip the rule's Active flag to {@code true}. Returns {@code true} when a rule
+     * with the given id existed and was updated; {@code false} when no such rule
+     * was found.
+     */
+    boolean activateReflexRule(String id);
 
     ReflexRule getReflexRuleByAnalyteId(String analyteId);
 
     List<TestReflex> getTestReflexsByTestAnalyteId(String testAnalyteId);
+
+    List<TestReflex> getTestReflexsByTestId(String testId);
 }

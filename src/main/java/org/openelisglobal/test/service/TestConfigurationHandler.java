@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.common.log.LogEvent;
@@ -25,6 +26,7 @@ import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Handler for loading test configuration files. Supports CSV format for
@@ -97,6 +99,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
     }
 
     @Override
+    @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
@@ -284,7 +287,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
                                                                                            // TestServiceImpl
                 // Use normalized matching to find existing tests that should be overridden
                 // (e.g., "Stat-Pak(Plasma)" matches "Stat PaK(Plasma)")
-                Test existingTest = testService.getTestByNormalizedDescription(testNameWithSampleType);
+                Test existingTest = findExistingTest(testNameWithSampleType, values, localizationColumns);
 
                 Test test;
                 if (existingTest != null) {
@@ -309,7 +312,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
             return lastCreatedTest;
         } else {
-            Test existingTest = testService.getTestByNormalizedDescription(baseTestName);
+            Test existingTest = findExistingTest(baseTestName, values, localizationColumns);
 
             Test test;
             if (existingTest != null) {
@@ -326,6 +329,23 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
             return test;
         }
+    }
+
+    private Test findExistingTest(String testName, String[] values, Map<String, Integer> localizationColumns) {
+        Test existingTest = testService.getTestByNormalizedDescription(testName);
+        if (existingTest == null) {
+            for (Map.Entry<String, Integer> entry : localizationColumns.entrySet()) {
+                String translationValue = getValueOrEmpty(values, entry.getValue());
+                if (!translationValue.isEmpty()) {
+                    existingTest = testService.getTestByLocalizedName(translationValue,
+                            Locale.forLanguageTag(entry.getKey()));
+                    if (existingTest != null) {
+                        break;
+                    }
+                }
+            }
+        }
+        return existingTest;
     }
 
     private String getValueOrEmpty(String[] values, int index) {

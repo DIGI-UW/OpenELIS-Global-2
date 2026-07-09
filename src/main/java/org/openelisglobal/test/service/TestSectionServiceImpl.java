@@ -48,6 +48,7 @@ public class TestSectionServiceImpl extends AuditableBaseObjectServiceImpl<TestS
 
     public TestSectionServiceImpl() {
         super(TestSection.class);
+        this.auditTrailLog = true;
     }
 
     @Override

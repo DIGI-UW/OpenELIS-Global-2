@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to run CI checks locally before pushing
-# This replicates the GitHub Actions CI workflow (.github/workflows/ci.yml)
+# This replicates the GitHub Actions CI workflow (.github/workflows/backend.yml)
 #
 # Usage:
 #   ./scripts/run-ci-checks.sh          # Run all checks

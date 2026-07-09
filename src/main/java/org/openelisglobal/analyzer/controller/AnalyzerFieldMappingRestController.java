@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/analyzer")
+@PreAuthorize("hasRole('ADMIN')")
 public class AnalyzerFieldMappingRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyzerFieldMappingRestController.class);
@@ -120,46 +122,7 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateMapping(@PathVariable String analyzerId,
             @PathVariable String mappingId, @Valid @RequestBody AnalyzerFieldMappingForm form) {
         try {
-            if (!analyzerFieldMappingService.verifyMappingBelongsToAnalyzer(mappingId, analyzerId)) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Mapping does not belong to analyzer: " + analyzerId);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-
-            AnalyzerFieldMapping mapping;
-            try {
-                mapping = analyzerFieldMappingService.get(mappingId);
-            } catch (org.hibernate.ObjectNotFoundException e) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Mapping not found: " + mappingId);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-            }
-
-            if (form.getOpenelisFieldId() != null) {
-                mapping.setOpenelisFieldId(form.getOpenelisFieldId());
-            }
-            if (form.getOpenelisFieldType() != null) {
-                mapping.setOpenelisFieldType(form.getOpenelisFieldType());
-            }
-            if (form.getMappingType() != null) {
-                mapping.setMappingType(form.getMappingType());
-            }
-            if (form.getIsRequired() != null) {
-                mapping.setIsRequired(form.getIsRequired());
-            }
-            if (form.getIsActive() != null) {
-                mapping.setIsActive(form.getIsActive());
-            }
-            if (form.getSpecimenTypeConstraint() != null) {
-                mapping.setSpecimenTypeConstraint(form.getSpecimenTypeConstraint());
-            }
-            if (form.getPanelConstraint() != null) {
-                mapping.setPanelConstraint(form.getPanelConstraint());
-            }
-
-            analyzerFieldMappingService.update(mapping);
-
-            Map<String, Object> response = analyzerFieldMappingService.getMappingWithCompleteData(mappingId);
+            Map<String, Object> response = analyzerFieldMappingService.updatePartial(analyzerId, mappingId, form);
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error updating mapping: {}", e.getMessage(), e);

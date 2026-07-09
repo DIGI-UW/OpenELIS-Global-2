@@ -226,6 +226,9 @@ public class TestResultItem implements ResultItem, Serializable {
     private String forceTechApproval;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    private String forceTechApprovalNote;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String reflexJSONResult;
 
     private boolean rejected = false;
@@ -239,6 +242,9 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean refer;
 
     private String defaultResultValue;
+
+    private boolean isEqaSample = false;
+    private String eqaPriority;
 
     private ReferralItem referralItem;
     private ResultFileForm resultFile;
@@ -883,6 +889,22 @@ public class TestResultItem implements ResultItem, Serializable {
         this.nonconforming = nonconforming;
     }
 
+    public boolean isEqaSample() {
+        return isEqaSample;
+    }
+
+    public void setEqaSample(boolean eqaSample) {
+        this.isEqaSample = eqaSample;
+    }
+
+    public String getEqaPriority() {
+        return eqaPriority;
+    }
+
+    public void setEqaPriority(String eqaPriority) {
+        this.eqaPriority = eqaPriority;
+    }
+
     public String getQualifiedDictionaryId() {
         return qualifiedDictionaryId;
     }
@@ -929,6 +951,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setForceTechApproval(String forceTechApproval) {
         this.forceTechApproval = forceTechApproval;
+    }
+
+    public String getForceTechApprovalNote() {
+        return forceTechApprovalNote;
+    }
+
+    public void setForceTechApprovalNote(String forceTechApprovalNote) {
+        this.forceTechApprovalNote = forceTechApprovalNote;
     }
 
     public String getReflexJSONResult() {

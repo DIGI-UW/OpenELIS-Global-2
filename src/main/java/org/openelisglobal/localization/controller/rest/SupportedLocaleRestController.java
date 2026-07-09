@@ -115,8 +115,7 @@ public class SupportedLocaleRestController extends BaseController {
 
             SupportedLocale locale = fromDTO(dto);
             locale.setSysUserId(getSysUserId(request));
-            String id = supportedLocaleService.insert(locale);
-            locale.setId(id);
+            supportedLocaleService.insert(locale);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "createLocale",
                     "Created new supported locale: " + dto.getLocaleCode());

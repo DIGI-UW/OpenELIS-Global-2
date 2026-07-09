@@ -32,7 +32,6 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
-import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
@@ -146,18 +145,67 @@ public class PluginAnalyzerService {
             return null;
         }
 
+        // Find or create an Analyzer row for this legacy plugin.
+        // Each legacy plugin IS a specific analyzer config (OGC-492).
+        String analyzerId = findOrCreateAnalyzerForType(name, analyzerTypeId);
+        if (analyzerId == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "addAnalyzerDatabaseParts",
+                    "Could not find or create Analyzer for plugin '" + name + "' — test mappings not persisted");
+            return null;
+        }
+
         List<AnalyzerTestMapping> testMappings = createTestMappings(nameMappings);
         if (!testMappings.isEmpty() && existingMappings == null) {
             existingMappings = analyzerMappingService.getAll();
         }
 
         try {
-            analyzerService.persistTestMappings(analyzerTypeId, testMappings, existingMappings);
-            AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(name, analyzerTypeId);
+            analyzerService.persistTestMappings(analyzerId, testMappings, existingMappings);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
         }
         return analyzerTypeId;
+    }
+
+    /**
+     * Find an existing Analyzer for this type, or create one. Legacy plugins
+     * represent a single analyzer config — they need an Analyzer row to own their
+     * test mappings (OGC-492).
+     */
+    private String findOrCreateAnalyzerForType(String pluginName, String analyzerTypeId) {
+        try {
+            // Check if an Analyzer already exists for this type
+            AnalyzerType type = analyzerTypeService.get(analyzerTypeId);
+            if (type == null) {
+                return null;
+            }
+
+            // Try to find existing analyzer by name (legacy analyzers use type name)
+            Optional<org.openelisglobal.analyzer.valueholder.Analyzer> existing = analyzerService.getByName(pluginName);
+            if (existing.isEmpty()) {
+                // Also try the derived type name (PluginRegistryService may use a different
+                // name)
+                existing = analyzerService.getByName(type.getName());
+            }
+            if (existing.isPresent()) {
+                return existing.get().getId();
+            }
+
+            // Create a new Analyzer row for this legacy plugin
+            org.openelisglobal.analyzer.valueholder.Analyzer analyzer = new org.openelisglobal.analyzer.valueholder.Analyzer();
+            analyzer.setName(type.getName());
+            analyzer.setAnalyzerType(type);
+            analyzer.setActive(true);
+            analyzer.setSysUserId("1");
+            String id = analyzerService.insert(analyzer);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "findOrCreateAnalyzerForType",
+                    "Created Analyzer '" + type.getName() + "' (id=" + id + ") for legacy plugin '" + pluginName + "'");
+            return id;
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "findOrCreateAnalyzerForType",
+                    "Failed to find/create Analyzer for plugin '" + pluginName + "': " + e.getMessage());
+            return null;
+        }
     }
 
     /**

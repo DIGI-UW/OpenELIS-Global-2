@@ -60,22 +60,22 @@
     <provider id="2" person_id="5" provider_type="D"
         lastupdated="2023-11-01 12:00:00" />
     <provider id="3" person_id="6" provider_type="C"
-        lastdupated="2023-11-01 12:00:00" />
+        lastupdated="2023-11-01 12:00:00" />
 
     <sample id="1" accession_number="12345"
         received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
-        collection_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0" status="1" domain="H"
         lastupdated="2023-11-01 12:00:00" />
     <sample id="2" accession_number="13333"
         received_date="2024-06-04 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
-        collection_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0" status="1" domain="H"
         lastupdated="2023-11-01 12:00:00" />
     <sample id="3" accession_number="52541"
         received_date="2024-06-05 00:00:00.0"
         entered_date="2024-06-05 00:00:00.0"
-        collection_date="2024-06-05 00:00:00.0"
+        collection_date="2024-06-05 00:00:00.0" status="2" domain="H"
         lastupdated="2023-11-01 12:00:00" />
 
     <sample_human id="1" provider_id="1" samp_id="1"

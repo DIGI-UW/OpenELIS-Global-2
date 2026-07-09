@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Unify analyzer transport config: add FILE columns to analyzer table.
+
+      FILE config was stored in a separate file_import_configuration table.
+      TCP config (ipAddress, port) is on the analyzer table. This mismatch
+      caused the bridge bootstrap pull to miss FILE analyzers entirely.
+
+      This migration adds FILE columns to the analyzer table and migrates
+      existing data. The file_import_configuration table is kept for now
+      but will be deprecated.
+    -->
+
+    <changeSet id="013-007-01-add-file-columns-to-analyzer" author="ogc-492">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer" columnName="import_directory"/>
+            </not>
+        </preConditions>
+        <comment>Add FILE transport columns to analyzer table for unified config</comment>
+        <addColumn tableName="analyzer">
+            <column name="import_directory" type="VARCHAR(500)"/>
+            <column name="file_pattern" type="VARCHAR(100)"/>
+            <column name="column_mappings_json" type="TEXT"/>
+            <column name="file_format" type="VARCHAR(30)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="013-007-02-migrate-file-config-to-analyzer" author="ogc-492">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="analyzer" columnName="import_directory"/>
+            <tableExists tableName="file_import_configuration"/>
+        </preConditions>
+        <comment>Migrate FILE config from file_import_configuration to analyzer table</comment>
+        <sql>
+            UPDATE analyzer a
+            SET import_directory = fic.import_directory,
+                file_pattern = fic.file_pattern,
+                column_mappings_json = fic.column_mappings,
+                file_format = fic.file_format
+            FROM file_import_configuration fic
+            WHERE fic.analyzer_id = a.id;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

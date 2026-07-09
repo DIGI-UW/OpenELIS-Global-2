@@ -7,6 +7,8 @@
 
     <!-- Sample Storage Assignment Table (Flexible Assignment Model) -->
     <changeSet id="storage-006-create-sample-storage-assignment-table" author="sample-storage-feature">
+        <validCheckSum>8:23288ac36cc8862ec52428c1e844a7c2</validCheckSum>
+        <validCheckSum>8:9d05839bb5a3e1655037be7d29a4be58</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="sample_storage_assignment"/>
@@ -54,6 +56,8 @@
 
     <!-- Sample Storage Movement Table (Flexible Assignment Model) -->
     <changeSet id="storage-007-create-sample-storage-movement-table" author="sample-storage-feature">
+        <validCheckSum>8:edde8ef8725b4f543ee57b16069774ea</validCheckSum>
+        <validCheckSum>8:7443ac240d454c3a32b2bcba2d594b4e</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="sample_storage_movement"/>

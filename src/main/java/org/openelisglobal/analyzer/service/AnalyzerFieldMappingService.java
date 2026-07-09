@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.analyzer.form.AnalyzerFieldMappingForm;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.service.BaseObjectService;
 
@@ -156,6 +157,19 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      *                              or if activation fails for any mapping
      */
     int bulkActivateMappings(String analyzerId, List<String> mappingIds, boolean confirmed);
+
+    /**
+     * Partially update a mapping with only non-null form fields. Verifies
+     * ownership, loads existing mapping, applies non-null fields, and persists.
+     *
+     * @param analyzerId The analyzer ID that owns the mapping
+     * @param mappingId  The mapping ID to update
+     * @param form       The form with partial update data (null fields are skipped)
+     * @return Map containing complete mapping data after update
+     * @throws LIMSRuntimeException if mapping not found or doesn't belong to
+     *                              analyzer
+     */
+    Map<String, Object> updatePartial(String analyzerId, String mappingId, AnalyzerFieldMappingForm form);
 
     /**
      * Validate activation requirements for an analyzer

@@ -87,7 +87,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
         List<AnalyzerTestMapping> mappings = analyzerTestMappingService.getAll();
         boolean found = false;
         for (AnalyzerTestMapping m : mappings) {
-            if ("901".equals(m.getAnalyzerTypeId()) && m.getAnalyzerTestName().equals("New Test")
+            if (savedAnalyzer.getId().equals(m.getAnalyzerId()) && m.getAnalyzerTestName().equals("New Test")
                     && m.getTestId().equals("101")) {
                 found = true;
                 break;
@@ -100,6 +100,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     public void persistData_shouldUpdateExistingAnalyzerAndAddNewMappings() {
         Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(existingAnalyzer);
+        existingAnalyzer.setSysUserId("1");
 
         String originalLocation = existingAnalyzer.getLocation();
         existingAnalyzer.setLocation("Updated Location");
@@ -120,9 +121,8 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
 
         List<AnalyzerTestMapping> mappings = analyzerTestMappingService.getAll();
         boolean found = false;
-        String typeId = existingAnalyzer.getAnalyzerType() != null ? existingAnalyzer.getAnalyzerType().getId() : null;
         for (AnalyzerTestMapping m : mappings) {
-            if (typeId != null && typeId.equals(m.getAnalyzerTypeId()) && m.getAnalyzerTestName().equals("Updated Test")
+            if (existingAnalyzer.getId().equals(m.getAnalyzerId()) && m.getAnalyzerTestName().equals("Updated Test")
                     && m.getTestId().equals("103")) {
                 found = true;
                 break;
@@ -135,13 +135,13 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     public void persistData_shouldNotDuplicateExistingMappings() {
         Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(existingAnalyzer);
+        existingAnalyzer.setSysUserId("1");
 
         List<AnalyzerTestMapping> newMappings = new ArrayList<>();
         AnalyzerTestMapping mapping = new AnalyzerTestMapping();
         mapping.setAnalyzerTestName("Glucose Test");
         mapping.setTestId("101");
-        mapping.setAnalyzerTypeId(
-                existingAnalyzer.getAnalyzerType() != null ? existingAnalyzer.getAnalyzerType().getId() : null);
+        mapping.setAnalyzerId(existingAnalyzer.getId());
         newMappings.add(mapping);
 
         List<AnalyzerTestMapping> existingMappings = new ArrayList<>();

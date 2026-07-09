@@ -10,6 +10,8 @@
     <!-- ======================================================== -->
     <property name="now" value="now()" dbms="postgresql"/>
     <changeSet id="create-notebook-table" author="mozzymutesa">
+        <validCheckSum>8:1812663bbbd2fca80b0763029aeb0b78</validCheckSum>
+        <validCheckSum>8:1cc6f422572387ef97e769b71e16f023</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="notebook" schemaName="clinlims" />
@@ -50,6 +52,8 @@
     <!-- NOTEBOOK_PAGE TABLE -->
     <!-- ======================================================== -->
     <changeSet id="create-notebook-page-table" author="mozzymutesa">
+        <validCheckSum>8:e90264e9de028b410119e3eda72e0092</validCheckSum>
+        <validCheckSum>8:b8ed6d367fe01ef6ded4be7ce1b3aafe</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="notebook_page" schemaName="clinlims" />
@@ -261,6 +265,8 @@
         </createTable>
     </changeSet>
     <changeSet author="mozzymutesa" id="create-notebook-menu-option">
+        <validCheckSum>8:9fa233d7f2876c8e103e98e2170598a7</validCheckSum>
+        <validCheckSum>8:3562d83cf477b2b8884e556eb322d5e7</validCheckSum>
         <preConditions>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_notebook'

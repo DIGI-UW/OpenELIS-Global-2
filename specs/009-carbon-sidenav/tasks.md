@@ -70,8 +70,9 @@ persistence
 > - After implementation, tests MUST pass (Green phase)
 > - PR will NOT be approved if tests were written after implementation
 >
-> Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
-> Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+> Reference:
+> [Vitest Best Practices](../../.specify/guides/vitest-best-practices.md)
+> Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
 
 - [x] T002 [P] [M1] **[RED]** Create test file for useSideNavPreference hook in
       `frontend/src/components/layout/useSideNavPreference.test.js` → Run
@@ -166,8 +167,9 @@ auto-expand works
 > **CRITICAL: Write these tests FIRST, run them, and verify they FAIL (Red
 > phase)**
 >
-> Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
-> Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+> Reference:
+> [Vitest Best Practices](../../.specify/guides/vitest-best-practices.md)
+> Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
 
 - [x] T021 [P] [M2a] **[RED]** Create test for menu rendering in
       `frontend/src/components/layout/TwoModeLayout.test.js` (add to existing) →
@@ -279,7 +281,8 @@ instead of replacing it.
 > **CRITICAL: Integration tests that catch REAL issues (infinite loops, missing
 > nav)**
 >
-> Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
+> Reference:
+> [Vitest Best Practices](../../.specify/guides/vitest-best-practices.md)
 
 - [x] T061 [P] [M2b] **[RED]** Update Layout.integration.test.js to verify
       Header.js enhancement → Run `npm test`, verify current state ✅ 5/5 tests
@@ -441,7 +444,7 @@ complete.
 ### Additional M3 Work (Completed 2026-01-27)
 
 - [x] T099 [M3] Add Playwright CI workflow:
-      `.github/workflows/playwright-e2e.yml`
+      `.github/workflows/e2e-playwright.yml`
 - [x] T100 [M3] Add storage subnav structure (FR-014): Liquibase migration +
       translations
 - [x] T101 [M3] Add Playwright best practices documentation

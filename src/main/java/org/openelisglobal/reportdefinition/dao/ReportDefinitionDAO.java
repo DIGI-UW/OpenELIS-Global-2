@@ -56,4 +56,12 @@ public interface ReportDefinitionDAO extends BaseDAO<ReportDefinition, String> {
      * @return list of report definitions created by the user
      */
     List<ReportDefinition> getByCreatedBy(String userId);
+
+    /**
+     * Get the first active report definition for the given report type.
+     *
+     * @param reportType report type (e.g. PATIENT, SAMPLE)
+     * @return the active report definition, or null if none found
+     */
+    ReportDefinition getActiveByReportType(String reportType);
 }

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- EQA Distribution Table -->
+    <changeSet id="eqa-003-create-eqa-distribution-table" author="eqa-module-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="eqa_distribution"/>
+            </not>
+        </preConditions>
+        <createTable tableName="eqa_distribution">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="eqa_program_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_eqa_dist_program"
+                    references="eqa_program(id)"/>
+            </column>
+            <column name="distribution_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="distribution_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deadline" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_eqa_dist_created_by"
+                    references="system_user(id)"/>
+            </column>
+            <column name="target_value" type="DECIMAL(15,5)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="eqa_distribution" indexName="idx_eqa_dist_program">
+            <column name="eqa_program_id"/>
+        </createIndex>
+        <createIndex tableName="eqa_distribution" indexName="idx_eqa_dist_status">
+            <column name="status"/>
+        </createIndex>
+        <createSequence sequenceName="eqa_distribution_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="eqa_distribution_seq"/>
+            <dropTable tableName="eqa_distribution"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

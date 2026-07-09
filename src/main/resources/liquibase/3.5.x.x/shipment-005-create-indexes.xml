@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Indexes for shipping_box table -->
+    <changeSet id="shipment-005-idx-shipping-box-state" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_shipping_box_state" tableName="shipping_box"/></not>
+        </preConditions>
+        <createIndex indexName="idx_shipping_box_state" tableName="shipping_box">
+            <column name="state"/>
+        </createIndex>
+        <rollback><dropIndex tableName="shipping_box" indexName="idx_shipping_box_state"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-shipping-box-destination" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_shipping_box_destination" tableName="shipping_box"/></not>
+        </preConditions>
+        <createIndex indexName="idx_shipping_box_destination" tableName="shipping_box">
+            <column name="destination_facility_id"/>
+        </createIndex>
+        <rollback><dropIndex tableName="shipping_box" indexName="idx_shipping_box_destination"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-shipping-box-created-date" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_shipping_box_created_date" tableName="shipping_box"/></not>
+        </preConditions>
+        <createIndex indexName="idx_shipping_box_created_date" tableName="shipping_box">
+            <column name="created_date"/>
+        </createIndex>
+        <rollback><dropIndex tableName="shipping_box" indexName="idx_shipping_box_created_date"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-shipping-box-fhir-uuid" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_shipping_box_fhir_uuid" tableName="shipping_box"/></not>
+        </preConditions>
+        <createIndex indexName="idx_shipping_box_fhir_uuid" tableName="shipping_box">
+            <column name="fhir_uuid"/>
+        </createIndex>
+        <rollback><dropIndex tableName="shipping_box" indexName="idx_shipping_box_fhir_uuid"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-shipping-box-archived" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_shipping_box_archived" tableName="shipping_box"/></not>
+        </preConditions>
+        <createIndex indexName="idx_shipping_box_archived" tableName="shipping_box">
+            <column name="archived"/>
+        </createIndex>
+        <rollback><dropIndex tableName="shipping_box" indexName="idx_shipping_box_archived"/></rollback>
+    </changeSet>
+
+    <!-- Indexes for shipment table -->
+    <changeSet id="shipment-005-idx-shipment-box-id" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_shipment_box_id" tableName="shipment"/></not>
+        </preConditions>
+        <createIndex indexName="idx_shipment_box_id" tableName="shipment">
+            <column name="shipping_box_id"/>
+        </createIndex>
+        <rollback><dropIndex tableName="shipment" indexName="idx_shipment_box_id"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-shipment-status" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_shipment_status" tableName="shipment"/></not>
+        </preConditions>
+        <createIndex indexName="idx_shipment_status" tableName="shipment">
+            <column name="status"/>
+        </createIndex>
+        <rollback><dropIndex tableName="shipment" indexName="idx_shipment_status"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-shipment-tracking" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_shipment_tracking" tableName="shipment"/></not>
+        </preConditions>
+        <createIndex indexName="idx_shipment_tracking" tableName="shipment">
+            <column name="tracking_number"/>
+        </createIndex>
+        <rollback><dropIndex tableName="shipment" indexName="idx_shipment_tracking"/></rollback>
+    </changeSet>
+
+    <!-- Indexes for box_sample table -->
+    <changeSet id="shipment-005-idx-box-sample-box-id" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_box_sample_box_id" tableName="box_sample"/></not>
+        </preConditions>
+        <createIndex indexName="idx_box_sample_box_id" tableName="box_sample">
+            <column name="shipping_box_id"/>
+        </createIndex>
+        <rollback><dropIndex tableName="box_sample" indexName="idx_box_sample_box_id"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-box-sample-sample-id" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_box_sample_sample_id" tableName="box_sample"/></not>
+        </preConditions>
+        <createIndex indexName="idx_box_sample_sample_id" tableName="box_sample">
+            <column name="sample_id"/>
+        </createIndex>
+        <rollback><dropIndex tableName="box_sample" indexName="idx_box_sample_sample_id"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-box-sample-reception-status" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_box_sample_reception_status" tableName="box_sample"/></not>
+        </preConditions>
+        <createIndex indexName="idx_box_sample_reception_status" tableName="box_sample">
+            <column name="reception_status"/>
+        </createIndex>
+        <rollback><dropIndex tableName="box_sample" indexName="idx_box_sample_reception_status"/></rollback>
+    </changeSet>
+
+    <changeSet id="shipment-005-idx-box-sample-composite" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_box_sample_composite" tableName="box_sample"/></not>
+        </preConditions>
+        <createIndex indexName="idx_box_sample_composite" tableName="box_sample" unique="true">
+            <column name="shipping_box_id"/>
+            <column name="sample_id"/>
+        </createIndex>
+        <rollback><dropIndex tableName="box_sample" indexName="idx_box_sample_composite"/></rollback>
+    </changeSet>
+
+</databaseChangeLog>

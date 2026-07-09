@@ -35,7 +35,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void delete_shouldDeleteDictionary() {
         Dictionary dictionaryToDelete = dictionaryService.get("1");
-        dictionaryToDelete.setSysUserId("admin");
+        dictionaryToDelete.setSysUserId("1");
 
         assertNotNull(dictionaryToDelete);
 
@@ -145,6 +145,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateDictionary() {
         Dictionary dictionaryToUpdate = dictionaryService.get("1");
         dictionaryToUpdate.setDictEntry("INFLUENZA VIRUS A RNA DETECTEDetest");
+        dictionaryToUpdate.setSysUserId("1");
 
         Dictionary updatedDictionary = dictionaryService.update(dictionaryToUpdate);
         assertNotNull(updatedDictionary);
@@ -157,6 +158,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateDictionaryWhenDictionaryFrozenCheckIsRequired() {
         Dictionary dictionaryToUpdate = dictionaryService.get("1");
         dictionaryToUpdate.setDictEntry("INFLUENZA VIRUS A RNA DETECTEDetest");
+        dictionaryToUpdate.setSysUserId("1");
 
         dictionaryService.update(dictionaryToUpdate, true);
 
@@ -168,6 +170,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateDictionaryWhenDictionaryFrozenCheckIsNotRequired() {
         Dictionary dictionaryToUpdate = dictionaryService.get("1");
         dictionaryToUpdate.setDictEntry("INFLUENZA VIRUS A RNA DETECTEDetest");
+        dictionaryToUpdate.setSysUserId("1");
 
         dictionaryService.update(dictionaryToUpdate, false);
 
@@ -191,6 +194,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
 
         Dictionary dictionary = dictionaryService.get("1");
         dictionary.setLoincCode("LA9663-1");
+        dictionary.setSysUserId("1");
         dictionaryService.update(dictionary);
         Dictionary updated = dictionaryService.get("1");
         assertNotNull(updated);
@@ -208,6 +212,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldPersistLoincCode() {
         Dictionary dictionary = dictionaryService.get("1");
         dictionary.setLoincCode("LA12345-6");
+        dictionary.setSysUserId("1");
 
         dictionaryService.update(dictionary);
 
@@ -288,6 +293,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
         dictionary.setDictEntry("Dictionary Entry 4");
         dictionary.setIsActive("Y");
         dictionary.setLocalAbbreviation("DE4");
+        dictionary.setSysUserId("1");
         return dictionary;
     }
 }

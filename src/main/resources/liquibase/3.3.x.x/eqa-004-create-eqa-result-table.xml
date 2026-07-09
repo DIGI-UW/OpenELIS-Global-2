@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- EQA Result Table -->
+    <changeSet id="eqa-005-create-eqa-result-table" author="eqa-module-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="eqa_result"/>
+            </not>
+        </preConditions>
+        <createTable tableName="eqa_result">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="eqa_distribution_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_eqa_result_distribution"
+                    references="eqa_distribution(id)"/>
+            </column>
+            <column name="participant_organization_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_eqa_result_org"
+                    references="organization(id)"/>
+            </column>
+            <column name="test_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_eqa_result_test"
+                    references="test(id)"/>
+            </column>
+            <column name="result_value" type="DECIMAL(15,5)"/>
+            <column name="target_value" type="DECIMAL(15,5)"/>
+            <column name="z_score" type="DECIMAL(10,5)"/>
+            <column name="submission_method" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="submission_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performance_status" type="VARCHAR(20)"/>
+            <column name="is_late_submission" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="late_submission_justification" type="TEXT"/>
+            <column name="approved_by" type="numeric(10,0)">
+                <constraints
+                    foreignKeyName="fk_eqa_result_approved_by"
+                    references="system_user(id)"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="eqa_result"
+            columnNames="eqa_distribution_id, participant_organization_id, test_id"
+            constraintName="uk_eqa_result_dist_org_test"/>
+        <createIndex tableName="eqa_result" indexName="idx_eqa_result_distribution">
+            <column name="eqa_distribution_id"/>
+        </createIndex>
+        <createIndex tableName="eqa_result" indexName="idx_eqa_result_participant">
+            <column name="participant_organization_id"/>
+        </createIndex>
+        <createSequence sequenceName="eqa_result_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="eqa_result_seq"/>
+            <dropTable tableName="eqa_result"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

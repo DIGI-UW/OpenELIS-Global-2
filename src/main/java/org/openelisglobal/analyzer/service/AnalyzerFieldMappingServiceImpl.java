@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
+import org.openelisglobal.analyzer.form.AnalyzerFieldMappingForm;
 import org.openelisglobal.analyzer.form.OpenELISFieldForm;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
@@ -557,6 +558,45 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         // IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
 
         return analyzerFieldMappingDAO.update(existingMapping);
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> updatePartial(String analyzerId, String mappingId, AnalyzerFieldMappingForm form) {
+        if (!verifyMappingBelongsToAnalyzer(mappingId, analyzerId)) {
+            throw new LIMSRuntimeException("Mapping does not belong to analyzer: " + analyzerId);
+        }
+
+        AnalyzerFieldMapping mapping = get(mappingId);
+        if (mapping == null) {
+            throw new LIMSRuntimeException("Mapping not found: " + mappingId);
+        }
+
+        if (form.getOpenelisFieldId() != null) {
+            mapping.setOpenelisFieldId(form.getOpenelisFieldId());
+        }
+        if (form.getOpenelisFieldType() != null) {
+            mapping.setOpenelisFieldType(form.getOpenelisFieldType());
+        }
+        if (form.getMappingType() != null) {
+            mapping.setMappingType(form.getMappingType());
+        }
+        if (form.getIsRequired() != null) {
+            mapping.setIsRequired(form.getIsRequired());
+        }
+        if (form.getIsActive() != null) {
+            mapping.setIsActive(form.getIsActive());
+        }
+        if (form.getSpecimenTypeConstraint() != null) {
+            mapping.setSpecimenTypeConstraint(form.getSpecimenTypeConstraint());
+        }
+        if (form.getPanelConstraint() != null) {
+            mapping.setPanelConstraint(form.getPanelConstraint());
+        }
+
+        update(mapping);
+
+        return getMappingWithCompleteData(mappingId);
     }
 
     @Override

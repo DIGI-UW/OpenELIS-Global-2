@@ -14,7 +14,6 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
-import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.fhir.providers.PatientProvider;
@@ -26,7 +25,6 @@ import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
-import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,6 +58,9 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
+        // Reset singleton caches to avoid stale identity type IDs from previous tests
+        org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap.reset();
+
         fhirServlet = new RestfulServer(FhirContext.forR4());
         fhirServlet.setResourceProviders(Arrays.asList(patientProvider));
 
@@ -69,6 +70,8 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/facade-patient.xml");
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     private MockHttpServletRequest buildRequest(String method, String pathInfo) {
@@ -93,9 +96,15 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         List<Patient> patients = patientService.getAll();
         List<PatientIdentity> identities = patientIdentityService.getAll();
         List<Person> persons = personService.getAll();
-        List<PatientIdentityType> identityTypes = patientIdentityTypeService.getAll();
-        List<AddressPart> addressParts = addressPartService.getAll();
         List<PersonAddress> personAddresses = personAddressService.getAll();
+
+        // Fixture-loaded entities have null sys_user_id; the audit pipeline
+        // rejects deletes without one. Stamp before the deleteAll fan-out.
+        identities.forEach(e -> e.setSysUserId("1"));
+        contacts.forEach(e -> e.setSysUserId("1"));
+        personAddresses.forEach(e -> e.setSysUserId("1"));
+        patients.forEach(e -> e.setSysUserId("1"));
+        persons.forEach(e -> e.setSysUserId("1"));
 
         patientIdentityService.deleteAll(identities);
         patientContactService.deleteAll(contacts);
@@ -103,9 +112,6 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         patientService.deleteAll(patients);
         personService.deleteAll(persons);
-
-        addressPartService.deleteAll(addressParts);
-        patientIdentityTypeService.deleteAll(identityTypes);
 
     }
 

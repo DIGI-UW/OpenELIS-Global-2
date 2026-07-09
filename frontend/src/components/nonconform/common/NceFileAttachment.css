@@ -1,0 +1,88 @@
+.nce-file-attachment {
+  margin-bottom: 1rem;
+}
+
+.nce-attachment-label {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #525252;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nce-attachment-hint {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+  font-weight: 400;
+}
+
+.nce-attachment-error {
+  color: #da1e28;
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background-color: #fff1f1;
+  border-radius: 4px;
+}
+
+.nce-attachment-dropzone {
+  margin-bottom: 1rem;
+}
+
+.nce-attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.nce-attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.nce-attachment-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.nce-attachment-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nce-attachment-name {
+  font-size: 0.875rem;
+  color: #161616;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nce-attachment-size {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+}
+
+.nce-attachment-remove {
+  flex-shrink: 0;
+}
+
+.nce-attachment-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nce-attachment-count {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+}

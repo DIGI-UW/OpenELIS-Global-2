@@ -70,6 +70,11 @@
         <property name="loinc" type="java.lang.String">
             <column name="LOINC" length="240" />
         </property>
+        <!-- OGC-949 M1 / OGC-936: test catalog v2.5 domain (AMR flag = existing
+            antimicrobialResistance) -->
+        <property name="domain" type="java.lang.String">
+            <column name="DOMAIN" length="20" />
+        </property>
         <property name="stickerRequiredFlag" type="java.lang.String">
             <column name="STICKER_REQ_FLAG" length="1" />
         </property>

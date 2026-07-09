@@ -60,6 +60,12 @@ public class PluginRegistryServiceTest {
     }
 
     @Test
+    public void testDerivePluginName_GenericFile_ReturnsHumanReadable() {
+        String result = service.derivePluginName("org.openelisglobal.plugins.analyzer.genericfile.GenericFileAnalyzer");
+        assertEquals("Generic File", result);
+    }
+
+    @Test
     public void testDerivePluginName_MindrayBC5380_ReturnsHumanReadable() {
         String result = service.derivePluginName("org.openelisglobal.plugins.MindrayBC5380Analyzer");
         assertEquals("Mindray BC 5380", result);
@@ -123,6 +129,12 @@ public class PluginRegistryServiceTest {
     public void testDetectProtocol_GenericHL7_ReturnsHL7() {
         String result = service.detectProtocol("org.openelisglobal.plugins.GenericHL7Analyzer");
         assertEquals("HL7", result);
+    }
+
+    @Test
+    public void testDetectProtocol_GenericFile_ReturnsFILE() {
+        String result = service.detectProtocol("org.openelisglobal.plugins.analyzer.genericfile.GenericFileAnalyzer");
+        assertEquals("FILE", result);
     }
 
     @Test

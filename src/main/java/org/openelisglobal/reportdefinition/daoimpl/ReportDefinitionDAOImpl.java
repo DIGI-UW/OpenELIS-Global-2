@@ -83,4 +83,19 @@ public class ReportDefinitionDAOImpl extends BaseDAOImpl<ReportDefinition, Strin
             throw new LIMSRuntimeException("Error in ReportDefinitionDAOImpl getByCreatedBy()", e);
         }
     }
+
+    @Override
+    public ReportDefinition getActiveByReportType(String reportType) {
+        try {
+            String hql = "FROM ReportDefinition r WHERE r.reportType = :reportType AND r.isActive = true ORDER BY r.name";
+            Query<ReportDefinition> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    ReportDefinition.class);
+            query.setParameter("reportType", reportType);
+            query.setMaxResults(1);
+            return query.uniqueResult();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ReportDefinitionDAOImpl getActiveByReportType()", e);
+        }
+    }
 }

@@ -1,0 +1,226 @@
+package org.openelisglobal.barcode.service;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.barcode.labeltype.BlockLabel;
+import org.openelisglobal.barcode.labeltype.FreezerLabel;
+import org.openelisglobal.barcode.labeltype.SlideLabel;
+import org.openelisglobal.barcode.valueholder.SampleBarcodeInfo;
+import org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+
+@RunWith(MockitoJUnitRunner.class)
+public class BarcodeInfoServiceImplTest {
+
+    @Mock
+    private SampleBarcodeInfoService sampleBarcodeInfoService;
+
+    @Mock
+    private SampleItemBarcodeInfoService sampleItemBarcodeInfoService;
+
+    @Mock
+    private SampleItemService sampleItemService;
+
+    @Mock
+    private SampleService sampleService;
+
+    @InjectMocks
+    private BarcodeInfoServiceImpl barcodeInfoService;
+
+    private Sample sample;
+    private List<SampleItem> sampleItems;
+
+    @Before
+    public void setUp() {
+        sample = new Sample();
+        sample.setId("sample-1");
+        sample.setAccessionNumber("2025-00001");
+
+        SampleItem item1 = new SampleItem();
+        item1.setId("item-1");
+        item1.setSortOrder("1");
+        SampleItem item2 = new SampleItem();
+        item2.setId("item-2");
+        item2.setSortOrder("2");
+
+        sampleItems = new ArrayList<>();
+        sampleItems.add(item1);
+        sampleItems.add(item2);
+
+        when(sampleBarcodeInfoService.getAllMatching(eq("sample"), eq(sample))).thenReturn(Collections.emptyList());
+        when(sampleItemBarcodeInfoService.getAllMatching(eq("sampleItem"), any(SampleItem.class)))
+                .thenReturn(Collections.emptyList());
+        when(sampleItemService.getSampleItemsBySampleId(sample.getId())).thenReturn(sampleItems);
+    }
+
+    @Test
+    public void saveBarcodeInfoForSampleAndSampleItems_insertsWhenNoExisting() {
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, 2, 3);
+
+        ArgumentCaptor<SampleBarcodeInfo> sampleInfoCaptor = ArgumentCaptor.forClass(SampleBarcodeInfo.class);
+        verify(sampleBarcodeInfoService).insert(sampleInfoCaptor.capture());
+        SampleBarcodeInfo savedSampleInfo = sampleInfoCaptor.getValue();
+        assertNotNull(savedSampleInfo);
+        assertEquals(sample, savedSampleInfo.getSample());
+        assertEquals(Integer.valueOf(2), savedSampleInfo.getPrintOrderNum());
+
+        ArgumentCaptor<SampleItemBarcodeInfo> itemInfoCaptor = ArgumentCaptor.forClass(SampleItemBarcodeInfo.class);
+        verify(sampleItemBarcodeInfoService, org.mockito.Mockito.times(2)).insert(itemInfoCaptor.capture());
+        List<SampleItemBarcodeInfo> savedItemInfos = itemInfoCaptor.getAllValues();
+        assertEquals(2, savedItemInfos.size());
+        assertEquals(sampleItems.get(0), savedItemInfos.get(0).getSampleItem());
+        assertEquals(Integer.valueOf(3), savedItemInfos.get(0).getPrintSpecimenNum());
+        assertEquals(sampleItems.get(1), savedItemInfos.get(1).getSampleItem());
+        assertEquals(Integer.valueOf(3), savedItemInfos.get(1).getPrintSpecimenNum());
+    }
+
+    @Test
+    public void saveBarcodeInfoForSampleAndSampleItems_updatesWhenExisting() {
+        SampleBarcodeInfo existingSampleInfo = new SampleBarcodeInfo();
+        existingSampleInfo.setId(1);
+        existingSampleInfo.setSample(sample);
+        existingSampleInfo.setPrintOrderNum(1);
+        when(sampleBarcodeInfoService.getAllMatching(eq("sample"), eq(sample)))
+                .thenReturn(Collections.singletonList(existingSampleInfo));
+
+        SampleItemBarcodeInfo existingItemInfo = new SampleItemBarcodeInfo();
+        existingItemInfo.setId(10);
+        existingItemInfo.setSampleItem(sampleItems.get(0));
+        when(sampleItemBarcodeInfoService.getAllMatching(eq("sampleItem"), eq(sampleItems.get(0))))
+                .thenReturn(Collections.singletonList(existingItemInfo));
+        when(sampleItemBarcodeInfoService.getAllMatching(eq("sampleItem"), eq(sampleItems.get(1))))
+                .thenReturn(Collections.emptyList());
+
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, 5, 4);
+
+        verify(sampleBarcodeInfoService).update(existingSampleInfo);
+        assertEquals(Integer.valueOf(5), existingSampleInfo.getPrintOrderNum());
+
+        verify(sampleItemBarcodeInfoService).update(existingItemInfo);
+        assertEquals(Integer.valueOf(4), existingItemInfo.getPrintSpecimenNum());
+        verify(sampleItemBarcodeInfoService).insert(any(SampleItemBarcodeInfo.class));
+    }
+
+    @Test
+    public void saveBarcodeInfoForSampleAndSampleItems_perItemQuantitiesPersistDistinctSpecimenCounts() {
+        Map<SampleItem, Integer> specimenLabelQuantities = new LinkedHashMap<>();
+        specimenLabelQuantities.put(sampleItems.get(0), 2);
+        specimenLabelQuantities.put(sampleItems.get(1), 5);
+
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, 4, specimenLabelQuantities);
+
+        ArgumentCaptor<SampleItemBarcodeInfo> itemInfoCaptor = ArgumentCaptor.forClass(SampleItemBarcodeInfo.class);
+        verify(sampleItemBarcodeInfoService, org.mockito.Mockito.times(2)).insert(itemInfoCaptor.capture());
+        List<SampleItemBarcodeInfo> savedItemInfos = itemInfoCaptor.getAllValues();
+        assertEquals(sampleItems.get(0), savedItemInfos.get(0).getSampleItem());
+        assertEquals(Integer.valueOf(2), savedItemInfos.get(0).getPrintSpecimenNum());
+        assertEquals(sampleItems.get(1), savedItemInfos.get(1).getSampleItem());
+        assertEquals(Integer.valueOf(5), savedItemInfos.get(1).getPrintSpecimenNum());
+    }
+
+    @Test
+    public void saveBarcodeInfoForSampleAndSampleItemsPathology_setsAllPerItemFields() {
+        // Arrange: one existing sample record, first item updates, second inserts
+        SampleBarcodeInfo existingSampleInfo = new SampleBarcodeInfo();
+        existingSampleInfo.setId(1);
+        existingSampleInfo.setSample(sample);
+        when(sampleBarcodeInfoService.getAllMatching(eq("sample"), eq(sample)))
+                .thenReturn(Collections.singletonList(existingSampleInfo));
+
+        SampleItemBarcodeInfo existingItemInfo = new SampleItemBarcodeInfo();
+        existingItemInfo.setId(10);
+        existingItemInfo.setSampleItem(sampleItems.get(0));
+        when(sampleItemBarcodeInfoService.getAllMatching(eq("sampleItem"), eq(sampleItems.get(0))))
+                .thenReturn(Collections.singletonList(existingItemInfo));
+        when(sampleItemBarcodeInfoService.getAllMatching(eq("sampleItem"), eq(sampleItems.get(1))))
+                .thenReturn(Collections.emptyList());
+
+        // Act
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItemsPathology(sample, 2, 3, 4, 5, 6);
+
+        // Assert: sample updated
+        verify(sampleBarcodeInfoService).update(existingSampleInfo);
+        assertEquals(Integer.valueOf(2), existingSampleInfo.getPrintOrderNum());
+
+        // Assert: first item updated with all fields
+        verify(sampleItemBarcodeInfoService).update(existingItemInfo);
+        assertEquals(Integer.valueOf(3), existingItemInfo.getPrintSpecimenNum());
+        assertEquals(Integer.valueOf(4), existingItemInfo.getPrintBlockNum());
+        assertEquals(Integer.valueOf(5), existingItemInfo.getPrintSlideNum());
+        assertEquals(Integer.valueOf(6), existingItemInfo.getPrintFreezerNum());
+
+        // Assert: second item inserted
+        verify(sampleItemBarcodeInfoService).insert(any(SampleItemBarcodeInfo.class));
+    }
+
+    @Test
+    public void saveBarcodeInfoForSampleAndSampleItemsPathology_handlesNoSampleItems() {
+        when(sampleItemService.getSampleItemsBySampleId(sample.getId())).thenReturn(Collections.emptyList());
+
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItemsPathology(sample, 2, 3, 4, 5, 6);
+
+        verify(sampleBarcodeInfoService).insert(any(SampleBarcodeInfo.class));
+        verify(sampleItemBarcodeInfoService, never()).insert(any(SampleItemBarcodeInfo.class));
+        verify(sampleItemBarcodeInfoService, never()).update(any(SampleItemBarcodeInfo.class));
+    }
+
+    @Test
+    public void recordPrintedCounts_emptyList_doesNothing() {
+        barcodeInfoService.recordPrintedCounts("2025-00001", Collections.emptyList());
+
+        verify(sampleService, never()).getSampleByAccessionNumber(anyString());
+        verify(sampleBarcodeInfoService, never()).insert(any(SampleBarcodeInfo.class));
+        verify(sampleBarcodeInfoService, never()).update(any(SampleBarcodeInfo.class));
+    }
+
+    @Test
+    public void recordPrintedCounts_pathologyTypesIncrementPerSampleItemCounts() {
+        when(sampleService.getSampleByAccessionNumber("2025-00001")).thenReturn(sample);
+
+        BlockLabel blockLabel = org.mockito.Mockito.mock(BlockLabel.class);
+        when(blockLabel.getNumLabels()).thenReturn(2);
+        SlideLabel slideLabel = org.mockito.Mockito.mock(SlideLabel.class);
+        when(slideLabel.getNumLabels()).thenReturn(3);
+        FreezerLabel freezerLabel = org.mockito.Mockito.mock(FreezerLabel.class);
+        when(freezerLabel.getNumLabels()).thenReturn(4);
+
+        barcodeInfoService.recordPrintedCounts("2025-00001", List.of(blockLabel, slideLabel, freezerLabel));
+
+        ArgumentCaptor<SampleItemBarcodeInfo> updateCaptor = ArgumentCaptor.forClass(SampleItemBarcodeInfo.class);
+        verify(sampleItemBarcodeInfoService, org.mockito.Mockito.atLeast(1)).update(updateCaptor.capture());
+
+        boolean hasBlockIncrement = updateCaptor.getAllValues().stream()
+                .anyMatch(info -> Integer.valueOf(2).equals(info.getPrintedBlockCount()));
+        boolean hasSlideIncrement = updateCaptor.getAllValues().stream()
+                .anyMatch(info -> Integer.valueOf(3).equals(info.getPrintedSlideCount()));
+        boolean hasFreezerIncrement = updateCaptor.getAllValues().stream()
+                .anyMatch(info -> Integer.valueOf(4).equals(info.getPrintedFreezerCount()));
+
+        org.junit.Assert.assertTrue("Expected pathology block labels to increment printed counts", hasBlockIncrement);
+        org.junit.Assert.assertTrue("Expected pathology slide labels to increment printed counts", hasSlideIncrement);
+        org.junit.Assert.assertTrue("Expected pathology freezer labels to increment printed counts", hasFreezerIncrement);
+    }
+
+}

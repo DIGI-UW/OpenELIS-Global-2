@@ -6,7 +6,7 @@
 #   ./scripts/download-ci-logs.sh --pr 123
 #   ./scripts/download-ci-logs.sh --branch feat/my-feature
 #   ./scripts/download-ci-logs.sh --run-id 12345678
-#   ./scripts/download-ci-logs.sh --pr 123 --workflow ci.yml
+#   ./scripts/download-ci-logs.sh --pr 123 --workflow backend.yml
 #   ./scripts/download-ci-logs.sh --pr 123 --failed
 #   ./scripts/download-ci-logs.sh --pr 123 --list
 #
@@ -40,7 +40,7 @@ Options:
   --pr <number>       PR number to get logs for
   --branch <name>     Branch name to get logs for
   --run-id <id>       Download a specific run by ID (skips PR/branch lookup)
-  --workflow <name>   Filter to specific workflow (e.g., ci.yml, frontend-qa.yml)
+  --workflow <name>   Filter to specific workflow (e.g., backend.yml, frontend.yml, e2e-playwright.yml)
   --failed            Only download failed runs
   --list              List available runs without downloading
   --limit <n>         Max runs to list/check (default: 10)
@@ -48,7 +48,7 @@ Options:
 
 Examples:
   $(basename "$0") --pr 123
-  $(basename "$0") --branch develop --workflow ci.yml
+  $(basename "$0") --branch develop --workflow e2e-playwright.yml
   $(basename "$0") --pr 123 --failed --list
   $(basename "$0") --run-id 12345678901
 EOF

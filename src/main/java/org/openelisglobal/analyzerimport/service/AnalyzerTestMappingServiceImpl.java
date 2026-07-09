@@ -8,8 +8,10 @@ import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMappingPK;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class AnalyzerTestMappingServiceImpl
         extends AuditableBaseObjectServiceImpl<AnalyzerTestMapping, AnalyzerTestMappingPK>
         implements AnalyzerTestMappingService {
@@ -29,5 +31,11 @@ public class AnalyzerTestMappingServiceImpl
     @Override
     public List<AnalyzerTestMapping> getAllForAnalyzer(String analyzerId) {
         return baseObjectDAO.getAllForAnalyzer(analyzerId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerTestMapping> getAllForTest(String testId) {
+        return baseObjectDAO.getAllForTest(testId);
     }
 }

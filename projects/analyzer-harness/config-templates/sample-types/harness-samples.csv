@@ -1,0 +1,4 @@
+description,localAbbreviation,domain,isActive,sortOrder,localization:en,localization:fr
+Whole Blood,WB,H,Y,1,Whole Blood,Sang Total
+Serum,Serum,H,Y,2,Serum,Sérum
+Plasma,Plasma,H,Y,3,Plasma,Plasma

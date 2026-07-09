@@ -17,6 +17,7 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Handler for loading test section configuration files. Supports CSV format for
@@ -67,6 +68,7 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
     }
 
     @Override
+    @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 

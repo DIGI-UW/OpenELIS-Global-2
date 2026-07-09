@@ -45,6 +45,14 @@ public class AnalyzerExperiment extends BaseObject<Integer> {
         this.id = id;
     }
 
+    public Analyzer getAnalyzer() {
+        return analyzer;
+    }
+
+    public void setAnalyzer(Analyzer analyzer) {
+        this.analyzer = analyzer;
+    }
+
     public String getName() {
         return name;
     }

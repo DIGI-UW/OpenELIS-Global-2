@@ -667,6 +667,9 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         persistIdentityType(patientInfo.getAka(), "AKA", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getInsuranceNumber(), "INSURANCE", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getOccupation(), "OCCUPATION", patientInfo, patient, sysUserId);
+        persistIdentityType(patientInfo.getCustomNotes(), "CUSTOM_NOTES", patientInfo, patient, sysUserId);
+        persistIdentityType(patientInfo.getTargetDiseaseProgramme(), "DISEASE_PROGRAMME", patientInfo, patient,
+                sysUserId);
         persistIdentityType(patientInfo.getSubjectNumber(), "SUBJECT", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getMothersInitial(), "MOTHERS_INITIAL", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getEducation(), "EDUCATION", patientInfo, patient, sysUserId);
@@ -768,10 +771,6 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
 
     public void persistIdentityType(String paramValue, String type, PatientManagementInfo patientInfo, Patient patient,
             String sysUserId) throws LIMSRuntimeException {
-        if (patientInfo.getPatientIdentities().isEmpty()) {
-            return;
-        }
-
         Boolean newIdentityNeeded = true;
         String typeID = PatientIdentityTypeMap.getInstance().getIDForType(type);
 

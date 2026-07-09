@@ -49,13 +49,23 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
     @ExceptionHandler(value = { RuntimeException.class })
     protected ResponseEntity<Object> handleRuntimeException(RuntimeException ex, WebRequest request) {
         LogEvent.logError(ex);
-        return new ResponseEntity<>("Check server logs", new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.INTERNAL_SERVER_ERROR), new HttpHeaders(),
+                HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(value = { LIMSRuntimeException.class })
     protected ResponseEntity<Object> handleLIMSRuntimeException(RuntimeException ex, WebRequest request) {
         LogEvent.logError(ex);
-        return new ResponseEntity<>("Check server logs", new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.INTERNAL_SERVER_ERROR), new HttpHeaders(),
+                HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private Map<String, Object> buildGenericErrorBody(HttpStatus status) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", new Date());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        return body;
     }
 
     @Override

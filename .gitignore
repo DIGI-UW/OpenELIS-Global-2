@@ -13,6 +13,7 @@ id_file
 # IDE files #
 .idea/
 .vscode/
+.metadata/
 .classpath
 .settings/
 .project
@@ -52,14 +53,23 @@ volume/odoo/*
 volume/branding/*
 volume/lucene/*
 
-# AI Agent command directories (populated by scripts/install-speckit-commands.py)
-# These are compiled from .specify/core/commands/ and .specify/oe/commands/ and should not be tracked
+# AI agent directories -- generated content (rebuilt by installer scripts)
+# These are compiled from legacy .specify sources and packaged skills, and should not be tracked
 .cursor/commands/
+.cursor/skills/
 .claude/commands/
+.claude/skills/
+.claude/logs.txt
 
-# Ignore .cursor/ except for worktrees.json (Cursor worktree setup config)
+# AI agent directories -- tracked config (persists across branches/worktrees)
+# .cursor/rules/           -> tracked (Cursor rules for agent guardrails)
+# .cursor/worktrees.json   -> tracked (Cursor worktree setup config)
+
+# Ignore everything else in .cursor/ and .claude/
 .cursor/*
+!.cursor/rules/
 !.cursor/worktrees.json
+.claude/*
 **/*checksum*.properties
 **/*checksums*.properties
 
@@ -76,14 +86,12 @@ projects/*/volume/
 .dev-docs/
 
 # Playwright test artifacts (generated, not source)
+.playwright-mcp/
 **/playwright-report/
 **/playwright/.cache/
 **/playwright/.auth/
 **/test-results/
 # Note: frontend/playwright/ test sources are tracked (not ignored)
-# Catalyst dev files
-projects/catalyst/.env
-projects/catalyst/logs/
 *.pyc
 __pycache__/
 .pytest_cache/
@@ -100,4 +108,44 @@ specs/*/research/AnalyzerDocs/
 docs/analyzers/012/
 specs/012-generic-astm-plugin-profiles/docs/
 
+# CI artifact downloads (gh run download)
+core-blob-report-*/
+core-screenshots-*/
+core-traces-*/
+core-playwright-report-*/
+harness-blob-report-*/
+harness-screenshots-*/
+harness-traces-*/
+
+# E2E evidence screenshots
+frontend/e2e-evidence/
+e2e-evidence-*.zip
+
 # Miscellaneous dev artifacts
+volume/properties/TotalSystemConfiguration.properties
+volume/properties/SystemConfiguration.properties
+volume/properties/ChangedSystemConfiguration.properties
+
+# Real analyzer files from Herbert's Madagascar mount (contain PII)
+# Keep as a working copy for local debugging; never commit.
+docs/debug-local/
+
+# Playwright MCP / Java build metadata
+.playwright-mcp/
+META-INF/
+
+# Vitest run logs + cache (local test-output scratch)
+frontend/vitest-*.log
+frontend/full_vitest_run.log
+.vite/
+
+# Additional local test-output scratch (Jest / CRA-era, scripted runs)
+frontend/npm-test-*.log
+
+# Playwright demo/report zips at repo root (never commit)
+/playwright-*.zip
+/playwright-demo-report/
+
+# Per-PR scratch session notes (never commit)
+PR-*-STATUS-REPORT.md
+volume/nce-attachments/

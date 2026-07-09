@@ -692,9 +692,9 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
 
     private List<Test> getTestsForPanelAndType(String panelId, String sampleTypeId) {
         List<TypeOfSampleTest> sampleTestList = typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleTypeId);
-        List<Integer> testList = new ArrayList<>();
+        List<String> testList = new ArrayList<>();
         for (TypeOfSampleTest typeTest : sampleTestList) {
-            testList.add(Integer.parseInt(typeTest.getTestId()));
+            testList.add(typeTest.getTestId());
         }
 
         List<PanelItem> panelList = panelItemService.getPanelItemsForPanelAndItemList(panelId, testList);

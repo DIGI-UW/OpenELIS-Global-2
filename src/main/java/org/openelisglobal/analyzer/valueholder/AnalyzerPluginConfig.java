@@ -22,6 +22,8 @@ public class AnalyzerPluginConfig extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String analyzerId;
 
+    // @TypeDef + @Type("jsonb") kept until Hibernate 6 upgrade provides
+    // @JdbcTypeCode(SqlTypes.JSON) — no JPA AttributeConverter for JSONB exists
     @Type(type = "jsonb")
     @Column(name = "config", columnDefinition = "jsonb", nullable = false)
     private String config = "{}";

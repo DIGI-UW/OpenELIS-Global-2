@@ -11,7 +11,7 @@ import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.Session;
-import org.hibernate.query.NativeQuery;
+import org.hibernate.query.Query;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,7 +36,7 @@ public class QualitativeResultMappingDAOTest {
     private Session session;
 
     @Mock
-    private NativeQuery<QualitativeResultMapping> nativeQuery;
+    private Query<QualitativeResultMapping> query;
 
     @InjectMocks
     private QualitativeResultMappingDAOImpl qualitativeResultMappingDAO;
@@ -84,10 +84,9 @@ public class QualitativeResultMappingDAOTest {
         expectedMappings.add(mapping2);
 
         when(entityManager.unwrap(Session.class)).thenReturn(session);
-        when(session.createNativeQuery(anyString())).thenReturn(nativeQuery);
-        when(nativeQuery.addEntity(eq(QualitativeResultMapping.class))).thenReturn(nativeQuery);
-        when(nativeQuery.setParameter(eq("analyzerFieldId"), eq("FIELD-001"))).thenReturn(nativeQuery);
-        when(nativeQuery.list()).thenReturn(expectedMappings);
+        when(session.createQuery(anyString(), eq(QualitativeResultMapping.class))).thenReturn(query);
+        when(query.setParameter(eq("analyzerFieldId"), eq("FIELD-001"))).thenReturn(query);
+        when(query.list()).thenReturn(expectedMappings);
 
         // Act
         List<QualitativeResultMapping> actualMappings = qualitativeResultMappingDAO.findByAnalyzerFieldId("FIELD-001");
@@ -106,10 +105,9 @@ public class QualitativeResultMappingDAOTest {
     public void testFindByAnalyzerFieldId_NoMappings_ReturnsEmptyList() {
         // Arrange
         when(entityManager.unwrap(Session.class)).thenReturn(session);
-        when(session.createNativeQuery(anyString())).thenReturn(nativeQuery);
-        when(nativeQuery.addEntity(eq(QualitativeResultMapping.class))).thenReturn(nativeQuery);
-        when(nativeQuery.setParameter(eq("analyzerFieldId"), eq("FIELD-999"))).thenReturn(nativeQuery);
-        when(nativeQuery.list()).thenReturn(new ArrayList<>());
+        when(session.createQuery(anyString(), eq(QualitativeResultMapping.class))).thenReturn(query);
+        when(query.setParameter(eq("analyzerFieldId"), eq("FIELD-999"))).thenReturn(query);
+        when(query.list()).thenReturn(new ArrayList<>());
 
         // Act
         List<QualitativeResultMapping> actualMappings = qualitativeResultMappingDAO.findByAnalyzerFieldId("FIELD-999");

@@ -13,6 +13,8 @@ import org.openelisglobal.barcode.BarcodeLabelMaker;
 import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.labeltype.OrderLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
+import org.openelisglobal.barcode.util.BarcodeConfigUtil;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -48,6 +50,20 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
 
     private static final long serialVersionUID = 4756240897909804141L;
 
+    // Conservative default for the per-request quantity cap. Read from the
+    // MAX_REQUEST_LABEL_QUANTITY config property at validation time so admins
+    // can tune it without a redeploy. Without a cap, an authenticated caller
+    // can submit ?quantity=999999999&override=true and BarcodeLabelMaker's
+    // PDF render loop will hang the JVM. The per-label cap
+    // (Label.getMaxNumLabels, default 10) only protects the no-override path.
+    static final int DEFAULT_MAX_REQUEST_QUANTITY = 100;
+
+    static int getMaxRequestQuantity() {
+        return BarcodeConfigUtil.parseIntSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY),
+                DEFAULT_MAX_REQUEST_QUANTITY);
+    }
+
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         boolean unauthorized = false;
@@ -62,9 +78,14 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             response.getWriter().println(MessageUtil.getMessage("message.error.unauthorized"));
             return;
         }
-        if ("block".equals(request.getParameter("labelType")) || "slide".equals(request.getParameter("labelType"))) {
-            printPathologyBarcodeLabel(request, response);
-        } else if ("true".equalsIgnoreCase(request.getParameter("prePrinting"))) {
+
+        // Backward compatibility for existing pathology callers that still use
+        // /LabelMakerServlet?labelType=block|slide&code=<value>
+        if (printLegacyPathologyLabelTypeRequest(request, response)) {
+            return;
+        }
+
+        if ("true".equalsIgnoreCase(request.getParameter("prePrinting"))) {
             // writes to response
             try {
                 prePrintLabels(request, response);
@@ -82,23 +103,64 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         }
     }
 
-    private void printPathologyBarcodeLabel(HttpServletRequest request, HttpServletResponse response)
+    private boolean printLegacyPathologyLabelTypeRequest(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        // create requested labels as pdf stream
-        // In printPathologyBarcodeLabel method:
+        String labelType = request.getParameter("labelType");
+        String code = request.getParameter("code");
+        if (StringUtils.isBlank(labelType) || StringUtils.isBlank(code)) {
+            return false;
+        }
+        String mappedType = mapLegacyLabelType(labelType);
+        if (mappedType == null) {
+            return false;
+        }
+
+        String override = request.getParameter("override");
+        if (StringUtils.isEmpty(override)) {
+            override = "false";
+        }
+        String quantity = request.getParameter("quantity");
+        if (StringUtils.isEmpty(quantity)) {
+            quantity = "1";
+        }
+
         BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
         UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+        labelMaker.setOverride(override);
         labelMaker.setSysUserId(String.valueOf(usd.getSystemUserId()));
+        labelMaker.generateLabels(code, mappedType, quantity, override);
+        ByteArrayOutputStream labelAsOutputStream = labelMaker.createLabelsAsStreamWithMaximumPrints();
 
-        labelMaker.generateGenericBarcodeLabel(request.getParameter("code"), request.getParameter("labelType"));
-        ByteArrayOutputStream labelAsOutputStream = labelMaker.createLabelsAsStream();
+        if (labelAsOutputStream.size() == 0) {
+            response.setContentType("text/html; charset=utf-8");
+            response.getWriter()
+                    .println("<script type=\"text/javascript\">" + "function override() {\n"
+                            + "    var url = new URL(window.location.href);\n"
+                            + "    url.searchParams.set('override', 'true');\n"
+                            + "    window.location.href = url.toString();\n" + "}" + "</script>");
+            response.getWriter().println(MessageUtil.getMessage("barcode.message.maxreached"));
+            response.getWriter().println("</br>");
+            response.getWriter()
+                    .println("<input type='button' id='overrideButton' value='Override' onclick='override();'>");
+        } else {
+            response.setContentType("application/pdf");
+            response.addHeader("Content-Disposition", "inline; filename=" + "sample.pdf");
+            response.setContentLength(labelAsOutputStream.size());
+            labelAsOutputStream.writeTo(response.getOutputStream());
+            response.getOutputStream().flush();
+            response.getOutputStream().close();
+        }
+        return true;
+    }
 
-        response.setContentType("application/pdf");
-        response.addHeader("Content-Disposition", "inline; filename=" + "barcode.pdf");
-        response.setContentLength(labelAsOutputStream.size());
-        labelAsOutputStream.writeTo(response.getOutputStream());
-        response.getOutputStream().flush();
-        response.getOutputStream().close();
+    private String mapLegacyLabelType(String labelType) {
+        if ("block".equalsIgnoreCase(labelType)) {
+            return "blockOrder";
+        }
+        if ("slide".equalsIgnoreCase(labelType)) {
+            return "slideOrder";
+        }
+        return null;
     }
 
     /**
@@ -283,6 +345,15 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
                     .println("<input type='button' id='overrideButton' value='Override' onclick='override();'>");
             // else return the pdf
         } else {
+            try {
+                BarcodeInfoService barcodeInfoService = SpringContext.getBean(BarcodeInfoService.class);
+                barcodeInfoService.recordPrintedCounts(labNo, labelMaker.getLabels());
+            } catch (Exception e) {
+                // Don't fail the print response if persistence falls over, but
+                // surface the stack trace so the cap drift is debuggable.
+                LogEvent.logError("LabelMakerServlet:printExistingOrder - failed to record printed counts for " + labNo,
+                        e);
+            }
             response.setContentType("application/pdf");
             response.addHeader("Content-Disposition", "inline; filename=" + "sample.pdf");
             response.setContentLength(labelAsOutputStream.size());
@@ -304,14 +375,24 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
      * @param override    Ensure is bool
      * @return any errors that were generated along the way
      */
-    private Errors validate(String labNo, String programCode, String type, String quantity, String override) {
+    Errors validate(String labNo, String programCode, String type, String quantity, String override) {
         Errors errors = new BaseErrors();
-        // Validate quantity
-        if (!org.apache.commons.validator.GenericValidator.isInt(quantity)) {
+        // Quantity must parse as a positive int and stay below the configured
+        // per-request cap. The per-label cap (Label.getMaxNumLabels, compared
+        // against BarcodeLabelInfo.numPrinted) is enforced downstream in
+        // BarcodeLabelMaker.shouldQueueLabel — but it's bypassed when
+        // override=true, so this cap is the only stop on a runaway render loop.
+        int maxRequestQuantity = getMaxRequestQuantity();
+        if (!org.apache.commons.validator.GenericValidator.isInt(quantity) || Integer.parseInt(quantity) <= 0
+                || Integer.parseInt(quantity) > maxRequestQuantity) {
             errors.reject("barcode.label.error.quantity.invalid", "barcode.label.error.quantity.invalid");
         }
-        // Validate type
-        if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type) && !"blank".equals(type)) {
+        // Whitelist must stay aligned with BarcodeLabelMaker.generateLabels —
+        // the bare block/slide/freezer types have no dispatcher branch; first-party
+        // callers route through the *Order variants via
+        // BarcodeWorkflowPrintServiceImpl.mapLabelTypeForUrl.
+        if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type) && !"blank".equals(type)
+                && !"blockOrder".equals(type) && !"slideOrder".equals(type) && !"freezerOrder".equals(type)) {
             errors.reject("barcode.label.error.type.invalid", "barcode.label.error.type.invalid");
         }
         // Validate "labNo" (either labNo, labNo.itemNo)

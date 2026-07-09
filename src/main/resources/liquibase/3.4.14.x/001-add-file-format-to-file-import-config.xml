@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- 014-hjra-file-stream-alignment: Add file_format to file_import_configuration (OGC-329) -->
+  <changeSet id="014-001-add-file-format-to-file-import-config" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <and>
+        <tableExists tableName="file_import_configuration"/>
+        <not>
+          <columnExists tableName="file_import_configuration" columnName="file_format"/>
+        </not>
+      </and>
+    </preConditions>
+
+    <addColumn tableName="file_import_configuration">
+      <column name="file_format" type="VARCHAR(20)" defaultValue="CSV">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+
+    <rollback>
+      <dropColumn tableName="file_import_configuration" columnName="file_format"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

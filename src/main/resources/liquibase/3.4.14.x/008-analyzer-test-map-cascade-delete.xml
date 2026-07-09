@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- Change analyzer_test_map FK to ON DELETE CASCADE so that deleting an
+         analyzer automatically removes its test mappings. Previously NO ACTION,
+         which blocked hard-delete and left orphaned mappings on soft-delete. -->
+    <changeSet id="008-1-analyzer-test-map-cascade-delete" author="pmanko">
+        <preConditions onFail="MARK_RAN">
+            <foreignKeyConstraintExists
+                foreignKeyName="analyzer_test_map_analyzer_fk"
+                foreignKeyTableName="analyzer_test_map"
+                schemaName="clinlims"/>
+        </preConditions>
+        <dropForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="analyzer_test_map"
+            constraintName="analyzer_test_map_analyzer_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="analyzer_test_map"
+            baseColumnNames="analyzer_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"
+            constraintName="analyzer_test_map_analyzer_fk"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+</databaseChangeLog>
