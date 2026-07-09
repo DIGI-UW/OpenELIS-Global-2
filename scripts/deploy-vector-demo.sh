@@ -43,7 +43,7 @@
 # USAGE
 #   ./scripts/deploy-vector-demo.sh status          # auth + instance + HTTPS + deployed commit (read-only)
 #   ./scripts/deploy-vector-demo.sh connect [cmd…]  # open a shell (or run a remote command)
-#   ./scripts/deploy-vector-demo.sh deploy --yes    # DESTRUCTIVE: full reset -> rebuild latest (config-import catalog) -> API seed -> verify (detached rebuild + polled)
+#   ./scripts/deploy-vector-demo.sh deploy --yes    # DESTRUCTIVE: full reset -> rebuild latest (config-import catalog) -> re-inject host LE cert -> API seed -> verify (detached rebuild + polled)
 #   ./scripts/deploy-vector-demo.sh logs            # tail the detached deploy log + status (resume a poll)
 #   ./scripts/deploy-vector-demo.sh seed            # (re)seed transactional data only via the REST API (client-side Playwright)
 #   ./scripts/deploy-vector-demo.sh provision       # break-glass: recreate the instance if it is gone
@@ -211,6 +211,22 @@ for i in \$(seq 1 90); do
   [ "\$st" = healthy ] && { echo "[deploy] webapp healthy after ~\$((i*10))s"; break; }
   sleep 10
 done
+# Re-inject the host Let's Encrypt cert into the proxy's cert/key volumes, which
+# --clean wipes each deploy. This is a local copy from the certbot-managed host
+# cert (/etc/letsencrypt) — it never contacts Let's Encrypt, so no rate-limit risk.
+# nginx.conf reads apache-selfsigned.crt/.key from these volumes; certbot.timer
+# keeps the host cert renewed.
+LE_DIR=/etc/letsencrypt/live/$HOST
+if sudo test -f "\$LE_DIR/fullchain.pem"; then
+  CERTS_VOL=\$(sudo docker inspect openelisglobal-proxy --format '{{range .Mounts}}{{if eq .Destination "/etc/nginx/certs"}}{{.Name}}{{end}}{{end}}')
+  KEYS_VOL=\$(sudo docker inspect openelisglobal-proxy --format '{{range .Mounts}}{{if eq .Destination "/etc/nginx/keys"}}{{.Name}}{{end}}{{end}}')
+  sudo docker run --rm -v /etc/letsencrypt:/le:ro -v "\$CERTS_VOL":/certs -v "\$KEYS_VOL":/keys alpine sh -c \
+    "cp -L /le/live/$HOST/fullchain.pem /certs/apache-selfsigned.crt && cp -L /le/live/$HOST/privkey.pem /keys/apache-selfsigned.key"
+  sudo docker exec openelisglobal-proxy nginx -s reload 2>/dev/null || sudo docker restart openelisglobal-proxy 2>/dev/null || true
+  echo "[deploy] re-injected host LE cert ($HOST) into \$CERTS_VOL / \$KEYS_VOL + reloaded nginx"
+else
+  echo "[deploy] WARN: no host LE cert at \$LE_DIR — HTTPS stays self-signed until certbot issues one on the host"
+fi
 echo "$DONE_MARK \$(date -u)"
 RUNNER
   remote "chmod +x '$REMOTE_RUNNER'"
