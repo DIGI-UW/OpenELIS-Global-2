@@ -197,6 +197,7 @@ public class NceEnhancementRestController extends BaseRestController {
                 historyDTO.id = String.valueOf(history.getId());
                 historyDTO.activity = history.getActivity();
                 historyDTO.description = history.getDescription();
+                historyDTO.newValue = history.getNewValue();
                 historyDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toInstant().toString()
                         : null;
 
@@ -491,6 +492,8 @@ public class NceEnhancementRestController extends BaseRestController {
         public String id;
         public String activity;
         public String description;
+        /** Structured transition target (e.g. "Completed", "CAPA") when present. */
+        public String newValue;
         public String timestamp;
         public String userName;
     }

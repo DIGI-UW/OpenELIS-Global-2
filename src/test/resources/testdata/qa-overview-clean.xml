@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Empty-table declarations: executeDataSetWithStateManagement truncates
+    every table a dataset names, so listing these here cleans them through the
+    managed (transactional) fixture path instead of raw committed DELETEs. QaOverviewServiceTest
+    then seeds its own rows via JDBC. -->
+<dataset>
+    <electronic_signature />
+    <history />
+    <sample_eqa />
+</dataset>
