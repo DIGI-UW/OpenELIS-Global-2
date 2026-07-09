@@ -29,7 +29,6 @@ public class ReferralSubcontract extends BaseObject<String> {
     private static final long serialVersionUID = 1L;
 
     private String id;
-    private SubcontractStatus subcontractStatus = SubcontractStatus.DRAFT;
     private String agreementReference;
     private Timestamp handoffDatetime;
     private String handoffDatetimeForDisplay;
@@ -48,14 +47,6 @@ public class ReferralSubcontract extends BaseObject<String> {
     @Override
     public void setId(String id) {
         this.id = id;
-    }
-
-    public SubcontractStatus getSubcontractStatus() {
-        return subcontractStatus;
-    }
-
-    public void setSubcontractStatus(SubcontractStatus subcontractStatus) {
-        this.subcontractStatus = subcontractStatus;
     }
 
     public String getAgreementReference() {

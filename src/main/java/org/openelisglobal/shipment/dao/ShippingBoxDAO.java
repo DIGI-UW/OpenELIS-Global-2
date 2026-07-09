@@ -58,6 +58,14 @@ public interface ShippingBoxDAO extends BaseDAO<ShippingBox, Integer> {
     List<ShippingBox> findAllActive();
 
     /**
+     * Find non-archived shipping boxes filtered by direction (inbound/outbound)
+     *
+     * @param inbound true for incoming boxes, false for outbound
+     * @return List of matching shipping boxes
+     */
+    List<ShippingBox> findActiveByInbound(boolean inbound);
+
+    /**
      * Count shipping boxes by state
      *
      * @param state Box state
