@@ -88,6 +88,12 @@ public class SamplePatientUpdateData {
     private SampleRequester requesterSite;
     private SampleRequester requesterSiteDepartment;
     private List<SampleTestCollection> sampleItemsTests;
+    // Collection-site id resolved (or created) from the order's collection-site
+    // fields at intake. Inline-created sites have no id at submit, so the sample
+    // XML carries a blank collectionLocationId; this holds the resolved id so it
+    // can be stamped onto each SampleItem's collectionLocationId — the per-item
+    // key the surveillance density query and deconvolution group by.
+    private String resolvedCollectionSiteId;
     private SampleAddService sampleAddService;
     private Errors patientErrors;
     private Organization newOrganization;
@@ -787,7 +793,28 @@ public class SamplePatientUpdateData {
         SampleAddService sampleAddService = new SampleAddService(sampleXML, currentUserId, getSample(), receivedDate);
         List<SampleTestCollection> sampleItems = sampleAddService.createSampleTestCollection();
         setSampleItemsTests(sampleItems);
+        stampResolvedCollectionSiteOnItems(sampleItems);
         setSampleAddService(sampleAddService);
+    }
+
+    /**
+     * Stamp the resolved collection-site id onto sample items whose
+     * collectionLocationId is blank. An inline-created site has no id at submit, so
+     * the sample XML carries a blank collectionLocationId even though the site is
+     * created server-side during {@code addObservations}; without this, the
+     * collection would be absent from the site-grouped surveillance dashboard. An
+     * explicitly supplied id (existing site) is left untouched, so deconvolution
+     * can still override it per aliquot afterward.
+     */
+    private void stampResolvedCollectionSiteOnItems(List<SampleTestCollection> sampleItems) {
+        if (GenericValidator.isBlankOrNull(resolvedCollectionSiteId) || sampleItems == null) {
+            return;
+        }
+        for (SampleTestCollection sampleItem : sampleItems) {
+            if (sampleItem.item != null && GenericValidator.isBlankOrNull(sampleItem.item.getCollectionLocationId())) {
+                sampleItem.item.setCollectionLocationId(resolvedCollectionSiteId);
+            }
+        }
     }
 
     public void initProgramQuestions(String programId, QuestionnaireResponse additionalQuestions) {
@@ -922,6 +949,9 @@ public class SamplePatientUpdateData {
         String samplingSiteId = resolveOrCreateSamplingSiteId(getStringValue(envFields, "samplingSiteId"),
                 getStringValue(envFields, "samplingSiteName"), getStringValue(envFields, "samplingSiteCode"),
                 getStringValue(envFields, "siteType"));
+        if (!GenericValidator.isBlankOrNull(samplingSiteId)) {
+            resolvedCollectionSiteId = samplingSiteId;
+        }
         createObservation(samplingSiteId,
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_ID),
                 ValueType.LITERAL);
@@ -1011,6 +1041,9 @@ public class SamplePatientUpdateData {
         String vecCollectionSiteId = resolveOrCreateSamplingSiteId(getStringValue(envFields, "vecCollectionSiteId"),
                 getStringValue(envFields, "vecCollectionSiteName"), getStringValue(envFields, "vecCollectionSiteCode"),
                 getStringValue(envFields, "vecCollectionSiteType"));
+        if (!GenericValidator.isBlankOrNull(vecCollectionSiteId)) {
+            resolvedCollectionSiteId = vecCollectionSiteId;
+        }
         createObservation(vecCollectionSiteId,
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_SITE_ID),
                 ValueType.LITERAL);
