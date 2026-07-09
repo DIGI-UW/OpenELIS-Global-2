@@ -39,11 +39,48 @@ const priorSummary = {
   breakdown: [],
 };
 
-// The dashboard fires the current-window call before the prior-window call.
-const mockSummaries = (current, prior) => {
-  let call = 0;
+const currentAmendment = {
+  amendedCount: 8,
+  releasedCount: 2580,
+  ratePercent: 0.31,
+};
+
+const priorAmendment = {
+  amendedCount: 10,
+  releasedCount: 2400,
+  ratePercent: 0.42, // delta = -0.11% => fewer amendments, "good"
+};
+
+// 3 critical pending (amber band) + 2 in corrective action; the rest is noise
+// the predicates must ignore.
+const nceList = [
+  { id: "1", severity: "CRITICAL", status: "Pending" },
+  { id: "2", severity: "CRITICAL", status: "Pending" },
+  { id: "3", severity: "CRITICAL", status: "Pending" },
+  { id: "4", severity: "CRITICAL", status: "Closed" },
+  { id: "5", severity: "MAJOR", status: "Pending" },
+  { id: "6", severity: "CRITICAL", status: "Corrective Action" },
+  { id: "7", severity: "MINOR", status: "Corrective Action" },
+];
+
+// Each windowed endpoint fires current-window before prior-window.
+const mockApis = ({
+  tatCurrent = currentSummary,
+  tatPrior = priorSummary,
+  amendCurrent = currentAmendment,
+  amendPrior = priorAmendment,
+  nce = nceList,
+} = {}) => {
+  let tatCall = 0;
+  let amendCall = 0;
   getFromOpenElisServer.mockImplementation((url, callback) => {
-    callback(call++ === 0 ? current : prior);
+    if (url.includes("/rest/reports/tat/summary")) {
+      callback(tatCall++ === 0 ? tatCurrent : tatPrior);
+    } else if (url.includes("/rest/reports/amendment/summary")) {
+      callback(amendCall++ === 0 ? amendCurrent : amendPrior);
+    } else if (url.includes("/rest/nce/dashboard")) {
+      callback(nce === null ? undefined : { nceList: nce });
+    }
   });
 };
 
@@ -54,7 +91,7 @@ beforeEach(() => {
 
 describe("QIDashboard", () => {
   test("renders four tiles in fixed order with a live TAT tile", async () => {
-    mockSummaries(currentSummary, priorSummary);
+    mockApis();
     renderPage();
 
     const tiles = ["tat", "rejection", "amendment", "nce-pulse"].map((id) =>
@@ -72,29 +109,53 @@ describe("QIDashboard", () => {
     expect(screen.getByTestId("qi-tile-tat")).toHaveTextContent(
       "Across 2 lab units · Slowest: Microbiology (61h)",
     );
-    expect(screen.getByRole("link", { name: /View detail/ })).toHaveAttribute(
-      "href",
+    const detailLinks = screen.getAllByRole("link", { name: /View detail/ });
+    expect(detailLinks.map((l) => l.getAttribute("href"))).toEqual([
       "/qa/qi/tat",
-    );
+      "/qa/qi/amendment",
+      "/NceDashboard?severity=CRITICAL&status=Pending",
+    ]);
   });
 
-  test("coming-soon tiles are annotated with their tickets", () => {
-    mockSummaries(currentSummary, priorSummary);
+  test("amendment tile shows rate, improving delta, and counts", async () => {
+    mockApis();
+    renderPage();
+
+    const tile = screen.getByTestId("qi-tile-amendment");
+    await waitFor(() => expect(tile).toHaveTextContent("0.31%"));
+    expect(tile).toHaveTextContent("↓ 0.11%");
+    expect(tile).toHaveTextContent("8 amended of 2580 released");
+    expect(tile).toHaveTextContent("vs prior 30 days");
+    expect(tile).not.toHaveTextContent("Coming soon");
+  });
+
+  test("NCE Pulse tile shows the critical-pending count and corrective-action line", async () => {
+    mockApis();
+    renderPage();
+
+    const tile = screen.getByTestId("qi-tile-nce-pulse");
+    await waitFor(() => expect(tile).toHaveTextContent("3"));
+    expect(tile).toHaveTextContent("critical pending");
+    expect(tile).toHaveTextContent("2 in corrective action");
+    expect(tile).not.toHaveTextContent("Coming soon");
+    // amber band (1-4 pending) drives the tile accent
+    expect(tile.className).toContain("qi-tile--amber");
+  });
+
+  test("rejection tile remains a ticket-annotated placeholder", () => {
+    mockApis();
     renderPage();
 
     expect(screen.getByTestId("qi-tile-rejection")).toHaveTextContent(
       "Coming soon — OGC-697",
     );
-    expect(screen.getByTestId("qi-tile-amendment")).toHaveTextContent(
-      "Coming soon — OGC-698",
-    );
-    expect(screen.getByTestId("qi-tile-nce-pulse")).toHaveTextContent(
-      "Coming soon — OGC-699",
-    );
   });
 
-  test("shows empty state when the window has no completed test orders", async () => {
-    mockSummaries({ totalCount: 0, mean: null, breakdown: [] }, priorSummary);
+  test("shows empty states when the window has no activity", async () => {
+    mockApis({
+      tatCurrent: { totalCount: 0, mean: null, breakdown: [] },
+      amendCurrent: { amendedCount: 0, releasedCount: 0, ratePercent: null },
+    });
     renderPage();
 
     await waitFor(() =>
@@ -102,9 +163,12 @@ describe("QIDashboard", () => {
         "No completed test orders in this window.",
       ),
     );
+    expect(screen.getByTestId("qi-tile-amendment")).toHaveTextContent(
+      "No results released in this window.",
+    );
   });
 
-  test("shows error state when the TAT API is unavailable", async () => {
+  test("shows error states when the APIs are unavailable", async () => {
     getFromOpenElisServer.mockImplementation((url, callback) =>
       callback(undefined),
     );
@@ -115,11 +179,17 @@ describe("QIDashboard", () => {
         "Turnaround data is unavailable.",
       ),
     );
+    expect(screen.getByTestId("qi-tile-amendment")).toHaveTextContent(
+      "Amendment data is unavailable.",
+    );
+    expect(screen.getByTestId("qi-tile-nce-pulse")).toHaveTextContent(
+      "NCE data is unavailable.",
+    );
   });
 
-  test("uses the persisted reporting window for the summary query", () => {
+  test("uses the persisted reporting window for both summary queries", () => {
     localStorage.setItem("qa.qi.dashboard.window", "7d");
-    mockSummaries(currentSummary, priorSummary);
+    mockApis();
     renderPage();
 
     const from = new Date();
@@ -133,16 +203,23 @@ describe("QIDashboard", () => {
       expect.stringContaining("segment=RECEIPT_TO_VALIDATION"),
       expect.any(Function),
     );
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `/rest/reports/amendment/summary?fromDate=${expectedFrom}`,
+      ),
+      expect.any(Function),
+    );
   });
 
-  test("refresh refetches and rate-limits the button", async () => {
-    mockSummaries(currentSummary, priorSummary);
+  test("refresh refetches every indicator and rate-limits the button", async () => {
+    mockApis();
     renderPage();
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(2);
+    // TAT + Amendment fire current+prior (2 each); NCE Pulse fires once
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(5);
 
     const refresh = screen.getByTestId("qi-dashboard-refresh");
     fireEvent.click(refresh);
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(4);
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(10);
     expect(refresh).toBeDisabled();
   });
 });

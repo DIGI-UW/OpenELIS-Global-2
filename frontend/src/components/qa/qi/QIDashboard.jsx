@@ -18,6 +18,12 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { formatTat, tatDelta } from "../../reports/tat/tatUtils";
+import {
+  NCE_DRILL_URL,
+  countCriticalPending,
+  countInCorrectiveAction,
+  pulseColor,
+} from "../overview/nceOverview";
 import QITile from "./QITile";
 import "./QIDashboard.css";
 
@@ -68,6 +74,8 @@ const QIDashboard = () => {
     () => localStorage.getItem(WINDOW_STORAGE_KEY) || "30d",
   );
   const [tat, setTat] = useState({ loading: true });
+  const [amendment, setAmendment] = useState({ loading: true });
+  const [nce, setNce] = useState({ loading: true });
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [refreshDisabled, setRefreshDisabled] = useState(false);
   const [, setTick] = useState(0); // re-render so "last refreshed" stays fresh
@@ -100,9 +108,49 @@ const QIDashboard = () => {
     );
   }, [windowId]);
 
+  const fetchAmendment = useCallback(() => {
+    setAmendment({ loading: true });
+    const dates = windowDates(windowId);
+    const query = (from, to) =>
+      `/rest/reports/amendment/summary?fromDate=${from}&toDate=${to}`;
+    let current;
+    let prior;
+    let pending = 2;
+    const finish = () => {
+      if (--pending > 0) return;
+      setAmendment({ loading: false, data: current, prior });
+    };
+    getFromOpenElisServer(query(dates.fromDate, dates.toDate), (res) => {
+      current = res;
+      finish();
+    });
+    getFromOpenElisServer(
+      query(dates.priorFromDate, dates.priorToDate),
+      (res) => {
+        prior = res;
+        finish();
+      },
+    );
+  }, [windowId]);
+
+  // NCE Pulse is a current-state count, not a windowed trend — fetched once
+  // on mount (and on refresh), independent of the reporting window.
+  const fetchNce = useCallback(() => {
+    setNce({ loading: true });
+    getFromOpenElisServer("/rest/nce/dashboard", (data) => {
+      const list = data && Array.isArray(data.nceList) ? data.nceList : null;
+      setNce({ loading: false, list });
+    });
+  }, []);
+
   useEffect(() => {
     fetchTat();
-  }, [fetchTat]);
+    fetchAmendment();
+  }, [fetchTat, fetchAmendment]);
+
+  useEffect(() => {
+    fetchNce();
+  }, [fetchNce]);
 
   useEffect(() => {
     const timer = setInterval(() => setTick((t) => t + 1), 60000);
@@ -119,6 +167,8 @@ const QIDashboard = () => {
 
   const handleRefresh = () => {
     fetchTat();
+    fetchAmendment();
+    fetchNce();
     setRefreshDisabled(true);
     cooldownRef.current = setTimeout(
       () => setRefreshDisabled(false),
@@ -153,6 +203,58 @@ const QIDashboard = () => {
       },
     );
   }
+
+  // ---- Amendment tile derivations ----
+  const amendmentData = amendment.data;
+  let amendmentMessage = null;
+  if (!amendment.loading && !amendmentData) {
+    amendmentMessage = intl.formatMessage({
+      id: "qa.qi.dashboard.tile.amendment.error",
+    });
+  } else if (!amendment.loading && amendmentData.releasedCount === 0) {
+    amendmentMessage = intl.formatMessage({
+      id: "qa.qi.dashboard.tile.amendment.empty",
+    });
+  }
+
+  let amendmentDelta = null;
+  if (
+    amendmentData?.ratePercent != null &&
+    amendment.prior?.ratePercent != null
+  ) {
+    const diff = amendmentData.ratePercent - amendment.prior.ratePercent;
+    const flat = Math.abs(diff) < 0.005;
+    amendmentDelta = {
+      arrow: flat ? "—" : diff < 0 ? "↓" : "↑",
+      text: flat ? "" : `${Math.abs(diff).toFixed(2)}%`,
+      // fewer amendments = better
+      tone: flat ? "flat" : diff < 0 ? "good" : "bad",
+    };
+  }
+
+  let amendmentSecondary = null;
+  if (amendmentData?.releasedCount > 0) {
+    amendmentSecondary = intl.formatMessage(
+      { id: "qa.qi.dashboard.tile.amendment.secondary" },
+      {
+        amended: amendmentData.amendedCount,
+        released: amendmentData.releasedCount,
+      },
+    );
+  }
+
+  // ---- NCE Pulse tile derivations (current-state count, not a trend) ----
+  const nceCount = nce.list ? countCriticalPending(nce.list) : null;
+  const nceMessage =
+    !nce.loading && !nce.list
+      ? intl.formatMessage({ id: "qa.qi.dashboard.tile.ncePulse.error" })
+      : null;
+  const nceSecondary = nce.list
+    ? intl.formatMessage(
+        { id: "qa.qi.dashboard.tile.ncePulse.inCorrectiveAction" },
+        { count: countInCorrectiveAction(nce.list) },
+      )
+    : null;
 
   return (
     <div className="adminPageContent qi-dashboard" data-testid="qi-dashboard">
@@ -241,12 +343,42 @@ const QIDashboard = () => {
         <QITile
           testId="qi-tile-amendment"
           titleKey="qa.qi.dashboard.tile.amendment.label"
-          comingSoonTicket="OGC-698"
+          tooltipKey="qa.qi.dashboard.tile.amendment.tooltip"
+          accent="blue"
+          loading={amendment.loading}
+          primary={
+            amendmentData?.ratePercent != null
+              ? `${amendmentData.ratePercent.toFixed(2)}%`
+              : ""
+          }
+          delta={amendmentDelta}
+          targetLine={
+            windowId === "ytd"
+              ? intl.formatMessage({
+                  id: "qa.qi.dashboard.tile.amendment.vsPriorPeriod",
+                })
+              : intl.formatMessage(
+                  { id: "qa.qi.dashboard.tile.amendment.vsPriorDays" },
+                  { days: win.days },
+                )
+          }
+          secondary={amendmentSecondary}
+          message={amendmentMessage}
+          detailPath="/qa/qi/amendment"
         />
         <QITile
           testId="qi-tile-nce-pulse"
           titleKey="qa.qi.dashboard.tile.ncePulse.label"
-          comingSoonTicket="OGC-699"
+          tooltipKey="qa.qi.dashboard.tile.ncePulse.tooltip"
+          accent={nceCount != null ? pulseColor(nceCount) : "blue"}
+          loading={nce.loading}
+          primary={nceCount != null ? String(nceCount) : ""}
+          targetLine={intl.formatMessage({
+            id: "qa.qi.dashboard.tile.ncePulse.criticalPending",
+          })}
+          secondary={nceSecondary}
+          message={nceMessage}
+          detailPath={NCE_DRILL_URL}
         />
       </div>
     </div>

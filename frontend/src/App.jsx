@@ -36,6 +36,7 @@ import EQAResultsPage from "./components/eqa/EQAResultsPage";
 import QAPlaceholder from "./components/qa/QAPlaceholder";
 import QAOverview from "./components/qa/overview/QAOverview";
 import QIDashboard from "./components/qa/qi/QIDashboard";
+import AmendmentReport from "./components/qa/qi/AmendmentReport";
 import InventoryManagement from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
@@ -826,6 +827,12 @@ export default function App() {
                   path="/qa/qi/tat"
                   exact
                   component={() => <TATReport breadcrumbs={qaTatBreadcrumbs} />}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
+                />
+                <SecureRoute
+                  path="/qa/qi/amendment"
+                  exact
+                  component={() => <AmendmentReport />}
                   role={[Roles.RESULTS, Roles.REPORTS]}
                 />
                 <SecureRoute
