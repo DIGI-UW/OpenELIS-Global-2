@@ -35,12 +35,6 @@
   <!-- Add storage_skipped field to sample table -->
   <include relativeToChangelogFile="true" file="add_storage_skipped_to_sample.xml"/>
 
-  <!-- Add 'sampling site' organization type for environmental workflows -->
-  <include relativeToChangelogFile="true" file="003-add-sampling-site-org-type.xml"/>
-
-  <!-- Sequence for auto-generating sampling site codes -->
-  <include relativeToChangelogFile="true" file="004-create-site-code-sequence.xml"/>
-
    <!-- Sample shipping management -->
   <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
   <include relativeToChangelogFile="true" file="shipment-002-create-shipment-table.xml"/>
@@ -58,6 +52,8 @@
   <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
   <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-017-add-referral-stuck-threshold-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-018-add-inbound-and-origin.xml"/>
 
   <!-- Analyzer import diagnostics: structured reason for unmapped/failed staging rows -->
   <include relativeToChangelogFile="true" file="005-analyzer-results-import-issue-reason.xml"/>
@@ -214,7 +210,34 @@
   <!-- LHU PDF archival for ISO 17025 §7.8.8 compliance -->
   <include relativeToChangelogFile="true" file="052-compliance-report-archive.xml"/>
 
+  <!-- OGC-799: manually_entered flag for Referral (Manual Entry path) -->
+  <include relativeToChangelogFile="true" file="053-referral-manually-entered.xml"/>
+
+  <!-- OGC-803/804: reception action columns on referral (reconcile + reject) -->
+  <include relativeToChangelogFile="true" file="054-referral-reception-actions.xml"/>
+
+  <!-- OGC-804: RejectedByReferenceLab terminal ANALYSIS status -->
+  <include relativeToChangelogFile="true" file="055-rejected-by-reference-lab-status.xml"/>
+
+  <!-- OGC-804: REFERRAL_REJECTED_NEEDS_RECOLLECTION notification trigger seed -->
+  <include relativeToChangelogFile="true" file="056-referral-rejected-trigger.xml"/>
+
+  <!-- OGC-803/804: in-app Alerts feature types for referral reception -->
+  <include relativeToChangelogFile="true" file="057-referral-alert-types.xml"/>
+
+  <!-- OGC-810: REFERRAL_NUDGE notification trigger seed (notify reference lab) -->
+  <include relativeToChangelogFile="true" file="058-referral-nudge-trigger.xml"/>
+  <!-- Requester element revamp — Organization contact fields, Person department, requestor_contact requester_type -->
+  <include relativeToChangelogFile="true" file="053-requester-element-revamp.xml"/>
+
+  <!-- restrictFreeTextRequestorEntry admin config for the Requestor "+ Add new" affordance -->
+  <include relativeToChangelogFile="true" file="054-requestor-free-text-restriction.xml"/>
+
+  <!-- Sampling Site inline-create: restrictFreeTextSampSiteEntry admin config for the "+ Add new site" affordance -->
+  <include relativeToChangelogFile="true" file="055-sampling-site-free-text-restriction.xml"/>
+
   <!-- V-04 (OGC-585) collection density: trap-count + trap-nights observation types (sampling effort) -->
-  <include relativeToChangelogFile="true" file="053-vector-trap-effort-observation-types.xml"/>
+  <include relativeToChangelogFile="true" file="059-vector-trap-effort-observation-types.xml"/>
+
 
 </databaseChangeLog>

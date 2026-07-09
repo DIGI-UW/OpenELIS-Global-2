@@ -23,13 +23,13 @@
         <property name="fromStatus" column="from_status"
             not-null="false">
             <type name="org.hibernate.type.EnumType">
-                <param name="enumClass">org.openelisglobal.referral.valueholder.SubcontractStatus</param>
+                <param name="enumClass">org.openelisglobal.referral.valueholder.ReferralStatus</param>
                 <param name="useNamed">true</param>
             </type>
         </property>
         <property name="toStatus" column="to_status" not-null="true">
             <type name="org.hibernate.type.EnumType">
-                <param name="enumClass">org.openelisglobal.referral.valueholder.SubcontractStatus</param>
+                <param name="enumClass">org.openelisglobal.referral.valueholder.ReferralStatus</param>
                 <param name="useNamed">true</param>
             </type>
         </property>

@@ -2,19 +2,18 @@ import React from "react";
 import { Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 
-// SubcontractStatus enum mirror (org.openelisglobal.referral.valueholder.SubcontractStatus).
+// FHIR Task-aligned ReferralStatus values (org.openelisglobal.referral.valueholder.ReferralStatus).
 const STATUS_CONFIG = {
   DRAFT: { type: "gray", labelId: "label.referOut.status.draft" },
-  DISPATCHED: { type: "blue", labelId: "label.referOut.status.dispatched" },
+  REQUESTED: { type: "blue", labelId: "label.referOut.status.requested" },
   RECEIVED: { type: "teal", labelId: "label.referOut.status.received" },
-  RESULTS_RETURNED: {
-    type: "cyan",
-    labelId: "label.referOut.status.resultsReturned",
-  },
-  CLOSED: { type: "green", labelId: "label.referOut.status.closed" },
+  IN_PROGRESS: { type: "purple", labelId: "label.referOut.status.inProgress" },
+  COMPLETED: { type: "green", labelId: "label.referOut.status.completed" },
+  CANCELLED: { type: "warm-gray", labelId: "label.referOut.status.cancelled" },
+  REJECTED: { type: "red", labelId: "label.referOut.status.rejected" },
 };
 
-const SubcontractStatusTag = ({ status, size = "sm" }) => {
+const ReferralStatusTag = ({ status, size = "sm" }) => {
   if (!status) {
     return (
       <Tag type="outline" size={size}>
@@ -36,4 +35,4 @@ const SubcontractStatusTag = ({ status, size = "sm" }) => {
   );
 };
 
-export default SubcontractStatusTag;
+export default ReferralStatusTag;

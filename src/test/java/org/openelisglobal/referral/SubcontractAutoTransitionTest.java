@@ -35,8 +35,8 @@ import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.referral.dao.ReferralStatusHistoryDAO;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
-import org.openelisglobal.referral.valueholder.SubcontractStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -46,8 +46,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Coverage for the two interlocking S-14 / OGC-624 fixes:
  *
  * <ol>
- * <li>REQUIRES_NEW propagation on {@code markSubcontractReceived} /
- * {@code markSubcontractResultsReturned} so the strict-linear guard's
+ * <li>REQUIRES_NEW propagation on {@code markReferralReceived} /
+ * {@code markReferralCompleted} so the strict-linear guard's
  * {@link IllegalStateException} no longer poisons a parent transaction (the
  * FHIR result-import path's outer @Transactional method).</li>
  * <li>The DISPATCHED → RECEIVED auto-trigger wired into
@@ -112,17 +112,17 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
     // ---- Transaction-poisoning tests ----------------------------------------
 
     @Test
-    public void markSubcontractReceived_rejectsTransition_doesNotPoisonOuterTransaction() {
+    public void markReferralReceived_rejectsTransition_doesNotPoisonOuterTransaction() {
         // Walk fixture's referral 1 forward to RECEIVED so a second
-        // markSubcontractReceived call hits the strict-linear guard.
-        referralService.dispatchSubcontract("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
-        referralService.markSubcontractReceived("1", "1", "prep received");
+        // markReferralReceived call hits the strict-linear guard.
+        referralService.dispatchReferral("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
+        referralService.markReferralReceived("1", "1", "prep received");
 
         TransactionTemplate tx = new TransactionTemplate(txManager);
         tx.execute(status -> {
             insertSentinelHistory("1");
             try {
-                referralService.markSubcontractReceived("1", "1", "rejected — already received");
+                referralService.markReferralReceived("1", "1", "rejected — already received");
                 fail("expected IllegalStateException");
             } catch (IllegalStateException expected) {
                 // The fix: REQUIRES_NEW means the inner tx rolls back alone,
@@ -136,18 +136,24 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void markSubcontractResultsReturned_rejectsTransition_doesNotPoisonOuterTransaction() {
-        // DISPATCHED -> RESULTS_RETURNED is illegal (must pass through RECEIVED).
-        referralService.dispatchSubcontract("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
+    public void markReferralCompleted_rejectsTransition_doesNotPoisonOuterTransaction() {
+        // OGC-799 widened REQUESTED -> COMPLETED to allow direct manual-entry
+        // completion, so the original "skip RECEIVED" rejection no longer applies.
+        // Terminal-to-terminal (COMPLETED -> COMPLETED) is still rejected, which
+        // is the realistic poisoning shape after OGC-799: the FHIR result-import
+        // path re-firing on a referral another path already closed.
+        referralService.dispatchReferral("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
+        referralService.markReferralCompleted("1", "1", "already complete");
 
         TransactionTemplate tx = new TransactionTemplate(txManager);
         tx.execute(status -> {
             insertSentinelHistory("1");
             try {
-                referralService.markSubcontractResultsReturned("1", "1", "rejected — skipping RECEIVED");
+                referralService.markReferralCompleted("1", "1", "rejected — already terminal");
                 fail("expected IllegalStateException");
             } catch (IllegalStateException expected) {
-                // Same poisoning shape as the production FHIR result-import path.
+                // Same poisoning shape as the production FHIR result-import path
+                // re-firing on a referral that's already been closed.
             }
             return null;
         });
@@ -159,7 +165,7 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void autoReceived_firesWhenRemoteTaskAccepted() throws Exception {
-        referralService.dispatchSubcontract("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
+        referralService.dispatchReferral("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
         // Sender-direction: remote Task is ACCEPTED by receiver, no local task-based-on
         // copy.
         stubRemoteFhirSearch(remoteTasksBundle(REFERRAL_1_FHIR_UUID.toString(), TaskStatus.ACCEPTED));
@@ -171,8 +177,8 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
 
         List<ReferralStatusHistory> history = statusHistoryDAO.findByReferralIdOrderedByChangedAt("1");
         ReferralStatusHistory latest = history.get(history.size() - 1);
-        assertEquals(SubcontractStatus.DISPATCHED, latest.getFromStatus());
-        assertEquals(SubcontractStatus.RECEIVED, latest.getToStatus());
+        assertEquals(ReferralStatus.REQUESTED, latest.getFromStatus());
+        assertEquals(ReferralStatus.RECEIVED, latest.getToStatus());
         assertEquals("1", latest.getChangedByUserId());
         assertEquals("FHIR auto: receiver accepted Task " + REFERRAL_1_FHIR_UUID, latest.getNotes());
         assertNotNull(latest.getChangedAt());
@@ -180,7 +186,7 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void autoReceived_isIdempotentOnRepeatedObservations() throws Exception {
-        referralService.dispatchSubcontract("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
+        referralService.dispatchReferral("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
         // Mirrors real HAPI: once the remote Task is ACCEPTED, the filter
         // (REQUESTED, RECEIVED) returns 0 entries for that referral on the
         // second poll cycle. Sender-direction: no local task-based-on copy.
@@ -191,16 +197,16 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
         invokeBeginTaskCheckIfAcceptedPath();
 
         long autoRows = statusHistoryDAO.findByReferralIdOrderedByChangedAt("1").stream()
-                .filter(h -> SubcontractStatus.DISPATCHED.equals(h.getFromStatus())
-                        && SubcontractStatus.RECEIVED.equals(h.getToStatus()))
+                .filter(h -> ReferralStatus.REQUESTED.equals(h.getFromStatus())
+                        && ReferralStatus.RECEIVED.equals(h.getToStatus()))
                 .count();
         assertEquals(1L, autoRows);
     }
 
     @Test
     public void autoReceived_skipsWhenSubcontractAlreadyPastReceived() throws Exception {
-        referralService.dispatchSubcontract("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
-        referralService.markSubcontractReceived("1", "1", "prep received");
+        referralService.dispatchReferral("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
+        referralService.markReferralReceived("1", "1", "prep received");
         long historyBefore = statusHistoryDAO.findByReferralIdOrderedByChangedAt("1").size();
 
         stubRemoteFhirSearch(remoteTasksBundle(REFERRAL_1_FHIR_UUID.toString()));
@@ -215,7 +221,7 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void autoReceived_doesNotFireOnTaskRejected() throws Exception {
-        referralService.dispatchSubcontract("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
+        referralService.dispatchReferral("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
         long historyBefore = statusHistoryDAO.findByReferralIdOrderedByChangedAt("1").size();
 
         stubRemoteFhirSearch(remoteTasksBundle(REFERRAL_1_FHIR_UUID.toString()));
@@ -224,7 +230,7 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
 
         invokeBeginTaskCheckIfAcceptedPath();
 
-        assertEquals("DISPATCHED", currentSubcontractStatus("1"));
+        assertEquals("REQUESTED", currentSubcontractStatus("1"));
         assertEquals(historyBefore, statusHistoryDAO.findByReferralIdOrderedByChangedAt("1").size());
     }
 
@@ -267,7 +273,7 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
         doThrow(new RuntimeException("simulated DAO failure")).when(mockDao).insert(any());
         ReflectionTestUtils.setField(referralService, "statusHistoryDAO", mockDao);
 
-        assertThrows(RuntimeException.class, () -> referralService.dispatchSubcontract("1",
+        assertThrows(RuntimeException.class, () -> referralService.dispatchReferral("1",
                 Timestamp.valueOf("2026-05-15 10:30:00"), "1", "dispatch that fails mid-tx"));
 
         // History DAO was mocked, so we can only assert on referral_subcontract.
@@ -277,13 +283,15 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
 
     // ---- Iterator contract regression ---------------------------------------
 
+    private static final UUID REFERRAL_2_FHIR_UUID = UUID.fromString("386e3e0c-013b-425b-ab5f-46f40278c5d3");
+
     @Test
     public void getSentReferrals_returnsInitializedScalarFields() {
         List<Referral> sent = referralService.getSentReferrals();
         assertEquals(1, sent.size());
         Referral ref = sent.get(0);
-        assertEquals("1", ref.getId());
-        assertEquals(REFERRAL_1_FHIR_UUID, ref.getFhirUuid());
+        assertEquals("2", ref.getId());
+        assertEquals(REFERRAL_2_FHIR_UUID, ref.getFhirUuid());
     }
 
     // ---- Helpers ------------------------------------------------------------
@@ -335,7 +343,7 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
         ReferralStatusHistory sentinel = new ReferralStatusHistory();
         sentinel.setReferralId(referralId);
         sentinel.setFromStatus(null);
-        sentinel.setToStatus(SubcontractStatus.DRAFT);
+        sentinel.setToStatus(ReferralStatus.DRAFT);
         sentinel.setChangedByUserId("1");
         sentinel.setChangedAt(DateUtil.getNowAsTimestamp());
         sentinel.setNotes(SENTINEL_NOTE);
@@ -351,9 +359,7 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
     }
 
     private String currentSubcontractStatus(String referralId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT s.subcontract_status FROM clinlims.referral_subcontract s "
-                        + "JOIN clinlims.referral r ON r.subcontract_id = s.id WHERE r.id = ?",
-                String.class, Integer.valueOf(referralId));
+        return jdbcTemplate.queryForObject("SELECT status FROM clinlims.referral WHERE id = ?", String.class,
+                Integer.valueOf(referralId));
     }
 }

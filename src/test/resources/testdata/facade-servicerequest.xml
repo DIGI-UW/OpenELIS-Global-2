@@ -301,15 +301,18 @@
         fhir_uuid="550e8400-e29b-41d4-a716-446655441004"
         lastupdated="2023-11-01 12:00:00" />
 
-    <requester_type id="1" requester_type="provider" />
-    <requester_type id="2" requester_type="organization" />
+    <!-- requester_type is a protected static seed (Liquibase-populated: 1=organization,
+        2=provider, 4=requestor_contact — see BaseWebContextSensitiveTest#PROTECTED_SEED_TABLES);
+        rows declared here are silently filtered out at load time and must NOT be
+        relied on. requester_type_id below matches the real Liquibase-seeded ids,
+        not a locally-declared override. -->
 
     <sample_requester id="1" sample_id="1"
-        requester_id="3" requester_type_id="1"
+        requester_id="3" requester_type_id="2"
         lastupdated="2023-11-01 12:00:00" />
 
     <sample_requester id="10" sample_id="1"
-        requester_id="3" requester_type_id="2"
+        requester_id="3" requester_type_id="1"
         lastupdated="2023-11-01 12:00:00" />
 
     <sample_human id="1" provider_id="1" samp_id="1"

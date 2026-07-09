@@ -54,5 +54,16 @@ public enum AlertType {
     /**
      * Order required-by deadline approaching or past
      */
-    REQUIRED_BY_DEADLINE
+    REQUIRED_BY_DEADLINE,
+
+    /**
+     * Reference lab returned a Critical/Abnormal result awaiting acceptance
+     * (OGC-803)
+     */
+    REFERRAL_CRITICAL_RESULT,
+
+    /**
+     * Reference lab referral was rejected — lab-side acknowledgment (OGC-804)
+     */
+    REFERRAL_REJECTED
 }

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useContext,
+} from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   TextInput,
@@ -13,11 +19,9 @@ import {
   DatePickerInput,
 } from "@carbon/react";
 import { ChevronDown, ChevronUp } from "@carbon/icons-react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../../utils/Utils";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useOrderContext } from "../../OrderContext";
+import { ConfigurationContext } from "../../../layout/Layout";
 
 const todayIso = () => {
   const d = new Date();
@@ -27,7 +31,23 @@ const todayIso = () => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-const SITES_URL = "/rest/admin/vector/sampling-sites/active";
+const SITE_BY_ID_URL = "/rest/admin/vector/sampling-sites";
+const SITE_SEARCH_URL = "/rest/admin/vector/sampling-sites/search";
+const SITE_TYPES_URL = "/rest/vector/dictionary/sampling-site-types";
+
+// Generates an editable placeholder code for a not-yet-persisted site.
+const generateSiteCode = (name) => {
+  const initials = (name || "")
+    .trim()
+    .split(/\s+/)
+    .map((word) => word[0])
+    .filter(Boolean)
+    .join("")
+    .toUpperCase()
+    .slice(0, 6);
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `${initials || "SITE"}-${suffix}`;
+};
 
 function SectionHeader({ title }) {
   return (
@@ -98,13 +118,28 @@ function SearchResults({ results, onSelect, renderRow }) {
   );
 }
 
-function SelectedCard({ onClear, children }) {
+function SelectedCard({ onClear, isNew, isLocked, onUnlock, children }) {
   return (
     <div className="selected-entity-card">
       <div className="selected-card-header">
         <Tag type="green" size="sm">
-          <FormattedMessage id="selected" defaultMessage="Selected" />
+          {isNew ? (
+            <FormattedMessage
+              id="vector.order.site.new.tag"
+              defaultMessage="New"
+            />
+          ) : (
+            <FormattedMessage id="selected" defaultMessage="Selected" />
+          )}
         </Tag>
+        {!isNew && isLocked && (
+          <Link onClick={onUnlock}>
+            <FormattedMessage
+              id="label.button.edit.details"
+              defaultMessage="Edit details"
+            />
+          </Link>
+        )}
         <Link onClick={onClear}>
           <FormattedMessage id="label.button.clear" defaultMessage="Clear" />
         </Link>
@@ -139,14 +174,31 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const GPS_LON_KEY = isEnv ? "samplingSiteGpsLon" : "vecGpsLongitude";
   const COLLECTION_DATE_KEY = isEnv ? "envCollectionDate" : "vecCollectionDate";
 
-  const [sites, setSites] = useState([]);
+  const componentMounted = useRef(true);
+  useEffect(() => {
+    componentMounted.current = true;
+    return () => {
+      componentMounted.current = false;
+    };
+  }, []);
+
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
+  const isSamplingSiteAddNewRestricted =
+    configurationProperties?.restrictFreeTextSampSiteEntry === "true";
+
   const [siteSearch, setSiteSearch] = useState("");
   const [siteResults, setSiteResults] = useState([]);
+  const [isSearchingSites, setIsSearchingSites] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
+  const [isSamplingSiteLocked, setIsSamplingSiteLocked] = useState(false);
+  const [siteTypes, setSiteTypes] = useState([]);
   const [collectionContextOpen, setCollectionContextOpen] = useState(false);
-  const [showAddSite, setShowAddSite] = useState(false);
-  const [newSite, setNewSite] = useState({ code: "", name: "" });
-  const [addSiteError, setAddSiteError] = useState("");
+
+  useEffect(() => {
+    getFromOpenElisServer(SITE_TYPES_URL, (data) => {
+      if (componentMounted.current) setSiteTypes(data || []);
+    });
+  }, []);
 
   const initialCollectionDate =
     orderData?.sampleOrderItems?.environmentalFields?.[COLLECTION_DATE_KEY] ||
@@ -202,20 +254,17 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
     [setOrderData],
   );
 
-  useEffect(() => {
-    getFromOpenElisServer(SITES_URL, (data) => setSites(data || []));
-  }, []);
-
-  // Restore selected site when editing an existing order
+  // Restore selected site when editing an existing order.
   useEffect(() => {
     const envFields = orderData?.sampleOrderItems?.environmentalFields;
-    if (!envFields?.[SITE_ID_KEY] || selectedSite) return;
-    if (sites.length > 0) {
-      const match = sites.find(
-        (s) => String(s.id) === String(envFields[SITE_ID_KEY]),
-      );
+    const siteId = envFields?.[SITE_ID_KEY];
+    if (!siteId || selectedSite) return;
+
+    getFromOpenElisServer(`${SITE_BY_ID_URL}/${siteId}`, (match) => {
+      if (!componentMounted.current) return;
       if (match) {
         setSelectedSite(match);
+        setIsSamplingSiteLocked(true);
         setOrderData((prev) => ({
           ...prev,
           sampleOrderItems: {
@@ -234,39 +283,46 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
             },
           },
         }));
+      } else if (envFields[SITE_NAME_KEY]) {
+        setSelectedSite({
+          id: siteId,
+          name: envFields[SITE_NAME_KEY],
+          code: envFields[SITE_CODE_KEY] || "",
+          gpsLatitude: envFields[GPS_LAT_KEY] || "",
+          gpsLongitude: envFields[GPS_LON_KEY] || "",
+        });
+        setIsSamplingSiteLocked(true);
+      }
+    });
+  }, [orderData?.sampleOrderItems?.environmentalFields]);
+
+  // Live server-side search, debounced.
+  useEffect(() => {
+    if (selectedSite || isReadOnly) return;
+
+    const debounceTimer = setTimeout(() => {
+      const term = siteSearch.trim();
+      if (term.length < 2) {
+        setSiteResults([]);
         return;
       }
-    }
-    if (envFields[SITE_NAME_KEY]) {
-      setSelectedSite({
-        id: envFields[SITE_ID_KEY],
-        name: envFields[SITE_NAME_KEY],
-        code: envFields[SITE_CODE_KEY] || "",
-        gpsLatitude: envFields[GPS_LAT_KEY] || "",
-        gpsLongitude: envFields[GPS_LON_KEY] || "",
-      });
-    }
-  }, [orderData?.sampleOrderItems?.environmentalFields, sites]);
+      setIsSearchingSites(true);
+      getFromOpenElisServer(
+        `${SITE_SEARCH_URL}?search=${encodeURIComponent(term)}`,
+        (data) => {
+          if (!componentMounted.current) return;
+          setIsSearchingSites(false);
+          setSiteResults(data || []);
+        },
+      );
+    }, 300);
 
-  useEffect(() => {
-    if (!siteSearch.trim()) {
-      setSiteResults([]);
-      return;
-    }
-    const q = siteSearch.toLowerCase();
-    setSiteResults(
-      sites
-        .filter(
-          (s) =>
-            s.name?.toLowerCase().includes(q) ||
-            s.code?.toLowerCase().includes(q),
-        )
-        .slice(0, 10),
-    );
-  }, [siteSearch, sites]);
+    return () => clearTimeout(debounceTimer);
+  }, [siteSearch, selectedSite, isReadOnly]);
 
   const handleSelectSite = (site) => {
     setSelectedSite(site);
+    setIsSamplingSiteLocked(true);
     setSiteSearch("");
     setSiteResults([]);
     setOrderData((prev) => ({
@@ -291,37 +347,51 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
     }));
   };
 
-  // Create a sampling site inline (code + name are the only required fields, per
-  // the admin form) and select it, so order entry never needs the admin screen.
-  const handleCreateSite = () => {
-    const code = newSite.code.trim();
-    const name = newSite.name.trim();
-    if (!code || !name) return;
-    setAddSiteError("");
-    postToOpenElisServerJsonResponse(
-      "/rest/admin/vector/sampling-sites",
-      JSON.stringify({ code, name }),
-      (resp) => {
-        if (resp && resp.id) {
-          setSites((prev) => [...prev, resp]);
-          handleSelectSite(resp);
-          setShowAddSite(false);
-          setNewSite({ code: "", name: "" });
-        } else {
-          setAddSiteError(
-            intl.formatMessage({
-              id: "vector.order.site.addNew.error",
-              defaultMessage:
-                "Could not create the site — a site with that code may already exist.",
-            }),
-          );
-        }
+  // Deferred creation — resolved/created server-side at order-save time.
+  const handleUseAsNewSite = (name) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+    const code = generateSiteCode(trimmedName);
+
+    setSelectedSite({ name: trimmedName, code, isNew: true });
+    setSiteResults([]);
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        environmentalFields: {
+          ...prev.sampleOrderItems?.environmentalFields,
+          [SITE_ID_KEY]: "",
+          [SITE_NAME_KEY]: trimmedName,
+          [SITE_CODE_KEY]: code,
+        },
       },
-    );
+    }));
+  };
+
+  const handleSiteNameChange = (name) => {
+    setSelectedSite((prev) => (prev ? { ...prev, name } : prev));
+    updateEnvField(SITE_NAME_KEY, name);
+  };
+
+  const handleSiteCodeChange = (code) => {
+    setSelectedSite((prev) => (prev ? { ...prev, code } : prev));
+    updateEnvField(SITE_CODE_KEY, code);
+  };
+
+  const handleSiteTypeChange = (type) => {
+    setSelectedSite((prev) => (prev ? { ...prev, type } : prev));
+    updateEnvField(SITE_TYPE_KEY, type);
+  };
+
+  // Unlocks a selected site for editing.
+  const handleUnlockSamplingSite = () => {
+    setIsSamplingSiteLocked(false);
   };
 
   const handleClearSite = () => {
     setSelectedSite(null);
+    setIsSamplingSiteLocked(false);
     setSiteSearch("");
     setSiteResults([]);
     setOrderData((prev) => ({
@@ -434,7 +504,12 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
           required
         />
         {selectedSite ? (
-          <SelectedCard onClear={handleClearSite}>
+          <SelectedCard
+            onClear={handleClearSite}
+            isNew={selectedSite.isNew}
+            isLocked={isSamplingSiteLocked}
+            onUnlock={handleUnlockSamplingSite}
+          >
             <h5>
               {selectedSite.code} — {selectedSite.name}
             </h5>
@@ -442,6 +517,12 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
               {selectedSite.type && `Type: ${selectedSite.type}`}
               {selectedSite.gpsLatitude &&
                 ` · GPS: ${selectedSite.gpsLatitude}, ${selectedSite.gpsLongitude}`}
+              {selectedSite.isNew && (
+                <FormattedMessage
+                  id="vector.order.site.new.helper"
+                  defaultMessage="Will be created as a new sampling site when this order is saved."
+                />
+              )}
             </p>
           </SelectedCard>
         ) : (
@@ -489,107 +570,117 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
                 </>
               )}
             />
-            {/* Inline site creation — code + name only, so a non-admin can add a
-                site here instead of the admin screen (both vector and ENV). */}
-            <div style={{ marginTop: "0.75rem" }}>
-              {!showAddSite ? (
-                <Link
-                  onClick={() => !isReadOnly && setShowAddSite(true)}
-                  disabled={isReadOnly}
-                >
-                  <FormattedMessage
-                    id="vector.order.site.addNew"
-                    defaultMessage="Can't find it? Add a new site"
-                  />
-                </Link>
-              ) : (
-                <div
-                  style={{
-                    border: "1px solid #e0e0e0",
-                    borderRadius: "4px",
-                    padding: "1rem",
-                    background: "#f4f4f4",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "1rem",
-                    }}
+            {siteSearch.trim().length >= 2 &&
+              siteResults.length === 0 &&
+              !isSearchingSites && (
+                <div className="search-results" style={{ marginTop: "0.5rem" }}>
+                  <p className="helper-text">
+                    <FormattedMessage
+                      id="vector.order.site.no.match"
+                      defaultMessage="No matching site found."
+                    />
+                  </p>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    onClick={() => handleUseAsNewSite(siteSearch)}
+                    disabled={isReadOnly || isSamplingSiteAddNewRestricted}
                   >
-                    <TextInput
-                      id="vec-new-site-code"
-                      labelText={intl.formatMessage({
-                        id: "vector.admin.samplingSite.code",
-                        defaultMessage: "Site code",
-                      })}
-                      value={newSite.code}
-                      onChange={(e) =>
-                        setNewSite((s) => ({ ...s, code: e.target.value }))
-                      }
+                    <FormattedMessage
+                      id="vector.order.site.add.new"
+                      defaultMessage='+ Add new site "{name}"'
+                      values={{ name: siteSearch }}
                     />
-                    <TextInput
-                      id="vec-new-site-name"
-                      labelText={intl.formatMessage({
-                        id: "vector.admin.samplingSite.name",
-                        defaultMessage: "Site name or code",
-                      })}
-                      value={newSite.name}
-                      onChange={(e) =>
-                        setNewSite((s) => ({ ...s, name: e.target.value }))
-                      }
-                    />
-                  </div>
-                  {addSiteError && (
-                    <p
-                      style={{
-                        color: "#da1e28",
-                        fontSize: "0.75rem",
-                        marginTop: "0.5rem",
-                      }}
-                    >
-                      {addSiteError}
+                  </Button>
+                  {isSamplingSiteAddNewRestricted && (
+                    <p className="helper-text admin-restricted-message">
+                      <FormattedMessage
+                        id="vector.order.site.add.new.restricted"
+                        defaultMessage="Adding a new sampling site has been disabled by your administrator."
+                      />
                     </p>
                   )}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "0.5rem",
-                      marginTop: "0.75rem",
-                    }}
-                  >
-                    <Button
-                      kind="primary"
-                      size="sm"
-                      id="vec-new-site-create"
-                      onClick={handleCreateSite}
-                      disabled={!newSite.code.trim() || !newSite.name.trim()}
-                    >
-                      <FormattedMessage
-                        id="vector.order.site.addNew.create"
-                        defaultMessage="Create & select"
-                      />
-                    </Button>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setShowAddSite(false);
-                        setAddSiteError("");
-                      }}
-                    >
-                      <FormattedMessage
-                        id="label.button.cancel"
-                        defaultMessage="Cancel"
-                      />
-                    </Button>
-                  </div>
                 </div>
               )}
-            </div>
           </>
         )}
+
+        {(() => {
+          const isCreatingNewSite = !selectedSite || selectedSite.isNew;
+          const isSiteFieldRestricted =
+            isCreatingNewSite && isSamplingSiteAddNewRestricted;
+          const isSiteFieldLocked = !isCreatingNewSite && isSamplingSiteLocked;
+          const isSiteFieldDisabled =
+            isReadOnly || isSiteFieldRestricted || isSiteFieldLocked;
+          if (!selectedSite) return null;
+          return (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "1rem",
+                marginTop: "0.75rem",
+              }}
+            >
+              <TextInput
+                id="vec-site-name"
+                labelText={intl.formatMessage({
+                  id: "vector.order.site.name",
+                  defaultMessage: "Site Name",
+                })}
+                value={selectedSite.name || ""}
+                onChange={(e) => handleSiteNameChange(e.target.value)}
+                disabled={isSiteFieldDisabled}
+              />
+              <TextInput
+                id="vec-site-code"
+                labelText={intl.formatMessage({
+                  id: "vector.order.site.code",
+                  defaultMessage: "Site Code",
+                })}
+                value={selectedSite.code || ""}
+                onChange={(e) => handleSiteCodeChange(e.target.value)}
+                disabled={isSiteFieldDisabled}
+              />
+              <Select
+                id="vec-site-type"
+                labelText={intl.formatMessage({
+                  id: "vector.order.site.type",
+                  defaultMessage: "Site Type",
+                })}
+                value={selectedSite.type || ""}
+                onChange={(e) => handleSiteTypeChange(e.target.value)}
+                disabled={isSiteFieldDisabled}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({
+                    id: "label.select",
+                    defaultMessage: "Select...",
+                  })}
+                />
+                {siteTypes.map((t) => (
+                  <SelectItem
+                    key={t.id}
+                    value={t.dictEntry}
+                    text={t.dictEntry}
+                  />
+                ))}
+              </Select>
+              {isSiteFieldRestricted && (
+                <p
+                  className="helper-text admin-restricted-message"
+                  style={{ gridColumn: "1 / -1" }}
+                >
+                  <FormattedMessage
+                    id="vector.order.site.add.new.restricted"
+                    defaultMessage="Adding a new sampling site has been disabled by your administrator."
+                  />
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Collection Context — bionomics capture (vector only) */}

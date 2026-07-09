@@ -40,6 +40,7 @@ import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
 import BoxDetails from "./components/shipment/BoxDetails";
 import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
+import ReferenceLabResults from "./components/referenceLabResults";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 
@@ -156,7 +157,6 @@ import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntry
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
 import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
 import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
-import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder";
@@ -1094,6 +1094,12 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/SampleShipment/reference-lab-results"
+                  exact
+                  component={() => <ReferenceLabResults />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/SampleShipment/:tab"
                   component={() => <ShipmentDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
@@ -1366,12 +1372,6 @@ export default function App() {
                       <ResultSearch />
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/ReferredOutTests"
-                  exact
-                  component={() => <ReferredOutTests />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute

@@ -179,6 +179,9 @@ public class OrderSearchRestController extends BaseRestController {
     private SampleComplianceStandardService sampleComplianceStandardService;
 
     @Autowired
+    private ReferralService referralService;
+
+    @Autowired
     private PanelItemService panelItemService;
 
     @Autowired
@@ -186,9 +189,6 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private TestSectionService testSectionService;
-
-    @Autowired
-    private ReferralService referralService;
 
     @Autowired
     private VectorSamplingSiteService vectorSamplingSiteService;
@@ -722,12 +722,11 @@ public class OrderSearchRestController extends BaseRestController {
                             referral.getSentDate() != null
                                     ? DateUtil.convertTimestampToStringDate(referral.getSentDate())
                                     : "");
+                    referralData.put("referralStatus",
+                            referral.getStatus() != null ? referral.getStatus().name() : null);
                     ReferralSubcontract subcontract = referral.getSubcontract();
                     if (subcontract != null) {
                         referralData.put("subcontractId", subcontract.getId());
-                        referralData.put("subcontractStatus",
-                                subcontract.getSubcontractStatus() != null ? subcontract.getSubcontractStatus().name()
-                                        : null);
                         referralData.put("agreementReference", subcontract.getAgreementReference());
                         referralData.put("handoffDatetime",
                                 subcontract.getHandoffDatetimeForDisplay() != null
@@ -1036,11 +1035,26 @@ public class OrderSearchRestController extends BaseRestController {
             sampleOrderItems.put("referringSiteId", referringSite.getId());
             sampleOrderItems.put("referringSiteName", referringSite.getOrganizationName());
             sampleOrderItems.put("referringSiteCode", referringSite.getShortName());
+            sampleOrderItems.put("referringSitePhone", referringSite.getPhone());
+            sampleOrderItems.put("referringSiteFax", referringSite.getFax());
+            sampleOrderItems.put("referringSiteEmail", referringSite.getEmail());
         }
 
         if (department != null) {
             sampleOrderItems.put("referringSiteDepartmentId", department.getId());
             sampleOrderItems.put("referringSiteDepartmentName", department.getOrganizationName());
+        }
+
+        // Env/Vector Requestor contact — independent of Provider above.
+        Person requestorPerson = requesterService.getRequestorPerson();
+        if (requestorPerson != null) {
+            sampleOrderItems.put("requestorPersonId", requestorPerson.getId());
+            sampleOrderItems.put("requestorFirstName", requestorPerson.getFirstName());
+            sampleOrderItems.put("requestorLastName", requestorPerson.getLastName());
+            sampleOrderItems.put("requestorPhone", requestorPerson.getWorkPhone());
+            sampleOrderItems.put("requestorFax", requestorPerson.getFax());
+            sampleOrderItems.put("requestorEmail", requestorPerson.getEmail());
+            sampleOrderItems.put("requestorDepartment", requestorPerson.getDepartment());
         }
 
         // Program - Try multiple approaches to find program info

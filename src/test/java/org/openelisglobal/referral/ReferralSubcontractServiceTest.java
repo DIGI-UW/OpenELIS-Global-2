@@ -11,8 +11,8 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
-import org.openelisglobal.referral.valueholder.SubcontractStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,10 +36,10 @@ public class ReferralSubcontractServiceTest extends BaseWebContextSensitiveTest 
     public void referralFetch_loadsSubcontractWithAllFieldsPopulated() {
         Referral referral = referralService.getReferralById("1");
 
+        assertEquals(ReferralStatus.DRAFT, referral.getStatus());
         ReferralSubcontract subcontract = referral.getSubcontract();
         assertNotNull(subcontract);
         assertEquals("10", subcontract.getId());
-        assertEquals(SubcontractStatus.DRAFT, subcontract.getSubcontractStatus());
         assertEquals("AGR-2026-017", subcontract.getAgreementReference());
         assertEquals(Timestamp.valueOf("2026-04-25 09:30:00"), subcontract.getHandoffDatetime());
         assertEquals(Date.valueOf("2026-05-20"), subcontract.getExpectedReturnDate());

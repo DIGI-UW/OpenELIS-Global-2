@@ -269,6 +269,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public Person getPersonRequester(Sample sample) {
+        return getPersonRequester(sample, PERSON_REQUESTER_TYPE_ID);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Person getPersonRequester(Sample sample, long requesterTypeId) {
         if (sample == null) {
             return null;
         }
@@ -276,7 +282,7 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
         List<SampleRequester> requesters = sampleRequesterService.getRequestersForSampleId(sample.getId());
 
         for (SampleRequester requester : requesters) {
-            if (PERSON_REQUESTER_TYPE_ID == requester.getRequesterTypeId()) {
+            if (requesterTypeId == requester.getRequesterTypeId()) {
                 Person person = new Person();
                 person.setId(String.valueOf(requester.getRequesterId()));
                 personService.getData(person);

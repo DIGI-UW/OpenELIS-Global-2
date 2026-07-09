@@ -38,9 +38,9 @@ import org.openelisglobal.notification.valueholder.NotificationTriggerConfig;
 import org.openelisglobal.notification.valueholder.WhatsAppNotification;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
-import org.openelisglobal.referral.valueholder.SubcontractStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -107,27 +107,27 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
     private static final String ACTOR = "42";
 
     @Test
-    public void dispatch_transitionsDraftToDispatchedAndPersistsHandoffTimestamp() throws Exception {
+    public void dispatch_transitionsDraftToRequestedAndPersistsHandoffTimestamp() throws Exception {
         Referral before = referralService.getReferralById("1");
-        assertEquals(SubcontractStatus.DRAFT, before.getSubcontract().getSubcontractStatus());
+        assertEquals(ReferralStatus.DRAFT, before.getStatus());
 
-        referralService.dispatchSubcontract("1", HANDOFF, ACTOR, "courier ABC");
+        referralService.dispatchReferral("1", HANDOFF, ACTOR, "courier ABC");
         Referral after = referralService.getReferralById("1");
 
+        assertEquals(ReferralStatus.REQUESTED, after.getStatus());
         ReferralSubcontract subcontract = after.getSubcontract();
         assertNotNull(subcontract);
-        assertEquals(SubcontractStatus.DISPATCHED, subcontract.getSubcontractStatus());
         assertEquals(HANDOFF, subcontract.getHandoffDatetime());
 
         Referral reloaded = referralService.getReferralById("1");
-        assertEquals(SubcontractStatus.DISPATCHED, reloaded.getSubcontract().getSubcontractStatus());
+        assertEquals(ReferralStatus.REQUESTED, reloaded.getStatus());
         assertEquals(HANDOFF, reloaded.getSubcontract().getHandoffDatetime());
 
-        // Dispatch must write the FR-02 audit row delegated through ReferralService.
+        // Dispatch must write the audit row delegated through ReferralService.
         List<ReferralStatusHistory> history = referralService.getSubcontractStatusHistory("1");
         ReferralStatusHistory latest = history.get(history.size() - 1);
-        assertEquals(SubcontractStatus.DRAFT, latest.getFromStatus());
-        assertEquals(SubcontractStatus.DISPATCHED, latest.getToStatus());
+        assertEquals(ReferralStatus.DRAFT, latest.getFromStatus());
+        assertEquals(ReferralStatus.REQUESTED, latest.getToStatus());
         assertEquals(ACTOR, latest.getChangedByUserId());
         assertEquals("courier ABC", latest.getNotes());
 
@@ -144,12 +144,11 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
 
     @Test
     public void dispatch_referralWithoutSubcontract_isNoopAndDoesNotCallSender() throws Exception {
-        // Pre-S-14 historical row (no subcontract attached) — dispatchSubcontract logs
-        // and
-        // returns rather than throwing, so the dispatch service follows suit.
+        // Pre-S-14 historical row (no subcontract attached) — dispatchReferral logs
+        // and returns rather than throwing, so the dispatch service follows suit.
         long beforeCount = referralService.getSubcontractStatusHistory("2").size();
 
-        referralService.dispatchSubcontract("2", HANDOFF, ACTOR, null);
+        referralService.dispatchReferral("2", HANDOFF, ACTOR, null);
         Referral after = referralService.getReferralById("2");
         assertNotNull(after);
         org.junit.Assert.assertNull(after.getSubcontract());
@@ -160,12 +159,12 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
     }
 
     @Test
-    public void dispatch_alreadyDispatchedSubcontract_throwsAndDoesNotCallSender() throws Exception {
-        referralService.dispatchSubcontract("1", HANDOFF, ACTOR, null);
+    public void dispatch_alreadyDispatchedReferral_throwsAndDoesNotCallSender() throws Exception {
+        referralService.dispatchReferral("1", HANDOFF, ACTOR, null);
 
         try {
-            referralService.dispatchSubcontract("1", HANDOFF, ACTOR, null);
-            fail("Expected IllegalStateException when subcontract is not in DRAFT state");
+            referralService.dispatchReferral("1", HANDOFF, ACTOR, null);
+            fail("Expected IllegalStateException when referral is not in DRAFT state");
         } catch (IllegalStateException expected) {
             // expected
         }
@@ -175,14 +174,14 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
     @Test
     public void dispatch_nullHandoffDatetime_rejected() throws Exception {
         try {
-            referralService.dispatchSubcontract("1", null, ACTOR, null);
+            referralService.dispatchReferral("1", null, ACTOR, null);
             fail("Expected IllegalArgumentException when handoffDatetime is null");
         } catch (IllegalArgumentException expected) {
             // expected
         }
         // State must not advance and no notification must fire.
         Referral after = referralService.getReferralById("1");
-        assertEquals(SubcontractStatus.DRAFT, after.getSubcontract().getSubcontractStatus());
+        assertEquals(ReferralStatus.DRAFT, after.getStatus());
         Thread.sleep(300);
         verify(mockHttpClient, never()).execute(any(org.apache.http.client.methods.HttpUriRequest.class));
     }
@@ -194,7 +193,7 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
         long logCountBefore = notificationLogService.countMatching(Optional.of("SUBCONTRACT_DISPATCHED"),
                 Optional.empty());
 
-        referralService.dispatchSubcontract("1", HANDOFF, ACTOR, "courier ABC");
+        referralService.dispatchReferral("1", HANDOFF, ACTOR, "courier ABC");
 
         ArgumentCaptor<org.apache.http.client.methods.HttpUriRequest> captor = ArgumentCaptor
                 .forClass(org.apache.http.client.methods.HttpUriRequest.class);

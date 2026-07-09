@@ -3,6 +3,7 @@ package org.openelisglobal.shipment.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import org.hibernate.Hibernate;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -87,23 +88,25 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
 
                 SampleItem sampleItem = boxSampleItem.getSampleItem();
                 if (sampleItem != null) {
-                    // Use UnassignedSampleItemService to get full DTO with referrals
+                    // Try referral-based lookup first; fall back to building directly from
+                    // SampleItem
                     SampleItemDTO dto = unassignedSampleItemService.getSampleItemById(sampleItem.getId());
-                    if (dto != null) {
-                        // Mark as assigned to this box
-                        dto.setAssignedBoxId(shippingBoxId);
-                        if (boxSampleItem.getShippingBox() != null) {
-                            dto.setAssignedBoxName(boxSampleItem.getShippingBox().getBoxId());
-                        }
-                        // Include BoxSampleItem ID for reception status updates
-                        dto.setBoxSampleItemId(boxSampleItem.getId());
-                        // Include reception data
-                        if (boxSampleItem.getReceptionStatus() != null) {
-                            dto.setReceptionStatus(boxSampleItem.getReceptionStatus().name());
-                        }
-                        dto.setReceptionNotes(boxSampleItem.getReceptionNotes());
-                        dtos.add(dto);
+                    if (dto == null) {
+                        dto = buildDTOFromSampleItem(sampleItem);
                     }
+                    // Mark as assigned to this box
+                    dto.setAssignedBoxId(shippingBoxId);
+                    if (boxSampleItem.getShippingBox() != null) {
+                        dto.setAssignedBoxName(boxSampleItem.getShippingBox().getBoxId());
+                    }
+                    // Include BoxSampleItem ID for reception status updates
+                    dto.setBoxSampleItemId(boxSampleItem.getId());
+                    // Include reception data
+                    if (boxSampleItem.getReceptionStatus() != null) {
+                        dto.setReceptionStatus(boxSampleItem.getReceptionStatus().name());
+                    }
+                    dto.setReceptionNotes(boxSampleItem.getReceptionNotes());
+                    dtos.add(dto);
                 }
             }
 
@@ -149,20 +152,34 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
     /**
      * Initialize lazy loaded associations to prevent LazyInitializationException
      */
+    private SampleItemDTO buildDTOFromSampleItem(SampleItem sampleItem) {
+        SampleItemDTO dto = new SampleItemDTO();
+        dto.setSampleItemId(sampleItem.getId());
+        if (sampleItem.getSample() != null) {
+            dto.setAccessionNumber(sampleItem.getSample().getAccessionNumber());
+            dto.setCollectionDate(sampleItem.getSample().getCollectionDate());
+        }
+        if (sampleItem.getTypeOfSample() != null) {
+            dto.setTypeOfSample(sampleItem.getTypeOfSample().getDescription());
+            dto.setTypeOfSampleId(sampleItem.getTypeOfSample().getId());
+        }
+        return dto;
+    }
+
     private void initializeAssociations(BoxSampleItem boxSampleItem) {
+        Hibernate.initialize(boxSampleItem.getSampleItem());
         if (boxSampleItem.getSampleItem() != null) {
             SampleItem si = boxSampleItem.getSampleItem();
-            si.getId(); // Force initialization
+            Hibernate.initialize(si.getSample());
             if (si.getSample() != null) {
-                si.getSample().getAccessionNumber(); // Force initialization
+                si.getSample().getAccessionNumber(); // Access to confirm initialization
             }
+            Hibernate.initialize(si.getTypeOfSample());
             if (si.getTypeOfSample() != null) {
-                si.getTypeOfSample().getDescription(); // Force initialization
+                si.getTypeOfSample().getDescription(); // Access to confirm initialization
             }
         }
-        if (boxSampleItem.getShippingBox() != null) {
-            boxSampleItem.getShippingBox().getId(); // Force initialization
-        }
+        Hibernate.initialize(boxSampleItem.getShippingBox());
     }
 
     @Override
@@ -209,8 +226,7 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
             shippingBoxDAO.update(box);
 
             // Assign all referrals for this sample item to this box
-            Integer sampleItemIdInt = Integer.parseInt(sampleItemId);
-            List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemIdInt);
+            List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemId);
             for (Referral referral : referrals) {
                 if (referral.getAssignedBox() == null) {
                     referral.setAssignedBox(box);
@@ -249,7 +265,7 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
 
             // Unassign all referrals for this sample item that are assigned to this box
             if (sampleItem != null && shippingBox != null) {
-                List<Referral> referrals = referralDAO.getReferralsBySampleItemId(Integer.parseInt(sampleItem.getId()));
+                List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItem.getId());
 
                 for (Referral referral : referrals) {
                     // Check if this referral is assigned to this box
@@ -290,6 +306,7 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
     }
 
     @Override
+    @Transactional
     public BoxSampleItem updateReceptionStatus(Integer boxSampleItemId, ReceptionStatus receptionStatus, String notes,
             Integer systemUserId) {
         try {
@@ -307,6 +324,7 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
             logger.info("Updated reception status for box sample item {} to {} by user {}", boxSampleItemId,
                     receptionStatus, systemUserId);
 
+            initializeAssociations(boxSampleItem);
             return boxSampleItem;
         } catch (Exception e) {
             logger.error("Error updating reception status", e);

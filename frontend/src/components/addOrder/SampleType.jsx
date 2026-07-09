@@ -551,6 +551,24 @@ const SampleType = (props) => {
     };
   }, []);
 
+  const domainFetchRef = useRef(0);
+  useEffect(() => {
+    const fetchId = ++domainFetchRef.current;
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    setLoading(true);
+    getFromOpenElisServer(sampleTypesEndpoint, (res) => {
+      if (componentMounted.current && fetchId === domainFetchRef.current) {
+        setSampleTypes(res);
+        setLoading(false);
+      }
+    });
+  }, [domain]);
+
   return (
     <>
       {loading && <Loading />}

@@ -40,7 +40,6 @@ import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
 import org.openelisglobal.referral.valueholder.ReferralType;
-import org.openelisglobal.referral.valueholder.SubcontractStatus;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -266,7 +265,7 @@ public class ReferralSetServiceImpl implements ReferralSetService {
 
             Referral referral = new Referral();
             referral.setFhirUuid(UUID.randomUUID());
-            referral.setStatus(ReferralStatus.SENT);
+            referral.setStatus(ReferralStatus.DRAFT);
             referral.setSysUserId(updateData.getCurrentUserId());
             referral.setReferralTypeId(REFERRAL_CONFORMATION_ID);
 
@@ -342,7 +341,6 @@ public class ReferralSetServiceImpl implements ReferralSetService {
 
     private ReferralSubcontract buildSubcontractFromItem(ReferralItem referralItem, String currentUserId) {
         ReferralSubcontract subcontract = new ReferralSubcontract();
-        subcontract.setSubcontractStatus(SubcontractStatus.DRAFT);
         subcontract.setSysUserId(currentUserId);
         subcontract.setAgreementReference(referralItem.getAgreementReference());
         subcontract.setHandoffDatetimeForDisplay(referralItem.getHandoffDatetime());
@@ -475,7 +473,7 @@ public class ReferralSetServiceImpl implements ReferralSetService {
         ReferralStatusHistory history = new ReferralStatusHistory();
         history.setReferralId(referralId);
         history.setFromStatus(null);
-        history.setToStatus(SubcontractStatus.DRAFT);
+        history.setToStatus(ReferralStatus.DRAFT);
         history.setChangedByUserId(actorUserId);
         history.setChangedAt(DateUtil.getNowAsTimestamp());
         history.setSysUserId(actorUserId);

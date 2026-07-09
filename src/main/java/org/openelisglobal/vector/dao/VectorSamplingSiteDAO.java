@@ -12,4 +12,6 @@ public interface VectorSamplingSiteDAO extends BaseDAO<VectorSamplingSite, Integ
     List<VectorSamplingSite> getActive() throws LIMSRuntimeException;
 
     VectorSamplingSite getByCode(String code) throws LIMSRuntimeException;
+
+    List<VectorSamplingSite> search(String searchTerm) throws LIMSRuntimeException;
 }

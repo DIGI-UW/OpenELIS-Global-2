@@ -53,6 +53,16 @@ public class VectorSamplingSiteRestController {
         }
     }
 
+    @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<VectorSamplingSite>> searchSites(@RequestParam String search) {
+        try {
+            return ResponseEntity.ok(vectorSamplingSiteService.search(search));
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<VectorSamplingSite> getSite(@PathVariable Integer id) {
         try {

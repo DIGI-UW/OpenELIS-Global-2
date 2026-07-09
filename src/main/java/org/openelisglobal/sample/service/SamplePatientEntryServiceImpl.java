@@ -45,12 +45,15 @@ import org.openelisglobal.notification.valueholder.NotificationConfigOption.Noti
 import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
+import org.openelisglobal.organization.service.OrganizationContactService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.organization.valueholder.OrganizationContact;
 import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.ProgramSampleService;
@@ -115,6 +118,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Autowired
     private OrganizationService organizationService;
     @Autowired
+    private OrganizationContactService organizationContactService;
+    @Autowired
     private TestNotificationConfigService testNotificationConfigService;
     @Autowired
     private AnalysisNotificationConfigService analysisNotificationConfigService;
@@ -158,6 +163,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         updateData.setPatientId(patientUpdate.getPatientId(form));
 
         persistProviderData(updateData);
+        persistRequestorContactData(updateData);
         persistSampleData(updateData);
 
         // Only persist requester data and observations if sample was successfully
@@ -326,6 +332,19 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             updateData.getProvider().setPerson(updateData.getProviderPerson());
 
             providerService.save(updateData.getProvider());
+        }
+    }
+
+    /**
+     * Saves the standalone Requestor contact Person for Environmental/Vector orders
+     * (built by {@code SamplePatientUpdateData.initRequestorContact}). Unlike the
+     * Provider path, there is no wrapper entity — Requestor is persisted as a bare
+     * Person and linked to the sample via a {@code requestor_contact}-typed
+     * SampleRequester row in {@link #persistRequesterData}.
+     */
+    private void persistRequestorContactData(SamplePatientUpdateData updateData) {
+        if (updateData.getRequestorPerson() != null) {
+            personService.save(updateData.getRequestorPerson());
         }
     }
 
@@ -658,15 +677,32 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
-    private void persistRequesterData(SamplePatientUpdateData updateData) {
+    void persistRequesterData(SamplePatientUpdateData updateData) {
         if (updateData.getProviderPerson() != null && !org.apache.commons.validator.GenericValidator
                 .isBlankOrNull(updateData.getProviderPerson().getId())) {
-            SampleRequester sampleRequester = new SampleRequester();
-            sampleRequester.setRequesterId(updateData.getProviderPerson().getId());
-            sampleRequester.setRequesterTypeId(TableIdService.getInstance().PROVIDER_REQUESTER_TYPE_ID);
-            sampleRequester.setSampleId(Long.parseLong(updateData.getSample().getId()));
-            sampleRequester.setSysUserId(updateData.getCurrentUserId());
-            sampleRequesterService.insert(sampleRequester);
+            // Bug (2026-07-06, same class as the Requestor fix): this used to
+            // unconditionally insert() a new sample_requester row on every
+            // save, including edits to an order that already had a
+            // provider-typed row — duplicating the link on every re-save.
+            // Reuse the existing row for this sample if one exists; only
+            // insert when there truly isn't one yet.
+            long providerTypeId = TableIdService.getInstance().PROVIDER_REQUESTER_TYPE_ID;
+            SampleRequester existingProviderRequester = sampleRequesterService
+                    .getRequestersForSampleId(updateData.getSample().getId()).stream()
+                    .filter(r -> r.getRequesterTypeId() == providerTypeId).findFirst().orElse(null);
+
+            if (existingProviderRequester != null) {
+                existingProviderRequester.setRequesterId(updateData.getProviderPerson().getId());
+                existingProviderRequester.setSysUserId(updateData.getCurrentUserId());
+                sampleRequesterService.update(existingProviderRequester);
+            } else {
+                SampleRequester sampleRequester = new SampleRequester();
+                sampleRequester.setRequesterId(updateData.getProviderPerson().getId());
+                sampleRequester.setRequesterTypeId(providerTypeId);
+                sampleRequester.setSampleId(Long.parseLong(updateData.getSample().getId()));
+                sampleRequester.setSysUserId(updateData.getCurrentUserId());
+                sampleRequesterService.insert(sampleRequester);
+            }
         }
 
         if (updateData.getRequesterSite() != null) {
@@ -697,6 +733,70 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // }
             sampleRequesterService.insert(updateData.getRequesterSiteDepartment());
         }
+
+        // Standalone Requestor contact (Environmental/Vector) — independent
+        // of the Requesting Organization/Provider handled above.
+        String requestorOrganizationId = null;
+        if (updateData.getRequestorPerson() != null && updateData.getRequesterContact() != null
+                && !GenericValidator.isBlankOrNull(updateData.getRequestorPerson().getId())) {
+            // Bug (2026-07-06): this used to unconditionally insert() a new
+            // sample_requester row on every save, including edits to an
+            // order that already had a requestor_contact row — so every
+            // re-save duplicated the link (6 duplicate rows observed for one
+            // sample). Reuse the existing row for this sample if one exists;
+            // only insert when there truly isn't one yet.
+            long requestorContactTypeId = TableIdService.getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+            SampleRequester existingRequesterContact = sampleRequesterService
+                    .getRequestersForSampleId(updateData.getSample().getId()).stream()
+                    .filter(r -> r.getRequesterTypeId() == requestorContactTypeId).findFirst().orElse(null);
+
+            if (existingRequesterContact != null) {
+                existingRequesterContact.setRequesterId(updateData.getRequestorPerson().getId());
+                existingRequesterContact.setSysUserId(updateData.getCurrentUserId());
+                sampleRequesterService.update(existingRequesterContact);
+            } else {
+                updateData.getRequesterContact().setRequesterId(updateData.getRequestorPerson().getId());
+                updateData.getRequesterContact().setSampleId(Long.parseLong(updateData.getSample().getId()));
+                sampleRequesterService.insert(updateData.getRequesterContact());
+            }
+        }
+
+        if (updateData.getRequesterSite() != null) {
+            requestorOrganizationId = updateData.getNewOrganization() != null ? updateData.getNewOrganization().getId()
+                    : String.valueOf(updateData.getRequesterSite().getRequesterId());
+        }
+
+        // When both a Requesting Organization and a Requestor contact are
+        // bound on the same order, link them via OrganizationContact for future
+        // "suggested contacts for this org" reuse. Pure side-effect: does not gate
+        // save and does not replace the two independent SampleRequester rows above.
+        if (updateData.getRequestorPerson() != null && !GenericValidator.isBlankOrNull(requestorOrganizationId)
+                && !GenericValidator.isBlankOrNull(updateData.getRequestorPerson().getId())) {
+            linkOrganizationContactIfNeeded(requestorOrganizationId, updateData.getRequestorPerson().getId(),
+                    updateData.getCurrentUserId());
+        }
+    }
+
+    private void linkOrganizationContactIfNeeded(String organizationId, String personId, String currentUserId) {
+        List<OrganizationContact> existingContacts = organizationContactService
+                .getListForOrganizationId(organizationId);
+        boolean alreadyLinked = existingContacts.stream()
+                .anyMatch(contact -> contact.getPerson() != null && personId.equals(contact.getPerson().getId()));
+        if (alreadyLinked) {
+            return;
+        }
+
+        // A bare `new Person()` with only an id set is a transient POJO to
+        // Hibernate, not a managed entity — cascading the many-to-one save
+        // throws TransientPropertyValueException. Load the already-persisted
+        // Person (persistRequestorContactData/persistProviderData run before
+        // this in persistData, so personId is guaranteed saved by now).
+        Person person = personService.get(personId);
+        OrganizationContact organizationContact = new OrganizationContact();
+        organizationContact.setOrganizationId(organizationId);
+        organizationContact.setPerson(person);
+        organizationContact.setSysUserId(currentUserId);
+        organizationContactService.insert(organizationContact);
     }
 
     private void persistInitialSampleConditions(SamplePatientUpdateData updateData) {

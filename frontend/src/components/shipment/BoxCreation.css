@@ -75,6 +75,24 @@
   flex: 1;
 }
 
+.sample-search-results {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-layer-01, #f4f4f4);
+}
+
+.sample-search-results-heading {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.sample-search-results-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
 /* Samples Table */
 .samples-table-section {
   margin-bottom: 2rem;
