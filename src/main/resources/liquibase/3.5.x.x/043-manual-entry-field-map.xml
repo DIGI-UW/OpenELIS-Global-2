@@ -141,7 +141,10 @@
       <column name="lastupdated" valueDate="now()"/>
     </insert>
     <rollback>
-      <delete tableName="manual_entry_field_map" schemaName="clinlims"/>
+      <delete tableName="manual_entry_field_map" schemaName="clinlims">
+        <where>metric_key IN ('POOLS_TESTED', 'POOLS_POSITIVE', 'CONFIRMED_POSITIVE_ORGANISMS',
+          'TOP_SPECIES', 'MIR_CLASSIC', 'MIR_OBSERVED', 'SPOROZOITE_RATE', 'SITES_WITH_POSITIVES')</where>
+      </delete>
     </rollback>
   </changeSet>
 
