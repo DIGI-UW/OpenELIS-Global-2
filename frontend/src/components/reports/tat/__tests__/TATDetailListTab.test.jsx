@@ -204,7 +204,7 @@ describe("TATDetailListTab", () => {
     });
   });
 
-  test("shows no results when data is empty", async () => {
+  test("shows a designed empty state when data is empty", async () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
       callback({ totalCount: 0, page: 0, pageSize: 25, results: [] });
     });
@@ -214,8 +214,11 @@ describe("TATDetailListTab", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/No results found/i)).toBeInTheDocument();
+      expect(screen.getByText("No results in this window")).toBeInTheDocument();
     });
+    expect(
+      screen.getByText(/Turnaround times appear here/),
+    ).toBeInTheDocument();
   });
 
   test("fetches data with correct query params", () => {
