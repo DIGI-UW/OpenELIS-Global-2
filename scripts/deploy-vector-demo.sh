@@ -18,14 +18,17 @@
 #
 # WHAT RUNS ON THE VM (built on the box, not host-mounted)
 #   ~/OpenELIS-Global-2            (branch 372-vector-surveillance-reporting)
-#   ~/openelis-indonesia-distro    (branch feat/vector-result-significance; the demo distro config)
+#   ~/openelis-indonesia-distro    (branch main; infra only — compose, healthcheck,
+#             config-perms, proxy. Its config instance id is blanked at deploy.)
 #   ~/openelis-madagascar-test-harness  (orchestrator: scripts/restart-stack.sh)
 #   Deploy  = restart-stack.sh --clean --rebuild   (--clean wipes volumes = full reset;
 #             --rebuild rebuilds the WAR + frontend from OE_REPO at the checked-out branch)
-#   Catalog = config-import from the distro's configs/configuration/backend CSVs
-#             (sample types, pathogen tests, species) — created at boot, NOT seeded.
-#             The rebuild deletes stale *-checksums.properties so config-import
-#             re-imports the vector CSVs from scratch (Reagan's step).
+#   Catalog = config-import from the OE core classpath CSVs (sample types, pathogen
+#             tests, sections, result significance, trap types, species) — created at
+#             boot, NOT seeded. With the distro instance id blanked, no per-city
+#             filesystem config shadows the classpath core, so vector-demo runs the
+#             generic core catalog with zero distro duplication. The rebuild deletes
+#             stale *-checksums.properties so config-import re-imports from scratch.
 #   Seed    = client-side Playwright (frontend/playwright vector-surveillance-seed),
 #             transactional data ONLY (sites, backdated collections, identifications,
 #             results) via the REST API against BASE_URL — NO SQL, NO psql.
@@ -55,7 +58,10 @@ HOST="${HOST:-vector-demo.openelis-global.org}"
 SG_ID="${SG_ID:-sg-049d715dea927aa77}"
 OS_USER="${OS_USER:-ubuntu}"
 OE_BRANCH="${OE_BRANCH:-372-vector-surveillance-reporting}"
-DISTRO_BRANCH="${DISTRO_BRANCH:-feat/vector-result-significance}"
+# Canonical distro (infra: healthcheck start_period + config-perms + proxy). The
+# vector catalog comes from the OE core classpath, not the distro — see the
+# instance-id blanking in _write_runner.
+DISTRO_BRANCH="${DISTRO_BRANCH:-main}"
 AMI="${AMI:-ami-0e1601cee784a69a2}"       # Ubuntu 22.04 (us-west-2); provision only
 
 # The reset+rebuild is long (~10-20 min) and destructive, so it runs DETACHED on
@@ -181,8 +187,14 @@ echo "[deploy] start \$(date -u)"
 cd ~/OpenELIS-Global-2 && git fetch --depth 1 origin '$OE_BRANCH' && git checkout -f '$OE_BRANCH' && git reset --hard 'origin/$OE_BRANCH' && git submodule update --init --depth 1 dataexport tools/openelis-analyzer-bridge tools/analyzer-mock-server
 cd ~/openelis-indonesia-distro && git fetch --depth 1 origin '$DISTRO_BRANCH' && git checkout -f '$DISTRO_BRANCH' && git reset --hard 'origin/$DISTRO_BRANCH'
 echo "[deploy] OE -> \$(git -C ~/OpenELIS-Global-2 rev-parse --short HEAD); distro -> \$(git -C ~/openelis-indonesia-distro rev-parse --short HEAD)"
-# Reagan's step: delete config-import checksum files so a from-scratch rebuild
-# re-imports the (new/changed) vector catalog CSVs instead of skipping them.
+# Blank the config instance id so config-import finds no per-city filesystem
+# override for any domain and falls back to the classpath core catalog (which
+# carries the generic vector catalog). Must run after 'git reset --hard'
+# restores the distro .env's default value.
+sed -i 's/^\(ORG_OPENELISGLOBAL_CONFIGURATION_INSTANCE_ID\)=.*/\1=/' ~/openelis-indonesia-distro/.env 2>/dev/null || true
+export ORG_OPENELISGLOBAL_CONFIGURATION_INSTANCE_ID=
+# Delete config-import checksum files so a from-scratch rebuild re-imports the
+# (new/changed) vector catalog CSVs instead of skipping them.
 sudo find ~/openelis-indonesia-distro/configs/configuration -name '*checksum*.properties' -delete 2>/dev/null || true
 sudo find ~/OpenELIS-Global-2/volume/configuration -name '*checksum*.properties' -delete 2>/dev/null || true
 cd ~/openelis-madagascar-test-harness
