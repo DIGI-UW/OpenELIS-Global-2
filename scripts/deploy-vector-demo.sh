@@ -184,8 +184,10 @@ _write_runner() {
 #!/usr/bin/env bash
 set -euo pipefail
 echo "[deploy] start \$(date -u)"
-cd ~/OpenELIS-Global-2 && git fetch --depth 1 origin '$OE_BRANCH' && git checkout -f '$OE_BRANCH' && git reset --hard 'origin/$OE_BRANCH' && git submodule update --init --depth 1 dataexport tools/openelis-analyzer-bridge tools/analyzer-mock-server
-cd ~/openelis-indonesia-distro && git fetch --depth 1 origin '$DISTRO_BRANCH' && git checkout -f '$DISTRO_BRANCH' && git reset --hard 'origin/$DISTRO_BRANCH'
+# checkout -B <branch> FETCH_HEAD is refspec-agnostic: these are single-branch
+# clones, so a plain 'git checkout <other-branch>' can't resolve origin/<branch>.
+cd ~/OpenELIS-Global-2 && git fetch --depth 1 origin '$OE_BRANCH' && git checkout -f -B '$OE_BRANCH' FETCH_HEAD && git submodule update --init --depth 1 dataexport tools/openelis-analyzer-bridge tools/analyzer-mock-server
+cd ~/openelis-indonesia-distro && git fetch --depth 1 origin '$DISTRO_BRANCH' && git checkout -f -B '$DISTRO_BRANCH' FETCH_HEAD
 echo "[deploy] OE -> \$(git -C ~/OpenELIS-Global-2 rev-parse --short HEAD); distro -> \$(git -C ~/openelis-indonesia-distro rev-parse --short HEAD)"
 # Blank the config instance id so config-import finds no per-city filesystem
 # override for any domain and falls back to the classpath core catalog (which
