@@ -45,6 +45,16 @@ public interface ElectronicSignatureDAO extends BaseDAO<ElectronicSignature, Lon
             throws LIMSRuntimeException;
 
     /**
+     * Count signatures within a date range (QA Overview counter — avoids loading
+     * rows).
+     *
+     * @param startDate start of range (inclusive)
+     * @param endDate   end of range (inclusive)
+     * @return number of signatures executed in the range
+     */
+    long countSignaturesInDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
+
+    /**
      * Get signatures by meaning (e.g., all rejections).
      *
      * @param meaning signature meaning

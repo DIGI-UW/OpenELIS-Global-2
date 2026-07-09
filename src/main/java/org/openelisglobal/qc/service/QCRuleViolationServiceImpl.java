@@ -141,6 +141,12 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<QCRuleViolation> findByDateRange(Timestamp startDate, Timestamp endDate) {
+        return violationDAO.findByDateRange(startDate, endDate);
+    }
+
+    @Override
     @Transactional
     public QCRuleViolation resolveViolation(String violationId, Integer userId, String notes) {
         QCRuleViolation violation = violationDAO.get(violationId).orElse(null);

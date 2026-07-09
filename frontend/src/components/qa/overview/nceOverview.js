@@ -1,4 +1,5 @@
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { dedupedFetch } from "./overviewData";
 
 /**
  * Shared NCE client-filter util for the QA Overview (OGC-699 WS-C).
@@ -12,27 +13,12 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 
 export const NCE_DRILL_URL = "/NceDashboard?severity=CRITICAL&status=Pending";
 
-// Deduped fetch: overview slots mounting together share one request; the
-// cache clears on resolve so a fresh mount refetches current data.
-let inflight = null;
-export const fetchNceList = (callback) => {
-  if (!inflight) {
-    const request = new Promise((resolve) => {
-      getFromOpenElisServer("/rest/nce/dashboard", (data) =>
-        resolve(data && Array.isArray(data.nceList) ? data.nceList : null),
-      );
-    });
-    inflight = request;
-    // Clear after settle (identity-guarded) so the reset survives callbacks
-    // that fire synchronously, e.g. cached responses or test mocks.
-    request.then(() => {
-      if (inflight === request) {
-        inflight = null;
-      }
-    });
-  }
-  inflight.then(callback);
-};
+// Overview slots mounting together share one request (see dedupedFetch).
+export const fetchNceList = dedupedFetch((resolve) => {
+  getFromOpenElisServer("/rest/nce/dashboard", (data) =>
+    resolve(data && Array.isArray(data.nceList) ? data.nceList : null),
+  );
+});
 
 export const countCriticalPending = (list) =>
   list.filter((nce) => nce.severity === "CRITICAL" && nce.status === "Pending")

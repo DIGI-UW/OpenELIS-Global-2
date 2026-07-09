@@ -83,6 +83,21 @@ public class ElectronicSignatureDAOImpl extends BaseDAOImpl<ElectronicSignature,
     }
 
     @Override
+    public long countSignaturesInDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException {
+        try {
+            String sql = "SELECT count(*) FROM ElectronicSignature e WHERE e.signedAt BETWEEN :startDate AND"
+                    + " :endDate";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("startDate", startDate);
+            query.setParameter("endDate", endDate);
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in countSignaturesInDateRange()", e);
+        }
+    }
+
+    @Override
 
     public List<ElectronicSignature> getSignaturesByMeaning(SignatureMeaning meaning) throws LIMSRuntimeException {
         try {
