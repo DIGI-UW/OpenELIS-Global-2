@@ -3,6 +3,7 @@ import { useIntl } from "react-intl";
 import ComingSoon from "./ComingSoon";
 import AmendmentRateTile from "./AmendmentRateTile";
 import NcePulseTile from "./NcePulseTile";
+import TatTile from "./TatTile";
 
 const TodayTiles = () => {
   const intl = useIntl();
@@ -13,11 +14,7 @@ const TodayTiles = () => {
         <h3>{title}</h3>
       </div>
       <div className="qa-cs-grid qa-cs-grid-tiles">
-        <ComingSoon
-          variant="tile"
-          titleKey="qa.overview.tile.tat"
-          ticket="OGC-696"
-        />
+        <TatTile />
         <ComingSoon
           variant="tile"
           titleKey="qa.overview.tile.rejectionRate"
