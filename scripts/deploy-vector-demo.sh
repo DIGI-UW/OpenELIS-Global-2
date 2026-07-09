@@ -187,6 +187,9 @@ echo "[deploy] start \$(date -u)"
 # checkout -B <branch> FETCH_HEAD is refspec-agnostic: these are single-branch
 # clones, so a plain 'git checkout <other-branch>' can't resolve origin/<branch>.
 cd ~/OpenELIS-Global-2 && git fetch --depth 1 origin '$OE_BRANCH' && git checkout -f -B '$OE_BRANCH' FETCH_HEAD && git submodule update --init --depth 1 dataexport tools/openelis-analyzer-bridge tools/analyzer-mock-server
+# Container-written log files under configs/ are root-owned; chown so the (ubuntu)
+# git checkout can update tracked files when switching branches instead of aborting.
+sudo chown -R "$OS_USER":"$OS_USER" ~/openelis-indonesia-distro/configs 2>/dev/null || true
 cd ~/openelis-indonesia-distro && git fetch --depth 1 origin '$DISTRO_BRANCH' && git checkout -f -B '$DISTRO_BRANCH' FETCH_HEAD
 echo "[deploy] OE -> \$(git -C ~/OpenELIS-Global-2 rev-parse --short HEAD); distro -> \$(git -C ~/openelis-indonesia-distro rev-parse --short HEAD)"
 # Blank the config instance id so config-import finds no per-city filesystem
