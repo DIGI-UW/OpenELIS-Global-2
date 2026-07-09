@@ -4399,6 +4399,7 @@
   "label.testCatalog.ranges.modal.lowValid": "Valid low",
   "label.testCatalog.ranges.modal.highValid": "Valid high",
   "label.testCatalog.ranges.modal.ageError": "“To age” must be greater than “From age”.",
+  "label.testCatalog.ranges.modal.boundsError": "Bounds must nest outward: valid low ≤ critical low ≤ normal low ≤ normal high ≤ critical high ≤ valid high.",
   "label.testCatalog.storage.saved": "Sample storage saved.",
   "label.testCatalog.storage.loadError": "Could not load sample storage settings.",
   "label.testCatalog.storage.history.view": "View change history",
