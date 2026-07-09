@@ -9,9 +9,18 @@
 }
 
 .qa-sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
   border-bottom: 1px solid #e0e0e0;
   padding-bottom: 0.25rem;
   margin-bottom: 0.75rem;
+}
+
+.qa-sec-link {
+  font-size: 0.75rem;
+  text-decoration: none;
 }
 
 .qa-sec-head h3 {
@@ -157,4 +166,61 @@
 .qa-cs-stat.cds--tile {
   min-height: 4.5rem;
   padding: 0.75rem 1rem;
+}
+
+/* WS-F live aggregators (OGC-694) */
+.qa-live-stat.cds--tile {
+  background-color: #ffffff;
+  color: #161616;
+}
+
+.qa-live-stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.qa-pillar-chip.cds--tile {
+  cursor: pointer;
+  background-color: #ffffff;
+  border-left: 3px solid #c6c6c6;
+  min-height: 5rem;
+}
+
+.qa-pillar-green.cds--tile {
+  border-left-color: #198038;
+}
+
+.qa-pillar-amber.cds--tile {
+  border-left-color: #b28600;
+}
+
+.qa-pillar-red.cds--tile {
+  border-left-color: #da1e28;
+}
+
+.qa-pillar-icon {
+  font-weight: 600;
+}
+
+.qa-live-row .qa-cs-body {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.qa-activity-row {
+  display: flex;
+  gap: 1rem;
+  border-left: 3px solid #c6c6c6;
+  background: #ffffff;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.qa-activity-time {
+  flex-shrink: 0;
+  min-width: 6rem;
+  color: #525252;
+  font-variant-numeric: tabular-nums;
 }

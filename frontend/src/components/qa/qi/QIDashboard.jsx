@@ -17,7 +17,7 @@ import { Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { formatTat } from "../../reports/tat/tatUtils";
+import { formatTat, tatDelta } from "../../reports/tat/tatUtils";
 import QITile from "./QITile";
 import "./QIDashboard.css";
 
@@ -137,16 +137,7 @@ const QIDashboard = () => {
     tatMessage = intl.formatMessage({ id: "qa.qi.dashboard.tile.tat.empty" });
   }
 
-  let tatDelta = null;
-  if (tatData?.totalCount > 0 && tat.prior?.totalCount > 0) {
-    const diff = tatData.mean - tat.prior.mean;
-    const flat = Math.abs(diff) < 1 / 60; // under a minute
-    tatDelta = {
-      arrow: flat ? "—" : diff < 0 ? "↓" : "↑",
-      text: flat ? "" : formatTat(Math.abs(diff)),
-      tone: flat ? "flat" : diff < 0 ? "good" : "bad",
-    };
-  }
+  const delta = tatDelta(tatData, tat.prior);
 
   let tatSecondary = null;
   if (tatData?.breakdown?.length) {
@@ -227,7 +218,7 @@ const QIDashboard = () => {
           accent="blue"
           loading={tat.loading}
           primary={formatTat(tatData?.mean)}
-          delta={tatDelta}
+          delta={delta}
           targetLine={
             windowId === "ytd"
               ? intl.formatMessage({
