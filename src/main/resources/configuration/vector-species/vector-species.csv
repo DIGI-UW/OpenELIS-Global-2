@@ -12,6 +12,9 @@ Aedes,aegypti,,MOSQUITO,Y,aedesAegyptiPathogens,mosquitoFullCycle
 Aedes,albopictus,,MOSQUITO,Y,aedesAlbopictusPathogens,mosquitoFullCycle
 Anopheles,gambiae,,MOSQUITO,Y,anophelesPathogens,mosquitoFullCycle
 Anopheles,arabiensis,,MOSQUITO,Y,anophelesPathogens,mosquitoFullCycle
+Anopheles,sundaicus,,MOSQUITO,Y,anophelesPathogens,mosquitoFullCycle
+Anopheles,farauti,,MOSQUITO,Y,anophelesPathogens,mosquitoFullCycle
+Anopheles,maculatus,,MOSQUITO,Y,anophelesPathogens,mosquitoFullCycle
 Culex,quinquefasciatus,,MOSQUITO,Y,culexPathogens,mosquitoFullCycle
 Phlebotomus,papatasi,,FLY,Y,phlebotomusPathogens,flyStages
 Musca,domestica,,FLY,Y,muscaPathogens,flyStages
