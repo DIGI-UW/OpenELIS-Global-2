@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST endpoint backing the QA Overview page (OGC-694 WS-F). Roles mirror the
- * /qa/overview SecureRoute plus GLOBAL_ADMIN.
+ * REST endpoint backing the QA Overview page (OGC-694 WS-F). Gated on the
+ * qa.view.overview permission key (FRS §6 registry, liquibase/qa/004) — the
+ * pre-registry Reception/Results/Validation audience keeps access via compat
+ * grants; the GLOBAL_ADMIN fallback covers isAdmin-flag users without the
+ * Global Administrator role row.
  */
 @RestController
 @RequestMapping("/rest/qa/overview")
-@PreAuthorize("hasAnyRole('GLOBAL_ADMIN', 'RECEPTION', 'RESULTS', 'VALIDATION')")
+@PreAuthorize("hasAuthority('qa.view.overview') or hasRole('GLOBAL_ADMIN')")
 public class QaOverviewRestController extends BaseRestController {
 
     @Autowired

@@ -20,6 +20,7 @@ import org.openelisglobal.login.bean.UserSession;
 import org.openelisglobal.login.bean.UserSession.LoginMethod;
 import org.openelisglobal.login.form.LoginForm;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.qa.service.QaPermissionService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
@@ -84,6 +85,8 @@ public class LoginPageController extends BaseController {
     private TestSectionService testSectionService;
     @Autowired
     LocalizationService localizationService;
+    @Autowired
+    QaPermissionService qaPermissionService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -158,6 +161,10 @@ public class LoginPageController extends BaseController {
                 }
             }
             setLabunitRolesForExistingUser(request, session);
+            // qa.* permission keys derive from the same role names on every
+            // login path — setLabunitRolesForExistingUser populates roles for
+            // form, SAML, and OAuth logins before this line.
+            session.setPermissions(qaPermissionService.getQaPermissionsForRoleNames(session.getRoles()));
         }
         return session;
     }
