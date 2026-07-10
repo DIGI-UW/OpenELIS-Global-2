@@ -152,11 +152,10 @@ public class ResultSaveService {
                         }
                     }
                 }
-                if (boundTestResult == null && !testResultList.isEmpty()) {
-                    boundTestResult = testResultList.get(0);
-                }
                 if (boundTestResult != null) {
                     result.setTestResult(boundTestResult);
+                } else if (result.getTestResult() == null && !testResultList.isEmpty()) {
+                    result.setTestResult(testResultList.get(0));
                 }
             }
 

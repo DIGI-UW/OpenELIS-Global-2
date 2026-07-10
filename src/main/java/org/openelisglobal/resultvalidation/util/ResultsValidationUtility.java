@@ -685,6 +685,9 @@ public class ResultsValidationUtility {
         analysisResultItem.setAnalysisId(testResultItem.getAnalysis().getId());
         analysisResultItem.setPastNotes(testResultItem.getPastNotes());
         analysisResultItem.setResultId(testResultItem.getResultId());
+        if (result != null && result.getTestResult() != null) {
+            analysisResultItem.setTestResultComponentId(result.getTestResult().getComponentId());
+        }
         analysisResultItem.setResultType(testResultItem.getResultType());
         analysisResultItem.setTestId(testResultItem.getTestId());
         analysisResultItem.setTestSortNumber(sortOrder);
