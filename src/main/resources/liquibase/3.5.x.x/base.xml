@@ -84,6 +84,7 @@
   <include relativeToChangelogFile="true" file="012-005-set-role-parent-chains.xml"/>
   <include relativeToChangelogFile="true" file="012-006-migrate-legacy-role-assignments.xml"/>
   <include relativeToChangelogFile="true" file="012-007-deactivate-legacy-roles.xml"/>
+  <include relativeToChangelogFile="true" file="012-008-add-last-updated-columns.xml"/>
 
   <!-- OGC-651 (LO-03-01): specimen detail freetext columns on sample_item -->
   <include relativeToChangelogFile="true" file="020-add-specimen-detail-columns.xml"/>
