@@ -227,6 +227,19 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                         new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
 
                 truncateTablesInConnection(jdbcConn, dataset.getTableNames());
+
+                // inventory_item_type.name_localization_id FKs into localization(id), so
+                // any of the datasets that declare their own <localization> rows
+                // (unrelated to inventory) TRUNCATEs inventory_item_type right along
+                // with it via CASCADE, since Postgres cascades to referencing tables
+                // regardless of which table was named in the fixture. Some of those same
+                // datasets (e.g. logbook-db.xml) ALSO declare inventory_item rows in the
+                // same load, so the restore must happen here — between truncate and
+                // REFRESH, in the same not-yet-committed transaction — rather than after
+                // commit like ensureAuditSystemUser() below; otherwise this load's own
+                // REFRESH insert fails its FK check before the restore ever runs.
+                ensureInventoryItemTypeSeed(jdbcConn);
+
                 DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
                 jdbcConn.commit();
 
@@ -432,6 +445,87 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to ensure audit system_user id=1", e);
+        }
+    }
+
+    /**
+     * Idempotently ensure the 5 codes {@code 053-inventory-item-type.xml} seeds
+     * ({@code REAGENT}, {@code RDT}, {@code CARTRIDGE}, {@code HIV_KIT},
+     * {@code SYPHILIS_KIT}) exist in {@code inventory_item_type}, inserting any
+     * missing one (plus its backing {@code localization}/{@code localization_value}
+     * rows) via raw JDBC. {@code inventory_item_type.name_localization_id} FKs into
+     * {@code localization(id)}, so any sibling fixture that declares its own
+     * {@code <localization>} rows truncates inventory_item_type right along with it
+     * via CASCADE — see the call site's comment.
+     *
+     * @param conn the caller's open, not-yet-committed connection — must run in the
+     *             same transaction as the truncate/REFRESH it is bracketed between,
+     *             so a fixture that both wipes and re-populates inventory_item in a
+     *             single load sees the restored codes
+     */
+    protected void ensureInventoryItemTypeSeed(Connection conn) {
+        String[][] seedTypes = { { "REAGENT", "10", "Reagent", "Réactif", "Reagen" },
+                { "RDT", "20", "RDT (Rapid Diagnostic Test)", "TDR (Test de diagnostic rapide)",
+                        "RDT (Tes Diagnostik Cepat)" },
+                { "CARTRIDGE", "30", "Analyzer Cartridge", "Cartouche d'analyseur", "Kartrid Analisis" },
+                { "HIV_KIT", "40", "HIV Test Kit", "Kit de test VIH", "Kit Tes HIV" },
+                { "SYPHILIS_KIT", "50", "Syphilis Test Kit", "Kit de test syphilis", "Kit Tes Sifilis" } };
+        try {
+            for (String[] seedType : seedTypes) {
+                String code = seedType[0];
+                try (java.sql.PreparedStatement check = conn
+                        .prepareStatement("SELECT 1 FROM clinlims.inventory_item_type WHERE code = ?")) {
+                    check.setString(1, code);
+                    try (java.sql.ResultSet rs = check.executeQuery()) {
+                        if (rs.next()) {
+                            continue;
+                        }
+                    }
+                }
+                insertInventoryItemTypeSeedRow(conn, seedType);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to ensure inventory_item_type seed", e);
+        }
+    }
+
+    private void insertInventoryItemTypeSeedRow(Connection conn, String[] seedType) throws SQLException {
+        String code = seedType[0];
+        int sortOrder = Integer.parseInt(seedType[1]);
+        String nameEn = seedType[2];
+        String nameFr = seedType[3];
+        String nameId = seedType[4];
+        long locId;
+        try (Statement seq = conn.createStatement();
+                java.sql.ResultSet rs = seq.executeQuery("SELECT nextval('clinlims.localization_seq')")) {
+            rs.next();
+            locId = rs.getLong(1);
+        }
+        try (java.sql.PreparedStatement insertLoc = conn.prepareStatement(
+                "INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, now())")) {
+            insertLoc.setLong(1, locId);
+            insertLoc.setString(2, "inventory item type: " + code);
+            insertLoc.executeUpdate();
+        }
+        String[] locales = { "en", "fr", "id" };
+        String[] names = { nameEn, nameFr, nameId };
+        for (int i = 0; i < locales.length; i++) {
+            try (java.sql.PreparedStatement insertVal = conn.prepareStatement(
+                    "INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated) "
+                            + "VALUES (nextval('clinlims.localization_value_seq'), ?, ?, ?, now())")) {
+                insertVal.setLong(1, locId);
+                insertVal.setString(2, locales[i]);
+                insertVal.setString(3, names[i]);
+                insertVal.executeUpdate();
+            }
+        }
+        try (java.sql.PreparedStatement insertType = conn.prepareStatement("INSERT INTO clinlims.inventory_item_type "
+                + "(id, code, name_localization_id, is_active, sort_order, is_seeded, lastupdated) "
+                + "VALUES (nextval('clinlims.inventory_item_type_seq'), ?, ?, true, ?, true, now())")) {
+            insertType.setString(1, code);
+            insertType.setLong(2, locId);
+            insertType.setInt(3, sortOrder);
+            insertType.executeUpdate();
         }
     }
 
