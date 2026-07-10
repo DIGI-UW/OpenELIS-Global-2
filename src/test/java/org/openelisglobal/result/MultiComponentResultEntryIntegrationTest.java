@@ -3,6 +3,7 @@ package org.openelisglobal.result;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Method;
@@ -12,7 +13,9 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
+import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
@@ -77,6 +80,23 @@ public class MultiComponentResultEntryIntegrationTest extends BaseWebContextSens
         assertTrue(items.stream().anyMatch(i -> i.getTestName().contains("Diastolic")));
         assertEquals("N", items.get(0).getResultType());
         assertEquals("N", items.get(1).getResultType());
+    }
+
+    /**
+     * Saving values for several components of one analysis in one POST must not
+     * register the analysis for update more than once: a second detached copy fails
+     * the optimistic lock (lastupdated) when merged after the first copy's merge
+     * has flushed, rolling back the whole save.
+     */
+    @Test
+    public void resolveModifiedAnalysis_reusesOneInstancePerAnalysis() {
+        ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet("1");
+
+        Analysis first = ResultUtil.resolveModifiedAnalysis(dataSet, "1");
+        Analysis second = ResultUtil.resolveModifiedAnalysis(dataSet, "1");
+
+        assertSame("component rows of one analysis must share a single detached instance", first, second);
+        assertEquals("the analysis is registered for update exactly once", 1, dataSet.getModifiedAnalysis().size());
     }
 
     @Test

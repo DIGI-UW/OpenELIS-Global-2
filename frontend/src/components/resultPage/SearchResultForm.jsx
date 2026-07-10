@@ -1391,7 +1391,32 @@ export function SearchResults(props) {
       case "currentResult":
         switch (row.resultType) {
           case "M":
-          case "C":
+          case "C": {
+            const labelFor = (dictId) =>
+              row.dictionaryResults?.find((result) => result.id == dictId)
+                ?.value || dictId;
+            let groups;
+            try {
+              groups = JSON.parse(row.multiSelectResultValues || "{}");
+            } catch {
+              groups = {};
+            }
+            const lines = Object.keys(groups)
+              .sort((a, b) => Number(a) - Number(b))
+              .map((k) =>
+                groups[k].split(",").filter(Boolean).map(labelFor).join(", "),
+              )
+              .filter(Boolean);
+            return (
+              <>
+                {lines.map((line, index) => (
+                  <div key={index}>
+                    {row.resultType === "C" ? `[ ${line} ]` : line}
+                  </div>
+                ))}
+              </>
+            );
+          }
           case "D":
             return (
               <>

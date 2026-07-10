@@ -700,7 +700,10 @@ public class TestCatalogEditorRestController {
                 tr.setValue(o.value);
                 tr.setSortOrder(o.sortOrder != null ? String.valueOf(o.sortOrder) : null);
                 tr.setIsNormal(Boolean.TRUE.equals(o.normal));
-                tr.setTestResultType(o.resultType != null ? o.resultType : c.resultType);
+                // Option rows must carry the component's type ('D'/'M'/'C') —
+                // result entry derives the widget from them, so a stale
+                // per-option type would render the wrong control.
+                tr.setTestResultType(c.resultType != null ? c.resultType : o.resultType);
                 opts.add(tr);
             }
             optionsByCode.put(c.code, opts);

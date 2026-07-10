@@ -397,7 +397,7 @@ const SampleResultsSection = ({ testId }) => {
                 {
                   value: item.id,
                   valueName: item.name,
-                  resultType: "D",
+                  resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
                 },

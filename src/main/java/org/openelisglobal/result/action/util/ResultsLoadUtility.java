@@ -451,6 +451,7 @@ public class ResultsLoadUtility {
                 : testResultComponentService.getActiveComponentsByTestId(analysisTest.getId());
         boolean multiComponent = activeComponents.size() > 1;
         Set<String> coveredComponentIds = new HashSet<>();
+        Set<String> multiSelectComponentIds = new HashSet<>();
 
         boolean multiSelectionResult = false;
         for (Result result : resultList) {
@@ -483,6 +484,13 @@ public class ResultsLoadUtility {
             if (multiComponent) {
                 component = result == null ? activeComponents.get(0) : resolveComponent(result, activeComponents);
                 coveredComponentIds.add(component.getId());
+                // A multiselect result set collapses into a single row per
+                // component (the values travel as JSON in
+                // multiSelectResultValues), while other components' results
+                // must still get their own rows.
+                if (multiSelectionResult && !multiSelectComponentIds.add(component.getId())) {
+                    continue;
+                }
             }
 
             String initialConditions = getInitialSampleConditionString(sampleItem);
@@ -499,7 +507,7 @@ public class ResultsLoadUtility {
             resultItem.setNationalId(nationalId);
             testResultList.add(resultItem);
 
-            if (multiSelectionResult) {
+            if (multiSelectionResult && !multiComponent) {
                 break;
             }
         }
