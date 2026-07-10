@@ -858,6 +858,10 @@ export function SearchResults(props) {
   const [storageModalRow, setStorageModalRow] = useState(null);
 
   const componentMounted = useRef(false);
+  // Saved multiselect values per row, frozen once the user starts editing so
+  // the Current Result column keeps showing what is persisted, not the
+  // in-progress selection (multiSelectResultValues is the editable field).
+  const savedMultiSelectValues = useRef({});
 
   useEffect(() => {
     componentMounted.current = true;
@@ -1395,9 +1399,16 @@ export function SearchResults(props) {
             const labelFor = (dictId) =>
               row.dictionaryResults?.find((result) => result.id == dictId)
                 ?.value || dictId;
+            const snapshotKey = `${row.analysisId}_${row.testResultComponentId || ""}`;
+            if (row.isModified !== "true") {
+              savedMultiSelectValues.current[snapshotKey] =
+                row.multiSelectResultValues || "{}";
+            }
             let groups;
             try {
-              groups = JSON.parse(row.multiSelectResultValues || "{}");
+              groups = JSON.parse(
+                savedMultiSelectValues.current[snapshotKey] || "{}",
+              );
             } catch {
               groups = {};
             }
@@ -1408,13 +1419,13 @@ export function SearchResults(props) {
               )
               .filter(Boolean);
             return (
-              <>
+              <div style={{ display: "flex", flexDirection: "column" }}>
                 {lines.map((line, index) => (
                   <div key={index}>
                     {row.resultType === "C" ? `[ ${line} ]` : line}
                   </div>
                 ))}
-              </>
+              </div>
             );
           }
           case "D":
