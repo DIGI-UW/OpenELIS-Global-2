@@ -122,10 +122,24 @@ public class ResultSaveService {
                 // result
             } else {
                 List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(serviceBean.getTestId());
-                // we are assuming there is only one testResult for a numeric
-                // type result
-                if (!testResultList.isEmpty()) {
-                    result.setTestResult(testResultList.get(0));
+                // Multi-component tests post one bean per component; bind the result
+                // to that component's test_result row so it stays attributable to
+                // its component. Single-component tests keep the historic
+                // first-row assumption.
+                TestResult boundTestResult = null;
+                if (!GenericValidator.isBlankOrNull(serviceBean.getTestResultComponentId())) {
+                    for (TestResult testResult : testResultList) {
+                        if (serviceBean.getTestResultComponentId().equals(testResult.getComponentId())) {
+                            boundTestResult = testResult;
+                            break;
+                        }
+                    }
+                }
+                if (boundTestResult == null && !testResultList.isEmpty()) {
+                    boundTestResult = testResultList.get(0);
+                }
+                if (boundTestResult != null) {
+                    result.setTestResult(boundTestResult);
                 }
             }
 

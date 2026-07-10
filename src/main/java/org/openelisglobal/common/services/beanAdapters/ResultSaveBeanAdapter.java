@@ -29,6 +29,7 @@ public class ResultSaveBeanAdapter {
         bean.setResultType(item.getResultType());
         bean.setMultiSelectResultValues(item.getMultiSelectResultValues());
         bean.setTestId(item.getTestId());
+        bean.setTestResultComponentId(item.getTestResultComponentId());
         bean.setQualifiedResultId(item.getQualifiedResultId());
         bean.setQualifiedResultValue(item.getQualifiedResultValue());
         bean.setQualifiedDictionaryId(item.getQualifiedDictionaryId());

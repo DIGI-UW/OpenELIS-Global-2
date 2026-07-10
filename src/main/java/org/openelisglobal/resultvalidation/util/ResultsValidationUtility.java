@@ -106,6 +106,8 @@ public class ResultsValidationUtility {
     protected AnalysisService analysisService;
     @Autowired
     protected ResultLimitService resultLimitService;
+    @Autowired
+    protected org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -364,6 +366,29 @@ public class ResultsValidationUtility {
         return valid;
     }
 
+    /**
+     * For a multi-component test, label the row with its component so validators
+     * can tell the values apart (the component is resolved via the result's
+     * test_result row).
+     */
+    protected String appendComponentLabel(String displayTestName, Result result, Test test) {
+        if (result == null || result.getTestResult() == null || result.getTestResult().getComponentId() == null) {
+            return displayTestName;
+        }
+        List<org.openelisglobal.testresultcomponent.valueholder.TestResultComponent> components = testResultComponentService
+                .getActiveComponentsByTestId(test.getId());
+        if (components.size() < 2) {
+            return displayTestName;
+        }
+        for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component : components) {
+            if (component.getId().equals(result.getTestResult().getComponentId())
+                    && !GenericValidator.isBlankOrNull(component.getLabel())) {
+                return displayTestName + " — " + component.getLabel();
+            }
+        }
+        return displayTestName;
+    }
+
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
         List<ResultValidationItem> testResultList = new ArrayList<>();
 
@@ -418,6 +443,7 @@ public class ResultsValidationUtility {
         List<TestResult> testResults = getPossibleResultsForTest(test);
 
         String displayTestName = TestServiceImpl.getLocalizedTestNameWithType(test);
+        displayTestName = appendComponentLabel(displayTestName, result, test);
         // displayTestName = augmentTestNameWithRange(displayTestName, result);
 
         ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(test,

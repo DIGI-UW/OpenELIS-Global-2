@@ -94,6 +94,7 @@ import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -158,6 +159,10 @@ public class ResultsLoadUtility {
     private TestResultService testResultService;
     @Autowired
     private SampleEQAService sampleEQAService;
+    @Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
+    @Autowired
+    private org.openelisglobal.unitofmeasure.service.UnitOfMeasureService unitOfMeasureService;
 
     private final StatusRules statusRules = new StatusRules();
 
@@ -437,6 +442,16 @@ public class ResultsLoadUtility {
             resultList.add(null);
         }
 
+        // Multi-component tests (v2.4 FRS §Result Components) render one result
+        // field per active component: existing results are bucketed to their
+        // component via their test_result row, and components not yet recorded get
+        // a blank placeholder row appended.
+        Test analysisTest = analysisService.getTest(analysis);
+        List<TestResultComponent> activeComponents = analysisTest == null ? new ArrayList<>()
+                : testResultComponentService.getActiveComponentsByTestId(analysisTest.getId());
+        boolean multiComponent = activeComponents.size() > 1;
+        Set<String> coveredComponentIds = new HashSet<>();
+
         boolean multiSelectionResult = false;
         for (Result result : resultList) {
             // If the parentResult has a value then this result was handled with
@@ -464,6 +479,12 @@ public class ResultsLoadUtility {
                         .isMultiSelectVariant(result.getResultType());
             }
 
+            TestResultComponent component = null;
+            if (multiComponent) {
+                component = result == null ? activeComponents.get(0) : resolveComponent(result, activeComponents);
+                coveredComponentIds.add(component.getId());
+            }
+
             String initialConditions = getInitialSampleConditionString(sampleItem);
             NoteType[] noteTypes = { NoteType.EXTERNAL, NoteType.INTERNAL, NoteType.REJECTION_REASON,
                     NoteType.NON_CONFORMITY };
@@ -473,7 +494,8 @@ public class ResultsLoadUtility {
             TestResultItem resultItem = createTestResultItem(analysis, testKit, notes, sampleItem.getSortOrder(),
                     result, sampleItem.getSample().getAccessionNumber(), patientName, patientInfo, techSignature,
                     techSignatureId, initialConditions, SpringContext.getBean(TypeOfSampleService.class)
-                            .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()));
+                            .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()),
+                    component);
             resultItem.setNationalId(nationalId);
             testResultList.add(resultItem);
 
@@ -482,7 +504,60 @@ public class ResultsLoadUtility {
             }
         }
 
+        // Blank placeholder rows for components without a recorded result yet.
+        if (multiComponent) {
+            String initialConditions = getInitialSampleConditionString(sampleItem);
+            NoteType[] noteTypes = { NoteType.EXTERNAL, NoteType.INTERNAL, NoteType.REJECTION_REASON,
+                    NoteType.NON_CONFORMITY };
+            String notes = SpringContext.getBean(NoteService.class).getNotesAsString(analysis, true, true, "<br/>",
+                    noteTypes, false);
+            for (TestResultComponent component : activeComponents) {
+                if (coveredComponentIds.contains(component.getId())) {
+                    continue;
+                }
+                TestResultItem resultItem = createTestResultItem(analysis, null, notes, sampleItem.getSortOrder(), null,
+                        sampleItem.getSample().getAccessionNumber(), patientName, patientInfo, techSignature,
+                        techSignatureId, initialConditions, SpringContext.getBean(TypeOfSampleService.class)
+                                .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()),
+                        component);
+                resultItem.setNationalId(nationalId);
+                testResultList.add(resultItem);
+            }
+        }
+
         return testResultList;
+    }
+
+    /**
+     * The component an existing result belongs to: via its test_result row's
+     * component_id, defaulting to the primary component (NULL component_id rows are
+     * legacy rows owned by the primary).
+     */
+    private TestResultComponent resolveComponent(Result result, List<TestResultComponent> components) {
+        String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
+        if (componentId != null) {
+            for (TestResultComponent component : components) {
+                if (componentId.equals(component.getId())) {
+                    return component;
+                }
+            }
+        }
+        for (TestResultComponent component : components) {
+            if (component.getIsPrimary()) {
+                return component;
+            }
+        }
+        return components.get(0);
+    }
+
+    /** The component's own unit of measure (blank when it has none). */
+    private String componentUomName(TestResultComponent component) {
+        if (component.getUomId() == null) {
+            return "";
+        }
+        org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure uom = unitOfMeasureService
+                .getUnitOfMeasureById(component.getUomId());
+        return uom == null || uom.getUnitOfMeasureName() == null ? "" : uom.getUnitOfMeasureName();
     }
 
     private String getInitialSampleConditionString(SampleItem sampleItem) {
@@ -638,7 +713,8 @@ public class ResultsLoadUtility {
 
     private TestResultItem createTestResultItem(Analysis analysis, ResultInventory testKit, String notes,
             String sequenceNumber, Result result, String accessionNumber, String patientName, String patientInfo,
-            String techSignature, String techSignatureId, String initialSampleConditions, String sampleType) {
+            String techSignature, String techSignatureId, String initialSampleConditions, String sampleType,
+            TestResultComponent component) {
 
         TestService testService = SpringContext.getBean(TestService.class);
         Test test = analysisService.getTest(analysis);
@@ -663,6 +739,19 @@ public class ResultsLoadUtility {
         String receivedDate = currSample == null ? getCurrentDate() : currSample.getReceivedDateForDisplay();
         String testMethodName = testService.getTestMethodName(test);
         List<TestResult> testResults = testService.getPossibleTestResults(test);
+        // Multi-component rows see only their component's test_result rows so the
+        // widget type, dictionary options and significant digits are per component
+        // (NULL component_id rows are legacy rows owned by the primary).
+        if (component != null) {
+            List<TestResult> componentRows = new ArrayList<>();
+            for (TestResult testResult : testResults) {
+                if (component.getId().equals(testResult.getComponentId())
+                        || (component.getIsPrimary() && testResult.getComponentId() == null)) {
+                    componentRows.add(testResult);
+                }
+            }
+            testResults = componentRows;
+        }
 
         String testKitId = null;
         String testKitInventoryId = null;
@@ -694,6 +783,11 @@ public class ResultsLoadUtility {
             }
         }
 
+        if (component != null && !isConclusion && !isCD4Conclusion
+                && !GenericValidator.isBlankOrNull(component.getLabel())) {
+            displayTestName += " — " + component.getLabel();
+        }
+
         String referralId = null;
         String referralReasonId = null;
         boolean referralCanceled = false;
@@ -709,6 +803,9 @@ public class ResultsLoadUtility {
         }
 
         String uom = testService.getUOM(test, isCD4Conclusion);
+        if (component != null) {
+            uom = componentUomName(component);
+        }
 
         String testDate;
         Timestamp completedTs = analysis.getCompletedDate();
@@ -747,6 +844,9 @@ public class ResultsLoadUtility {
         testItem.setReceivedDate(receivedDate);
         testItem.setTestName(displayTestName);
         testItem.setTestId(test.getId());
+        if (component != null) {
+            testItem.setTestResultComponentId(component.getId());
+        }
         setResultLimitDependencies(resultLimit, testItem, testResults);
         testItem.setPatientName(patientName);
         testItem.setPatientInfo(patientInfo);
@@ -772,7 +872,9 @@ public class ResultsLoadUtility {
         // for eventual test-configuration cleanup.
         // - For new rows (no stored result) we must use the test's configured
         // type, because that's the only signal available for widget choice.
-        String configuredType = testService.getResultType(test);
+        String configuredType = component != null && !GenericValidator.isBlankOrNull(component.getResultType())
+                ? component.getResultType()
+                : testService.getResultType(test);
         if (result != null && !GenericValidator.isBlankOrNull(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())
                 && !result.getResultType().equals(configuredType)) {

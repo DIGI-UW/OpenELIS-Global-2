@@ -200,42 +200,68 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         test.setSysUserId(sysUserId);
         testService.update(test);
 
-        String significantDigits = primary.getSignificantDigits() == null ? null
-                : String.valueOf(primary.getSignificantDigits());
+        // Every non-dictionary component gets its own test_result row (typed per
+        // component, linked via component_id) so result entry can bind one Result
+        // field per component. Dictionary components get their rows from their
+        // select-list options. Rows with a NULL component_id are legacy rows and
+        // belong to the primary.
+        List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
         List<TestResult> testResults = testResultService.getAllActiveTestResultsPerTest(test);
-        if (testResults.isEmpty()) {
-            // A test created in the new editor has no legacy test_result row yet, so
-            // getResultType() would fall back to ALPHA. For non-dictionary types
-            // (numeric / free text / titer / alpha) seed a single row carrying the
-            // component's result type; dictionary types get their rows from options.
-            String resultType = primary.getResultType();
-            if (resultType != null && !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(resultType)) {
-                TestResult tr = new TestResult();
-                tr.setTest(test);
-                tr.setTestResultType(resultType);
-                tr.setSortOrder("1");
-                tr.setIsActive(true);
-                tr.setSignificantDigits(significantDigits);
-                tr.setSysUserId(sysUserId);
-                testResultService.insert(tr);
-            }
-        } else {
-            boolean dictionary = primary.getResultType() != null
-                    && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(primary.getResultType());
+        for (TestResultComponent component : components) {
+            boolean isPrimaryComponent = component.getId().equals(primary.getId());
+            List<TestResult> componentRows = new ArrayList<>();
             for (TestResult tr : testResults) {
-                boolean hasValue = tr.getValue() != null && !tr.getValue().trim().isEmpty();
-                if (dictionary && !hasValue) {
-                    tr.setIsActive(false);
+                if (component.getId().equals(tr.getComponentId())
+                        || (isPrimaryComponent && tr.getComponentId() == null)) {
+                    componentRows.add(tr);
+                }
+            }
+            String resultType = component.getResultType();
+            String significantDigits = component.getSignificantDigits() == null ? null
+                    : String.valueOf(component.getSignificantDigits());
+            boolean dictionary = resultType != null
+                    && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(resultType);
+
+            if (dictionary) {
+                // Option rows carry their own type + dictionary value; a value-less
+                // row here is a stale placeholder from a previous non-dictionary
+                // type — deactivate it rather than leaving a broken dictionary row.
+                for (TestResult tr : componentRows) {
+                    boolean hasValue = tr.getValue() != null && !tr.getValue().trim().isEmpty();
+                    if (!hasValue) {
+                        tr.setIsActive(false);
+                        tr.setSysUserId(sysUserId);
+                        testResultService.update(tr);
+                    }
+                }
+                continue;
+            }
+
+            if (componentRows.isEmpty()) {
+                if (resultType != null) {
+                    TestResult tr = new TestResult();
+                    tr.setTest(test);
+                    tr.setTestResultType(resultType);
+                    tr.setSortOrder(
+                            String.valueOf(component.getDisplayOrder() == null ? 1 : component.getDisplayOrder() + 1));
+                    tr.setIsActive(true);
+                    tr.setSignificantDigits(significantDigits);
+                    tr.setComponentId(component.getId());
+                    tr.setSysUserId(sysUserId);
+                    testResultService.insert(tr);
+                }
+            } else {
+                for (TestResult tr : componentRows) {
+                    tr.setSignificantDigits(significantDigits);
+                    if (resultType != null) {
+                        tr.setTestResultType(resultType);
+                    }
+                    if (tr.getComponentId() == null) {
+                        tr.setComponentId(component.getId());
+                    }
                     tr.setSysUserId(sysUserId);
                     testResultService.update(tr);
-                    continue;
                 }
-                tr.setSignificantDigits(significantDigits);
-                if (primary.getResultType() != null) {
-                    tr.setTestResultType(primary.getResultType());
-                }
-                tr.setSysUserId(sysUserId);
-                testResultService.update(tr);
             }
         }
     }
