@@ -565,15 +565,18 @@ public class ResultsValidationUtility {
         List<IdValuePair> values = null;
         Dictionary dictionary;
 
-        if (testResults != null && testResults.size() > 0
-                && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResults.get(0).getTestResultType())) {
-            values = new ArrayList<>();
-            values.add(new IdValuePair("0", ""));
-
+        if (testResults != null) {
             for (TestResult testResult : testResults) {
                 // Note: result group use to be a criteria but was removed, if
                 // results are not as expected investigate
+                // A multi-component test mixes row types, so dictionary options
+                // are collected from any dictionary-variant row rather than
+                // gating on the first row's type.
                 if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())) {
+                    if (values == null) {
+                        values = new ArrayList<>();
+                        values.add(new IdValuePair("0", ""));
+                    }
                     dictionary = dictionaryService.getDataForId(testResult.getValue());
                     String displayValue = dictionary.getLocalizedName();
 
