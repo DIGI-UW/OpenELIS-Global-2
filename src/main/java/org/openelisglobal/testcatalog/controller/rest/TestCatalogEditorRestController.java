@@ -54,7 +54,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -69,16 +68,15 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * Foundation envelope only: loads the identity + which sections apply for a
  * test's domain, which the SideNav-routed editor shell hydrates from.
- * Per-section load/save lands in the section milestones (M4+). Gated by
- * ROLE_ADMIN (FR-004) — matches existing OE admin REST controllers; non-admins
- * get 403.
+ * Per-section load/save lands in the section milestones (M4+). Authorization is
+ * enforced at the service layer via PRIV_* privileges (S011c); the catalog
+ * editor surface resolves to PRIV_TEST_CONFIGURE for non-admins.
  *
  * Base path /rest/test-catalog avoids colliding with the existing singular
  * /rest/test/{testId}/methods namespace (research.md R10).
  */
 @RestController
 @RequestMapping("/rest/test-catalog")
-@PreAuthorize("hasRole('ADMIN')")
 public class TestCatalogEditorRestController {
 
     /**

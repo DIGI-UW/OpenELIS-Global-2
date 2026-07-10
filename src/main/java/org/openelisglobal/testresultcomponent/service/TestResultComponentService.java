@@ -6,7 +6,9 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
 public interface TestResultComponentService extends BaseObjectService<TestResultComponent, String> {
 
     List<TestResultComponent> getComponentsByTestId(String testId);

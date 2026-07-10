@@ -5,7 +5,9 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.testmethod.valueholder.TestMethod;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
 public interface TestMethodService extends BaseObjectService<TestMethod, String> {
 
     // ── DTOs ─────────────────────────────────────────────────────────────────

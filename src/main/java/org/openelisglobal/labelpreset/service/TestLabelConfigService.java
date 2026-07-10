@@ -5,11 +5,13 @@ import java.util.Optional;
 import org.openelisglobal.labelpreset.form.TestLabelConfigForm;
 import org.openelisglobal.labelpreset.valueholder.TestLabelConfig;
 import org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for the test-level label configuration (OGC-285 M4).
  * Provides read + full-replace semantics for the Labels tab data model.
  */
+@PreAuthorize("hasAuthority('PRIV_BARCODE_MANAGE')")
 public interface TestLabelConfigService {
 
     /**

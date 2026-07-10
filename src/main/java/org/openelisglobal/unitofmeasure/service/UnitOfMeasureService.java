@@ -8,6 +8,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UnitOfMeasureService extends BaseObjectService<UnitOfMeasure, String> {
 
+    /**
+     * Re-declared from the scaffold so inline UoM creation (FR-29 / OGC-963, POST
+     * /rest/uom) is privilege-gated like the other catalog-editing surfaces.
+     */
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
+    String insert(UnitOfMeasure unitOfMeasure);
+
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     UnitOfMeasure getUnitOfMeasureById(String uomId);
 

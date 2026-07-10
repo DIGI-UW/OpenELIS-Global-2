@@ -52,6 +52,7 @@ public interface PanelItemService extends BaseObjectService<PanelItem, String> {
      * position is written (the editor doesn't renumber siblings — full panel
      * renumbering stays in Panel Management).
      */
+    @PreAuthorize("hasAuthority('PRIV_PANEL_MANAGE')")
     void setMembershipsForTest(Test test, Map<String, Integer> positionByPanelId, String sysUserId);
 
     /**

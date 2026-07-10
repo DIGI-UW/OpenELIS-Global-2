@@ -219,5 +219,6 @@ public interface TestService extends BaseObjectService<Test, String> {
      * Keys are field names ("name", "reportingName"); a field is omitted when the
      * test has no localization link for it.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     Map<String, String> getNameLocalizationIds(String testId);
 }

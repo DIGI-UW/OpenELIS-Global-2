@@ -6,6 +6,7 @@ import org.openelisglobal.barcode.labeltype.SnapshotLabel;
 import org.openelisglobal.labelpreset.dto.OrderLabelRequestView;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Reprint service for persisted {@code order_label_request} rows (OGC-285 M6).
@@ -18,6 +19,7 @@ import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
  * a defect. The {@code @Transactional(readOnly = true)} implementation resolves
  * LAZY associations and serializes the JSONB inside the transaction.
  */
+@PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
 public interface OrderLabelReprintService {
 
     /**

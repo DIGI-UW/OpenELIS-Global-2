@@ -33,6 +33,7 @@ public interface SamplePatientEntryService {
      *
      * @return the persisted rows (empty when {@code payload} is null/empty)
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     List<OrderLabelRequest> persistLabelRequests(SamplePatientUpdateData updateData, OrderLabelPersistRequest payload,
             String sysUserId);
 }
