@@ -21,6 +21,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -28,10 +29,11 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
- * The TestMethod link API (/rest/test/{testId}/methods) is gated on ROLE_ADMIN:
- * 401 for the unauthenticated, 403 for a non-admin, and the controller is
- * reached (200) for an admin. Auth ordering is asserted before any business
- * behavior so a future refactor that drops the @PreAuthorize is caught here.
+ * The TestMethod link API (/rest/test/{testId}/methods) is privilege-gated at
+ * the service layer (PRIV_TEST_CONFIGURE on TestMethodService, S011c): 401 for
+ * the unauthenticated, 403 for a user without the privilege, and the controller
+ * is reached (200) for a user holding it. Auth ordering is asserted before any
+ * business behavior so a future refactor that drops the gate is caught here.
  */
 @WebAppConfiguration
 @ContextConfiguration(classes = { TestMethodRestControllerSecurityTest.TestConfig.class })
@@ -53,7 +55,9 @@ public class TestMethodRestControllerSecurityTest extends SecuritySliceMockMvcTe
     public void getLinkedMethods_adminReachesController() throws Exception {
         // Admin passes the gate; the mocked service returns an empty list -> 200,
         // proving the request reached the controller rather than being blocked by auth.
-        mockMvc.perform(get("/rest/test/1/methods").with(user("admin").roles("ADMIN"))).andExpect(status().isOk());
+        mockMvc.perform(get("/rest/test/1/methods").with(user("admin")
+                .authorities(AuthorityUtils.createAuthorityList("PRIV_TEST_CONFIGURE", "PRIV_METHOD_VIEW"))))
+                .andExpect(status().isOk());
     }
 
     // Write endpoints share the class-level @PreAuthorize; cover them so a later
@@ -91,7 +95,7 @@ public class TestMethodRestControllerSecurityTest extends SecuritySliceMockMvcTe
 
         @Bean
         TestMethodService testMethodService() {
-            return mock(TestMethodService.class);
+            return nullStub(TestMethodService.class);
         }
 
         @Bean

@@ -89,5 +89,6 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexsByTestAnalyteId(String testAnalyteId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexsByTestId(String testId);
 }

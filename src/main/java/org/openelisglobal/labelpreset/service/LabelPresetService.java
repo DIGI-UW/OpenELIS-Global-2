@@ -4,12 +4,14 @@ import java.util.List;
 import org.openelisglobal.labelpreset.form.LabelPresetForm;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * CRUD + lifecycle service for {@link LabelPreset} entities. Implements M3
  * admin operations. @Transactional is in the Impl (inherited from
  * AuditableBaseObjectServiceImpl or annotated per-method).
  */
+@PreAuthorize("hasAuthority('PRIV_BARCODE_MANAGE')")
 public interface LabelPresetService {
 
     /**

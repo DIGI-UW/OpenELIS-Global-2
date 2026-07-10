@@ -7,7 +7,6 @@ import org.openelisglobal.labelpreset.dto.OrderEntryLabelRequestResponse;
 import org.openelisglobal.labelpreset.service.OrderEntryLabelRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,22 +23,17 @@ import org.springframework.web.bind.annotation.RestController;
  * {@link OrderEntryLabelRequestService}.
  *
  * <p>
- * Secured with {@code @PreAuthorize("isAuthenticated()")}. This is the
+ * Authorization lives on the service interface (S011c): this is the
  * {@code order.create} surface (FRS §8.1; tasks.md T140) consumed by the Order
  * Entry Labels section — i.e. by reception/technician users creating an order,
- * NOT by admins. The admin CRUD controllers (LabelPresetRestController,
- * TestLabelConfigRestController) correctly use {@code hasRole('ADMIN')}, but
- * applying that here would 403 every order-entry user and break the dynamic
- * Labels section for everyone but admins. The order-save controller this pairs
- * with ({@code SamplePatientEntryRestController}) carries no method-level role
- * gate; order entry is gated only by the authenticated filter chain, so
- * {@code isAuthenticated()} matches that existing gate exactly. The openapi
- * {@code order.create} scope is not wired as a granular Spring authority in
- * this codebase.
+ * NOT by admins — so {@link OrderEntryLabelRequestService} is gated with
+ * {@code PRIV_ORDER_CREATE}, matching the privilege on the order-save service
+ * ({@code SamplePatientEntryService#persistData}). Gating this surface at an
+ * admin privilege would 403 every order-entry user and break the dynamic Labels
+ * section for everyone but admins.
  */
 @RestController
 @RequestMapping("/api/orderEntry")
-@PreAuthorize("isAuthenticated()")
 public class OrderEntryLabelRequestController extends BaseRestController {
 
     @Autowired

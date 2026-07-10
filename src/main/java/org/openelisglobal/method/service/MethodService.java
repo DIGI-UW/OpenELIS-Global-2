@@ -28,5 +28,6 @@ public interface MethodService extends BaseObjectService<Method, String> {
      * ObjectNotFoundException when the method does not exist. Use on read paths
      * that must tolerate a dangling reference (e.g. an orphaned test_method link).
      */
+    @PreAuthorize("hasAuthority('PRIV_METHOD_VIEW')")
     Method findById(String id);
 }
