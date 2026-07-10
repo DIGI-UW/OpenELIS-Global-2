@@ -85,7 +85,24 @@ public class ResultSaveService {
                 try {
                     JSONObject jsonResult = (JSONObject) parser.parse(serviceBean.getMultiSelectResultValues());
 
-                    List<Result> existingResults = resultService.getResultsByAnalysis(analysis);
+                    // Only this item's own multiselect selections may be reconciled
+                    // (and leftovers deleted). A multi-component analysis also holds
+                    // the other components' results — deleting those here orphans
+                    // their rows mid-save and their own update then fails.
+                    List<Result> existingResults = new ArrayList<>();
+                    for (Result existingResult : resultService.getResultsByAnalysis(analysis)) {
+                        if (!TypeOfTestResultServiceImpl.ResultType
+                                .isMultiSelectVariant(existingResult.getResultType())) {
+                            continue;
+                        }
+                        String existingComponentId = existingResult.getTestResult() == null ? null
+                                : existingResult.getTestResult().getComponentId();
+                        if (serviceBean.getTestResultComponentId() != null && existingComponentId != null
+                                && !serviceBean.getTestResultComponentId().equals(existingComponentId)) {
+                            continue;
+                        }
+                        existingResults.add(existingResult);
+                    }
                     for (Object key : jsonResult.keySet()) {
                         getResultsForMultiSelect(results, existingResults, serviceBean, (String) key,
                                 (String) jsonResult.get(key), isQualifiedResult);

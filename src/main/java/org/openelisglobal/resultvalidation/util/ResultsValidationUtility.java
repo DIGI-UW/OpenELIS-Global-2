@@ -459,7 +459,14 @@ public class ResultsValidationUtility {
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
         testItem.setDictionaryResults(getAnyDictonaryValues(testResults));
-        testItem.setResultType(getTestResultType(testResults));
+        // The test-level type is the first test_result row's, which for a
+        // multi-component test is the primary's; an entered result knows its
+        // own component's type, so prefer the stored one.
+        if (result != null && !GenericValidator.isBlankOrNull(result.getResultType())) {
+            testItem.setResultType(result.getResultType());
+        } else {
+            testItem.setResultType(getTestResultType(testResults));
+        }
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
         testItem.setChildReflex(analysis.getTriggeredReflex() && isConclusion(result, analysis));
@@ -598,34 +605,34 @@ public class ResultsValidationUtility {
 
         /*
          * The issue with multiselect results is that each selection is one
-         * ResultValidationItem but they all need to be condensed into one AnalysisItem.
-         * There is a many to one mapping. The first multiselect result we have gets
-         * rolled into one AnalysisItem and the rest are skipped but we want to capture
-         * any qualified results
+         * ResultValidationItem but they all need to be condensed into one AnalysisItem
+         * (whose multiSelectResultValues carries every selection as JSON). The
+         * condensing is scoped per analysis: other results of the same accession —
+         * other analyses, or other components of a multi-component analysis — must
+         * still get their own rows. Qualified results found among an analysis's
+         * multiselect selections are captured onto its condensed item.
          */
-        boolean multiResultEntered = false;
-        String currentAccession = null;
-        AnalysisItem currentMultiSelectAnalysisItem = null;
+        Map<String, AnalysisItem> condensedMultiSelectByAnalysis = new HashMap<>();
         for (ResultValidationItem testResultItem : testResultList) {
-            if (!testResultItem.getAccessionNumber().equals(currentAccession)) {
-                currentAccession = testResultItem.getAccessionNumber();
-                currentMultiSelectAnalysisItem = null;
-                multiResultEntered = false;
-            }
-            if (!multiResultEntered) {
+            String analysisId = testResultItem.getAnalysis().getId();
+            boolean multiSelect = TypeOfTestResultServiceImpl.ResultType
+                    .isMultiSelectVariant(testResultItem.getResultType());
+
+            if (!multiSelect || !condensedMultiSelectByAnalysis.containsKey(analysisId)) {
                 AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem);
                 analysisResultList.add(convertedItem);
-                if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
-                    multiResultEntered = true;
-                    currentMultiSelectAnalysisItem = convertedItem;
+                if (multiSelect) {
+                    condensedMultiSelectByAnalysis.put(analysisId, convertedItem);
                 }
             }
-            if (currentMultiSelectAnalysisItem != null && testResultItem.isHasQualifiedResult()) {
-                currentMultiSelectAnalysisItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
-                currentMultiSelectAnalysisItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
-                currentMultiSelectAnalysisItem.setHasQualifiedResult(true);
-                currentMultiSelectAnalysisItem.setNormalRange(testResultItem.getNormalRange());
-                currentMultiSelectAnalysisItem.setPatientName(testResultItem.getPatientName());
+
+            AnalysisItem condensedItem = condensedMultiSelectByAnalysis.get(analysisId);
+            if (condensedItem != null && testResultItem.isHasQualifiedResult()) {
+                condensedItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
+                condensedItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
+                condensedItem.setHasQualifiedResult(true);
+                condensedItem.setNormalRange(testResultItem.getNormalRange());
+                condensedItem.setPatientName(testResultItem.getPatientName());
             }
         }
 
