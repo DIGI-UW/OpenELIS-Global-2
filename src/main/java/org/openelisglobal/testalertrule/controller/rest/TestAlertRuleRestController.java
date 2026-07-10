@@ -182,7 +182,7 @@ public class TestAlertRuleRestController extends BaseRestController {
     @GetMapping(value = "/roles", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<IdValuePair> roles(@PathVariable String testId) {
         return roleService.getAllActiveRoles().stream().filter(r -> !r.getGroupingRole())
-                .map(r -> new IdValuePair(r.getId(), r.getName())).collect(Collectors.toList());
+                .map(r -> new IdValuePair(String.valueOf(r.getId()), r.getName())).collect(Collectors.toList());
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
