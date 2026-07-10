@@ -86,8 +86,9 @@ public class PrivilegeServiceImpl implements PrivilegeService {
             return Collections.emptySet();
         }
 
-        // Global Administrator gets every privilege
-        if (Constants.ROLE_GLOBAL_ADMIN.equals(role.getName())) {
+        // Global Administrator gets every privilege. Trim: system_role.name is
+        // CHARACTER(30) in the legacy schema, so values come back space-padded.
+        if (role.getName() != null && Constants.ROLE_GLOBAL_ADMIN.equals(role.getName().trim())) {
             return Set.of(Privileges.GLOBAL_ADMIN_SENTINEL);
         }
 

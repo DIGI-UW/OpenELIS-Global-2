@@ -148,7 +148,9 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, Integer> implements RoleDAO {
     @Override
     @Transactional(readOnly = true)
     public Role getRoleByName(String name) throws LIMSRuntimeException {
-        String sql = "from Role r where r.name = :name";
+        // trim(r.name): system_role.name is CHARACTER(30) in the legacy schema, so
+        // stored values are space-padded and a plain equality never matches.
+        String sql = "from Role r where trim(r.name) = :name";
 
         try {
             Query<Role> query = entityManager.unwrap(Session.class).createQuery(sql, Role.class);

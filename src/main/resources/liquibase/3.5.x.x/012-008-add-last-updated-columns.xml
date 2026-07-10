@@ -52,4 +52,64 @@
         </addColumn>
     </changeSet>
 
+    <changeSet author="openelis" id="012-008-system-module-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_module" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the SystemModule entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-module-url-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_module_url" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the SystemModuleUrl entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_module_url" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-module-param-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_module_param" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the SystemModuleParam entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_module_param" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-role-module-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_role_module" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the RoleModule entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_role_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-user-module-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_user_module" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the SystemUserModule entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_user_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>

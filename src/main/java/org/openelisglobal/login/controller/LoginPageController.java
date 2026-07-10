@@ -236,12 +236,15 @@ public class LoginPageController extends BaseController {
             Map<String, List<String>> userLabRolesMap = new HashMap<>();
             if (userLabUnits.contains(ALL_LAB_UNITS)) {
                 roleMaps.stream().filter(map -> map.getLabUnit().equals(ALL_LAB_UNITS))
-                        .forEach(map -> userLabRolesMap.put(map.getLabUnit(), map.getRoles().stream()
-                                .map(r -> roleService.getRoleByName(r).getName().trim()).collect(Collectors.toList())));
+                        .forEach(map -> userLabRolesMap.put(map.getLabUnit(),
+                                map.getRoles().stream()
+                                        .map(r -> roleService.getRoleById(Integer.valueOf(r.trim())).getName().trim())
+                                        .collect(Collectors.toList())));
             } else {
                 for (LabUnitRoleMap map : roleMaps) {
                     userLabRolesMap.put(testSectionService.get(map.getLabUnit()).getLocalizedName(),
-                            map.getRoles().stream().map(r -> roleService.getRoleByName(r).getName().trim())
+                            map.getRoles().stream()
+                                    .map(r -> roleService.getRoleById(Integer.valueOf(r.trim())).getName().trim())
                                     .collect(Collectors.toList()));
                 }
             }
