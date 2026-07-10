@@ -11,20 +11,20 @@
     <!-- role entries -->
     <system_role id="1" name="Global Administrator"
         description="Change tests panels etc." is_grouping_role="false"
-        display_key="role.maintenance" is_active="true" is_editable="false" />
+        display_key="role.maintenance" active="true" editable="false" />
     <system_role id="2" name="Reception"
         description="Attendee of personnel." is_grouping_role="false"
-        display_key="role.intake" is_active="true" is_editable="false" />
+        display_key="role.intake" active="true" editable="false" />
     <system_role id="3" name="Inventory mgr"
         description="tracks inventory." is_grouping_role="false"
-        display_key="role.inventory" is_active="true" is_editable="false" />
+        display_key="role.inventory" active="true" editable="false" />
     <system_role id="4" name="Results"
         description="enter and review results." is_grouping_role="false"
-        display_key="role.results" is_active="true" is_editable="false" />
+        display_key="role.results" active="true" editable="false" />
     <system_role id="5" name="Reports"
         description="generate reports." is_grouping_role="false"
-        display_key="role.reports" is_active="true" is_editable="false" />
+        display_key="role.reports" active="true" editable="false" />
     <system_role id="6" name="Validation"
         description="validate test results." is_grouping_role="false"
-        display_key="role.validation" is_active="true" is_editable="false" />
+        display_key="role.validation" active="true" editable="false" />
 </dataset>

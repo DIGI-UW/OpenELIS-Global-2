@@ -52,10 +52,10 @@ public class Role extends BaseObject<Integer> implements PermissionAgent {
     @Column(name = "display_key")
     private String displayKey;
 
-    @Column(name = "is_active")
+    @Column(name = "active")
     private Boolean active;
 
-    @Column(name = "is_editable")
+    @Column(name = "editable")
     private Boolean editable;
 
     @Override
