@@ -190,6 +190,8 @@ const flattenSampleManifestFields = (
       vectorFields: {
         vecLifecycleStage: envFields.vecLifecycleStage || "",
         vecTrapTypeId: envFields.vecTrapTypeId || "",
+        vecTrapCount: envFields.vecTrapCount || "",
+        vecTrapNights: envFields.vecTrapNights || "",
         collectionVolume: s.quantity || "",
       },
     };
@@ -540,7 +542,15 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
               : "";
           const qcExpectedValue = sampleItem.qcMetadata?.expectedValue || "";
 
-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' labPerformedSampling='${labPerformedSampling}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
+          // Vector collection site: stamp the order-level site onto the sample item so
+          // the surveillance dashboard groups it by site from intake, not only after
+          // deconvolution. Same VectorSamplingSite id space as collectionLocationId.
+          const collectionLocationId =
+            sampleItem.collectionLocationId ||
+            envFields.vecCollectionSiteId ||
+            "";
+
+          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
         }
       });
 
@@ -889,12 +899,18 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           samples.find((s) => s.sampleTypeId)?.vectorFields || {};
         if (
           firstVectorFields.vecLifecycleStage ||
-          firstVectorFields.vecTrapTypeId
+          firstVectorFields.vecTrapTypeId ||
+          firstVectorFields.vecTrapCount ||
+          firstVectorFields.vecTrapNights
         ) {
           envFields.vecLifecycleStage =
             firstVectorFields.vecLifecycleStage || envFields.vecLifecycleStage;
           envFields.vecTrapTypeId =
             firstVectorFields.vecTrapTypeId || envFields.vecTrapTypeId;
+          envFields.vecTrapCount =
+            firstVectorFields.vecTrapCount || envFields.vecTrapCount;
+          envFields.vecTrapNights =
+            firstVectorFields.vecTrapNights || envFields.vecTrapNights;
         }
         entrySampleXML = buildSampleXML(stampedSamples, envFields);
       }
@@ -908,6 +924,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         orderEntryOnly: true, // Flag for backend to skip sample validation
         sampleOrderItems: {
           ...orderData.sampleOrderItems,
+          // Use the merged envFields so vector per-sample observations
+          // (trap-count/nights, lifecycle, trap-type) reach the backend; the
+          // original orderData.environmentalFields is missing that merge.
+          environmentalFields: envFields,
           priorityList: [],
           programList: [],
           referringSiteList: [],

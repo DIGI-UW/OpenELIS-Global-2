@@ -30,7 +30,7 @@ public class AnalyzerQueryServiceIntegrationTest extends BaseWebContextSensitive
     private AnalyzerQueryService analyzerQueryService;
 
     @Test
-    public void testQueryAnalyzer_WithTimeout_HandlesGracefully() {
+    public void testQueryAnalyzer_WithTimeout_HandlesGracefully() throws InterruptedException {
         // Arrange
         // Use a numeric ID that won't exist in the test DB — startQuery() calls
         // analyzerService.get() which expects a numeric primary key.
@@ -48,17 +48,20 @@ public class AnalyzerQueryServiceIntegrationTest extends BaseWebContextSensitive
         assertEquals("Analyzer ID should match", analyzerId, status.get("analyzerId"));
         assertEquals("Job ID should match", jobId, status.get("jobId"));
 
-        // Verify initial state is "pending" (full implementation starts async)
-        String initialState = (String) status.get("state");
-        assertTrue("Initial state should be pending or in_progress",
-                "pending".equals(initialState) || "in_progress".equals(initialState));
-
-        // Note: Full implementation now executes asynchronously. This test verifies:
-        // - Query starts with "pending" or "in_progress" state
-        // - Status can be polled while running
-        // - For timeout testing, configure analyzer with unreachable IP/port
-        // - Timeout should occur after configured timeout period
-        // - Status should transition to "failed" state with error message
+        // startQuery runs executeQuery on a background thread, so asserting a
+        // transient "pending"/"in_progress" here races the async transition (a
+        // non-existent analyzer fails almost immediately). Poll to a terminal state
+        // and assert the query handled the missing analyzer gracefully — reaching a
+        // terminal state rather than crashing.
+        String state = (String) status.get("state");
+        for (int i = 0; i < 30 && !"completed".equals(state) && !"failed".equals(state)
+                && !"cancelled".equals(state); i++) {
+            Thread.sleep(1000);
+            status = analyzerQueryService.getStatus(analyzerId, jobId);
+            state = (String) status.get("state");
+        }
+        assertTrue("Query for a non-existent analyzer should reach a terminal state, got: " + state,
+                "completed".equals(state) || "failed".equals(state) || "cancelled".equals(state));
     }
 
     @Test

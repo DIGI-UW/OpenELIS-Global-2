@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- M3: Manual Entry Helper + field-map admin permissions (FR-010) -->
+
+  <!-- ===== VectorManualEntryHelper module (US4) ===== -->
+  <changeSet author="openelis" id="045-manual-entry-helper-module">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_module" schemaName="clinlims"/>
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper'</sqlCheck>
+    </preConditions>
+    <comment>Module for the Vector Manual Entry Helper</comment>
+    <insert tableName="system_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_seq"/>
+      <column name="name" value="VectorManualEntryHelper"/>
+      <column name="description" value="View and submit the vector Manual Entry Helper"/>
+      <column name="has_select_flag" value="Y"/>
+      <column name="has_add_flag" value="Y"/>
+      <column name="has_update_flag" value="N"/>
+      <column name="has_delete_flag" value="N"/>
+    </insert>
+    <rollback>
+      <delete tableName="system_module" schemaName="clinlims">
+        <where>name = 'VectorManualEntryHelper'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet author="openelis" id="045-manual-entry-helper-url-view">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_module_url" schemaName="clinlims"/>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper'</sqlCheck>
+    </preConditions>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/rest/reports/vector-surveillance/manual-entry"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper')"/>
+    </insert>
+    <rollback>
+      <delete tableName="system_module_url" schemaName="clinlims">
+        <where>url_path = '/rest/reports/vector-surveillance/manual-entry'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet author="openelis" id="045-manual-entry-helper-url-submit">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_module_url" schemaName="clinlims"/>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper'</sqlCheck>
+    </preConditions>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/rest/reports/vector-surveillance/manual-entry/submit"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper')"/>
+    </insert>
+    <rollback>
+      <delete tableName="system_module_url" schemaName="clinlims">
+        <where>url_path = '/rest/reports/vector-surveillance/manual-entry/submit'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet author="openelis" id="045-manual-entry-helper-url-ui">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_module_url" schemaName="clinlims"/>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper'</sqlCheck>
+    </preConditions>
+    <comment>Gate the Manual Entry Helper UI route (mirrors the dashboard's 042 URL gate)</comment>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/VectorManualEntry"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper')"/>
+    </insert>
+    <rollback>
+      <delete tableName="system_module_url" schemaName="clinlims">
+        <where>url_path = '/VectorManualEntry'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet author="openelis" id="045-manual-entry-helper-grant-admin">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_role_module" schemaName="clinlims"/>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'</sqlCheck>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper'</sqlCheck>
+    </preConditions>
+    <comment>Grant Manual Entry Helper to Global Administrator</comment>
+    <insert tableName="system_role_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_role_module_seq"/>
+      <column name="has_select" value="Y"/>
+      <column name="has_add" value="Y"/>
+      <column name="has_update" value="N"/>
+      <column name="has_delete" value="N"/>
+      <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper')"/>
+    </insert>
+    <rollback>
+      <sql>
+        DELETE FROM clinlims.system_role_module
+        WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')
+          AND system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper');
+      </sql>
+    </rollback>
+  </changeSet>
+
+  <!-- ===== VectorManualEntryFieldMap module (US5) ===== -->
+  <changeSet author="openelis" id="045-manual-entry-fieldmap-module">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_module" schemaName="clinlims"/>
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryFieldMap'</sqlCheck>
+    </preConditions>
+    <comment>Module for administering the Manual Entry field map</comment>
+    <insert tableName="system_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_seq"/>
+      <column name="name" value="VectorManualEntryFieldMap"/>
+      <column name="description" value="Configure the vector Manual Entry Helper field map"/>
+      <column name="has_select_flag" value="Y"/>
+      <column name="has_add_flag" value="Y"/>
+      <column name="has_update_flag" value="Y"/>
+      <column name="has_delete_flag" value="N"/>
+    </insert>
+    <rollback>
+      <delete tableName="system_module" schemaName="clinlims">
+        <where>name = 'VectorManualEntryFieldMap'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet author="openelis" id="045-manual-entry-fieldmap-url">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_module_url" schemaName="clinlims"/>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryFieldMap'</sqlCheck>
+    </preConditions>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/rest/admin/vector/manual-entry-fields"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryFieldMap')"/>
+    </insert>
+    <rollback>
+      <delete tableName="system_module_url" schemaName="clinlims">
+        <where>url_path = '/rest/admin/vector/manual-entry-fields'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet author="openelis" id="045-manual-entry-fieldmap-grant-admin">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_role_module" schemaName="clinlims"/>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'</sqlCheck>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryFieldMap'</sqlCheck>
+    </preConditions>
+    <comment>Grant Manual Entry field-map administration to Global Administrator</comment>
+    <insert tableName="system_role_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_role_module_seq"/>
+      <column name="has_select" value="Y"/>
+      <column name="has_add" value="Y"/>
+      <column name="has_update" value="Y"/>
+      <column name="has_delete" value="N"/>
+      <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryFieldMap')"/>
+    </insert>
+    <rollback>
+      <sql>
+        DELETE FROM clinlims.system_role_module
+        WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')
+          AND system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryFieldMap');
+      </sql>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

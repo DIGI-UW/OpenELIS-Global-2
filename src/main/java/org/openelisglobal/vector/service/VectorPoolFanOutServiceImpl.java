@@ -81,6 +81,10 @@ public class VectorPoolFanOutServiceImpl implements VectorPoolFanOutService {
             sibling.setCollectionMethod(original.getCollectionMethod());
             sibling.setSampleTemperature(original.getSampleTemperature());
             sibling.setSpecimenOrigin(original.getSpecimenOrigin());
+            // Carry the collection site onto each individual organism so the
+            // surveillance dashboard groups it by site (density/species/positives
+            // all key on sample_item.collectionLocationId).
+            sibling.setCollectionLocationId(original.getCollectionLocationId());
             sibling.setFhirUuid(UUID.randomUUID());
             sampleItemService.insert(sibling);
             siblings.add(sibling);

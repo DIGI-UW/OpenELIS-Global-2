@@ -1352,6 +1352,58 @@ const SampleTestSection = ({
                       disabled={isReadOnly}
                     />
                   </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id={`trapCount-${sampleIndex}`}
+                      type="number"
+                      min={1}
+                      step={1}
+                      labelText={intl.formatMessage({
+                        id: "vector.trapCount",
+                        defaultMessage: "Traps Deployed",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "vector.trapCount.helper",
+                        defaultMessage:
+                          "Number of traps deployed — used with nights to compute density per trap-night.",
+                      })}
+                      value={sample.vectorFields?.vecTrapCount || ""}
+                      onChange={(e) =>
+                        handleVectorFieldChange(
+                          sampleIndex,
+                          "vecTrapCount",
+                          e.target.value,
+                        )
+                      }
+                      disabled={isReadOnly}
+                    />
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id={`trapNights-${sampleIndex}`}
+                      type="number"
+                      min={1}
+                      step={1}
+                      labelText={intl.formatMessage({
+                        id: "vector.trapNights",
+                        defaultMessage: "Nights Deployed",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "vector.trapNights.helper",
+                        defaultMessage:
+                          "Number of nights the traps were active. Leave blank if effort was not recorded.",
+                      })}
+                      value={sample.vectorFields?.vecTrapNights || ""}
+                      onChange={(e) =>
+                        handleVectorFieldChange(
+                          sampleIndex,
+                          "vecTrapNights",
+                          e.target.value,
+                        )
+                      }
+                      disabled={isReadOnly}
+                    />
+                  </Column>
                 </>
               )}
 

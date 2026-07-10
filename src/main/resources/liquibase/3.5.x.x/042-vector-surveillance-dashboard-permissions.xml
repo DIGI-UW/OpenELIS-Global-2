@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- V-04 (OGC-585) Vector Surveillance Reporting — dashboard access module -->
+    <changeSet author="pmanko" id="042-vector-surveillance-add-module">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'VectorSurveillanceDashboard'</sqlCheck>
+        </preConditions>
+        <comment>Add system module for the Vector Surveillance dashboard (view + PDF export)</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="VectorSurveillanceDashboard"/>
+            <column name="description" value="View the vector surveillance dashboard and export it"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="N"/>
+            <column name="has_update_flag" value="N"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_module" schemaName="clinlims">
+                <where>name = 'VectorSurveillanceDashboard'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="pmanko" id="042-vector-surveillance-add-module-url">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'VectorSurveillanceDashboard'</sqlCheck>
+        </preConditions>
+        <comment>Gate the Vector Surveillance dashboard page</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/VectorSurveillanceReport"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorSurveillanceDashboard')"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_module_url" schemaName="clinlims">
+                <where>url_path = '/VectorSurveillanceReport'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Grant view access to the lab-results role (resilient: skips if the role is absent) -->
+    <changeSet author="pmanko" id="042-vector-surveillance-assign-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_role WHERE name = 'Results'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'VectorSurveillanceDashboard'</sqlCheck>
+        </preConditions>
+        <comment>Assign Vector Surveillance dashboard (view) to Results role</comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="N"/>
+            <column name="has_update" value="N"/>
+            <column name="has_delete" value="N"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Results')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorSurveillanceDashboard')"/>
+        </insert>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+                  AND system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'VectorSurveillanceDashboard');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Reports menu link for the Vector Surveillance dashboard (mirrors 005-tat-report-menu) -->
+    <changeSet author="pmanko" id="042-vector-surveillance-add-menu">
+        <comment>Add Vector Surveillance Report under the Reports menu (OGC-585)</comment>
+        <sql>
+            INSERT INTO clinlims.menu (id, parent_id, presentation_order,
+                                       element_id, action_url, display_key, is_active)
+            SELECT nextval('clinlims.menu_seq'),
+                   (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports'),
+                   5, 'menu_reports_vectorsurveillance', '/VectorSurveillanceReport',
+                   'vectorReport.title', true
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_vectorsurveillance')
+              AND EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports');
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.menu WHERE element_id = 'menu_reports_vectorsurveillance';</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

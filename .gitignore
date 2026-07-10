@@ -91,6 +91,9 @@ projects/*/volume/
 **/playwright/.cache/
 **/playwright/.auth/
 **/test-results/
+# but the config-import test-results catalog is source, not a Playwright artifact
+!src/main/resources/configuration/test-results/
+!src/main/resources/configuration/test-results/**
 # Note: frontend/playwright/ test sources are tracked (not ignored)
 *.pyc
 __pycache__/
