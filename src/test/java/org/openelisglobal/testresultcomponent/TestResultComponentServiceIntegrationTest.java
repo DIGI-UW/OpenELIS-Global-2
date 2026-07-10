@@ -113,6 +113,26 @@ public class TestResultComponentServiceIntegrationTest extends BaseWebContextSen
         assertNull(loaded.getDefaultResult());
         // BOOLEAN NOT NULL DEFAULT false
         assertFalse(loaded.getAllowMultipleReadings());
+        assertFalse("is_primary defaults false", loaded.getIsPrimary());
+    }
+
+    @Test
+    public void saveComponentsForTest_marksExactlyOneActivePrimary() {
+        TestResultComponent primary = new TestResultComponent();
+        primary.setCode("PRIMARY");
+        primary.setLabel("Primary");
+        primary.setDisplayOrder(0);
+        TestResultComponent second = new TestResultComponent();
+        second.setCode("DIA");
+        second.setLabel("Diastolic");
+        second.setDisplayOrder(1);
+
+        componentService.saveComponentsForTest(String.valueOf(TEST_ID), List.of(primary, second), "1");
+
+        List<TestResultComponent> active = componentService.getActiveComponentsByTestId(String.valueOf(TEST_ID));
+        long primaries = active.stream().filter(TestResultComponent::getIsPrimary).count();
+        assertEquals("exactly one component is flagged primary", 1L, primaries);
+        assertEquals("PRIMARY", active.stream().filter(TestResultComponent::getIsPrimary).findFirst().get().getCode());
     }
 
     @Test

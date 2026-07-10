@@ -1,6 +1,7 @@
 package org.openelisglobal.testresultcomponent.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -138,6 +139,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 }
             }
         }
+        ensureSinglePrimary(testId, sysUserId);
         return baseObjectDAO.getActiveComponentsByTestId(testId);
     }
 
@@ -264,6 +266,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             primary.setUomId(uomId);
             primary.setSignificantDigits(significantDigits);
             primary.setIsActive("Y");
+            primary.setIsPrimary(true);
             primary.setSysUserId(sysUserId);
             insert(primary);
         } else {
@@ -292,19 +295,58 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 resultLimitService.update(rl);
             }
         }
+        ensureSinglePrimary(testId, sysUserId);
     }
 
     private TestResultComponent findPrimaryComponent(String testId) {
         List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
-        if (components.isEmpty()) {
+        return pickPrimary(components);
+    }
+
+    /**
+     * The primary component: the explicit is_primary flag first, then the legacy
+     * PRIMARY code, then the lowest-display-order component (defensive fallback for
+     * data predating the flag).
+     */
+    private TestResultComponent pickPrimary(List<TestResultComponent> components) {
+        if (components == null || components.isEmpty()) {
             return null;
+        }
+        for (TestResultComponent c : components) {
+            if (c.getIsPrimary()) {
+                return c;
+            }
         }
         for (TestResultComponent c : components) {
             if (PRIMARY_CODE.equals(c.getCode())) {
                 return c;
             }
         }
-        return components.get(0);
+        return components.stream()
+                .min(Comparator
+                        .comparingInt(c -> c.getDisplayOrder() == null ? Integer.MAX_VALUE : c.getDisplayOrder()))
+                .orElse(components.get(0));
+    }
+
+    /**
+     * Guarantee exactly one active component carries is_primary. Called after any
+     * component-set change so the flag stays consistent even though the editor DTO
+     * doesn't send it.
+     */
+    private void ensureSinglePrimary(String testId, String sysUserId) {
+        List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
+        TestResultComponent primary = pickPrimary(components);
+        if (primary == null) {
+            return;
+        }
+        for (TestResultComponent c : components) {
+            boolean shouldBePrimary = c.getId().equals(primary.getId());
+            if (c.getIsPrimary() != shouldBePrimary) {
+                c.setIsPrimary(shouldBePrimary);
+                c.setSysUserId(sysUserId);
+                update(c);
+            }
+        }
     }
 
     private static String latestResultType(List<TestResult> newestFirst) {
@@ -398,5 +440,6 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             }
             testResultService.saveOptionsForComponent(target, copy.getId(), optionCopies, sysUserId);
         }
+        ensureSinglePrimary(targetTestId, sysUserId);
     }
 }

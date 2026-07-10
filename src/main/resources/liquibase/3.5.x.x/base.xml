@@ -138,4 +138,7 @@
   <!-- OGC-749 / OGC-963 (FR-29): code + UCUM columns for the inline unit-create form -->
   <include relativeToChangelogFile="true" file="051-uom-code-ucum.xml"/>
 
+  <!-- OGC-949: explicit is_primary boolean on result components -->
+  <include relativeToChangelogFile="true" file="052-component-is-primary.xml"/>
+
 </databaseChangeLog>
