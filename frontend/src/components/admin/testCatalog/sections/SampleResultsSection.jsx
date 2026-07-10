@@ -296,20 +296,52 @@ const SampleResultsSection = ({ testId }) => {
     setComponents((prev) => [
       ...prev,
       {
-        code: "",
+        // The first (only) component is the primary; its code is fixed to
+        // PRIMARY (mirrored to the legacy test columns).
+        code: prev.length === 0 ? "PRIMARY" : "",
         label: "",
         displayOrder: prev.length + 1,
         resultType: "N",
         significantDigits: null,
         defaultResult: "",
         allowMultipleReadings: false,
+        isPrimary: prev.length === 0,
         options: [],
         interpretations: [],
       },
     ]);
 
+  // Exactly one component is primary. While one is marked, the other
+  // components' Primary toggles are disabled — the current primary must be
+  // unmarked first. Marking fixes the code to PRIMARY (and disables it);
+  // unmarking frees the code back to the component's label.
+  const togglePrimary = (ci, checked) =>
+    setComponents((prev) =>
+      prev.map((c, i) => {
+        if (i !== ci) {
+          return c;
+        }
+        if (checked) {
+          return { ...c, isPrimary: true, code: "PRIMARY" };
+        }
+        return {
+          ...c,
+          isPrimary: false,
+          code: c.code === "PRIMARY" ? c.label || "" : c.code,
+        };
+      }),
+    );
+
   const removeComponent = (ci) =>
-    setComponents((prev) => prev.filter((_, i) => i !== ci));
+    setComponents((prev) => {
+      const removed = prev[ci];
+      const next = prev.filter((_, i) => i !== ci);
+      // Removing the primary promotes the first remaining component.
+      if (removed && removed.isPrimary && next.length > 0) {
+        next[0] = { ...next[0], isPrimary: true, code: "PRIMARY" };
+      }
+      return next;
+    });
 
   const moveComponent = (ci, dir) =>
     setComponents((prev) => {
@@ -573,12 +605,24 @@ const SampleResultsSection = ({ testId }) => {
                     onClick={() => moveComponent(ci, 1)}
                   />
                 </div>
+                <Toggle
+                  id={`comp-primary-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.isPrimary",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={!!c.isPrimary}
+                  disabled={!c.isPrimary && components.some((x) => x.isPrimary)}
+                  onToggle={(checked) => togglePrimary(ci, checked)}
+                />
                 <TextInput
                   id={`comp-code-${ci}`}
                   labelText={intl.formatMessage({
                     id: "label.testCatalog.sampleResults.code",
                   })}
-                  value={c.code || ""}
+                  value={c.isPrimary ? "PRIMARY" : c.code || ""}
+                  disabled={!!c.isPrimary}
                   onChange={(e) => patchComponent(ci, { code: e.target.value })}
                 />
                 <TextInput

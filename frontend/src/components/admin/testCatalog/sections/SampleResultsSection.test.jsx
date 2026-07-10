@@ -201,6 +201,63 @@ describe("SampleResultsSection", () => {
     expect(components[1].code).toBe("Diastolic");
   });
 
+  it("marks a component primary: code fixed to PRIMARY + disabled, other toggles locked", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(TWO_COMPONENTS));
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    // No primary yet → both toggles enabled; mark the first.
+    fireEvent.click(container.querySelector("#comp-primary-0"));
+
+    // Its code is forced to PRIMARY and the field is disabled.
+    const code0 = container.querySelector("#comp-code-0");
+    expect(code0.value).toBe("PRIMARY");
+    expect(code0).toBeDisabled();
+    // The other component can no longer be marked primary.
+    expect(container.querySelector("#comp-primary-1")).toBeDisabled();
+
+    fireEvent.click(saveButton());
+    const components = savedPayload().components;
+    expect(components[0].isPrimary).toBe(true);
+    expect(components[0].code).toBe("PRIMARY");
+    expect(components[1].isPrimary).toBeFalsy();
+  });
+
+  it("unmarking the primary frees its code and unlocks the other toggles", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        const data = clone(TWO_COMPONENTS);
+        data.components[0].isPrimary = true;
+        data.components[0].code = "PRIMARY";
+        cb(data);
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("PRIMARY");
+
+    // Second toggle starts locked while the first is primary.
+    expect(container.querySelector("#comp-primary-1")).toBeDisabled();
+
+    // Unmark the primary → code falls back to its label, other toggle unlocks.
+    fireEvent.click(container.querySelector("#comp-primary-0"));
+    expect(container.querySelector("#comp-code-0").value).toBe("Systolic");
+    expect(container.querySelector("#comp-code-0")).not.toBeDisabled();
+    expect(container.querySelector("#comp-primary-1")).not.toBeDisabled();
+
+    // Now the second component can take the designation.
+    fireEvent.click(container.querySelector("#comp-primary-1"));
+    expect(container.querySelector("#comp-code-1").value).toBe("PRIMARY");
+    expect(container.querySelector("#comp-code-1")).toBeDisabled();
+  });
+
   it("shows result types as primary cards with the legacy types behind a disclosure (FR-28)", async () => {
     renderSection();
     await screen.findByDisplayValue("SYS");
