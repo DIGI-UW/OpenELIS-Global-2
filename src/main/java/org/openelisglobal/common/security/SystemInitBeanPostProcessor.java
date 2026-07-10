@@ -14,6 +14,12 @@ import org.springframework.stereotype.Component;
  * This covers both the production servlet context and the test Spring context,
  * so @PostConstruct methods can call @PreAuthorize-protected services without
  * an auth context during startup.
+ *
+ * <p>
+ * Ordered LOWEST_PRECEDENCE so the flag is cleared after ordered
+ * ContextRefreshedEvent listeners have run. Ordering against other UNordered
+ * listeners is not guaranteed — a startup listener that calls gated services
+ * must scope the flag itself (see ConfigurationInitializationService).
  */
 @Component
 public class SystemInitBeanPostProcessor
@@ -28,4 +34,5 @@ public class SystemInitBeanPostProcessor
     public void onApplicationEvent(ContextRefreshedEvent event) {
         SystemInitFlag.clear();
     }
+
 }

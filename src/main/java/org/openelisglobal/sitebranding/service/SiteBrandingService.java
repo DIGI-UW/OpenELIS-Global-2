@@ -2,6 +2,7 @@ package org.openelisglobal.sitebranding.service;
 
 import java.io.IOException;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -10,6 +11,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * 
  * Task Reference: T014
  */
+@CrossDomainService(callers = "Login page chrome — /rest/site-branding/** is in SecurityConfig's open pages"
+        + " so logo/theme render before authentication. Branding reads are public UI infrastructure; mutations"
+        + " remain gated with PRIV_BRANDING_MANAGE")
 public interface SiteBrandingService extends BaseObjectService<SiteBranding, Integer> {
 
     /**
@@ -18,7 +22,6 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * 
      * @return SiteBranding entity with current or default values
      */
-    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     SiteBranding getBranding();
 
     /**
@@ -41,7 +44,6 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @deprecated Validation is now permissive; this method returns true for any
      *             non-empty string
      */
-    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     boolean validateColor(String color);
 
     /**
@@ -50,7 +52,6 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @param file MultipartFile to validate
      * @return true if valid, false otherwise
      */
-    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     boolean validateLogoFile(org.springframework.web.multipart.MultipartFile file);
 
     /**
@@ -70,7 +71,6 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @param type LogoType
      * @return URL path to logo or null if default should be used
      */
-    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     String getLogoUrl(LogoType type);
 
     /**

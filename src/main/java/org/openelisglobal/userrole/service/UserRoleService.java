@@ -3,15 +3,23 @@ package org.openelisglobal.userrole.service;
 import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.openelisglobal.userrole.valueholder.UserRole;
 import org.openelisglobal.userrole.valueholder.UserRolePK;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrossDomainService(callers = "Authentication and session introspection resolve a user's roles before/while"
+        + " the privilege context is established (getRoleIdsForUser is ungated); administrative user-role"
+        + " management methods remain individually gated with PRIV_USER_ROLE_*")
 public interface UserRoleService extends BaseObjectService<UserRole, UserRolePK> {
 
-    @PreAuthorize("hasAuthority('PRIV_USER_ROLE_VIEW')")
+    /**
+     * Ungated identity read: called while BUILDING the caller's authorities —
+     * during authentication (CustomUserDetailsService) and session introspection
+     * (/session) — so no privilege can be required to discover one's own roles.
+     */
     List<Integer> getRoleIdsForUser(String userId);
 
     @PreAuthorize("hasAuthority('PRIV_USER_ROLE_VIEW')")

@@ -15,6 +15,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -49,9 +50,27 @@ public class ProviderImportServiceImpl implements ProviderImportService {
     @Autowired
     private PersonService personService;
 
+    /**
+     * Scheduled system entry point. The scheduler thread has no Authentication, so
+     * the run executes in system context (SystemInitFlag) instead of going through
+     * the privilege gate on the interface method, which remains the admin-triggered
+     * path.
+     */
+    @Scheduled(initialDelay = 1000, fixedRateString = "${org.openelisglobal.providerlist.poll.frequency:3600000}")
+    @Override
+    public void scheduledImportPractitionerList() {
+        boolean wasSet = SystemInitFlag.enter();
+        try {
+            importPractitionerList();
+        } catch (FhirGeneralException | IOException e) {
+            LogEvent.logError(e);
+        } finally {
+            SystemInitFlag.exit(wasSet);
+        }
+    }
+
     @Override
     @Async
-    @Scheduled(initialDelay = 1000, fixedRateString = "${org.openelisglobal.providerlist.poll.frequency:3600000}")
     public void importPractitionerList() throws FhirLocalPersistingException, FhirGeneralException, IOException {
         if (!GenericValidator.isBlankOrNull(providerFhirStore)) {
             IGenericClient client = fhirUtil.getFhirClient(providerFhirStore);

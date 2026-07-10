@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.configuration.valueholder.ConfigurationImportRun;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,7 +119,16 @@ public class ConfigurationInitializationService
                     + "'. Instance-specific configurations will be preferred when available.");
         }
 
-        reload(ConfigurationReloadOptions.all(), ConfigurationImportRun.SOURCE_STARTUP);
+        // Startup runs with no Authentication, and listener ordering does not
+        // guarantee SystemInitBeanPostProcessor still has the init flag set when
+        // this fires — so scope the flag to this invocation. The admin-triggered
+        // runtime reload path calls reload() directly and stays fully gated.
+        boolean wasSet = SystemInitFlag.enter();
+        try {
+            reload(ConfigurationReloadOptions.all(), ConfigurationImportRun.SOURCE_STARTUP);
+        } finally {
+            SystemInitFlag.exit(wasSet);
+        }
     }
 
     @Override

@@ -20,9 +20,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.localization.valueholder.SupportedLocale;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrossDomainService(callers = "Login page language picker (/rest/supportedlocales/active is in SecurityConfig's"
+        + " open pages, served before authentication) and locale resolution on every request. Locale reads are UI"
+        + " infrastructure; mutations remain gated with PRIV_LOCALIZATION_MANAGE")
 public interface SupportedLocaleService extends BaseObjectService<SupportedLocale, String> {
 
     /**
@@ -30,7 +34,6 @@ public interface SupportedLocaleService extends BaseObjectService<SupportedLocal
      *
      * @return list of active SupportedLocale entries
      */
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     List<SupportedLocale> getAllActive();
 
     /**
@@ -38,7 +41,6 @@ public interface SupportedLocaleService extends BaseObjectService<SupportedLocal
      *
      * @return list of active Locale objects
      */
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     List<Locale> getAllActiveAsLocales();
 
     /**
@@ -46,7 +48,6 @@ public interface SupportedLocaleService extends BaseObjectService<SupportedLocal
      *
      * @return the fallback SupportedLocale if one exists
      */
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     Optional<SupportedLocale> getFallback();
 
     /**
@@ -54,7 +55,6 @@ public interface SupportedLocaleService extends BaseObjectService<SupportedLocal
      *
      * @return the fallback locale code, defaults to "en" if none configured
      */
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     String getFallbackLocaleCode();
 
     /**
@@ -63,7 +63,6 @@ public interface SupportedLocaleService extends BaseObjectService<SupportedLocal
      * @param localeCode the locale code
      * @return the SupportedLocale if found
      */
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     Optional<SupportedLocale> getByLocaleCode(String localeCode);
 
     /**
