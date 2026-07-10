@@ -18,6 +18,7 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -58,14 +59,42 @@ public class OrganizationImportServiceImpl implements OrganizationImportService 
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
     @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    @Autowired
     private OrganizationService organizationService;
     @Autowired
     private OrganizationTypeService organizationTypeService;
 
+    /**
+     * Scheduled system entry point. The scheduler thread has no Authentication, so
+     * the run executes in system context (SystemInitFlag) instead of going through
+     * the PRIV_ORGANIZATION_MANAGE gate on the interface method, which remains the
+     * admin-triggered path. One transaction per run, matching the previous
+     * proxy-applied @Transactional semantics.
+     */
+    @Scheduled(initialDelay = 1000, fixedRateString = "${facilitylist.schedule.fixedRate}")
+    @Override
+    public void scheduledImportOrganizationList() {
+        boolean wasSet = SystemInitFlag.enter();
+        try {
+            new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                    .executeWithoutResult(status -> {
+                        try {
+                            importOrganizationList();
+                        } catch (FhirGeneralException | IOException e) {
+                            LogEvent.logError(e);
+                            status.setRollbackOnly();
+                        }
+                    });
+        } finally {
+            SystemInitFlag.exit(wasSet);
+        }
+    }
+
     @Override
     @Transactional
     @Async
-    @Scheduled(initialDelay = 1000, fixedRateString = "${facilitylist.schedule.fixedRate}")
     public void importOrganizationList() throws FhirGeneralException, IOException {
         if (!GenericValidator.isBlankOrNull(facilityFhirStore)) {
             IGenericClient client;

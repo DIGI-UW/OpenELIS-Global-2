@@ -9,4 +9,11 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingExcepti
 public interface ProviderImportService {
 
     void importPractitionerList() throws FhirLocalPersistingException, FhirGeneralException, IOException;
+
+    /**
+     * Scheduler entry point — declared on the interface because the JDK-proxied
+     * bean's @Scheduled method must be interface-visible. Runs the import in system
+     * context (SystemInitFlag); not exposed by any controller.
+     */
+    void scheduledImportPractitionerList();
 }
