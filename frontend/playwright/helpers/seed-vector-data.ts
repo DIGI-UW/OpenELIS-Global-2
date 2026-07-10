@@ -277,12 +277,13 @@ export async function createVectorOrder(
     timeout: 15_000,
   });
 
-  // Server date format depends on the configured locale.
+  // Mirror the backend date format: it uses the configured DEFAULT_DATE_LOCALE,
+  // else its system-locale default (English -> MM/dd/yyyy).
   const cfg = await apiGet<{ DEFAULT_DATE_LOCALE?: string }>(
     page,
     "/rest/open-configuration-properties",
   );
-  const useMDY = (cfg.DEFAULT_DATE_LOCALE || "fr-FR").startsWith("en");
+  const useMDY = (cfg.DEFAULT_DATE_LOCALE || "en-US").startsWith("en");
   const fmt = (iso: string) => {
     const [y, m, d] = iso.split("-");
     return useMDY ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
