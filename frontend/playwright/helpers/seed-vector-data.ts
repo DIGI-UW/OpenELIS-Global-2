@@ -277,21 +277,33 @@ export async function createVectorOrder(
     timeout: 15_000,
   });
 
-  // Mirror the backend date format: it uses the configured DEFAULT_DATE_LOCALE,
-  // else its system-locale default (English -> MM/dd/yyyy).
-  const cfg = await apiGet<{ DEFAULT_DATE_LOCALE?: string }>(
+  // The order endpoints parse dates with a locale-dependent DateFormat.SHORT
+  // (keyed off DEFAULT_DATE_LOCALE, or the JVM default locale when unset), not
+  // ISO. Rather than assume a locale, ask the server how it renders today and
+  // reorder any ISO date into that same field order — the server is the oracle.
+  const { currentDate = "" } = await apiGet<{ currentDate?: string }>(
     page,
-    "/rest/open-configuration-properties",
+    "/rest/SamplePatientEntry",
   );
-  const useMDY = (cfg.DEFAULT_DATE_LOCALE || "en-US").startsWith("en");
-  const fmt = (iso: string) => {
-    const [y, m, d] = iso.split("-");
-    return useMDY ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
-  };
   const todayIso = new Date().toISOString().slice(0, 10);
   const tomorrowIso = new Date(Date.now() + 86_400_000)
     .toISOString()
     .slice(0, 10);
+  const sep = currentDate.includes("/") ? "/" : "-";
+  const srv = currentDate.split(sep);
+  const [ty, tm, td] = todayIso.split("-");
+  const at = { y: srv.indexOf(ty), m: srv.indexOf(tm), d: srv.indexOf(td) };
+  const fmt = (iso: string) => {
+    const [y, m, d] = iso.split("-");
+    if (at.y < 0 || at.m < 0 || at.d < 0 || at.m === at.d) {
+      return `${d}/${m}/${y}`; // server unreachable or today's day==month: day-first
+    }
+    const out: string[] = [];
+    out[at.d] = d;
+    out[at.m] = m;
+    out[at.y] = y;
+    return out.join(sep);
+  };
 
   // Look up the Mosquito sample-type id + the orderable pathogen test id.
   const sampleTypes = await apiGet<Array<{ id: string; value: string }>>(
