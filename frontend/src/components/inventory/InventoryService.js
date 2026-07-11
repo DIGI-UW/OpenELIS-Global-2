@@ -48,13 +48,19 @@ const post = (endpoint, data) => {
             return;
           }
           // Handle standard message/error fields
-          reject(
-            new Error(
-              json.message ||
-                json.error ||
-                `Request failed with status ${json.status || json.statusCode}`,
-            ),
+          const error = new Error(
+            json.message ||
+              json.error ||
+              `Request failed with status ${json.status || json.statusCode}`,
           );
+          // errorCode/params (LocalizedValidationException, see
+          // InventoryItemRestController/InventoryItemTypeRestController) let the
+          // caller show a translated message instead of this raw English fallback.
+          if (json.errorCode) {
+            error.errorCode = json.errorCode;
+            error.params = json.params;
+          }
+          reject(error);
         } else {
           resolve(json);
         }
@@ -357,13 +363,19 @@ export const InventoryItemTypeAPI = {
         JSON.stringify(payload),
         (json) => {
           if (json && (json.status >= 400 || json.statusCode >= 400)) {
-            reject(
-              new Error(
-                json.message ||
-                  json.error ||
-                  `Request failed with status ${json.status || json.statusCode}`,
-              ),
+            const error = new Error(
+              json.message ||
+                json.error ||
+                `Request failed with status ${json.status || json.statusCode}`,
             );
+            // errorCode/params (LocalizedValidationException, see
+            // InventoryItemTypeRestController) let the caller show a translated
+            // message instead of this raw English fallback.
+            if (json.errorCode) {
+              error.errorCode = json.errorCode;
+              error.params = json.params;
+            }
+            reject(error);
           } else {
             resolve(json);
           }

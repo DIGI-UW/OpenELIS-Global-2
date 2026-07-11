@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.dao.InventoryItemTypeDAO;
@@ -60,13 +61,14 @@ public class InventoryItemTypeServiceImpl extends AuditableBaseObjectServiceImpl
     public InventoryItemType create(String code, String nameInLocale, String locale, Integer sortOrder,
             Boolean isActive, String sysUserId) {
         if (nameInLocale == null || nameInLocale.trim().isEmpty()) {
-            throw new LIMSRuntimeException("Name is required");
+            throw new LocalizedValidationException("inventoryItemType.error.nameRequired", "Name is required");
         }
         String finalCode = (code == null || code.trim().isEmpty()) ? CodeGenerator.generateFromName(nameInLocale,
                 CODE_MAX_LENGTH, "TYPE", inventoryItemTypeDAO::existsByCode)
                 : CodeGenerator.normalize(code, CODE_MAX_LENGTH);
         if (inventoryItemTypeDAO.existsByCode(finalCode)) {
-            throw new LIMSRuntimeException("Inventory item type code already exists: " + finalCode);
+            throw new LocalizedValidationException("inventoryItemType.error.duplicateCode",
+                    "Inventory item type code already exists: " + finalCode, java.util.Map.of("code", finalCode));
         }
 
         Localization localization = new Localization();

@@ -135,6 +135,36 @@ describe("InventoryItemTypeManagement", () => {
     expect(InventoryItemTypeAPI.getAll).toHaveBeenCalledTimes(2);
   });
 
+  it("shows the translated message for a duplicate-code error instead of the raw backend text (OGC-658 C8)", async () => {
+    const duplicateError = new Error(
+      "Inventory item type code already exists: REAGENT",
+    );
+    duplicateError.errorCode = "inventoryItemType.error.duplicateCode";
+    duplicateError.params = { code: "REAGENT" };
+    InventoryItemTypeAPI.create.mockRejectedValue(duplicateError);
+    renderPage();
+    await screen.findByText("REAGENT");
+
+    fireEvent.click(screen.getByRole("button", { name: /add item type/i }));
+    const nameInput = await screen.findByLabelText(
+      /name · editing in english/i,
+    );
+    fireEvent.change(nameInput, { target: { value: "Reagent" } });
+
+    const addButtons = screen.getAllByRole("button", {
+      name: /add item type/i,
+    });
+    fireEvent.click(addButtons[addButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(mockNotificationContext.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'An item type with code "REAGENT" already exists.',
+        }),
+      );
+    });
+  });
+
   it("creates a new item type as inactive when the Active toggle is switched off", async () => {
     InventoryItemTypeAPI.create.mockResolvedValue({
       id: 4,

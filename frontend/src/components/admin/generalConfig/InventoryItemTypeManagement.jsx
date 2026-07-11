@@ -343,13 +343,19 @@ function InventoryItemTypeManagement() {
         );
       })
       .catch((err) => {
+        // err.errorCode (OGC-658 C8) is an en.json message id set by
+        // InventoryItemTypeRestController for validation failures
+        // (duplicate/malformed code, missing name) — prefer it over
+        // err.message, which is the untranslated backend fallback string.
         notify(
           NotificationKinds.error,
           intl.formatMessage({
             id: "inventoryItemType.notify.saveError",
             defaultMessage: "Failed to save item type",
           }),
-          err.message,
+          err.errorCode
+            ? intl.formatMessage({ id: err.errorCode }, err.params)
+            : err.message,
         );
       })
       .finally(() => setSaving(false));

@@ -101,6 +101,12 @@ public class InventoryItemRestControllerIT extends BaseWebContextSensitiveTest {
         MvcResult result = createItem(CODE_PREFIX + "DUP", CODE_PREFIX + "Dup Again");
 
         assertEquals(400, result.getResponse().getStatus());
+        // C8: the 400 body carries a stable, translatable errorCode (en.json message
+        // id) rather than forcing the frontend to display a hardcoded English
+        // message untranslated — see LocalizedValidationException.
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals("inventory.item.error.duplicateCode", body.get("errorCode").asText());
+        assertEquals(CODE_PREFIX + "DUP", body.get("params").get("code").asText());
     }
 
     @Test

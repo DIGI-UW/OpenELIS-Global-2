@@ -1,7 +1,7 @@
 package org.openelisglobal.common.util;
 
 import java.util.function.Predicate;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 
 /**
  * Shared UPPER_SNAKE code generation used by admin-managed reference lists that
@@ -46,7 +46,8 @@ public final class CodeGenerator {
     public static String normalize(String code, int maxLength) {
         String normalized = code.trim().toUpperCase().replaceAll("[^A-Z0-9_]", "");
         if (normalized.isEmpty()) {
-            throw new LIMSRuntimeException("Code must contain at least one letter, digit, or underscore");
+            throw new LocalizedValidationException("common.codeGenerator.error.invalidCode",
+                    "Code must contain at least one letter, digit, or underscore");
         }
         return truncate(normalized, maxLength);
     }

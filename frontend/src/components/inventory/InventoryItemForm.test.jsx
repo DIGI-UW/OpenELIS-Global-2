@@ -123,4 +123,36 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     const [, payload] = InventoryItemAPI.update.mock.calls[0];
     expect(payload.id).toBeUndefined();
   });
+
+  it("shows the translated message for a duplicate-code error instead of the raw backend text (OGC-658 C8)", async () => {
+    const duplicateError = new Error(
+      "Inventory item code already exists: MY_REAGENT",
+    );
+    duplicateError.errorCode = "inventory.item.error.duplicateCode";
+    duplicateError.params = { code: "MY_REAGENT" };
+    InventoryItemAPI.create.mockRejectedValue(duplicateError);
+    renderForm();
+
+    fireEvent.change(await screen.findByLabelText(/^item name/i), {
+      target: { value: "My Reagent" },
+    });
+    fireEvent.change(screen.getByLabelText(/stability after opening/i), {
+      target: { value: "30" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'An inventory item with code "MY_REAGENT" already exists.',
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText(duplicateError.message)).not.toBeInTheDocument();
+    expect(mockNotificationContext.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subtitle: 'An inventory item with code "MY_REAGENT" already exists.',
+      }),
+    );
+  });
 });

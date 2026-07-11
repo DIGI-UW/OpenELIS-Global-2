@@ -207,7 +207,14 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       onSave();
     } catch (err) {
       console.error("Error saving item:", err);
-      const errorMessage = err.message || "Error saving catalog item";
+      // err.errorCode (OGC-658 C8) is an en.json message id set by
+      // InventoryItemRestController/InventoryItemTypeRestController for
+      // validation failures (duplicate/malformed code, etc.) — prefer it over
+      // err.message, which is the untranslated backend fallback string.
+      const errorMessage = err.errorCode
+        ? intl.formatMessage({ id: err.errorCode }, err.params)
+        : err.message ||
+          intl.formatMessage({ id: "catalog.item.error.saveGeneric" });
       setError(errorMessage);
       setSaving(false);
       notify({

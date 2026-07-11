@@ -164,19 +164,23 @@ public class InventoryItemRestController extends BaseRestController {
             String code = inventoryItemService.insert(item);
             InventoryItem savedItem = inventoryItemService.get(code);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
-        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            // OGC-658 Part C (C8): malformed/duplicate codes surface as a clean 400
-            // rather than a generic 500 — see InventoryItemServiceImpl.insert().
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody(e.getMessage()));
+        } catch (org.openelisglobal.common.exception.LocalizedValidationException e) {
+            // OGC-658 Part C (C8): malformed/duplicate codes surface as a clean, i18n-keyed
+            // 400 rather than a generic 500 or a hardcoded English message — see
+            // InventoryItemServiceImpl.insert() / CodeGenerator.normalize().
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody(e));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    private java.util.Map<String, Object> errorBody(String message) {
+    private java.util.Map<String, Object> errorBody(
+            org.openelisglobal.common.exception.LocalizedValidationException e) {
         java.util.Map<String, Object> body = new java.util.HashMap<>();
-        body.put("message", message);
+        body.put("message", e.getMessage());
+        body.put("errorCode", e.getErrorCode());
+        body.put("params", e.getParams());
         return body;
     }
 

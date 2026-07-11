@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemTypeService;
@@ -62,6 +63,11 @@ public class InventoryItemTypeRestController extends BaseRestController {
             InventoryItemType created = inventoryItemTypeService.create(request.getCode(), request.getName(),
                     request.getLocale(), request.getSortOrder(), request.getActive(), sysUserId);
             return ResponseEntity.status(HttpStatus.CREATED).body(InventoryItemTypeDTO.from(created));
+        } catch (LocalizedValidationException e) {
+            // OGC-658 Part A (C8): missing name / malformed / duplicate codes surface as a
+            // clean, i18n-keyed 400 — see InventoryItemTypeServiceImpl.create() /
+            // CodeGenerator.normalize().
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody(e));
         } catch (LIMSRuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody(e.getMessage()));
         } catch (Exception e) {
@@ -103,6 +109,14 @@ public class InventoryItemTypeRestController extends BaseRestController {
     private Map<String, Object> errorBody(String message) {
         Map<String, Object> body = new HashMap<>();
         body.put("message", message);
+        return body;
+    }
+
+    private Map<String, Object> errorBody(LocalizedValidationException e) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", e.getMessage());
+        body.put("errorCode", e.getErrorCode());
+        body.put("params", e.getParams());
         return body;
     }
 

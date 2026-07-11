@@ -2,7 +2,8 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.util.List;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
+import java.util.Map;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
@@ -49,7 +50,8 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
                 ? CodeGenerator.generateFromName(item.getName(), CODE_MAX_LENGTH, "ITEM", this::codeExists)
                 : CodeGenerator.normalize(explicitCode, CODE_MAX_LENGTH);
         if (codeExists(finalCode)) {
-            throw new LIMSRuntimeException("Inventory item code already exists: " + finalCode);
+            throw new LocalizedValidationException("inventory.item.error.duplicateCode",
+                    "Inventory item code already exists: " + finalCode, Map.of("code", finalCode));
         }
         item.setId(finalCode);
         return super.insert(item);

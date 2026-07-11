@@ -137,6 +137,12 @@ public class InventoryItemTypeRestControllerIT extends BaseWebContextSensitiveTe
         MvcResult result = createType(CODE_PREFIX + "DUP", CODE_PREFIX + "Dup Again", "en", 502);
 
         assertEquals(400, result.getResponse().getStatus());
+        // C8: the 400 body carries a stable, translatable errorCode (en.json message
+        // id) rather than forcing the frontend to display a hardcoded English
+        // message untranslated — see LocalizedValidationException.
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals("inventoryItemType.error.duplicateCode", body.get("errorCode").asText());
+        assertEquals(CODE_PREFIX + "DUP", body.get("params").get("code").asText());
     }
 
     @Test
@@ -144,6 +150,8 @@ public class InventoryItemTypeRestControllerIT extends BaseWebContextSensitiveTe
         MvcResult result = createType(CODE_PREFIX + "BLANK", "   ", "en", 503);
 
         assertEquals(400, result.getResponse().getStatus());
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals("inventoryItemType.error.nameRequired", body.get("errorCode").asText());
     }
 
     @Test
