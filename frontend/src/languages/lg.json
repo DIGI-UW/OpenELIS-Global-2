@@ -4291,6 +4291,7 @@
   "label.testCatalog.sampleResults.empty": "No result components yet. Add one to define how this test's results are captured.",
   "label.testCatalog.sampleResults.newComponent": "(new component)",
   "label.testCatalog.sampleResults.code": "Component code",
+  "label.testCatalog.sampleResults.isPrimary": "Primary component",
   "label.testCatalog.sampleResults.label": "Component label",
   "label.testCatalog.sampleResults.resultType": "Result type",
   "label.testCatalog.sampleResults.resultType.N": "Numeric",

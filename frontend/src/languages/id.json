@@ -4291,6 +4291,7 @@
   "label.testCatalog.sampleResults.empty": "Tidak ada komponen hasi. Tambahkan komponen hasil untuk mendefinisikan bagaimana hasil pemeriksaan diambil.",
   "label.testCatalog.sampleResults.newComponent": "(komponen baru)",
   "label.testCatalog.sampleResults.code": "Kode komponen",
+  "label.testCatalog.sampleResults.isPrimary": "Primary component",
   "label.testCatalog.sampleResults.label": "Label komponen",
   "label.testCatalog.sampleResults.resultType": "Jenis hasil",
   "label.testCatalog.sampleResults.resultType.N": "Numerik",
