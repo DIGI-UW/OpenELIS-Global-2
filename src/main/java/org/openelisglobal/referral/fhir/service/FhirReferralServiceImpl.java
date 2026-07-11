@@ -37,6 +37,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.registration.ValidationUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.dataexchange.fhir.FHIRTransformUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
@@ -119,6 +120,8 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     private TestService testService;
     @Autowired
     private FhirConfig fhirConfig;
+    @Autowired
+    private FHIRTransformUtil fhirTransformUtil;
 
     private final String RESULT_SUBJECT = "Result Note";
     private String RESULT_TABLE_ID;
@@ -238,9 +241,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         // TODO put the referral reason into the code
         task.setReasonCode(new CodeableConcept()
                 .addCoding(new Coding().setSystem(fhirConfig.getOeFhirSystem() + "/refer_reason")));
-        task.setOwner(fhirTransformService.createReferenceFor(referralOrganization));
+        task.setOwner(fhirTransformUtil.createReferenceFor(referralOrganization));
         if (requester.isPresent()) {
-            task.setRequester(fhirTransformService.createReferenceFor(requester.get()));
+            task.setRequester(fhirTransformUtil.createReferenceFor(requester.get()));
         }
         if (!fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
             task.setRestriction(new TaskRestrictionComponent()
@@ -248,9 +251,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         }
         task.setAuthoredOn(new Date());
         task.setStatus(TaskStatus.REQUESTED);
-        task.setFor(fhirTransformService.createReferenceFor(patient));
-        task.setBasedOn(Arrays.asList(fhirTransformService.createReferenceFor(serviceRequest)));
-        task.setFocus(fhirTransformService.createReferenceFor(serviceRequest));
+        task.setFor(fhirTransformUtil.createReferenceFor(patient));
+        task.setBasedOn(Arrays.asList(fhirTransformUtil.createReferenceFor(serviceRequest)));
+        task.setFocus(fhirTransformUtil.createReferenceFor(serviceRequest));
         task.setDescription("referring accession number " + sample.getAccessionNumber() + " from "
                 + task.getRequester().getReference() + " to " + task.getOwner().getReference());
 

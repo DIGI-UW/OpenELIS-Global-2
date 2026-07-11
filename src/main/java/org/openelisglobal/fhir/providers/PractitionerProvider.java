@@ -29,6 +29,7 @@ import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dataexchange.fhir.FHIRTransformUtil;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
@@ -48,6 +49,9 @@ public class PractitionerProvider implements IResourceProvider {
 
     @Autowired
     private FhirTransformService fhirTransformService;
+
+    @Autowired
+    private FHIRTransformUtil fhirTransformUtil;
 
     @Autowired
     private FhirPersistanceService fhirPersistenceService;
@@ -150,8 +154,8 @@ public class PractitionerProvider implements IResourceProvider {
                     .getProviderByFhirId(UUID.fromString(practitioner.getIdElement().getIdPart()));
             Person existingPerson = personService.get(provider.getPerson().getId());
 
-            fhirTransformService.addHumanNameToPerson(practitioner.getNameFirstRep(), existingPerson);
-            fhirTransformService.addTelecomToPerson(practitioner.getTelecom(), existingPerson);
+            fhirTransformUtil.addHumanNameToPerson(practitioner.getNameFirstRep(), existingPerson);
+            fhirTransformUtil.addTelecomToPerson(practitioner.getTelecom(), existingPerson);
             existingPerson.setSysUserId(FhirProviderUtils.getSysUserId(request));
             Person updatedPerson = personService.save(existingPerson);
             provider.setPerson(updatedPerson);

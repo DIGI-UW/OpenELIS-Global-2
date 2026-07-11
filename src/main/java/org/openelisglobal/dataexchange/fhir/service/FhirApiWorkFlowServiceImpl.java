@@ -37,6 +37,7 @@ import org.hl7.fhir.r4.model.Task.TaskStatus;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.TableIdService;
+import org.openelisglobal.dataexchange.fhir.FHIRTransformUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -62,6 +63,8 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
 
     @Autowired
     private FhirContext fhirContext;
+    @Autowired
+    private FHIRTransformUtil fhirTransformUtil;
     @Autowired
     private FhirConfig fhirConfig;
     @Autowired
@@ -662,9 +665,9 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             objects.patient = existingLocalPatient.get();
             // patient already exists so we should update the reference to ours
         }
-        objects.task.setFor(fhirTransformService.createReferenceFor(objects.patient));
+        objects.task.setFor(fhirTransformUtil.createReferenceFor(objects.patient));
         for (ServiceRequest serviceRequest : objects.serviceRequests) {
-            serviceRequest.setSubject(fhirTransformService.createReferenceFor(objects.patient));
+            serviceRequest.setSubject(fhirTransformUtil.createReferenceFor(objects.patient));
         }
 
         // Task Practitioner
@@ -682,7 +685,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                 objects.practitioner = existingLocalPractitioner.get();
                 // Practitioner already exists so we should update the reference to ours
             }
-            objects.task.setRequester(fhirTransformService.createReferenceFor(objects.practitioner));
+            objects.task.setRequester(fhirTransformUtil.createReferenceFor(objects.practitioner));
         }
 
         // ServiceRequest Requester

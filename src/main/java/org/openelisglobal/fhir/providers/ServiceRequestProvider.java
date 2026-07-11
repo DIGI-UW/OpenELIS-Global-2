@@ -46,6 +46,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
+import org.openelisglobal.dataexchange.fhir.FHIRTransformUtil;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
@@ -80,6 +81,9 @@ import org.springframework.validation.FieldError;
 
 @Component
 public class ServiceRequestProvider implements IResourceProvider {
+
+    @Autowired
+    private FHIRTransformUtil fhirTransformUtil;
 
     @Autowired
     private SamplePatientEntryService samplePatientService;
@@ -203,8 +207,7 @@ public class ServiceRequestProvider implements IResourceProvider {
             receivedDateForDisplay += GenericValidator.isBlankOrNull(sampleOrder.getReceivedTime()) ? " 00:00"
                     : " " + sampleOrder.getReceivedTime();
 
-            final List<Test> tests = requireNonEmpty(
-                    fhirTransformService.resolveTestsFromServiceRequest(serviceRequest),
+            final List<Test> tests = requireNonEmpty(fhirTransformUtil.resolveTestsFromServiceRequest(serviceRequest),
                     "No tests resolved from ServiceRequest");
 
             final List<SampleEditItem> editItems = requireNonEmpty(
