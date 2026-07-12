@@ -89,6 +89,8 @@ public final class Privileges {
     public static final String PATIENT_VIEW = "patient:view";
     public static final String PATIENT_CREATE = "patient:create";
     public static final String PATIENT_EDIT = "patient:edit";
+    /** Patient demographics persistence during order entry and patient merge. */
+    public static final String PATIENT_MANAGE = "patient:manage";
 
     // -----------------------------------------------------------------------
     // Reports
@@ -135,6 +137,8 @@ public final class Privileges {
     public static final String SHIPMENT_VIEW = "shipment:view";
     public static final String SHIPMENT_CREATE = "shipment:create";
     public static final String SHIPMENT_EDIT = "shipment:edit";
+    /** Shipment box management: assign/lost/cancel referral samples. */
+    public static final String SHIPMENT_MANAGE = "shipment:manage";
     public static final String SHIPMENT_DELETE = "shipment:delete";
 
     // -----------------------------------------------------------------------
@@ -252,7 +256,13 @@ public final class Privileges {
     // Site Information
     // -----------------------------------------------------------------------
 
-    public static final String SITE_INFO_VIEW = "siteinfo:view";
+    /**
+     * NB: underscore matters — toPrivAuthority("site_info:view") =
+     * PRIV_SITE_INFO_VIEW, the authority every gate and test references. The
+     * original "siteinfo:view" normalized to PRIV_SITEINFO_VIEW and matched nothing
+     * (012-009 renames the seeded row).
+     */
+    public static final String SITE_INFO_VIEW = "site_info:view";
 
     // -----------------------------------------------------------------------
     // Referral
