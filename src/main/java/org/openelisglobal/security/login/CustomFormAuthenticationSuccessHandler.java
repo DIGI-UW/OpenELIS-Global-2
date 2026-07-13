@@ -15,6 +15,7 @@ import org.json.JSONObject;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.service.LoginUserService;
@@ -90,7 +91,17 @@ public class CustomFormAuthenticationSuccessHandler extends SavedRequestAwareAut
             }
         }
         try {
-            setupUserSession(request, loginInfo);
+            // Session setup looks the authenticating user up by id and resolves
+            // their profile/admin flag — login infrastructure that must run in
+            // system context, not under the user's own (possibly minimal)
+            // privileges, or a non-admin login trips the gates on
+            // SystemUserService.get and denies the login entirely.
+            boolean wasSet = SystemInitFlag.enter();
+            try {
+                setupUserSession(request, loginInfo);
+            } finally {
+                SystemInitFlag.exit(wasSet);
+            }
         } catch (IllegalStateException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "onAuthenticationSuccess",
                     "the login user doesn't exist in OE this is usually caused by login being handled by an"

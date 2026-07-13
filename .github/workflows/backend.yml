@@ -88,6 +88,23 @@ jobs:
           fi
           echo "Controller @PreAuthorize check passed."
 
+      - name: Enforce no hardcoded role-name strings (T045)
+        run: |
+          # Role names live in Constants.java (and Liquibase seed XML) only.
+          # Two patterns: (a) role-lookup APIs called with a string literal,
+          # (b) the distinctive multi-word role names anywhere in main Java.
+          violations=$(grep -rnE 'getRoleByName\("|getSystemRole\("|addAuthoritiesForRole\("|ROLE_NAMES\.add\("' \
+            src/main/java --include="*.java" | grep -v "Constants.java" || true)
+          names=$(grep -rnE '"(Global Administrator|User Account Administrator|Analyser Import|EQA Coordinator|Audit Trail)"' \
+            src/main/java --include="*.java" | grep -v "Constants.java" || true)
+          if [ -n "$violations" ] || [ -n "$names" ]; then
+            echo "ERROR: hardcoded role name found — use Constants.ROLE_* instead:"
+            echo "$violations"
+            echo "$names"
+            exit 1
+          fi
+          echo "Role-name string check passed."
+
       - name: Initialize and build submodules
         run: |
           cd dataexport

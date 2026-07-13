@@ -477,7 +477,7 @@ non-English locale files. The `chore/update-transifex` bot branch is exempt.
 **Requirements:**
 
 - Authentication: Spring Security 6.0.4
-- Authorization: Role-based access control (RBAC)
+- Authorization: Privilege-based RBAC with role inheritance (spec 012)
 - Audit Trail: All data changes logged with user ID + timestamp
 - Data Privacy: PHI access logged, GDPR-ready deletion workflows
 - Secure Transport: HTTPS enforced
@@ -491,6 +491,46 @@ non-English locale files. The `chore/update-transifex` bot branch is exempt.
 - [ ] Input validated against injection attacks (SQL, XSS)
 - [ ] Sensitive data encrypted at rest (if applicable)
 - [ ] HTTPS endpoints only (NO HTTP for PHI)
+
+**Privilege-Based RBAC (spec 012) — mandatory rules:**
+
+Authorization is enforced at the SERVICE layer, never on controllers (the S011c
+CI gate fails the build on any `@PreAuthorize` in a `*Controller.java` outside
+the two documented exceptions).
+
+1. **Every new service-interface method MUST carry exactly one
+   `@PreAuthorize("hasAuthority('PRIV_*')")`** whose privilege name comes from
+   `Privileges.java` (`org.openelisglobal.common.constants.Privileges`) — the
+   single source of truth for privilege strings. `ServicePrivilegeCoverageTest`
+   scans bytecode and fails on unannotated methods. A privilege referenced by a
+   gate MUST also exist in the Liquibase seed (`012-003-seed-privileges.xml` +
+   successors) — an unseeded name denies everyone, including Global
+   Administrator, whose authorities expand from the seeded catalog.
+2. **Genuinely multi-domain services** (called from several unrelated privilege
+   contexts: authentication, audit trail, FHIR pipeline, schedulers, pre-login
+   pages) are annotated `@CrossDomainService(callers = "...")` instead — the
+   callers text is the auditable justification. Do not use it to dodge adding a
+   gate.
+3. **Background work runs in system context**: `@Scheduled` jobs execute under
+   `SystemInitFlag` via the scheduler's task decorator; `@Async` propagates the
+   caller's `SecurityContext`. Never gate a scheduled entry point with a user
+   privilege.
+4. **Role names live in `Constants.java` (Java) and the `Roles` object in
+   `frontend/src/components/utils/Utils.js` (frontend) only** — CI greps
+   (backend.yml T045 step) and an ESLint `no-restricted-syntax` rule (T046) fail
+   the build on hardcoded role-name strings elsewhere.
+5. **Frontend gates UI with `hasPrivilege(userSessionDetails, Privileges.X)`**
+   against the `privileges` array in the `/session` payload — not role names.
+   `SecureRoute` also grants routes via `RoleEquivalentPrivileges`, so inherited
+   privileges open routes without explicit role assignment.
+6. **Resolution semantics**: `PrivilegeService.resolveAllPrivilegesForRole`
+   walks the `grouping_parent` chain with a circular-reference guard; Global
+   Administrator short-circuits to the `"*"` sentinel, expanded to the full
+   catalog at the session boundary. `GET /rest/roles/{roleId}/privileges`
+   exposes a role's effective set to the admin UI (gated `PRIV_USER_MANAGE`).
+7. **Caveat — legacy schema**: `system_role.name` is `CHARACTER(30)`
+   (space-padded). Java-side comparisons of role names MUST `trim()`; HQL
+   lookups use `trim(r.name) = :name`.
 
 ### IX. Spec-Driven Iteration (NEW in v1.8.0)
 

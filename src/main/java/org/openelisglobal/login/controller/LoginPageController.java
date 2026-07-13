@@ -14,6 +14,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.constants.Privileges;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -146,24 +147,34 @@ public class LoginPageController extends BaseController {
         session.setAuthenticated(authenticated);
         session.setSessionId(request.getSession().getId());
         if (authenticated) {
-            SystemUser user = systemUserService.get(getSysUserId(request));
-            setLoginMethod(request, session);
-            session.setUserId(user.getId());
-            session.setLoginName(user.getLoginName());
-            session.setFirstName(user.getFirstName());
-            session.setLastName(user.getLastName());
-            if (token != null) {
-                session.setCSRF(token.getToken());
-            }
-            UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-            if (usd.getLoginLabUnit() != 0) {
-                TestSection testSection = testSectionService.getTestSectionById(String.valueOf(usd.getLoginLabUnit()));
-                if (testSection != null) {
-                    session.setLoginLabUnit(testSection.getLocalizedName());
+            // Assembling the session view looks the current user up by id and
+            // reads their lab-unit/test-section context — session introspection
+            // infrastructure that must run in system context so a non-admin's
+            // own /session poll is not denied by SYSTEM_USER / test-section gates.
+            boolean wasSet = SystemInitFlag.enter();
+            try {
+                SystemUser user = systemUserService.get(getSysUserId(request));
+                setLoginMethod(request, session);
+                session.setUserId(user.getId());
+                session.setLoginName(user.getLoginName());
+                session.setFirstName(user.getFirstName());
+                session.setLastName(user.getLastName());
+                if (token != null) {
+                    session.setCSRF(token.getToken());
                 }
+                UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+                if (usd.getLoginLabUnit() != 0) {
+                    TestSection testSection = testSectionService
+                            .getTestSectionById(String.valueOf(usd.getLoginLabUnit()));
+                    if (testSection != null) {
+                        session.setLoginLabUnit(testSection.getLocalizedName());
+                    }
+                }
+                setLabunitRolesForExistingUser(request, session);
+                session.setPrivileges(resolveSessionPrivileges(session.getUserId()));
+            } finally {
+                SystemInitFlag.exit(wasSet);
             }
-            setLabunitRolesForExistingUser(request, session);
-            session.setPrivileges(resolveSessionPrivileges(session.getUserId()));
         }
         return session;
     }

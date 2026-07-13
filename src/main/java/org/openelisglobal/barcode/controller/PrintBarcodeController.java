@@ -16,6 +16,7 @@ import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.form.PrintBarcodeForm;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.formfields.FormFields;
@@ -87,9 +88,9 @@ public class PrintBarcodeController extends BaseController {
     private void initialize() {
         excludedAnalysisStatusList.add(statusService.getStatusID(AnalysisStatus.Canceled));
         ENTERED_STATUS_SAMPLE_LIST.add(statusService.getStatusID(SampleStatus.Entered));
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validator");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validation");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Biologist");
+        ABLE_TO_CANCEL_ROLE_NAMES.add(Constants.LEGACY_ROLE_VALIDATOR);
+        ABLE_TO_CANCEL_ROLE_NAMES.add(Constants.ROLE_VALIDATION);
+        ABLE_TO_CANCEL_ROLE_NAMES.add(Constants.LEGACY_ROLE_BIOLOGIST);
     }
 
     @InitBinder

@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.menu.valueholder.Menu;
@@ -197,7 +198,7 @@ public class PluginMenuService {
         // Permission: bind AnalyzerResults module to Results role
         SystemModule module = pluginPermissionService.getOrCreateSystemModule("AnalyzerResults", analyzerName,
                 "Results->Analyzer->" + analyzerName);
-        Role role = pluginPermissionService.getSystemRole("Results");
+        Role role = pluginPermissionService.getSystemRole(Constants.ROLE_RESULTS);
         pluginPermissionService.bindRoleToModule(role, module);
 
         logger.info("Registered menu and permission for analyzer: {}", analyzerName);

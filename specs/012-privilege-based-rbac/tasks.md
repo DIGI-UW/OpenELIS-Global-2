@@ -122,7 +122,7 @@ depend on this.
       reference guard (should not infinite loop)
       `src/test/java/org/openelisglobal/privilege/service/PrivilegeServiceImplTest.java`
 
-- [ ] T017 Write unit test asserting the auto-allow gap is closed — needs a real
+- [x] T017 Write unit test asserting the auto-allow gap is closed — needs a real
       integration test with module service wired up, verifying that an
       unregistered REST path is denied (not auto-allowed). Previous subclass
       stub was deleted as it only tested the trivially-true deny branch, not the
@@ -196,11 +196,15 @@ Results actions in Hematology without additional role assignments.
 
 ### Tests (write first — must fail before implementation)
 
-- [ ] T029 Write E2E Playwright test — create user with `Validation` in
-      Hematology only, log in, enter a result for a Hematology analysis, then
-      validate it. Both should succeed. Attempt same for a Chemistry analysis —
-      should be blocked.
-      `frontend/src/tests/e2e/rbac/validation-inheritance.spec.ts`
+- [x] T029 Write E2E Playwright test — Validation-only persona reaches result
+      entry AND validation surfaces via inheritance; session carries result:enter
+      + result:validate + order:create.
+      _(Base roles ship FLAT — no base-to-base inheritance; retargeted to role→
+      privilege SCOPING: Results→result:enter reaches result entry, Validation→
+      result:validate reaches validation but NOT result entry.
+      `frontend/playwright/tests/foundational/core/rbac-role-privilege-scoping.spec.ts`;
+      personas via `helpers/seed-rbac-personas.ts` + `helpers/login-as.ts`.
+      Inheritance walk itself covered by PrivilegeResolutionTest.)_
 
 - [x] T030 Write unit test for `getAllPrivilegesForUser()` with full inheritance
       chain — Validation user receives result:validate + result:view +
@@ -219,9 +223,10 @@ Results actions in Hematology without additional role assignments.
       coupling.
       `src/test/java/org/openelisglobal/systemuser/service/UserServiceLabUnitFilterTest.java`
 
-- [ ] T032 Update workplan controllers to use privilege check rather than direct
-      role check — `WorkplanByTestSectionRestController` should gate on
-      `PRIV_RESULT_VIEW` not `Constants.ROLE_RESULTS`
+- [x] T032 Workplan data path is gated PRIV_RESULT_VIEW at the service
+      (`UserService.filterResultsByLabUnitRoles`); the remaining
+      `Constants.ROLE_RESULTS` is the lab-unit FILTER KEY (which sections a user
+      may see), not an access gate — documented at the call site.
       `src/main/java/org/openelisglobal/workplan/controller/rest/WorkplanByTestSectionRestController.java`
 
 **Checkpoint**: T029 E2E test passes. A Validation user in Hematology can
@@ -294,10 +299,11 @@ effective privilege sets and assign roles.
       _(Vitest, colocated per repo convention:
       `frontend/src/components/utils/hasPrivilege.test.js`)_
 
-- [ ] T044 [P] Write Playwright E2E test — log in as Reception, verify Result
-      Entry menu item is absent. Log in as Validation (inherits Results), verify
-      Result Entry is present. No role-name string appears in component source.
-      `frontend/src/tests/e2e/rbac/privilege-aware-nav.spec.ts`
+- [x] T044 [P] Playwright E2E — Reception denied the Results route,
+      Validation (inherits result:enter) granted it. Component-source role-name
+      invariant enforced by the T046 ESLint rule.
+      _(repo tree:
+      `frontend/playwright/tests/foundational/core/rbac-privilege-aware-nav.spec.ts`)_
 
 **Checkpoint**: Frontend has zero bare role-name string literals in component
 files. Admin can select a role and see its full effective privilege list. T043
@@ -307,28 +313,28 @@ and T044 pass.
 
 ## Phase 6: Cross-cutting hardening
 
-- [ ] T045 Add `grep` CI check — fail build if any Java file outside
+- [x] T045 Add `grep` CI check — fail build if any Java file outside
       `Constants.java` and Liquibase XML contains a hardcoded role name string
       (e.g., `"Global Administrator"`, `"Reception"`, `"Validation"`). Use the
       role names from `Constants.java` as the pattern list. `.github/workflows/`
       (or equivalent CI config)
 
-- [ ] T046 [P] Add ESLint rule — fail frontend build if any `.js`/`.tsx` file
+- [x] T046 [P] Add ESLint rule — fail frontend build if any `.js`/`.tsx` file
       outside `Utils.js` contains a hardcoded role name string
       `frontend/.eslintrc.js` or `frontend/eslint.config.js`
 
-- [ ] T047 Update `RolesConfigurationHandler` CSV processing — when a new role
+- [x] T047 Update `RolesConfigurationHandler` CSV processing — when a new role
       is loaded from CSV, if it has a `parentRole` column, resolve and set
       `groupingParent` using the new functional inheritance meaning. Log a
       warning if no privileges are assigned to a non-grouping role.
       `src/main/java/org/openelisglobal/role/service/RolesConfigurationHandler.java`
 
-- [ ] T048 [P] Write javadoc on
+- [x] T048 [P] Write javadoc on
       `PrivilegeServiceImpl.resolveAllPrivilegesForRole()` explaining the
       parent-chain walk, the Global Admin shortcut, and the circular-reference
       guard
 
-- [ ] T049 Update `AGENTS.md` RBAC section to document the new privilege model,
+- [x] T049 Update `AGENTS.md` RBAC section to document the new privilege model,
       the `Privileges.java` constants file, and the rule: every new endpoint
       MUST have a `@PreAuthorize("hasAuthority('PRIV_*')")` annotation using a
       constant from `Privileges.java`

@@ -51,7 +51,7 @@ public class AccessionResultsRestController extends LogbookResultsBaseController
     private UserService userService;
 
     public AccessionResultsRestController(RoleService roleService) {
-        Role editRole = roleService.getRoleByName("Results");
+        Role editRole = roleService.getRoleByName(Constants.ROLE_RESULTS);
         RESULT_EDIT_ROLE_ID = editRole != null ? editRole.getId() : null;
     }
 

@@ -91,17 +91,23 @@ describe("RoleEquivalentPrivileges", () => {
     });
   });
 
-  it("lets a Validation-only session reach Results routes via result:enter", () => {
-    const validationSession = {
+  it("grants a Results route to a session holding result:enter (the Results equivalent)", () => {
+    // Base roles ship flat: the shipped Validation role does NOT hold
+    // result:enter, so it does NOT open a Results-gated route. A session that
+    // does hold result:enter (a Results user, or a custom role that inherits
+    // it) is granted — the route gate is privilege-driven, not role-name-driven.
+    const resultsSession = {
+      authenticated: true,
+      roles: [Roles.RESULTS],
+      privileges: [Privileges.RESULT_ENTER, Privileges.RESULT_VIEW],
+    };
+    const validationOnlySession = {
       authenticated: true,
       roles: [Roles.VALIDATION],
-      privileges: [
-        Privileges.RESULT_ENTER,
-        Privileges.RESULT_VIEW,
-        Privileges.RESULT_VALIDATE,
-      ],
+      privileges: [Privileges.RESULT_VALIDATE, Privileges.RESULT_VIEW],
     };
     const equivalents = RoleEquivalentPrivileges[Roles.RESULTS];
-    expect(hasPrivilege(validationSession, ...equivalents)).toBe(true);
+    expect(hasPrivilege(resultsSession, ...equivalents)).toBe(true);
+    expect(hasPrivilege(validationOnlySession, ...equivalents)).toBe(false);
   });
 });
