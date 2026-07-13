@@ -25,6 +25,9 @@ public class RolesConfigurationHandlerTest {
     @Mock
     private RoleService roleService;
 
+    @Mock
+    private org.openelisglobal.privilege.service.PrivilegeService privilegeService;
+
     @InjectMocks
     private RolesConfigurationHandler handler;
 
@@ -35,6 +38,8 @@ public class RolesConfigurationHandlerTest {
 
     @Before
     public void setup() {
+        org.mockito.Mockito.lenient().when(privilegeService.resolveAllPrivilegesForRole(anyString()))
+                .thenReturn(java.util.Set.of("some:privilege"));
         testRole = new Role();
         testRole.setId(1);
         testRole.setName("Test Role");

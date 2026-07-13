@@ -94,11 +94,11 @@ public class UnifiedSystemUserController extends BaseController {
     private void initialize() {
         Role globalAdmin = roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN);
         if (globalAdmin == null) {
-            // Some DB seeds use "Admin" instead of "Global Administrator".
+            // Some DB seeds use "Admin" instead of the Constants.ROLE_GLOBAL_ADMIN name.
             // Don't crash the entire app on startup; fall back to legacy role name.
             LogEvent.logWarn(this.getClass().getSimpleName(), "initialize",
                     "Role '" + Constants.ROLE_GLOBAL_ADMIN + "' not found; falling back to 'Admin'");
-            globalAdmin = roleService.getRoleByName("Admin");
+            globalAdmin = roleService.getRoleByName(Constants.LEGACY_ROLE_ADMIN);
         }
 
         if (globalAdmin == null) {
