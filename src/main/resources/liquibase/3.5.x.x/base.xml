@@ -141,4 +141,16 @@
   <!-- OGC-949: explicit is_primary boolean on result components -->
   <include relativeToChangelogFile="true" file="052-component-is-primary.xml"/>
 
+  <!-- OGC-949 / OGC-1128: component-aware terminology mappings (nullable component_id) -->
+  <include relativeToChangelogFile="true" file="053-terminology-component-scope.xml"/>
+
+  <!-- OGC-949 / OGC-1127: per-component show_on_report default -->
+  <include relativeToChangelogFile="true" file="054-component-show-on-report.xml"/>
+
+  <!-- OGC-949 / OGC-1125: pre-seed molecular (GeneXpert PCR) result components -->
+  <include relativeToChangelogFile="true" file="055-seed-molecular-components.xml"/>
+
+  <!-- OGC-949 / OGC-1129: analyzer target→component mapping columns -->
+  <include relativeToChangelogFile="true" file="056-analyzer-component-mapping.xml"/>
+
 </databaseChangeLog>

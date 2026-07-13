@@ -306,6 +306,7 @@ const SampleResultsSection = ({ testId }) => {
         defaultResult: "",
         allowMultipleReadings: false,
         isPrimary: prev.length === 0,
+        showOnReport: true,
         options: [],
         interpretations: [],
       },
@@ -615,6 +616,19 @@ const SampleResultsSection = ({ testId }) => {
                   toggled={!!c.isPrimary}
                   disabled={!c.isPrimary && components.some((x) => x.isPrimary)}
                   onToggle={(checked) => togglePrimary(ci, checked)}
+                />
+                <Toggle
+                  id={`comp-show-on-report-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.showOnReport",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={c.isPrimary ? true : c.showOnReport !== false}
+                  disabled={!!c.isPrimary}
+                  onToggle={(checked) =>
+                    patchComponent(ci, { showOnReport: checked })
+                  }
                 />
                 <TextInput
                   id={`comp-code-${ci}`}

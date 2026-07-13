@@ -51,12 +51,24 @@ const TerminologySection = ({ testId }) => {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mappings, setMappings] = useState([]);
+  // The test's result components (id, code, label), so a mapping can be scoped
+  // to a single component ("Applies to") instead of the whole test.
+  const [components, setComponents] = useState([]);
   const [loincIntegrity, setLoincIntegrity] = useState(null);
   const [draft, setDraft] = useState({
     source: "",
     code: "",
     relationship: "",
+    componentId: "",
   });
+
+  const componentLabel = (id) => {
+    const c = components.find((x) => x.id === id);
+    if (!c) {
+      return "";
+    }
+    return c.label || c.code || "";
+  };
   // Row indices currently in edit mode; a row's fields are editable only after
   // its Edit button is clicked.
   const [editingRows, setEditingRows] = useState(() => new Set());
@@ -89,6 +101,7 @@ const TerminologySection = ({ testId }) => {
           return;
         }
         setMappings(res.mappings || []);
+        setComponents(res.components || []);
       },
     );
   };
@@ -121,9 +134,10 @@ const TerminologySection = ({ testId }) => {
         source: draft.source,
         code: draft.code,
         relationship: draft.relationship || null,
+        componentId: draft.componentId || null,
       },
     ]);
-    setDraft({ source: "", code: "", relationship: "" });
+    setDraft({ source: "", code: "", relationship: "", componentId: "" });
   };
 
   const removeMapping = (index) => {
@@ -143,6 +157,7 @@ const TerminologySection = ({ testId }) => {
         source: draft.source,
         code: draft.code,
         relationship: draft.relationship || null,
+        componentId: draft.componentId || null,
       });
     }
     // Persist only complete rows (source + code); drop blank/partial ones.
@@ -156,6 +171,7 @@ const TerminologySection = ({ testId }) => {
         source: m.source,
         code: m.code,
         relationship: m.relationship || null,
+        componentId: m.componentId || null,
       })),
     };
     putToOpenElisServer(
@@ -176,7 +192,7 @@ const TerminologySection = ({ testId }) => {
           });
           // Refresh with server-assigned ids + recomputed LOINC integrity so the
           // next edit updates in place rather than inserting duplicates.
-          setDraft({ source: "", code: "", relationship: "" });
+          setDraft({ source: "", code: "", relationship: "", componentId: "" });
           setEditingRows(new Set());
           loadMappings();
           loadLoincIntegrity();
@@ -271,6 +287,9 @@ const TerminologySection = ({ testId }) => {
                 <FormattedMessage id="label.testCatalog.terminology.col.relationship" />
               </TableHeader>
               <TableHeader>
+                <FormattedMessage id="label.testCatalog.terminology.col.appliesTo" />
+              </TableHeader>
+              <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.actions" />
               </TableHeader>
             </TableRow>
@@ -355,6 +374,38 @@ const TerminologySection = ({ testId }) => {
                     )}
                   </TableCell>
                   <TableCell>
+                    {editing ? (
+                      <Select
+                        id={`mapping-component-${i}`}
+                        labelText=""
+                        value={m.componentId || ""}
+                        onChange={(e) =>
+                          updateMapping(i, {
+                            componentId: e.target.value || null,
+                          })
+                        }
+                      >
+                        <SelectItem
+                          value=""
+                          text={intl.formatMessage({
+                            id: "label.testCatalog.terminology.appliesTo.test",
+                          })}
+                        />
+                        {components.map((c) => (
+                          <SelectItem
+                            key={c.id}
+                            value={c.id}
+                            text={c.label || c.code}
+                          />
+                        ))}
+                      </Select>
+                    ) : m.componentId ? (
+                      <Tag type="green">{componentLabel(m.componentId)}</Tag>
+                    ) : (
+                      <FormattedMessage id="label.testCatalog.terminology.appliesTo.test" />
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Button
                       kind="ghost"
                       size="sm"
@@ -430,6 +481,24 @@ const TerminologySection = ({ testId }) => {
                 id: `label.testCatalog.terminology.rel.${r}`,
               })}
             />
+          ))}
+        </Select>
+        <Select
+          id="terminology-component"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.terminology.col.appliesTo",
+          })}
+          value={draft.componentId}
+          onChange={(e) => setDraft({ ...draft, componentId: e.target.value })}
+        >
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "label.testCatalog.terminology.appliesTo.test",
+            })}
+          />
+          {components.map((c) => (
+            <SelectItem key={c.id} value={c.id} text={c.label || c.code} />
           ))}
         </Select>
         <Button kind="tertiary" renderIcon={Add} onClick={addMapping}>

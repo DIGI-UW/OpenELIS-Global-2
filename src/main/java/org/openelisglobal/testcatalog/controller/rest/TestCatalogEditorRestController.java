@@ -618,6 +618,9 @@ public class TestCatalogEditorRestController {
         // Exactly one component per test is primary — the one mirrored to the
         // legacy test columns. The service normalizes to a single primary.
         public Boolean isPrimary;
+        // Per-component default for printing on the patient report (OGC-1127).
+        // Null/absent = true (backward-compatible: existing components print).
+        public Boolean showOnReport;
         public List<InterpretationDto> interpretations = new ArrayList<>();
         public List<OptionDto> options = new ArrayList<>();
     }
@@ -674,6 +677,7 @@ public class TestCatalogEditorRestController {
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
+            e.setShowOnReport(!Boolean.FALSE.equals(c.showOnReport));
             desired.add(e);
 
             List<TestResultInterpretation> interps = new ArrayList<>();
@@ -738,6 +742,7 @@ public class TestCatalogEditorRestController {
             dto.defaultResult = c.getDefaultResult();
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
             dto.isPrimary = c.getIsPrimary();
+            dto.showOnReport = c.getShowOnReport();
             for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {
                 InterpretationDto idto = new InterpretationDto();
                 idto.id = i.getId();
@@ -1047,7 +1052,37 @@ public class TestCatalogEditorRestController {
             resp.ranges.add(d);
         }
         resp.coverage = coverageService.validate(limits);
+        // Name the component behind each gap/overlap so the UI can say which
+        // component is uncovered — only meaningful when the test has several.
+        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
+        if (comps.size() > 1) {
+            Map<String, String> labelById = new HashMap<>();
+            for (TestResultComponent c : comps) {
+                labelById.put(c.getId(), isBlank(c.getLabel()) ? c.getCode() : c.getLabel());
+            }
+            labelCoverageComponents(resp.coverage, labelById);
+        }
         return resp;
+    }
+
+    /** Fill in componentLabel on every gap/overlap of the coverage report. */
+    private void labelCoverageComponents(RangeCoverageValidationService.CoverageReport coverage,
+            Map<String, String> labelById) {
+        if (coverage == null) {
+            return;
+        }
+        for (RangeCoverageValidationService.SexCoverage sex : new RangeCoverageValidationService.SexCoverage[] {
+                coverage.male, coverage.female }) {
+            if (sex == null) {
+                continue;
+            }
+            for (RangeCoverageValidationService.AgeInterval interval : sex.gaps) {
+                interval.componentLabel = labelById.get(interval.componentId);
+            }
+            for (RangeCoverageValidationService.AgeInterval interval : sex.overlaps) {
+                interval.componentLabel = labelById.get(interval.componentId);
+            }
+        }
     }
 
     /** ±Infinity / NaN → null so the bound serializes cleanly as JSON. */
@@ -1321,11 +1356,24 @@ public class TestCatalogEditorRestController {
         public String source;
         public String code;
         public String relationship;
+        // Null = test-level mapping (default). Otherwise the id of a result
+        // component of this test that the mapping is scoped to (OGC-1128).
+        public String componentId;
+    }
+
+    /** A result component this test's mappings may be scoped to. */
+    public static class TerminologyComponentDto {
+        public String id;
+        public String code;
+        public String label;
     }
 
     public static class TerminologyResponse {
         public String testId;
         public List<MappingDto> mappings = new ArrayList<>();
+        // The test's active components, so the editor can offer an "Applies to"
+        // scope per mapping row without a second request.
+        public List<TerminologyComponentDto> components = new ArrayList<>();
     }
 
     @GetMapping(value = "/tests/{testId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1344,6 +1392,12 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
+        // Valid scopes: null (test-level) or the id of an active component of this
+        // test.
+        Set<String> componentIds = new HashSet<>();
+        for (TestResultComponent c : componentService.getActiveComponentsByTestId(testId)) {
+            componentIds.add(c.getId());
+        }
         Set<String> seen = new HashSet<>();
         List<TestTerminologyMapping> desired = new ArrayList<>();
         for (MappingDto m : body.mappings) {
@@ -1355,12 +1409,18 @@ public class TestCatalogEditorRestController {
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
-            // (source, code) unique within the request — the DB enforces it per test,
-            // but reject early + cleanly rather than surfacing a raw 500.
-            if (!seen.add(m.source + " " + m.code)) {
+            // A scoped mapping must target a real component of this test.
+            String componentId = isBlank(m.componentId) ? null : m.componentId;
+            if (componentId != null && !componentIds.contains(componentId)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            // (component, source, code) unique within the request — the DB enforces it
+            // per test/scope, but reject early + cleanly rather than surfacing a raw 500.
+            if (!seen.add((componentId == null ? "" : componentId) + " " + m.source + " " + m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             TestTerminologyMapping e = new TestTerminologyMapping();
+            e.setComponentId(componentId);
             e.setSource(m.source);
             e.setCode(m.code);
             e.setRelationship(isBlank(m.relationship) ? null : m.relationship);
@@ -1379,7 +1439,15 @@ public class TestCatalogEditorRestController {
             dto.source = m.getSource();
             dto.code = m.getCode();
             dto.relationship = m.getRelationship();
+            dto.componentId = m.getComponentId();
             resp.mappings.add(dto);
+        }
+        for (TestResultComponent c : componentService.getActiveComponentsByTestId(testId)) {
+            TerminologyComponentDto cd = new TerminologyComponentDto();
+            cd.id = c.getId();
+            cd.code = c.getCode();
+            cd.label = c.getLabel();
+            resp.components.add(cd);
         }
         return resp;
     }

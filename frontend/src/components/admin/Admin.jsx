@@ -42,6 +42,7 @@ import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd";
+import TestAdd from "./testManagementConfigMenu/TestAdd";
 import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry";
 import TestOrderability from "./testManagementConfigMenu/TestOrderability";
 import MethodCreate from "./testManagementConfigMenu/MethodCreate";
@@ -157,14 +158,10 @@ function Admin() {
         path={`${path}/ResultSelectListAdd`}
         component={ResultSelectListAdd}
       />
-      {/* OGC-1112 FR-38: the legacy 7-step create wizard is retired in favor of
-          create-in-place; any link to it lands on the unified New test flow. */}
-      <Route
-        path={`${path}/TestAdd`}
-        render={() => (
-          <Redirect to={`${path}/TestCatalogEditor/new/basic-info`} />
-        )}
-      />
+      {/* OGC-1112 FR-38: the unified New test flow (TestCatalogEditor/new) is the
+          intended create path. The legacy 7-step Add Test and the legacy Modify Test
+          are kept available in parallel temporarily during the transition. */}
+      <Route path={`${path}/TestAdd`} component={TestAdd} />
       <Route path={`${path}/TestModifyEntry`} component={TestModifyEntry} />
       <Route path={`${path}/TestOrderability`} component={TestOrderability} />
       <Route path={`${path}/MethodCreate`} component={MethodCreate} />
