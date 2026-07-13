@@ -8,15 +8,18 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Integration tests for the qa.* permission derivation (QA v1 permission
- * model). The registry modules, the QA Officer role, and the grant matrix all
- * come from liquibase/qa/004 running against the Testcontainers database — no
- * fixture data is needed, the seeds under test ARE the migration.
+ * model). The fixture mirrors the liquibase/qa/004 registry + grant matrix
+ * through the managed dataset path — asserting against the live liquibase seeds
+ * is order-dependent, because any earlier suite test whose dataset names these
+ * tables (e.g. role-module.xml) truncates them. The migration itself runs at
+ * context start; its content was SQL-mirror verified in dev.
  */
 public class QaPermissionServiceTest extends BaseWebContextSensitiveTest {
 
@@ -25,6 +28,12 @@ public class QaPermissionServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private QaPermissionService qaPermissionService;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        executeDataSetWithStateManagement("testdata/qa-permission.xml");
+    }
 
     @Test
     public void qaOfficer_bundlesOverviewAndAllFourPillarPermissions() {
