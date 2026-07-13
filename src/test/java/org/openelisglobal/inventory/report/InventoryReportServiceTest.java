@@ -32,7 +32,6 @@ import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.systemuser.service.SystemUserService;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
  * OGC-658 follow-up — the Reports tab (InventoryReports.jsx) called
@@ -127,34 +126,56 @@ public class InventoryReportServiceTest {
     }
 
     @Test
-    public void stockLevels_includesActiveItemsWithTotalQuantityAcrossLots() {
+    public void stockLevels_totalIncludesEveryLot_availableExcludesDeadStock() {
         InventoryItem reagent = item("REAGENT_A", "Reagent A", "REAGENT", true);
         when(inventoryItemService.getAllActive()).thenReturn(List.of(reagent));
-        when(inventoryLotService.getByInventoryItemId("REAGENT_A"))
-                .thenReturn(List.of(lot(reagent, "LOT1", 10.0), lot(reagent, "LOT2", 5.0)));
+
+        InventoryLot usableLot = lot(reagent, "LOT1", 10.0);
+        InventoryLot expiredLot = lot(reagent, "LOT2", 5.0);
+        expiredLot.setStatus(LotStatus.EXPIRED);
+        when(inventoryLotService.getByInventoryItemId("REAGENT_A")).thenReturn(List.of(usableLot, expiredLot));
 
         ReportTable table = reportService.generateReport(request("STOCK_LEVELS", "CSV"));
 
-        assertEquals(List.of("Item Code", "Item Name", "Type", "Location", "Total Quantity", "Units", "Status"),
-                table.getHeaders());
-        assertEquals(1, table.getRows().size());
+        assertEquals(List.of("Item Code", "Item Name", "Type", "Category", "Location", "Available Quantity",
+                "Total Quantity", "Units", "Status"), table.getHeaders());
+        assertEquals(2, table.getRows().size()); // data row + totals row
         List<String> row = table.getRows().get(0);
         assertEquals("REAGENT_A", row.get(0));
-        assertEquals("15", row.get(4)); // 10 + 5, formatted as an integer
-        assertEquals("Active", row.get(6));
+        assertEquals("10", row.get(5)); // Available: only the usable lot
+        assertEquals("15", row.get(6)); // Total: 10 + 5, including the expired lot
+        assertEquals("Active", row.get(8));
+
+        List<String> totals = table.getRows().get(1);
+        assertEquals("TOTAL (1 items)", totals.get(0));
+        assertEquals("10", totals.get(5));
+        assertEquals("15", totals.get(6));
     }
 
     @Test
-    public void lowStock_usesLowStockItemsSource() {
-        InventoryItem item = item("RDT_A", "RDT A", "RDT", true);
-        item.setLowStockThreshold(20);
-        when(inventoryItemService.getLowStockItems()).thenReturn(List.of(item));
-        when(inventoryLotService.getByInventoryItemId("RDT_A")).thenReturn(List.of(lot(item, "LOT1", 3.0)));
+    public void lowStock_judgesByAvailableQuantity_notRawTotal() {
+        InventoryItem lowOnAvailable = item("RDT_A", "RDT A", "RDT", true);
+        lowOnAvailable.setLowStockThreshold(20);
+        InventoryItem wellStocked = item("RDT_B", "RDT B", "RDT", true);
+        wellStocked.setLowStockThreshold(20);
+        when(inventoryItemService.getAllActive()).thenReturn(List.of(lowOnAvailable, wellStocked));
+
+        // 3 available + 100 disposed = 103 total — a raw-total check would miss
+        // this as "well stocked" despite only 3 usable units remaining.
+        InventoryLot usable = lot(lowOnAvailable, "LOT1", 3.0);
+        InventoryLot disposed = lot(lowOnAvailable, "LOT2", 100.0);
+        disposed.setStatus(LotStatus.DISPOSED);
+        when(inventoryLotService.getByInventoryItemId("RDT_A")).thenReturn(List.of(usable, disposed));
+        when(inventoryLotService.getByInventoryItemId("RDT_B")).thenReturn(List.of(lot(wellStocked, "LOT3", 50.0)));
 
         ReportTable table = reportService.generateReport(request("LOW_STOCK", "CSV"));
 
-        assertEquals(1, table.getRows().size());
-        assertEquals("20", table.getRows().get(0).get(5));
+        assertEquals(2, table.getRows().size()); // RDT_A + totals row (RDT_B is not low on available stock)
+        List<String> row = table.getRows().get(0);
+        assertEquals("RDT_A", row.get(0));
+        assertEquals("3", row.get(5)); // Available Quantity
+        assertEquals("103", row.get(6)); // Total Quantity
+        assertEquals("20", row.get(7)); // Low Stock Threshold
     }
 
     @Test
@@ -165,7 +186,7 @@ public class InventoryReportServiceTest {
         InventoryLot expiredLot = lot(item, "EXPIRED1", 5.0);
         expiredLot.setExpirationDate(new Timestamp(System.currentTimeMillis() - 86_400_000L));
         InventoryLot futureLot = lot(item, "FUTURE1", 5.0);
-        futureLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86_400_000L * 30));
+        futureLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86_400_000L * 45));
         when(inventoryLotService.getAll()).thenReturn(List.of(expiredLot, futureLot));
 
         InventoryReportRequest excludeExpired = new InventoryReportRequest("EXPIRATION_FORECAST", "CSV", null, null,
@@ -173,39 +194,79 @@ public class InventoryReportServiceTest {
         ReportTable withoutExpired = reportService.generateReport(excludeExpired);
         assertEquals(1, withoutExpired.getRows().size());
         assertEquals("FUTURE1", withoutExpired.getRows().get(0).get(3));
+        assertEquals("LATER", withoutExpired.getRows().get(0).get(7)); // 45 days out — Urgency bucket
 
         InventoryReportRequest includeExpired = new InventoryReportRequest("EXPIRATION_FORECAST", "CSV", null, null,
                 false, true, false, false);
         ReportTable withExpired = reportService.generateReport(includeExpired);
         assertEquals(2, withExpired.getRows().size());
+        List<String> expiredRow = withExpired.getRows().stream().filter(r -> r.get(3).equals("EXPIRED1")).findFirst()
+                .orElseThrow();
+        assertEquals("EXPIRED", expiredRow.get(7));
     }
 
     @Test
-    public void usageTrends_filtersByDateRangeAndResolvesUserName() {
+    public void expirationForecast_honorsDateRange_previouslySilentlyIgnored() {
         InventoryItem item = item("REAGENT_A", "Reagent A", "REAGENT", true);
-        InventoryLot lot = lot(item, "LOT1", 10.0);
-        InventoryUsage usage = new InventoryUsage();
-        usage.setInventoryItem(item);
-        usage.setLot(lot);
-        usage.setQuantityUsed(2.0);
-        usage.setUsageDate(new Timestamp(System.currentTimeMillis()));
-        usage.setPerformedByUser(1);
+        when(inventoryItemService.getAllActive()).thenReturn(List.of(item));
+
+        InventoryLot soonLot = lot(item, "SOON1", 5.0);
+        soonLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86_400_000L * 5));
+        InventoryLot laterLot = lot(item, "LATER1", 5.0);
+        laterLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86_400_000L * 90));
+        when(inventoryLotService.getAll()).thenReturn(List.of(soonLot, laterLot));
+
+        InventoryReportRequest scoped = new InventoryReportRequest("EXPIRATION_FORECAST", "CSV",
+                new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis() + 86_400_000L * 10),
+                false, true, false, false);
+        ReportTable table = reportService.generateReport(scoped);
+
+        assertEquals(1, table.getRows().size());
+        assertEquals("SOON1", table.getRows().get(0).get(3));
+    }
+
+    @Test
+    public void usageTrends_aggregatesPerItem_sortedByHeaviestUseFirst() {
+        InventoryItem heavilyUsed = item("REAGENT_A", "Reagent A", "REAGENT", true);
+        InventoryItem lightlyUsed = item("REAGENT_B", "Reagent B", "REAGENT", true);
+
+        InventoryUsage use1 = new InventoryUsage();
+        use1.setInventoryItem(heavilyUsed);
+        use1.setLot(lot(heavilyUsed, "LOT1", 10.0));
+        use1.setQuantityUsed(6.0);
+        use1.setUsageDate(new Timestamp(System.currentTimeMillis() - 3600_000L));
+        InventoryUsage use2 = new InventoryUsage();
+        use2.setInventoryItem(heavilyUsed);
+        use2.setLot(lot(heavilyUsed, "LOT1", 10.0));
+        use2.setQuantityUsed(4.0);
+        use2.setUsageDate(new Timestamp(System.currentTimeMillis()));
+        InventoryUsage use3 = new InventoryUsage();
+        use3.setInventoryItem(lightlyUsed);
+        use3.setLot(lot(lightlyUsed, "LOT2", 10.0));
+        use3.setQuantityUsed(1.0);
+        use3.setUsageDate(new Timestamp(System.currentTimeMillis()));
 
         Timestamp start = new Timestamp(System.currentTimeMillis() - 86_400_000L);
         Timestamp end = new Timestamp(System.currentTimeMillis() + 86_400_000L);
-        when(inventoryUsageService.getByDateRange(start, end)).thenReturn(List.of(usage));
-
-        SystemUser user = new SystemUser();
-        user.setFirstName("Jane");
-        user.setLastName("Doe");
-        when(systemUserService.get("1")).thenReturn(user);
+        when(inventoryUsageService.getByDateRange(start, end)).thenReturn(List.of(use1, use2, use3));
 
         InventoryReportRequest req = new InventoryReportRequest("USAGE_TRENDS", "CSV", start, end, false, true, false,
                 false);
         ReportTable table = reportService.generateReport(req);
 
-        assertEquals(1, table.getRows().size());
-        assertEquals("Jane Doe", table.getRows().get(0).get(5));
+        assertEquals(List.of("Item Code", "Item Name", "Type", "Total Quantity Used", "Usage Events",
+                "Avg Quantity Per Use", "First Use", "Last Use"), table.getHeaders());
+        assertEquals(3, table.getRows().size()); // 2 items + totals row
+        List<String> topRow = table.getRows().get(0);
+        assertEquals("REAGENT_A", topRow.get(0)); // heaviest use sorts first
+        assertEquals("10", topRow.get(3)); // 6 + 4
+        assertEquals("2", topRow.get(4)); // 2 usage events
+        assertEquals("5", topRow.get(5)); // average per use
+
+        List<String> totals = table.getRows().get(2);
+        assertEquals("TOTAL (2 items)", totals.get(0));
+        assertEquals("11", totals.get(3)); // 10 + 1
+        assertEquals("3", totals.get(4)); // 3 events total
     }
 
     @Test
@@ -261,7 +322,7 @@ public class InventoryReportServiceTest {
                 false);
         ReportTable table = reportService.generateReport(req);
 
-        assertEquals(2, table.getRows().size());
+        assertEquals(3, table.getRows().size()); // 2 items + totals row
         assertTrue("CARTRIDGE sorts before REAGENT",
                 table.getRows().get(0).get(2).compareTo(table.getRows().get(1).get(2)) < 0);
     }
