@@ -10,6 +10,7 @@ import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
+import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
@@ -34,6 +35,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Autowired
     RoleService roleService;
 
+    @Autowired
+    RoleModuleService roleModuleService;
+
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String loginName) {
@@ -49,6 +53,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private List<GrantedAuthority> getGrantedAuthorities(LoginUser user) {
         Set<String> authorityNames = new LinkedHashSet<>();
+        Set<String> roleNames = new LinkedHashSet<>();
 
         if (user != null && user.getSystemUserId() > 0) {
             List<String> roleIds = userRoleService.getRoleIdsForUser(String.valueOf(user.getSystemUserId()));
@@ -60,6 +65,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                     Role role = roleService.getRoleById(roleId.trim());
                     if (role != null && role.getName() != null && !role.getName().trim().isEmpty()) {
                         addAuthoritiesForRole(role.getName(), authorityNames);
+                        roleNames.add(role.getName().trim());
                     }
                 }
             }
@@ -67,7 +73,13 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         if (user != null && IActionConstants.YES.equalsIgnoreCase(user.getIsAdmin())) {
             addAuthoritiesForRole(Constants.ROLE_GLOBAL_ADMIN, authorityNames);
+            roleNames.add(Constants.ROLE_GLOBAL_ADMIN);
         }
+
+        // qa.* permission keys granted to the user's roles become plain
+        // authorities so QA REST controllers can gate on hasAuthority
+        // ('qa.view.x') per the QA release permission model (FRS §6).
+        authorityNames.addAll(roleModuleService.getPermittedModuleNames(roleNames, Constants.QA_PERMISSION_PREFIX));
 
         List<GrantedAuthority> authorities = new ArrayList<>();
         for (String authorityName : authorityNames) {

@@ -37,4 +37,5 @@
   <!-- QA v1 MVP -->
   <include file="liquibase/qa/002-add-qi-dashboard-menu.xml" />
   <include file="liquibase/qa/003-add-amendment-report-module.xml" />
+  <include file="liquibase/qa/004-add-qa-permission-model.xml" />
 </databaseChangeLog>

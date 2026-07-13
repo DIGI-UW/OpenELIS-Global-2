@@ -22,8 +22,10 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.jasypt.util.text.TextEncryptor;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.config.condition.ConditionalOnProperty;
+import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.security.KeystoreUtil.KeyCertPair;
 import org.openelisglobal.security.login.BasicAuthFilter;
 import org.openelisglobal.security.login.CustomAuthenticationFailureHandler;
@@ -293,7 +295,17 @@ public class SecurityConfig {
             Saml2Authentication authentication = delegate.convert(responseToken);
             Assertion assertion = responseToken.getResponse().getAssertions().get(0);
             AuthenticatedPrincipal principal = (AuthenticatedPrincipal) authentication.getPrincipal();
-            Collection<GrantedAuthority> authorities = new KeycloakAuthoritiesExtractor().convert(assertion);
+            Set<String> samlRoleNames = new LinkedHashSet<>();
+            Collection<GrantedAuthority> authorities = new KeycloakAuthoritiesExtractor().convert(assertion,
+                    samlRoleNames);
+            // qa.* permission authorities derive from the same DB grants as form
+            // login (CustomUserDetailsService) so hasAuthority('qa.view.x') gates
+            // admit SSO users too. Bean fetched lazily — this converter only runs
+            // per SAML login, after the data layer is up.
+            for (String permission : SpringContext.getBean(RoleModuleService.class)
+                    .getPermittedModuleNames(samlRoleNames, Constants.QA_PERMISSION_PREFIX)) {
+                authorities.add(new SimpleGrantedAuthority(permission));
+            }
 
             return new Saml2Authentication(principal, authentication.getSaml2Response(), authorities);
         });
@@ -572,8 +584,11 @@ public class SecurityConfig {
          * login produces (CustomUserDetailsService.addAuthoritiesForRole). This makes
          * method-level checks like @PreAuthorize("hasRole('ADMIN')") work for SSO
          * users.
+         *
+         * The bare role names are also collected into roleNamesOut so the caller can
+         * derive qa.* permission authorities from the same DB grants as form login.
          */
-        public Collection<GrantedAuthority> convert(Assertion assertion) {
+        public Collection<GrantedAuthority> convert(Assertion assertion, Set<String> roleNamesOut) {
             Set<String> authorityNames = new LinkedHashSet<>();
             for (AttributeStatement statement : assertion.getAttributeStatements()) {
                 for (Attribute attr : statement.getAttributes()) {
@@ -590,6 +605,9 @@ public class SecurityConfig {
                         int dash = stripped.indexOf('-');
                         String roleName = (dash >= 0) ? stripped.substring(0, dash).trim() : stripped;
                         CustomUserDetailsService.addAuthoritiesForRole(roleName, authorityNames);
+                        if (!roleName.isEmpty()) {
+                            roleNamesOut.add(roleName);
+                        }
                     }
                 }
             }
