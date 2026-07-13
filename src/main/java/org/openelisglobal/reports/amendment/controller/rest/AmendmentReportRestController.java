@@ -23,7 +23,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/rest/reports/amendment")
-@PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')")
+// qa.view.qi is the QA-registry visibility key (liquibase/qa/004); the
+// pre-registry RESULTS/REPORTS role gate stays authoritative alongside it.
+@PreAuthorize("hasAuthority('qa.view.qi') or hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')")
 public class AmendmentReportRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(AmendmentReportRestController.class);
