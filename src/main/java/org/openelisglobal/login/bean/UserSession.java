@@ -18,6 +18,14 @@ public class UserSession {
     private String firstName;
     private String lastName;
     private Set<String> roles;
+
+    /**
+     * Resolved privilege names (e.g. {@code result:validate}) — direct plus
+     * inherited via role grouping, expanded to the full catalog for Global
+     * Administrator. The frontend gates UI with {@code hasPrivilege()} against this
+     * set instead of role-name strings (spec 012, US3/T033).
+     */
+    private Set<String> privileges;
     private Map<String, List<String>> userLabRolesMap;
     private String CSRF;
     private String loginLabUnit;
@@ -84,6 +92,14 @@ public class UserSession {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public Set<String> getPrivileges() {
+        return privileges;
+    }
+
+    public void setPrivileges(Set<String> privileges) {
+        this.privileges = privileges;
     }
 
     public String getSessionId() {

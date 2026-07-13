@@ -7,7 +7,7 @@ import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css"; // Import css
 import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
-import { Roles } from "../utils/Utils";
+import { Roles, hasPrivilege, RoleEquivalentPrivileges } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
@@ -78,11 +78,22 @@ function SecureRoute(props) {
   }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
   const hasPermission = (userDetails = userSessionDetails) => {
+    // A route is granted by the assigned role OR by the privilege that role
+    // check is really guarding (spec 012 T040): a Validation user inherits
+    // result:enter in their seeded privilege set, so Results routes open
+    // without an explicit Results role assignment. Routes may also pass an
+    // explicit `privilege` prop.
+    var requestedRoles = [].concat(props.role || []);
+    var equivalentPrivileges = requestedRoles.flatMap(
+      (role) => RoleEquivalentPrivileges[role] || [],
+    );
+    var explicitPrivileges = [].concat(props.privilege || []);
     var hasRole =
-      !props.role ||
-      []
-        .concat(props.role)
-        .some((role) => userDetails.roles && userDetails.roles.includes(role));
+      (!props.role && !props.privilege) ||
+      requestedRoles.some(
+        (role) => userDetails.roles && userDetails.roles.includes(role),
+      ) ||
+      hasPrivilege(userDetails, ...equivalentPrivileges, ...explicitPrivileges);
     var containsLabUnitRole = false;
     if (props.labUnitRole) {
       Object.keys(props.labUnitRole).forEach((labunit) => {

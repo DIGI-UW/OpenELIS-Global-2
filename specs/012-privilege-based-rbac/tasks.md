@@ -236,61 +236,63 @@ effective privilege sets and assign roles.
 
 ### Session endpoint update
 
-- [ ] T033 Update `LoginPageController` session response to include `privileges`
+- [x] T033 Update `LoginPageController` session response to include `privileges`
       array — call `privilegeService.getAllPrivilegesForUser()` and include
       result in `UserSession` JSON
       `src/main/java/org/openelisglobal/login/controller/LoginPageController.java`
 
-- [ ] T034 [P] Update `UserSession` form/DTO to include
+- [x] T034 [P] Update `UserSession` form/DTO to include
       `List<String> privileges` field
       `src/main/java/org/openelisglobal/login/form/LoginForm.java` (or
       equivalent session DTO)
 
 ### Frontend privilege utility
 
-- [ ] T035 Add `hasPrivilege(privilegeName)` function to
+- [x] T035 Add `hasPrivilege(privilegeName)` function to
       `frontend/src/components/security/SecureRoute.js` — checks against
-      `userSession.privileges` array
+      `userSession.privileges` array _(implemented in `Utils.js` next to
+      `hasRole()`, consumed by `SecureRoute.jsx`)_
 
-- [ ] T036 [P] Add `Privileges` constants object to `Utils.js` — mirrors
+- [x] T036 [P] Add `Privileges` constants object to `Utils.js` — mirrors
       `Privileges.java` constants. All privilege name strings defined here.
       Remove any role-name strings from component files.
       `frontend/src/components/utils/Utils.js`
 
-- [ ] T037 Update `Roles` object in `Utils.js` — fix `CytoPathologist` →
+- [x] T037 Update `Roles` object in `Utils.js` — fix `CytoPathologist` →
       `Cytopathologist` spelling, ensure all role name strings match
       `Constants.java` `frontend/src/components/utils/Utils.js`
 
 ### Frontend component updates
 
-- [ ] T038 [P] Replace role-name checks with `hasPrivilege()` in navigation and
+- [x] T038 [P] Replace role-name checks with `hasPrivilege()` in navigation and
       menu visibility (sidebar, banner menu) — components currently checking
       `roles.has("Global Administrator")` or similar
 
-- [ ] T039 [P] Replace role-name checks in pathology/cytology components
+- [x] T039 [P] Replace role-name checks in pathology/cytology components
       (currently checking `"Pathologist"`, `"Cytopathologist"`,
       `"CytoPathologist"`) with `hasPrivilege('result:pathology-sign-off')` etc.
 
-- [ ] T040 [P] Update `SecureRoute` lab-unit permission check to also verify the
+- [x] T040 [P] Update `SecureRoute` lab-unit permission check to also verify the
       effective privilege set — a `Validation` user routed to Results entry
       should be allowed because they inherit `result:enter`
 
 ### Admin UI — privilege summary panel
 
-- [ ] T041 Add `GET /rest/roles/{roleId}/privileges` endpoint returning the full
+- [x] T041 Add `GET /rest/roles/{roleId}/privileges` endpoint returning the full
       effective privilege set (direct + inherited) for a given role
       `src/main/java/org/openelisglobal/role/controller/rest/RoleRestController.java`
 
-- [ ] T042 Add privilege summary panel to the role assignment section of the
+- [x] T042 Add privilege summary panel to the role assignment section of the
       user management UI — Carbon `DataTable` showing effective privileges when
       a role is selected. Uses the new endpoint from T041.
       `frontend/src/components/systemuser/` (relevant component file)
 
 ### Tests
 
-- [ ] T043 [P] Write Jest test for `hasPrivilege()` — test with populated
+- [x] T043 [P] Write Jest test for `hasPrivilege()` — test with populated
       session, missing privilege, empty session, admin (all privileges)
-      `frontend/src/tests/unit/security/hasPrivilege.test.js`
+      _(Vitest, colocated per repo convention:
+      `frontend/src/components/utils/hasPrivilege.test.js`)_
 
 - [ ] T044 [P] Write Playwright E2E test — log in as Reception, verify Result
       Entry menu item is absent. Log in as Validation (inherits Results), verify

@@ -567,6 +567,134 @@ export const hasRole = (
   return userSessionDetails.roles.includes(role);
 };
 
+/**
+ * Privilege name constants — mirrors Privileges.java (spec 012 T036). The
+ * /session payload's `privileges` array uses these raw names; gate UI with
+ * hasPrivilege() against them instead of role-name strings.
+ */
+export const Privileges = {
+  ORDER_CREATE: "order:create",
+  ORDER_VIEW: "order:view",
+  ORDER_EDIT: "order:edit",
+  ORDER_DELETE: "order:delete",
+  PANEL_VIEW: "panel:view",
+  PANEL_MANAGE: "panel:manage",
+  ANALYTE_VIEW: "analyte:view",
+  ANALYTE_MANAGE: "analyte:manage",
+  METHOD_VIEW: "method:view",
+  METHOD_MANAGE: "method:manage",
+  SAMPLE_TYPE_VIEW: "sample_type:view",
+  SAMPLE_TYPE_MANAGE: "sample_type:manage",
+  SAMPLE_STATUS_VIEW: "sample_status:view",
+  RESULT_VIEW: "result:view",
+  RESULT_ENTER: "result:enter",
+  RESULT_MODIFY: "result:modify",
+  RESULT_VALIDATE: "result:validate",
+  RESULT_PATHOLOGY_SIGN_OFF: "result:pathology-sign-off",
+  RESULT_CYTOPATHOLOGY_SIGN_OFF: "result:cytopathology-sign-off",
+  PATIENT_VIEW: "patient:view",
+  PATIENT_CREATE: "patient:create",
+  PATIENT_EDIT: "patient:edit",
+  PATIENT_MANAGE: "patient:manage",
+  REPORT_RUN: "report:run",
+  REPORT_EXPORT: "report:export",
+  NCE_VIEW: "nce:view",
+  NCE_CREATE: "nce:create",
+  NCE_EDIT: "nce:edit",
+  NCE_ASSIGN: "nce:assign",
+  ANALYZER_IMPORT: "analyzer:import",
+  ANALYZER_CONFIGURE: "analyzer:configure",
+  USER_MANAGE: "user:manage",
+  SYSTEM_CONFIGURE: "system:configure",
+  TEST_CONFIGURE: "test:configure",
+  REPORT_CONFIGURE: "report:configure",
+  AUDIT_VIEW: "audit:view",
+  SHIPMENT_VIEW: "shipment:view",
+  SHIPMENT_CREATE: "shipment:create",
+  SHIPMENT_EDIT: "shipment:edit",
+  SHIPMENT_MANAGE: "shipment:manage",
+  SHIPMENT_DELETE: "shipment:delete",
+  EQA_VIEW: "eqa:view",
+  EQA_MANAGE: "eqa:manage",
+  ESIG_USE: "esig:use",
+  ALERT_VIEW: "alert:view",
+  ALERT_MANAGE: "alert:manage",
+  BARCODE_VIEW: "barcode:view",
+  BARCODE_MANAGE: "barcode:manage",
+  CALENDAR_VIEW: "calendar:view",
+  CALENDAR_MANAGE: "calendar:manage",
+  COLDSTORAGE_VIEW: "coldstorage:view",
+  COLDSTORAGE_MANAGE: "coldstorage:manage",
+  DICTIONARY_VIEW: "dictionary:view",
+  DICTIONARY_MANAGE: "dictionary:manage",
+  EXTCONNECTION_VIEW: "extconnection:view",
+  EXTCONNECTION_MANAGE: "extconnection:manage",
+  INVENTORY_VIEW: "inventory:view",
+  INVENTORY_MANAGE: "inventory:manage",
+  LOCALIZATION_VIEW: "localization:view",
+  LOCALIZATION_MANAGE: "localization:manage",
+  NOTEBOOK_VIEW: "notebook:view",
+  NOTEBOOK_MANAGE: "notebook:manage",
+  NOTIFICATION_VIEW: "notification:view",
+  NOTIFICATION_MANAGE: "notification:manage",
+  ORGANIZATION_VIEW: "organization:view",
+  ORGANIZATION_MANAGE: "organization:manage",
+  PROGRAM_VIEW: "program:view",
+  PROGRAM_MANAGE: "program:manage",
+  BRANDING_VIEW: "branding:view",
+  BRANDING_MANAGE: "branding:manage",
+  PROVIDER_VIEW: "provider:view",
+  PROVIDER_MANAGE: "provider:manage",
+  SITE_INFO_VIEW: "site_info:view",
+  REFERRAL_VIEW: "referral:view",
+  REFERRAL_MANAGE: "referral:manage",
+  STORAGE_VIEW: "storage:view",
+  STORAGE_MANAGE: "storage:manage",
+  TESTCALC_VIEW: "testcalc:view",
+  TESTCALC_MANAGE: "testcalc:manage",
+  ROLE_VIEW: "role:view",
+  ROLE_MANAGE: "role:manage",
+  SYSTEM_USER_VIEW: "system_user:view",
+  SYSTEM_USER_MANAGE: "system_user:manage",
+  USER_ROLE_VIEW: "user_role:view",
+  USER_ROLE_MANAGE: "user_role:manage",
+  SAMPLE_REQUESTER_VIEW: "sample_requester:view",
+  SAMPLE_REQUESTER_MANAGE: "sample_requester:manage",
+};
+
+/**
+ * Checks the resolved privilege set from /session (spec 012 T035). Global
+ * Administrator needs no special-casing — the backend expands the sentinel to
+ * the full catalog before it reaches the client.
+ */
+export const hasPrivilege = (userSessionDetails, ...privileges) => {
+  if (!userSessionDetails || !userSessionDetails.privileges) {
+    return false;
+  }
+  return privileges.some((privilege) =>
+    userSessionDetails.privileges.includes(privilege),
+  );
+};
+
+/**
+ * The privilege a legacy role-gated route is really guarding (spec 012 T040).
+ * SecureRoute grants access when the user holds the role OR its equivalent
+ * privilege, so a Validation user (whose seeded set includes result:enter)
+ * reaches Results pages without an explicit Results role assignment.
+ */
+export const RoleEquivalentPrivileges = {
+  Reception: [Privileges.ORDER_CREATE],
+  Results: [Privileges.RESULT_ENTER],
+  Validation: [Privileges.RESULT_VALIDATE],
+  Reports: [Privileges.REPORT_RUN],
+  Pathologist: [Privileges.RESULT_PATHOLOGY_SIGN_OFF],
+  Cytopathologist: [Privileges.RESULT_CYTOPATHOLOGY_SIGN_OFF],
+  "User Account Administrator": [Privileges.USER_MANAGE],
+  "Audit Trail": [Privileges.AUDIT_VIEW],
+  "Analyser Import": [Privileges.ANALYZER_IMPORT],
+  "Global Administrator": [Privileges.SYSTEM_CONFIGURE],
+};
+
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers
 
@@ -768,6 +896,7 @@ export const Roles = {
   RESULTS: "Results",
   VALIDATION: "Validation",
   REPORTS: "Reports",
+  EQA_COORDINATOR: "EQA Coordinator",
 } as const;
 
 export const toBase64 = (file: Blob): Promise<string> =>

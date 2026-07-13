@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.constants.Privileges;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -20,6 +21,8 @@ import org.openelisglobal.login.bean.UserSession;
 import org.openelisglobal.login.bean.UserSession.LoginMethod;
 import org.openelisglobal.login.form.LoginForm;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.privilege.service.PrivilegeService;
+import org.openelisglobal.privilege.valueholder.Privilege;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
@@ -84,6 +87,8 @@ public class LoginPageController extends BaseController {
     private TestSectionService testSectionService;
     @Autowired
     LocalizationService localizationService;
+    @Autowired
+    PrivilegeService privilegeService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -158,8 +163,26 @@ public class LoginPageController extends BaseController {
                 }
             }
             setLabunitRolesForExistingUser(request, session);
+            session.setPrivileges(resolveSessionPrivileges(session.getUserId()));
         }
         return session;
+    }
+
+    /**
+     * Resolved privilege names for the session payload (spec 012 T033) — the Global
+     * Administrator sentinel is expanded to the concrete catalog so the frontend's
+     * hasPrivilege() needs no special-casing.
+     */
+    private Set<String> resolveSessionPrivileges(String systemUserId) {
+        Set<String> resolved = privilegeService.getAllPrivilegesForUser(systemUserId);
+        if (resolved.contains(Privileges.GLOBAL_ADMIN_SENTINEL)) {
+            Set<String> all = new HashSet<>();
+            for (Privilege p : privilegeService.getAllPrivileges()) {
+                all.add(p.getName());
+            }
+            return all;
+        }
+        return resolved;
     }
 
     private void setLoginMethod(HttpServletRequest request, UserSession session) {
