@@ -16,6 +16,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import QAEmptyState from "../common/QAEmptyState";
 import "./QIDashboard.css";
 
 /**
@@ -149,9 +150,10 @@ const AmendmentReport = () => {
           <FormattedMessage id="qa.qi.amendment.error" />
         </p>
       ) : rows.length === 0 ? (
-        <p className="qi-tile__message">
-          <FormattedMessage id="qa.qi.amendment.empty" />
-        </p>
+        <QAEmptyState
+          titleKey="qa.empty.amendment.title"
+          subheadKey="qa.empty.amendment.subhead"
+        />
       ) : (
         <>
           <DataTable

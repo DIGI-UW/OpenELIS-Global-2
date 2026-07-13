@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import { fetchNceList } from "./nceOverview";
 import { fetchOverviewSummary, nceActivityRows } from "./overviewData";
+import QAEmptyState from "../common/QAEmptyState";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_ROWS = 8;
@@ -109,11 +110,11 @@ const RecentActivity = () => {
             <div className="qa-live-caption">…</div>
           </div>
         ) : rows.length === 0 ? (
-          <div className="qa-cs qa-cs-row">
-            <div className="qa-live-caption">
-              <FormattedMessage id="qa.overview.activity.empty" />
-            </div>
-          </div>
+          <QAEmptyState
+            size="inline"
+            titleKey="qa.overview.activity.empty"
+            subheadKey="qa.empty.activity.subhead"
+          />
         ) : (
           rows.map((row, i) => (
             <div className="qa-activity-row" key={`${row.timestamp}-${i}`}>

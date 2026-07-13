@@ -3,6 +3,7 @@ import { Tile, InlineNotification, SkeletonText } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import TATBreakdownTable from "./TATBreakdownTable";
 import { formatTat } from "./tatUtils";
+import { QASparseList } from "../../qa/common/QAEmptyState";
 
 const STAT_CARDS = [
   { key: "totalCount", labelId: "reports.tat.totalResults", isCount: true },
@@ -169,10 +170,22 @@ function TATSummaryTab({ data, loading, filters }) {
         </div>
       )}
 
-      {/* Breakdown Table */}
-      {data.breakdown && data.breakdown.length > 0 && (
+      {/* Breakdown: full table at 3+ categories, labeled list when sparse */}
+      {data.breakdown && data.breakdown.length >= 3 && (
         <TATBreakdownTable breakdown={data.breakdown} />
       )}
+      {data.breakdown &&
+        data.breakdown.length > 0 &&
+        data.breakdown.length < 3 && (
+          <QASparseList
+            headlineKey="qa.empty.sparse.labUnits"
+            headlineValues={{ count: data.breakdown.length }}
+            items={data.breakdown.map((b) => ({
+              label: b.dimensionValue,
+              value: formatTat(b.mean),
+            }))}
+          />
+        )}
     </div>
   );
 }
