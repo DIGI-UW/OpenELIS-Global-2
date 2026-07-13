@@ -1,0 +1,70 @@
+/**
+ * ActiveViolationsBanner Styles
+ * Uses Carbon Design System tokens
+ */
+
+.active-violations-banner {
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--cds-layer, #ffffff);
+  border-left: 4px solid var(--cds-support-error, #da1e28);
+}
+
+.active-violations-banner__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.active-violations-banner__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.active-violations-banner__error {
+  font-size: 0.75rem;
+  color: var(--cds-support-error, #da1e28);
+  margin-bottom: 0.5rem;
+}
+
+.active-violations-banner__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.active-violations-banner__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.375rem 0;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+  flex-wrap: wrap;
+}
+
+.active-violations-banner__rule {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--cds-text-primary, #161616);
+}
+
+.active-violations-banner__details {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.active-violations-banner__separator {
+  margin: 0 0.5rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.active-violations-banner__timestamp {
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #6f6f6f);
+  margin-left: auto;
+}
