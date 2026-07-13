@@ -18,6 +18,12 @@ import { DocumentPdf, DocumentBlank, TableSplit } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ReportsAPI } from "./InventoryService";
 
+// The DatePicker gives back raw JS Date objects; URLSearchParams would
+// otherwise stringify those via Date.toString() (e.g. "Mon Jul 13 2026..."),
+// which the backend's yyyy-MM-dd parser can't read.
+export const toIsoDate = (date) =>
+  date ? date.toISOString().slice(0, 10) : null;
+
 const InventoryReports = () => {
   const intl = useIntl();
 
@@ -133,8 +139,8 @@ const InventoryReports = () => {
       const reportParams = {
         reportType: formData.reportType.id,
         exportFormat: formData.exportFormat.id,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
+        startDate: toIsoDate(formData.startDate),
+        endDate: toIsoDate(formData.endDate),
         includeInactive: formData.includeInactive,
         includeExpired: formData.includeExpired,
         groupByType: formData.groupByType,
