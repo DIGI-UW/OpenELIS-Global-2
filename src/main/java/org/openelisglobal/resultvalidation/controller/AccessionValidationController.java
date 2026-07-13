@@ -50,7 +50,7 @@ public class AccessionValidationController extends BaseController {
     private UserService userService;
 
     public AccessionValidationController(RoleService roleService) {
-        Role editRole = roleService.getRoleByName("Results modifier");
+        Role editRole = roleService.getRoleByName(Constants.LEGACY_ROLE_RESULTS_MODIFIER);
         if (editRole != null) {
             RESULT_EDIT_ROLE_ID = String.valueOf(editRole.getId());
         } else {

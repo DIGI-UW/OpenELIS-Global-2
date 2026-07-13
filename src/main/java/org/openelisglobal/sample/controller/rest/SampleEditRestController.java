@@ -89,9 +89,9 @@ public class SampleEditRestController extends BaseSampleEntryController {
                 .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
 
         ENTERED_STATUS_SAMPLE_LIST.add(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validator");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validation");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Biologist");
+        ABLE_TO_CANCEL_ROLE_NAMES.add(Constants.LEGACY_ROLE_VALIDATOR);
+        ABLE_TO_CANCEL_ROLE_NAMES.add(Constants.ROLE_VALIDATION);
+        ABLE_TO_CANCEL_ROLE_NAMES.add(Constants.LEGACY_ROLE_BIOLOGIST);
     }
 
     @Autowired

@@ -55,6 +55,26 @@ public class PrivilegeServiceImpl implements PrivilegeService {
         return privilegeDAO.getPrivilegesForRole(roleId);
     }
 
+    /**
+     * Resolves the full effective privilege-name set for one role (spec 012 T048).
+     * Resolution walks the {@code grouping_parent} chain recursively:
+     *
+     * <ol>
+     * <li><b>Global Administrator shortcut</b> — if the role (or any ancestor) is
+     * the Global Administrator, resolution short-circuits and returns the
+     * {@code "*"} sentinel; callers expand it against the full catalog rather than
+     * materialising every name here.</li>
+     * <li><b>Parent-chain walk</b> — otherwise the role's directly mapped
+     * privileges (system_role_privilege) are unioned with the recursively resolved
+     * set of its parent, so a child role inherits everything its ancestors
+     * grant.</li>
+     * <li><b>Circular-reference guard</b> — the {@code visited} set records every
+     * role id seen on the current walk; re-entering a visited id returns an empty
+     * set instead of recursing, so a mis-seeded parent cycle (A→B→A) terminates
+     * with the privileges collected up to that point rather than overflowing the
+     * stack.</li>
+     * </ol>
+     */
     @Override
     public Set<String> resolveAllPrivilegesForRole(String roleId) {
         if (GenericValidator.isBlankOrNull(roleId)) {
