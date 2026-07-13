@@ -22,9 +22,10 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.jasypt.util.text.TextEncryptor;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.config.condition.ConditionalOnProperty;
-import org.openelisglobal.qa.service.QaPermissionService;
+import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.security.KeystoreUtil.KeyCertPair;
 import org.openelisglobal.security.login.BasicAuthFilter;
 import org.openelisglobal.security.login.CustomAuthenticationFailureHandler;
@@ -301,8 +302,8 @@ public class SecurityConfig {
             // login (CustomUserDetailsService) so hasAuthority('qa.view.x') gates
             // admit SSO users too. Bean fetched lazily — this converter only runs
             // per SAML login, after the data layer is up.
-            for (String permission : SpringContext.getBean(QaPermissionService.class)
-                    .getQaPermissionsForRoleNames(samlRoleNames)) {
+            for (String permission : SpringContext.getBean(RoleModuleService.class)
+                    .getPermittedModuleNames(samlRoleNames, Constants.QA_PERMISSION_PREFIX)) {
                 authorities.add(new SimpleGrantedAuthority(permission));
             }
 

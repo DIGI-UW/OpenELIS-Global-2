@@ -1,4 +1,4 @@
-package org.openelisglobal.qa.service;
+package org.openelisglobal.rolemodule;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -11,6 +11,8 @@ import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -21,13 +23,13 @@ import org.springframework.beans.factory.annotation.Autowired;
  * tables (e.g. role-module.xml) truncates them. The migration itself runs at
  * context start; its content was SQL-mirror verified in dev.
  */
-public class QaPermissionServiceTest extends BaseWebContextSensitiveTest {
+public class RoleModulePermittedNamesTest extends BaseWebContextSensitiveTest {
 
     private static final List<String> ALL_VIEW_KEYS = Arrays.asList("qa.view.overview", "qa.view.qc", "qa.view.eqa",
             "qa.view.qi", "qa.view.qms");
 
     @Autowired
-    private QaPermissionService qaPermissionService;
+    private RoleModuleService roleModuleService;
 
     @Before
     public void setUp() throws Exception {
@@ -37,7 +39,8 @@ public class QaPermissionServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void qaOfficer_bundlesOverviewAndAllFourPillarPermissions() {
-        Set<String> permissions = qaPermissionService.getQaPermissionsForRoleNames(List.of("QA Officer"));
+        Set<String> permissions = roleModuleService.getPermittedModuleNames(List.of("QA Officer"),
+                Constants.QA_PERMISSION_PREFIX);
 
         for (String key : ALL_VIEW_KEYS) {
             assertTrue("QA Officer should hold " + key, permissions.contains(key));
@@ -49,7 +52,8 @@ public class QaPermissionServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void globalAdministrator_holdsAllViewKeys() {
-        Set<String> permissions = qaPermissionService.getQaPermissionsForRoleNames(List.of("Global Administrator"));
+        Set<String> permissions = roleModuleService.getPermittedModuleNames(List.of("Global Administrator"),
+                Constants.QA_PERMISSION_PREFIX);
 
         for (String key : ALL_VIEW_KEYS) {
             assertTrue("Global Administrator should hold " + key, permissions.contains(key));
@@ -59,37 +63,43 @@ public class QaPermissionServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void compatGrants_matchEachRolesPreRegistryAudience() {
         // Reception: overview + qi + eqa + qms, never qc
-        Set<String> reception = qaPermissionService.getQaPermissionsForRoleNames(List.of("Reception"));
+        Set<String> reception = roleModuleService.getPermittedModuleNames(List.of("Reception"),
+                Constants.QA_PERMISSION_PREFIX);
         assertEquals(Set.of("qa.view.overview", "qa.view.qi", "qa.view.eqa", "qa.view.qms"), reception);
 
         // Results: overview + qi + eqa
-        Set<String> results = qaPermissionService.getQaPermissionsForRoleNames(List.of("Results"));
+        Set<String> results = roleModuleService.getPermittedModuleNames(List.of("Results"),
+                Constants.QA_PERMISSION_PREFIX);
         assertEquals(Set.of("qa.view.overview", "qa.view.qi", "qa.view.eqa"), results);
 
         // Validation: overview + qi + qms
-        Set<String> validation = qaPermissionService.getQaPermissionsForRoleNames(List.of("Validation"));
+        Set<String> validation = roleModuleService.getPermittedModuleNames(List.of("Validation"),
+                Constants.QA_PERMISSION_PREFIX);
         assertEquals(Set.of("qa.view.overview", "qa.view.qi", "qa.view.qms"), validation);
     }
 
     @Test
     public void permissionsUnionAcrossRoles() {
-        Set<String> permissions = qaPermissionService
-                .getQaPermissionsForRoleNames(Arrays.asList("Results", "Validation"));
+        Set<String> permissions = roleModuleService.getPermittedModuleNames(Arrays.asList("Results", "Validation"),
+                Constants.QA_PERMISSION_PREFIX);
 
         assertEquals(Set.of("qa.view.overview", "qa.view.qi", "qa.view.eqa", "qa.view.qms"), permissions);
     }
 
     @Test
     public void unknownBlankAndNullRoleNamesYieldNothing() {
-        assertTrue(
-                qaPermissionService.getQaPermissionsForRoleNames(Arrays.asList("No Such Role", " ", null)).isEmpty());
-        assertTrue(qaPermissionService.getQaPermissionsForRoleNames(Collections.emptyList()).isEmpty());
-        assertTrue(qaPermissionService.getQaPermissionsForRoleNames(null).isEmpty());
+        assertTrue(roleModuleService
+                .getPermittedModuleNames(Arrays.asList("No Such Role", " ", null), Constants.QA_PERMISSION_PREFIX)
+                .isEmpty());
+        assertTrue(roleModuleService.getPermittedModuleNames(Collections.emptyList(), Constants.QA_PERMISSION_PREFIX)
+                .isEmpty());
+        assertTrue(roleModuleService.getPermittedModuleNames(null, Constants.QA_PERMISSION_PREFIX).isEmpty());
     }
 
     @Test
     public void roleWithoutQaGrantsYieldsNothing() {
         // Audit Trail is a real seeded role with no qa.* grants in the matrix
-        assertTrue(qaPermissionService.getQaPermissionsForRoleNames(List.of("Audit Trail")).isEmpty());
+        assertTrue(roleModuleService.getPermittedModuleNames(List.of("Audit Trail"), Constants.QA_PERMISSION_PREFIX)
+                .isEmpty());
     }
 }

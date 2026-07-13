@@ -8,9 +8,9 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
-import org.openelisglobal.qa.service.QaPermissionService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
+import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
@@ -36,7 +36,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     RoleService roleService;
 
     @Autowired
-    QaPermissionService qaPermissionService;
+    RoleModuleService roleModuleService;
 
     @Override
     @Transactional(readOnly = true)
@@ -79,7 +79,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         // qa.* permission keys granted to the user's roles become plain
         // authorities so QA REST controllers can gate on hasAuthority
         // ('qa.view.x') per the QA release permission model (FRS §6).
-        authorityNames.addAll(qaPermissionService.getQaPermissionsForRoleNames(roleNames));
+        authorityNames.addAll(roleModuleService.getPermittedModuleNames(roleNames, Constants.QA_PERMISSION_PREFIX));
 
         List<GrantedAuthority> authorities = new ArrayList<>();
         for (String authorityName : authorityNames) {
