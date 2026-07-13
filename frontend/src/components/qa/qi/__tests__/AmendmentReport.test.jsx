@@ -102,7 +102,12 @@ describe("AmendmentReport", () => {
     await renderPage();
 
     expect(
-      screen.getByText("No amendments in this window."),
+      screen.getByText("No amendments in this window"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Amendments appear here when a released result is corrected/,
+      ),
     ).toBeInTheDocument();
   });
 

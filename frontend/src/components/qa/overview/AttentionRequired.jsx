@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
+import { CheckmarkOutline } from "@carbon/icons-react";
 import ComingSoon from "./ComingSoon";
+import QAEmptyState from "../common/QAEmptyState";
 import {
   NCE_DRILL_URL,
   countCriticalPending,
@@ -55,12 +57,24 @@ const AttentionRequired = () => {
   const qcViolations = summary ? summary.qc.violations24h : summary;
   const eqaDue = summary ? summary.eqa.dueSoon14d : summary;
 
+  // All live queues loaded and empty — surface a calm "all clear" above the
+  // rows (placeholders still render below).
+  const allClear = criticalNce === 0 && qcViolations === 0 && eqaDue === 0;
+
   return (
     <section className="qa-overview-section" aria-label={title}>
       <div className="qa-sec-head">
         <h3>{title}</h3>
       </div>
       <div className="qa-cs-rows">
+        {allClear && (
+          <QAEmptyState
+            size="inline"
+            icon={CheckmarkOutline}
+            titleKey="qa.empty.attention.title"
+            subheadKey="qa.empty.attention.subhead"
+          />
+        )}
         <LiveRow
           count={criticalNce}
           labelKey="qa.overview.attention.criticalNce"
