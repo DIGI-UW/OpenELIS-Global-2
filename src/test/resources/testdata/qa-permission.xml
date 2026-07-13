@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Mirrors the liquibase/qa/004 permission registry: the qa.* system_module
+    keys, the QA Officer role, and the grant matrix (compat grants preserve each
+    surface's pre-registry audience). Loaded via the managed dataset path so
+    RoleModulePermittedNamesTest is deterministic regardless of which suite tests
+    truncated these tables earlier (e.g. role-module.xml). The migration's own
+    execution is exercised at context start; its dev-DB content was SQL-mirror
+    verified (see PR #3843). -->
+<dataset>
+    <system_role id="9101" name="QA Officer"
+        description="Laboratory quality assurance oversight"
+        is_grouping_role="false" active="true" editable="false" />
+    <system_role id="9102" name="Global Administrator"
+        description="Global admin" is_grouping_role="false" active="true"
+        editable="false" />
+    <system_role id="9103" name="Reception"
+        description="Sample entry" is_grouping_role="false" active="true"
+        editable="false" />
+    <system_role id="9104" name="Results"
+        description="Results entry" is_grouping_role="false" active="true"
+        editable="false" />
+    <system_role id="9105" name="Validation"
+        description="Validation" is_grouping_role="false" active="true"
+        editable="false" />
+    <system_role id="9106" name="Audit Trail"
+        description="Audit trail viewer, no qa grants"
+        is_grouping_role="false" active="true" editable="false" />
+
+    <system_module id="9201" name="qa.view.overview"
+        description="QA Overview visibility" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9202" name="qa.view.qc"
+        description="Statistical QC pillar visibility" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9203" name="qa.view.eqa"
+        description="EQA pillar visibility" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9204" name="qa.view.qi"
+        description="QI pillar visibility" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9205" name="qa.view.qms"
+        description="QMS pillar visibility" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9206" name="qa.manage.qi"
+        description="Reserved, ungranted in v1" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+
+    <!-- QA Officer: overview + all four pillars -->
+    <system_role_module id="9301" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9101"
+        system_module_id="9201" />
+    <system_role_module id="9302" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9101"
+        system_module_id="9202" />
+    <system_role_module id="9303" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9101"
+        system_module_id="9203" />
+    <system_role_module id="9304" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9101"
+        system_module_id="9204" />
+    <system_role_module id="9305" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9101"
+        system_module_id="9205" />
+
+    <!-- Global Administrator: all view keys -->
+    <system_role_module id="9306" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9102"
+        system_module_id="9201" />
+    <system_role_module id="9307" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9102"
+        system_module_id="9202" />
+    <system_role_module id="9308" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9102"
+        system_module_id="9203" />
+    <system_role_module id="9309" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9102"
+        system_module_id="9204" />
+    <system_role_module id="9310" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9102"
+        system_module_id="9205" />
+
+    <!-- Reception compat: overview + qi + eqa + qms -->
+    <system_role_module id="9311" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9103"
+        system_module_id="9201" />
+    <system_role_module id="9312" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9103"
+        system_module_id="9204" />
+    <system_role_module id="9313" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9103"
+        system_module_id="9203" />
+    <system_role_module id="9314" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9103"
+        system_module_id="9205" />
+
+    <!-- Results compat: overview + qi + eqa -->
+    <system_role_module id="9315" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9104"
+        system_module_id="9201" />
+    <system_role_module id="9316" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9104"
+        system_module_id="9204" />
+    <system_role_module id="9317" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9104"
+        system_module_id="9203" />
+
+    <!-- Validation compat: overview + qi + qms -->
+    <system_role_module id="9318" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9105"
+        system_module_id="9201" />
+    <system_role_module id="9319" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9105"
+        system_module_id="9204" />
+    <system_role_module id="9320" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9105"
+        system_module_id="9205" />
+</dataset>
