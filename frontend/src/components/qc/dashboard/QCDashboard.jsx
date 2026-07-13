@@ -23,6 +23,7 @@ import {
 import { Renew } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import ActiveViolationsBanner from "./ActiveViolationsBanner";
 import QCSummaryTiles from "./QCSummaryTiles";
 import InstrumentsTab from "./InstrumentsTab";
 import AlertsTab from "./AlertsTab";
@@ -186,6 +187,9 @@ const QCDashboard = ({ initialTab = 0 }) => {
           data-testid="qc-dashboard-error"
         />
       )}
+
+      {/* Active Violations Banner */}
+      <ActiveViolationsBanner refreshSignal={lastUpdated} />
 
       {/* Summary Tiles */}
       <QCSummaryTiles summary={summary || {}} loading={loading} />
