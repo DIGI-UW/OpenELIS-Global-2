@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.privilege.valueholder.Privilege;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Read-only service for resolving privileges attached to roles and users.
@@ -57,4 +58,16 @@ public interface PrivilegeService {
      * @return list of all active privileges; never null
      */
     List<Privilege> getAllPrivileges();
+
+    /**
+     * Full effective privilege RECORDS for a role — direct plus inherited, with the
+     * Global Administrator sentinel expanded to the whole catalog. Powers the admin
+     * UI privilege summary panel (spec 012 T041/T042), so it is gated at the
+     * privilege the user-management persona holds.
+     *
+     * @param roleId the string representation of the role numeric PK
+     * @return effective privileges sorted by category then name; never null
+     */
+    @PreAuthorize("hasAuthority('PRIV_USER_MANAGE')")
+    List<Privilege> getEffectivePrivilegesForRole(String roleId);
 }

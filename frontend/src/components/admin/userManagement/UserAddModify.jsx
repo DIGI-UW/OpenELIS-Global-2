@@ -35,6 +35,7 @@ import {
   useServerData,
 } from "../../utils/useServerData";
 import CustomDatePicker from "../../common/CustomDatePicker";
+import RolePrivilegesPanel from "./RolePrivilegesPanel";
 import AutoComplete from "../../common/AutoComplete";
 
 const breadcrumbs = [
@@ -1325,6 +1326,15 @@ function UserAddModify() {
                       )}
                     </FormGroup>
                     <br />
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RolePrivilegesPanel
+                      selectedRoleIds={(userDataShow?.globalRoles || [])
+                        .map((role) => role.roleId)
+                        .filter((roleId) =>
+                          selectedGlobalLabUnitRoles.includes(roleId),
+                        )}
+                    />
                   </Column>
                 </Grid>
                 <Grid fullWidth={true}>
