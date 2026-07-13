@@ -30,7 +30,6 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { InventoryItemTypeAPI } from "../../inventory/InventoryService";
@@ -467,16 +466,6 @@ function InventoryItemTypeManagement() {
   return (
     <div className="adminPageContent">
       {notificationVisible === true ? <AlertDialog /> : ""}
-      <PageBreadCrumb
-        breadcrumbs={[
-          { label: "home.label", link: "/" },
-          { label: "sidenav.label.inventory.management", link: "/inventory" },
-          {
-            label: "inventoryItemType.page.title",
-            link: "/inventory/InventoryItemTypeManagement",
-          },
-        ]}
-      />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
           <h2 style={{ margin: "0.5rem 0 0.25rem" }}>

@@ -199,9 +199,4 @@
   <!-- OGC-658 Part A fix: inventory_item_type was missing the last_updated
        column BaseObject's @Version field requires -->
   <include relativeToChangelogFile="true" file="072-fix-inventory-item-type-last-updated.xml"/>
-
-  <!-- OGC-658: move Inventory Item Types management from Admin > General
-       Configuration to a child of the top-level Inventory menu -->
-  <include relativeToChangelogFile="true" file="061-move-inventory-item-type-menu.xml"/>
-
 </databaseChangeLog>
