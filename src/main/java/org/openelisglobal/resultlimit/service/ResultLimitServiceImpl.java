@@ -108,8 +108,8 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
                 // resolve it here rather than forcing callers to know type ids.
                 target.setResultTypeId(NUMERIC_RESULT_TYPE_ID);
             }
-            // Copy only the editor-managed fields. Valid / reporting ranges and the
-            // dictionary normal are NOT edited here, so leave the managed row's
+            // Copy only the editor-managed fields. Reporting range (per-Method) and
+            // the dictionary normal are NOT edited here, so leave the managed row's
             // existing values intact (a new row keeps its ±Infinity defaults).
             target.setComponentId(incoming.getComponentId());
             target.setGender(incoming.getGender());
@@ -119,6 +119,8 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
             target.setHighNormal(incoming.getHighNormal());
             target.setLowCritical(incoming.getLowCritical());
             target.setHighCritical(incoming.getHighCritical());
+            target.setLowValid(incoming.getLowValid());
+            target.setHighValid(incoming.getHighValid());
             target.setSysUserId(sysUserId);
             if (target.getId() != null) {
                 update(target);

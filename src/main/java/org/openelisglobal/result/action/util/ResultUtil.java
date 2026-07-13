@@ -217,10 +217,27 @@ public class ResultUtil {
         return !GenericValidator.isBlankOrNull(item.getForceTechApproval());
     }
 
+    /**
+     * Multi-component analyses post one TestResultItem per component, all sharing
+     * the same analysisId. The same detached Analysis instance must be reused
+     * across those items so the analysis is registered for update (and later
+     * merged) only once per save; merging a second detached copy after the first
+     * merge flushes fails the optimistic lock on lastupdated and rolls back the
+     * whole transaction.
+     */
+    public static Analysis resolveModifiedAnalysis(ResultsUpdateDataSet actionDataSet, String analysisId) {
+        Analysis analysis = actionDataSet.findModifiedAnalysis(analysisId);
+        if (analysis == null) {
+            analysis = analysisService.get(analysisId);
+            actionDataSet.getModifiedAnalysis().add(analysis);
+        }
+        return analysis;
+    }
+
     public static void createAnalysisOnlyUpdates(ResultsUpdateDataSet actionDataSet, HttpServletRequest request) {
         for (TestResultItem testResultItem : actionDataSet.getAnalysisOnlyChangeResults()) {
 
-            Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+            Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setSysUserId(ControllerUtills.getSysUserId(request));
             analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testResultItem.getTestDate()));
             if (testResultItem.getAnalysisMethod() != null) {
@@ -235,7 +252,6 @@ public class ResultUtil {
                     analysis.setResultFile(resultFile);
                 }
             }
-            actionDataSet.getModifiedAnalysis().add(analysis);
         }
     }
 
@@ -257,15 +273,16 @@ public class ResultUtil {
             }
         }
 
+        Set<String> correctedFlagComputedIds = new HashSet<>();
+
         for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
 
-            Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+            Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
             analysis.setSysUserId(ControllerUtills.getSysUserId(request));
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
-            actionDataSet.getModifiedAnalysis().add(analysis);
 
             actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
                     testResultItem.getNote(), RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
@@ -299,8 +316,13 @@ public class ResultUtil {
             List<Result> results = resultSaveService.createResultsFromTestResultItem(bean,
                     actionDataSet.getDeletableResults());
 
-            analysis.setCorrectedSincePatientReport(
-                    resultSaveService.isUpdatedResult() && analysisService.patientReportHasBeenDone(analysis));
+            boolean correctedSinceReport = resultSaveService.isUpdatedResult()
+                    && analysisService.patientReportHasBeenDone(analysis);
+            if (correctedFlagComputedIds.add(analysis.getId())) {
+                analysis.setCorrectedSincePatientReport(correctedSinceReport);
+            } else if (correctedSinceReport) {
+                analysis.setCorrectedSincePatientReport(true);
+            }
 
             if (analysisService.hasBeenCorrectedSinceLastPatientReport(analysis)) {
                 Note note = noteService.createSavableNote(analysis, NoteType.EXTERNAL,

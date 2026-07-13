@@ -526,6 +526,12 @@ public class TestModifyEntryRestController extends BaseController {
 
         testService.refreshTestNames();
         SpringContext.getBean(TypeOfSampleService.class).clearCache();
+        // Modifying a test may have activated its (previously inactive) test section
+        // (see TestModifyServiceImpl.updateTestSets); refresh the cached section lists
+        // so the section — and its now-assigned tests — surface on Test Section
+        // Management and the order-entry section filter (OGC-1116).
+        DisplayListService.getInstance().refreshList(ListType.TEST_SECTION_ACTIVE);
+        DisplayListService.getInstance().refreshList(ListType.TEST_SECTION_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
         return form;

@@ -111,6 +111,8 @@ const RangesSection = ({ testId }) => {
         highNormal: r.highNormal,
         lowCritical: r.lowCritical,
         highCritical: r.highCritical,
+        lowValid: r.lowValid,
+        highValid: r.highValid,
       })),
     };
     putToOpenElisServer(
@@ -243,6 +245,11 @@ const RangesSection = ({ testId }) => {
               </TableHeader>
               <TableHeader>
                 {intl.formatMessage({
+                  id: "label.testCatalog.ranges.col.valid",
+                })}
+              </TableHeader>
+              <TableHeader>
+                {intl.formatMessage({
                   id: "label.testCatalog.ranges.col.actions",
                 })}
               </TableHeader>
@@ -255,6 +262,7 @@ const RangesSection = ({ testId }) => {
                 <TableCell>{ageLabel(r)}</TableCell>
                 <TableCell>{numRange(r.lowNormal, r.highNormal)}</TableCell>
                 <TableCell>{numRange(r.lowCritical, r.highCritical)}</TableCell>
+                <TableCell>{numRange(r.lowValid, r.highValid)}</TableCell>
                 <TableCell>
                   <Button
                     kind="ghost"
