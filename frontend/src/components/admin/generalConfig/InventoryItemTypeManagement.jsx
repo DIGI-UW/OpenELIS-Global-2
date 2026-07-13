@@ -33,7 +33,6 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { InventoryItemTypeAPI } from "../../inventory/InventoryService";
-import "../../Style.css";
 
 const DEFAULT_LOCALE = { localeCode: "en", displayName: "English" };
 
@@ -464,189 +463,169 @@ function InventoryItemTypeManagement() {
   ];
 
   return (
-    <div className="adminPageContent">
+    <>
       {notificationVisible === true ? <AlertDialog /> : ""}
-      <Grid fullWidth>
-        <Column lg={16} md={8} sm={4}>
-          <h2 style={{ margin: "0.5rem 0 0.25rem" }}>
-            <FormattedMessage
-              id="inventoryItemType.page.title"
-              defaultMessage="Inventory Item Types"
-            />
-          </h2>
-          <p
-            style={{
-              color: "var(--cds-text-secondary)",
-              fontSize: "0.875rem",
-              marginBottom: "1.5rem",
-              maxWidth: "70ch",
-            }}
-          >
-            <FormattedMessage
-              id="inventoryItemType.page.help"
-              defaultMessage="Manage the list of types available when creating an inventory item. Adding, renaming, or deactivating a type takes effect on the Inventory Catalog form immediately, with no code change or redeploy required."
-            />
-          </p>
+      <p
+        style={{
+          color: "var(--cds-text-secondary)",
+          fontSize: "0.875rem",
+          margin: "0 0 1rem",
+          maxWidth: "70ch",
+        }}
+      >
+        <FormattedMessage
+          id="inventoryItemType.page.help"
+          defaultMessage="Manage the list of types available when creating an inventory item. Adding, renaming, or deactivating a type takes effect on the Inventory Catalog form immediately, with no code change or redeploy required."
+        />
+      </p>
 
-          <TableContainer
-            title={intl.formatMessage({
-              id: "inventoryItemType.table.title",
-              defaultMessage: "Item types",
-            })}
-            description={`${filtered.length} ${intl.formatMessage({ id: "of", defaultMessage: "of" })} ${rows.length}`}
-          >
-            <TableToolbar>
-              <TableToolbarContent>
-                <TableToolbarSearch
-                  placeholder={intl.formatMessage({
-                    id: "inventoryItemType.toolbar.search.placeholder",
-                    defaultMessage: "Search by code or name",
-                  })}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+      <TableContainer
+        title={intl.formatMessage({
+          id: "inventoryItemType.table.title",
+          defaultMessage: "Item types",
+        })}
+        description={`${filtered.length} ${intl.formatMessage({ id: "of", defaultMessage: "of" })} ${rows.length}`}
+      >
+        <TableToolbar>
+          <TableToolbarContent>
+            <TableToolbarSearch
+              placeholder={intl.formatMessage({
+                id: "inventoryItemType.toolbar.search.placeholder",
+                defaultMessage: "Search by code or name",
+              })}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Select
+              id="inventory-item-type-active-locale"
+              labelText=""
+              hideLabel
+              inline
+              size="md"
+              value={activeLocale.localeCode}
+              onChange={(e) => {
+                const next = locales.find(
+                  (l) => l.localeCode === e.target.value,
+                );
+                if (next) {
+                  setActiveLocale(next);
+                }
+              }}
+            >
+              {locales.map((loc) => (
+                <SelectItem
+                  key={loc.localeCode}
+                  value={loc.localeCode}
+                  text={`${intl.formatMessage({
+                    id: "inventoryItemType.toolbar.locale.label",
+                    defaultMessage: "Editing in:",
+                  })} ${loc.displayName}`}
                 />
-                <Select
-                  id="inventory-item-type-active-locale"
-                  labelText=""
-                  hideLabel
-                  inline
-                  size="md"
-                  value={activeLocale.localeCode}
-                  onChange={(e) => {
-                    const next = locales.find(
-                      (l) => l.localeCode === e.target.value,
-                    );
-                    if (next) {
-                      setActiveLocale(next);
-                    }
-                  }}
-                >
-                  {locales.map((loc) => (
-                    <SelectItem
-                      key={loc.localeCode}
-                      value={loc.localeCode}
-                      text={`${intl.formatMessage({
-                        id: "inventoryItemType.toolbar.locale.label",
-                        defaultMessage: "Editing in:",
-                      })} ${loc.displayName}`}
-                    />
-                  ))}
-                </Select>
-                <Button
-                  kind="primary"
-                  renderIcon={Add}
-                  onClick={() => {
-                    setAdding(true);
-                    setExpandedId(null);
-                  }}
-                  disabled={adding}
-                >
-                  <FormattedMessage
-                    id="inventoryItemType.button.addItemType"
-                    defaultMessage="Add item type"
-                  />
-                </Button>
-              </TableToolbarContent>
-            </TableToolbar>
+              ))}
+            </Select>
+            <Button
+              kind="primary"
+              renderIcon={Add}
+              onClick={() => {
+                setAdding(true);
+                setExpandedId(null);
+              }}
+              disabled={adding}
+            >
+              <FormattedMessage
+                id="inventoryItemType.button.addItemType"
+                defaultMessage="Add item type"
+              />
+            </Button>
+          </TableToolbarContent>
+        </TableToolbar>
 
-            <Table>
-              <TableHead>
-                <TableRow>
-                  {headers.map((h) => (
-                    <TableHeader key={h.key}>{h.header}</TableHeader>
-                  ))}
+        <Table>
+          <TableHead>
+            <TableRow>
+              {headers.map((h) => (
+                <TableHeader key={h.key}>{h.header}</TableHeader>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {adding && (
+              <>
+                <TableRow style={{ background: "var(--cds-layer-accent-01)" }}>
+                  <TableCell colSpan={headers.length}>
+                    <FormattedMessage
+                      id="inventoryItemType.table.newRow"
+                      defaultMessage="New inventory item type"
+                    />
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {adding && (
-                  <>
-                    <TableRow
-                      style={{ background: "var(--cds-layer-accent-01)" }}
+                <TableRow>
+                  <TableCell colSpan={headers.length} style={{ padding: 0 }}>
+                    <EditPanel
+                      row={blankRow}
+                      isNew
+                      saving={saving}
+                      activeLocale={activeLocale}
+                      onSave={handleSaveNew}
+                      onCancel={() => setAdding(false)}
+                    />
+                  </TableCell>
+                </TableRow>
+              </>
+            )}
+            {filtered.map((row) => (
+              <React.Fragment key={row.id}>
+                <TableRow>
+                  <TableCell>
+                    <code>{row.code}</code>
+                  </TableCell>
+                  <TableCell>{nameFor(row)}</TableCell>
+                  <TableCell>
+                    <StatusTag active={row.active} />
+                  </TableCell>
+                  <TableCell>{row.sortOrder}</TableCell>
+                  <TableCell>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      renderIcon={expandedId === row.id ? Close : Edit}
+                      onClick={() => {
+                        setExpandedId(expandedId === row.id ? null : row.id);
+                        setAdding(false);
+                      }}
                     >
-                      <TableCell colSpan={headers.length}>
-                        <FormattedMessage
-                          id="inventoryItemType.table.newRow"
-                          defaultMessage="New inventory item type"
-                        />
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell
-                        colSpan={headers.length}
-                        style={{ padding: 0 }}
-                      >
-                        <EditPanel
-                          row={blankRow}
-                          isNew
-                          saving={saving}
-                          activeLocale={activeLocale}
-                          onSave={handleSaveNew}
-                          onCancel={() => setAdding(false)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  </>
+                      {expandedId === row.id
+                        ? intl.formatMessage({
+                            id: "label.button.close",
+                            defaultMessage: "Close",
+                          })
+                        : intl.formatMessage({
+                            id: "label.edit",
+                            defaultMessage: "Edit",
+                          })}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                {expandedId === row.id && (
+                  <TableRow>
+                    <TableCell colSpan={headers.length} style={{ padding: 0 }}>
+                      <EditPanel
+                        row={row}
+                        isNew={false}
+                        saving={saving}
+                        activeLocale={activeLocale}
+                        onSave={handleSaveEdit}
+                        onCancel={() => setExpandedId(null)}
+                        onDeactivate={setConfirmDeactivate}
+                      />
+                    </TableCell>
+                  </TableRow>
                 )}
-                {filtered.map((row) => (
-                  <React.Fragment key={row.id}>
-                    <TableRow>
-                      <TableCell>
-                        <code>{row.code}</code>
-                      </TableCell>
-                      <TableCell>{nameFor(row)}</TableCell>
-                      <TableCell>
-                        <StatusTag active={row.active} />
-                      </TableCell>
-                      <TableCell>{row.sortOrder}</TableCell>
-                      <TableCell>
-                        <Button
-                          kind="ghost"
-                          size="sm"
-                          renderIcon={expandedId === row.id ? Close : Edit}
-                          onClick={() => {
-                            setExpandedId(
-                              expandedId === row.id ? null : row.id,
-                            );
-                            setAdding(false);
-                          }}
-                        >
-                          {expandedId === row.id
-                            ? intl.formatMessage({
-                                id: "label.button.close",
-                                defaultMessage: "Close",
-                              })
-                            : intl.formatMessage({
-                                id: "label.edit",
-                                defaultMessage: "Edit",
-                              })}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {expandedId === row.id && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={headers.length}
-                          style={{ padding: 0 }}
-                        >
-                          <EditPanel
-                            row={row}
-                            isNew={false}
-                            saving={saving}
-                            activeLocale={activeLocale}
-                            onSave={handleSaveEdit}
-                            onCancel={() => setExpandedId(null)}
-                            onDeactivate={setConfirmDeactivate}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Column>
-      </Grid>
+              </React.Fragment>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {confirmDeactivate && (
         <Modal
@@ -677,7 +656,7 @@ function InventoryItemTypeManagement() {
           </p>
         </Modal>
       )}
-    </div>
+    </>
   );
 }
 

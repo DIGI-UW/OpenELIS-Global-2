@@ -2708,7 +2708,6 @@
   "inventoryItemType.notify.saveError": "Failed to save item type",
   "inventoryItemType.notify.saved.title": "Changes saved",
   "inventoryItemType.page.help": "Manage the list of types available when creating an inventory item. Adding, renaming, or deactivating a type takes effect on the Inventory Catalog form immediately, with no code change or redeploy required.",
-  "inventoryItemType.page.title": "Inventory Item Types",
   "inventoryItemType.placeholder.code": "Leave blank to auto-generate from name",
   "inventoryItemType.table.newRow": "New inventory item type",
   "inventoryItemType.table.title": "Item types",
