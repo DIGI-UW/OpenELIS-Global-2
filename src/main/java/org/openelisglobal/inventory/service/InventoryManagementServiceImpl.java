@@ -1,8 +1,12 @@
 package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
@@ -14,6 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class InventoryManagementServiceImpl implements InventoryManagementService {
+
+    // inventory_lot.lot_number is VARCHAR(100) — see
+    // 016-inventory-management-system.xml
+    private static final int LOT_NUMBER_MAX_LENGTH = 100;
 
     @Autowired
     private InventoryItemService inventoryItemService;
@@ -118,6 +126,17 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         }
         lotData.setInventoryItem(managedItem);
 
+        // Optional lot number: auto-generate from the item code + today's date
+        // (collision-suffixed _2, _3, ... against this item's existing lot
+        // numbers) if left blank, matching the same auto-generate-or-type
+        // pattern already used for inventory_item.code / inventory_item_type.code.
+        // An explicit, user-typed lot number is left exactly as entered — unlike
+        // those PK-style codes, a lot number is often a manufacturer-provided
+        // value and must not be forced into UPPER_SNAKE.
+        if (lotData.getLotNumber() == null || lotData.getLotNumber().trim().isEmpty()) {
+            lotData.setLotNumber(generateLotNumber(managedItem.getId()));
+        }
+
         // Set initial values
         lotData.setSysUserId(sysUserId);
         lotData.setReceiptDate(new Timestamp(System.currentTimeMillis()));
@@ -135,6 +154,14 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
                 savedLot.getCurrentQuantity(), null, ReferenceType.RECEIPT.name(), "New inventory received", sysUserId);
 
         return savedLot;
+    }
+
+    private String generateLotNumber(String itemId) {
+        String datePart = new SimpleDateFormat("yyyyMMdd").format(new Timestamp(System.currentTimeMillis()));
+        Set<String> existingLotNumbers = inventoryLotService.getByInventoryItemId(itemId).stream()
+                .map(InventoryLot::getLotNumber).collect(Collectors.toSet());
+        return CodeGenerator.generateFromName(itemId + "-" + datePart, LOT_NUMBER_MAX_LENGTH, "LOT",
+                existingLotNumbers::contains);
     }
 
     @Override

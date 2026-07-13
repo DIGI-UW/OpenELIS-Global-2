@@ -141,7 +141,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       return false;
     }
 
-    if (!formData.lotNumber?.trim()) {
+    if (isEdit && !formData.lotNumber?.trim()) {
       setError("Lot number is required");
       return false;
     }
@@ -191,7 +191,9 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       } else {
         const savedLot = await InventoryManagementAPI.receive({
           inventoryItem: { id: formData.inventoryItem.id },
-          lotNumber: formData.lotNumber,
+          // Leave blank to let the server auto-generate one from the item
+          // code + today's date.
+          lotNumber: formData.lotNumber?.trim() || null,
           currentQuantity: formData.currentQuantity,
           initialQuantity: formData.currentQuantity,
           expirationDate: formData.expirationDate
@@ -297,7 +299,24 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             labelText={<FormattedMessage id="lot.number" />}
             value={formData.lotNumber}
             onChange={(e) => handleChange("lotNumber", e.target.value)}
-            required
+            required={isEdit}
+            placeholder={
+              isEdit
+                ? undefined
+                : intl.formatMessage({
+                    id: "lot.number.placeholder",
+                    defaultMessage: "Leave blank to auto-generate",
+                  })
+            }
+            helperText={
+              isEdit
+                ? undefined
+                : intl.formatMessage({
+                    id: "lot.number.hint",
+                    defaultMessage:
+                      "Stable identifier for this lot. Leave blank and we'll generate one from the item code and today's date.",
+                  })
+            }
           />
 
           <NumberInput

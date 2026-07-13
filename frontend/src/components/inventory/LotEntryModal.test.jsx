@@ -185,3 +185,58 @@ describe("LotEntryModal — storage location wiring (OGC-657)", () => {
     expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();
   });
 });
+
+describe("LotEntryModal — auto-generated lot number", () => {
+  it("allows creating a lot with a blank lot number, sending null so the server generates one", async () => {
+    InventoryManagementAPI.receive.mockResolvedValue({ id: 60 });
+    InventoryLotStorageAPI.assignLocation.mockResolvedValue({
+      assignmentId: "1",
+    });
+
+    renderWithIntl(
+      <LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} lot={null} />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: /select catalog item/i }),
+    );
+    fireEvent.click(await screen.findByText("Malaria RDT (RDT)"));
+    fireEvent.change(screen.getByLabelText(/initial quantity/i), {
+      target: { value: "5" },
+    });
+    fireEvent.click(screen.getByText(/assign storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-location"));
+
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(InventoryManagementAPI.receive).toHaveBeenCalledWith(
+        expect.objectContaining({ lotNumber: null }),
+      );
+    });
+  });
+
+  it("still requires a lot number when editing an existing lot", async () => {
+    const lot = {
+      id: 12,
+      inventoryItem: { id: "MALARIA_RDT" },
+      lotNumber: "LOT-12",
+      currentQuantity: 4,
+      status: "ACTIVE",
+      qcStatus: "PENDING",
+    };
+    renderWithIntl(
+      <LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} lot={lot} />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/lot number/i), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText(/lot number is required/i),
+    ).toBeInTheDocument();
+    expect(InventoryLotAPI.update).not.toHaveBeenCalled();
+  });
+});

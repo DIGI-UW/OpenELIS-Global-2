@@ -3068,6 +3068,8 @@
   "lot.form.title.edit": "Edit Inventory Lot",
   "lot.initialQuantity": "Initial Quantity",
   "lot.number": "Lot Number",
+  "lot.number.hint": "Stable identifier for this lot. Leave blank and we'll generate one from the item code and today's date.",
+  "lot.number.placeholder": "Leave blank to auto-generate",
   "lot.qcStatus": "QC Status",
   "lot.receiptDate": "Receipt Date",
   "lot.save.error": "Error saving lot",
