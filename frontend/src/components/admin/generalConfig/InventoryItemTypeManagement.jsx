@@ -470,10 +470,10 @@ function InventoryItemTypeManagement() {
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
-          { label: "admin.label", link: "/admin" },
+          { label: "sidenav.label.inventory.management", link: "/inventory" },
           {
             label: "inventoryItemType.page.title",
-            link: "/admin/InventoryItemTypeManagement",
+            link: "/inventory/InventoryItemTypeManagement",
           },
         ]}
       />

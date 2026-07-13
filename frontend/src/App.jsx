@@ -29,6 +29,7 @@ import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
 import InventoryManagement from "./components/inventory/InventoryManagement";
+import InventoryItemTypeManagement from "./components/admin/generalConfig/InventoryItemTypeManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
 import BoxDetails from "./components/shipment/BoxDetails";
@@ -936,6 +937,12 @@ export default function App() {
                   exact
                   component={() => <InventoryManagement />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory/InventoryItemTypeManagement"
+                  exact
+                  component={() => <InventoryItemTypeManagement />}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/SampleShipment"

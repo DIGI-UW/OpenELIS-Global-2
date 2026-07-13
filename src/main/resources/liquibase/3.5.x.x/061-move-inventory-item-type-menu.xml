@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Move Inventory Item Types management from Admin > General Configuration
+    (/MasterListsPage/InventoryItemTypeManagement, AdminSideNav.jsx) to a child
+    of the top-level Inventory menu (/inventory/InventoryItemTypeManagement),
+    alongside menu_inventory_management (/inventory). Clean cutover, no
+    redirect — same approach as 006-storage-sidenav-rename.xml. The frontend
+    App.jsx removes the /admin and /MasterListsPage sub-route in the same PR,
+    so the old URL now 404s.
+    -->
+    <changeSet id="OGC-658-move-inventory-item-type-menu" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory';
+                </sqlCheck>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory_item_types';
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Add Inventory Item Types as a child of the top-level Inventory menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_inventory')" />
+            <column name="presentation_order" value="2" />
+            <column name="element_id" value="menu_inventory_item_types" />
+            <column name="action_url" value="/inventory/InventoryItemTypeManagement" />
+            <column name="display_key" value="sidenav.label.inventory.itemTypes" />
+            <column name="tool_tip_key" value="sidenav.label.inventory.itemTypes.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.menu WHERE element_id = 'menu_inventory_item_types';
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

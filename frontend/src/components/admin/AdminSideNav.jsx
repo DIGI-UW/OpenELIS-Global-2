@@ -26,7 +26,6 @@ import {
   ConnectionSignal,
   Calendar,
   TrashCan,
-  Tag,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -509,13 +508,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {...navProps(`${path}/DictionaryMenu`)}
       >
         <FormattedMessage id="dictionary.label.modify" />
-      </SideNavLink>
-      <SideNavLink
-        data-cy="inventoryItemTypeMgmt"
-        renderIcon={Tag}
-        {...navProps(`${path}/InventoryItemTypeManagement`)}
-      >
-        <FormattedMessage id="sidenav.label.admin.inventoryItemTypes" />
       </SideNavLink>
       <SideNavLink
         data-cy="notifyUser"
