@@ -199,4 +199,8 @@
   <!-- OGC-658 Part A fix: inventory_item_type was missing the last_updated
        column BaseObject's @Version field requires -->
   <include relativeToChangelogFile="true" file="072-fix-inventory-item-type-last-updated.xml"/>
+
+  <!-- OGC-658: corrective cleanup for environments that already ran the
+       since-deleted 061 changeset (menu_inventory_item_types) -->
+  <include relativeToChangelogFile="true" file="073-remove-inventory-item-type-menu-entry.xml"/>
 </databaseChangeLog>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Corrective cleanup. An earlier iteration of this branch shipped a
+    changeset (061-move-inventory-item-type-menu.xml, since deleted from this
+    branch entirely) that inserted a 'menu_inventory_item_types' child menu
+    row pointing at /inventory/InventoryItemTypeManagement. That design was
+    superseded before merging — Inventory Item Types management is now a tab
+    inside the existing /inventory page (InventoryManagement.jsx), not a
+    separate routed page — so the React route backing that URL no longer
+    exists. Any environment that already ran 061 (Liquibase tracks changesets
+    by id+author in DATABASECHANGELOG and does not retroactively undo one
+    just because its file was deleted) is left with a dead sidenav entry:
+    clicking it hits the SPA catch-all (RedirectOldUI), which forwards to the
+    legacy backend at /api/OpenELIS-Global/inventory/InventoryItemTypeManagement
+    and 404s (NoHandlerFoundException), since no such page ever existed there.
+    This changeset removes that orphaned row wherever it exists.
+    -->
+    <changeSet id="OGC-658-remove-inventory-item-type-menu-entry" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory_item_types';
+            </sqlCheck>
+        </preConditions>
+        <comment>Remove the orphaned Inventory Item Types menu entry (superseded by the /inventory tab)</comment>
+        <sql>
+            DELETE FROM clinlims.menu WHERE element_id = 'menu_inventory_item_types';
+        </sql>
+        <rollback/>
+    </changeSet>
+
+</databaseChangeLog>
