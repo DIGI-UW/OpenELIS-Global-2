@@ -27,6 +27,8 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   hasRole,
+  hasPrivilege,
+  Privileges,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
@@ -134,7 +136,7 @@ function CytologyDashboard() {
       cell.info.header === "assignedCytoPathologist" &&
       !cell.value &&
       status === "READY_FOR_CYTOPATHOLOGIST" &&
-      hasRole(userSessionDetails, "Cytopathologist")
+      hasPrivilege(userSessionDetails, Privileges.RESULT_CYTOPATHOLOGY_SIGN_OFF)
     ) {
       return (
         <TableCell key={cell.id}>

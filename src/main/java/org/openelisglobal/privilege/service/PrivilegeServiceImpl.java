@@ -1,6 +1,8 @@
 package org.openelisglobal.privilege.service;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -135,5 +137,31 @@ public class PrivilegeServiceImpl implements PrivilegeService {
         }
 
         return allPrivileges;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Privilege> getEffectivePrivilegesForRole(String roleId) {
+        Set<String> resolved = resolveAllPrivilegesForRole(roleId);
+        if (resolved.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Privilege> catalog = getAllPrivileges();
+        List<Privilege> effective;
+        if (resolved.contains(Privileges.GLOBAL_ADMIN_SENTINEL)) {
+            effective = new ArrayList<>(catalog);
+        } else {
+            effective = new ArrayList<>();
+            for (Privilege p : catalog) {
+                if (resolved.contains(p.getName())) {
+                    effective.add(p);
+                }
+            }
+        }
+        effective.sort(Comparator
+                .comparing((Privilege p) -> p.getCategory() == null ? "" : p.getCategory(),
+                        String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(Privilege::getName, String.CASE_INSENSITIVE_ORDER));
+        return effective;
     }
 }
