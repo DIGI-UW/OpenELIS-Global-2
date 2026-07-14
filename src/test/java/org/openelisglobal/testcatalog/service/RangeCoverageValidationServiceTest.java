@@ -22,10 +22,15 @@ public class RangeCoverageValidationServiceTest {
     private final RangeCoverageValidationService service = new RangeCoverageValidationService();
 
     private static ResultLimit limit(String gender, double minAge, double maxAge) {
+        return limit(gender, minAge, maxAge, null);
+    }
+
+    private static ResultLimit limit(String gender, double minAge, double maxAge, String componentId) {
         ResultLimit l = new ResultLimit();
         l.setGender(gender);
         l.setMinAge(minAge);
         l.setMaxAge(maxAge);
+        l.setComponentId(componentId);
         return l;
     }
 
@@ -96,6 +101,34 @@ public class RangeCoverageValidationServiceTest {
         CoverageReport r = service.validate(Arrays.asList(limit("M", 0d, Double.POSITIVE_INFINITY)));
         assertEquals(Status.COMPLETE, r.male.status);
         assertEquals(Status.EMPTY, r.female.status);
+    }
+
+    @Test
+    public void sameAgeWindowOnDifferentComponents_isNotAnOverlap() {
+        // Each component is fully covered 0–∞; identical windows on DIFFERENT
+        // components must NOT be reported as an overlap (OGC-1127).
+        CoverageReport r = service.validate(Arrays.asList(limit("M", 0d, Double.POSITIVE_INFINITY, "compA"),
+                limit("M", 0d, Double.POSITIVE_INFINITY, "compB")));
+        assertEquals(Status.COMPLETE, r.male.status);
+        assertTrue(r.male.overlaps.isEmpty());
+    }
+
+    @Test
+    public void overlapWithinTheSameComponent_isStillDetected() {
+        // Two overlapping windows on the SAME component are a real overlap.
+        CoverageReport r = service.validate(
+                Arrays.asList(limit("M", 0d, 5d, "compA"), limit("M", 3d, Double.POSITIVE_INFINITY, "compA")));
+        assertEquals(Status.OVERLAP, r.male.status);
+        assertEquals(1, r.male.overlaps.size());
+    }
+
+    @Test
+    public void gapCarriesItsComponentId() {
+        // A leading gap on component A must be tagged with that component, so the UI
+        // can name which component is uncovered.
+        CoverageReport r = service.validate(Arrays.asList(limit("M", 1d, Double.POSITIVE_INFINITY, "compA")));
+        assertEquals(Status.GAP, r.male.status);
+        assertEquals("compA", r.male.gaps.get(0).componentId);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package org.openelisglobal.testresultcomponent.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -99,6 +100,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setSignificantDigits(d.getSignificantDigits());
                 match.setDefaultResult(d.getDefaultResult());
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
+                match.setIsPrimary(d.getIsPrimary());
+                match.setShowOnReport(d.getShowOnReport());
                 match.setSysUserId(sysUserId);
                 update(match);
                 keptIds.add(match.getId());
@@ -115,6 +118,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     dead.setSignificantDigits(d.getSignificantDigits());
                     dead.setDefaultResult(d.getDefaultResult());
                     dead.setAllowMultipleReadings(d.getAllowMultipleReadings());
+                    dead.setIsPrimary(d.getIsPrimary());
+                    dead.setShowOnReport(d.getShowOnReport());
                     dead.setIsActive("Y");
                     dead.setSysUserId(sysUserId);
                     update(dead);
@@ -138,6 +143,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 }
             }
         }
+        ensureSinglePrimary(testId, sysUserId);
         return baseObjectDAO.getActiveComponentsByTestId(testId);
     }
 
@@ -198,42 +204,68 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         test.setSysUserId(sysUserId);
         testService.update(test);
 
-        String significantDigits = primary.getSignificantDigits() == null ? null
-                : String.valueOf(primary.getSignificantDigits());
+        // Every non-dictionary component gets its own test_result row (typed per
+        // component, linked via component_id) so result entry can bind one Result
+        // field per component. Dictionary components get their rows from their
+        // select-list options. Rows with a NULL component_id are legacy rows and
+        // belong to the primary.
+        List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
         List<TestResult> testResults = testResultService.getAllActiveTestResultsPerTest(test);
-        if (testResults.isEmpty()) {
-            // A test created in the new editor has no legacy test_result row yet, so
-            // getResultType() would fall back to ALPHA. For non-dictionary types
-            // (numeric / free text / titer / alpha) seed a single row carrying the
-            // component's result type; dictionary types get their rows from options.
-            String resultType = primary.getResultType();
-            if (resultType != null && !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(resultType)) {
-                TestResult tr = new TestResult();
-                tr.setTest(test);
-                tr.setTestResultType(resultType);
-                tr.setSortOrder("1");
-                tr.setIsActive(true);
-                tr.setSignificantDigits(significantDigits);
-                tr.setSysUserId(sysUserId);
-                testResultService.insert(tr);
-            }
-        } else {
-            boolean dictionary = primary.getResultType() != null
-                    && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(primary.getResultType());
+        for (TestResultComponent component : components) {
+            boolean isPrimaryComponent = component.getId().equals(primary.getId());
+            List<TestResult> componentRows = new ArrayList<>();
             for (TestResult tr : testResults) {
-                boolean hasValue = tr.getValue() != null && !tr.getValue().trim().isEmpty();
-                if (dictionary && !hasValue) {
-                    tr.setIsActive(false);
+                if (component.getId().equals(tr.getComponentId())
+                        || (isPrimaryComponent && tr.getComponentId() == null)) {
+                    componentRows.add(tr);
+                }
+            }
+            String resultType = component.getResultType();
+            String significantDigits = component.getSignificantDigits() == null ? null
+                    : String.valueOf(component.getSignificantDigits());
+            boolean dictionary = resultType != null
+                    && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(resultType);
+
+            if (dictionary) {
+                // Option rows carry their own type + dictionary value; a value-less
+                // row here is a stale placeholder from a previous non-dictionary
+                // type — deactivate it rather than leaving a broken dictionary row.
+                for (TestResult tr : componentRows) {
+                    boolean hasValue = tr.getValue() != null && !tr.getValue().trim().isEmpty();
+                    if (!hasValue) {
+                        tr.setIsActive(false);
+                        tr.setSysUserId(sysUserId);
+                        testResultService.update(tr);
+                    }
+                }
+                continue;
+            }
+
+            if (componentRows.isEmpty()) {
+                if (resultType != null) {
+                    TestResult tr = new TestResult();
+                    tr.setTest(test);
+                    tr.setTestResultType(resultType);
+                    tr.setSortOrder(
+                            String.valueOf(component.getDisplayOrder() == null ? 1 : component.getDisplayOrder() + 1));
+                    tr.setIsActive(true);
+                    tr.setSignificantDigits(significantDigits);
+                    tr.setComponentId(component.getId());
+                    tr.setSysUserId(sysUserId);
+                    testResultService.insert(tr);
+                }
+            } else {
+                for (TestResult tr : componentRows) {
+                    tr.setSignificantDigits(significantDigits);
+                    if (resultType != null) {
+                        tr.setTestResultType(resultType);
+                    }
+                    if (tr.getComponentId() == null) {
+                        tr.setComponentId(component.getId());
+                    }
                     tr.setSysUserId(sysUserId);
                     testResultService.update(tr);
-                    continue;
                 }
-                tr.setSignificantDigits(significantDigits);
-                if (primary.getResultType() != null) {
-                    tr.setTestResultType(primary.getResultType());
-                }
-                tr.setSysUserId(sysUserId);
-                testResultService.update(tr);
             }
         }
     }
@@ -264,6 +296,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             primary.setUomId(uomId);
             primary.setSignificantDigits(significantDigits);
             primary.setIsActive("Y");
+            primary.setIsPrimary(true);
             primary.setSysUserId(sysUserId);
             insert(primary);
         } else {
@@ -292,19 +325,58 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 resultLimitService.update(rl);
             }
         }
+        ensureSinglePrimary(testId, sysUserId);
     }
 
     private TestResultComponent findPrimaryComponent(String testId) {
         List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
-        if (components.isEmpty()) {
+        return pickPrimary(components);
+    }
+
+    /**
+     * The primary component: the explicit is_primary flag first, then the legacy
+     * PRIMARY code, then the lowest-display-order component (defensive fallback for
+     * data predating the flag).
+     */
+    private TestResultComponent pickPrimary(List<TestResultComponent> components) {
+        if (components == null || components.isEmpty()) {
             return null;
+        }
+        for (TestResultComponent c : components) {
+            if (c.getIsPrimary()) {
+                return c;
+            }
         }
         for (TestResultComponent c : components) {
             if (PRIMARY_CODE.equals(c.getCode())) {
                 return c;
             }
         }
-        return components.get(0);
+        return components.stream()
+                .min(Comparator
+                        .comparingInt(c -> c.getDisplayOrder() == null ? Integer.MAX_VALUE : c.getDisplayOrder()))
+                .orElse(components.get(0));
+    }
+
+    /**
+     * Guarantee exactly one active component carries is_primary. Called after any
+     * component-set change so the flag stays consistent even though the editor DTO
+     * doesn't send it.
+     */
+    private void ensureSinglePrimary(String testId, String sysUserId) {
+        List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
+        TestResultComponent primary = pickPrimary(components);
+        if (primary == null) {
+            return;
+        }
+        for (TestResultComponent c : components) {
+            boolean shouldBePrimary = c.getId().equals(primary.getId());
+            if (c.getIsPrimary() != shouldBePrimary) {
+                c.setIsPrimary(shouldBePrimary);
+                c.setSysUserId(sysUserId);
+                update(c);
+            }
+        }
     }
 
     private static String latestResultType(List<TestResult> newestFirst) {
@@ -371,6 +443,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setSignificantDigits(src.getSignificantDigits());
             copy.setDefaultResult(src.getDefaultResult());
             copy.setAllowMultipleReadings(src.getAllowMultipleReadings());
+            copy.setIsPrimary(src.getIsPrimary());
+            copy.setShowOnReport(src.getShowOnReport());
             copy.setIsActive("Y");
             copy.setSysUserId(sysUserId);
             insert(copy);
@@ -398,5 +472,6 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             }
             testResultService.saveOptionsForComponent(target, copy.getId(), optionCopies, sysUserId);
         }
+        ensureSinglePrimary(targetTestId, sysUserId);
     }
 }

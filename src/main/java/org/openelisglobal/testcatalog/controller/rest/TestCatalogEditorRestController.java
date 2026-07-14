@@ -12,6 +12,7 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -320,6 +321,13 @@ public class TestCatalogEditorRestController {
         params.orderable = body.orderable;
         params.description = body.description;
         String newId = testCatalogCreationService.createInactiveTest(params, ControllerUtills.getSysUserId(request));
+        // Creating a test may have activated a previously-inactive lab unit; refresh
+        // the cached section lists (which back the order-entry section filter) and
+        // clear the sample-type cache so the new sample-type link is picked up once
+        // the test is activated (OGC-1116). Runs post-commit — the service is done.
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        typeOfSampleService.clearCache();
         CreatedTest created = new CreatedTest();
         created.testId = newId;
         return ResponseEntity.status(201).body(created);
@@ -434,6 +442,8 @@ public class TestCatalogEditorRestController {
         public String code;
         public String description;
         public String domain;
+        public String labUnitId;
+        public String sampleTypeId;
         public Boolean antimicrobialResistance;
         public Boolean active;
         public Boolean orderable;
@@ -481,6 +491,20 @@ public class TestCatalogEditorRestController {
         if (body.orderable != null) {
             test.setOrderable(body.orderable);
         }
+        // Lab unit (test section) is editable on modify too (not just create).
+        // Assigning an inactive section activates it, mirroring the create flow and
+        // the legacy Test Section assignment, so the test surfaces on Add Order.
+        if (!isBlank(body.labUnitId) && testSectionService != null) {
+            TestSection section = testSectionService.get(body.labUnitId);
+            if (section != null) {
+                if ("N".equals(section.getIsActive())) {
+                    section.setIsActive("Y");
+                    section.setSysUserId(ControllerUtills.getSysUserId(request));
+                    testSectionService.update(section);
+                }
+                test.setTestSection(section);
+            }
+        }
         // Activation (N→Y) is gated on reference-range coverage (the H-03 safety
         // gate) and must go through POST .../activate; basic-info only persists a
         // deactivation, so it cannot be used to bypass the coverage acknowledgment.
@@ -489,7 +513,43 @@ public class TestCatalogEditorRestController {
         }
         test.setSysUserId(ControllerUtills.getSysUserId(request));
         Test updated = testService.update(test);
+        // Sample type is editable on modify too. The editor models one sample type
+        // per test, so reconcile the type_of_sample_test link to the chosen type
+        // (replace-all, matching the legacy modify flow).
+        if (!isBlank(body.sampleTypeId)) {
+            String sysUserId = ControllerUtills.getSysUserId(request);
+            List<TypeOfSampleTest> current = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId);
+            boolean alreadyLinked = current.size() == 1 && body.sampleTypeId.equals(current.get(0).getTypeOfSampleId());
+            if (!alreadyLinked) {
+                for (TypeOfSampleTest link : current) {
+                    typeOfSampleTestService.delete(link.getId(), sysUserId);
+                }
+                TypeOfSampleTest link = new TypeOfSampleTest();
+                link.setTypeOfSampleId(body.sampleTypeId);
+                link.setTestId(testId);
+                link.setSysUserId(sysUserId);
+                typeOfSampleTestService.insert(link);
+            }
+        }
+        // Reflect active / orderable / lab-unit / sample-type changes in the cached
+        // order-picker lists immediately; otherwise the change lags until an
+        // unrelated refresh (same stale-cache cause as OGC-1116).
+        if (body.active != null || body.orderable != null || !isBlank(body.labUnitId) || !isBlank(body.sampleTypeId)) {
+            refreshTestCaches();
+        }
         return ResponseEntity.ok(toBasicInfo(updated));
+    }
+
+    /**
+     * Rebuild the cached order-picker + section lists after a test/section change.
+     */
+    private void refreshTestCaches() {
+        testService.refreshTestNames();
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ALL_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ORDERABLE_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        typeOfSampleService.clearCache();
     }
 
     /**
@@ -510,6 +570,9 @@ public class TestCatalogEditorRestController {
         info.code = test.getLocalCode();
         info.description = test.getDescription();
         info.domain = test.getDomain();
+        info.labUnitId = test.getTestSection() == null ? null : test.getTestSection().getId();
+        TypeOfSample sampleType = testService.getTypeOfSample(test);
+        info.sampleTypeId = sampleType == null ? null : sampleType.getId();
         info.antimicrobialResistance = Boolean.TRUE.equals(test.getAntimicrobialResistance());
         info.active = test.isActive();
         info.orderable = Boolean.TRUE.equals(test.getOrderable());
@@ -552,6 +615,12 @@ public class TestCatalogEditorRestController {
         public Integer significantDigits;
         public String defaultResult;
         public Boolean allowMultipleReadings;
+        // Exactly one component per test is primary — the one mirrored to the
+        // legacy test columns. The service normalizes to a single primary.
+        public Boolean isPrimary;
+        // Per-component default for printing on the patient report (OGC-1127).
+        // Null/absent = true (backward-compatible: existing components print).
+        public Boolean showOnReport;
         public List<InterpretationDto> interpretations = new ArrayList<>();
         public List<OptionDto> options = new ArrayList<>();
     }
@@ -607,6 +676,8 @@ public class TestCatalogEditorRestController {
             e.setSignificantDigits(c.significantDigits);
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
+            e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
+            e.setShowOnReport(!Boolean.FALSE.equals(c.showOnReport));
             desired.add(e);
 
             List<TestResultInterpretation> interps = new ArrayList<>();
@@ -633,7 +704,10 @@ public class TestCatalogEditorRestController {
                 tr.setValue(o.value);
                 tr.setSortOrder(o.sortOrder != null ? String.valueOf(o.sortOrder) : null);
                 tr.setIsNormal(Boolean.TRUE.equals(o.normal));
-                tr.setTestResultType(o.resultType != null ? o.resultType : c.resultType);
+                // Option rows must carry the component's type ('D'/'M'/'C') —
+                // result entry derives the widget from them, so a stale
+                // per-option type would render the wrong control.
+                tr.setTestResultType(c.resultType != null ? c.resultType : o.resultType);
                 opts.add(tr);
             }
             optionsByCode.put(c.code, opts);
@@ -667,6 +741,8 @@ public class TestCatalogEditorRestController {
             dto.significantDigits = c.getSignificantDigits();
             dto.defaultResult = c.getDefaultResult();
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
+            dto.isPrimary = c.getIsPrimary();
+            dto.showOnReport = c.getShowOnReport();
             for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {
                 InterpretationDto idto = new InterpretationDto();
                 idto.id = i.getId();
@@ -759,6 +835,8 @@ public class TestCatalogEditorRestController {
         public Double highNormal;
         public Double lowCritical;
         public Double highCritical;
+        public Double lowValid;
+        public Double highValid;
         public Double lowReporting;
         public Double highReporting;
     }
@@ -818,8 +896,10 @@ public class TestCatalogEditorRestController {
             limit.setHighNormal(unbox(r.highNormal, Double.POSITIVE_INFINITY));
             limit.setLowCritical(unbox(r.lowCritical, Double.POSITIVE_INFINITY));
             limit.setHighCritical(unbox(r.highCritical, Double.POSITIVE_INFINITY));
-            // Valid / reporting ranges are not edited here; the service preserves
-            // whatever the existing row already had (see saveRangesForTest).
+            limit.setLowValid(unbox(r.lowValid, Double.NEGATIVE_INFINITY));
+            limit.setHighValid(unbox(r.highValid, Double.POSITIVE_INFINITY));
+            // Reporting range is per-Method (not edited in this dialog); the service
+            // preserves whatever the existing row already had (see saveRangesForTest).
             desired.add(limit);
         }
         return desired;
@@ -941,6 +1021,8 @@ public class TestCatalogEditorRestController {
                 copy.highNormal = r.highNormal;
                 copy.lowCritical = r.lowCritical;
                 copy.highCritical = r.highCritical;
+                copy.lowValid = r.lowValid;
+                copy.highValid = r.highValid;
                 perTest.add(copy);
             }
             resultLimitService.saveRangesForTest(testId, toResultLimits(perTest), sysUserId);
@@ -963,12 +1045,44 @@ public class TestCatalogEditorRestController {
             d.highNormal = finiteOrNull(l.getHighNormal());
             d.lowCritical = finiteOrNull(l.getLowCritical());
             d.highCritical = finiteOrNull(l.getHighCritical());
+            d.lowValid = finiteOrNull(l.getLowValid());
+            d.highValid = finiteOrNull(l.getHighValid());
             d.lowReporting = finiteOrNull(l.getLowReportingRange());
             d.highReporting = finiteOrNull(l.getHighReportingRange());
             resp.ranges.add(d);
         }
         resp.coverage = coverageService.validate(limits);
+        // Name the component behind each gap/overlap so the UI can say which
+        // component is uncovered — only meaningful when the test has several.
+        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
+        if (comps.size() > 1) {
+            Map<String, String> labelById = new HashMap<>();
+            for (TestResultComponent c : comps) {
+                labelById.put(c.getId(), isBlank(c.getLabel()) ? c.getCode() : c.getLabel());
+            }
+            labelCoverageComponents(resp.coverage, labelById);
+        }
         return resp;
+    }
+
+    /** Fill in componentLabel on every gap/overlap of the coverage report. */
+    private void labelCoverageComponents(RangeCoverageValidationService.CoverageReport coverage,
+            Map<String, String> labelById) {
+        if (coverage == null) {
+            return;
+        }
+        for (RangeCoverageValidationService.SexCoverage sex : new RangeCoverageValidationService.SexCoverage[] {
+                coverage.male, coverage.female }) {
+            if (sex == null) {
+                continue;
+            }
+            for (RangeCoverageValidationService.AgeInterval interval : sex.gaps) {
+                interval.componentLabel = labelById.get(interval.componentId);
+            }
+            for (RangeCoverageValidationService.AgeInterval interval : sex.overlaps) {
+                interval.componentLabel = labelById.get(interval.componentId);
+            }
+        }
     }
 
     /** ±Infinity / NaN → null so the bound serializes cleanly as JSON. */
@@ -1242,11 +1356,24 @@ public class TestCatalogEditorRestController {
         public String source;
         public String code;
         public String relationship;
+        // Null = test-level mapping (default). Otherwise the id of a result
+        // component of this test that the mapping is scoped to (OGC-1128).
+        public String componentId;
+    }
+
+    /** A result component this test's mappings may be scoped to. */
+    public static class TerminologyComponentDto {
+        public String id;
+        public String code;
+        public String label;
     }
 
     public static class TerminologyResponse {
         public String testId;
         public List<MappingDto> mappings = new ArrayList<>();
+        // The test's active components, so the editor can offer an "Applies to"
+        // scope per mapping row without a second request.
+        public List<TerminologyComponentDto> components = new ArrayList<>();
     }
 
     @GetMapping(value = "/tests/{testId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1265,6 +1392,12 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
+        // Valid scopes: null (test-level) or the id of an active component of this
+        // test.
+        Set<String> componentIds = new HashSet<>();
+        for (TestResultComponent c : componentService.getActiveComponentsByTestId(testId)) {
+            componentIds.add(c.getId());
+        }
         Set<String> seen = new HashSet<>();
         List<TestTerminologyMapping> desired = new ArrayList<>();
         for (MappingDto m : body.mappings) {
@@ -1276,12 +1409,18 @@ public class TestCatalogEditorRestController {
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
-            // (source, code) unique within the request — the DB enforces it per test,
-            // but reject early + cleanly rather than surfacing a raw 500.
-            if (!seen.add(m.source + " " + m.code)) {
+            // A scoped mapping must target a real component of this test.
+            String componentId = isBlank(m.componentId) ? null : m.componentId;
+            if (componentId != null && !componentIds.contains(componentId)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            // (component, source, code) unique within the request — the DB enforces it
+            // per test/scope, but reject early + cleanly rather than surfacing a raw 500.
+            if (!seen.add((componentId == null ? "" : componentId) + " " + m.source + " " + m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             TestTerminologyMapping e = new TestTerminologyMapping();
+            e.setComponentId(componentId);
             e.setSource(m.source);
             e.setCode(m.code);
             e.setRelationship(isBlank(m.relationship) ? null : m.relationship);
@@ -1300,7 +1439,15 @@ public class TestCatalogEditorRestController {
             dto.source = m.getSource();
             dto.code = m.getCode();
             dto.relationship = m.getRelationship();
+            dto.componentId = m.getComponentId();
             resp.mappings.add(dto);
+        }
+        for (TestResultComponent c : componentService.getActiveComponentsByTestId(testId)) {
+            TerminologyComponentDto cd = new TerminologyComponentDto();
+            cd.id = c.getId();
+            cd.code = c.getCode();
+            cd.label = c.getLabel();
+            resp.components.add(cd);
         }
         return resp;
     }

@@ -111,6 +111,8 @@ const RangesSection = ({ testId }) => {
         highNormal: r.highNormal,
         lowCritical: r.lowCritical,
         highCritical: r.highCritical,
+        lowValid: r.lowValid,
+        highValid: r.highValid,
       })),
     };
     putToOpenElisServer(
@@ -139,6 +141,19 @@ const RangesSection = ({ testId }) => {
         }
       },
     );
+  };
+
+  // Only worth a Component column when the test actually has several components.
+  const showComponentColumn = components.length > 1;
+
+  const componentLabel = (id) => {
+    if (!id) {
+      return intl.formatMessage({
+        id: "label.testCatalog.ranges.allComponents",
+      });
+    }
+    const c = components.find((x) => x.id === id);
+    return c ? c.label : id;
   };
 
   const sexLabel = (gender) => {
@@ -225,6 +240,13 @@ const RangesSection = ({ testId }) => {
         <Table size="sm">
           <TableHead>
             <TableRow>
+              {showComponentColumn && (
+                <TableHeader>
+                  {intl.formatMessage({
+                    id: "label.testCatalog.ranges.col.component",
+                  })}
+                </TableHeader>
+              )}
               <TableHeader>
                 {intl.formatMessage({ id: "label.testCatalog.ranges.col.sex" })}
               </TableHeader>
@@ -243,6 +265,11 @@ const RangesSection = ({ testId }) => {
               </TableHeader>
               <TableHeader>
                 {intl.formatMessage({
+                  id: "label.testCatalog.ranges.col.valid",
+                })}
+              </TableHeader>
+              <TableHeader>
+                {intl.formatMessage({
                   id: "label.testCatalog.ranges.col.actions",
                 })}
               </TableHeader>
@@ -251,10 +278,14 @@ const RangesSection = ({ testId }) => {
           <TableBody>
             {ranges.map((r, i) => (
               <TableRow key={r.id || `new-${i}`}>
+                {showComponentColumn && (
+                  <TableCell>{componentLabel(r.componentId)}</TableCell>
+                )}
                 <TableCell>{sexLabel(r.gender)}</TableCell>
                 <TableCell>{ageLabel(r)}</TableCell>
                 <TableCell>{numRange(r.lowNormal, r.highNormal)}</TableCell>
                 <TableCell>{numRange(r.lowCritical, r.highCritical)}</TableCell>
+                <TableCell>{numRange(r.lowValid, r.highValid)}</TableCell>
                 <TableCell>
                   <Button
                     kind="ghost"

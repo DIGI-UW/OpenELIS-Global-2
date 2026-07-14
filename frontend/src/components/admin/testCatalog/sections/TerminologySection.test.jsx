@@ -23,7 +23,7 @@ vi.mock("../../../utils/Utils", () => ({
 
 // ========== IMPORTS ==========
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -47,7 +47,7 @@ beforeEach(() => {
 });
 
 describe("TerminologySection", () => {
-  it("loads and renders existing mappings", async () => {
+  it("loads existing mappings read-only, editable only after clicking Edit", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
       cb({
         testId: "42",
@@ -56,15 +56,20 @@ describe("TerminologySection", () => {
         ],
       }),
     );
-    renderSection();
-    expect(await screen.findByText("1558-6")).toBeInTheDocument();
-    // Source renders as a Tag in the row (LOINC also appears in the add-form
-    // Select, so scope to the row to disambiguate).
-    const row = screen.getByTestId("mapping-row-a");
-    expect(within(row).getByText("LOINC")).toBeInTheDocument();
+    const { container } = renderSection();
+    await screen.findByTestId("mapping-row-a");
+    // Read-only by default: the code renders as text, not an input.
+    expect(screen.getByText("1558-6")).toBeInTheDocument();
+    expect(container.querySelector("#mapping-code-0")).toBeNull();
+
+    // Clicking Edit reveals the editable controls for that row.
+    fireEvent.click(screen.getByTestId("edit-mapping-0"));
+    expect(container.querySelector("#mapping-source-0").value).toBe("LOINC");
+    expect(container.querySelector("#mapping-code-0").value).toBe("1558-6");
+    expect(container.querySelector("#mapping-rel-0").value).toBe("SAME_AS");
   });
 
-  it("adds a mapping via the form and saves it with the payload captured", async () => {
+  it("adds a mapping via the form + Add mapping and saves it", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
       cb({ testId: "42", mappings: [] }),
     );
@@ -90,14 +95,79 @@ describe("TerminologySection", () => {
         name: messages["label.testCatalog.terminology.addMapping"],
       }),
     );
-    // Row now present.
+    // Row now present (read-only display).
     expect(screen.getByText("1558-6")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     const mappings = JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings;
     expect(mappings).toEqual([
-      { id: null, source: "LOINC", code: "1558-6", relationship: "SAME_AS" },
+      {
+        id: null,
+        source: "LOINC",
+        code: "1558-6",
+        relationship: "SAME_AS",
+        componentId: null,
+      },
+    ]);
+  });
+
+  it("saves a filled draft on Save even without clicking Add mapping", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({ testId: "42", mappings: [] }),
+    );
+    renderSection();
+    await screen.findByText(messages["label.testCatalog.terminology.empty"]);
+
+    fireEvent.change(
+      screen.getByLabelText(messages["label.testCatalog.terminology.source"]),
+      { target: { value: "SNOMED" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText(messages["label.testCatalog.terminology.code"]),
+      { target: { value: "12345" } },
+    );
+    // Straight to Save — no "Add mapping" click first.
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual([
+      {
+        id: null,
+        source: "SNOMED",
+        code: "12345",
+        relationship: null,
+        componentId: null,
+      },
+    ]);
+  });
+
+  it("edits an existing mapping in place and persists the change", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({
+        testId: "42",
+        mappings: [
+          { id: "a", source: "LOINC", code: "1558-6", relationship: "SAME_AS" },
+        ],
+      }),
+    );
+    const { container } = renderSection();
+    await screen.findByTestId("mapping-row-a");
+
+    // Fields are editable only after clicking Edit.
+    fireEvent.click(screen.getByTestId("edit-mapping-0"));
+    fireEvent.change(container.querySelector("#mapping-code-0"), {
+      target: { value: "9999-9" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual([
+      {
+        id: "a",
+        source: "LOINC",
+        code: "9999-9",
+        relationship: "SAME_AS",
+        componentId: null,
+      },
     ]);
   });
 
@@ -111,7 +181,7 @@ describe("TerminologySection", () => {
       }),
     );
     renderSection();
-    await screen.findByText("1558-6");
+    await screen.findByTestId("mapping-row-a");
     fireEvent.click(
       screen.getByRole("button", {
         name: messages["label.testCatalog.terminology.remove"],

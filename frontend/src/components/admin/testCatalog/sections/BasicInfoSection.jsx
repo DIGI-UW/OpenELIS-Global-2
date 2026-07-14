@@ -95,18 +95,16 @@ const BasicInfoSection = ({ testId }) => {
     );
   }, [testId, isCreate]);
 
-  // Create form needs the Lab Unit + Sample type reference lists.
+  // Both create and edit need the Lab Unit + Sample type reference lists (they are
+  // editable in both modes).
   useEffect(() => {
-    if (!isCreate) {
-      return;
-    }
     getFromOpenElisServer("/rest/test-catalog/lab-units", (res) =>
       setLabUnits(Array.isArray(res) ? res : []),
     );
     getFromOpenElisServer("/rest/test-catalog/sample-types", (res) =>
       setSampleTypes(Array.isArray(res) ? res : []),
     );
-  }, [isCreate]);
+  }, []);
 
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
   const updateCreate = (patch) =>
@@ -431,6 +429,33 @@ const BasicInfoSection = ({ testId }) => {
         value={form.description || ""}
         onChange={(e) => update({ description: e.target.value })}
         rows={2}
+      />
+
+      <ComboBox
+        id="basic-info-edit-lab-unit"
+        titleText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.labUnit",
+        })}
+        items={labUnits}
+        itemToString={(item) => (item ? item.name : "")}
+        selectedItem={labUnits.find((u) => u.id === form.labUnitId) || null}
+        onChange={({ selectedItem }) =>
+          update({ labUnitId: selectedItem ? selectedItem.id : "" })
+        }
+      />
+      <ComboBox
+        id="basic-info-edit-sample-type"
+        titleText={intl.formatMessage({
+          id: "label.testCatalog.specimenType",
+        })}
+        items={sampleTypes}
+        itemToString={(item) => (item ? item.name : "")}
+        selectedItem={
+          sampleTypes.find((s) => s.id === form.sampleTypeId) || null
+        }
+        onChange={({ selectedItem }) =>
+          update({ sampleTypeId: selectedItem ? selectedItem.id : "" })
+        }
       />
 
       <RadioButtonGroup

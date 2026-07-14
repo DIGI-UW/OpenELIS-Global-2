@@ -175,6 +175,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Autowired
     private TestTerminologyMappingService testTerminologyMappingService;
     @Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
+    @Autowired
     private ResultService resultService;
     @Autowired
     private SampleHumanService sampleHumanService;
@@ -1157,6 +1159,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         // and also covers tests not yet migrated to the terminology editor.
         Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
         for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
+            // Only test-level mappings identify the test itself; component-scoped
+            // mappings (component_id != null) describe a sub-result, not this code.
+            if (mapping.getComponentId() != null) {
+                continue;
+            }
             String system = terminologySystemUrl(mapping.getSource());
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
@@ -1185,6 +1192,63 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     codeableConcept.addCoding(new Coding(system, candidate.code, display));
                 }
             }
+        }
+        return codeableConcept;
+    }
+
+    /**
+     * The active result component a result belongs to (via its test_result's
+     * component_id), or null when the result is not component-scoped / legacy.
+     */
+    private org.openelisglobal.testresultcomponent.valueholder.TestResultComponent resolveResultComponent(String testId,
+            Result result) {
+        String componentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (componentId == null) {
+            return null;
+        }
+        for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent c : testResultComponentService
+                .getActiveComponentsByTestId(testId)) {
+            if (componentId.equals(c.getId())) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The CodeableConcept for a result's Observation. It always starts from the
+     * whole-test codings (the "Applies to = whole test" mappings + legacy LOINC),
+     * so every component Observation still carries the test's identity. When the
+     * result belongs to a component it ALSO gets that component's own codings (the
+     * "Applies to = this component" mappings) — including the primary — so a single
+     * Observation can bear both the test and the component terminology. A
+     * non-primary component additionally gets an OpenELIS coding for its stable
+     * code and the component label as text, so it is individually identifiable.
+     */
+    private CodeableConcept transformResultCodeableConcept(Test test,
+            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component) {
+        // Base: the whole-test codings, applied to every result's Observation.
+        CodeableConcept codeableConcept = transformTestToCodeableConcept(test);
+        if (component == null) {
+            return codeableConcept;
+        }
+        String label = GenericValidator.isBlankOrNull(component.getLabel()) ? component.getCode()
+                : component.getLabel();
+        for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
+            if (!component.getId().equals(mapping.getComponentId())) {
+                continue;
+            }
+            String system = terminologySystemUrl(mapping.getSource());
+            if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
+                continue;
+            }
+            codeableConcept.addCoding(new Coding(system, mapping.getCode(), label));
+        }
+        if (!component.getIsPrimary()) {
+            codeableConcept.addCoding(
+                    new Coding(fhirConfig.getOeFhirSystem() + "/test_result_component", component.getCode(), label));
+            codeableConcept.setText(label);
         }
         return codeableConcept;
     }
@@ -2118,7 +2182,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 observation.setValue(new StringType(result.getValue()));
             }
         }
-        observation.setCode(transformTestToCodeableConcept(test.getId()));
+        // Each result's Observation carries the whole-test codings PLUS, when it
+        // belongs to a component, that component's own codings — so a component
+        // Observation can bear more than one terminology (test + component), and the
+        // primary carries both too (OGC-1128/OGC-1129).
+        org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = resolveResultComponent(
+                test.getId(), result);
+        observation.setCode(transformResultCodeableConcept(test, component));
         observation.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         observation.setSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
         // OGC-356: Environmental samples don't have a patient

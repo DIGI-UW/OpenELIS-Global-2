@@ -1,13 +1,16 @@
 package org.openelisglobal.testcatalog.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testactivation.service.TestActivationAcknowledgmentService;
 import org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -87,8 +90,25 @@ public class TestCatalogActivationRestController {
             ackService.insert(ack);
         }
         test.setIsActive("Y");
+        // Per the FRS lifecycle (Active ⇒ orderable & importable), activating makes
+        // the test orderable so it appears under its sample type on Add Order — that
+        // picker filters to orderable tests, so activation alone wasn't enough
+        // (OGC-1116).
+        test.setOrderable(Boolean.TRUE);
         test.setSysUserId(sysUserId);
         testService.update(test);
+
+        refreshTestCaches();
         return ResponseEntity.ok(report);
+    }
+
+    /**
+     * Rebuild the cached order-picker lists so an activated test is orderable now.
+     */
+    private void refreshTestCaches() {
+        testService.refreshTestNames();
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ALL_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ORDERABLE_TESTS);
+        SpringContext.getBean(TypeOfSampleService.class).clearCache();
     }
 }
