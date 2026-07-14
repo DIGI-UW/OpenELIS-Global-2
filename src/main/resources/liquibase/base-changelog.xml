@@ -38,4 +38,7 @@
   <include file="liquibase/qa/002-add-qi-dashboard-menu.xml" />
   <include file="liquibase/qa/003-add-amendment-report-module.xml" />
   <include file="liquibase/qa/004-add-qa-permission-model.xml" />
+
+  <!-- QA Phase B -->
+  <include file="liquibase/qa/005-add-esig-log-menu.xml" />
 </databaseChangeLog>
