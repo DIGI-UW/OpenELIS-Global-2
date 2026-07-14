@@ -101,6 +101,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setDefaultResult(d.getDefaultResult());
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
                 match.setIsPrimary(d.getIsPrimary());
+                match.setShowOnReport(d.getShowOnReport());
                 match.setSysUserId(sysUserId);
                 update(match);
                 keptIds.add(match.getId());
@@ -118,6 +119,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     dead.setDefaultResult(d.getDefaultResult());
                     dead.setAllowMultipleReadings(d.getAllowMultipleReadings());
                     dead.setIsPrimary(d.getIsPrimary());
+                    dead.setShowOnReport(d.getShowOnReport());
                     dead.setIsActive("Y");
                     dead.setSysUserId(sysUserId);
                     update(dead);
@@ -442,6 +444,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setDefaultResult(src.getDefaultResult());
             copy.setAllowMultipleReadings(src.getAllowMultipleReadings());
             copy.setIsPrimary(src.getIsPrimary());
+            copy.setShowOnReport(src.getShowOnReport());
             copy.setIsActive("Y");
             copy.setSysUserId(sysUserId);
             insert(copy);

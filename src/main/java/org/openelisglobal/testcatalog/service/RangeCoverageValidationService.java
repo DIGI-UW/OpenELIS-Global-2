@@ -2,7 +2,9 @@ package org.openelisglobal.testcatalog.service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +34,11 @@ public class RangeCoverageValidationService {
     public static class AgeInterval {
         public double fromAge;
         public double toAge;
+        // The result component this gap/overlap belongs to (null = test-level). The
+        // id is set here; the human label is filled in by the caller that has the
+        // component catalog, so the UI can name which component is uncovered.
+        public String componentId;
+        public String componentLabel;
 
         public AgeInterval() {
         }
@@ -63,10 +70,71 @@ public class RangeCoverageValidationService {
     private static final double EPSILON = 1e-9;
 
     public CoverageReport validate(List<ResultLimit> limits) {
+        // Ranges for different result components are independent: a Male 0-10 range on
+        // component A and a Male 0-10 range on component B are NOT an overlap. Group by
+        // component (null = test-level, its own group) and validate each group in
+        // isolation, then merge — so overlaps/gaps are only ever reported between
+        // ranges that apply to the same component (OGC-1127/OGC-949).
+        Map<String, List<ResultLimit>> byComponent = new LinkedHashMap<>();
+        for (ResultLimit limit : limits) {
+            String key = limit.getComponentId() == null ? "" : limit.getComponentId();
+            byComponent.computeIfAbsent(key, k -> new ArrayList<>()).add(limit);
+        }
+
         CoverageReport report = new CoverageReport();
-        report.male = coverageForSex(limits, "M");
-        report.female = coverageForSex(limits, "F");
+        report.male = new SexCoverage();
+        report.male.sex = "M";
+        report.female = new SexCoverage();
+        report.female.sex = "F";
+
+        if (byComponent.isEmpty()) {
+            report.male.status = Status.EMPTY;
+            report.female.status = Status.EMPTY;
+            return report;
+        }
+
+        for (Map.Entry<String, List<ResultLimit>> entry : byComponent.entrySet()) {
+            String componentId = entry.getKey().isEmpty() ? null : entry.getKey();
+            mergeSexCoverage(report.male, tagComponent(coverageForSex(entry.getValue(), "M"), componentId));
+            mergeSexCoverage(report.female, tagComponent(coverageForSex(entry.getValue(), "F"), componentId));
+        }
         return report;
+    }
+
+    /** Stamp every gap/overlap of a group's coverage with its component id. */
+    private SexCoverage tagComponent(SexCoverage coverage, String componentId) {
+        for (AgeInterval gap : coverage.gaps) {
+            gap.componentId = componentId;
+        }
+        for (AgeInterval overlap : coverage.overlaps) {
+            overlap.componentId = componentId;
+        }
+        return coverage;
+    }
+
+    /** Fold one component group's coverage into the running per-sex aggregate. */
+    private void mergeSexCoverage(SexCoverage target, SexCoverage part) {
+        target.gaps.addAll(part.gaps);
+        target.overlaps.addAll(part.overlaps);
+        target.status = target.status == null ? part.status : worse(target.status, part.status);
+    }
+
+    /** Precedence for the merged status: GAP > OVERLAP > COMPLETE > EMPTY. */
+    private Status worse(Status a, Status b) {
+        return rank(b) > rank(a) ? b : a;
+    }
+
+    private int rank(Status status) {
+        switch (status) {
+        case GAP:
+            return 3;
+        case OVERLAP:
+            return 2;
+        case COMPLETE:
+            return 1;
+        default:
+            return 0;
+        }
     }
 
     private SexCoverage coverageForSex(List<ResultLimit> limits, String sex) {

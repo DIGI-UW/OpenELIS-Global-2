@@ -741,8 +741,13 @@ public class ResultsLoadUtility {
             return errorItem;
         }
 
-        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(test,
-                currentPatient);
+        // Multi-component rows take their reference range from their own component's
+        // limits (chosen for the patient's age/gender); other rows use the test-level
+        // limits. Either way the selection is patient-conditional (OGC-1127/OGC-949).
+        ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
+        ResultLimit resultLimit = component != null
+                ? resultLimitService.getResultLimitForComponentAndPatient(component.getId(), currentPatient)
+                : resultLimitService.getResultLimitForTestAndPatient(test, currentPatient);
 
         String receivedDate = currSample == null ? getCurrentDate() : currSample.getReceivedDateForDisplay();
         String testMethodName = testService.getTestMethodName(test);

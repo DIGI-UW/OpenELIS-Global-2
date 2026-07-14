@@ -58,17 +58,27 @@ const SexCard = ({ labelId, coverage }) => {
             })}
           </span>
           <ul style={{ marginLeft: "1.25rem", listStyle: "disc" }}>
-            {coverage.gaps.map((gap, i) => (
-              <li key={i} style={{ fontSize: "0.75rem" }}>
-                {intl.formatMessage(
-                  { id: "label.testCatalog.ranges.gapRange" },
-                  {
-                    from: formatAgeDays(gap.fromAge, intl),
-                    to: formatAgeDays(gap.toAge, intl),
-                  },
-                )}
-              </li>
-            ))}
+            {coverage.gaps.map((gap, i) => {
+              const range = intl.formatMessage(
+                { id: "label.testCatalog.ranges.gapRange" },
+                {
+                  from: formatAgeDays(gap.fromAge, intl),
+                  to: formatAgeDays(gap.toAge, intl),
+                },
+              );
+              return (
+                <li key={i} style={{ fontSize: "0.75rem" }}>
+                  {gap.componentLabel
+                    ? intl.formatMessage(
+                        {
+                          id: "label.testCatalog.ranges.coverage.gapWithComponent",
+                        },
+                        { range, component: gap.componentLabel },
+                      )
+                    : range}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

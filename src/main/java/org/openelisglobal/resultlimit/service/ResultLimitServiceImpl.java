@@ -147,8 +147,20 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient) {
-        List<ResultLimit> resultLimits = getResultLimits(testId);
+        return selectForPatient(getResultLimits(testId), patient);
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient) {
+        if (GenericValidator.isBlankOrNull(componentId)) {
+            return null;
+        }
+        return selectForPatient(getResultLimitsByComponentId(componentId), patient);
+    }
+
+    /** Pick the best-matching limit from a pool for the patient's age/gender. */
+    private ResultLimit selectForPatient(List<ResultLimit> resultLimits, Patient patient) {
         if (resultLimits.isEmpty()) {
             return null;
         } else if (patient == null
@@ -254,10 +266,13 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
 
         resultLimits.removeAll(fullySpecifiedLimits);
 
-        // second only age matters
+        // second only age matters — but a gender-specific range must NOT apply to the
+        // other gender (a Male range must never show for a Female patient), so the
+        // age-only fallback is restricted to gender-neutral limits.
         if (resultLimit == null) {
             for (ResultLimit limit : resultLimits) {
-                if (!limit.ageLimitsAreDefault() && patientInAgeRange(patient, limit)) {
+                if (GenericValidator.isBlankOrNull(limit.getGender()) && !limit.ageLimitsAreDefault()
+                        && patientInAgeRange(patient, limit)) {
 
                     resultLimit = limit;
                     break;

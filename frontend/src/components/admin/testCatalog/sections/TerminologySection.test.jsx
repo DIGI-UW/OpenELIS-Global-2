@@ -102,7 +102,13 @@ describe("TerminologySection", () => {
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     const mappings = JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings;
     expect(mappings).toEqual([
-      { id: null, source: "LOINC", code: "1558-6", relationship: "SAME_AS" },
+      {
+        id: null,
+        source: "LOINC",
+        code: "1558-6",
+        relationship: "SAME_AS",
+        componentId: null,
+      },
     ]);
   });
 
@@ -125,7 +131,13 @@ describe("TerminologySection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual([
-      { id: null, source: "SNOMED", code: "12345", relationship: null },
+      {
+        id: null,
+        source: "SNOMED",
+        code: "12345",
+        relationship: null,
+        componentId: null,
+      },
     ]);
   });
 
@@ -149,7 +161,13 @@ describe("TerminologySection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual([
-      { id: "a", source: "LOINC", code: "9999-9", relationship: "SAME_AS" },
+      {
+        id: "a",
+        source: "LOINC",
+        code: "9999-9",
+        relationship: "SAME_AS",
+        componentId: null,
+      },
     ]);
   });
 

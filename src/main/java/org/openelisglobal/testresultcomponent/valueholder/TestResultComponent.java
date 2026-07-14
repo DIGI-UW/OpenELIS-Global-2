@@ -67,6 +67,11 @@ public class TestResultComponent extends BaseObject<String> {
     @Column(name = "is_primary", nullable = false)
     private boolean isPrimary = false;
 
+    // Per-component default for whether this component prints on the patient
+    // report (OGC-1127). Default true so existing components keep printing.
+    @Column(name = "show_on_report", nullable = false)
+    private boolean showOnReport = true;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -123,6 +128,14 @@ public class TestResultComponent extends BaseObject<String> {
 
     public void setIsPrimary(boolean isPrimary) {
         this.isPrimary = isPrimary;
+    }
+
+    public boolean getShowOnReport() {
+        return showOnReport;
+    }
+
+    public void setShowOnReport(boolean showOnReport) {
+        this.showOnReport = showOnReport;
     }
 
     public String getResultType() {
