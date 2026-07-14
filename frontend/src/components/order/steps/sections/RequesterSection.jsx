@@ -807,10 +807,7 @@ const RequesterSection = ({
             <TextInput
               id="siteName"
               labelText={
-                <span>
-                  <FormattedMessage id="site.name" defaultMessage="Site Name" />
-                  <span className="required-indicator"> *</span>
-                </span>
+                <FormattedMessage id="site.name" defaultMessage="Site Name" />
               }
               placeholder={intl.formatMessage({
                 id: "site.name.placeholder",

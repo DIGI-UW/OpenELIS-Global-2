@@ -74,13 +74,10 @@ const CollectionConditionsSection = ({
           <Select
             id="collectionMethod"
             labelText={
-              <span>
-                <FormattedMessage
-                  id="env.collectionMethod"
-                  defaultMessage="Collection Method"
-                />
-                <span style={{ color: "#da1e28" }}> *</span>
-              </span>
+              <FormattedMessage
+                id="env.collectionMethod"
+                defaultMessage="Collection Method"
+              />
             }
             value={environmentalFields.collectionMethod || ""}
             onChange={(e) => updateField("collectionMethod", e.target.value)}

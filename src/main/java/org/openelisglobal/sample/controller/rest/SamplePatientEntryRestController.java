@@ -302,16 +302,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 // and let the bare top-level error fall through, breaking environmental
                 // orders that legitimately omit patient data. Match both forms.
                 List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
-                        .filter(error -> !"patientProperties".equals(error.getField())
-                                && !error.getField().startsWith("patientProperties."))
-                        .collect(Collectors.toList());
+                        .filter(error -> !isPatientFieldError(error)).collect(Collectors.toList());
                 hasNonPatientErrors = !nonPatientErrors.isEmpty();
             }
 
             if (hasNonPatientErrors) {
                 saveErrors(result);
                 logger.warn("SamplePatientEntry 400 (formValidator): {}", result.getAllErrors());
-                return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed"));
+                return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed", workflowType));
             }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
@@ -396,14 +394,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         if (hasNonPatientErrors && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
             // Check if all errors are patient-related
             List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
-                    .filter(error -> !error.getField().startsWith("patientProperties.")).collect(Collectors.toList());
+                    .filter(error -> !isPatientFieldError(error)).collect(Collectors.toList());
             hasNonPatientErrors = !nonPatientErrors.isEmpty();
         }
 
         if (hasNonPatientErrors) {
             saveErrors(result);
             logger.warn("SamplePatientEntry 400 (validateSample): {}", result.getAllErrors());
-            return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed"));
+            return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed", workflowType));
         }
 
         // OGC-584: track persistence failure so we can return a proper HTTP
@@ -525,7 +523,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     && !persistErrorMessage.startsWith("Transaction silently rolled back")) {
                 return ResponseEntity.status(status).body(Map.of("error", persistErrorMessage));
             }
-            return ResponseEntity.status(status).body(buildErrorBody(result, "Failed to save order"));
+            return ResponseEntity.status(status).body(buildErrorBody(result, "Failed to save order", workflowType));
         }
 
         // Belt-and-suspenders: verify the row actually made it to the DB. Guards
@@ -734,20 +732,41 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      * human-readable `error` plus the per-field list — kept separate from the form
      * (success path) to avoid mixing concerns.
      */
+    // True for FieldErrors on the patient sub-form (the bare "patientProperties"
+    // top-level error or any "patientProperties.*" field). Environmental/vector
+    // orders carry no patient, so these are filtered from both the pass/fail
+    // decision and the error body surfaced to the client.
+    private static boolean isPatientFieldError(org.springframework.validation.FieldError fe) {
+        return "patientProperties".equals(fe.getField()) || fe.getField().startsWith("patientProperties.");
+    }
+
     private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage) {
-        org.springframework.validation.FieldError firstFe = result.getFieldError();
+        return buildErrorBody(result, fallbackMessage, null);
+    }
+
+    private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage,
+            String workflowType) {
+        boolean dropPatientErrors = "environmental".equals(workflowType) || "vector".equals(workflowType);
+        // The field errors actually surfaced to the client. For environmental/vector
+        // drop patient-form errors so the reported message reflects the real cause
+        // (e.g. missing requester) rather than a spurious "patientProperties.*" that
+        // the pass/fail logic already ignored.
+        List<org.springframework.validation.FieldError> fieldErrors = result.getFieldErrors().stream()
+                .filter(fe -> !dropPatientErrors || !isPatientFieldError(fe)).collect(Collectors.toList());
+
+        org.springframework.validation.FieldError firstFe = fieldErrors.isEmpty() ? null : fieldErrors.get(0);
         String message;
         if (firstFe != null) {
             message = firstFe.getField() + ": "
                     + (firstFe.getDefaultMessage() != null ? firstFe.getDefaultMessage() : "invalid value");
-        } else if (!result.getAllErrors().isEmpty() && result.getAllErrors().get(0).getDefaultMessage() != null) {
-            message = result.getAllErrors().get(0).getDefaultMessage();
+        } else if (!result.getGlobalErrors().isEmpty() && result.getGlobalErrors().get(0).getDefaultMessage() != null) {
+            message = result.getGlobalErrors().get(0).getDefaultMessage();
         } else {
             message = fallbackMessage;
         }
         Map<String, Object> body = new java.util.HashMap<>();
         body.put("error", message);
-        body.put("fieldErrors", result.getFieldErrors().stream().map(fe -> {
+        body.put("fieldErrors", fieldErrors.stream().map(fe -> {
             Map<String, String> entry = new java.util.HashMap<>();
             entry.put("field", fe.getField());
             entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");

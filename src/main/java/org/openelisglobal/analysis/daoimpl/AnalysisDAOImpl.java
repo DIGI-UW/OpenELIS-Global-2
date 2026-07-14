@@ -61,6 +61,14 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     private static final String QC_SAMPLE_ITEM_NOT_IN_PROFILE = "CAST(a.sampleItem.id AS integer) NOT IN"
             + " (SELECT q.sampleItemId FROM SampleItemQcProfile q)";
 
+    // Pool-anchored counterpart to the "collected" test on a.sampleItem: a vector
+    // pool analysis (a.vectorPoolId set, a.sampleItem NULL per
+    // ck_analysis_pool_or_item) is "collected" when the pool's sample has any
+    // sample_item carrying a collectionDate.
+    private static final String COLLECTED_POOL_HAS_SAMPLE_ITEM = "EXISTS (SELECT 1 FROM VectorPool vp, Sample ps,"
+            + " SampleItem psi WHERE vp.id = cast(a.vectorPoolId as integer) AND vp.sampleId = ps.id"
+            + " AND psi.sample = ps AND psi.collectionDate IS NOT NULL)";
+
     public AnalysisDAOImpl() {
         super(Analysis.class);
     }
@@ -1126,8 +1134,25 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException {
 
         try {
-            String sql = "from Analysis a where a.statusId = :statusId"
-                    + " AND a.sampleItem.collectionDate IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+            // "Collected" spans both anchor kinds (ck_analysis_pool_or_item):
+            // 1. a.sampleItem — clinical/environmental/post-deconvolution analyses,
+            // collected when the sample_item carries a collectionDate, and gated by
+            // the QC-profile exclusion (which keys on sampleItem.id).
+            // 2. a.vectorPoolId — pool-anchored vector analyses with a NULL
+            // sampleItem; collected when the pool's sample has any sample_item with
+            // a collectionDate, and excluded when the pool is a QC pool (any member
+            // sample_item flagged BLANK/CONTROL/DUPLICATE), mirroring the vector
+            // surveillance report's QC_EXCLUDE_POOL. The sample-item QC-profile
+            // clause is scoped to branch 1 only: for a pool row a.sampleItem.id is
+            // NULL, and "NULL NOT IN (non-empty)" is NULL (not true), which would
+            // silently drop every pool row the moment any QC profile exists. LEFT
+            // JOIN (not dotted navigation) keeps pool rows in play so the OR EXISTS
+            // branch can admit them.
+            String sql = "SELECT a FROM Analysis a" //
+                    + " LEFT JOIN a.sampleItem si" //
+                    + " WHERE a.statusId = :statusId" //
+                    + " AND ((si.collectionDate IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
+                    + "  OR " + COLLECTED_POOL_HAS_SAMPLE_ITEM + ")";
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("statusId", statusId);
 
@@ -2002,8 +2027,15 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     // Count corresponding to getCollectedAnalysesForStatusIdExcludingQc.
     @Override
     public int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
-        String hql = "SELECT COUNT(*) From Analysis a WHERE a.statusId IN (:analysisStatusList)"
-                + " AND a.sampleItem.collectionDate IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+        // Mirrors getCollectedAnalysesForStatusIdExcludingQc exactly so the tile
+        // count matches the list — including scoping the QC-profile exclusion to the
+        // sampleItem branch only. See that method for why the OR EXISTS branch and
+        // the branch-scoped QC clause are needed.
+        String hql = "SELECT COUNT(*) From Analysis a" //
+                + " LEFT JOIN a.sampleItem si" //
+                + " WHERE a.statusId IN (:analysisStatusList)" //
+                + " AND ((si.collectionDate IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
+                + "  OR " + COLLECTED_POOL_HAS_SAMPLE_ITEM + ")";
         try {
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
             query.setParameterList("analysisStatusList", statusIdList);
