@@ -1190,7 +1190,7 @@
   "referral.action.openResultEntry": "Open in Result Entry",
   "referral.action.reject": "Reject",
   "referral.banner.filterToStuck": "Filter to stuck only",
-  "referral.banner.stuckReferralsSubtitle": "{count, plural, one {# referral has} other {# referrals have}} been at a reference lab for more than {threshold} days.",
+  "referral.banner.stuckReferralsSubtitle": "{count} referral(s) have been at a reference lab for more than {threshold} day(s).",
   "referral.banner.stuckReferralsTitle": "Stuck referrals detected",
   "referral.box.cannotReconcileMessage": "Cannot reconcile box — {count} samples still awaiting result reconciliation. See Reference Lab Results.",
   "referral.box.viewBlockedReferrals": "View in Reference Lab Results",
