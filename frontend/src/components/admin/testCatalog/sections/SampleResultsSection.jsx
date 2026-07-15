@@ -4,6 +4,7 @@ import {
   Accordion,
   AccordionItem,
   TextInput,
+  NumberInput,
   ComboBox,
   Select,
   SelectItem,
@@ -182,6 +183,25 @@ const SampleResultsSection = ({ testId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
+  // FR-76 — changing the result type resets fields that don't apply to the new
+  // type, so a component can't carry stale numeric units into a select-list type
+  // (or leftover options into a numeric one). Returns the patch to apply.
+  const typeAwareDefaults = (component, nextType) => {
+    const patch = { resultType: nextType };
+    const isSelectList = ["D", "M", "C"].includes(nextType);
+    if (nextType !== "N") {
+      // Numeric-only fields.
+      patch.uomId = "";
+      patch.significantDigits = null;
+      patch.allowMultipleReadings = false;
+    }
+    if (!isSelectList) {
+      // Select-list options are meaningless for non-list types.
+      patch.options = [];
+    }
+    return patch;
+  };
+
   // ── Immutable updaters ─────────────────────────────────────────────────────
   const patchComponent = (ci, patch) =>
     setComponents((prev) =>
@@ -270,7 +290,7 @@ const SampleResultsSection = ({ testId }) => {
             id: "label.testCatalog.sampleResults.resultType",
           })}
           valueSelected={current}
-          onChange={(value) => patchComponent(ci, { resultType: value })}
+          onChange={(value) => patchComponent(ci, typeAwareDefaults(c, value))}
         >
           {PRIMARY_RESULT_TYPES.map(tile)}
           {showAdvanced && ADVANCED_RESULT_TYPES.map(tile)}
@@ -409,6 +429,30 @@ const SampleResultsSection = ({ testId }) => {
     );
     setOptionComboReset((prev) => ({ ...prev, [ci]: (prev[ci] || 0) + 1 }));
   };
+
+  // FR-83 — add a blank, free-text option not backed by a dictionary entry. Its
+  // `value` renders as an editable field (valueName stays null) so the admin can
+  // type a one-off option without first curating a dictionary term.
+  const addCustomOption = (ci) =>
+    setComponents((prev) =>
+      prev.map((c, i) =>
+        i === ci
+          ? {
+              ...c,
+              options: [
+                ...c.options,
+                {
+                  value: "",
+                  valueName: null,
+                  resultType: c.resultType,
+                  sortOrder: c.options.length + 1,
+                  normal: false,
+                },
+              ],
+            }
+          : c,
+      ),
+    );
 
   const addInterpretation = (ci) =>
     setComponents((prev) =>
@@ -761,16 +805,26 @@ const SampleResultsSection = ({ testId }) => {
                         </div>
                       </div>
                     )}
-                    <TextInput
+                    <NumberInput
                       id={`comp-sigdig-${ci}`}
-                      type="number"
-                      labelText={intl.formatMessage({
+                      label={intl.formatMessage({
                         id: "label.testCatalog.sampleResults.significantDigits",
                       })}
-                      value={c.significantDigits ?? ""}
-                      onChange={(e) =>
+                      helperText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.significantDigits.helper",
+                      })}
+                      min={0}
+                      max={10}
+                      allowEmpty
+                      value={
+                        c.significantDigits === null ||
+                        c.significantDigits === undefined
+                          ? ""
+                          : c.significantDigits
+                      }
+                      onChange={(_e, { value }) =>
                         patchComponent(ci, {
-                          significantDigits: e.target.value,
+                          significantDigits: value === "" ? null : value,
                         })
                       }
                     />
@@ -823,6 +877,24 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.options" />
                     </h6>
+                    <p
+                      style={{
+                        color: "var(--cds-text-secondary, #525252)",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder.helper" />
+                    </p>
+                    {(c.options || []).length === 0 && (
+                      <InlineNotification
+                        kind="info"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.options.empty",
+                        })}
+                      />
+                    )}
                     <Table size="sm">
                       <TableHead>
                         <TableRow>
@@ -918,6 +990,15 @@ const SampleResultsSection = ({ testId }) => {
                         addDictionaryOption(ci, selectedItem)
                       }
                     />
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      renderIcon={Add}
+                      data-testid={`add-custom-option-${ci}`}
+                      onClick={() => addCustomOption(ci)}
+                    >
+                      <FormattedMessage id="label.testCatalog.sampleResults.addCustomOption" />
+                    </Button>
                   </>
                 )}
 
@@ -927,6 +1008,16 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
                     </h6>
+                    {(c.interpretations || []).length === 0 && (
+                      <InlineNotification
+                        kind="info"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.interpretations.empty",
+                        })}
+                      />
+                    )}
                     <Table size="sm">
                       <TableHead>
                         <TableRow>

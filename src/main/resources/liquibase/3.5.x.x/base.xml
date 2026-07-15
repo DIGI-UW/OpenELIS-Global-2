@@ -153,4 +153,10 @@
   <!-- OGC-949 / OGC-1129: analyzer target→component mapping columns -->
   <include relativeToChangelogFile="true" file="056-analyzer-component-mapping.xml"/>
 
+  <!-- OGC-1142 / FR-69: terminology mapping display name -->
+  <include relativeToChangelogFile="true" file="057-terminology-display-name.xml"/>
+
+  <!-- OGC-1142 / FR-46-55: specimen-variant grouping link -->
+  <include relativeToChangelogFile="true" file="058-test-variant-link.xml"/>
+
 </databaseChangeLog>

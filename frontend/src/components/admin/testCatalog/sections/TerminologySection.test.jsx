@@ -107,6 +107,7 @@ describe("TerminologySection", () => {
         source: "LOINC",
         code: "1558-6",
         relationship: "SAME_AS",
+        displayName: null,
         componentId: null,
       },
     ]);
@@ -135,7 +136,8 @@ describe("TerminologySection", () => {
         id: null,
         source: "SNOMED",
         code: "12345",
-        relationship: null,
+        relationship: "SAME_AS",
+        displayName: null,
         componentId: null,
       },
     ]);
@@ -166,6 +168,7 @@ describe("TerminologySection", () => {
         source: "LOINC",
         code: "9999-9",
         relationship: "SAME_AS",
+        displayName: null,
         componentId: null,
       },
     ]);

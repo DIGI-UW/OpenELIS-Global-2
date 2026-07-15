@@ -58,7 +58,9 @@ const TerminologySection = ({ testId }) => {
   const [draft, setDraft] = useState({
     source: "",
     code: "",
-    relationship: "",
+    // Relationship is required (FR-70); default to SAME_AS, no "none" option.
+    relationship: "SAME_AS",
+    displayName: "",
     componentId: "",
   });
 
@@ -133,11 +135,18 @@ const TerminologySection = ({ testId }) => {
         id: null,
         source: draft.source,
         code: draft.code,
-        relationship: draft.relationship || null,
+        relationship: draft.relationship || "SAME_AS",
+        displayName: draft.displayName || null,
         componentId: draft.componentId || null,
       },
     ]);
-    setDraft({ source: "", code: "", relationship: "", componentId: "" });
+    setDraft({
+      source: "",
+      code: "",
+      relationship: "SAME_AS",
+      displayName: "",
+      componentId: "",
+    });
   };
 
   const removeMapping = (index) => {
@@ -156,7 +165,8 @@ const TerminologySection = ({ testId }) => {
         id: null,
         source: draft.source,
         code: draft.code,
-        relationship: draft.relationship || null,
+        relationship: draft.relationship || "SAME_AS",
+        displayName: draft.displayName || null,
         componentId: draft.componentId || null,
       });
     }
@@ -170,7 +180,8 @@ const TerminologySection = ({ testId }) => {
         id: m.id || null,
         source: m.source,
         code: m.code,
-        relationship: m.relationship || null,
+        relationship: m.relationship || "SAME_AS",
+        displayName: m.displayName || null,
         componentId: m.componentId || null,
       })),
     };
@@ -192,7 +203,13 @@ const TerminologySection = ({ testId }) => {
           });
           // Refresh with server-assigned ids + recomputed LOINC integrity so the
           // next edit updates in place rather than inserting duplicates.
-          setDraft({ source: "", code: "", relationship: "", componentId: "" });
+          setDraft({
+            source: "",
+            code: "",
+            relationship: "SAME_AS",
+            displayName: "",
+            componentId: "",
+          });
           setEditingRows(new Set());
           loadMappings();
           loadLoincIntegrity();
@@ -284,6 +301,9 @@ const TerminologySection = ({ testId }) => {
                 <FormattedMessage id="label.testCatalog.terminology.col.code" />
               </TableHeader>
               <TableHeader>
+                <FormattedMessage id="label.testCatalog.terminology.col.displayName" />
+              </TableHeader>
+              <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.relationship" />
               </TableHeader>
               <TableHeader>
@@ -339,22 +359,33 @@ const TerminologySection = ({ testId }) => {
                   </TableCell>
                   <TableCell>
                     {editing ? (
+                      <TextInput
+                        id={`mapping-display-${i}`}
+                        labelText=""
+                        value={m.displayName || ""}
+                        placeholder={intl.formatMessage({
+                          id: "label.testCatalog.terminology.displayName.placeholder",
+                        })}
+                        onChange={(e) =>
+                          updateMapping(i, { displayName: e.target.value })
+                        }
+                      />
+                    ) : (
+                      m.displayName || ""
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editing ? (
                       <Select
                         id={`mapping-rel-${i}`}
                         labelText=""
-                        value={m.relationship || ""}
+                        value={m.relationship || "SAME_AS"}
                         onChange={(e) =>
                           updateMapping(i, {
-                            relationship: e.target.value || null,
+                            relationship: e.target.value,
                           })
                         }
                       >
-                        <SelectItem
-                          value=""
-                          text={intl.formatMessage({
-                            id: "label.testCatalog.terminology.rel.none",
-                          })}
-                        />
                         {RELATIONSHIPS.map((r) => (
                           <SelectItem
                             key={r}
@@ -459,6 +490,14 @@ const TerminologySection = ({ testId }) => {
           value={draft.code}
           onChange={(e) => setDraft({ ...draft, code: e.target.value })}
         />
+        <TextInput
+          id="terminology-display-name"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.terminology.col.displayName",
+          })}
+          value={draft.displayName}
+          onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
+        />
         <Select
           id="terminology-relationship"
           labelText={intl.formatMessage({
@@ -467,12 +506,6 @@ const TerminologySection = ({ testId }) => {
           value={draft.relationship}
           onChange={(e) => setDraft({ ...draft, relationship: e.target.value })}
         >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "label.testCatalog.terminology.rel.none",
-            })}
-          />
           {RELATIONSHIPS.map((r) => (
             <SelectItem
               key={r}

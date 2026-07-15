@@ -126,16 +126,6 @@ const TestCatalogEditor = () => {
     );
   };
 
-  const handleSavePlaceholder = (messageId) => {
-    // Section save + clone are wired in their own milestones (M4+ / OGC-944).
-    setNotificationVisible(true);
-    addNotification({
-      kind: "info",
-      title: intl.formatMessage({ id: "label.testCatalog.editor" }),
-      message: intl.formatMessage({ id: messageId }),
-    });
-  };
-
   // Empty state: no test selected (the list view, M3/OGC-928, links here with a testId).
   if (!testId) {
     return (
@@ -208,30 +198,13 @@ const TestCatalogEditor = () => {
           </Section>
         </Column>
 
-        {/* Header CTAs (Save / Save as new test… / Cancel). Save + clone wire in M4+/OGC-944.
-            Create-in-place owns its own Save/Cancel in the Basic Info section. */}
+        {/* Header actions. Saving is per-section (each section owns its own Save),
+            so the header exposes only cross-cutting navigation actions — no header
+            Save. "Save as new test" belongs to the Add-specimen-variant flow (FR-52)
+            and is surfaced there, not as a header placeholder (FR-78). */}
         {!isCreate && (
           <Column lg={16} md={8} sm={4}>
             <div style={{ display: "flex", gap: "0.5rem", margin: "1rem 0" }}>
-              <Button
-                kind="primary"
-                onClick={() =>
-                  handleSavePlaceholder("label.testCatalog.editor.save.pending")
-                }
-              >
-                <FormattedMessage id="label.button.save" />
-              </Button>
-              <Button
-                kind="secondary"
-                data-cy="save-as-new-test"
-                onClick={() =>
-                  handleSavePlaceholder(
-                    "label.testCatalog.editor.clone.pending",
-                  )
-                }
-              >
-                <FormattedMessage id="label.testCatalog.editor.saveAsNew" />
-              </Button>
               <Button
                 kind="ghost"
                 data-testid="edit-related-tests"

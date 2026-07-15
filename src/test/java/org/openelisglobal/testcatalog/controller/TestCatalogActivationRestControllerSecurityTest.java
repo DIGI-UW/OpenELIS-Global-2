@@ -10,6 +10,8 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testactivation.service.TestActivationAcknowledgmentService;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestController;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.springframework.context.annotation.Bean;
@@ -78,7 +80,8 @@ public class TestCatalogActivationRestControllerSecurityTest extends SecuritySli
         TestCatalogActivationRestController testActivationRestController(TestService testService) {
             // Only the auth ordering is under test; the collaborators are unused here.
             return new TestCatalogActivationRestController(testService, mock(ResultLimitService.class),
-                    mock(RangeCoverageValidationService.class), mock(TestActivationAcknowledgmentService.class));
+                    mock(RangeCoverageValidationService.class), mock(TestActivationAcknowledgmentService.class),
+                    mock(TestResultComponentService.class), mock(TestResultService.class));
         }
     }
 }
