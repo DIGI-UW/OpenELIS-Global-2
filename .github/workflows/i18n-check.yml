@@ -70,3 +70,25 @@ jobs:
               sys.exit(1)
           print('i18n source-of-truth OK — only en.json modified')
           "
+
+  check-duplicate-values:
+    name: Duplicate value check (warn-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Warn when new keys duplicate existing English values
+        run: |
+          git show origin/${{ github.base_ref }}:frontend/src/languages/en.json > /tmp/base-en.json
+          node frontend/scripts/i18n-check.js --duplicates /tmp/base-en.json
+
+  check-missing-keys:
+    name: Missing key check (warn-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Warn for ids referenced in code but missing from en.json
+        run: node frontend/scripts/i18n-check.js --missing
