@@ -1071,7 +1071,7 @@
   "notificationtrigger.column.trigger": "Trigger",
   "notificationtrigger.config.subtitle": "Enable or disable notification triggers, select delivery channels, and configure recipient types per event.",
   "notificationtrigger.config.title": "Notification Trigger Configuration",
-  "notificationtrigger.disabled.hint": "",
+  "notificationtrigger.disabled.hint": "Enable this trigger to configure its channels and recipients.",
   "notificationtrigger.override.comingsoon": "Per-lab-unit override is not available yet.",
   "notificationtrigger.override.configure": "Configure",
   "notificationtrigger.recipient.coccontact": "CoC Contact",
