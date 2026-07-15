@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.provider.dao;
 
+import java.util.Date;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -68,4 +69,7 @@ public interface ProviderDAO extends BaseDAO<Provider, String> {
      * @return count of matching providers
      */
     int getTotalSearchedProviderCountByPhone(String phone);
+
+    List<Provider> getProvidersByLastUpdated(Date fromDate, Date toDate, int pageStart, int pageSize);
+
 }
