@@ -125,8 +125,32 @@ const TerminologySection = ({ testId }) => {
       prev.map((m, i) => (i === index ? { ...m, ...patch } : m)),
     );
 
+  // A mapping's identity is (source, code, scope). Warn specifically on a
+  // duplicate — the backend rejects it with a bodyless 422, which used to
+  // surface as nothing more than a generic failure.
+  const mappingKey = (m) =>
+    `${m.source}|${(m.code || "").trim()}|${m.componentId || ""}`;
+
+  const notifyDuplicate = (m) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind: "error",
+      title: intl.formatMessage({
+        id: "label.testCatalog.section.terminology",
+      }),
+      message: intl.formatMessage(
+        { id: "error.testCatalog.terminology.duplicate" },
+        { source: m.source, code: (m.code || "").trim() },
+      ),
+    });
+  };
+
   const addMapping = () => {
     if (!draft.source || !draft.code) {
+      return;
+    }
+    if (mappings.some((m) => mappingKey(m) === mappingKey(draft))) {
+      notifyDuplicate(draft);
       return;
     }
     setMappings((prev) => [
@@ -173,6 +197,18 @@ const TerminologySection = ({ testId }) => {
     // Persist only complete rows (source + code); drop blank/partial ones.
     const complete = all.filter((m) => m.source && m.code);
 
+    // Duplicate (source, code, scope) — catch it here with a specific message
+    // (in-place edits can collide too, not just the add form).
+    const seen = new Set();
+    for (const m of complete) {
+      const key = mappingKey(m);
+      if (seen.has(key)) {
+        notifyDuplicate(m);
+        return;
+      }
+      seen.add(key);
+    }
+
     setSaving(true);
     const payload = {
       testId,
@@ -213,6 +249,18 @@ const TerminologySection = ({ testId }) => {
           setEditingRows(new Set());
           loadMappings();
           loadLoincIntegrity();
+        } else if (status === 422) {
+          // Server-side validation (duplicate mapping, unknown source/relationship,
+          // stale component scope) — name the cause instead of a generic failure.
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.terminology",
+            }),
+            message: intl.formatMessage({
+              id: "error.testCatalog.terminology.invalid",
+            }),
+          });
         } else {
           addNotification({
             kind: "error",

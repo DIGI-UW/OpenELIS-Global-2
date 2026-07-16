@@ -59,13 +59,23 @@ const PlainPanel = ({ children }) => <div>{children}</div>;
  * the admin edits. Disabled so nothing is entered/saved from it.
  */
 const ResultEntryPreview = ({ component, uoms, intl }) => {
-  const type = component.resultType || "N";
+  const type = component.resultType || null;
   const label = component.label || component.code || "";
   const options = component.options || [];
   const unit = (uoms.find((u) => u.id === component.uomId) || {}).value || "";
 
   let control = null;
-  if (type === "N") {
+  if (type === null) {
+    // FR-56 — the pre-seeded component carries no result type until the admin
+    // explicitly picks one; say so instead of previewing a control that lies.
+    control = (
+      <p style={{ color: "var(--cds-text-secondary, #525252)" }}>
+        {intl.formatMessage({
+          id: "label.testCatalog.sampleResults.preview.noType",
+        })}
+      </p>
+    );
+  } else if (type === "N") {
     control = (
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
         <TextInput id="preview-n" labelText="" placeholder="0" disabled />
@@ -250,9 +260,13 @@ const SampleResultsSection = ({ testId }) => {
       parts.push(c.code);
     }
     parts.push(
-      intl.formatMessage({
-        id: `label.testCatalog.sampleResults.resultType.${c.resultType || "N"}`,
-      }),
+      c.resultType
+        ? intl.formatMessage({
+            id: `label.testCatalog.sampleResults.resultType.${c.resultType}`,
+          })
+        : intl.formatMessage({
+            id: "label.testCatalog.sampleResults.resultType.none",
+          }),
     );
     return parts.join(" · ");
   };
@@ -263,7 +277,9 @@ const SampleResultsSection = ({ testId }) => {
   // behind an "Advanced / legacy types" disclosure so a test saved as one of
   // them stays editable without the type being silently dropped (FR-37).
   const renderTypeChooser = (c, ci) => {
-    const current = c.resultType || "N";
+    // No silent default (FR-56): an unset type shows no tile selected, and the
+    // save requires an explicit choice.
+    const current = c.resultType || null;
     const showAdvanced =
       advancedTypesOpen[ci] ?? ADVANCED_RESULT_TYPES.includes(current);
     const tile = (t) => (
@@ -321,7 +337,8 @@ const SampleResultsSection = ({ testId }) => {
         code: prev.length === 0 ? "PRIMARY" : "",
         label: "",
         displayOrder: prev.length + 1,
-        resultType: "N",
+        // The type is an explicit choice (FR-56/28) — no silent Numeric default.
+        resultType: null,
         significantDigits: null,
         defaultResult: "",
         allowMultipleReadings: false,
@@ -504,6 +521,23 @@ const SampleResultsSection = ({ testId }) => {
         message: intl.formatMessage({
           id: "label.testCatalog.sampleResults.labelRequired",
         }),
+      });
+      return;
+    }
+    // FR-56/59 — the result type is a required explicit choice; refuse the save
+    // naming the component rather than persisting a typeless row.
+    const untyped = normalized.find((c) => !c.resultType);
+    if (untyped) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage(
+          { id: "label.testCatalog.sampleResults.resultTypeRequired" },
+          { component: untyped.label || untyped.code },
+        ),
       });
       return;
     }
