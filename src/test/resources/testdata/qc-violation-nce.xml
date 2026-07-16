@@ -1,0 +1,682 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Empty declarations: force truncation of tables this test writes to -->
+    <nc_event />
+    <nce_specimen />
+    <nce_history />
+    <qc_rule_violation />
+
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y" />
+
+    <!-- Analyzers: A=in-control QC recent, B=stale QC, C=count-cap, D=no QC/no
+        prior samples -->
+    <analyzer id="501" name="WG-Analyzer-A" is_active="true"
+        last_updated="2025-06-01 12:00:00" />
+    <analyzer id="502" name="WG-Analyzer-B" is_active="true"
+        last_updated="2025-06-01 12:00:00" />
+    <analyzer id="503" name="WG-Analyzer-C" is_active="true"
+        last_updated="2025-06-01 12:00:00" />
+    <analyzer id="504" name="WG-Analyzer-D" is_active="true"
+        last_updated="2025-06-01 12:00:00" />
+
+    <test id="601" name="WG Glucose" description="WG Glucose"
+        guid="b1d5e7c8-9f12-4b3e-8d67-1e23a4b5c601" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2025-06-01 12:00:00" />
+    <test id="602" name="WG Sodium" description="WG Sodium"
+        guid="b1d5e7c8-9f12-4b3e-8d67-1e23a4b5c602" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2025-06-01 12:00:00" />
+
+    <qc_control_lot id="wg-lot-a"
+        fhir_uuid="44444444-4444-4444-4444-444444444401"
+        product_name="WG Control A" lot_number="WG-A" manufacturer="Bio-Rad"
+        control_level="NORMAL" test_id="601" instrument_id="501"
+        calculation_method="INITIAL_RUNS" manufacturer_mean="100.00000"
+        manufacturer_std_dev="5.00000" activation_date="2025-01-01 00:00:00"
+        expiration_date="2026-12-31 00:00:00" status="ACTIVE" sys_user_id="1"
+        last_updated="2025-06-01 12:00:00" />
+    <qc_control_lot id="wg-lot-b"
+        fhir_uuid="44444444-4444-4444-4444-444444444402"
+        product_name="WG Control B" lot_number="WG-B" manufacturer="Bio-Rad"
+        control_level="NORMAL" test_id="601" instrument_id="502"
+        calculation_method="INITIAL_RUNS" manufacturer_mean="100.00000"
+        manufacturer_std_dev="5.00000" activation_date="2025-01-01 00:00:00"
+        expiration_date="2026-12-31 00:00:00" status="ACTIVE" sys_user_id="1"
+        last_updated="2025-06-01 12:00:00" />
+
+    <!-- A: in-control QC 30 min before the 12:00 violation -->
+    <qc_result id="wg-qcr-a-accepted" control_lot_id="wg-lot-a"
+        test_id="601" instrument_id="501" result_value="100.00000"
+        z_score="0.1000" run_date_time="2025-06-10 11:30:00"
+        result_status="ACCEPTED" sys_user_id="1"
+        last_updated="2025-06-10 11:30:00" />
+    <qc_result id="wg-qcr-a-trigger" control_lot_id="wg-lot-a"
+        test_id="601" instrument_id="501" result_value="121.00000"
+        z_score="4.2000" run_date_time="2025-06-10 12:00:00"
+        result_status="PENDING" sys_user_id="1"
+        last_updated="2025-06-10 12:00:00" />
+    <!-- B: last in-control QC 3 days before the violation (older than the 24h
+        floor) -->
+    <qc_result id="wg-qcr-b-accepted" control_lot_id="wg-lot-b"
+        test_id="601" instrument_id="502" result_value="100.00000"
+        z_score="0.2000" run_date_time="2025-06-07 12:00:00"
+        result_status="ACCEPTED" sys_user_id="1"
+        last_updated="2025-06-07 12:00:00" />
+
+    <sample id="701" accession_number="WG0001" status_id="1"
+        received_date="2025-06-09 00:00:00.0"
+        entered_date="2025-06-09 00:00:00.0"
+        collection_date="2025-06-09 00:00:00.0"
+        lastupdated="2025-06-09 12:00:00" />
+
+    <!-- sample_items: distinct samples are the unit that gets linked -->
+    <sample_item id="801" sort_order="1" status_id="1"
+        samp_id="701" collection_date="2025-06-10 10:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample_item id="802" sort_order="2" status_id="1"
+        samp_id="701" collection_date="2025-06-10 10:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample_item id="803" sort_order="3" status_id="1"
+        samp_id="701" collection_date="2025-06-10 10:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample_item id="804" sort_order="4" status_id="1"
+        samp_id="701" collection_date="2025-06-08 10:00:00"
+        lastupdated="2025-06-08 12:00:00" />
+    <sample_item id="805" sort_order="5" status_id="1"
+        samp_id="701" collection_date="2025-06-09 10:00:00"
+        lastupdated="2025-06-09 18:00:00" />
+    <sample_item id="806" sort_order="6" status_id="1"
+        samp_id="701" collection_date="2025-06-09 10:00:00"
+        lastupdated="2025-06-09 18:00:00" />
+    <sample_item id="807" sort_order="7" status_id="1"
+        samp_id="701" collection_date="2025-06-10 10:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+
+    <!-- Scenario A (analyzer 501 / test 601, in-control QC at 11:30, violation
+        12:00): 801 predates the in-control QC (excluded); 802 has TWO revisions
+        in-window (dedup → one link, latest 9005); 803 in-window; 9004 is another
+        test (excluded). Expect linked samples {802,803}, capReason none_applied. -->
+    <analysis id="9001" sampitem_id="801" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-10 10:30:00"
+        completed_date="2025-06-10 11:00:00" analyzer_id="501"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9001"
+        lastupdated="2025-06-10 11:00:00" />
+    <analysis id="9002" sampitem_id="802" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-10 11:40:00"
+        completed_date="2025-06-10 11:45:00" analyzer_id="501"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9002"
+        lastupdated="2025-06-10 11:45:00" />
+    <analysis id="9005" sampitem_id="802" test_id="601"
+        revision="2" status_id="1" started_date="2025-06-10 11:50:00"
+        completed_date="2025-06-10 11:55:00" analyzer_id="501"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="true"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9005"
+        lastupdated="2025-06-10 11:55:00" />
+    <analysis id="9003" sampitem_id="803" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-10 11:45:00"
+        completed_date="2025-06-10 11:50:00" analyzer_id="501"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9003"
+        lastupdated="2025-06-10 11:50:00" />
+    <analysis id="9004" sampitem_id="801" test_id="602"
+        revision="1" status_id="1" started_date="2025-06-10 11:40:00"
+        completed_date="2025-06-10 11:46:00" analyzer_id="501"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9004"
+        lastupdated="2025-06-10 11:46:00" />
+
+    <!-- Scenario B (analyzer 502 / test 601, stale QC 3 days old → 24h floor):
+        804 completed before the floor (excluded, but makes "samples exist before
+        floor" true → time_24h); 805,806 in-window. Expect linked samples {805,806},
+        capReason time_24h. -->
+    <analysis id="9011" sampitem_id="804" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-08 11:00:00"
+        completed_date="2025-06-08 12:00:00" analyzer_id="502"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9011"
+        lastupdated="2025-06-08 12:00:00" />
+    <analysis id="9012" sampitem_id="805" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 13:00:00" analyzer_id="502"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9012"
+        lastupdated="2025-06-09 13:00:00" />
+    <analysis id="9013" sampitem_id="806" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 17:30:00"
+        completed_date="2025-06-09 18:00:00" analyzer_id="502"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9013"
+        lastupdated="2025-06-09 18:00:00" />
+
+    <!-- Scenario D (analyzer 504 / test 601, NO in-control QC, NO samples before
+        floor): 807 in-window only. Expect linked {807}, capReason none_applied (the
+        fix: not time_24h). -->
+    <analysis id="9200" sampitem_id="807" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-10 11:45:00"
+        completed_date="2025-06-10 11:50:00" analyzer_id="504"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9200"
+        lastupdated="2025-06-10 11:50:00" />
+
+    <sample_item id="900" sort_order="900" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 13:00:00" />
+    <analysis id="9100" sampitem_id="900" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 13:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9100"
+        lastupdated="2025-06-09 13:00:00" />
+    <sample_item id="901" sort_order="901" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 13:10:00" />
+    <analysis id="9101" sampitem_id="901" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 13:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9101"
+        lastupdated="2025-06-09 13:10:00" />
+    <sample_item id="902" sort_order="902" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 13:20:00" />
+    <analysis id="9102" sampitem_id="902" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 13:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9102"
+        lastupdated="2025-06-09 13:20:00" />
+    <sample_item id="903" sort_order="903" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 13:30:00" />
+    <analysis id="9103" sampitem_id="903" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 13:30:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9103"
+        lastupdated="2025-06-09 13:30:00" />
+    <sample_item id="904" sort_order="904" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 13:40:00" />
+    <analysis id="9104" sampitem_id="904" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 13:40:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9104"
+        lastupdated="2025-06-09 13:40:00" />
+    <sample_item id="905" sort_order="905" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 13:50:00" />
+    <analysis id="9105" sampitem_id="905" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 13:50:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9105"
+        lastupdated="2025-06-09 13:50:00" />
+    <sample_item id="906" sort_order="906" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 14:00:00" />
+    <analysis id="9106" sampitem_id="906" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 14:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9106"
+        lastupdated="2025-06-09 14:00:00" />
+    <sample_item id="907" sort_order="907" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 14:10:00" />
+    <analysis id="9107" sampitem_id="907" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 14:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9107"
+        lastupdated="2025-06-09 14:10:00" />
+    <sample_item id="908" sort_order="908" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 14:20:00" />
+    <analysis id="9108" sampitem_id="908" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 14:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9108"
+        lastupdated="2025-06-09 14:20:00" />
+    <sample_item id="909" sort_order="909" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 14:30:00" />
+    <analysis id="9109" sampitem_id="909" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 14:30:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9109"
+        lastupdated="2025-06-09 14:30:00" />
+    <sample_item id="910" sort_order="910" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 14:40:00" />
+    <analysis id="9110" sampitem_id="910" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 14:40:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9110"
+        lastupdated="2025-06-09 14:40:00" />
+    <sample_item id="911" sort_order="911" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 14:50:00" />
+    <analysis id="9111" sampitem_id="911" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 14:50:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9111"
+        lastupdated="2025-06-09 14:50:00" />
+    <sample_item id="912" sort_order="912" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 15:00:00" />
+    <analysis id="9112" sampitem_id="912" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 15:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9112"
+        lastupdated="2025-06-09 15:00:00" />
+    <sample_item id="913" sort_order="913" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 15:10:00" />
+    <analysis id="9113" sampitem_id="913" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 15:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9113"
+        lastupdated="2025-06-09 15:10:00" />
+    <sample_item id="914" sort_order="914" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 15:20:00" />
+    <analysis id="9114" sampitem_id="914" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 15:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9114"
+        lastupdated="2025-06-09 15:20:00" />
+    <sample_item id="915" sort_order="915" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 15:30:00" />
+    <analysis id="9115" sampitem_id="915" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 15:30:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9115"
+        lastupdated="2025-06-09 15:30:00" />
+    <sample_item id="916" sort_order="916" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 15:40:00" />
+    <analysis id="9116" sampitem_id="916" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 15:40:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9116"
+        lastupdated="2025-06-09 15:40:00" />
+    <sample_item id="917" sort_order="917" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 15:50:00" />
+    <analysis id="9117" sampitem_id="917" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 15:50:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9117"
+        lastupdated="2025-06-09 15:50:00" />
+    <sample_item id="918" sort_order="918" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 16:00:00" />
+    <analysis id="9118" sampitem_id="918" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 16:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9118"
+        lastupdated="2025-06-09 16:00:00" />
+    <sample_item id="919" sort_order="919" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 16:10:00" />
+    <analysis id="9119" sampitem_id="919" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 16:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9119"
+        lastupdated="2025-06-09 16:10:00" />
+    <sample_item id="920" sort_order="920" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 16:20:00" />
+    <analysis id="9120" sampitem_id="920" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 16:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9120"
+        lastupdated="2025-06-09 16:20:00" />
+    <sample_item id="921" sort_order="921" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 16:30:00" />
+    <analysis id="9121" sampitem_id="921" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 16:30:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9121"
+        lastupdated="2025-06-09 16:30:00" />
+    <sample_item id="922" sort_order="922" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 16:40:00" />
+    <analysis id="9122" sampitem_id="922" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 16:40:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9122"
+        lastupdated="2025-06-09 16:40:00" />
+    <sample_item id="923" sort_order="923" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 16:50:00" />
+    <analysis id="9123" sampitem_id="923" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 16:50:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9123"
+        lastupdated="2025-06-09 16:50:00" />
+    <sample_item id="924" sort_order="924" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 17:00:00" />
+    <analysis id="9124" sampitem_id="924" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 17:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9124"
+        lastupdated="2025-06-09 17:00:00" />
+    <sample_item id="925" sort_order="925" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 17:10:00" />
+    <analysis id="9125" sampitem_id="925" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 17:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9125"
+        lastupdated="2025-06-09 17:10:00" />
+    <sample_item id="926" sort_order="926" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 17:20:00" />
+    <analysis id="9126" sampitem_id="926" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 17:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9126"
+        lastupdated="2025-06-09 17:20:00" />
+    <sample_item id="927" sort_order="927" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 17:30:00" />
+    <analysis id="9127" sampitem_id="927" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 17:30:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9127"
+        lastupdated="2025-06-09 17:30:00" />
+    <sample_item id="928" sort_order="928" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 17:40:00" />
+    <analysis id="9128" sampitem_id="928" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 17:40:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9128"
+        lastupdated="2025-06-09 17:40:00" />
+    <sample_item id="929" sort_order="929" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 17:50:00" />
+    <analysis id="9129" sampitem_id="929" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 17:50:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9129"
+        lastupdated="2025-06-09 17:50:00" />
+    <sample_item id="930" sort_order="930" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 18:00:00" />
+    <analysis id="9130" sampitem_id="930" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 18:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9130"
+        lastupdated="2025-06-09 18:00:00" />
+    <sample_item id="931" sort_order="931" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 18:10:00" />
+    <analysis id="9131" sampitem_id="931" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 18:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9131"
+        lastupdated="2025-06-09 18:10:00" />
+    <sample_item id="932" sort_order="932" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 18:20:00" />
+    <analysis id="9132" sampitem_id="932" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 18:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9132"
+        lastupdated="2025-06-09 18:20:00" />
+    <sample_item id="933" sort_order="933" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 18:30:00" />
+    <analysis id="9133" sampitem_id="933" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 18:30:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9133"
+        lastupdated="2025-06-09 18:30:00" />
+    <sample_item id="934" sort_order="934" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 18:40:00" />
+    <analysis id="9134" sampitem_id="934" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 18:40:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9134"
+        lastupdated="2025-06-09 18:40:00" />
+    <sample_item id="935" sort_order="935" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 18:50:00" />
+    <analysis id="9135" sampitem_id="935" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 18:50:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9135"
+        lastupdated="2025-06-09 18:50:00" />
+    <sample_item id="936" sort_order="936" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 19:00:00" />
+    <analysis id="9136" sampitem_id="936" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 19:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9136"
+        lastupdated="2025-06-09 19:00:00" />
+    <sample_item id="937" sort_order="937" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 19:10:00" />
+    <analysis id="9137" sampitem_id="937" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 19:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9137"
+        lastupdated="2025-06-09 19:10:00" />
+    <sample_item id="938" sort_order="938" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 19:20:00" />
+    <analysis id="9138" sampitem_id="938" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 19:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9138"
+        lastupdated="2025-06-09 19:20:00" />
+    <sample_item id="939" sort_order="939" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 19:30:00" />
+    <analysis id="9139" sampitem_id="939" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 19:30:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9139"
+        lastupdated="2025-06-09 19:30:00" />
+    <sample_item id="940" sort_order="940" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 19:40:00" />
+    <analysis id="9140" sampitem_id="940" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 19:40:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9140"
+        lastupdated="2025-06-09 19:40:00" />
+    <sample_item id="941" sort_order="941" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 19:50:00" />
+    <analysis id="9141" sampitem_id="941" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 19:50:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9141"
+        lastupdated="2025-06-09 19:50:00" />
+    <sample_item id="942" sort_order="942" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 20:00:00" />
+    <analysis id="9142" sampitem_id="942" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 20:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9142"
+        lastupdated="2025-06-09 20:00:00" />
+    <sample_item id="943" sort_order="943" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 20:10:00" />
+    <analysis id="9143" sampitem_id="943" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 20:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9143"
+        lastupdated="2025-06-09 20:10:00" />
+    <sample_item id="944" sort_order="944" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 20:20:00" />
+    <analysis id="9144" sampitem_id="944" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 20:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9144"
+        lastupdated="2025-06-09 20:20:00" />
+    <sample_item id="945" sort_order="945" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 20:30:00" />
+    <analysis id="9145" sampitem_id="945" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 20:30:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9145"
+        lastupdated="2025-06-09 20:30:00" />
+    <sample_item id="946" sort_order="946" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 20:40:00" />
+    <analysis id="9146" sampitem_id="946" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 20:40:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9146"
+        lastupdated="2025-06-09 20:40:00" />
+    <sample_item id="947" sort_order="947" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 20:50:00" />
+    <analysis id="9147" sampitem_id="947" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 20:50:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9147"
+        lastupdated="2025-06-09 20:50:00" />
+    <sample_item id="948" sort_order="948" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 21:00:00" />
+    <analysis id="9148" sampitem_id="948" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 21:00:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9148"
+        lastupdated="2025-06-09 21:00:00" />
+    <sample_item id="949" sort_order="949" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 21:10:00" />
+    <analysis id="9149" sampitem_id="949" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 21:10:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9149"
+        lastupdated="2025-06-09 21:10:00" />
+    <sample_item id="950" sort_order="950" status_id="1"
+        samp_id="701" collection_date="2025-06-09 12:00:00"
+        lastupdated="2025-06-09 21:20:00" />
+    <analysis id="9150" sampitem_id="950" test_id="601"
+        revision="1" status_id="1" started_date="2025-06-09 12:30:00"
+        completed_date="2025-06-09 21:20:00" analyzer_id="503"
+        analysis_type="ROUTINE" type_of_sample_name="Blood" corrected="false"
+        reflex_trigger="false" result_calculated="false"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9150"
+        lastupdated="2025-06-09 21:20:00" />
+</dataset>

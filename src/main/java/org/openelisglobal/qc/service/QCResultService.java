@@ -1,7 +1,9 @@
 package org.openelisglobal.qc.service;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qc.valueholder.QCResult;
 
@@ -36,4 +38,11 @@ public interface QCResultService extends BaseObjectService<QCResult, String> {
      */
     QCResult createQCResult(String analyzerId, String testId, String controlLotId, String controlLevel,
             BigDecimal resultValue, String unit, LocalDateTime timestamp) throws IllegalArgumentException;
+
+    /**
+     * Most recent accepted (in-control) result for an instrument and test strictly
+     * before the given time; empty if none. Bounds the affected-samples window for
+     * Westgard auto-created NCEs (OGC-728). At most one element.
+     */
+    List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before);
 }
