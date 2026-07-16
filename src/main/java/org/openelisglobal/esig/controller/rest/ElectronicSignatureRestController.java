@@ -1,6 +1,11 @@
 package org.openelisglobal.esig.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +50,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/rest/esig")
 public class ElectronicSignatureRestController extends BaseRestController {
+
+    private static final int MAX_LOG_PAGE_SIZE = 200;
+    private static final long MAX_LOG_DATE_RANGE_DAYS = 366;
 
     @Autowired
     private ElectronicSignatureService electronicSignatureService;
@@ -190,6 +198,70 @@ public class ElectronicSignatureRestController extends BaseRestController {
         List<ElectronicSignature> signatures = electronicSignatureService.getSignaturesForRecord(recordType, recordId);
 
         return ResponseEntity.ok(signatures.stream().map(this::toSignatureResponse).toList());
+    }
+
+    /**
+     * Filterable, paginated signature log (E-Sig Log page, OGC-702). Gated on the
+     * QMS pillar permission from the QA permission registry.
+     */
+    @GetMapping(value = "/log", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<?> getSignatureLog(@RequestParam String fromDate, @RequestParam String toDate,
+            @RequestParam(required = false) Long signerId, @RequestParam(required = false) String meaning,
+            @RequestParam(required = false) String recordType, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int pageSize) {
+
+        if (page < 0) {
+            page = 0;
+        }
+        if (pageSize < 1) {
+            pageSize = 25;
+        }
+        if (pageSize > MAX_LOG_PAGE_SIZE) {
+            pageSize = MAX_LOG_PAGE_SIZE;
+        }
+
+        LocalDate from;
+        LocalDate to;
+        try {
+            from = LocalDate.parse(fromDate);
+            to = LocalDate.parse(toDate);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest()
+                    .body(errorResponse("INVALID_REQUEST", "Invalid date: " + e.getMessage()));
+        }
+        if (from.isAfter(to)) {
+            return ResponseEntity.badRequest()
+                    .body(errorResponse("INVALID_REQUEST", "fromDate must not be after toDate"));
+        }
+        if (ChronoUnit.DAYS.between(from, to) > MAX_LOG_DATE_RANGE_DAYS) {
+            return ResponseEntity.badRequest()
+                    .body(errorResponse("INVALID_REQUEST", "Date range must not exceed 1 year"));
+        }
+
+        SignatureMeaning meaningFilter = null;
+        if (meaning != null && !meaning.isBlank()) {
+            try {
+                meaningFilter = SignatureMeaning.valueOf(meaning);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(errorResponse("INVALID_REQUEST", "Unknown meaning: " + meaning));
+            }
+        }
+        String recordTypeFilter = (recordType == null || recordType.isBlank()) ? null : recordType;
+
+        Timestamp start = Timestamp.valueOf(from.atStartOfDay());
+        Timestamp end = Timestamp.valueOf(to.atTime(LocalTime.MAX));
+
+        List<ElectronicSignature> signatures = electronicSignatureService.searchSignatures(start, end, signerId,
+                meaningFilter, recordTypeFilter, page, pageSize);
+        long totalCount = electronicSignatureService.countSearchSignatures(start, end, signerId, meaningFilter,
+                recordTypeFilter);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("items", signatures.stream().map(this::toSignatureResponse).toList());
+        response.put("totalCount", totalCount);
+        return ResponseEntity.ok(response);
     }
 
     // ========================
