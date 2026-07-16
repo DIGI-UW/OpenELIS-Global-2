@@ -471,6 +471,25 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 optionCopies.add(co);
             }
             testResultService.saveOptionsForComponent(target, copy.getId(), optionCopies, sysUserId);
+
+            // Non-dictionary components need their type-carrying test_result
+            // placeholder row (result entry derives the widget from it) — the
+            // option copy above only covers dictionary rows, so create it here,
+            // mirroring the saveSampleResults reconciliation.
+            String type = copy.getResultType();
+            if (type != null && !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(type)) {
+                TestResult placeholder = new TestResult();
+                placeholder.setTest(target);
+                placeholder.setTestResultType(type);
+                placeholder
+                        .setSortOrder(String.valueOf(copy.getDisplayOrder() == null ? 1 : copy.getDisplayOrder() + 1));
+                placeholder.setIsActive(true);
+                placeholder.setSignificantDigits(
+                        copy.getSignificantDigits() == null ? null : String.valueOf(copy.getSignificantDigits()));
+                placeholder.setComponentId(copy.getId());
+                placeholder.setSysUserId(sysUserId);
+                testResultService.insert(placeholder);
+            }
         }
         ensureSinglePrimary(targetTestId, sysUserId);
     }
