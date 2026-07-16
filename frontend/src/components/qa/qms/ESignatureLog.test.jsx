@@ -111,6 +111,57 @@ describe("ESignatureLog", () => {
     expect(url).toContain("page=0");
   });
 
+  test("filtered export opens the export URL with the applied filters, no paging", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    mockEndpoints();
+    renderPage();
+
+    fireEvent.click(
+      document.querySelector("#esig-log-meaning .cds--list-box__field"),
+    );
+    fireEvent.click(screen.getByRole("option", { name: "Rejected" }));
+    fireEvent.click(screen.getByTestId("esig-log-apply-filters"));
+
+    fireEvent.click(screen.getByTestId("esig-log-export-csv"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const url = openSpy.mock.calls[0][0];
+    expect(url).toContain("/rest/esig/log/export?");
+    expect(url).toContain("meaning=REJECTED");
+    expect(url).not.toContain("page=");
+    openSpy.mockRestore();
+  });
+
+  test("unfiltered export asks for confirmation before opening", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    mockEndpoints();
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("esig-log-export-pdf"));
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(
+      document.querySelector(".cds--modal.is-visible"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][0]).toContain("/rest/esig/log/exportPdf?");
+    openSpy.mockRestore();
+  });
+
+  test("cancelling the unfiltered export confirm does not open anything", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    mockEndpoints();
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("esig-log-export-csv"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(document.querySelector(".cds--modal.is-visible")).toBeNull();
+    openSpy.mockRestore();
+  });
+
   test("clear resets filters back to defaults and refetches", () => {
     mockEndpoints();
     renderPage();
