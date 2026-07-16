@@ -125,6 +125,50 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getAllAnalysisByStatus(List<String> statusIdList, int maxResults)
+            throws LIMSRuntimeException {
+        if (statusIdList == null || statusIdList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            String hql = "SELECT DISTINCT a FROM Analysis a " + "LEFT JOIN FETCH a.sampleItem si "
+                    + "LEFT JOIN FETCH si.sample s " + "LEFT JOIN FETCH si.typeOfSample " + "LEFT JOIN FETCH a.test t "
+                    + "LEFT JOIN FETCH a.testSection ts " + "LEFT JOIN FETCH a.method m "
+                    + "WHERE a.statusId IN (:statusIdList) " + "ORDER BY s.accessionNumber, t.description";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
+            query.setParameterList("statusIdList", statusIdList);
+            if (maxResults > 0) {
+                query.setMaxResults(maxResults);
+            }
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getAllAnalysisByStatus()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) throws LIMSRuntimeException {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            String hql = "SELECT DISTINCT a FROM Analysis a " + "LEFT JOIN FETCH a.sampleItem si "
+                    + "LEFT JOIN FETCH si.sample s " + "LEFT JOIN FETCH si.typeOfSample " + "LEFT JOIN FETCH a.test t "
+                    + "LEFT JOIN FETCH a.testSection ts " + "LEFT JOIN FETCH a.method m "
+                    + "WHERE a.id IN (:analysisIds) " + "ORDER BY s.accessionNumber, t.description";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
+            query.setParameterList("analysisIds", analysisIds);
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getAnalysesByIdsWithDetails()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAllAnalysisByTestsAndStatusAndCompletedDateRange(List<String> testIdList,
             List<String> statusIdList, Date lowDate, Date highDate) throws LIMSRuntimeException {
         try {

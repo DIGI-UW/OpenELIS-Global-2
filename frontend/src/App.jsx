@@ -118,6 +118,7 @@ import PatientHistory from "./components/patient/PatientHistory";
 import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
+import BatchWorkplan from "./components/workplan/BatchWorkplan";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
@@ -1166,6 +1167,12 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
 
+                <SecureRoute
+                  path="/Workplan"
+                  exact
+                  component={() => <BatchWorkplan />}
+                  role={Roles.RESULTS}
+                />
                 <SecureRoute
                   path="/WorkPlanByTestSection"
                   exact
