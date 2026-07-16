@@ -16,6 +16,9 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationServiceImpl;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -133,6 +136,10 @@ public class TestCatalogEditorRestController {
     // Field-injected (optional) for the FR-46 grouped list view.
     @Autowired(required = false)
     private org.openelisglobal.testvariant.service.TestVariantLinkService variantLinkService;
+
+    // Field-injected (optional) for the FR-43 panel-create name localization.
+    @Autowired(required = false)
+    private LocalizationService localizationService;
 
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
@@ -1613,12 +1620,22 @@ public class TestCatalogEditorRestController {
         if (body == null || isBlank(body.name)) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        String name = body.name.trim();
+        // panel.name_localization_id is NOT NULL — create the name localization
+        // first, mirroring the legacy panel-add flow.
+        Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(name, name,
+                LocalizationServiceImpl.LocalizationType.PANEL_NAME);
+        nameLocalization.setSysUserId(sysUserId);
+        String localizationId = localizationService.insert(nameLocalization);
+
         Panel panel = new Panel();
-        panel.setPanelName(body.name.trim());
-        panel.setDescription(body.name.trim());
+        panel.setPanelName(name);
+        panel.setDescription(name);
+        panel.setLocalization(localizationService.get(localizationId));
         panel.setIsActive("Y");
         panel.setSortOrderInt(Integer.MAX_VALUE);
-        panel.setSysUserId(ControllerUtills.getSysUserId(request));
+        panel.setSysUserId(sysUserId);
         String id = panelService.insert(panel);
         PanelOption created = new PanelOption();
         created.id = id;
