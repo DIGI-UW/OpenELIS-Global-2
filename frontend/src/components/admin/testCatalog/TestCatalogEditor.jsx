@@ -13,6 +13,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import BasicInfoSection from "./sections/BasicInfoSection";
 import SampleResultsSection from "./sections/SampleResultsSection";
@@ -50,7 +51,7 @@ const TestCatalogEditor = () => {
   const base = location.pathname.startsWith("/admin")
     ? "/admin"
     : "/MasterListsPage";
-  const { addNotification, setNotificationVisible } =
+  const { addNotification, setNotificationVisible, notificationVisible } =
     useContext(NotificationContext);
 
   const [loading, setLoading] = useState(false);
@@ -182,6 +183,9 @@ const TestCatalogEditor = () => {
 
   return (
     <>
+      {/* Sections raise toasts via NotificationContext; the page must render
+          the AlertDialog for them to be visible (app-wide pattern). */}
+      {notificationVisible === true && <AlertDialog />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>

@@ -23,6 +23,7 @@ import { Add, Edit, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import RangeModal from "./sections/RangeModal";
 import StorageSection from "./sections/StorageSection";
@@ -61,7 +62,7 @@ const CombinedTestEditor = () => {
   const base = location.pathname.startsWith("/admin")
     ? "/admin"
     : "/MasterListsPage";
-  const { addNotification, setNotificationVisible } =
+  const { addNotification, setNotificationVisible, notificationVisible } =
     useContext(NotificationContext);
 
   const testIds = (ids || "").split(",").filter(Boolean);
@@ -242,6 +243,9 @@ const CombinedTestEditor = () => {
 
   return (
     <>
+      {/* Group saves raise toasts via NotificationContext; the page must render
+          the AlertDialog for them to be visible (app-wide pattern). */}
+      {notificationVisible === true && <AlertDialog />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
