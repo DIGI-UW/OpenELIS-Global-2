@@ -20,10 +20,15 @@
         last_updated="2025-12-06 00:00:00" />
 
     <!-- Inventory Lots -->
+    <!-- Expiration dates deliberately far in the future (not just "next year")
+        — these lots must stay non-expired/available for as long as this fixture
+        is in use, otherwise isAvailableForUse()/FEFO-ordering tests silently start
+        failing once real time passes the hardcoded date, as happened when these
+        were originally set to 2025/2026 dates. -->
     <inventory_lot id="1000"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440011"
         inventory_item_id="TEST_REAGENT_A" lot_number="LOT-2025-001"
-        expiration_date="2025-12-31 00:00:00"
+        expiration_date="2099-12-31 00:00:00"
         receipt_date="2025-01-01 00:00:00" initial_quantity="100.00"
         current_quantity="100.00" qc_status="PASSED" status="ACTIVE"
         version="0" last_updated="2025-12-06 00:00:00" />
@@ -31,7 +36,7 @@
     <inventory_lot id="1001"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440012"
         inventory_item_id="TEST_REAGENT_A" lot_number="LOT-2025-002"
-        expiration_date="2025-06-30 00:00:00"
+        expiration_date="2099-06-30 00:00:00"
         receipt_date="2025-01-15 00:00:00" initial_quantity="50.00"
         current_quantity="50.00" qc_status="PASSED" status="ACTIVE"
         version="0" last_updated="2025-12-06 00:00:00" />
@@ -39,7 +44,7 @@
     <inventory_lot id="1002"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440013"
         inventory_item_id="TEST_RDT_KIT" lot_number="CTRL-2025-001"
-        expiration_date="2026-01-31 00:00:00"
+        expiration_date="2100-01-31 00:00:00"
         receipt_date="2025-01-01 00:00:00" initial_quantity="20.00"
         current_quantity="15.00" qc_status="PASSED" status="IN_USE"
         date_opened="2025-02-01 00:00:00" version="0"
