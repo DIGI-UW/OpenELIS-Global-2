@@ -62,6 +62,30 @@ public interface ElectronicSignatureDAO extends BaseDAO<ElectronicSignature, Lon
      */
     List<ElectronicSignature> getSignaturesByMeaning(SignatureMeaning meaning) throws LIMSRuntimeException;
 
+    /**
+     * Search signatures with combined optional filters, paginated (E-Sig Log).
+     *
+     * @param startDate  start of range (inclusive, required)
+     * @param endDate    end of range (inclusive, required)
+     * @param signerId   optional signer filter
+     * @param meaning    optional meaning filter
+     * @param recordType optional record type filter
+     * @param page       0-based page index
+     * @param pageSize   rows per page
+     * @return matching page of signatures ordered by signed_at descending
+     */
+    List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, int page, int pageSize) throws LIMSRuntimeException;
+
+    /**
+     * Count signatures matching the same filters as
+     * {@link #searchSignatures(Timestamp, Timestamp, Long, SignatureMeaning, String, int, int)}.
+     *
+     * @return total matching rows across all pages
+     */
+    long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
+            String recordType) throws LIMSRuntimeException;
+
     // ========================
     // First-Use Certification
     // ========================

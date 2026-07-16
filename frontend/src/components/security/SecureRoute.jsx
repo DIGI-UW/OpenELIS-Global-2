@@ -78,11 +78,18 @@ function SecureRoute(props) {
   }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
   const hasPermission = (userDetails = userSessionDetails) => {
-    var hasRole =
-      !props.role ||
-      []
-        .concat(props.role)
-        .some((role) => userDetails.roles && userDetails.roles.includes(role));
+    // role and permission are OR'd: either grants access. With neither prop,
+    // any authenticated user passes (existing behavior).
+    var roleMatches = props.role
+      ? []
+          .concat(props.role)
+          .some((role) => userDetails.roles && userDetails.roles.includes(role))
+      : !props.permission;
+    var permissionMatches =
+      !!props.permission &&
+      !!userDetails.permissions &&
+      userDetails.permissions.includes(props.permission);
+    var hasRole = roleMatches || permissionMatches;
     var containsLabUnitRole = false;
     if (props.labUnitRole) {
       Object.keys(props.labUnitRole).forEach((labunit) => {
