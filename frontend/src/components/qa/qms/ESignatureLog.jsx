@@ -6,6 +6,7 @@ import {
   DatePicker,
   DatePickerInput,
   Dropdown,
+  Modal,
   Pagination,
   Table,
   TableBody,
@@ -15,7 +16,9 @@ import {
   TableHeader,
   TableRow,
 } from "@carbon/react";
+import { Download, DocumentPdf } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import config from "../../../config.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import QAEmptyState from "../common/QAEmptyState";
@@ -84,6 +87,8 @@ const ESignatureLog = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [users, setUsers] = useState([]);
+  // "csv" | "pdf" while the empty-filter export confirm is open
+  const [pendingExport, setPendingExport] = useState(null);
   // undefined = loading, null = fetch yielded no data
   const [data, setData] = useState();
 
@@ -97,17 +102,23 @@ const ESignatureLog = () => {
     });
   }, []);
 
+  const buildFilterParams = useCallback(
+    () =>
+      new URLSearchParams(
+        Object.entries(applied).filter(([, value]) => value !== ""),
+      ),
+    [applied],
+  );
+
   const fetchLog = useCallback(() => {
     setData(undefined);
-    const params = new URLSearchParams(
-      Object.entries({ ...applied, page, pageSize }).filter(
-        ([, value]) => value !== "",
-      ),
-    );
+    const params = buildFilterParams();
+    params.set("page", page);
+    params.set("pageSize", pageSize);
     getFromOpenElisServer(`/rest/esig/log?${params}`, (res) =>
       setData(res ?? null),
     );
-  }, [applied, page, pageSize]);
+  }, [buildFilterParams, page, pageSize]);
 
   useEffect(() => {
     fetchLog();
@@ -133,6 +144,24 @@ const ESignatureLog = () => {
     setDraft(defaults);
     setPage(0);
     setApplied(defaults);
+  };
+
+  const openExport = (format) => {
+    const endpoint = format === "pdf" ? "exportPdf" : "export";
+    window.open(
+      `${config.serverBaseUrl}/rest/esig/log/${endpoint}?${buildFilterParams()}`,
+      "_blank",
+    );
+  };
+
+  // Empty-filter export warns first (OGC-703): only the date range is set,
+  // so the export may cover everything up to the 10,000-row cap.
+  const handleExport = (format) => {
+    if (applied.signerId || applied.meaning || applied.recordType) {
+      openExport(format);
+    } else {
+      setPendingExport(format);
+    }
   };
 
   const meaningLabel = (meaning) =>
@@ -242,7 +271,45 @@ const ESignatureLog = () => {
         >
           {intl.formatMessage({ id: "qa.qms.esigLog.filter.clear" })}
         </Button>
+        <Button
+          kind="ghost"
+          size="md"
+          renderIcon={Download}
+          onClick={() => handleExport("csv")}
+          data-testid="esig-log-export-csv"
+        >
+          {intl.formatMessage({ id: "qa.qms.esigLog.export.csv" })}
+        </Button>
+        <Button
+          kind="ghost"
+          size="md"
+          renderIcon={DocumentPdf}
+          onClick={() => handleExport("pdf")}
+          data-testid="esig-log-export-pdf"
+        >
+          {intl.formatMessage({ id: "qa.qms.esigLog.export.pdf" })}
+        </Button>
       </div>
+      <Modal
+        open={!!pendingExport}
+        size="sm"
+        modalHeading={intl.formatMessage({
+          id: "qa.qms.esigLog.export.confirm.title",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "qa.qms.esigLog.export.confirm.confirm",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "qa.qms.esigLog.export.confirm.cancel",
+        })}
+        onRequestSubmit={() => {
+          openExport(pendingExport);
+          setPendingExport(null);
+        }}
+        onRequestClose={() => setPendingExport(null)}
+      >
+        <FormattedMessage id="qa.qms.esigLog.export.confirm.body" />
+      </Modal>
       {data === undefined ? (
         <DataTableSkeleton columnCount={HEADERS.length} rowCount={5} />
       ) : data === null ? (
