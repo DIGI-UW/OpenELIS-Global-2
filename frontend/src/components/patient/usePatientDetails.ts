@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getFromOpenElisServer } from "../utils/Utils";
+import type { Nullable, PatientRecord } from "./types";
 
 /**
  * Fetch a patient's full PatientInfoBean (+ photo) by id. Returns
@@ -20,12 +21,24 @@ import { getFromOpenElisServer } from "../utils/Utils";
  * this, switching patients faster than the network can resolve lets the
  * older response overwrite the newer one.
  */
-export default function usePatientDetails(patientId) {
-  const [patient, setPatient] = useState(null);
+interface PatientDetailsHookResult {
+  patient: Nullable<PatientRecord>;
+  loading: boolean;
+  error: Nullable<Error>;
+}
+
+interface PatientPhotoResponse {
+  data?: string;
+}
+
+export default function usePatientDetails(
+  patientId?: Nullable<string>,
+): PatientDetailsHookResult {
+  const [patient, setPatient] = useState<Nullable<PatientRecord>>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<Nullable<Error>>(null);
   const mounted = useRef(true);
-  const currentRequestId = useRef(null);
+  const currentRequestId = useRef<Nullable<string>>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -53,7 +66,7 @@ export default function usePatientDetails(patientId) {
 
     getFromOpenElisServer(
       "/rest/patient-details?patientID=" + requestedId,
-      (details) => {
+      (details: PatientRecord) => {
         if (!isStillCurrent()) return;
         if (!details || !details.patientPK) {
           setPatient(null);
@@ -63,7 +76,7 @@ export default function usePatientDetails(patientId) {
         }
         getFromOpenElisServer(
           "/rest/patient-photos/" + details.patientPK + "/false",
-          (photoResp) => {
+          (photoResp: PatientPhotoResponse) => {
             if (!isStillCurrent()) return;
             const photo = photoResp && photoResp.data ? photoResp.data : "";
             setPatient({ ...details, photo });

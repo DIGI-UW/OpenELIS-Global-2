@@ -48,10 +48,41 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
 import IdentificationDocuments from "./IdentificationDocuments";
 import { getPhoneFormatHint } from "./phoneFormatHint";
+import type { AddressHierarchyLevel, PatientRecord, Nullable } from "./types";
 
-const configIsTrue = (value) => value === "true";
+type ConfigurationItem = {
+  id?: string;
+  value?: string;
+  name?: string;
+  label?: string;
+  [key: string]: unknown;
+};
 
-const configuredText = (value, fallback) =>
+interface CreatePatientFormProps {
+  selectedPatient?: PatientRecord;
+  orderFormValues?: {
+    patientProperties?: PatientRecord;
+    [key: string]: unknown;
+  };
+  setOrderFormValues?: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
+  showActionsButton?: boolean;
+  showPatientSearch?: boolean;
+  [key: string]: unknown;
+}
+
+interface InitialFormValuesOptions {
+  base: PatientRecord;
+  defaultNationality: string;
+  selectedPatient?: PatientRecord;
+  orderFormValues?: CreatePatientFormProps["orderFormValues"];
+  dateLocale?: string;
+}
+
+const configIsTrue = (value?: string) => value === "true";
+
+const configuredText = (value: unknown, fallback: string) =>
   typeof value === "string" && value.trim() ? value : fallback;
 
 // Captured once at mount and frozen for Formik's initialValues. The parent
@@ -64,7 +95,7 @@ const buildInitialFormValues = ({
   selectedPatient,
   orderFormValues,
   dateLocale,
-}) => {
+}: InitialFormValuesOptions): PatientRecord => {
   const seed = defaultNationality
     ? { ...base, nationality: defaultNationality }
     : { ...base };
@@ -78,7 +109,7 @@ const buildInitialFormValues = ({
   };
 
   if (selectedPatient?.patientPK) {
-    const flattenedAddressHierarchy = {};
+    const flattenedAddressHierarchy: Record<string, string> = {};
     if (selectedPatient.addressHierarchy) {
       Object.entries(selectedPatient.addressHierarchy).forEach(([k, v]) => {
         flattenedAddressHierarchy[k] = v || "";
@@ -105,7 +136,7 @@ const buildInitialFormValues = ({
 
   const fromOrder = orderFormValues?.patientProperties;
   if (fromOrder && (fromOrder.firstName !== "" || fromOrder.guid !== "")) {
-    const flattenedAddressHierarchy = {};
+    const flattenedAddressHierarchy: Record<string, string> = {};
     if (fromOrder.addressHierarchy) {
       Object.entries(fromOrder.addressHierarchy).forEach(([k, v]) => {
         flattenedAddressHierarchy[k] = v || "";
@@ -121,7 +152,10 @@ const buildInitialFormValues = ({
   return seed;
 };
 
-const computeDobFromFormatter = ({ years, months, days }, dateLocale) => {
+const computeDobFromFormatter = (
+  { years, months, days }: { years?: string; months?: string; days?: string },
+  dateLocale?: string,
+) => {
   const currentDate = new Date();
   const pastDate = new Date();
   pastDate.setFullYear(currentDate.getFullYear() - (Number(years) || 0));
@@ -136,7 +170,7 @@ const computeDobFromFormatter = ({ years, months, days }, dateLocale) => {
 // Derive {years, months, days} from a displayed DOB string. Returns empty
 // strings for an absent or unparseable DOB so the field defaults remain
 // blank rather than "NaN".
-const computeAgePartsFromDob = (dob, dateLocale) => {
+const computeAgePartsFromDob = (dob?: string, dateLocale?: string) => {
   if (!dob || dob === "") return { years: "", months: "", days: "" };
   const parts = dob.split("/");
   if (parts.length !== 3) return { years: "", months: "", days: "" };
@@ -166,7 +200,7 @@ const computeAgePartsFromDob = (dob, dateLocale) => {
   return { years, months, days };
 };
 
-function CreatePatientForm(props) {
+function CreatePatientForm(props: CreatePatientFormProps) {
   const componentMounted = useRef(false);
   const history = useHistory();
 
@@ -217,16 +251,27 @@ function CreatePatientForm(props) {
   // Bridge so async callbacks (photo fetch, hierarchy defaults) can write
   // into Formik state without going through `initialValues`. Set via
   // <Formik innerRef={formikRef}>.
-  const formikRef = useRef(null);
-  const [healthRegions, setHealthRegions] = useState([]);
-  const [healthDistricts, setHealthDistricts] = useState([]);
-  const [addressHierarchyLevels, setAddressHierarchyLevels] = useState([]);
-  const [addressHierarchyValues, setAddressHierarchyValues] = useState({});
+  const formikRef =
+    useRef<
+      Nullable<{ setFieldValue: (field: string, value: unknown) => void }>
+    >(null);
+  const [healthRegions, setHealthRegions] = useState<ConfigurationItem[]>([]);
+  const [healthDistricts, setHealthDistricts] = useState<ConfigurationItem[]>(
+    [],
+  );
+  const [addressHierarchyLevels, setAddressHierarchyLevels] = useState<
+    AddressHierarchyLevel[]
+  >([]);
+  const [addressHierarchyValues, setAddressHierarchyValues] = useState<
+    Record<string, AddressHierarchyLevel[]>
+  >({});
   const [addressHierarchyInitialized, setAddressHierarchyInitialized] =
     useState(null); // Track which patient's hierarchy is initialized
-  const [educationList, setEducationList] = useState([]);
-  const [maritalStatuses, setMaritalStatuses] = useState([]);
-  const [diseaseProgrammes, setDiseaseProgrammes] = useState([]);
+  const [educationList, setEducationList] = useState<ConfigurationItem[]>([]);
+  const [maritalStatuses, setMaritalStatuses] = useState<ConfigurationItem[]>(
+    [],
+  );
+  const [, setDiseaseProgrammes] = useState<ConfigurationItem[]>([]);
   const [formAction, setFormAction] = useState("ADD");
   // Read-only-by-default for existing patients. The Edit toggle flips this
   // on; saving flips it back. The parent keys this component on patientPK,
@@ -273,7 +318,7 @@ function CreatePatientForm(props) {
     setFieldValue("birthDateForDisplay", dob);
   };
   const handleRegionSelection = (e, values) => {
-    var patient = values;
+    const patient = values;
     patient.healthDistrict = "";
     const { value } = e.target;
     getFromOpenElisServer(
@@ -558,7 +603,6 @@ function CreatePatientForm(props) {
     }
   }, [configurationProperties.USE_NEW_ADDRESS_HIERARCHY]);
 
-  // Initialize address hierarchy values when editing a patient
   // Initialize address hierarchy values when editing a patient
   useEffect(() => {
     const patientPK = props.selectedPatient?.patientPK;

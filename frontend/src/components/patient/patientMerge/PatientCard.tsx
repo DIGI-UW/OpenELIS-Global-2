@@ -2,12 +2,23 @@ import React from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Button } from "@carbon/react";
 import { Close, User } from "@carbon/react/icons";
+import type { Nullable, PatientRecord } from "../types";
 
-function PatientCard({ patient, onClear, showClearButton = true }) {
+interface PatientCardProps {
+  patient: Nullable<PatientRecord>;
+  onClear?: () => void;
+  showClearButton?: boolean;
+}
+
+function PatientCard({
+  patient,
+  onClear,
+  showClearButton = true,
+}: PatientCardProps) {
   const intl = useIntl();
 
   // Get the display ID - prefer subjectNumber (Unique Health ID), then nationalId, then fall back to DB ID
-  const getDisplayId = (patient) => {
+  const getDisplayId = (patient: PatientRecord) => {
     if (patient.subjectNumber) {
       return patient.subjectNumber;
     }
@@ -19,8 +30,8 @@ function PatientCard({ patient, onClear, showClearButton = true }) {
   };
 
   // Build full address string
-  const getFullAddress = (patient) => {
-    const parts = [];
+  const getFullAddress = (patient: PatientRecord): string => {
+    const parts: string[] = [];
     if (patient.streetAddress) {
       parts.push(patient.streetAddress);
     } else if (patient.streetName || patient.flatNumberApartmentName) {
