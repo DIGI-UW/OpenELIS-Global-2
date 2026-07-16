@@ -120,6 +120,8 @@ public class NceEnhancementRestController extends BaseRestController {
             item.immediateAction = event.getImmediateAction();
             item.suspectedCauses = event.getSuspectedCauses();
             item.proposedAction = event.getProposedAction();
+            item.triggerSourceType = event.getTriggerSourceType();
+            item.affectedSamplesCapReason = event.getAffectedSamplesCapReason();
 
             // Fetch assigned user name
             if (event.getAssignedTo() != null) {
@@ -472,6 +474,8 @@ public class NceEnhancementRestController extends BaseRestController {
         public String immediateAction;
         public String suspectedCauses;
         public String proposedAction;
+        public String triggerSourceType;
+        public String affectedSamplesCapReason;
         public String assignedTo;
         public String assignedToName;
         public int notesCount;

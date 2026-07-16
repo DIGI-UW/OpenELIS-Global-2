@@ -70,6 +70,12 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         return resultDAO;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before) {
+        return resultDAO.findLatestAcceptedBefore(instrumentId, testId, before);
+    }
+
     /**
      * Create a QC result from analyzer data (Task T140)
      *

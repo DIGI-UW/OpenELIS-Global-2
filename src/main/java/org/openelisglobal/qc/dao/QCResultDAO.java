@@ -55,4 +55,12 @@ public interface QCResultDAO extends BaseDAO<QCResult, String> {
      * Get all distinct instrument IDs that have QC results.
      */
     List<String> findDistinctInstrumentIds() throws LIMSRuntimeException;
+
+    /**
+     * Get the most recent accepted (in-control) result for an instrument and test
+     * strictly before the given time. Bounds the affected-samples window when a
+     * violation auto-creates an NCE. At most one result is returned.
+     */
+    List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before)
+            throws LIMSRuntimeException;
 }

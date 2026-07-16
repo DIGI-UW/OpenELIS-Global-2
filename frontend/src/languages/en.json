@@ -3676,6 +3676,8 @@
   "nce.field.suspectedCauses": "Suspected Causes",
   "nce.field.proposedAction": "Proposed Action",
   "nce.field.trigger": "Trigger",
+  "nce.capReason.time_24h": "{count} samples linked — capped at 24h window",
+  "nce.capReason.count_50": "{count} samples linked — capped at 50 most recent",
   "nce.capa.noItems": "No corrective/preventive actions recorded yet.",
   "nce.history.noItems": "No history available.",
   "nce.history.system": "System",

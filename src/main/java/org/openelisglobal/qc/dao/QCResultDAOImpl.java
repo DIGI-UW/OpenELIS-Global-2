@@ -133,6 +133,22 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
     }
 
     @Override
+    public List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before)
+            throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
+            Root<QCResult> root = cq.from(QCResult.class);
+            cq.where(cb.equal(root.get("instrumentId"), instrumentId), cb.equal(root.get("testId"), testId),
+                    cb.equal(root.get("resultStatus"), "ACCEPTED"), cb.lessThan(root.get("runDateTime"), before));
+            cq.orderBy(cb.desc(root.get("runDateTime")));
+            return entityManager.createQuery(cq).setMaxResults(1).getResultList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving latest accepted QC result before timestamp", e);
+        }
+    }
+
+    @Override
     public List<String> findDistinctInstrumentIds() throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();

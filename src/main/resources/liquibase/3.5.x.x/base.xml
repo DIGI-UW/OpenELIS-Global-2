@@ -209,4 +209,8 @@
   <include relativeToChangelogFile="true" file="081-reflex-sample-type-backfill.xml"/>
   <include relativeToChangelogFile="true" file="082-reflex-target-sample-type.xml"/>
 
+  <!-- OGC-701 / OGC-728: NCE trigger-source provenance for Westgard auto-created NCEs
+       (renumbered from 051 on rebase: develop claimed 051-075) -->
+  <include relativeToChangelogFile="true" file="076-nce-trigger-source.xml"/>
+
 </databaseChangeLog>

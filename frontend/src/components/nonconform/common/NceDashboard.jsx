@@ -855,6 +855,22 @@ export const NceDashboard = () => {
                                 id="nce.field.linkedItems"
                                 defaultMessage="Linked Items"
                               />
+                              {(nce.affectedSamplesCapReason === "time_24h" ||
+                                nce.affectedSamplesCapReason ===
+                                  "count_50") && (
+                                <Tag
+                                  type="cool-gray"
+                                  size="sm"
+                                  style={{ marginLeft: "0.5rem" }}
+                                >
+                                  {intl.formatMessage(
+                                    {
+                                      id: `nce.capReason.${nce.affectedSamplesCapReason}`,
+                                    },
+                                    { count: nce.linkedSpecimens.length },
+                                  )}
+                                </Tag>
+                              )}
                             </h4>
                             <div className="nce-linked-items">
                               {nce.linkedSpecimens.map((specimen, idx) => (
