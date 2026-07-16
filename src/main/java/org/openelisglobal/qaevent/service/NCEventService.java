@@ -7,4 +7,6 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
 public interface NCEventService extends BaseObjectService<NcEvent, Integer> {
 
     List<NcEvent> findByNCENumberOrLabOrderId(String nceNumber, String labOrderId);
+
+    NcEvent findByTriggerSource(String triggerSourceType, String triggerSourceId);
 }
