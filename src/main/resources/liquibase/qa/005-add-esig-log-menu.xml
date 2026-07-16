@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- QA Phase B — OGC-702: Electronic Signature Log.
+         Adds the log page under the QMS & Improvement pillar. REST access is
+         enforced by @PreAuthorize on the existing qa.view.qms authority
+         (liquibase/qa/004); no new system_module rows are needed. -->
+
+    <changeSet author="openelisglobal" id="qa-028-add-menu-qa-qms-esig-log">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qms_esig_log'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Electronic Signature Log under QMS &amp; Improvement</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qms')" />
+            <column name="presentation_order" value="30" />
+            <column name="element_id" value="menu_qa_qms_esig_log" />
+            <column name="action_url" value="/qa/qms/e-signature-log" />
+            <column name="display_key" value="sideNav.label.qa.qms.esigLog" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qms.esigLog" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -39,6 +39,7 @@ import QAPlaceholder from "./components/qa/QAPlaceholder";
 import QAOverview from "./components/qa/overview/QAOverview";
 import QIDashboard from "./components/qa/qi/QIDashboard";
 import AmendmentReport from "./components/qa/qi/AmendmentReport";
+import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import InventoryManagement from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
@@ -845,6 +846,13 @@ export default function App() {
                   path="/qa/qms/audit-trail"
                   exact
                   component={() => <AuditTrailReportIndex />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/e-signature-log"
+                  exact
+                  component={() => <ESignatureLog />}
+                  permission="qa.view.qms"
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute

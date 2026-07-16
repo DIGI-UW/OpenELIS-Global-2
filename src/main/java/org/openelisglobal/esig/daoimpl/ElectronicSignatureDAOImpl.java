@@ -111,6 +111,68 @@ public class ElectronicSignatureDAOImpl extends BaseDAOImpl<ElectronicSignature,
         }
     }
 
+    private String buildSearchWhereClause(Long signerId, SignatureMeaning meaning, String recordType) {
+        StringBuilder where = new StringBuilder("WHERE e.signedAt BETWEEN :startDate AND :endDate");
+        if (signerId != null) {
+            where.append(" AND e.signerId = :signerId");
+        }
+        if (meaning != null) {
+            where.append(" AND e.signatureMeaning = :meaning");
+        }
+        if (recordType != null) {
+            where.append(" AND e.recordType = :recordType");
+        }
+        return where.toString();
+    }
+
+    private void setSearchParameters(Query<?> query, Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType) {
+        query.setParameter("startDate", startDate);
+        query.setParameter("endDate", endDate);
+        if (signerId != null) {
+            query.setParameter("signerId", signerId);
+        }
+        if (meaning != null) {
+            query.setParameter("meaning", meaning);
+        }
+        if (recordType != null) {
+            query.setParameter("recordType", recordType);
+        }
+    }
+
+    @Override
+    public List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, int page, int pageSize) throws LIMSRuntimeException {
+        try {
+            String sql = "FROM ElectronicSignature e " + buildSearchWhereClause(signerId, meaning, recordType)
+                    + " ORDER BY e.signedAt DESC";
+            Query<ElectronicSignature> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    ElectronicSignature.class);
+            setSearchParameters(query, startDate, endDate, signerId, meaning, recordType);
+            query.setFirstResult(page * pageSize);
+            query.setMaxResults(pageSize);
+            return query.list();
+        } catch (HibernateException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in searchSignatures()", e);
+        }
+    }
+
+    @Override
+    public long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
+            String recordType) throws LIMSRuntimeException {
+        try {
+            String sql = "SELECT count(*) FROM ElectronicSignature e "
+                    + buildSearchWhereClause(signerId, meaning, recordType);
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            setSearchParameters(query, startDate, endDate, signerId, meaning, recordType);
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in countSearchSignatures()", e);
+        }
+    }
+
     // ========================
     // First-Use Certification
     // ========================
