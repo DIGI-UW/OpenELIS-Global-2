@@ -153,28 +153,27 @@ public class InventoryReportServiceTest {
     }
 
     @Test
-    public void lowStock_judgesByAvailableQuantity_notRawTotal() {
+    public void lowStock_displaysAvailableAndTotalQuantitySeparately() {
+        // InventoryItemService.getLowStockItems() (unit-tested on its own in
+        // InventoryItemServiceLowStockTest) already judges "low stock" against
+        // available quantity — this report just displays whatever it returns,
+        // alongside the raw total for transparency.
         InventoryItem lowOnAvailable = item("RDT_A", "RDT A", "RDT", true);
         lowOnAvailable.setLowStockThreshold(20);
-        InventoryItem wellStocked = item("RDT_B", "RDT B", "RDT", true);
-        wellStocked.setLowStockThreshold(20);
-        when(inventoryItemService.getAllActive()).thenReturn(List.of(lowOnAvailable, wellStocked));
+        when(inventoryItemService.getLowStockItems()).thenReturn(List.of(lowOnAvailable));
 
-        // 3 available + 100 disposed = 103 total — a raw-total check would miss
-        // this as "well stocked" despite only 3 usable units remaining.
         InventoryLot usable = lot(lowOnAvailable, "LOT1", 3.0);
         InventoryLot disposed = lot(lowOnAvailable, "LOT2", 100.0);
         disposed.setStatus(LotStatus.DISPOSED);
         when(inventoryLotService.getByInventoryItemId("RDT_A")).thenReturn(List.of(usable, disposed));
-        when(inventoryLotService.getByInventoryItemId("RDT_B")).thenReturn(List.of(lot(wellStocked, "LOT3", 50.0)));
 
         ReportTable table = reportService.generateReport(request("LOW_STOCK", "CSV"));
 
-        assertEquals(2, table.getRows().size()); // RDT_A + totals row (RDT_B is not low on available stock)
+        assertEquals(2, table.getRows().size()); // RDT_A + totals row
         List<String> row = table.getRows().get(0);
         assertEquals("RDT_A", row.get(0));
         assertEquals("3", row.get(5)); // Available Quantity
-        assertEquals("103", row.get(6)); // Total Quantity
+        assertEquals("103", row.get(6)); // Total Quantity (3 usable + 100 disposed)
         assertEquals("20", row.get(7)); // Low Stock Threshold
     }
 

@@ -133,20 +133,14 @@ public class InventoryReportServiceImpl implements InventoryReportService {
      * quantity, not the raw sum of every lot — a threshold check against total
      * quantity would count EXPIRED/DISPOSED/QUARANTINED/QC-failed stock as if it
      * were usable, which is exactly backwards for an alert meant to answer "what do
-     * we need to reorder." Computed directly here rather than via
-     * {@code InventoryItemService.getLowStockItems()}, whose native-SQL query has
-     * that same raw-sum flaw (shared with the Inventory Dashboard's low-stock tile
-     * — a separate, pre-existing issue left untouched here).
+     * we need to reorder." {@code InventoryItemService.getLowStockItems()} now does
+     * this same available-quantity check (previously it delegated to a native-SQL
+     * query with the raw-sum flaw — also the source behind the Inventory
+     * Dashboard's low-stock tile, fixed there too).
      */
     private ReportTable buildLowStockReport(InventoryReportRequest request) {
-        List<InventoryItem> candidateItems = inventoryItemService.getAllActive().stream()
-                .filter(item -> item.getLowStockThreshold() != null).collect(Collectors.toList());
-        Map<String, List<InventoryLot>> lotsByItemId = loadLotsByItemId(candidateItems);
-
-        List<InventoryItem> items = candidateItems.stream()
-                .filter(item -> availableQuantity(lotsByItemId.getOrDefault(item.getId(), List.of())) <= item
-                        .getLowStockThreshold())
-                .collect(Collectors.toList());
+        List<InventoryItem> items = inventoryItemService.getLowStockItems();
+        Map<String, List<InventoryLot>> lotsByItemId = loadLotsByItemId(items);
         Map<String, Map<String, Object>> locationsByLotId = loadLocationsByLotId(lotsByItemId);
         Map<String, String> locationByItemId = items.stream().collect(Collectors.toMap(InventoryItem::getId,
                 item -> summarizeLocation(lotsByItemId.getOrDefault(item.getId(), List.of()), locationsByLotId)));

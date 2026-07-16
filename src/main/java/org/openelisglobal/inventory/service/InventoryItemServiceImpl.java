@@ -3,12 +3,14 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,10 +87,31 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         return inventoryItemDAO.searchByName(searchTerm);
     }
 
+    /**
+     * "Low stock" is judged against usable quantity
+     * ({@link InventoryLot#isAvailableForUse()} — excludes
+     * EXPIRED/DISPOSED/QUARANTINED lots and anything that failed QC), not the raw
+     * sum of every lot. {@code InventoryItemDAO.getLowStockItems()}'s native-SQL
+     * query sums every lot's current_quantity regardless of status, so an item
+     * sitting on a pile of expired/disposed stock would never trip the alert
+     * despite having nothing actually usable — backwards for an alert meant to
+     * answer "what do we need to reorder." Computed here in Java (same approach as
+     * {@code InventoryReportServiceImpl.buildLowStockReport()}, which had this
+     * exact fix already) rather than in the DAO, since replicating
+     * {@code isAvailableForUse()}'s expiration/status/QC logic correctly in SQL is
+     * more error-prone than reusing the one Java implementation.
+     */
     @Override
     @Transactional(readOnly = true)
     public List<InventoryItem> getLowStockItems() {
-        return inventoryItemDAO.getLowStockItems();
+        return inventoryItemDAO.getAllActive().stream().filter(item -> item.getLowStockThreshold() != null)
+                .filter(item -> availableQuantity(item.getId()) <= item.getLowStockThreshold())
+                .collect(Collectors.toList());
+    }
+
+    private double availableQuantity(String itemId) {
+        return inventoryLotDAO.getByInventoryItemId(itemId).stream().filter(InventoryLot::isAvailableForUse)
+                .mapToDouble(lot -> lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0).sum();
     }
 
     @Override
