@@ -24,7 +24,6 @@ import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
-import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -247,14 +246,11 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
         }
 
         @Bean
-        SpringContext springContext() {
-            // ApplicationContextAware holder ConfigurationProperties.getInstance()
-            // resolves through; paired with the mock below for the PDF lab name.
-            return new SpringContext();
-        }
-
-        @Bean
         DefaultConfigurationProperties defaultConfigurationProperties() {
+            // Satisfies the controller's injected ConfigurationProperties for
+            // the PDF lab-name lookup. Deliberately NOT registering a
+            // SpringContext bean here: its ApplicationContextAware callback
+            // overwrites the static holder for every later test in the JVM.
             return mock(DefaultConfigurationProperties.class);
         }
 

@@ -79,6 +79,13 @@ public class ElectronicSignatureRestController extends BaseRestController {
     @Autowired
     private ElectronicSignatureService electronicSignatureService;
 
+    // Injected rather than ConfigurationProperties.getInstance(): the static
+    // path routes through SpringContext's static holder, which test slices
+    // must not touch (registering SpringContext in a slice overwrites the
+    // holder for every later test in the JVM).
+    @Autowired
+    private ConfigurationProperties configurationProperties;
+
     // ========================
     // Signature Execution
     // ========================
@@ -339,8 +346,7 @@ public class ElectronicSignatureRestController extends BaseRestController {
             Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
 
             document.add(new Phrase(MessageUtil.getMessage("esig.export.title") + "\n", titleFont));
-            String labName = ConfigurationProperties.getInstance()
-                    .getPropertyValue(ConfigurationProperties.Property.SiteName);
+            String labName = configurationProperties.getPropertyValue(ConfigurationProperties.Property.SiteName);
             document.add(new Phrase(
                     MessageUtil.getMessage("esig.export.labName") + ": " + (labName == null ? "" : labName) + "\n",
                     metaFont));
