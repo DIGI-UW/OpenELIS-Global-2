@@ -1,3 +1,8 @@
+// The Cold Storage REST API serializes timestamps with Jackson's
+// WRITE_DATES_AS_TIMESTAMPS enabled, so date fields arrive as a Unix epoch in
+// SECONDS. JavaScript's Date constructor expects MILLISECONDS, so a raw value
+// must be scaled by 1000 first; toDate() normalizes seconds, millisecond
+// epochs, and ISO strings to a single Date.
 const SECONDS_TO_MILLIS_THRESHOLD = 1e12;
 
 export const toDate = (value) => {
