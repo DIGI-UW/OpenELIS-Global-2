@@ -1044,6 +1044,7 @@ public abstract class Accessioner implements IAccessioner {
         analysis.setStartedDate(collectionDateTime);
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
         analysis.setTestSection(test.getTestSection());
+        analysis.setMethod(test.getMethod());
         analysis.setSysUserId(sysUserId);
         return analysis;
     }

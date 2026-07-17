@@ -666,6 +666,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         analysis.setPanel(panel);
         analysis.setIsReportable(test.getIsReportable());
         analysis.setAnalysisType(DEFAULT_ANALYSIS_TYPE);
+        analysis.setMethod(test.getMethod());
         analysis.setSampleItem(sampleTestCollection.item);
         analysis.setSysUserId(sampleTestCollection.item.getSysUserId());
         analysis.setRevision(analysisRevision);
