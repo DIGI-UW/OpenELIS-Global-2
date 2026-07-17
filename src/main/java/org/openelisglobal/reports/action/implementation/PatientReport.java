@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IllegalFormatException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -90,6 +91,8 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 
 public abstract class PatientReport extends Report {
@@ -703,6 +706,13 @@ public abstract class PatientReport extends Report {
         String reportResult = "";
         if (!resultList.isEmpty()) {
 
+            List<TestResultComponent> activeComponents = SpringContext.getBean(TestResultComponentService.class)
+                    .getActiveComponentsByTestId(analysisService.getTest(currentAnalysis).getId());
+            if (activeComponents.size() > 1) {
+                data.setResult(buildMultiComponentResult(resultList, activeComponents));
+                return;
+            }
+
             // If only one result just get it and get out
             if (resultList.size() == 1) {
                 Result result = resultList.get(0);
@@ -817,6 +827,90 @@ public abstract class PatientReport extends Report {
             }
         }
         data.setResult(reportResult);
+    }
+
+    /**
+     * A multi-component analysis reports one labeled line per component, each
+     * formatted by its component's own type. Results whose test_result row has no
+     * component (legacy rows) belong to the primary component.
+     */
+    private String buildMultiComponentResult(List<Result> resultList, List<TestResultComponent> components) {
+        ResultService resultResultService = SpringContext.getBean(ResultService.class);
+        StringBuilder reportBuilder = new StringBuilder();
+        for (TestResultComponent component : components) {
+            // OGC-1127: a component flagged not to print is omitted from the report.
+            // The primary is always kept so the test never renders with no result.
+            if (!component.getIsPrimary() && !component.getShowOnReport()) {
+                continue;
+            }
+            List<Result> componentResults = new ArrayList<>();
+            for (Result result : resultList) {
+                if (result.getParentResult() != null) {
+                    continue;
+                }
+                String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
+                if (componentId == null ? component.getIsPrimary() : component.getId().equals(componentId)) {
+                    componentResults.add(result);
+                }
+            }
+            if (componentResults.isEmpty()) {
+                continue;
+            }
+            String componentValue = formatComponentResults(component, componentResults, resultResultService);
+            if (GenericValidator.isBlankOrNull(componentValue)) {
+                continue;
+            }
+            reportBuilder.append(component.getLabel()).append(": ").append(componentValue).append("\n");
+        }
+        if (reportBuilder.length() > 0) {
+            reportBuilder.setLength(reportBuilder.length() - 1);
+        }
+        return reportBuilder.toString();
+    }
+
+    private String formatComponentResults(TestResultComponent component, List<Result> componentResults,
+            ResultService resultResultService) {
+        if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(component.getResultType())) {
+            Collections.sort(componentResults, new Comparator<Result>() {
+                @Override
+                public int compare(Result o1, Result o2) {
+                    if (o1.getGrouping() == o2.getGrouping()) {
+                        return Integer.parseInt(o1.getId()) - Integer.parseInt(o2.getId());
+                    }
+                    return o1.getGrouping() - o2.getGrouping();
+                }
+            });
+            Map<Integer, List<String>> namesByGroup = new LinkedHashMap<>();
+            for (Result result : componentResults) {
+                Dictionary dictionary = new Dictionary();
+                dictionary.setId(result.getValue());
+                dictionaryService.getData(dictionary);
+                if (dictionary.getId() != null) {
+                    namesByGroup.computeIfAbsent(result.getGrouping(), k -> new ArrayList<>())
+                            .add(dictionary.getLocalizedName());
+                }
+            }
+            List<String> groups = new ArrayList<>();
+            for (List<String> names : namesByGroup.values()) {
+                groups.add(String.join(", ", names));
+            }
+            if (groups.isEmpty()) {
+                return "";
+            }
+            if (TypeOfTestResultServiceImpl.ResultType.CASCADING_MULTISELECT.matches(component.getResultType())) {
+                return "[ " + String.join(" ] [ ", groups) + " ]";
+            }
+            return String.join(", ", groups);
+        }
+
+        Result result = componentResults.get(0);
+        if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
+            Dictionary dictionary = new Dictionary();
+            dictionary.setId(result.getValue());
+            dictionaryService.getData(dictionary);
+            return dictionary.getId() != null ? dictionary.getLocalizedName() : "";
+        }
+        return resultResultService.getResultValue(result, true);
     }
 
     protected void setCollectionTime(Set<SampleItem> sampleSet, List<ClinicalPatientData> currentSampleReportItems,

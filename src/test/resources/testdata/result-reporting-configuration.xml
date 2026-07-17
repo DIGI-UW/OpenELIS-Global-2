@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="1" login_name="admin" last_name="Admin"
+        first_name="Test" is_active="Y" is_employee="Y" />
+
+    <site_information_domain id="908"
+        name="resultReporting"
+        description="Items which effect reports being sent electronically" />
+
+    <quartz_cron_scheduler id="9003"
+        cron_statement="never" active="false" run_if_past="true"
+        name="Send Malaria Surveillance Report"
+        job_name="sendMalariaSurviellanceReport"
+        display_key="schedule.name.sendMalariaServiellanceReport"
+        description_key="schedule.description.sendMalariaServiellanceReport" />
+
+    <site_information id="9025" name="resultReporting"
+        description="Should reporting results electronically be enabled"
+        value="false" encrypted="false" domain_id="908" value_type="boolean"
+        tag="enable" description_key="siteInfo.resultReporting"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <site_information id="9026" name="resultReportingURL"
+        description="Where reporting results electronically should be sent"
+        value="" encrypted="false" domain_id="908" value_type="text" tag="url"
+        description_key="siteInfo.resultReportingURL"
+        lastupdated="2024-01-01 12:00:00" />
+</dataset>
