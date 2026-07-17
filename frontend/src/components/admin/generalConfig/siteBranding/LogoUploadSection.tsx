@@ -12,6 +12,7 @@ import React, {
   useImperativeHandle,
   forwardRef,
 } from "react";
+import type { ChangeEvent } from "react";
 import {
   Grid,
   Column,
@@ -20,7 +21,6 @@ import {
   Button,
   InlineNotification,
   Checkbox,
-  InlineLoading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerFormData } from "../../../utils/Utils";
@@ -29,7 +29,32 @@ import { removeLogo } from "../../../utils/BrandingUtils";
 import config from "../../../../config.json";
 import { Modal } from "@carbon/react";
 
-const LogoUploadSection = forwardRef(function LogoUploadSection(
+type LogoType = "header" | "login" | "favicon";
+
+interface LogoUploadResult {
+  success: boolean;
+  noFile?: boolean;
+}
+
+export interface LogoUploadSectionHandle {
+  uploadFile: () => Promise<LogoUploadResult>;
+  hasPendingFile: () => boolean;
+}
+
+interface LogoUploadSectionProps {
+  type: LogoType;
+  currentLogoUrl?: string | null;
+  onLogoUploaded?: (url: string) => void;
+  onLogoRemoved?: () => void;
+  onFileSelected?: (file: File, type: LogoType) => void;
+  useHeaderLogoForLogin?: boolean;
+  onUseHeaderLogoChange?: (useHeaderLogo: boolean) => void;
+}
+
+const LogoUploadSection = forwardRef<
+  LogoUploadSectionHandle,
+  LogoUploadSectionProps
+>(function LogoUploadSection(
   {
     type,
     currentLogoUrl,
@@ -38,20 +63,20 @@ const LogoUploadSection = forwardRef(function LogoUploadSection(
     onFileSelected,
     useHeaderLogoForLogin = false,
     onUseHeaderLogoChange,
-  },
+  }: LogoUploadSectionProps,
   ref,
 ) {
   const intl = useIntl();
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState<File | null>(null);
   // Add serverBaseUrl prefix for REST endpoints (like Header.js does)
-  const getDisplayUrl = (url) => {
+  const getDisplayUrl = (url?: string | null): string | null => {
     if (!url) return null;
     if (url.startsWith("data:")) return url; // base64 preview
     if (url.startsWith(config.serverBaseUrl)) return url; // already prefixed
     return `${config.serverBaseUrl}${url}?v=${Date.now()}`; // add prefix and cache-busting
   };
   const [preview, setPreview] = useState(getDisplayUrl(currentLogoUrl));
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
@@ -68,7 +93,7 @@ const LogoUploadSection = forwardRef(function LogoUploadSection(
   // Expose upload function to parent via ref
   useImperativeHandle(ref, () => ({
     uploadFile: () => {
-      return new Promise((resolve, reject) => {
+      return new Promise<LogoUploadResult>((resolve, reject) => {
         if (!file) {
           resolve({ success: true, noFile: true });
           return;
@@ -83,7 +108,7 @@ const LogoUploadSection = forwardRef(function LogoUploadSection(
         postToOpenElisServerFormData(
           `/rest/site-branding/logo/${type}`,
           formData,
-          (status) => {
+          (status: number) => {
             setIsUploading(false);
             if (status === 200 || status === 201) {
               const logoUrl = `/rest/site-branding/logo/${type}`;
@@ -104,7 +129,7 @@ const LogoUploadSection = forwardRef(function LogoUploadSection(
     hasPendingFile: () => !!file,
   }));
 
-  const handleFileChange = (event) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
 
@@ -138,7 +163,7 @@ const LogoUploadSection = forwardRef(function LogoUploadSection(
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
-      setPreview(reader.result);
+      setPreview(reader.result as string);
     };
     reader.readAsDataURL(selectedFile);
   };
@@ -152,16 +177,15 @@ const LogoUploadSection = forwardRef(function LogoUploadSection(
     setShowRemoveConfirm(false);
     setError(null);
 
-    removeLogo(type, async (response, extraParams) => {
+    removeLogo(type, async (response: Response) => {
       try {
         const status = response.status || 200;
         if (status === 200 || status === 204) {
           // Parse response body if available
-          let responseData = null;
           if (response.ok) {
             try {
-              responseData = await response.json();
-            } catch (e) {
+              await response.json();
+            } catch {
               // Response might not have JSON body
             }
           }

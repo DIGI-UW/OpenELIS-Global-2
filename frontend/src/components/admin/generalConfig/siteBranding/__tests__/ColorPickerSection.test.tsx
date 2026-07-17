@@ -14,8 +14,7 @@
 
 import React from "react";
 import "@testing-library/jest-dom";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import ColorPickerSection from "../ColorPickerSection";

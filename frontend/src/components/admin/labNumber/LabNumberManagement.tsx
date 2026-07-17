@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import {
   Form,
-  FormLabel,
   Heading,
   Checkbox,
   TextInput,
@@ -14,6 +14,7 @@ import {
   Section,
 } from "@carbon/react";
 import LabNumberFormValues from "./LabNumberFormValues";
+import type { LabNumberFormValues as LabNumberValues } from "./LabNumberFormValues";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
@@ -29,6 +30,7 @@ import { ConfigurationContext } from "../../layout/Layout";
 import { jpSet } from "../../utils/JsonPath";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
@@ -55,7 +57,8 @@ function LabNumberManagement() {
   );
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [labNumberValues, setLabNumberValues] = useState(LabNumberFormValues);
+  const [labNumberValues, setLabNumberValues] =
+    useState<LabNumberValues>(LabNumberFormValues);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -76,14 +79,16 @@ function LabNumberManagement() {
     generateSampleLabNum();
   }, [labNumberValues]);
 
-  const handleFieldChange = (e) => {
+  const handleFieldChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
     const updatedValues = { ...labNumberValues };
     jpSet(updatedValues, name, value);
     setLabNumberValues(updatedValues);
   };
 
-  async function displayStatus(res) {
+  async function displayStatus(res: Response) {
     setNotificationVisible(true);
     setIsSubmitting(false);
     if (res.status == "200") {
@@ -92,6 +97,7 @@ function LabNumberManagement() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.add.edited.msg" }),
       });
+      // eslint-disable-next-line no-var -- preserve the original JavaScript declaration
       var body = await res.json();
       setLabNumberValues({ ...LabNumberFormValues, ...body });
     } else {
@@ -105,15 +111,19 @@ function LabNumberManagement() {
   }
 
   const loadValues = () => {
-    getFromOpenElisServer("/rest/labnumbermanagement", (body) => {
-      setLabNumberValues({ ...LabNumberFormValues, ...body });
-      setLoading(false);
-    });
+    getFromOpenElisServer(
+      "/rest/labnumbermanagement",
+      (body: Partial<LabNumberValues>) => {
+        setLabNumberValues({ ...LabNumberFormValues, ...body });
+        setLoading(false);
+      },
+    );
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
+    // eslint-disable-next-line no-var -- preserve the original JavaScript declaration
     var submitValues = { ...labNumberValues };
     postToOpenElisServerFullResponse(
       "/rest/labnumbermanagement",
@@ -125,7 +135,7 @@ function LabNumberManagement() {
   const fetchCurrentLabNumberNoIncrement = () => {
     getFromOpenElisServer(
       "/rest/SampleEntryGenerateScanProvider?noIncrement=true",
-      (res) => {
+      (res: { status?: boolean; body: string }) => {
         if (res.status) {
           if (configurationProperties.AccessionFormat != "ALPHANUM") {
             setCurrentLabNumForDisplay(res.body);
@@ -140,6 +150,7 @@ function LabNumberManagement() {
   };
 
   const generateSampleLabNum = () => {
+    // eslint-disable-next-line prefer-const -- preserve the original JavaScript declaration
     let dateDigits = new Date().getFullYear() % 100;
     let labNumber = "" + dateDigits;
     if (labNumberValues.usePrefix && labNumberValues.alphanumPrefix) {
@@ -152,7 +163,7 @@ function LabNumberManagement() {
   const fetchLegacyLabNumNoIncrement = () => {
     getFromOpenElisServer(
       "/rest/SampleEntryGenerateScanProvider?noIncrement=true&format=SITEYEARNUM",
-      (res) => {
+      (res: { status?: boolean; body: string }) => {
         if (res.status) {
           setSampleLabNumForDisplay(res.body);
         }

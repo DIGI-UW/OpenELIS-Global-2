@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
+import type { FormEvent, ReactNode } from "react";
 import {
   Form,
   Heading,
@@ -6,7 +7,6 @@ import {
   Grid,
   Column,
   Section,
-  Checkbox,
   DataTable,
   Table,
   TableHead,
@@ -15,27 +15,67 @@ import {
   TableHeader,
   TableCell,
   TableSelectRow,
-  TableSelectAll,
   TableContainer,
   Pagination,
 } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
-} from "../../../utils/Utils";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../../common/CustomNotification";
-import config from "../../../../config.json";
+import { AlertDialog } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit";
 
-function ConfigMenuDisplay(props) {
-  const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
+interface ConfigMenuDisplayProps {
+  id: string;
+  label: string;
+  menuType: string;
+}
+
+interface ConfigLocalization {
+  localesAndValuesOfLocalesWithValues?: string;
+}
+
+interface ConfigMenuItem {
+  id: string;
+  name: string;
+  description: string;
+  value: string;
+  valueType: string;
+  tag?: string;
+  localization?: ConfigLocalization;
+}
+
+interface ConfigMenuResponse {
+  menuList: ConfigMenuItem[];
+}
+
+interface ConfigTableRow {
+  id: string;
+  startingRecNo: number;
+  name: string;
+  description: string;
+  value: string;
+  valueType: string;
+}
+
+interface CarbonTableCell {
+  id: string;
+  value: string;
+  info: { header: string };
+}
+
+interface CarbonTableRow {
+  id: string;
+}
+
+interface NotificationContextValue {
+  notificationVisible: boolean;
+}
+
+function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
+  const { notificationVisible } = useContext(
+    NotificationContext,
+  ) as NotificationContextValue;
 
   const intl = useIntl();
 
@@ -43,37 +83,47 @@ function ConfigMenuDisplay(props) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
   const [modifyButton, setModifyButton] = useState(true);
-  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
   const [startingRecNo, setStartingRecNo] = useState(1);
-  const [formEntryConfigMenuList, setformEntryConfigMenuList] = useState([]);
+  const [formEntryConfigMenuList, setformEntryConfigMenuList] = useState<
+    ConfigMenuResponse | []
+  >([]);
   const [orderEntryConfigurationList, setOrderEntryConfigurationList] =
-    useState([]);
+    useState<ConfigTableRow[]>([]);
 
   const [ConfigEdit, setConfigEdit] = useState(false);
 
+  // eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
     { label: `${props.label}`, link: `/MasterListsPage/${props.menuType}` },
   ];
 
-  function handleModify(event) {
+  function handleModify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setConfigEdit(true);
   }
 
-  const handlePageChange = ({ page, pageSize }) => {
+  const handlePageChange = ({
+    page,
+    pageSize,
+  }: {
+    page: number;
+    pageSize: number;
+  }) => {
     setPage(page);
     setPageSize(pageSize);
   };
 
-  const handleMenuItems = (res) => {
+  const handleMenuItems = (res?: ConfigMenuResponse) => {
     if (res) {
       setformEntryConfigMenuList(res);
     }
   };
 
-  const handleLogoResponse = (res, item) => {
+  const handleLogoResponse = (res: { value: string }, item: ConfigMenuItem) => {
     const value = res.value;
     const updatedItem = {
       id: item.id,
@@ -107,8 +157,13 @@ function ConfigMenuDisplay(props) {
 
   useEffect(() => {
     const updateConfigList = () => {
-      if (formEntryConfigMenuList && formEntryConfigMenuList.menuList) {
-        const updatedList = formEntryConfigMenuList.menuList
+      if (
+        formEntryConfigMenuList &&
+        (formEntryConfigMenuList as ConfigMenuResponse).menuList
+      ) {
+        const updatedList = (
+          formEntryConfigMenuList as ConfigMenuResponse
+        ).menuList
           .map((item) => {
             let value = item.value;
             if (item.valueType === "text" && item.tag === "localization") {
@@ -117,7 +172,7 @@ function ConfigMenuDisplay(props) {
             } else if (item.valueType === "logoUpload") {
               getFromOpenElisServer(
                 `/dbImage/siteInformation/${item.name}`,
-                (res) => {
+                (res: { value: string }) => {
                   handleLogoResponse(res, item);
                 },
               );
@@ -142,7 +197,10 @@ function ConfigMenuDisplay(props) {
     updateConfigList();
   }, [formEntryConfigMenuList]);
 
-  const renderCell = (cell, row) => {
+  const renderCell = (
+    cell: CarbonTableCell,
+    row: CarbonTableRow,
+  ): ReactNode => {
     if (cell.info.header === "select") {
       return (
         <TableSelectRow
@@ -181,7 +239,7 @@ function ConfigMenuDisplay(props) {
       {ConfigEdit ? (
         <GenericConfigEdit
           menuType={props.menuType.substring(0, props.menuType.indexOf("Menu"))}
-          ID={selectedRowId}
+          ID={selectedRowId as string}
         />
       ) : (
         <>
