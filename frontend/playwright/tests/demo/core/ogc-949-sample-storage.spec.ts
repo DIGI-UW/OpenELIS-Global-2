@@ -74,7 +74,11 @@ test.describe("OGC-949: Sample Storage configuration (US8)", () => {
       // assert it was rendered (attached) — it is created only on a 200 — and
       // let the reload below be the durable proof. toBeVisible races the 2s
       // dismiss under demo cursor timing.
-      await expect(page.getByText("Sample storage saved.")).toBeAttached({
+      // .first(): the toast renders twice — the editor's visible AlertDialog
+      // and the copy inside the (closed, off-screen) notifications slide-over.
+      await expect(
+        page.getByText("Sample storage saved.").first(),
+      ).toBeAttached({
         timeout: 15_000,
       });
       await demo.scene("STORAGE SAVED");

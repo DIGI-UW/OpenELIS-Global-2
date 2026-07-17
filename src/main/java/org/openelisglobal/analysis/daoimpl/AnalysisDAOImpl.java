@@ -1821,6 +1821,22 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     }
 
     @Override
+    public List<Analysis> getAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds) {
+        // Same predicate as getCountOfAnalysisStartedOnByStatusId, so the dashboard
+        // count and its drill-down list always agree.
+        String sql = "From Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId in (:statusList)";
+        try {
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("startedDate", startedDate);
+            query.setParameterList("statusList", statusIds);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getAnalysisStartedOnByStatusId");
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
     public List<Analysis> getAnalysesResultEnteredOnExcludedByStatusId(Date completedDate, Set<String> statusIds)
             throws LIMSRuntimeException {
         String sql = "from Analysis a where DATE(a.completedDate) = DATE(:completedDate) and a.statusId not in ( :statusList"

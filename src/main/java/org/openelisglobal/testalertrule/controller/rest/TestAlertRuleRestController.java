@@ -3,8 +3,11 @@ package org.openelisglobal.testalertrule.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testalertrule.service.TestAlertRuleService;
@@ -46,9 +49,13 @@ public class TestAlertRuleRestController extends BaseRestController {
 
     private final TestService testService;
 
-    public TestAlertRuleRestController(TestAlertRuleService alertRuleService, TestService testService) {
+    private final RoleService roleService;
+
+    public TestAlertRuleRestController(TestAlertRuleService alertRuleService, TestService testService,
+            RoleService roleService) {
         this.alertRuleService = alertRuleService;
         this.testService = testService;
+        this.roleService = roleService;
     }
 
     /** Create/update payload for an alert rule. */
@@ -72,6 +79,16 @@ public class TestAlertRuleRestController extends BaseRestController {
     public List<TestAlertRule> list(@PathVariable String testId) {
         requireTest(testId);
         return alertRuleService.getByTestId(testId);
+    }
+
+    /**
+     * Selectable roles for the "notify role" recipient (id + human description).
+     * Grouping roles are excluded since they are containers, not assignable roles.
+     */
+    @GetMapping(value = "/roles", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<IdValuePair> roles(@PathVariable String testId) {
+        return roleService.getAllActiveRoles().stream().filter(r -> !r.getGroupingRole())
+                .map(r -> new IdValuePair(r.getId(), r.getName())).collect(Collectors.toList());
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
