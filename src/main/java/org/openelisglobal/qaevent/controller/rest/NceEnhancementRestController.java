@@ -13,7 +13,9 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.qaevent.bean.CapaRegisterItem;
 import org.openelisglobal.qaevent.service.NCEventService;
+import org.openelisglobal.qaevent.service.NceActionLogService;
 import org.openelisglobal.qaevent.service.NceAttachmentService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.service.NceHistoryService;
@@ -39,6 +41,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -67,6 +70,9 @@ public class NceEnhancementRestController extends BaseRestController {
     private NCEventService ncEventService;
 
     @Autowired
+    private NceActionLogService nceActionLogService;
+
+    @Autowired
     private NceSpecimenService nceSpecimenService;
 
     @Autowired
@@ -92,10 +98,24 @@ public class NceEnhancementRestController extends BaseRestController {
 
     private static final int USER_AUTOCOMPLETE_RESULT_LIMIT = 25;
 
+    // ponytail: cap 500; add server-side pagination/filter if CAPA volume ever
+    // exceeds it.
+    private static final int CAPA_REGISTER_LIMIT = 500;
+
     @GetMapping(value = "/generate-number", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> generateNceNumber() {
         String nceNumber = nceNumberGeneratorService.generateNceNumber();
         return ResponseEntity.ok(Map.of("nceNumber", nceNumber));
+    }
+
+    /**
+     * Cross-NCE CAPA Register (OGC-707): all corrective/preventive actions with
+     * their parent NCE.
+     */
+    @GetMapping(value = "/capa-register", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<List<CapaRegisterItem>> getCapaRegister() {
+        return ResponseEntity.ok(nceActionLogService.getCapaRegister(CAPA_REGISTER_LIMIT));
     }
 
     @GetMapping(value = "/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)

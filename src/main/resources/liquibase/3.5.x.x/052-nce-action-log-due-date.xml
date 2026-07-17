@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ================================================================== -->
+    <!-- C.2 (OGC-707): CAPA Register. Adds a due date to corrective/        -->
+    <!-- preventive actions so the register can flag overdue CAPAs.          -->
+    <!-- ================================================================== -->
+
+    <changeSet author="samuelmale" id="capa-register-001-add-nce-action-log-due-date">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_action_log"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_action_log" columnName="due_date"/>
+            </not>
+        </preConditions>
+        <comment>Add due_date to nce_action_log for the CAPA Register overdue tile/filter</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_action_log">
+            <column name="due_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
