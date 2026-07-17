@@ -548,7 +548,7 @@ function CreatePatientForm(props) {
   // Fetch address hierarchy levels when configurationProperties changes
   useEffect(() => {
     if (
-      configurationProperties.USE_NEW_ADDRESS_HIERARCHY === "true" &&
+      configurationProperties.USE_NEW_ADDRESS_HIERARCHY !== "false" &&
       componentMounted.current
     ) {
       getFromOpenElisServer(
@@ -570,7 +570,7 @@ function CreatePatientForm(props) {
     }
 
     if (
-      configurationProperties.USE_NEW_ADDRESS_HIERARCHY === "true" &&
+      configurationProperties.USE_NEW_ADDRESS_HIERARCHY !== "false" &&
       patientPK &&
       addressHierarchy &&
       Object.keys(addressHierarchy).length > 0 &&
@@ -1424,8 +1424,8 @@ function CreatePatientForm(props) {
                             <br></br>
                           </Column>
                           {/* Address Hierarchy Section - Quick Search */}
-                          {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
-                            "true" &&
+                          {configurationProperties.USE_NEW_ADDRESS_HIERARCHY !==
+                            "false" &&
                             addressHierarchyLevels.length > 0 && (
                               <Column lg={16} md={8} sm={4}>
                                 <AddressSearch
@@ -1446,8 +1446,8 @@ function CreatePatientForm(props) {
                               render order. Dropdown cascade keys continue to
                               use logical hierarchy order so address search and
                               child loading stay stable. */}
-                          {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
-                            "true" &&
+                          {configurationProperties.USE_NEW_ADDRESS_HIERARCHY !==
+                            "false" &&
                             addressHierarchyLevels.length > 0 &&
                             getAddressRenderLevels().map((level) => {
                               const levelIndex = getAddressLevelIndex(level);
@@ -1555,76 +1555,6 @@ function CreatePatientForm(props) {
                                 </Column>
                               );
                             })}
-                          {/* Legacy Health Region/District - Show ONLY if new hierarchy is explicitly disabled */}
-                          {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
-                            "false" && (
-                            <>
-                              <Column lg={8} md={4} sm={4}>
-                                <Field name="healthRegion">
-                                  {({ field }) => (
-                                    <Select
-                                      id="health_region"
-                                      value={values.healthRegion || ""}
-                                      name={field.name}
-                                      labelText={intl.formatMessage({
-                                        id: "patient.address.healthregion",
-                                      })}
-                                      onChange={(e) =>
-                                        handleRegionSelection(e, values)
-                                      }
-                                      helperText={intl.formatMessage({
-                                        id: "patient.emergency.additional.region",
-                                      })}
-                                    >
-                                      <SelectItem text="" value="" />
-                                      {healthRegions?.map((region, index) => (
-                                        <SelectItem
-                                          text={region.value}
-                                          value={region.id}
-                                          key={index}
-                                        />
-                                      ))}
-                                    </Select>
-                                  )}
-                                </Field>
-                              </Column>
-
-                              <Column lg={8} md={4} sm={4}>
-                                <Field name="healthDistrict">
-                                  {({ field }) => (
-                                    <Select
-                                      id="health_district"
-                                      value={values.healthDistrict || ""}
-                                      name={field.name}
-                                      labelText={intl.formatMessage({
-                                        id: "patient.address.healthdistrict",
-                                      })}
-                                      onChange={(e) =>
-                                        setFieldValue(
-                                          "healthDistrict",
-                                          e.target.value,
-                                        )
-                                      }
-                                      helperText={intl.formatMessage({
-                                        id: "patient.emergency.additional.district",
-                                      })}
-                                    >
-                                      <SelectItem text="" value="" />
-                                      {healthDistricts?.map(
-                                        (district, index) => (
-                                          <SelectItem
-                                            text={district.value}
-                                            value={district.value}
-                                            key={index}
-                                          />
-                                        ),
-                                      )}
-                                    </Select>
-                                  )}
-                                </Field>
-                              </Column>
-                            </>
-                          )}
 
                           <Column lg={16} md={8} sm={4}>
                             {" "}
