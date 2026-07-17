@@ -213,4 +213,7 @@
        (renumbered from 051 on rebase: develop claimed 051-075) -->
   <include relativeToChangelogFile="true" file="076-nce-trigger-source.xml"/>
 
+  <!-- OGC-707: CAPA Register due date on nce_action_log -->
+  <include relativeToChangelogFile="true" file="052-nce-action-log-due-date.xml"/>
+
 </databaseChangeLog>
