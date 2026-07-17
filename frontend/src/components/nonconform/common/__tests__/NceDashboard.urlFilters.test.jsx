@@ -39,7 +39,7 @@ const nce = (id, severity, status) => ({
 const NCE_LIST = [
   nce("1", "CRITICAL", "Pending"),
   nce("2", "MAJOR", "Pending"),
-  nce("3", "CRITICAL", "Closed"),
+  nce("3", "CRITICAL", "Completed"),
 ];
 
 const renderAt = async (url) => {
