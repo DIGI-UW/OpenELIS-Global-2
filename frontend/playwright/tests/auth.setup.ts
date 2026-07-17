@@ -1,4 +1,5 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup, expect } from "../helpers/test-base";
+import { SHORT_TIMEOUT, LONG_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
 const AUTH_FILE = "playwright/.auth/user.json";
 
@@ -22,39 +23,45 @@ const AUTH_FILE = "playwright/.auth/user.json";
  *     and add it to the browser context with path=/ so all routes work.
  */
 setup("authenticate", async ({ page, request, context }, testInfo) => {
-  testInfo.setTimeout(60_000);
+  testInfo.setTimeout(NAV_TIMEOUT);
 
-  const username = process.env.TEST_USER;
-  const password = process.env.TEST_PASS;
-
-  if (!username || !password) {
-    throw new Error(
-      "TEST_USER and TEST_PASS environment variables must be set.\n" +
-        "  Source .env from repo root: set -a; . .env; set +a\n" +
-        "  Or use ANSI-C quoting: export TEST_PASS=$'adminADMIN!'",
-    );
-  }
+  // Defaults match .env.example, frontend/playwright/helpers/verify-login.sh,
+  // and projects/analyzer-harness/seed-analyzers.sh: admin / adminADMIN!.
+  // A .env file or explicit exports still take precedence.
+  const username = process.env.TEST_USER || "admin";
+  const password = process.env.TEST_PASS || "adminADMIN!";
 
   // ── Step 1: Backend health check ──────────────────────────────
-  let backendReady = false;
-  for (let attempt = 1; attempt <= 12; attempt++) {
+  // /health is an nginx route of the local build/dev stacks; remote
+  // deployments (e.g. testing.openelis-global.org) route it elsewhere — it
+  // 502s after ~4s or times out outright. Probe each endpoint inside its own
+  // error boundary so a slow/dead /health can never mask the fallback: the
+  // LoginPage endpoint is served by the webapp itself and is the
+  // authoritative "backend is up" signal on any environment.
+  const probe = async (path: string) => {
     try {
-      const health = await request.get("/health", { timeout: 5_000 });
-      if (health.ok()) {
-        backendReady = true;
-        break;
-      }
+      const res = await request.get(path, { timeout: SHORT_TIMEOUT });
+      return res.ok();
     } catch {
-      // connection refused or timeout
+      return false;
     }
-    if (attempt % 4 === 0) {
-      console.log(
-        `  auth-setup: waiting for backend... (${attempt * 5}s elapsed)`,
-      );
-    }
-    await page.waitForTimeout(5_000);
-  }
-  if (!backendReady) {
+  };
+  const healthCheckResult = await expect
+    .poll(
+      async () =>
+        (await probe("/health")) ||
+        (await probe("/api/OpenELIS-Global/LoginPage")),
+      {
+        timeout: NAV_TIMEOUT,
+        intervals: [1_000, 2_000, 5_000],
+        message: "Waiting for backend /health endpoint to become ready",
+      },
+    )
+    .toBeTruthy()
+    .then(() => true)
+    .catch(() => false);
+
+  if (!healthCheckResult) {
     throw new Error(
       "Backend health check failed after 60s.\n" +
         "  Ensure the OE container is running and accessible at the baseURL.",
@@ -117,11 +124,12 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   }
 
   // Add the cookie to the browser context with root path
+  const host = new URL(process.env.BASE_URL || "https://localhost").hostname;
   await context.addCookies([
     {
       name: "JSESSIONID",
       value: jsessionId,
-      domain: "localhost",
+      domain: host,
       path: "/",
       httpOnly: true,
       secure: true,
@@ -130,8 +138,19 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   ]);
 
   // ── Step 4: Verify authenticated state ────────────────────────
-  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 15_000 });
+  // Navigate to the home page — lightest authenticated route.
+  // Wait for the session API call that SecureRoute uses to resolve auth,
+  // then assert we weren't redirected to /login. Without this, the
+  // not.toHaveURL assertion would pass instantly before React hydrates.
+  const sessionResponse = page.waitForResponse(
+    (resp) => resp.url().includes("/api/OpenELIS-Global/session") && resp.ok(),
+    { timeout: LONG_TIMEOUT },
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await sessionResponse;
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, {
+    timeout: LONG_TIMEOUT,
+  });
 
   // ── Step 5: Save session ──────────────────────────────────────
   await page.context().storageState({ path: AUTH_FILE });

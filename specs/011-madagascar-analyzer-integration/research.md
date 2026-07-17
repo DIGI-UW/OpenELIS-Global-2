@@ -1,5 +1,13 @@
 # Research: Madagascar Analyzer Integration
 
+## 2026-03-18 Addendum: FILE Ownership Alignment
+
+This research note is aligned with the 014 remediation archive plan.
+
+- The OS-level watcher recommendation maps to bridge-owned FILE watching.
+- OpenELIS should not be the default active poller for the same directories.
+- OpenELIS remains responsible for configuration and ingestion/processing.
+
 **Feature**: 011-madagascar-analyzer-integration **Date**: 2026-01-22
 **Purpose**: Resolve technical unknowns and document design decisions
 
@@ -679,9 +687,10 @@ type.
 
 ### Template File Inventory
 
-See [contracts/supported-analyzers.md](contracts/supported-analyzers.md) for the
-authoritative analyzer inventory (13 Madagascar analyzers, fixture IDs
-2000-2012) and protocol details.
+The supported-analyzers contract was retired 2026-04-18 (see
+`.specify/plan-archive/011-supported-analyzers.md` for the historical
+13-analyzer narrative). The current-truth analyzer inventory is
+`projects/analyzer-harness/seed-analyzers.sh`.
 
 ---
 

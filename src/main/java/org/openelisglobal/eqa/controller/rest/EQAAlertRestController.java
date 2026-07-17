@@ -12,6 +12,7 @@ import org.openelisglobal.alert.valueholder.AlertType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
 public class EQAAlertRestController {
 
     @Autowired
@@ -33,7 +35,7 @@ public class EQAAlertRestController {
             @RequestParam(required = false) String search, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int pageSize) {
 
-        List<Alert> allAlerts = alertService.getAlertsByEntity(null, null);
+        List<Alert> allAlerts = alertService.getAll();
         if (allAlerts == null) {
             allAlerts = List.of();
         }
@@ -62,7 +64,7 @@ public class EQAAlertRestController {
 
     @GetMapping(value = "/alerts/dashboard/summary", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getAlertsSummary() {
-        List<Alert> allAlerts = alertService.getAlertsByEntity(null, null);
+        List<Alert> allAlerts = alertService.getAll();
         if (allAlerts == null) {
             allAlerts = List.of();
         }
@@ -92,9 +94,12 @@ public class EQAAlertRestController {
     public ResponseEntity<?> acknowledgeAlert(@PathVariable Long id,
             @RequestBody(required = false) Map<String, String> body) {
 
-        List<Alert> alerts = alertService.getAlertsByEntity(null, null);
-        Alert target = alerts != null ? alerts.stream().filter(a -> a.getId().equals(id)).findFirst().orElse(null)
-                : null;
+        Alert target;
+        try {
+            target = alertService.get(id);
+        } catch (Exception e) {
+            target = null;
+        }
 
         if (target == null) {
             return ResponseEntity.notFound().build();

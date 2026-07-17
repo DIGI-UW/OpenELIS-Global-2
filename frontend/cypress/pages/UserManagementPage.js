@@ -3,7 +3,7 @@ class UserManagementPage {
     this.selectors = {
       pageTitle: "h2",
       userPageTitle: "h3",
-      span: "span",
+      span: ".cds--checkbox-label-text",
       addButton: "[data-cy='add-button']",
       modifyUser: "[data-cy='modify-button']",
       deactivateUser: "[data-cy='deactivate-button']",
@@ -33,17 +33,19 @@ class UserManagementPage {
       menuButton: "[data-cy='menuButton']",
       enterLoginName: "#loginName",
       enterPassword: "#password",
-      allPermissions: "#all-permissions-AllLabUnits",
-      allBioPermissions: "#all-permissions-56",
-      allHemaPermissions: "#all-permissions-36",
-      allSeroPermissions: "#all-permissions-117",
-      allImmunoPermissions: "#all-permissions-59",
-      allMolecularPermissions: "#all-permissions-136",
-      allCytoPermissions: "#all-permissions-165",
-      allSerologyPermissions: "#all-permissions-97",
-      allViroPermissions: "#all-permissions-76",
-      allPathoPermissions: "#all-permissions-163",
-      allImmunoHistoPermissions: "#all-permissions-164",
+      allPermissions: "[data-testid='all-permissions-All-Lab-Units']",
+      allBioPermissions: "[data-testid='all-permissions-Biochemistry']",
+      allHemaPermissions: "[data-testid='all-permissions-Hematology']",
+      allSeroPermissions: "[data-testid='all-permissions-Serology-Immunology']",
+      allImmunoPermissions: "[data-testid='all-permissions-Immunology']",
+      allMolecularPermissions:
+        "[data-testid='all-permissions-Molecular-Biology']",
+      allCytoPermissions: "[data-testid='all-permissions-Cytology']",
+      allSerologyPermissions: "[data-testid='all-permissions-Serology']",
+      allViroPermissions: "[data-testid='all-permissions-Virology']",
+      allPathoPermissions: "[data-testid='all-permissions-Pathology']",
+      allImmunoHistoPermissions:
+        "[data-testid='all-permissions-Immunohistochemistry']",
       loginButton: "[data-cy='loginButton']",
       uncheckActiveUser: "#only-active",
       uncheckAdminUser: "#only-administrator",
@@ -160,6 +162,10 @@ class UserManagementPage {
     cy.get(this.selectors.addNewPermission).click();
   }
 
+  selectTestSection(sectionName) {
+    cy.get('select[id^="select-"]').last().select(sectionName);
+  }
+
   allPermissions() {
     cy.get(this.selectors.allPermissions).check({ force: true });
   }
@@ -250,7 +256,17 @@ class UserManagementPage {
   }
 
   searchUser(value) {
-    cy.get(this.selectors.searchBar).clear().type(value);
+    // Require the search bar to be stable/actionable before typing so cy.type()
+    // can't race a concurrent re-render (Cypress "Cannot read properties of
+    // undefined (reading 'KeyboardEvent')" flake when a filter refetch re-renders
+    // the page mid-keystroke). The input is also briefly DISABLED while a filter
+    // refetch is in flight ("cy.type() failed because it targeted a disabled
+    // element"), so require enabled too.
+    cy.get(this.selectors.searchBar)
+      .should("be.visible")
+      .and("be.enabled")
+      .clear()
+      .type(value);
   }
 
   clearSearchBar() {
@@ -275,6 +291,9 @@ class UserManagementPage {
 
   activeUser() {
     cy.contains(this.selectors.span, "Only Active").click();
+    // Let the filter's async table re-render settle before any subsequent typing,
+    // so a following searchUser() cy.type() does not race the re-render.
+    cy.get(this.selectors.tableData).should("be.visible");
   }
 
   uncheckActiveUser() {

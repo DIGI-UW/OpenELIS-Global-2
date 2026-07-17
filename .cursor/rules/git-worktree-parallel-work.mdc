@@ -1,0 +1,31 @@
+---
+description: Scope Git work to the correct worktree path—never checkout duplicate branches or invent local/* copies on the main clone
+alwaysApply: true
+---
+
+# Git worktrees — parallel work discipline
+
+This repo uses **multiple worktrees** for parallel work. The Cursor workspace root may **not** be the tree where the current task’s branch is checked out.
+
+## Non‑negotiables
+
+1. **Task = directory first**  
+   Before `git` commands, Playwright, Maven, or editing “the” branch for a ticket/PR, confirm **which worktree path** owns that branch (`git worktree list`).
+
+2. **Never fight the lock**  
+   If branch `B` is already checked out in worktree `W`, **do not** `git checkout B` in another clone. **Use `W`** (`cd` / absolute paths / open folder)—**never** create `local/*` (or other) duplicate branches on the main repo just to unblock checkout.
+
+3. **Shells and tests follow the tree**  
+   Prefix commands: `cd <worktree-root> && …` for that task. Do not assume `Workspace Path` is the PR tree when parallel work exists.
+
+4. **One line of work = one branch ref**  
+   PRs track **one** remote branch (e.g. `followup/e2e-runtime-remediation`). All commits for that PR must land on **that** ref’s checkout—not a stray `local/…` branch on another path.
+
+5. **If unsure**  
+   Run `git worktree list`, identify the row where `B` is checked out, and operate **only** under that path until the user changes scope.
+
+## Anti‑patterns
+
+- Checking out the same branch in two directories.
+- “Sync branches” via inventing `local/<name>` on the main clone while the real branch lives in `~/.cursor/worktrees/...`.
+- Running Playwright or CI‑critical commands from the wrong worktree and then debugging “mystery” drift.

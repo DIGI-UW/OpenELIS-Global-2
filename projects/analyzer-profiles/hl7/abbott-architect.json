@@ -3,46 +3,56 @@
   "profileMeta": {
     "id": "abbott-architect",
     "version": "1.2.0",
-    "displayName": "Abbott Architect"
+    "displayName": "Abbott Architect",
+    "confidence": "LOW"
   },
   "analyzer_name": "Abbott Architect",
   "manufacturer": "Abbott",
   "category": "IMMUNOLOGY",
-  "protocol": { "name": "HL7", "version": "2.5.1" },
+  "protocol": {
+    "name": "HL7",
+    "version": "2.5.1"
+  },
   "identifier_pattern": "ABBOTT|ARCHITECT",
-  "transport": ["RS-232", "TCP/IP"],
+  "transport": [
+    "RS-232",
+    "TCP/IP"
+  ],
   "transport_config": {
     "RS-232": {},
-    "TCP/IP": { "default_port": 5000, "framing": "MLLP" }
+    "TCP/IP": {
+      "default_port": 5000,
+      "framing": "MLLP"
+    }
   },
   "msh3_pattern": "ARCHITECT|ABBOTT",
   "default_test_mappings": [
     {
-      "analyzer_code": "HIV",
+      "test_code": "HIV",
       "test_name_hint": "HIV Antigen/Antibody",
       "loinc": "75622-1",
       "unit": ""
     },
     {
-      "analyzer_code": "HBsAg",
+      "test_code": "HBsAg",
       "test_name_hint": "Hepatitis B Surface Antigen",
       "loinc": "5196-1",
       "unit": ""
     },
     {
-      "analyzer_code": "HCV",
+      "test_code": "HCV",
       "test_name_hint": "Hepatitis C Antibody",
       "loinc": "16128-1",
       "unit": ""
     },
     {
-      "analyzer_code": "TSH",
+      "test_code": "TSH",
       "test_name_hint": "Thyroid Stimulating Hormone",
       "loinc": "3016-3",
       "unit": "mIU/L"
     },
     {
-      "analyzer_code": "FERR",
+      "test_code": "FERR",
       "test_name_hint": "Ferritin",
       "loinc": "2276-4",
       "unit": "ng/mL"

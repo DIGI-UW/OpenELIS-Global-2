@@ -20,13 +20,13 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.services.StatusSet;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.result.controller.AnalyzerResultsController;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
@@ -37,8 +37,6 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
-    @Autowired
-    private AnalyzerResultsController analyzerResultsController;
     @Autowired
     private NoteService noteService;
 
@@ -103,8 +101,8 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         List<AnalyzerResults> deletableAnalyzerResults = new ArrayList<>();
         deletableAnalyzerResults.add(analyzerResult);
 
-        AnalyzerResultsController.SampleGrouping sampleGrouping = analyzerResultsController.new SampleGrouping();
-        List<AnalyzerResultsController.SampleGrouping> sampleGroupingList = new ArrayList<>();
+        SampleGrouping sampleGrouping = new SampleGrouping();
+        List<SampleGrouping> sampleGroupingList = new ArrayList<>();
 
         Sample sample = new Sample();
         sample.setAccessionNumber("78891");

@@ -1,13 +1,12 @@
 package org.openelisglobal.eqa.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.eqa.dao.EQALabProgramEnrollmentDAO;
-import org.openelisglobal.eqa.dao.EQAProgramDAO;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentLabUnit;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
@@ -20,11 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQALabProgramEnrollment, Long>
         implements EQALabProgramEnrollmentService {
 
-    @Autowired
-    private EQALabProgramEnrollmentDAO enrollmentDAO;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
-    private EQAProgramDAO eqaProgramDAO;
+    private EQALabProgramEnrollmentDAO enrollmentDAO;
 
     public EQALabProgramEnrollmentServiceImpl() {
         super(EQALabProgramEnrollment.class);
@@ -68,7 +67,7 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
         EQALabProgramEnrollment existing = enrollmentDAO.get(id)
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found: " + id));
 
-        existing.setEqaProgram(updated.getEqaProgram());
+        existing.setProgramName(updated.getProgramName());
         existing.setProvider(updated.getProvider());
         existing.setDescription(updated.getDescription());
         existing.setIsActive(updated.getIsActive() != null ? updated.getIsActive() : existing.getIsActive());
@@ -77,9 +76,15 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
 
         existing.getLabUnits().clear();
         existing.getTestMaps().clear();
-        setMappings(existing, labUnitIds, testIds, panelIds);
+        existing = enrollmentDAO.update(existing);
+        entityManager.flush();
 
-        return enrollmentDAO.update(existing);
+        setMappings(existing, labUnitIds, testIds, panelIds);
+        enrollmentDAO.update(existing);
+        entityManager.flush();
+        entityManager.clear();
+        return enrollmentDAO.get(id)
+                .orElseThrow(() -> new IllegalStateException("Failed to reload enrollment after update"));
     }
 
     @Override
@@ -94,13 +99,7 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
     @Override
     @Transactional(readOnly = true)
     public List<String> getDistinctProviders() {
-        List<String> labProviders = enrollmentDAO.findDistinctProviders();
-        List<String> programProviders = eqaProgramDAO.findByIsActive(true).stream()
-                .map(p -> p.getOrganization() != null ? p.getOrganization().getOrganizationName() : null)
-                .filter(name -> name != null && !name.isBlank()).distinct().collect(Collectors.toList());
-
-        return Stream.concat(labProviders.stream(), programProviders.stream()).distinct().sorted()
-                .collect(Collectors.toList());
+        return enrollmentDAO.findDistinctProviders();
     }
 
     private void setMappings(EQALabProgramEnrollment enrollment, List<Long> labUnitIds, List<Long> testIds,

@@ -2,29 +2,35 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import messages from "../../../../languages/en.json";
 import CreateDistribution from "../CreateDistribution";
 
-jest.mock("../../../utils/Utils", () => ({
-  ...jest.requireActual("../../../utils/Utils"),
-  getFromOpenElisServer: jest.fn(),
-  getFromOpenElisServerV2: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
-}));
+vi.mock("../../../utils/Utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getFromOpenElisServer: vi.fn(),
+    getFromOpenElisServerV2: vi.fn(),
+    postToOpenElisServerJsonResponse: vi.fn(),
+  };
+});
 
 const renderWithIntl = (component) => {
   return render(
-    <IntlProvider locale="en" messages={messages}>
-      {component}
-    </IntlProvider>,
+    <MemoryRouter>
+      <IntlProvider locale="en" messages={messages}>
+        {component}
+      </IntlProvider>
+    </MemoryRouter>,
   );
 };
 
 describe("CreateDistribution", () => {
-  const mockOnCreate = jest.fn();
+  const mockOnCreate = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders wizard with all step labels", () => {

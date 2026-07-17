@@ -11,7 +11,6 @@ import {
   postToOpenElisServer,
   putToOpenElisServer,
   urlBase64ToUint8Array,
-  deleteToOpenElisServer,
 } from "../utils/Utils";
 import Spinner from "../common/Sprinner";
 import { useIntl } from "react-intl";

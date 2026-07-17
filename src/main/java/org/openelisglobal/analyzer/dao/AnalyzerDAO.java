@@ -33,4 +33,6 @@ public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
     Optional<Analyzer> findByIdWithType(String id);
 
     Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port);
+
+    Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId);
 }

@@ -46,14 +46,21 @@ For AI-assisted development, prefer this sequence:
   waits.
 - Do not create new Cypress tests. Cypress is deprecated; all new E2E work must
   use Playwright.
+- NEVER use `response.ok()` as the test pass/fail signal. Use `waitForResponse`
+  for sync, assert on visible UI.
+- NEVER use `{ force: true }` on Carbon inputs. Click the `<label>` instead.
+- NEVER use `.catch(() => false)` on `isVisible()` — it returns boolean
+  directly.
+- ALWAYS include at least one `expect()` assertion per test.
 
 ## Execution Invariants
 
 - Never use `npx playwright test` (or raw `playwright test`) to run tests.
   Always use `npm run pw:test` and related scripts (`pw:test:ui`,
-  `pw:test:headed`, `pw:test:video`, `pw:test:harness`, `pw:test:demo`).
-- For `harness`, `demo`, and `demo-video` projects, verify analyzer harness
-  stack preflight before execution (see `/restart-analyzer-harness`).
+  `pw:test:headed`, `pw:test:video`, `pw:test:harness`, `pw:test:core-demo`,
+  `pw:test:harness-demo`, `pw:test:demo` alias).
+- For `harness`, `harness-demo`, and `harness-demo-video`, verify analyzer
+  harness stack preflight before execution (see `/restart-analyzer-harness`).
 - `TEST_USER` and `TEST_PASS` must be set for all Playwright projects.
 - Utility exceptions are allowed: `npx playwright show-trace` and
   `npx playwright install`.

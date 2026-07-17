@@ -4,6 +4,9 @@
 **Reference**: [hl7-branch-contract.md](../contracts/hl7-branch-contract.md),
 [hl7-readiness-gates.md](../contracts/hl7-readiness-gates.md),
 [gate1-ogc325-evidence.md](../launch-checklists/gate1-ogc325-evidence.md)
+**Implementation tasks**:
+[m1-implementation-tasks.md](./m1-implementation-tasks.md) (actual M1 task
+tracking)
 
 ## Purpose
 
@@ -18,6 +21,9 @@ coordination branch only documents the expected scope.
   `launch-checklists/pre-m1-readiness.md`
 - Bridge and main-repository teams agreed on paired PR model per
   `contracts/paired-pr-handoff.md`
+- HL7 test-connection parity: `fix/013-hl7-test-connection` (PR #3195) must be
+  present on the current consolidation branch or merged to `develop` before M1
+  starts.
 
 ## Task Categories
 

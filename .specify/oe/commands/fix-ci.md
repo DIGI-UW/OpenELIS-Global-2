@@ -142,6 +142,35 @@ Determine:
 branch → BREAK immediately. Tell the user: "Cannot run /fix-ci on a protected
 branch. Please switch to a feature branch first."
 
+**Holistic CI status check (MANDATORY):**
+
+Before diving into specific failures, get the full picture across ALL workflows
+— not just E2E. This matches what the user sees in the GitHub PR UI:
+
+```bash
+# If PR exists, use gh pr checks for the same view as the GitHub UI
+gh pr checks $PR_NUMBER 2>/dev/null || \
+  gh run list --branch $BRANCH --limit 10 --json name,status,conclusion,workflowName \
+    --jq '.[] | "\(.workflowName) / \(.name): \(.conclusion // .status)"'
+```
+
+**Check ALL workflows**, not just the one you expect to fail:
+
+- `01 - Backend` (formatting, compilation, unit tests)
+- `02 - Frontend` (static analysis, image build)
+- `03 - E2E` (Playwright, Analyzer Harness, Cypress)
+- `Automation / Merge Conflicts`
+- `Validation / SpecKit`, `Validation / i18n`
+
+**Any failing workflow is in scope.** A formatting failure in Backend is just as
+blocking as an E2E test failure. Triage ALL failures before fixing any.
+
+**Check for merge conflicts:** If `Automation / Merge Conflicts` fails or the PR
+shows a merge conflict banner, CI runs will stall or produce misleading results.
+Resolve merge conflicts BEFORE diagnosing other failures — stale merge refs
+cause checkout failures, missing files, and phantom test errors that disappear
+after rebase.
+
 Check project knowledge for known CI failure patterns:
 
 1. `.specify/memory/` — project-scoped memory (shared across all agents)
@@ -149,7 +178,65 @@ Check project knowledge for known CI failure patterns:
 3. Agent-specific memory (e.g., `$HOME/.claude/projects/*/memory/MEMORY.md`) if
    available
 
-Report the detected state before proceeding.
+Report the detected state (including all workflow statuses) before proceeding.
+
+### OpenELIS CI Architecture — Critical Context
+
+This project uses a **two-stage E2E pipeline**:
+
+1. **`03 - E2E`** (build workflow, `pull_request` trigger) — runs Shared Build,
+   uploads images/artifacts to GHCR, produces `e2e-build-context` artifact
+2. **`E2E / Tests`** (test workflow, `workflow_run` trigger) — fires when
+   `03 - E2E` completes, runs the actual Playwright/Cypress/Analyzer Harness
+   tests
+
+**Critical gotchas:**
+
+- `E2E / Tests` always shows `head_branch: develop` in the API because
+  `workflow_run` events inherit the base branch. It tests the **PR's code** via
+  the `e2e-build-context` artifact (which contains `pr_number` and `head_sha`).
+- `gh run watch --exit-status` **does NOT work** for `E2E / Tests` runs. It
+  reports exit code 0 even when the run fails. **Never use it for E2E
+  monitoring.**
+- `gh run list --branch <pr-branch>` will NOT find `E2E / Tests` runs because
+  they show as `develop`. Use `gh pr checks` instead.
+
+**How to find the E2E Tests run for a PR:**
+
+```bash
+# CORRECT: Use gh pr checks — this shows the 03 Checkpoint - E2E status
+# with a direct link to the E2E / Tests run
+gh pr checks $PR_NUMBER
+
+# The "03 Checkpoint - E2E" check URL points to the E2E / Tests run ID
+# Extract it if needed:
+gh pr checks $PR_NUMBER 2>&1 | grep "03 Checkpoint - E2E[^-]"
+```
+
+**How to verify CI status (MANDATORY — replace all `gh run watch` usage):**
+
+```bash
+# Poll until no checks are pending
+while gh pr checks $PR_NUMBER 2>&1 | grep -q "pending"; do
+  sleep 60
+done
+
+# Then check for failures
+FAILURES=$(gh pr checks $PR_NUMBER 2>&1 | grep "fail")
+if [ -n "$FAILURES" ]; then
+  echo "FAILURES DETECTED:"
+  echo "$FAILURES"
+else
+  echo "ALL GREEN"
+fi
+```
+
+**Never use these for E2E status:**
+
+- `gh run watch <run-id> --exit-status` — exits 0 on failure for workflow_run
+- `gh run list --branch <pr-branch>` — misses E2E / Tests runs
+- `gh run view <run-id> --json conclusion` on the `03 - E2E` run — this is the
+  build, not the tests
 
 ---
 
@@ -460,6 +547,19 @@ git push
 - Summary of fix
 - Expected CI outcome
 
+**Post-push holistic check (MANDATORY):**
+
+After pushing, immediately check ALL workflow statuses — not just the one you
+fixed:
+
+```bash
+gh pr checks $PR_NUMBER 2>/dev/null || \
+  gh run list --branch $BRANCH --limit 5
+```
+
+This catches cascading failures (e.g., a test fix that breaks formatting) before
+waiting 30 minutes for E2E to report back.
+
 #### Parallel tracks: Local E2E + CI monitoring
 
 After pushing, always monitor CI. If `--local-e2e` is set, **also** run the full
@@ -489,43 +589,35 @@ waiting for CI.
 
 **Without `--local-e2e`:** Skip Track A entirely and only monitor CI.
 
-**Track B — CI monitoring (exponential backoff):**
+**Track B — CI monitoring (poll `gh pr checks`):**
 
-Poll CI status with exponentially escalating intervals, capped at 20 minutes.
-Early checks catch fast failures (build errors); later checks accommodate slower
-E2E jobs.
-
-| Check | Wait   | Cumulative | Catches                     |
-| ----- | ------ | ---------- | --------------------------- |
-| 1st   | 3 min  | 3 min      | Build failures, lint errors |
-| 2nd   | 6 min  | 9 min      | Unit test failures          |
-| 3rd   | 12 min | 21 min     | Fast E2E failures           |
-| 4th   | 20 min | 41 min     | Full E2E suite completion   |
-| 5th+  | 20 min | 61 min+    | Long-running / queued jobs  |
+**IMPORTANT:** Do NOT use `gh run watch --exit-status` — it gives false
+positives for our `workflow_run`-based E2E pipeline. Use `gh pr checks` polling
+instead:
 
 ```bash
-# Exponential backoff loop
-WAIT_SECS=180  # Start at 3 minutes
-MAX_WAIT=1200  # Cap at 20 minutes
-
+# Poll PR checks until complete (no pending)
 while true; do
-  sleep $WAIT_SECS
+  sleep 120  # 2-minute intervals
 
-  STATUS=$(gh run list --branch $BRANCH --limit 1 \
-    --json databaseId,status,conclusion \
-    --jq '.[0] | "\(.status) \(.conclusion)"')
+  CHECKS=$(gh pr checks $PR_NUMBER 2>&1)
+  PENDING=$(echo "$CHECKS" | grep "pending")
+  FAILURES=$(echo "$CHECKS" | grep "fail")
 
-  if [[ "$STATUS" == *"completed"* ]]; then
+  if [ -z "$PENDING" ]; then
+    # All checks have reported
+    if [ -n "$FAILURES" ]; then
+      echo "FAILURES:"
+      echo "$FAILURES"
+    else
+      echo "ALL GREEN"
+    fi
     break
-  fi
-
-  # Exponential escalation: 3 → 6 → 12 → 20 → 20 (capped)
-  WAIT_SECS=$(( WAIT_SECS * 2 ))
-  if [ $WAIT_SECS -gt $MAX_WAIT ]; then
-    WAIT_SECS=$MAX_WAIT
   fi
 done
 ```
+
+This directly matches what the user sees in the GitHub PR UI.
 
 #### Reconcile results
 
@@ -639,18 +731,21 @@ fi
 
 Use this to rapidly classify failures in Phase 1:
 
-| Log Pattern                                      | Category | Strategy               |
-| ------------------------------------------------ | -------- | ---------------------- |
-| `FATAL: password authentication failed`          | config   | Check .env / env vars  |
-| `container ... is unhealthy`                     | config   | Check .env / Docker    |
-| `Cannot find module`                             | build    | Fix import path        |
-| `TypeError: Cannot read properties of undefined` | build    | Fix null reference     |
-| `expected ... to be 'visible'`                   | test     | Fix selector / timing  |
-| `is being covered by`                            | test     | Fix z-index / overlay  |
-| `Timed out after waiting`                        | test     | Increase timeout / fix |
-| `No such file or directory`                      | config   | Check paths / fixtures |
-| `Exit code 137` (OOM)                            | infra    | Suggest re-run         |
-| `::error::The runner has received a shutdown`    | infra    | Suggest re-run         |
+| Log Pattern                                       | Category | Strategy               |
+| ------------------------------------------------- | -------- | ---------------------- |
+| `FATAL: password authentication failed`           | config   | Check .env / env vars  |
+| `container ... is unhealthy`                      | config   | Check .env / Docker    |
+| `Cannot find module`                              | build    | Fix import path        |
+| `TypeError: Cannot read properties of undefined`  | build    | Fix null reference     |
+| `expected ... to be 'visible'`                    | test     | Fix selector / timing  |
+| `is being covered by`                             | test     | Fix z-index / overlay  |
+| `Timed out after waiting`                         | test     | Increase timeout / fix |
+| `No such file or directory`                       | config   | Check paths / fixtures |
+| `Exit code 137` (OOM)                             | infra    | Suggest re-run         |
+| `::error::The runner has received a shutdown`     | infra    | Suggest re-run         |
+| `Object with guid response@ was not bound`        | infra    | Playwright browser GC  |
+| `Target page, context or browser has been closed` | infra    | Playwright browser GC  |
+| `page.reload: Target page, context or browser`    | infra    | Playwright browser GC  |
 
 ## Iteration State Tracking
 

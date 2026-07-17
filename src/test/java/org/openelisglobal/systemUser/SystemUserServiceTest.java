@@ -41,6 +41,7 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void delete_shouldInactivateUser() {
         SystemUser systemUser = systemUserService.get("3");
+        systemUser.setSysUserId("1");
         systemUserService.delete(systemUser);
         SystemUser updatedUser = systemUserService.getUserById("3");
         assertEquals("N", updatedUser.getIsActive());
@@ -55,6 +56,7 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
         systemUser.setIsActive("Y");
         systemUser.setExternalId("1234EXT");
         systemUser.setIsEmployee("Y");
+        systemUser.setSysUserId("1");
         systemUserService.save(systemUser);
         List<SystemUser> systemUsers = systemUserService.getAllSystemUsers();
         assertTrue(systemUsers.size() == 5);
@@ -76,6 +78,7 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
         systemUser.setFirstName("James");
         systemUser.setLastName("Grant");
         systemUser.setLoginName("jgrant");
+        systemUser.setSysUserId("1");
         systemUserService.update(systemUser);
         SystemUser updatedUser = systemUserService.getUserById("3");
         assertEquals("James", updatedUser.getFirstName());
@@ -92,6 +95,7 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
         systemUser.setIsActive("Y");
         systemUser.setExternalId("1234EXT");
         systemUser.setIsEmployee("Y");
+        systemUser.setSysUserId("1");
         systemUserService.insert(systemUser);
         List<SystemUser> systemUsers = systemUserService.getAllSystemUsers();
         assertTrue(systemUsers.size() == 5);

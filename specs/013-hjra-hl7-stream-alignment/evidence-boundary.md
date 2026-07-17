@@ -54,6 +54,68 @@ Current reality:
 - Profile and fixture success currently depends on synthetic messages that make
   `MSH-3` carry enough analyzer identity to match the configured regex.
 
+## Header-Based Analyzer Identification (Bridge Mitigation)
+
+The bridge infrastructure provides a tiered identification strategy that
+mitigates the MSH-3 identity ambiguity documented above. This operates
+independently of the GenericHL7 plugin's MSH-3 pattern matching.
+
+### Tiered Strategy (HL7AnalyzerReader.identifyAnalyzerFromHeaders)
+
+1. **IP+Port exact match** (highest priority): Bridge sends `X-Source-Id` (IP)
+   and `X-Source-Port` headers extracted from the original TCP connection.
+   `AnalyzerService.getByIpAddressAndPort()` performs a deterministic DB lookup.
+2. **IP-only match**: If IP+port fails, falls back to
+   `AnalyzerService.getByIpAddress()` for IP-only lookup.
+3. **GenericHL7 plugin MSH-3 fallback**: If no headers are present or no DB
+   match is found, the existing `GenericHL7Analyzer.isTargetAnalyzer()` MSH-3
+   pattern matching runs as the final fallback.
+
+### Integration Path
+
+- `AnalyzerImportController.setBridgeHeaders()` (lines 203-227) extracts
+  `X-Source-Id` and `X-Source-Port` from the HTTP request and injects them into
+  `HL7AnalyzerReader`.
+- `HL7AnalyzerReader.insertAnalyzerData()` calls `identifyAnalyzerFromHeaders()`
+  before plugin matching. If a header-based match is found, its ID is injected
+  into the plugin's `AnalyzerLineInserter` via `setContextAnalyzerId()`.
+- `AnalyzerLineInserter.persistImport()` ensures `contextAnalyzerId` always
+  takes precedence over plugin-assigned IDs, guaranteeing that the physical
+  device identified by headers is the recorded source.
+
+### Implication for MSH-3 Ambiguity
+
+When the bridge is in the path (the standard deployment), the header-based
+strategy provides deterministic analyzer identification even when multiple
+Mindray models share the same `MSH-3` value (`MINDRAY`). The MSH-3 pattern
+matching becomes a fallback for non-bridge deployments or unregistered
+analyzers. This does not eliminate the MSH-3 gap but provides a practical
+mitigation for the bridge-mediated topology.
+
+## Profile Field Disambiguation: msh3_pattern vs identifier_pattern
+
+Both BS-200 and BS-300 profiles contain two pattern fields:
+
+- `msh3_pattern: "MINDRAY"` — Matches the MSH-3 sending application field. This
+  is a coarse match that would match any Mindray analyzer.
+- `identifier_pattern: "MINDRAY.*BS.?200|BS200"` (or `BS.?300|BS300`) — A
+  model-specific regex intended for the
+  `AnalyzerService.findByIdentifierPatternMatch()` path.
+
+**Which is authoritative?** The `identifier_pattern` is the model-specific
+discriminator used by `AnalyzerService` for registration and DB-backed matching.
+The `msh3_pattern` reflects the observed MSH-3 value from vendor documentation
+and is used by GenericHL7's `isTargetAnalyzer()` for runtime message matching.
+
+**Why both exist:** The profile schema serves dual purposes — it seeds analyzer
+registration (where `identifier_pattern` drives DB pattern matching) and
+documents the expected HL7 message shape (where `msh3_pattern` reflects what the
+device actually sends in MSH-3).
+
+**Mitigation:** In bridge-mediated deployments, the header-based identification
+strategy (documented above) resolves the analyzer before MSH-3 matching runs.
+The `msh3_pattern` ambiguity only manifests in non-bridge or fallback scenarios.
+
 ## What Is Confirmed Vs Synthetic
 
 ### Confirmed
@@ -77,6 +139,9 @@ Current reality:
   as BS-200 in OpenELIS.
 - That the existing BC-5380 seed profile matches real production message
   identity without adjustment.
+- That header-based identification (bridge `X-Source-Id` / `X-Source-Port`)
+  reliably resolves Mindray models in production deployments with multiple
+  same-manufacturer analyzers on the same network.
 
 ## Current Profile Confidence
 
@@ -105,6 +170,42 @@ Current reality:
 - Status: active strict-013 profile used by the profile-backed mock adapter
 - Risk: BS-300 equivalence to BS-200 remains a validation question outside
   synthetic harness evidence until real captures are available
+
+## Test-Connection Boundary
+
+### Confirmed
+
+- HL7 test-connection was a hardcoded stub returning `success: true` — fixed by
+  `fix/013-hl7-test-connection` (PR #3195).
+- All TCP analyzers now receive genuine connectivity testing: bridge health via
+  `/actuator/health` + TCP connect to analyzer IP:port.
+- CommunicationMode (ANALYZER_INITIATED, LIS_INITIATED, BOTH) contextualizes the
+  test-connection response. TCP failure for ANALYZER_INITIATED is reported but
+  bridge health is the primary success criterion.
+- Bridge is mandatory architecture — OE never connects directly to analyzers.
+- Mock server now listens on HL7 analyzer ports (5380, 6001, 6002) with proper
+  MLLP framing and responds with HL7 ACK — matching real analyzer behavior.
+  Previously the mock only pushed MLLP outbound; inbound listening was missing
+  (spec gap: the readiness gates required "mock a specific analyzer type" but
+  didn't explicitly require inbound MLLP listening).
+
+### Design Decision
+
+- Test-connection verifies TCP reachability (SYN/ACK) and bridge health. It does
+  NOT send protocol messages — the TCP connect to the analyzer port proves the
+  mock is listening, which is sufficient for the test-connection use case.
+- MVP = ANALYZER_INITIATED (one-way result transport). This is a deliberate
+  phased approach, not a permanent limitation.
+- LIS_INITIATED and BOTH are documented future capabilities per vendor specs
+  (OGC-327 ORM^O01, OGC-326 QRY^Q02, OGC-336 QBP).
+- Direct OE→analyzer socket code has been removed. The bridge is the single
+  point of contact for all analyzer communication.
+
+### Not Yet Proven
+
+- Bridge `/actuator/health` with `show-details: never` may aggregate MLLP status
+  with other indicators. MLLP-specific health status in production deployments
+  needs validation.
 
 ## Required Remediation Before Continuing Profile Expansion
 

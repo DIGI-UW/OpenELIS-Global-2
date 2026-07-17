@@ -9,6 +9,8 @@ public interface NonConformingEventWorker {
 
     NcEvent create(String labOrderId, List<String> specimens, String systemUserId, String nceNumber);
 
+    NcEvent create(String labOrderId, List<String> specimens, String systemUserId, String nceNumber, String analysisId);
+
     boolean update(NonConformingEventForm form);
 
     boolean updateFollowUp(NonConformingEventForm form);

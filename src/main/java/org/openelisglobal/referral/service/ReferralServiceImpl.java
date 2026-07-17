@@ -108,7 +108,7 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         if (sample != null) {
             List<Analysis> analysises = analysisService.getAnalysesBySampleId(sample.getId());
             return baseObjectDAO
-                    .getReferralsByAnalysisIds(analysises.stream().map(e -> e.getId()).collect(Collectors.toList()));
+                    .getReferralsByAnalysisIds(analysises.stream().map(Analysis::getId).collect(Collectors.toList()));
         }
         return new ArrayList<>();
     }
@@ -122,7 +122,7 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
             analysises.addAll(analysisService.getAnalysesBySampleId(sample.getId()));
         }
         return baseObjectDAO
-                .getReferralsByAnalysisIds(analysises.stream().map(e -> e.getId()).collect(Collectors.toList()));
+                .getReferralsByAnalysisIds(analysises.stream().map(Analysis::getId).collect(Collectors.toList()));
     }
 
     @Override

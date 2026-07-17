@@ -303,19 +303,35 @@ const LogoUploadSection = forwardRef(function LogoUploadSection(
 
           {/* Hide file uploader when login logo uses header logo */}
           {!(type === "login" && useHeaderLogoForLogin) && (
-            <FileUploader
-              buttonLabel={intl.formatMessage({
-                id: getUploadButtonKey(),
-              })}
-              iconDescription={intl.formatMessage({
-                id: getUploadButtonKey(),
-              })}
-              filenameStatus={file ? "complete" : undefined}
-              accept={["image/png", "image/svg+xml", "image/jpeg", "image/jpg"]}
-              multiple={false}
-              onChange={handleFileChange}
-              disabled={isUploading}
-            />
+            <>
+              <FileUploader
+                buttonLabel={intl.formatMessage({
+                  id: getUploadButtonKey(),
+                })}
+                iconDescription={intl.formatMessage({
+                  id: getUploadButtonKey(),
+                })}
+                filenameStatus={file ? "complete" : undefined}
+                accept={[
+                  "image/png",
+                  "image/svg+xml",
+                  "image/jpeg",
+                  "image/jpg",
+                ]}
+                multiple={false}
+                onChange={handleFileChange}
+                disabled={isUploading}
+              />
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#525252",
+                  marginTop: "0.25rem",
+                }}
+              >
+                <FormattedMessage id="site.branding.formats" />
+              </p>
+            </>
           )}
 
           {type === "login" && useHeaderLogoForLogin && (

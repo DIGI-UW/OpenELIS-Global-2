@@ -162,9 +162,9 @@ public class PluginMenuService {
      * @param analyzerName the analyzer name (used for menu element ID, URL, and
      *                     display label)
      */
-    public void registerAnalyzerMenuAndPermission(String analyzerName) {
-        String elementId = analyzerName + "_plugin";
-        String actionURL = "/AnalyzerResults?type=" + analyzerName;
+    public void registerAnalyzerMenuAndPermission(String analyzerName, String analyzerId) {
+        String elementId = analyzerName + "_" + analyzerId + "_plugin";
+        String actionURL = "/AnalyzerResults?id=" + analyzerId;
 
         // Skip if already registered (avoid duplicates on re-init)
         if (actionToKeyMap.containsKey(actionURL)) {
@@ -207,7 +207,7 @@ public class PluginMenuService {
             int count = 0;
             for (Analyzer analyzer : analyzers) {
                 if (analyzer.getName() != null && !analyzer.getName().trim().isEmpty()) {
-                    registerAnalyzerMenuAndPermission(analyzer.getName());
+                    registerAnalyzerMenuAndPermission(analyzer.getName(), analyzer.getId());
                     count++;
                 }
             }

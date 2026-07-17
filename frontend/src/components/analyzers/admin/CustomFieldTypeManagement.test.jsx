@@ -12,11 +12,11 @@
 
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
-jest.mock("../../../services/analyzerService", () => ({
-  getCustomFieldTypes: jest.fn(),
-  createCustomFieldType: jest.fn(),
-  updateCustomFieldType: jest.fn(),
-  deleteCustomFieldType: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  getCustomFieldTypes: vi.fn(),
+  createCustomFieldType: vi.fn(),
+  updateCustomFieldType: vi.fn(),
+  deleteCustomFieldType: vi.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
@@ -25,7 +25,7 @@ jest.mock("../../../services/analyzerService", () => ({
 import React from "react";
 
 // 2. Testing Library (all utilities in one import)
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 
 // 4. jest-dom matchers (MUST be imported)
@@ -83,7 +83,7 @@ const createMockCustomFieldType = (overrides = {}) => ({
 describe("CustomFieldTypeManagement", () => {
   beforeEach(() => {
     // Reset mocks before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -157,8 +157,14 @@ describe("CustomFieldTypeManagement", () => {
     await userEvent.click(addButton);
 
     // Wait for form fields to appear (user-visible elements, not the modal itself)
-    const typeNameInput = await screen.findByLabelText(/Type Name/i);
-    const displayNameInput = screen.getByLabelText(/Display Name/i);
+    // Use getAllByLabelText since Carbon latest may render multiple labelled elements
+    // (table headers + form inputs). The actual TextInput is a textbox role.
+    const typeNameInput = await screen.findByRole("textbox", {
+      name: /Type Name/i,
+    });
+    const displayNameInput = screen.getByRole("textbox", {
+      name: /Display Name/i,
+    });
 
     await userEvent.type(typeNameInput, "NEW_TYPE");
     await userEvent.type(displayNameInput, "New Type");
@@ -184,6 +190,8 @@ describe("CustomFieldTypeManagement", () => {
    * Test: Validate pattern with invalid regex shows error
    */
   test("testValidatePattern_WithInvalidRegex_ShowsError", async () => {
+    const user = userEvent.setup();
+
     // Arrange
     getCustomFieldTypes.mockImplementation((callback) => {
       callback([]);
@@ -194,22 +202,30 @@ describe("CustomFieldTypeManagement", () => {
 
     // Open form
     const addButton = screen.getByTestId("add-custom-field-type-button");
-    await userEvent.click(addButton);
+    await user.click(addButton);
 
     // Wait for form fields to appear (user-visible elements, not the modal itself)
-    const typeNameInput = await screen.findByLabelText(/Type Name/i);
-    const displayNameInput = screen.getByLabelText(/Display Name/i);
-    const validationPatternInput = screen.getByLabelText(
-      /Validation Pattern \(Regex\)/i,
-    );
+    // Use getByRole to avoid matching table headers with same label text
+    const typeNameInput = await screen.findByRole("textbox", {
+      name: /Type Name/i,
+    });
+    const displayNameInput = screen.getByRole("textbox", {
+      name: /Display Name/i,
+    });
+    const validationPatternInput = screen.getByRole("textbox", {
+      name: /Validation Pattern \(Regex\)/i,
+    });
 
-    await userEvent.type(typeNameInput, "TEST_TYPE");
-    await userEvent.type(displayNameInput, "Test Type");
-    await userEvent.type(validationPatternInput, "[invalid regex"); // Invalid regex
+    await user.type(typeNameInput, "TEST_TYPE");
+    await user.type(displayNameInput, "Test Type");
+    // "[" is a keyboard modifier prefix in user-event v14, use fireEvent.change
+    fireEvent.change(validationPatternInput, {
+      target: { value: "[invalid regex" },
+    });
 
     // Try to submit
     const saveButton = screen.getByText("Save");
-    await userEvent.click(saveButton);
+    await user.click(saveButton);
 
     // Assert - error should appear in the form field's invalidText (Carbon shows it as text content)
     await waitFor(() => {

@@ -98,6 +98,9 @@ public class PluginPermissionService implements IPluginPermissionService {
         if (role.getId() == null) {
             role.setActive(true);
             roleService.insert(role);
+        } else if ("-1".equals(role.getId())) {
+            // Stub role from getRoleByName — role doesn't exist in DB, skip binding
+            return false;
         } else if (!role.isActive()) {
             role.setActive(true);
             roleService.update(role);
@@ -133,6 +136,9 @@ public class PluginPermissionService implements IPluginPermissionService {
         if (role.getId() == null) {
             role.setActive(true);
             roleService.insert(role);
+        } else if ("-1".equals(role.getId())) {
+            // Stub role from getRoleByName — role doesn't exist in DB, skip binding
+            return false;
         } else if (!role.isActive()) {
             role.setActive(true);
             roleService.update(role);

@@ -145,7 +145,7 @@ public class SystemModuleDAOImpl extends BaseDAOImpl<SystemModule, String> imple
             if (!StringUtil.isNullorNill(systemModule.getId())) {
                 systemModuleId = systemModule.getId();
             }
-            query.setParameter("moduleId", Integer.parseInt(systemModuleId));
+            query.setParameter("moduleId", systemModuleId);
 
             list = query.list();
 

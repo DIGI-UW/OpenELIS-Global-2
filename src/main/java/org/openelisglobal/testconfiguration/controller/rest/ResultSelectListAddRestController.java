@@ -8,6 +8,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testconfiguration.form.ResultSelectListForm;
 import org.openelisglobal.testconfiguration.service.ResultSelectListService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class ResultSelectListAddRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "nameEnglish", "nameFrench", "testSelectListJson" };

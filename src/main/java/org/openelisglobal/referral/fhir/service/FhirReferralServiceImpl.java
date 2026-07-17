@@ -291,7 +291,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
 
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
         analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
-        analysis.setReleasedDate(DateUtil.getNowAsSqlDate());
+        analysis.setReleasedDate(DateUtil.getNowAsTimestamp());
         analysis.setSysUserId("1");
 
         analysisUpdateList.add(analysis);

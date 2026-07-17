@@ -3,7 +3,6 @@ package org.openelisglobal.program.service;
 import jakarta.transaction.Transactional;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
@@ -177,7 +176,7 @@ public class ImmunohistochemistrySampleServiceImpl
                     // }
                 }
                 analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
-                analysis.setReleasedDate(new java.sql.Date(Calendar.getInstance().getTimeInMillis()));
+                analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));
             }
         }
 

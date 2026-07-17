@@ -41,6 +41,13 @@ public class HL7AnalyzerReader extends AnalyzerReader {
 
     private List<String> lines;
     private String error;
+    /**
+     * HL7 analyzer identifier from the bridge X-Analyzer-Id header (e.g., a
+     * composite of MSH-3 + MSH-4 like "MINDRAY-BC-5380"). This is an external
+     * identifier resolved via identifier-pattern matching — NOT an OpenELIS
+     * analyzer database primary key.
+     */
+    private String bridgeAnalyzerIdentifier;
     private String clientIpAddress;
     private Integer clientPort;
 
@@ -124,6 +131,16 @@ public class HL7AnalyzerReader extends AnalyzerReader {
     }
 
     /**
+     * Set analyzer identifier from bridge X-Analyzer-Id header. For HL7, the bridge
+     * sends a composite identifier derived from MSH-3 + MSH-4 (e.g.,
+     * "MINDRAY-BC-5380"), which is resolved via
+     * {@code findByIdentifierPatternMatch} — not a direct DB lookup.
+     */
+    public void setRegisteredAnalyzerId(String analyzerId) {
+        this.bridgeAnalyzerIdentifier = analyzerId;
+    }
+
+    /**
      * Set client IP from bridge X-Source-Id header. Used by
      * {@link #identifyAnalyzerFromHeaders()} for deterministic analyzer lookup.
      */
@@ -142,8 +159,9 @@ public class HL7AnalyzerReader extends AnalyzerReader {
     /**
      * Identify analyzer from bridge headers using tiered strategy:
      * <ol>
-     * <li>IP+port exact match (deterministic, from X-Source-Id +
-     * X-Source-Port)</li>
+     * <li>Bridge X-Analyzer-Id (identifier-pattern match against MSH-3+MSH-4
+     * composite)</li>
+     * <li>IP+port exact match (from X-Source-Id + X-Source-Port)</li>
      * <li>IP-only match (from X-Source-Id)</li>
      * </ol>
      * Falls back to empty if no headers set or no match found.
@@ -155,7 +173,24 @@ public class HL7AnalyzerReader extends AnalyzerReader {
                 return Optional.empty();
             }
 
-            // Strategy 0: Exact IP+port lookup
+            // Strategy 0: Bridge X-Analyzer-Id (highest priority).
+            // The bridge sends a composite identifier like "MINDRAY-BC-5380" (from
+            // MSH-3+MSH-4),
+            // not a numeric DB ID. Use pattern matching to resolve it.
+            if (bridgeAnalyzerIdentifier != null && !bridgeAnalyzerIdentifier.trim().isEmpty()) {
+                Optional<Analyzer> match = analyzerService
+                        .findByIdentifierPatternMatch(bridgeAnalyzerIdentifier.trim());
+                if (match.isPresent()) {
+                    LogEvent.logInfo(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
+                            "Identified from bridge X-Analyzer-Id: " + match.get().getName());
+                    return match;
+                }
+                LogEvent.logWarn(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
+                        "No analyzer matched X-Analyzer-Id '" + bridgeAnalyzerIdentifier
+                                + "' using identifier patterns — falling back to IP-based lookup");
+            }
+
+            // Strategy 1: Exact IP+port lookup
             if (clientIpAddress != null && !clientIpAddress.trim().isEmpty() && clientPort != null) {
                 Optional<Analyzer> match = analyzerService.getByIpAddressAndPort(clientIpAddress.trim(), clientPort);
                 if (match.isPresent()) {

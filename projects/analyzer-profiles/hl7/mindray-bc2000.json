@@ -3,45 +3,54 @@
   "profileMeta": {
     "id": "mindray-bc2000",
     "version": "1.2.0",
-    "displayName": "Mindray BC2000"
+    "displayName": "Mindray BC2000",
+    "confidence": "MEDIUM"
   },
   "analyzer_name": "Mindray BC2000",
   "manufacturer": "Mindray",
   "category": "HEMATOLOGY",
-  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "protocol": {
+    "name": "HL7",
+    "version": "2.3.1"
+  },
   "identifier_pattern": "MINDRAY.*BC.?2000",
-  "transport": ["TCP/IP"],
+  "transport": [
+    "TCP/IP"
+  ],
   "transport_config": {
-    "TCP/IP": { "default_port": 5001, "framing": "MLLP" }
+    "TCP/IP": {
+      "default_port": 5001,
+      "framing": "MLLP"
+    }
   },
   "msh3_pattern": "MINDRAY",
   "default_test_mappings": [
     {
-      "analyzer_code": "WBC",
+      "test_code": "WBC",
       "test_name_hint": "White Blood Cells",
       "loinc": "6690-2",
       "unit": "10^3/uL"
     },
     {
-      "analyzer_code": "RBC",
+      "test_code": "RBC",
       "test_name_hint": "Red Blood Cells",
       "loinc": "789-8",
       "unit": "10^6/uL"
     },
     {
-      "analyzer_code": "HGB",
+      "test_code": "HGB",
       "test_name_hint": "Hemoglobin",
       "loinc": "718-7",
       "unit": "g/dL"
     },
     {
-      "analyzer_code": "HCT",
+      "test_code": "HCT",
       "test_name_hint": "Hematocrit",
       "loinc": "4544-3",
       "unit": "%"
     },
     {
-      "analyzer_code": "PLT",
+      "test_code": "PLT",
       "test_name_hint": "Platelet Count",
       "loinc": "777-3",
       "unit": "10^3/uL"

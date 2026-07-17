@@ -39,4 +39,12 @@ public interface ReportDefinitionService extends BaseObjectService<ReportDefinit
      * @return list of report definitions matching the category
      */
     List<ReportDefinition> getDefinitionsByCategory(String category);
+
+    /**
+     * Get the active report definition for the given report type (e.g. PATIENT).
+     *
+     * @param reportType report type
+     * @return the active definition or null
+     */
+    ReportDefinition getActiveByReportType(String reportType);
 }

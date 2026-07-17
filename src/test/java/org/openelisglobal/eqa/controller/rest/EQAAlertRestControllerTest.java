@@ -48,7 +48,7 @@ public class EQAAlertRestControllerTest {
                 createAlert(2L, AlertType.SAMPLE_EXPIRATION, AlertSeverity.CRITICAL, AlertStatus.OPEN,
                         "Sample expiring"));
 
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(alerts);
+        when(alertService.getAll()).thenReturn(alerts);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsDashboard(null, null, null, null, 0, 25);
 
@@ -68,7 +68,7 @@ public class EQAAlertRestControllerTest {
                 createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Deadline"),
                 createAlert(2L, AlertType.SAMPLE_EXPIRATION, AlertSeverity.CRITICAL, AlertStatus.OPEN, "Expiration"));
 
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(alerts);
+        when(alertService.getAll()).thenReturn(alerts);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsDashboard("EQA_DEADLINE", null, null, null,
                 0, 25);
@@ -86,7 +86,7 @@ public class EQAAlertRestControllerTest {
                 createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Warning"),
                 createAlert(2L, AlertType.EQA_DEADLINE, AlertSeverity.CRITICAL, AlertStatus.OPEN, "Critical"));
 
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(alerts);
+        when(alertService.getAll()).thenReturn(alerts);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsDashboard(null, "CRITICAL", null, null, 0,
                 25);
@@ -102,7 +102,7 @@ public class EQAAlertRestControllerTest {
                 createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Open"),
                 createAlert(2L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.RESOLVED, "Resolved"));
 
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(alerts);
+        when(alertService.getAll()).thenReturn(alerts);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsDashboard(null, null, "OPEN", null, 0, 25);
 
@@ -119,7 +119,7 @@ public class EQAAlertRestControllerTest {
                 createAlert(2L, AlertType.SAMPLE_EXPIRATION, AlertSeverity.CRITICAL, AlertStatus.OPEN,
                         "Sample XYZ expiring"));
 
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(alerts);
+        when(alertService.getAll()).thenReturn(alerts);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsDashboard(null, null, null, "ABC", 0, 25);
 
@@ -135,7 +135,7 @@ public class EQAAlertRestControllerTest {
                 createAlert(2L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Alert 2"),
                 createAlert(3L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Alert 3"));
 
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(alerts);
+        when(alertService.getAll()).thenReturn(alerts);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsDashboard(null, null, null, null, 0, 2);
 
@@ -153,7 +153,7 @@ public class EQAAlertRestControllerTest {
                 createAlert(2L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Alert 2"),
                 createAlert(3L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Alert 3"));
 
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(alerts);
+        when(alertService.getAll()).thenReturn(alerts);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsDashboard(null, null, null, null, 1, 2);
 
@@ -166,7 +166,7 @@ public class EQAAlertRestControllerTest {
 
     @Test
     public void testGetAlertsDashboard_NullAlertsReturnsEmpty() {
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(null);
+        when(alertService.getAll()).thenReturn(null);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsDashboard(
                 null, null, null, null, 0, 25);
@@ -187,7 +187,7 @@ public class EQAAlertRestControllerTest {
                 createAlert(4L, AlertType.SAMPLE_EXPIRATION, AlertSeverity.CRITICAL, AlertStatus.OPEN, "Expiring"),
                 createAlert(5L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.RESOLVED, "Resolved"));
 
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(alerts);
+        when(alertService.getAll()).thenReturn(alerts);
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsSummary();
 
@@ -203,7 +203,7 @@ public class EQAAlertRestControllerTest {
 
     @Test
     public void testGetAlertsSummary_EmptyAlerts_ReturnsZeros() {
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(Collections.emptyList());
+        when(alertService.getAll()).thenReturn(Collections.emptyList());
 
         ResponseEntity<Map<String, Object>> response = controller.getAlertsSummary();
 
@@ -219,7 +219,7 @@ public class EQAAlertRestControllerTest {
     @Test
     public void testAcknowledgeAlert_ValidAlert_ReturnsOk() {
         Alert alert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Test");
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(Collections.singletonList(alert));
+        when(alertService.get(1L)).thenReturn(alert);
 
         Map<String, String> body = new HashMap<>();
         body.put("comment", "Acknowledged");
@@ -233,7 +233,7 @@ public class EQAAlertRestControllerTest {
 
     @Test
     public void testAcknowledgeAlert_NotFound_Returns404() {
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(Collections.emptyList());
+        when(alertService.get(999L)).thenReturn(null);
 
         ResponseEntity<?> response = controller.acknowledgeAlert(999L, null);
 
@@ -244,7 +244,7 @@ public class EQAAlertRestControllerTest {
     public void testAcknowledgeAlert_CriticalWithoutComment_ReturnsBadRequest() {
         Alert criticalAlert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.CRITICAL, AlertStatus.OPEN,
                 "Critical");
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(Collections.singletonList(criticalAlert));
+        when(alertService.get(1L)).thenReturn(criticalAlert);
 
         ResponseEntity<?> response = controller.acknowledgeAlert(1L, null);
 
@@ -256,7 +256,7 @@ public class EQAAlertRestControllerTest {
     public void testAcknowledgeAlert_CriticalWithEmptyComment_ReturnsBadRequest() {
         Alert criticalAlert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.CRITICAL, AlertStatus.OPEN,
                 "Critical");
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(Collections.singletonList(criticalAlert));
+        when(alertService.get(1L)).thenReturn(criticalAlert);
 
         Map<String, String> body = new HashMap<>();
         body.put("comment", "   ");
@@ -271,7 +271,7 @@ public class EQAAlertRestControllerTest {
     public void testAcknowledgeAlert_CriticalWithComment_ReturnsOk() {
         Alert criticalAlert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.CRITICAL, AlertStatus.OPEN,
                 "Critical");
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(Collections.singletonList(criticalAlert));
+        when(alertService.get(1L)).thenReturn(criticalAlert);
 
         Map<String, String> body = new HashMap<>();
         body.put("comment", "Issue investigated and resolved");
@@ -286,7 +286,7 @@ public class EQAAlertRestControllerTest {
     @Test
     public void testAcknowledgeAlert_WithoutComment_AcknowledgesOnly() {
         Alert alert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Warning");
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(Collections.singletonList(alert));
+        when(alertService.get(1L)).thenReturn(alert);
 
         ResponseEntity<?> response = controller.acknowledgeAlert(1L, null);
 
@@ -299,7 +299,7 @@ public class EQAAlertRestControllerTest {
     public void testAcknowledgeAlert_AlreadyAcknowledged_SkipsAcknowledge() {
         Alert alert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.ACKNOWLEDGED,
                 "Already ack'd");
-        when(alertService.getAlertsByEntity(null, null)).thenReturn(Collections.singletonList(alert));
+        when(alertService.get(1L)).thenReturn(alert);
 
         Map<String, String> body = new HashMap<>();
         body.put("comment", "Resolving");

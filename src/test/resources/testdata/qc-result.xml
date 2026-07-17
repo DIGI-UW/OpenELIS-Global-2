@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- System user (required by sys_user_id FK on all QC tables) -->
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y" />
+
+    <!-- Analyzer (required by instrument_id FK on qc_control_lot) -->
+    <analyzer id="1" name="TEST BioRad" is_active="true"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Test (required by test_id FK on qc_control_lot and qc_result) -->
+    <test id="1" name="Glucose" description="Fasting Blood Glucose"
+        guid="a4d5e7c8-9f12-4b3e-8d67-1e23a4b5c6d7" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2025-01-01 12:00:00" />
+
+    <!-- Active control lot: mean=100.0, SD=5.0, Glucose on instrument 1 -->
+    <qc_control_lot id="lot-001"
+        fhir_uuid="11111111-1111-1111-1111-111111111111"
+        product_name="Glucose Control Level 1" lot_number="LOT-2025-001"
+        manufacturer="Bio-Rad" control_level="NORMAL" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        initial_runs_count="20" manufacturer_mean="100.00000"
+        manufacturer_std_dev="5.00000" activation_date="2025-01-01 00:00:00"
+        expiration_date="2026-12-31 00:00:00" status="ACTIVE" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Expired control lot (for negative test) -->
+    <qc_control_lot id="lot-expired"
+        fhir_uuid="22222222-2222-2222-2222-222222222222"
+        product_name="Glucose Control Level 2" lot_number="LOT-2024-999"
+        manufacturer="Bio-Rad" control_level="NORMAL" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        manufacturer_mean="100.00000" manufacturer_std_dev="5.00000"
+        activation_date="2024-01-01 00:00:00"
+        expiration_date="2024-12-31 00:00:00" status="EXPIRED" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Active control lot WITHOUT statistics (for negative test) -->
+    <qc_control_lot id="lot-no-stats"
+        fhir_uuid="33333333-3333-3333-3333-333333333333"
+        product_name="Glucose Control No Stats" lot_number="LOT-2025-NS"
+        manufacturer="Bio-Rad" control_level="NORMAL" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        manufacturer_mean="100.00000" manufacturer_std_dev="5.00000"
+        activation_date="2025-01-01 00:00:00"
+        expiration_date="2026-12-31 00:00:00" status="ACTIVE" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Statistics for lot-001: mean=100.0, SD=5.0 -->
+    <qc_statistics id="stats-001" control_lot_id="lot-001"
+        calculation_date="2025-01-15 10:00:00" mean="100.00000"
+        standard_deviation="5.00000" num_values="20"
+        calculation_method="INITIAL_RUNS" validity_start="2025-01-15 10:00:00"
+        sys_user_id="1" last_updated="2025-01-15 10:00:00" />
+</dataset>

@@ -42,6 +42,10 @@ public class ReportDefinitionForm extends BaseForm {
 
     private Boolean isActive;
 
+    private String reportType;
+
+    private Boolean isPublic;
+
     public ReportDefinitionForm() {
         super();
     }
@@ -116,5 +120,21 @@ public class ReportDefinitionForm extends BaseForm {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public String getReportType() {
+        return reportType;
+    }
+
+    public void setReportType(String reportType) {
+        this.reportType = reportType;
+    }
+
+    public Boolean getIsPublic() {
+        return isPublic;
+    }
+
+    public void setIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
     }
 }

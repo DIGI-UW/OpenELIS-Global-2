@@ -45,6 +45,24 @@ localized.
   with custom extensions, consistent with existing architecture. New extensions:
   `device-ip-address`, `device-port`, `device-communication-protocol`.
 
+### Session 2026-04-18
+
+- **Route model clarification (Principle X pairing):** The tab-centric dashboard
+  model has been superseded by per-resource routes (`/Storage/rooms`,
+  `/Storage/devices`, `/Storage/shelves`, `/Storage/racks`, `/Storage/boxes`).
+- **FR-003 clarification:** "Add" operations MUST use a dedicated Carbon form
+  surface, either a modal or a dedicated route page. The implemented pattern for
+  this branch is dedicated Add pages (`/Storage/{type}/new`) to align with the
+  existing edit-page route model.
+- **FR-002 clarification:** Row-level edit remains available through direct link
+  and Overflow menu entry for deep-link compatibility. Row-level delete is
+  performed from the Overflow menu and opens a Carbon danger-confirmation modal.
+- **Cascade-delete restoration (OGC-75 reference):** Cascade-delete UX for
+  rooms/devices/shelves/racks is restored using existing backend endpoints
+  (`GET /{type}/{id}/cascade-delete-summary`, `DELETE /{type}/{id}`). Boxes use
+  non-cascade delete mode because the backend does not expose a box cascade
+  summary endpoint.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Manage Storage Locations (Priority: P1)

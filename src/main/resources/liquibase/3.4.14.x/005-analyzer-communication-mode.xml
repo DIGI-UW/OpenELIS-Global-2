@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add communication_mode column to analyzer table.
+         Nullable: null = ANALYZER_INITIATED (backward compatible).
+         Values: ANALYZER_INITIATED, LIS_INITIATED, BOTH -->
+    <changeSet author="pmanko" id="013-analyzer-communication-mode">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims"
+                    tableName="analyzer"
+                    columnName="communication_mode"/>
+            </not>
+        </preConditions>
+
+        <addColumn schemaName="clinlims" tableName="analyzer">
+            <column name="communication_mode" type="VARCHAR(25)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

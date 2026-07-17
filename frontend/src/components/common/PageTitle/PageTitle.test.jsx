@@ -92,7 +92,7 @@ describe("PageTitle Component", () => {
   });
 
   it("should call custom onBack handler when provided", async () => {
-    const mockOnBack = jest.fn();
+    const mockOnBack = vi.fn();
     renderWithIntl(
       <PageTitle
         breadcrumbs={[

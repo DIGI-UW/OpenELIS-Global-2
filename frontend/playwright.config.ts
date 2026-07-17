@@ -1,28 +1,38 @@
 import { defineConfig, devices } from "@playwright/test";
+import * as dotenv from "dotenv";
 
+// Load .env from repo root — provides TEST_USER, TEST_PASS, BASE_URL, etc.
+// No manual `set -a && . .env` needed.
+dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
 /**
  * OpenELIS Global Playwright Configuration
  *
- * Projects are organized by environment requirement:
+ * Tests are classified along three axes:
  *
- *   core-app      — CI build stack (no plugins, bridge, or import dirs)
- *   harness       — Analyzer harness infra tests (bridge, simulator, plugins)
- *   demo          — End-to-end workflow demos (run on harness, normal speed)
- *   demo-video    — Same demo tests with slowMo + video (local recording only)
+ * 1) Runtime: core vs harness
+ * 2) Intent: demo (story proof) vs foundational (functional verification)
+ * 3) Execution policy: ci-safe vs manual-only
  *
- * New test files must be explicitly added to a project's testMatch.
- * Unmatched files won't run — this is intentional (allowlist, not blocklist).
+ * New test files must be explicitly added to exactly one bucket.
  *
  * @see https://playwright.dev/docs/test-configuration
  */
 
-// Demo workflow tests — shared between demo and demo-video projects
-const DEMO_TESTS = [
-  "**/demo-quantstudio*.spec.ts",
-  "**/file-import-ui.spec.ts",
-  "**/file-import-results.spec.ts",
-  "**/astm-genexpert-results.spec.ts",
-  "**/ogc-284-demo-video.spec.ts",
+// Demo story proof on the build stack (video-ready).
+const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
+
+// Core foundational verification (ci-safe).
+const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
+
+// Harness demo story proof (video-ready).
+const HARNESS_DEMO_TESTS = ["**/demo/harness/**/*.spec.ts"];
+
+// Harness foundational verification (ci-safe).
+const HARNESS_FOUNDATIONAL_TESTS = ["**/foundational/harness/**/*.spec.ts"];
+
+// Manual-only harness coverage (real hardware or operator-managed infra).
+const HARNESS_MANUAL_ONLY_TESTS = [
+  "**/manual-only/harness/analyzer-test-connection-manual-only.spec.ts",
 ];
 
 export default defineConfig({
@@ -30,11 +40,19 @@ export default defineConfig({
 
   // Parallelization
   fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
+  // Single worker EVERYWHERE, not just CI: all projects share one webapp + one
+  // database, so parallel workers interleave writes into shared state that CI
+  // (which has always run 1 worker per shard) can never reproduce — local
+  // multi-worker runs were a parity gap that produced local-only "mystery"
+  // failures. Parallelism comes from CI sharding (--shard=current/total), each
+  // shard owning its own full stack. CI also needs 1 worker to avoid OOM
+  // browser crashes on GH Actions runners (7GB RAM).
+  workers: 1,
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // CI must not mask failures through reruns.
+  retries: 0,
 
   // Timeouts
   timeout: 30_000,
@@ -49,9 +67,23 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
 
     // Evidence collection
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
+
+    // CI stability: prevent Chromium renderer crashes ("Target page closed")
+    ...(process.env.CI && {
+      launchOptions: {
+        args: [
+          "--disable-dev-shm-usage", // use /tmp instead of /dev/shm
+          "--disable-gpu", // skip GPU compositing (no GPU in CI)
+          "--disable-extensions", // no extension overhead
+          "--no-first-run", // skip first-run setup
+          "--js-flags=--max-old-space-size=1024", // cap V8 heap (Carbon doesn't tree-shake)
+        ],
+      },
+      serviceWorkers: "block", // block SW registration — self-signed certs cause constant SSL errors
+    }),
   },
 
   projects: [
@@ -61,17 +93,10 @@ export default defineConfig({
       testMatch: /.*\.setup\.ts/,
     },
 
-    // Core app — runs on CI build stack (no plugins, bridge, or import dirs)
+    // Core foundational verification — runs on CI build stack.
     {
       name: "core-app",
-      testMatch: [
-        "**/analyzer-form.spec.ts",
-        "**/analyzer-list.spec.ts",
-        "**/analyzer-navigation.spec.ts",
-        "**/error-dashboard.spec.ts",
-        "**/navbar.spec.ts",
-        "**/sidenav.spec.ts",
-      ],
+      testMatch: CORE_FOUNDATIONAL_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
@@ -79,15 +104,10 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Harness — infrastructure tests needing bridge, simulator, plugins
+    // Core demo — build-stack UI-only demos validated in CI
     {
-      name: "harness",
-      testMatch: [
-        "**/analyzer-test-connection.spec.ts",
-        "**/analyzer-plugin-config.spec.ts",
-        "**/analyzer-simulator.spec.ts",
-        "**/file-import.spec.ts",
-      ],
+      name: "core-demo",
+      testMatch: CORE_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
@@ -95,21 +115,10 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Demo — workflow tests at normal speed (CI validation on harness)
+    // Core demo video — same core demos with slowMo and video (local only)
     {
-      name: "demo",
-      testMatch: DEMO_TESTS,
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
-      },
-      dependencies: ["setup"],
-    },
-
-    // Demo video — same tests with slowMo for watchable recordings (local only)
-    {
-      name: "demo-video",
-      testMatch: DEMO_TESTS,
+      name: "core-demo-video",
+      testMatch: CORE_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
@@ -117,6 +126,52 @@ export default defineConfig({
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
+      },
+      dependencies: ["setup"],
+    },
+
+    // Analyzer-stack demo story proof (CI: reusable harness workflow only).
+    {
+      name: "harness-demo",
+      testMatch: HARNESS_DEMO_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+    {
+      name: "harness-demo-video",
+      testMatch: HARNESS_DEMO_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        video: "on",
+        launchOptions: {
+          slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
+        },
+      },
+      dependencies: ["setup"],
+    },
+
+    // Analyzer-stack foundational verification (non-demo, ci-safe).
+    {
+      name: "harness-foundational",
+      testMatch: HARNESS_FOUNDATIONAL_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    // Real-hardware / manual-only coverage (excluded from standard CI jobs).
+    {
+      name: "harness-manual-only",
+      testMatch: HARNESS_MANUAL_ONLY_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
     },
