@@ -127,6 +127,10 @@ public class AlphanumAccessionValidator implements IAccessionNumberGenerator {
             return ValidationResults.FORMAT_FAIL;
         }
 
+        if (!AccessionNumberUtil.matchesConfiguredRegex(accessionNumber, Property.ALPHANUM_ACCESSION_REGEX)) {
+            return ValidationResults.FORMAT_FAIL;
+        }
+
         return ValidationResults.SUCCESS;
     }
 

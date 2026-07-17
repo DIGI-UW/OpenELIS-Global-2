@@ -25,6 +25,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.common.services.StatusSet;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -107,6 +108,10 @@ public class ProgramAccessionValidator implements IAccessionNumberGenerator {
         try {
             Integer.parseInt(accessionNumber.substring(INCREMENT_START));
         } catch (NumberFormatException e) {
+            return ValidationResults.FORMAT_FAIL;
+        }
+
+        if (!AccessionNumberUtil.matchesConfiguredRegex(accessionNumber, Property.PROGRAMNUM_ACCESSION_REGEX)) {
             return ValidationResults.FORMAT_FAIL;
         }
 

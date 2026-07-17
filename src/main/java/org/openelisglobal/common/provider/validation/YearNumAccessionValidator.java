@@ -41,6 +41,7 @@ public class YearNumAccessionValidator implements IAccessionNumberGenerator {
     private final String separator;
     private final int separatorLength;
     private String incrementFormat;
+    private final Property regexProperty;
 
     public YearNumAccessionValidator(int length, Character separator) {
         useSeparator = separator != null;
@@ -51,6 +52,7 @@ public class YearNumAccessionValidator implements IAccessionNumberGenerator {
         String upper = incrementStartingValue.replace("0", "9").replace("1", "9");
         upperIncrementValue = Integer.parseInt(upper);
         acccessionLength = length + YEAR_END + (useSeparator ? 1 : 0);
+        regexProperty = resolveRegexProperty(length, useSeparator);
     }
 
     @Override
@@ -101,6 +103,10 @@ public class YearNumAccessionValidator implements IAccessionNumberGenerator {
         try {
             Integer.parseInt(accessionNumber.substring(INCREMENT_START + separatorLength));
         } catch (NumberFormatException e) {
+            return ValidationResults.FORMAT_FAIL;
+        }
+
+        if (!AccessionNumberUtil.matchesConfiguredRegex(accessionNumber, regexProperty)) {
             return ValidationResults.FORMAT_FAIL;
         }
 
@@ -226,5 +232,18 @@ public class YearNumAccessionValidator implements IAccessionNumberGenerator {
     @Override
     public String getNextAccessionNumber(String programCode, boolean reserve) {
         return this.getNextAvailableAccessionNumber(programCode, reserve);
+    }
+
+    private Property resolveRegexProperty(int length, boolean usesSeparator) {
+        if (length == 6) {
+            return Property.YEARNUM_SIX_ACCESSION_REGEX;
+        }
+        if (length == 7 && usesSeparator) {
+            return Property.YEARNUM_DASH_SEVEN_ACCESSION_REGEX;
+        }
+        if (length == 7) {
+            return Property.YEARNUM_SEVEN_ACCESSION_REGEX;
+        }
+        return null;
     }
 }

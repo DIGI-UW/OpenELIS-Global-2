@@ -123,4 +123,9 @@ public class AltYearAccessionValidator extends BaseSiteYearAccessionValidator im
 
         return currentHighAccessionNumber.substring(SITE_START, YEAR_END) + incrementAsString;
     }
+
+    @Override
+    protected Property getRegexProperty() {
+        return Property.ALT_YEAR_ACCESSION_REGEX;
+    }
 }

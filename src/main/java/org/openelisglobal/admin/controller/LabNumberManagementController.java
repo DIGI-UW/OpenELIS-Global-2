@@ -32,6 +32,12 @@ public class LabNumberManagementController {
                 .valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat)));
         form.setUsePrefix("true".equals(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX)));
+        String alphanumRegex = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.ALPHANUM_ACCESSION_REGEX);
+        String siteYearnumRegex = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.SITEYEARNUM_ACCESSION_REGEX);
+        form.setAlphanumRegex(alphanumRegex == null ? "" : alphanumRegex);
+        form.setSiteYearnumRegex(siteYearnumRegex == null ? "" : siteYearnumRegex);
 
         return form;
     }
@@ -44,6 +50,10 @@ public class LabNumberManagementController {
                 form.getAlphanumPrefix() != null ? form.getAlphanumPrefix().toUpperCase() : "");
         map.put(Property.AccessionFormat.getDBName(), form.getLabNumberType().name());
         map.put(Property.USE_ALPHANUM_ACCESSION_PREFIX.getDBName(), form.getUsePrefix().toString());
+        map.put(Property.ALPHANUM_ACCESSION_REGEX.getDBName(),
+                form.getAlphanumRegex() != null ? form.getAlphanumRegex() : "");
+        map.put(Property.SITEYEARNUM_ACCESSION_REGEX.getDBName(),
+                form.getSiteYearnumRegex() != null ? form.getSiteYearnumRegex() : "");
         siteInformationService.updateSiteInformationByName(map);
 
         ConfigurationProperties.loadDBValuesIntoConfiguration();
