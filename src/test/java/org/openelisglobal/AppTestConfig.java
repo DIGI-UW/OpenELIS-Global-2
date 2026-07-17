@@ -91,6 +91,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testactivation.service", "org.openelisglobal.testactivation.daoimpl",
         "org.openelisglobal.testsamplehandling.service", "org.openelisglobal.testsamplehandling.daoimpl",
         "org.openelisglobal.testterminology.service", "org.openelisglobal.testterminology.daoimpl",
+        "org.openelisglobal.testvariant.service", "org.openelisglobal.testvariant.daoimpl",
+        "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
+        "org.openelisglobal.testalertrule.service", "org.openelisglobal.testalertrule.daoimpl",
         "org.openelisglobal.testcatalog.service", "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer",
         "org.openelisglobal.plugin", "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
         "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
@@ -112,8 +115,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin",
         "org.openelisglobal.fhir.providers", "org.openelisglobal.common.dao", "org.openelisglobal.report",
         "org.openelisglobal.eqa", "org.openelisglobal.qc", "org.openelisglobal.externalconnections",
-        "org.openelisglobal.notifications", "org.openelisglobal.calendar",
-        "org.openelisglobal.esig" }, excludeFilters = {
+        "org.openelisglobal.notifications", "org.openelisglobal.calendar", "org.openelisglobal.esig",
+        "org.openelisglobal.resultreporting.service" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),

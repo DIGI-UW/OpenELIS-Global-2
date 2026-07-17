@@ -195,3 +195,13 @@ jobs:
             docker tag "${{ steps.source.outputs.ghcr_source }}" "$target_tag"
             docker push "$target_tag"
           done <<< "${{ steps.tags.outputs.tags }}"
+
+  # After the :develop images are published, redeploy the testing VM by reusing
+  # openelis-docker's deploy workflow (it SSHes in, pulls the new images, restarts
+  # the stack). Only on develop pushes — that VM runs the :develop tag.
+  deploy-testing:
+    name: Deploy to testing VM
+    needs: [setup, publish-images]
+    if: needs.setup.outputs.event_name == 'push' && needs.setup.outputs.head_branch == 'develop'
+    uses: DIGI-UW/openelis-docker/.github/workflows/deploy-testing.yml@main
+    secrets: inherit

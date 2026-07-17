@@ -108,8 +108,8 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
                 // resolve it here rather than forcing callers to know type ids.
                 target.setResultTypeId(NUMERIC_RESULT_TYPE_ID);
             }
-            // Copy only the editor-managed fields. Valid / reporting ranges and the
-            // dictionary normal are NOT edited here, so leave the managed row's
+            // Copy only the editor-managed fields. Reporting range (per-Method) and
+            // the dictionary normal are NOT edited here, so leave the managed row's
             // existing values intact (a new row keeps its ±Infinity defaults).
             target.setComponentId(incoming.getComponentId());
             target.setGender(incoming.getGender());
@@ -119,6 +119,8 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
             target.setHighNormal(incoming.getHighNormal());
             target.setLowCritical(incoming.getLowCritical());
             target.setHighCritical(incoming.getHighCritical());
+            target.setLowValid(incoming.getLowValid());
+            target.setHighValid(incoming.getHighValid());
             target.setSysUserId(sysUserId);
             if (target.getId() != null) {
                 update(target);
@@ -145,8 +147,20 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient) {
-        List<ResultLimit> resultLimits = getResultLimits(testId);
+        return selectForPatient(getResultLimits(testId), patient);
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient) {
+        if (GenericValidator.isBlankOrNull(componentId)) {
+            return null;
+        }
+        return selectForPatient(getResultLimitsByComponentId(componentId), patient);
+    }
+
+    /** Pick the best-matching limit from a pool for the patient's age/gender. */
+    private ResultLimit selectForPatient(List<ResultLimit> resultLimits, Patient patient) {
         if (resultLimits.isEmpty()) {
             return null;
         } else if (patient == null
@@ -252,10 +266,13 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
 
         resultLimits.removeAll(fullySpecifiedLimits);
 
-        // second only age matters
+        // second only age matters — but a gender-specific range must NOT apply to the
+        // other gender (a Male range must never show for a Female patient), so the
+        // age-only fallback is restricted to gender-neutral limits.
         if (resultLimit == null) {
             for (ResultLimit limit : resultLimits) {
-                if (!limit.ageLimitsAreDefault() && patientInAgeRange(patient, limit)) {
+                if (GenericValidator.isBlankOrNull(limit.getGender()) && !limit.ageLimitsAreDefault()
+                        && patientInAgeRange(patient, limit)) {
 
                     resultLimit = limit;
                     break;
