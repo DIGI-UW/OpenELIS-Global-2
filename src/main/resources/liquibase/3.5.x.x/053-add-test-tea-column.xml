@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ================================================================== -->
+    <!-- C.1 / OGC-704: per-test Total Allowable Error (TEa) for Westgard   -->
+    <!-- sigma metrics. Nullable percentage; sigma renders as               -->
+    <!-- "not calculable" where unset.                                      -->
+    <!-- ================================================================== -->
+
+    <changeSet author="samuelmale" id="qc-sigma-001-add-test-tea">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="test"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="test" columnName="tea"/>
+            </not>
+        </preConditions>
+        <comment>Add total allowable error (TEa, percent) to test for sigma-metric computation</comment>
+
+        <addColumn schemaName="clinlims" tableName="test">
+            <column name="tea" type="NUMERIC(10,4)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
