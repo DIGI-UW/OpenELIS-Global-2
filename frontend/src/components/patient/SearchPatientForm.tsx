@@ -35,8 +35,27 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
 import AsyncAvatar from "./photoManagement/photoAvatar/AyncAvatar";
+import type {
+  Nullable,
+  PatientRecord,
+  PatientSearchCriteria,
+  PatientSearchResponse,
+} from "./types";
 
-function SearchPatientForm(props) {
+interface SearchPatientFormProps {
+  getSelectedPatient?: (patient: PatientRecord) => void;
+  setOrderFormValues?: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
+  orderFormValues?: Record<string, unknown>;
+  showPatientSearch?: boolean;
+  patientSearchStatus?: boolean;
+  [key: string]: unknown;
+}
+
+type ImportStatus = Record<string, boolean>;
+
+function SearchPatientForm(props: SearchPatientFormProps) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -44,17 +63,19 @@ function SearchPatientForm(props) {
   const intl = useIntl();
 
   const [dob, setDob] = useState("");
-  const [patientSearchResults, setPatientSearchResults] = useState([]);
-  const [importStatus, setImportStatus] = useState({});
+  const [patientSearchResults, setPatientSearchResults] = useState<
+    PatientRecord[]
+  >([]);
+  const [importStatus, setImportStatus] = useState<ImportStatus>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [loading, setLoading] = useState(false);
-  const [nextPage, setNextPage] = useState(null);
+  const [nextPage, setNextPage] = useState<Nullable<string>>(null);
   const [isToggled, setIsToggled] = useState(false);
-  const [previousPage, setPreviousPage] = useState(null);
+  const [previousPage, setPreviousPage] = useState<Nullable<string>>(null);
   const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
+  const [currentApiPage, setCurrentApiPage] = useState<Nullable<number>>(null);
+  const [totalApiPages, setTotalApiPages] = useState<Nullable<number>>(null);
   const [url, setUrl] = useState("");
   const [searchFormValues, setSearchFormValues] = useState(
     SearchPatientFormValues,
@@ -66,7 +87,7 @@ function SearchPatientForm(props) {
   // search results). Manual searches leave this false and just list results.
   const autoSelectOnResults = useRef(false);
 
-  const handlePatientImport = (patientId) => {
+  const handlePatientImport = (patientId: string) => {
     console.log("Import button clicked, patientId:", patientId);
 
     const patientSelected = patientSearchResults.find(
@@ -123,7 +144,7 @@ function SearchPatientForm(props) {
     );
   };
 
-  const handlePost = (status, patientId) => {
+  const handlePost = (status: number, patientId: string) => {
     setNotificationVisible(true);
     if (status === 200) {
       addNotification({
@@ -144,7 +165,7 @@ function SearchPatientForm(props) {
     }
   };
 
-  const handleSubmit = (values) => {
+  const handleSubmit = (values: PatientSearchCriteria) => {
     setNextPage(null);
     setPreviousPage(null);
     setPagination(false);
@@ -197,7 +218,7 @@ function SearchPatientForm(props) {
     setIsToggled((prev) => !prev);
   };
 
-  const fetchPatientResults = (res) => {
+  const fetchPatientResults = (res: PatientSearchResponse) => {
     if (!res || !res.patientSearchResults) {
       setPatientSearchResults([]);
       return;
@@ -232,7 +253,10 @@ function SearchPatientForm(props) {
       setNotificationVisible(true);
     }
     if (res.paging) {
-      var { totalPages, currentPage } = res.paging;
+      const { totalPages, currentPage } = res.paging as {
+        totalPages: string;
+        currentPage: string;
+      };
       if (totalPages > 1) {
         setPagination(true);
         setCurrentApiPage(currentPage);
@@ -252,7 +276,7 @@ function SearchPatientForm(props) {
     setLoading(false);
   };
 
-  const fetchPatientDetails = (patientDetails) => {
+  const fetchPatientDetails = (patientDetails: PatientRecord) => {
     getFromOpenElisServer(
       `/rest/patient-photos/${patientDetails.patientPK}/${false}`,
       (response) => {
@@ -261,14 +285,14 @@ function SearchPatientForm(props) {
         }
       },
     );
-    props.getSelectedPatient(patientDetails);
+    props.getSelectedPatient!(patientDetails);
   };
 
-  const handleDatePickerChange = (date) => {
+  const handleDatePickerChange = (date: string) => {
     setDob(date);
   };
 
-  function handleFirstNameChange(event) {
+  function handleFirstNameChange(event: React.ChangeEvent<HTMLInputElement>) {
     const regexFlags = "iu";
     const regex = new RegExp(
       configurationProperties.FIRST_NAME_REGEX,
@@ -281,7 +305,7 @@ function SearchPatientForm(props) {
     setPrevfirstName(event.target.value);
   }
 
-  function handleLastNameChange(event) {
+  function handleLastNameChange(event: React.ChangeEvent<HTMLInputElement>) {
     const regexFlags = "iu";
     const regex = new RegExp(
       configurationProperties.LAST_NAME_REGEX,
@@ -294,16 +318,16 @@ function SearchPatientForm(props) {
     setPrevlastName(event.target.value);
   }
 
-  const patientSelected = (e) => {
+  const patientSelected = (e: React.MouseEvent<HTMLElement>) => {
     const patientSelected = patientSearchResults.find((patient) => {
-      return patient.patientID == e.target.id;
+      return patient.patientID == (e.target as HTMLElement).id;
     });
     const searchEndPoint =
-      "/rest/patient-details?patientID=" + patientSelected.patientID;
+      "/rest/patient-details?patientID=" + patientSelected!.patientID;
     getFromOpenElisServer(searchEndPoint, fetchPatientDetails);
   };
 
-  const handlePageChange = (pageInfo) => {
+  const handlePageChange = (pageInfo: { page: number; pageSize: number }) => {
     if (page != pageInfo.page) {
       setPage(pageInfo.page);
     }
@@ -314,7 +338,7 @@ function SearchPatientForm(props) {
   };
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    let patientId = params.get("patientId");
+    const patientId = params.get("patientId");
     if (patientId) {
       const searchEndPoint = "/rest/patient-details?patientID=" + patientId;
       getFromOpenElisServer(searchEndPoint, fetchPatientDetails);
@@ -322,7 +346,7 @@ function SearchPatientForm(props) {
     }
     // Deep link from elsewhere (e.g. the Validation page) — prefill the lab
     // number and run the search so the matching patient surfaces immediately.
-    let labNumber = params.get("labNumber");
+    const labNumber = params.get("labNumber");
     if (labNumber) {
       autoSelectOnResults.current = true;
       setSearchFormValues({ ...SearchPatientFormValues, labNumber });

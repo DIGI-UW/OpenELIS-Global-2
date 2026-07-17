@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { UserAvatar } from "@carbon/icons-react";
 import { SkeletonPlaceholder } from "@carbon/react";
 import Avatar from "react-avatar";
 import { getFromOpenElisServer } from "../../../utils/Utils";
@@ -20,9 +19,13 @@ const AsyncAvatar = ({
   hasPhoto,
   patientName = "Patient",
   size = 40,
-  gender,
+}: {
+  patientId?: string | number;
+  hasPhoto?: boolean;
+  patientName?: string;
+  size?: number;
 }) => {
-  const [thumbnail, setThumbnail] = useState(null);
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);

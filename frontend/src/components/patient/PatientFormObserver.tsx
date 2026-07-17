@@ -1,8 +1,21 @@
 import { useEffect } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useFormikContext } from "formik";
+import type { PatientRecord } from "./types";
 
-const normalizeAddressHierarchy = (patient = {}) => {
-  const normalized = {};
+type OrderFormValues = Record<string, unknown> & {
+  patientUpdateStatus?: string;
+  patientProperties?: PatientRecord;
+};
+
+interface PatientFormObserverProps {
+  setOrderFormValues: Dispatch<SetStateAction<OrderFormValues>>;
+  formAction: string;
+  selectedPatient?: PatientRecord;
+}
+
+const normalizeAddressHierarchy = (patient: PatientRecord = {}) => {
+  const normalized: Record<string, string> = {};
 
   Object.entries(patient.addressHierarchy || {}).forEach(([key, value]) => {
     normalized[key] = value || "";
@@ -59,9 +72,9 @@ const normalizePatientForComparison = (patient = {}) => ({
 });
 
 export const mergePatientIntoOrderFormValues = (
-  orderFormValues = {},
-  values = {},
-  patientUpdateStatus,
+  orderFormValues: OrderFormValues = {},
+  values: PatientRecord = {},
+  patientUpdateStatus: string,
 ) => {
   const nextPatientProperties = {
     ...values,
@@ -84,9 +97,9 @@ export const mergePatientIntoOrderFormValues = (
 };
 
 export const derivePatientUpdateStatus = (
-  values,
-  selectedPatient,
-  fallbackAction,
+  values: PatientRecord,
+  selectedPatient: PatientRecord | undefined,
+  fallbackAction: string,
 ) => {
   if (!selectedPatient?.patientPK) {
     return fallbackAction;
@@ -98,8 +111,8 @@ export const derivePatientUpdateStatus = (
     : "UPDATE";
 };
 
-const PatientFormObserver = (props) => {
-  const { values } = useFormikContext();
+const PatientFormObserver = (props: PatientFormObserverProps) => {
+  const { values } = useFormikContext<PatientRecord>();
   const { setOrderFormValues, formAction, selectedPatient } = props;
 
   useEffect(() => {

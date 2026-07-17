@@ -20,6 +20,7 @@ import {
   executePatientMerge,
   getErrorMessage,
 } from "./patientMerge/patientMergeService";
+import type { Nullable, PatientMergeResult, PatientRecord } from "./types";
 import "./patientMerge/PatientMerge.scss";
 import "../../components/Style.css";
 
@@ -43,20 +44,23 @@ function PatientMerge() {
   const [currentStep, setCurrentStep] = useState(STEP_SELECT);
 
   // Patient data state
-  const [patient1, setPatient1] = useState(null);
-  const [patient2, setPatient2] = useState(null);
-  const [patient1Details, setPatient1Details] = useState(null);
-  const [patient2Details, setPatient2Details] = useState(null);
-  const [primaryPatientId, setPrimaryPatientId] = useState(null);
+  const [patient1, setPatient1] = useState<Nullable<PatientRecord>>(null);
+  const [patient2, setPatient2] = useState<Nullable<PatientRecord>>(null);
+  const [patient1Details, setPatient1Details] =
+    useState<Nullable<PatientRecord>>(null);
+  const [patient2Details, setPatient2Details] =
+    useState<Nullable<PatientRecord>>(null);
+  const [primaryPatientId, setPrimaryPatientId] =
+    useState<Nullable<string>>(null);
 
   // Merge state
   const [mergeReason, setMergeReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [mergeResult, setMergeResult] = useState(null);
-
+  const [mergeResult, setMergeResult] =
+    useState<Nullable<PatientMergeResult>>(null);
   // UI state
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<Nullable<string>>(null);
 
   // Fetch patient merge details when moving to compare step
   const fetchPatientDetails = async () => {
@@ -195,12 +199,12 @@ function PatientMerge() {
   };
 
   // Handle patient selection
-  const handlePatient1Select = (patient) => {
+  const handlePatient1Select = (patient: Nullable<PatientRecord>) => {
     setPatient1(patient);
     setError(null);
   };
 
-  const handlePatient2Select = (patient) => {
+  const handlePatient2Select = (patient: Nullable<PatientRecord>) => {
     setPatient2(patient);
     setError(null);
   };

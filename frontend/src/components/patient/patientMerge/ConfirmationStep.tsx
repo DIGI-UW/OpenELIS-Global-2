@@ -7,6 +7,22 @@ import {
   TextArea,
   Checkbox,
 } from "@carbon/react";
+import type { Nullable, PatientRecord } from "../types";
+
+interface PreservedIdentifier {
+  value: string;
+  patientLabel: string;
+}
+
+interface ConfirmationStepProps {
+  patient1Details: Nullable<PatientRecord>;
+  patient2Details: Nullable<PatientRecord>;
+  primaryPatientId: Nullable<string>;
+  mergeReason: string;
+  confirmed: boolean;
+  onReasonChange: (reason: string) => void;
+  onConfirmedChange: (confirmed: boolean) => void;
+}
 
 function ConfirmationStep({
   patient1Details,
@@ -16,11 +32,11 @@ function ConfirmationStep({
   confirmed,
   onReasonChange,
   onConfirmedChange,
-}) {
+}: ConfirmationStepProps) {
   const intl = useIntl();
 
   // Get display name from firstName and lastName
-  const getPatientName = (patient) => {
+  const getPatientName = (patient: Nullable<PatientRecord>): string => {
     if (!patient) return "-";
     const parts = [];
     if (patient.firstName) parts.push(patient.firstName);
@@ -29,7 +45,7 @@ function ConfirmationStep({
   };
 
   // Get display ID - prioritize nationalId or first identifier over DB ID
-  const getDisplayId = (patient) => {
+  const getDisplayId = (patient: Nullable<PatientRecord>): string => {
     if (!patient) return "";
     // Check nationalId first
     if (patient.nationalId) return patient.nationalId;
@@ -74,8 +90,8 @@ function ConfirmationStep({
   };
 
   // Detect conflicting fields by comparing patient details
-  const detectConflictingFields = () => {
-    const conflicts = [];
+  const detectConflictingFields = (): string[] => {
+    const conflicts: string[] = [];
     if (
       primaryPatient?.phoneNumber &&
       mergedPatient?.phoneNumber &&
@@ -104,8 +120,8 @@ function ConfirmationStep({
   const hasConflicts = conflictingFields.length > 0;
 
   // Build conflict display messages
-  const getConflictMessages = () => {
-    const messages = [];
+  const getConflictMessages = (): string[] => {
+    const messages: string[] = [];
     if (conflictingFields.includes("phone")) {
       messages.push(
         intl.formatMessage(
@@ -144,10 +160,14 @@ function ConfirmationStep({
 
   // Collect all identifiers from both patients, grouped by type
   const getAllIdentifiers = () => {
-    const identifiersByType = {};
+    const identifiersByType: Record<string, PreservedIdentifier[]> = {};
 
     // Helper to add identifier to the grouped object
-    const addIdentifier = (type, value, patientLabel) => {
+    const addIdentifier = (
+      type: string | undefined,
+      value: string | undefined,
+      patientLabel: string,
+    ) => {
       if (!type || !value) return;
       if (!identifiersByType[type]) {
         identifiersByType[type] = [];
