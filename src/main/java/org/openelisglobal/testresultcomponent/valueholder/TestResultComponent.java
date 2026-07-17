@@ -61,6 +61,17 @@ public class TestResultComponent extends BaseObject<String> {
     @Column(name = "allow_multiple_readings", nullable = false)
     private boolean allowMultipleReadings = false;
 
+    // Exactly one active component per test is the primary — the one mirrored back
+    // to the legacy test / test_result columns. An explicit flag (not the code) so
+    // renaming a component's code can't silently move the primary designation.
+    @Column(name = "is_primary", nullable = false)
+    private boolean isPrimary = false;
+
+    // Per-component default for whether this component prints on the patient
+    // report (OGC-1127). Default true so existing components keep printing.
+    @Column(name = "show_on_report", nullable = false)
+    private boolean showOnReport = true;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -109,6 +120,22 @@ public class TestResultComponent extends BaseObject<String> {
 
     public void setDisplayOrder(Integer displayOrder) {
         this.displayOrder = displayOrder;
+    }
+
+    public boolean getIsPrimary() {
+        return isPrimary;
+    }
+
+    public void setIsPrimary(boolean isPrimary) {
+        this.isPrimary = isPrimary;
+    }
+
+    public boolean getShowOnReport() {
+        return showOnReport;
+    }
+
+    public void setShowOnReport(boolean showOnReport) {
+        this.showOnReport = showOnReport;
     }
 
     public String getResultType() {

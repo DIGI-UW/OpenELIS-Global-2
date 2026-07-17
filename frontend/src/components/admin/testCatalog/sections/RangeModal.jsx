@@ -71,6 +71,8 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
         highNormal: "",
         lowCritical: "",
         highCritical: "",
+        lowValid: "",
+        highValid: "",
       };
     }
     return {
@@ -83,11 +85,19 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       highNormal: numOrEmpty(range.highNormal),
       lowCritical: numOrEmpty(range.lowCritical),
       highCritical: numOrEmpty(range.highCritical),
+      lowValid: numOrEmpty(range.lowValid),
+      highValid: numOrEmpty(range.highValid),
     };
   });
   const [ageError, setAgeError] = useState(false);
+  const [boundsError, setBoundsError] = useState(false);
 
-  const set = (patch) => setDraft((prev) => ({ ...prev, ...patch }));
+  const set = (patch) =>
+    setDraft((prev) => {
+      setAgeError(false);
+      setBoundsError(false);
+      return { ...prev, ...patch };
+    });
 
   const handleSubmit = () => {
     const minDays =
@@ -103,6 +113,23 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       setAgeError(true);
       return;
     }
+    // Bounds must nest outward: valid ⊇ critical ⊇ normal, i.e.
+    // lowValid ≤ lowCritical ≤ lowNormal ≤ highNormal ≤ highCritical ≤ highValid.
+    // Blank bounds are unbounded (skipped); the entered ones must stay in order.
+    const chain = [
+      parseOrNull(draft.lowValid),
+      parseOrNull(draft.lowCritical),
+      parseOrNull(draft.lowNormal),
+      parseOrNull(draft.highNormal),
+      parseOrNull(draft.highCritical),
+      parseOrNull(draft.highValid),
+    ].filter((v) => v !== null);
+    for (let i = 1; i < chain.length; i++) {
+      if (chain[i] < chain[i - 1]) {
+        setBoundsError(true);
+        return;
+      }
+    }
     onSave({
       id: draft.id,
       componentId: draft.componentId || null,
@@ -113,6 +140,8 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       highNormal: parseOrNull(draft.highNormal),
       lowCritical: parseOrNull(draft.lowCritical),
       highCritical: parseOrNull(draft.highCritical),
+      lowValid: parseOrNull(draft.lowValid),
+      highValid: parseOrNull(draft.highValid),
     });
   };
 
@@ -230,6 +259,20 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
             "label.testCatalog.ranges.modal.highCritical",
           )}
         </div>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          {numField("lowValid", "label.testCatalog.ranges.modal.lowValid")}
+          {numField("highValid", "label.testCatalog.ranges.modal.highValid")}
+        </div>
+        {boundsError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "label.testCatalog.ranges.modal.boundsError",
+            })}
+          />
+        )}
       </div>
     </Modal>
   );

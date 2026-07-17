@@ -10,6 +10,8 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +32,9 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
 
     @Autowired
     private TypeOfSampleTestService typeOfSampleTestService;
+
+    @Autowired
+    private TestResultComponentService componentService;
 
     @Override
     @Transactional(readOnly = true)
@@ -70,6 +75,15 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
         if (!GenericValidator.isBlankOrNull(params.labUnitId)) {
             TestSection labUnit = testSectionService.get(params.labUnitId);
             if (labUnit != null) {
+                // Assigning a test to an inactive lab unit activates it, mirroring the
+                // legacy Test Section assignment flow. Otherwise the section stays
+                // inactive and the test is filtered out of Add Order, which lists only
+                // tests whose section is among the user's active sections (OGC-1116).
+                if ("N".equals(labUnit.getIsActive())) {
+                    labUnit.setIsActive("Y");
+                    labUnit.setSysUserId(sysUserId);
+                    testSectionService.update(labUnit);
+                }
                 test.setTestSection(labUnit);
             }
         }
@@ -90,6 +104,24 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
             sampleTypeLink.setSysUserId(sysUserId);
             typeOfSampleTestService.insert(sampleTypeLink);
         }
+
+        // FR-56 — pre-seed the primary result component so Sample & Results opens
+        // with the row already there (label defaults to the test name; result type
+        // left unset — the FR-57 gate requires it before activation). Variant
+        // creation (copyFromId) copies the source's components right after this
+        // and skips codes that already exist, so the pre-seeded PRIMARY row is
+        // reconciled rather than duplicated.
+        TestResultComponent primary = new TestResultComponent();
+        primary.setTestId(testId);
+        primary.setCode("PRIMARY");
+        primary.setLabel(params.name);
+        primary.setDisplayOrder(0);
+        primary.setIsPrimary(true);
+        primary.setShowOnReport(true);
+        primary.setIsActive("Y");
+        primary.setSysUserId(sysUserId);
+        componentService.insert(primary);
+
         return testId;
     }
 }

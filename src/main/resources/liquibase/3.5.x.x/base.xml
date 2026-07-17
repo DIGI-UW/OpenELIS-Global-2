@@ -135,4 +135,28 @@
   <!-- OGC-949 / OGC-766: cascade test_sample_handling_history when its handling row is deleted -->
   <include relativeToChangelogFile="true" file="050-tsh-history-fk-cascade.xml"/>
 
+  <!-- OGC-749 / OGC-963 (FR-29): code + UCUM columns for the inline unit-create form -->
+  <include relativeToChangelogFile="true" file="051-uom-code-ucum.xml"/>
+
+  <!-- OGC-949: explicit is_primary boolean on result components -->
+  <include relativeToChangelogFile="true" file="052-component-is-primary.xml"/>
+
+  <!-- OGC-949 / OGC-1128: component-aware terminology mappings (nullable component_id) -->
+  <include relativeToChangelogFile="true" file="053-terminology-component-scope.xml"/>
+
+  <!-- OGC-949 / OGC-1127: per-component show_on_report default -->
+  <include relativeToChangelogFile="true" file="054-component-show-on-report.xml"/>
+
+  <!-- OGC-949 / OGC-1125: pre-seed molecular (GeneXpert PCR) result components -->
+  <include relativeToChangelogFile="true" file="055-seed-molecular-components.xml"/>
+
+  <!-- OGC-949 / OGC-1129: analyzer target→component mapping columns -->
+  <include relativeToChangelogFile="true" file="056-analyzer-component-mapping.xml"/>
+
+  <!-- OGC-1142 / FR-69: terminology mapping display name -->
+  <include relativeToChangelogFile="true" file="057-terminology-display-name.xml"/>
+
+  <!-- OGC-1142 / FR-46-55: specimen-variant grouping link -->
+  <include relativeToChangelogFile="true" file="058-test-variant-link.xml"/>
+
 </databaseChangeLog>

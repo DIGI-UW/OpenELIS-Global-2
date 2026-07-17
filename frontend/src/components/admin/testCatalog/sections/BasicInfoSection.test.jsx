@@ -198,6 +198,51 @@ describe("BasicInfoSection domain-switch modal", () => {
     expect(screen.getByRole("switch", { name: /Active/ })).toBeChecked();
   });
 
+  it("edits the lab unit and sample type on modify and persists them", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/lab-units")) {
+        cb([
+          { id: "7", name: "Chemistry" },
+          { id: "8", name: "Hematology" },
+        ]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([
+          { id: "2", name: "Serum" },
+          { id: "3", name: "Plasma" },
+        ]);
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          labUnitId: "7",
+          sampleTypeId: "2",
+          antimicrobialResistance: false,
+          active: true,
+          orderable: true,
+        });
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(container.querySelector("#basic-info-edit-lab-unit"), {
+      target: { value: "Hematology" },
+    });
+    fireEvent.click(await screen.findByText("Hematology"));
+    fireEvent.change(container.querySelector("#basic-info-edit-sample-type"), {
+      target: { value: "Plasma" },
+    });
+    fireEvent.click(await screen.findByText("Plasma"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    expect(body.labUnitId).toBe("8");
+    expect(body.sampleTypeId).toBe("3");
+  });
+
   it("shows an error state when the fetch fails", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => cb(undefined));
     renderSection();

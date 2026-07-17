@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { DatePicker, DatePickerInput } from "@carbon/react";
 import { format } from "date-fns";
+import { useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 
 const CustomDatePicker = (props) => {
@@ -8,6 +9,7 @@ const CustomDatePicker = (props) => {
     props.value ? props.value : "",
   );
   const { configurationProperties } = useContext(ConfigurationContext);
+  const intl = useIntl();
   function handleDatePickerChange(e) {
     const raw = e?.[0];
     if (!raw || isNaN(new Date(raw).getTime())) {
@@ -102,11 +104,16 @@ const CustomDatePicker = (props) => {
       >
         <DatePickerInput
           id={props.id}
-          placeholder={
-            configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
-              ? "dd/mm/yyyy"
-              : "mm/dd/yyyy"
-          }
+          placeholder={intl.formatMessage({
+            id:
+              configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
+                ? "datepicker.placeholder.dmy"
+                : "datepicker.placeholder.mdy",
+            defaultMessage:
+              configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
+                ? "dd/mm/yyyy"
+                : "mm/dd/yyyy",
+          })}
           type="text"
           labelText={props.labelText}
           invalid={props.invalid}

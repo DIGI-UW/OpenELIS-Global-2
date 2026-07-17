@@ -4,10 +4,12 @@ import {
   Accordion,
   AccordionItem,
   TextInput,
+  NumberInput,
   ComboBox,
   Select,
   SelectItem,
-  SelectItemGroup,
+  TileGroup,
+  RadioTile,
   Toggle,
   Checkbox,
   Button,
@@ -37,9 +39,8 @@ import { NotificationContext } from "../../../layout/Layout";
  * accordion (OGC-967). The whole tree is saved in one PUT to
  * /rest/test-catalog/tests/{id}/sample-results, which diff-reconciles
  * server-side (insert / update-by-id / soft-delete). Components can be reordered
- * (OGC-968), have a unit picked from the master list (OGC-963), and the whole
- * config copied from another test (OGC-966). Inline-add of a *new* unit (the
- * create half of OGC-963) and sample types (OGC-961) are follow-ups.
+ * (OGC-968), have a unit picked from the master list or created inline
+ * (OGC-963, FR-29), and the whole config copied from another test (OGC-966).
  */
 // The platform's full result-type set (TypeOfTestResultServiceImpl.ResultType):
 // three common types, plus four advanced / legacy types kept available so a test
@@ -58,13 +59,23 @@ const PlainPanel = ({ children }) => <div>{children}</div>;
  * the admin edits. Disabled so nothing is entered/saved from it.
  */
 const ResultEntryPreview = ({ component, uoms, intl }) => {
-  const type = component.resultType || "N";
+  const type = component.resultType || null;
   const label = component.label || component.code || "";
   const options = component.options || [];
   const unit = (uoms.find((u) => u.id === component.uomId) || {}).value || "";
 
   let control = null;
-  if (type === "N") {
+  if (type === null) {
+    // FR-56 — the pre-seeded component carries no result type until the admin
+    // explicitly picks one; say so instead of previewing a control that lies.
+    control = (
+      <p style={{ color: "var(--cds-text-secondary, #525252)" }}>
+        {intl.formatMessage({
+          id: "label.testCatalog.sampleResults.preview.noType",
+        })}
+      </p>
+    );
+  } else if (type === "N") {
     control = (
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
         <TextInput id="preview-n" labelText="" placeholder="0" disabled />
@@ -139,6 +150,14 @@ const SampleResultsSection = ({ testId }) => {
   // clears its input after an option is added.
   const [optionSearch, setOptionSearch] = useState({});
   const [optionComboReset, setOptionComboReset] = useState({});
+  // Which components have the "Advanced / legacy types" disclosure expanded
+  // (FR-28). Keyed by component index; undefined falls back to "open iff the
+  // component's current type is an advanced one" so an existing M/C/T/A test
+  // shows its selected tile.
+  const [advancedTypesOpen, setAdvancedTypesOpen] = useState({});
+  // Inline "add new unit" form (FR-29): null = closed; otherwise
+  // { ci, name, code, ucumCode, description } for the component at index ci.
+  const [unitForm, setUnitForm] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -174,30 +193,193 @@ const SampleResultsSection = ({ testId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
+  // FR-76 — changing the result type resets fields that don't apply to the new
+  // type, so a component can't carry stale numeric units into a select-list type
+  // (or leftover options into a numeric one). Returns the patch to apply.
+  const typeAwareDefaults = (component, nextType) => {
+    const patch = { resultType: nextType };
+    const isSelectList = ["D", "M", "C"].includes(nextType);
+    if (nextType !== "N") {
+      // Numeric-only fields.
+      patch.uomId = "";
+      patch.significantDigits = null;
+      patch.allowMultipleReadings = false;
+    }
+    if (!isSelectList) {
+      // Select-list options are meaningless for non-list types.
+      patch.options = [];
+    }
+    return patch;
+  };
+
   // ── Immutable updaters ─────────────────────────────────────────────────────
   const patchComponent = (ci, patch) =>
     setComponents((prev) =>
       prev.map((c, i) => (i === ci ? { ...c, ...patch } : c)),
     );
 
+  // FR-29: create a unit inline, then append it to the picker and select it on
+  // the component whose form is open. Name is required.
+  const saveUnit = () => {
+    if (!unitForm || !unitForm.name || !unitForm.name.trim()) {
+      return;
+    }
+    const ci = unitForm.ci;
+    const payload = JSON.stringify({
+      name: unitForm.name.trim(),
+      code: unitForm.code,
+      ucumCode: unitForm.ucumCode,
+      description: unitForm.description,
+    });
+    postToOpenElisServerJsonResponse("/rest/uom", payload, (data) => {
+      if (data && data.id) {
+        setUoms((prev) => [...prev, { id: data.id, value: data.value }]);
+        patchComponent(ci, { uomId: data.id });
+        setUnitForm(null);
+      } else {
+        addNotification({
+          kind: "error",
+          title: intl.formatMessage({ id: "error.title" }),
+          message: intl.formatMessage({ id: "server.error.msg" }),
+        });
+        setNotificationVisible(true);
+      }
+    });
+  };
+
+  // Accordion header for a component: label · code · result type (FR-34).
+  const componentTitle = (c) => {
+    const label =
+      c.label ||
+      c.code ||
+      intl.formatMessage({
+        id: "label.testCatalog.sampleResults.newComponent",
+      });
+    const parts = [label];
+    if (c.code && c.code !== label) {
+      parts.push(c.code);
+    }
+    parts.push(
+      c.resultType
+        ? intl.formatMessage({
+            id: `label.testCatalog.sampleResults.resultType.${c.resultType}`,
+          })
+        : intl.formatMessage({
+            id: "label.testCatalog.sampleResults.resultType.none",
+          }),
+    );
+    return parts.join(" · ");
+  };
+
+  // FR-28: result type is chosen first, as three primary cards (Numeric,
+  // Single-select, Free text) each with a one-line description; the four
+  // specialised / legacy types (Multi-select, Cascading, Titer, Alpha) sit
+  // behind an "Advanced / legacy types" disclosure so a test saved as one of
+  // them stays editable without the type being silently dropped (FR-37).
+  const renderTypeChooser = (c, ci) => {
+    // No silent default (FR-56): an unset type shows no tile selected, and the
+    // save requires an explicit choice.
+    const current = c.resultType || null;
+    const showAdvanced =
+      advancedTypesOpen[ci] ?? ADVANCED_RESULT_TYPES.includes(current);
+    const tile = (t) => (
+      <RadioTile key={t} id={`comp-type-${ci}-${t}`} value={t}>
+        <div className="cds--tile-content">
+          <strong>
+            {intl.formatMessage({
+              id: `label.testCatalog.sampleResults.resultType.${t}`,
+            })}
+          </strong>
+          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
+            {intl.formatMessage({
+              id: `label.testCatalog.sampleResults.resultTypeDesc.${t}`,
+            })}
+          </div>
+        </div>
+      </RadioTile>
+    );
+    return (
+      <div>
+        <TileGroup
+          name={`comp-type-${ci}`}
+          legend={intl.formatMessage({
+            id: "label.testCatalog.sampleResults.resultType",
+          })}
+          valueSelected={current}
+          onChange={(value) => patchComponent(ci, typeAwareDefaults(c, value))}
+        >
+          {PRIMARY_RESULT_TYPES.map(tile)}
+          {showAdvanced && ADVANCED_RESULT_TYPES.map(tile)}
+        </TileGroup>
+        <Button
+          kind="ghost"
+          size="sm"
+          onClick={() =>
+            setAdvancedTypesOpen((prev) => ({ ...prev, [ci]: !showAdvanced }))
+          }
+        >
+          {intl.formatMessage({
+            id: showAdvanced
+              ? "label.testCatalog.sampleResults.resultType.hideAdvanced"
+              : "label.testCatalog.sampleResults.resultType.showAdvanced",
+          })}
+        </Button>
+      </div>
+    );
+  };
+
   const addComponent = () =>
     setComponents((prev) => [
       ...prev,
       {
-        code: "",
+        // The first (only) component is the primary; its code is fixed to
+        // PRIMARY (mirrored to the legacy test columns).
+        code: prev.length === 0 ? "PRIMARY" : "",
         label: "",
         displayOrder: prev.length + 1,
-        resultType: "N",
+        // The type is an explicit choice (FR-56/28) — no silent Numeric default.
+        resultType: null,
         significantDigits: null,
         defaultResult: "",
         allowMultipleReadings: false,
+        isPrimary: prev.length === 0,
+        showOnReport: true,
         options: [],
         interpretations: [],
       },
     ]);
 
+  // Exactly one component is primary. While one is marked, the other
+  // components' Primary toggles are disabled — the current primary must be
+  // unmarked first. Marking fixes the code to PRIMARY (and disables it);
+  // unmarking frees the code back to the component's label.
+  const togglePrimary = (ci, checked) =>
+    setComponents((prev) =>
+      prev.map((c, i) => {
+        if (i !== ci) {
+          return c;
+        }
+        if (checked) {
+          return { ...c, isPrimary: true, code: "PRIMARY" };
+        }
+        return {
+          ...c,
+          isPrimary: false,
+          code: c.code === "PRIMARY" ? c.label || "" : c.code,
+        };
+      }),
+    );
+
   const removeComponent = (ci) =>
-    setComponents((prev) => prev.filter((_, i) => i !== ci));
+    setComponents((prev) => {
+      const removed = prev[ci];
+      const next = prev.filter((_, i) => i !== ci);
+      // Removing the primary promotes the first remaining component.
+      if (removed && removed.isPrimary && next.length > 0) {
+        next[0] = { ...next[0], isPrimary: true, code: "PRIMARY" };
+      }
+      return next;
+    });
 
   const moveComponent = (ci, dir) =>
     setComponents((prev) => {
@@ -253,7 +435,7 @@ const SampleResultsSection = ({ testId }) => {
                 {
                   value: item.id,
                   valueName: item.name,
-                  resultType: "D",
+                  resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
                 },
@@ -264,6 +446,30 @@ const SampleResultsSection = ({ testId }) => {
     );
     setOptionComboReset((prev) => ({ ...prev, [ci]: (prev[ci] || 0) + 1 }));
   };
+
+  // FR-83 — add a blank, free-text option not backed by a dictionary entry. Its
+  // `value` renders as an editable field (valueName stays null) so the admin can
+  // type a one-off option without first curating a dictionary term.
+  const addCustomOption = (ci) =>
+    setComponents((prev) =>
+      prev.map((c, i) =>
+        i === ci
+          ? {
+              ...c,
+              options: [
+                ...c.options,
+                {
+                  value: "",
+                  valueName: null,
+                  resultType: c.resultType,
+                  sortOrder: c.options.length + 1,
+                  normal: false,
+                },
+              ],
+            }
+          : c,
+      ),
+    );
 
   const addInterpretation = (ci) =>
     setComponents((prev) =>
@@ -315,6 +521,23 @@ const SampleResultsSection = ({ testId }) => {
         message: intl.formatMessage({
           id: "label.testCatalog.sampleResults.labelRequired",
         }),
+      });
+      return;
+    }
+    // FR-56/59 — the result type is a required explicit choice; refuse the save
+    // naming the component rather than persisting a typeless row.
+    const untyped = normalized.find((c) => !c.resultType);
+    if (untyped) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage(
+          { id: "label.testCatalog.sampleResults.resultTypeRequired" },
+          { component: untyped.label || untyped.code },
+        ),
       });
       return;
     }
@@ -434,13 +657,7 @@ const SampleResultsSection = ({ testId }) => {
             <ItemWrapper
               key={c.id || `new-${ci}`}
               open
-              title={
-                c.label ||
-                c.code ||
-                intl.formatMessage({
-                  id: "label.testCatalog.sampleResults.newComponent",
-                })
-              }
+              title={componentTitle(c)}
             >
               <Stack gap={4}>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -467,12 +684,37 @@ const SampleResultsSection = ({ testId }) => {
                     onClick={() => moveComponent(ci, 1)}
                   />
                 </div>
+                <Toggle
+                  id={`comp-primary-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.isPrimary",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={!!c.isPrimary}
+                  disabled={!c.isPrimary && components.some((x) => x.isPrimary)}
+                  onToggle={(checked) => togglePrimary(ci, checked)}
+                />
+                <Toggle
+                  id={`comp-show-on-report-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.showOnReport",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={c.isPrimary ? true : c.showOnReport !== false}
+                  disabled={!!c.isPrimary}
+                  onToggle={(checked) =>
+                    patchComponent(ci, { showOnReport: checked })
+                  }
+                />
                 <TextInput
                   id={`comp-code-${ci}`}
                   labelText={intl.formatMessage({
                     id: "label.testCatalog.sampleResults.code",
                   })}
-                  value={c.code || ""}
+                  value={c.isPrimary ? "PRIMARY" : c.code || ""}
+                  disabled={!!c.isPrimary}
                   onChange={(e) => patchComponent(ci, { code: e.target.value })}
                 />
                 <TextInput
@@ -485,50 +727,7 @@ const SampleResultsSection = ({ testId }) => {
                     patchComponent(ci, { label: e.target.value })
                   }
                 />
-                <Select
-                  id={`comp-type-${ci}`}
-                  labelText={intl.formatMessage({
-                    id: "label.testCatalog.sampleResults.resultType",
-                  })}
-                  helperText={intl.formatMessage({
-                    id: `label.testCatalog.sampleResults.resultTypeDesc.${c.resultType || "N"}`,
-                  })}
-                  value={c.resultType || "N"}
-                  onChange={(e) =>
-                    patchComponent(ci, { resultType: e.target.value })
-                  }
-                >
-                  <SelectItemGroup
-                    label={intl.formatMessage({
-                      id: "label.testCatalog.sampleResults.resultType.group.primary",
-                    })}
-                  >
-                    {PRIMARY_RESULT_TYPES.map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                        text={intl.formatMessage({
-                          id: `label.testCatalog.sampleResults.resultType.${t}`,
-                        })}
-                      />
-                    ))}
-                  </SelectItemGroup>
-                  <SelectItemGroup
-                    label={intl.formatMessage({
-                      id: "label.testCatalog.sampleResults.resultType.group.advanced",
-                    })}
-                  >
-                    {ADVANCED_RESULT_TYPES.map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                        text={intl.formatMessage({
-                          id: `label.testCatalog.sampleResults.resultType.${t}`,
-                        })}
-                      />
-                    ))}
-                  </SelectItemGroup>
-                </Select>
+                {renderTypeChooser(c, ci)}
                 {/* Unit + significant digits apply only to Numeric (FR-29). */}
                 {c.resultType === "N" && (
                   <>
@@ -549,16 +748,117 @@ const SampleResultsSection = ({ testId }) => {
                         })
                       }
                     />
-                    <TextInput
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      renderIcon={Add}
+                      data-testid={`add-unit-${ci}`}
+                      onClick={() =>
+                        setUnitForm({
+                          ci,
+                          name: "",
+                          code: "",
+                          ucumCode: "",
+                          description: "",
+                        })
+                      }
+                    >
+                      <FormattedMessage id="label.testCatalog.sampleResults.uom.addNew" />
+                    </Button>
+                    {unitForm && unitForm.ci === ci && (
+                      <div
+                        data-testid={`add-unit-form-${ci}`}
+                        style={{
+                          border: "1px solid var(--cds-border-subtle, #e0e0e0)",
+                          padding: "1rem",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.75rem",
+                        }}
+                      >
+                        <TextInput
+                          id={`add-unit-name-${ci}`}
+                          labelText={intl.formatMessage({
+                            id: "label.testCatalog.sampleResults.uom.newName",
+                          })}
+                          value={unitForm.name}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setUnitForm((f) => ({ ...f, name: value }));
+                          }}
+                        />
+                        <TextInput
+                          id={`add-unit-code-${ci}`}
+                          labelText={intl.formatMessage({
+                            id: "label.testCatalog.sampleResults.uom.newCode",
+                          })}
+                          value={unitForm.code}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setUnitForm((f) => ({ ...f, code: value }));
+                          }}
+                        />
+                        <TextInput
+                          id={`add-unit-ucum-${ci}`}
+                          labelText={intl.formatMessage({
+                            id: "label.testCatalog.sampleResults.uom.newUcum",
+                          })}
+                          value={unitForm.ucumCode}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setUnitForm((f) => ({ ...f, ucumCode: value }));
+                          }}
+                        />
+                        <TextInput
+                          id={`add-unit-desc-${ci}`}
+                          labelText={intl.formatMessage({
+                            id: "label.testCatalog.sampleResults.uom.newDescription",
+                          })}
+                          value={unitForm.description}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setUnitForm((f) => ({ ...f, description: value }));
+                          }}
+                        />
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <Button
+                            kind="primary"
+                            size="sm"
+                            disabled={!unitForm.name.trim()}
+                            onClick={saveUnit}
+                          >
+                            <FormattedMessage id="label.testCatalog.sampleResults.uom.saveNew" />
+                          </Button>
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            onClick={() => setUnitForm(null)}
+                          >
+                            <FormattedMessage id="label.button.cancel" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <NumberInput
                       id={`comp-sigdig-${ci}`}
-                      type="number"
-                      labelText={intl.formatMessage({
+                      label={intl.formatMessage({
                         id: "label.testCatalog.sampleResults.significantDigits",
                       })}
-                      value={c.significantDigits ?? ""}
-                      onChange={(e) =>
+                      helperText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.significantDigits.helper",
+                      })}
+                      min={0}
+                      max={10}
+                      allowEmpty
+                      value={
+                        c.significantDigits === null ||
+                        c.significantDigits === undefined
+                          ? ""
+                          : c.significantDigits
+                      }
+                      onChange={(_e, { value }) =>
                         patchComponent(ci, {
-                          significantDigits: e.target.value,
+                          significantDigits: value === "" ? null : value,
                         })
                       }
                     />
@@ -611,6 +911,24 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.options" />
                     </h6>
+                    <p
+                      style={{
+                        color: "var(--cds-text-secondary, #525252)",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder.helper" />
+                    </p>
+                    {(c.options || []).length === 0 && (
+                      <InlineNotification
+                        kind="info"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.options.empty",
+                        })}
+                      />
+                    )}
                     <Table size="sm">
                       <TableHead>
                         <TableRow>
@@ -706,6 +1024,15 @@ const SampleResultsSection = ({ testId }) => {
                         addDictionaryOption(ci, selectedItem)
                       }
                     />
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      renderIcon={Add}
+                      data-testid={`add-custom-option-${ci}`}
+                      onClick={() => addCustomOption(ci)}
+                    >
+                      <FormattedMessage id="label.testCatalog.sampleResults.addCustomOption" />
+                    </Button>
                   </>
                 )}
 
@@ -715,6 +1042,16 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
                     </h6>
+                    {(c.interpretations || []).length === 0 && (
+                      <InlineNotification
+                        kind="info"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.interpretations.empty",
+                        })}
+                      />
+                    )}
                     <Table size="sm">
                       <TableHead>
                         <TableRow>
@@ -736,16 +1073,49 @@ const SampleResultsSection = ({ testId }) => {
                         {(c.interpretations || []).map((it, ii) => (
                           <TableRow key={it.id || `int-${ii}`}>
                             <TableCell>
-                              <TextInput
-                                id={`int-match-${ci}-${ii}`}
-                                labelText=""
-                                value={it.valueMatch || ""}
-                                onChange={(e) =>
-                                  patchChild(ci, "interpretations", ii, {
-                                    valueMatch: e.target.value,
-                                  })
-                                }
-                              />
+                              {/* Value field adapts to the result type (FR-32):
+                                  select-list components pick a configured option;
+                                  numeric uses a free-text pattern (>N, N-M, exact). */}
+                              {["D", "M", "C"].includes(c.resultType) ? (
+                                <Select
+                                  id={`int-match-${ci}-${ii}`}
+                                  labelText=""
+                                  value={it.valueMatch || ""}
+                                  onChange={(e) =>
+                                    patchChild(ci, "interpretations", ii, {
+                                      valueMatch: e.target.value,
+                                    })
+                                  }
+                                >
+                                  <SelectItem
+                                    value=""
+                                    text={intl.formatMessage({
+                                      id: "label.testCatalog.sampleResults.interp.selectValue",
+                                    })}
+                                  />
+                                  {(c.options || []).map((o, oi) => (
+                                    <SelectItem
+                                      key={o.id || oi}
+                                      value={o.value}
+                                      text={o.valueName || o.value}
+                                    />
+                                  ))}
+                                </Select>
+                              ) : (
+                                <TextInput
+                                  id={`int-match-${ci}-${ii}`}
+                                  labelText=""
+                                  placeholder={intl.formatMessage({
+                                    id: "label.testCatalog.sampleResults.interp.numericHint",
+                                  })}
+                                  value={it.valueMatch || ""}
+                                  onChange={(e) =>
+                                    patchChild(ci, "interpretations", ii, {
+                                      valueMatch: e.target.value,
+                                    })
+                                  }
+                                />
+                              )}
                             </TableCell>
                             <TableCell>
                               <TextInput
