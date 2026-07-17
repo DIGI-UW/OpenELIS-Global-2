@@ -17,6 +17,8 @@ import {
   TableHeader,
   Checkbox,
   TableCell,
+  DatePicker,
+  DatePickerInput,
 } from "@carbon/react";
 
 import { FormattedMessage, useIntl } from "react-intl";
@@ -42,9 +44,16 @@ const initialFormData = {
     actionType: null,
     personResponsible: undefined,
     dateCompleted: undefined,
+    dueDate: undefined,
     turnAroundTime: undefined,
   },
 };
+
+// yyyy-MM-dd in local time; Jackson binds this straight to the java.sql.Date due_date column.
+const toIsoDate = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
 
 export const NCECorrectiveAction = () => {
   const [reportFormValues, setReportFormValues] = useState(
@@ -116,6 +125,7 @@ export const NCECorrectiveAction = () => {
     !formData.actionLog.correctiveAction &&
     !formData.actionLog.personResponsible &&
     !formData.dateCompleted &&
+    !formData.actionLog.dueDate &&
     !formData.actionLog.actionType;
 
   const actionLogIsComplete =
@@ -629,7 +639,7 @@ export const NCECorrectiveAction = () => {
                 {" "}
                 <br></br>
               </Column>
-              <Column lg={4} md={3} sm={3}>
+              <Column lg={3} md={3} sm={3}>
                 {" "}
                 <h5>
                   <FormattedMessage id="banner.menu.nonconformity.correctiveActions" />
@@ -649,10 +659,16 @@ export const NCECorrectiveAction = () => {
               <Column lg={3} md={3} sm={3}>
                 {" "}
                 <h5>
+                  <FormattedMessage id="nce.capa.dueDate" />{" "}
+                </h5>
+              </Column>
+              <Column lg={2} md={3} sm={3}>
+                {" "}
+                <h5>
                   <FormattedMessage id="nonconform.corrective.actionType" />{" "}
                 </h5>
               </Column>
-              <Column lg={3} md={3} sm={3}>
+              <Column lg={2} md={3} sm={3}>
                 {" "}
                 <h5>
                   <FormattedMessage id="nonconform.nce.turnaround.time" />{" "}
@@ -662,7 +678,7 @@ export const NCECorrectiveAction = () => {
                 {" "}
                 <br></br>
               </Column>
-              <Column lg={4} md={3} sm={3}>
+              <Column lg={3} md={3} sm={3}>
                 <TextArea
                   labelText=""
                   value={formData.actionLog[`correctiveAction`] ?? ""}
@@ -700,6 +716,29 @@ export const NCECorrectiveAction = () => {
               </Column>
 
               <Column lg={3} md={3} sm={3}>
+                <DatePicker
+                  datePickerType="single"
+                  dateFormat="Y-m-d"
+                  value={formData.actionLog.dueDate ?? ""}
+                  onChange={(dates) =>
+                    setFormData({
+                      ...formData,
+                      actionLog: {
+                        ...formData.actionLog,
+                        dueDate: dates[0] ? toIsoDate(dates[0]) : undefined,
+                      },
+                    })
+                  }
+                >
+                  <DatePickerInput
+                    id="capa-due-date"
+                    labelText=""
+                    placeholder="yyyy-mm-dd"
+                  />
+                </DatePicker>
+              </Column>
+
+              <Column lg={2} md={3} sm={3}>
                 <Checkbox
                   checked={formData.actionLog.actionType
                     ?.split(",")
@@ -734,7 +773,7 @@ export const NCECorrectiveAction = () => {
                   id="concurrent Control Action"
                 />
               </Column>
-              <Column lg={3} md={3} sm={3}>
+              <Column lg={2} md={3} sm={3}>
                 {formData[`dateCompleted`] && (
                   <div>
                     <div>
@@ -752,7 +791,7 @@ export const NCECorrectiveAction = () => {
                     {" "}
                     <br></br>
                   </Column>
-                  <Column lg={4} md={4} sm={2}>
+                  <Column lg={3} md={4} sm={2}>
                     <TextArea
                       labelText=""
                       value={log[`correctiveAction`] ?? ""}
@@ -786,6 +825,21 @@ export const NCECorrectiveAction = () => {
                   </Column>
 
                   <Column lg={3} md={3} sm={3}>
+                    <DatePicker
+                      datePickerType="single"
+                      dateFormat="Y-m-d"
+                      value={log[`dueDate`] ?? ""}
+                    >
+                      <DatePickerInput
+                        id={`saved-due-date-${index}`}
+                        labelText=""
+                        placeholder="yyyy-mm-dd"
+                        disabled
+                      />
+                    </DatePicker>
+                  </Column>
+
+                  <Column lg={2} md={3} sm={3}>
                     <Checkbox
                       checked={log.actionType?.split(",").includes("1")}
                       labelText={
@@ -813,7 +867,7 @@ export const NCECorrectiveAction = () => {
                       id="concurrent Control Action"
                     />
                   </Column>
-                  <Column lg={3} md={3} sm={3}>
+                  <Column lg={2} md={3} sm={3}>
                     <div>
                       <div>{log[`turnAroundTime`] ?? ""}</div>
                     </div>

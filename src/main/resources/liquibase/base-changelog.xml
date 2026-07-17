@@ -41,4 +41,6 @@
 
   <!-- QA Phase B -->
   <include file="liquibase/qa/005-add-esig-log-menu.xml" />
+
+  <include file="liquibase/qa/006-add-capa-register-menu.xml" />
 </databaseChangeLog>
