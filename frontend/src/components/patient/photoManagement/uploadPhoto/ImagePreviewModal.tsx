@@ -20,16 +20,21 @@ const ImagePreviewModal = ({
   onClose,
   onImageSelect,
   currentImage = null,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onImageSelect: (imageData: string) => void;
+  currentImage?: string | null;
 }) => {
   const intl = useIntl();
 
   const [selectedTab, setSelectedTab] = useState(0);
-  const [previewUrl, setPreviewUrl] = useState(currentImage);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(currentImage);
   const [isCameraActive, setIsCameraActive] = useState(false);
 
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Sync previewUrl with the current photo whenever the modal opens.
   // useState(currentImage) only reads the prop on first mount; the modal is
@@ -56,11 +61,11 @@ const ImagePreviewModal = ({
     };
   }, []);
 
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState("");
 
-  const processPhotoFile = (file) => {
+  const processPhotoFile = (file?: File) => {
     setFileError("");
     if (!file || !file.type.startsWith("image/")) {
       return;
@@ -73,30 +78,30 @@ const ImagePreviewModal = ({
     }
     const reader = new FileReader();
     reader.onloadend = () => {
-      setPreviewUrl(reader.result);
+      setPreviewUrl(typeof reader.result === "string" ? reader.result : null);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleFileChange = (event) => {
-    processPhotoFile(event.target.files[0]);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    processPhotoFile(event.target.files?.[0]);
   };
 
   //  drag and drop
-  const handleDragOver = (event) => {
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(true);
   };
 
-  const handleDragLeave = (event) => {
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
   };
 
-  const handleDrop = (event) => {
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    processPhotoFile(event.dataTransfer.files[0]);
+    processPhotoFile(event.dataTransfer.files?.[0]);
   };
 
   const handleClickUpload = () => {
@@ -151,7 +156,7 @@ const ImagePreviewModal = ({
       canvas.height = video.videoHeight;
 
       const context = canvas.getContext("2d");
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      context!.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const imageData = canvas.toDataURL("image/jpeg", 0.8);
       setPreviewUrl(imageData);
@@ -173,7 +178,7 @@ const ImagePreviewModal = ({
     onClose();
   };
 
-  const handleTabChange = (index) => {
+  const handleTabChange = (index: number) => {
     if (index !== 1) {
       stopCamera();
     }

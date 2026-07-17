@@ -5,6 +5,7 @@ import "../Style.css";
 import { Heading, Grid, Column, Section } from "@carbon/react";
 import SearchPatientForm from "./SearchPatientForm";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import type { PatientRecord } from "./types";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -13,7 +14,7 @@ const breadcrumbs = [
 const PatientHistory = () => {
   const history = useHistory();
 
-  const getSelectedPatient = (patient) => {
+  const getSelectedPatient = (patient: PatientRecord) => {
     if (patient?.patientPK) {
       history.push("/PatientResults/" + patient.patientPK);
     }

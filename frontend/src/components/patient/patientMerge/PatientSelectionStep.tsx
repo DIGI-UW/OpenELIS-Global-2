@@ -3,13 +3,21 @@ import { FormattedMessage } from "react-intl";
 import { Grid, Column } from "@carbon/react";
 import PatientSearchPanel from "./PatientSearchPanel";
 import PatientCard from "./PatientCard";
+import type { Nullable, PatientRecord, PatientSelectHandler } from "../types";
+
+interface PatientSelectionStepProps {
+  patient1: Nullable<PatientRecord>;
+  patient2: Nullable<PatientRecord>;
+  onPatient1Select: PatientSelectHandler;
+  onPatient2Select: PatientSelectHandler;
+}
 
 function PatientSelectionStep({
   patient1,
   patient2,
   onPatient1Select,
   onPatient2Select,
-}) {
+}: PatientSelectionStepProps) {
   return (
     <div className="patientSelectionContainer">
       <Grid fullWidth={true}>

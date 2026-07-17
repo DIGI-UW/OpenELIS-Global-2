@@ -1,8 +1,15 @@
 import React from "react";
+import type { IntlShape } from "react-intl";
 
-const isPresent = (value) => typeof value === "string" && value.trim() !== "";
+type ConfigurationProperties = Record<string, string | undefined>;
 
-export const getPhoneFormatHint = (intl, configurationProperties = {}) => {
+const isPresent = (value: unknown): value is string =>
+  typeof value === "string" && value.trim() !== "";
+
+export const getPhoneFormatHint = (
+  intl: IntlShape,
+  configurationProperties: ConfigurationProperties = {},
+) => {
   const localFormat =
     configurationProperties.PHONE_FORMAT_LABEL ||
     configurationProperties.PHONE_FORMAT ||

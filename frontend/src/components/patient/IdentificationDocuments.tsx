@@ -36,32 +36,47 @@ const DOCUMENT_CATEGORIES = [
 const ACCEPTED_FORMATS = "image/jpeg,image/png,image/jpg,application/pdf";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+interface PatientDocument {
+  id?: string;
+  data?: string;
+  thumbnail?: string;
+  category?: string;
+  description?: string;
+}
+
+interface IdentificationDocumentsProps {
+  patientId?: string;
+  pendingDocuments?: PatientDocument[];
+  onDocumentsChange: (documents: PatientDocument[]) => void;
+  disabled?: boolean;
+}
+
 const IdentificationDocuments = ({
   patientId,
   pendingDocuments = [],
   onDocumentsChange,
   disabled = false,
-}) => {
+}: IdentificationDocumentsProps) => {
   const intl = useIntl();
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [savedDocuments, setSavedDocuments] = useState([]);
+  const [savedDocuments, setSavedDocuments] = useState<PatientDocument[]>([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [viewDocUrl, setViewDocUrl] = useState(null);
-  const [viewDocType, setViewDocType] = useState(null);
-  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [viewDocUrl, setViewDocUrl] = useState<string | null>(null);
+  const [viewDocType, setViewDocType] = useState<"pdf" | "image" | null>(null);
+  const [selectedDoc, setSelectedDoc] = useState<PatientDocument | null>(null);
   const [editCategory, setEditCategory] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
   // Upload form state
   const [newDocCategory, setNewDocCategory] = useState("NATIONAL_ID");
   const [newDocDescription, setNewDocDescription] = useState("");
-  const [newDocPreview, setNewDocPreview] = useState(null);
-  const [newDocData, setNewDocData] = useState(null);
+  const [newDocPreview, setNewDocPreview] = useState<string | null>(null);
+  const [newDocData, setNewDocData] = useState<string | null>(null);
   const [newDocIsPdf, setNewDocIsPdf] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState("");
@@ -75,7 +90,7 @@ const IdentificationDocuments = ({
   const loadSavedDocuments = () => {
     getFromOpenElisServer(
       `/rest/patient-id-documents/${patientId}`,
-      (response) => {
+      (response: PatientDocument[]) => {
         if (response && Array.isArray(response)) {
           setSavedDocuments(response);
         }
@@ -93,7 +108,7 @@ const IdentificationDocuments = ({
     setIsDragging(false);
   };
 
-  const processFile = (file) => {
+  const processFile = (file?: File) => {
     setFileError("");
 
     if (!file) return;
@@ -123,30 +138,31 @@ const IdentificationDocuments = ({
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setNewDocData(reader.result);
-      setNewDocPreview(isPdf ? null : reader.result);
+      const dataUrl = typeof reader.result === "string" ? reader.result : null;
+      setNewDocData(dataUrl);
+      setNewDocPreview(isPdf ? null : dataUrl);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleFileChange = (event) => {
-    processFile(event.target.files[0]);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    processFile(event.target.files?.[0]);
   };
 
-  const handleDragOver = (event) => {
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(true);
   };
 
-  const handleDragLeave = (event) => {
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
   };
 
-  const handleDrop = (event) => {
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    processFile(event.dataTransfer.files[0]);
+    processFile(event.dataTransfer.files?.[0]);
   };
 
   const handleUploadSubmit = () => {
@@ -161,7 +177,7 @@ const IdentificationDocuments = ({
     setIsUploadModalOpen(false);
   };
 
-  const handleCameraCapture = (imageData) => {
+  const handleCameraCapture = (imageData: string) => {
     setNewDocData(imageData);
     setNewDocPreview(imageData);
     setNewDocIsPdf(false);
@@ -169,15 +185,15 @@ const IdentificationDocuments = ({
     setIsCameraModalOpen(false);
   };
 
-  const handleRemovePending = (index) => {
+  const handleRemovePending = (index: number) => {
     const updated = pendingDocuments.filter((_, i) => i !== index);
     onDocumentsChange(updated);
   };
 
-  const handleViewSavedDocument = (doc) => {
+  const handleViewSavedDocument = (doc: PatientDocument) => {
     getFromOpenElisServer(
       `/rest/patient-id-documents/${patientId}/${doc.id}/full`,
-      (response) => {
+      (response: PatientDocument) => {
         if (response && response.data) {
           setViewDocUrl(response.data);
           setViewDocType(
@@ -189,15 +205,15 @@ const IdentificationDocuments = ({
     );
   };
 
-  const handleViewPendingDocument = (doc) => {
-    setViewDocUrl(doc.data);
+  const handleViewPendingDocument = (doc: PatientDocument) => {
+    setViewDocUrl(doc.data!);
     setViewDocType(
-      doc.data.startsWith("data:application/pdf") ? "pdf" : "image",
+      doc.data!.startsWith("data:application/pdf") ? "pdf" : "image",
     );
     setIsViewModalOpen(true);
   };
 
-  const handleEditDocument = (doc) => {
+  const handleEditDocument = (doc: PatientDocument) => {
     setSelectedDoc(doc);
     setEditCategory(doc.category);
     setEditDescription(doc.description || "");
@@ -212,7 +228,7 @@ const IdentificationDocuments = ({
 
   const handleSaveEdit = () => {
     if (!selectedDoc) return;
-    const body = {
+    const body: PatientDocument = {
       category: editCategory,
       description: editDescription,
     };
@@ -233,7 +249,7 @@ const IdentificationDocuments = ({
     );
   };
 
-  const handleDeleteDocument = (doc) => {
+  const handleDeleteDocument = (doc: PatientDocument) => {
     setSelectedDoc(doc);
     setIsDeleteModalOpen(true);
   };
@@ -250,12 +266,13 @@ const IdentificationDocuments = ({
     );
   };
 
-  const getCategoryLabel = (categoryValue) => {
+  const getCategoryLabel = (categoryValue?: string) => {
     const cat = DOCUMENT_CATEGORIES.find((c) => c.value === categoryValue);
     return cat ? intl.formatMessage({ id: cat.labelId }) : categoryValue || "";
   };
 
-  const isPdfData = (data) => data && data.startsWith("data:application/pdf");
+  const isPdfData = (data?: string) =>
+    data && data.startsWith("data:application/pdf");
 
   return (
     <div className="id-documents-section">

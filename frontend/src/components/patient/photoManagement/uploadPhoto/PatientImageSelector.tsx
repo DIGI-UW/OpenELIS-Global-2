@@ -11,12 +11,18 @@ const PatientImageSelector = ({
   label = "",
   required = false,
   disabled = false,
+}: {
+  value?: string | null;
+  onChange: (imageData: string) => void;
+  label?: string;
+  required?: boolean;
+  disabled?: boolean;
 }) => {
   const intl = useIntl();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
-  const handleImageSelect = (imageData) => {
+  const handleImageSelect = (imageData: string) => {
     onChange(imageData);
   };
 
