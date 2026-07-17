@@ -15,6 +15,7 @@ import SearchPatientForm from "./SearchPatientForm";
 import CreatePatientForm from "./CreatePatientForm";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import usePatientDetails from "./usePatientDetails";
+import type { PatientRecord } from "./types";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -23,7 +24,7 @@ const breadcrumbs = [
 
 function PatientManagement() {
   const history = useHistory();
-  const { patientId } = useParams();
+  const { patientId } = useParams<{ patientId?: string }>();
 
   const isNewMode = patientId === "new";
   const isEditMode = !!patientId && !isNewMode;
@@ -37,7 +38,7 @@ function PatientManagement() {
 
   const goToSearch = () => history.push("/PatientManagement");
   const goToNewPatient = () => history.push("/PatientManagement/new");
-  const goToEditPatient = (selected) =>
+  const goToEditPatient = (selected: PatientRecord) =>
     history.push(`/PatientManagement/${selected.patientPK}`);
 
   return (

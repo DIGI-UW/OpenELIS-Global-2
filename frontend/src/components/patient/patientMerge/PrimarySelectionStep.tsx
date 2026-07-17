@@ -8,17 +8,25 @@ import {
   Accordion,
   AccordionItem,
 } from "@carbon/react";
+import type { Nullable, PatientIdentifier, PatientRecord } from "../types";
+
+interface PrimarySelectionStepProps {
+  patient1Details: Nullable<PatientRecord>;
+  patient2Details: Nullable<PatientRecord>;
+  primaryPatientId: Nullable<string>;
+  onPrimarySelect: (patientId: string) => void;
+}
 
 function PrimarySelectionStep({
   patient1Details,
   patient2Details,
   primaryPatientId,
   onPrimarySelect,
-}) {
+}: PrimarySelectionStepProps) {
   const intl = useIntl();
 
   // Get display name from firstName and lastName
-  const getPatientName = (patient) => {
+  const getPatientName = (patient: Nullable<PatientRecord>): string => {
     if (!patient) return "-";
     const parts = [];
     if (patient.firstName) parts.push(patient.firstName);
@@ -27,14 +35,14 @@ function PrimarySelectionStep({
   };
 
   // Get display ID - prioritize nationalId or first identifier over DB ID
-  const getDisplayId = (patient) => {
+  const getDisplayId = (patient: Nullable<PatientRecord>): string => {
     if (!patient) return "";
     // Check nationalId first
     if (patient.nationalId) return patient.nationalId;
     // Check identifiers for subject number or other IDs
     if (patient.identifiers && patient.identifiers.length > 0) {
       const subjectNumber = patient.identifiers.find(
-        (id) =>
+        (id: PatientIdentifier) =>
           id.identityType === "Subject Number" ||
           id.identityType === "Unique Health ID",
       );
@@ -46,7 +54,7 @@ function PrimarySelectionStep({
     return patient.patientId;
   };
 
-  const renderDemographics = (patient) => {
+  const renderDemographics = (patient: Nullable<PatientRecord>) => {
     if (!patient) return null;
 
     return (
@@ -106,7 +114,7 @@ function PrimarySelectionStep({
     );
   };
 
-  const renderClinicalSummary = (patient) => {
+  const renderClinicalSummary = (patient: Nullable<PatientRecord>) => {
     if (!patient) return null;
 
     const summary = patient.dataSummary || {};
@@ -137,7 +145,7 @@ function PrimarySelectionStep({
     );
   };
 
-  const renderIdentifiers = (patient) => {
+  const renderIdentifiers = (patient: Nullable<PatientRecord>) => {
     if (!patient || !patient.identifiers || patient.identifiers.length === 0) {
       return (
         <div className="identifiersList">
@@ -158,7 +166,10 @@ function PrimarySelectionStep({
     );
   };
 
-  const renderPatientOption = (patient, patientNumber) => {
+  const renderPatientOption = (
+    patient: Nullable<PatientRecord>,
+    patientNumber: number,
+  ) => {
     if (!patient) return null;
 
     const isSelected = primaryPatientId === patient.patientId;

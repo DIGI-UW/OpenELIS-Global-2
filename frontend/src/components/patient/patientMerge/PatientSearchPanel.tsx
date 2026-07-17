@@ -25,6 +25,12 @@ import { Formik, Field } from "formik";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import { ConfigurationContext } from "../../layout/Layout";
 import { searchPatients, getPatientMergeDetails } from "./patientMergeService";
+import type {
+  Nullable,
+  PatientRecord,
+  PatientSearchCriteria,
+  PatientSelectHandler,
+} from "../types";
 
 const patientSearchHeaders = [
   { key: "lastName", header: "Last Name" },
@@ -36,23 +42,35 @@ const patientSearchHeaders = [
   { key: "dataSourceName", header: "Data Source" },
 ];
 
+interface PatientSearchPanelProps {
+  panelId: string;
+  title: React.ReactNode;
+  selectedPatient: Nullable<PatientRecord>;
+  onPatientSelect: PatientSelectHandler;
+  otherSelectedPatient: Nullable<PatientRecord>;
+}
+
+interface PatientSearchFormBag {
+  resetForm: () => void;
+}
+
 function PatientSearchPanel({
   panelId,
   title,
   selectedPatient,
   onPatientSelect,
   otherSelectedPatient,
-}) {
+}: PatientSearchPanelProps) {
   const intl = useIntl();
   const { configurationProperties } = useContext(ConfigurationContext);
 
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState<PatientRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [dob, setDob] = useState("");
-  const formikRef = useRef(null);
+  const formikRef = useRef<Nullable<PatientSearchFormBag>>(null);
 
   const initialValues = {
     patientId: "",
@@ -63,7 +81,10 @@ function PatientSearchPanel({
     suppressExternalSearch: true,
   };
 
-  const handleSearch = async (values, suppressExternal = true) => {
+  const handleSearch = async (
+    values: PatientSearchCriteria,
+    suppressExternal = true,
+  ) => {
     setLoading(true);
     setHasSearched(true);
     try {
@@ -79,11 +100,11 @@ function PatientSearchPanel({
       ) {
         // Add unique id for DataTable and filter out other selected patient
         const processedResults = result.patientSearchResults
-          .map((patient) => ({
+          .map((patient: PatientRecord) => ({
             ...patient,
-            id: patient.patientID,
+            id: patient.patientID || patient.patientPK || "",
           }))
-          .filter((patient) => {
+          .filter((patient: PatientRecord) => {
             // Filter out the other selected patient to prevent selecting same patient twice
             if (
               otherSelectedPatient &&
@@ -107,7 +128,7 @@ function PatientSearchPanel({
     }
   };
 
-  const handlePatientSelect = async (patientId) => {
+  const handlePatientSelect = async (patientId: string) => {
     const patient = searchResults.find((p) => p.patientID === patientId);
     if (patient) {
       // Transform to match expected format with patientPK
@@ -135,13 +156,19 @@ function PatientSearchPanel({
     }
   };
 
-  const handlePageChange = ({ page, pageSize }) => {
+  const handlePageChange = ({
+    page,
+    pageSize,
+  }: {
+    page: number;
+    pageSize: number;
+  }) => {
     setPage(page);
     setPageSize(pageSize);
   };
 
   // Check if form has any search criteria
-  const isFormEmpty = (values) => {
+  const isFormEmpty = (values: PatientSearchCriteria) => {
     return (
       !values.patientId?.trim() &&
       !values.firstName?.trim() &&
@@ -312,7 +339,9 @@ function PatientSearchPanel({
                               id={`${panelId}-select-${row.id}`}
                               labelText=""
                               checked={selectedPatient?.patientID === row.id}
-                              onClick={() => handlePatientSelect(row.id)}
+                              onClick={() =>
+                                handlePatientSelect(String(row.id))
+                              }
                             />
                           </TableCell>
                           {row.cells.map((cell) => (
