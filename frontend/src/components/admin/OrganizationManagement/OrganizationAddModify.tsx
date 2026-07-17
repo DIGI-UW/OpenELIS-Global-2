@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
+import type { ChangeEvent } from "react";
 import {
   Form,
   Heading,
@@ -33,6 +34,85 @@ import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AutoComplete from "../../common/AutoComplete";
 
+interface OrganizationType {
+  id: string;
+  name: string;
+  description: string;
+  disabled?: boolean;
+}
+
+interface ParentOrganization {
+  id?: string;
+  isActive?: string | boolean;
+  lastupdated?: string;
+  mlsSentinelLabFlag?: string | boolean;
+  organizationName?: string;
+  organizationTypes?: OrganizationType[];
+  shortName?: string;
+  parentOrganizationName?: string;
+}
+
+interface OrganizationResponse {
+  id?: string;
+  organizationName?: string;
+  shortName?: string;
+  isActive?: string | boolean;
+  internetAddress?: string;
+  selectedTypes: string[];
+  cliaNum?: string;
+  streetAddress?: string;
+  city?: string;
+  orgTypes: OrganizationType[];
+  organization?: ParentOrganization;
+  lastupdated?: string;
+  commune?: string;
+  village?: string;
+  department?: string;
+  formName?: string;
+  formMethod?: string;
+  cancelAction?: string;
+  submitOnCancel?: boolean;
+  cancelMethod?: string;
+  mlsSentinelLabFlag?: string | boolean;
+  parentOrgName?: string;
+  state?: string;
+}
+
+interface OrganizationFormData extends ParentOrganization {
+  internetAddress?: string;
+  selectedTypes?: string[];
+  cliaNum?: string;
+  streetAddress?: string;
+  city?: string;
+  organization?: ParentOrganization;
+  [key: string]: unknown;
+}
+
+interface CarbonTableCell {
+  id: string;
+  value: string | number | boolean;
+  info: { header: string };
+}
+
+interface CarbonTableRow {
+  id: string;
+}
+
+interface NotificationContextValue {
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (notification: {
+    kind: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
+interface ConfigurationContextValue {
+  configurationProperties: Record<string, string>;
+}
+
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
@@ -44,27 +124,34 @@ let breadcrumbs = [
 
 function OrganizationAddModify() {
   const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
-  const { configurationProperties } = useContext(ConfigurationContext);
+    useContext(NotificationContext) as NotificationContextValue;
+  const { configurationProperties } = useContext(
+    ConfigurationContext,
+  ) as ConfigurationContextValue;
 
   const componentMounted = useRef(false);
   const intl = useIntl();
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
   const [page, setPage] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
   const [pageSize, setPageSize] = useState(20);
-  const [selectedRowIds, setSelectedRowIds] = useState([]);
-  const [orgSelectedTypeOfActivity, setOrgSelectedTypeOfActivity] = useState(
-    [],
-  );
-  const [parentOrgList, setParentOrgList] = useState([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- write-only legacy state preserved during migration
+  const [orgSelectedTypeOfActivity, setOrgSelectedTypeOfActivity] = useState<
+    Array<{ id: string }>
+  >([]);
+  const [parentOrgList, setParentOrgList] = useState<ParentOrganization[]>([]);
   const [parentOrgId, setParentOrgId] = useState("");
-  const [parentOrg, setParentOrg] = useState({});
-  const [parentOrgPost, setParentOrgPost] = useState({});
-  const [orgInfo, setOrgInfo] = useState({});
-  const [orgInfoPost, setOrgInfoPost] = useState({});
+  const [parentOrg, setParentOrg] = useState<ParentOrganization>({});
+  const [parentOrgPost, setParentOrgPost] = useState<ParentOrganization>({});
+  const [orgInfo, setOrgInfo] = useState<OrganizationFormData>({});
+  const [orgInfoPost, setOrgInfoPost] = useState<OrganizationFormData>({});
   const [saveButton, setSaveButton] = useState(true);
-  const [typeOfActivity, setTypeOfActivity] = useState();
-  const [typeOfActivityShow, setTypeOfActivityShow] = useState([]);
+  const [typeOfActivity, setTypeOfActivity] = useState<OrganizationResponse>();
+  const [typeOfActivityShow, setTypeOfActivityShow] = useState<
+    OrganizationType[]
+  >([]);
 
   const location = useLocation();
   const ID = (() => {
@@ -76,6 +163,7 @@ function OrganizationAddModify() {
     return "0";
   })();
 
+  // eslint-disable-next-line local/no-useeffect-timer-leaks -- preserve the original redirect behavior
   useEffect(() => {
     componentMounted.current = true;
     setLoading(true);
@@ -94,7 +182,7 @@ function OrganizationAddModify() {
     };
   }, [ID]);
 
-  const handleMenuItems = (res) => {
+  const handleMenuItems = (res?: OrganizationResponse) => {
     if (!res) {
       setLoading(true);
     } else {
@@ -109,7 +197,7 @@ function OrganizationAddModify() {
     );
   }, []);
 
-  const handleParentOrgList = (res) => {
+  const handleParentOrgList = (res?: ParentOrganization[]) => {
     if (!res) {
       setLoading(true);
     } else {
@@ -205,7 +293,7 @@ function OrganizationAddModify() {
   //   setSelectedRowIds([]);
   // };
 
-  function handleOrgNameChange(e) {
+  function handleOrgNameChange(e: ChangeEvent<HTMLInputElement>) {
     setSaveButton(false);
     setOrgInfoPost((prevOrgInfoPost) => ({
       ...prevOrgInfoPost,
@@ -217,7 +305,7 @@ function OrganizationAddModify() {
     }));
   }
 
-  function handleOrgPrefixChange(e) {
+  function handleOrgPrefixChange(e: ChangeEvent<HTMLInputElement>) {
     setSaveButton(false);
     setOrgInfoPost((prevOrgInfoPost) => ({
       ...prevOrgInfoPost,
@@ -229,7 +317,7 @@ function OrganizationAddModify() {
     }));
   }
 
-  function handleStreetAddressChange(e) {
+  function handleStreetAddressChange(e: ChangeEvent<HTMLInputElement>) {
     setSaveButton(false);
     setOrgInfoPost((prevOrgInfoPost) => ({
       ...prevOrgInfoPost,
@@ -241,7 +329,7 @@ function OrganizationAddModify() {
     }));
   }
 
-  function handleCityChange(e) {
+  function handleCityChange(e: ChangeEvent<HTMLInputElement>) {
     setSaveButton(false);
     setOrgInfoPost((prevOrgInfoPost) => ({
       ...prevOrgInfoPost,
@@ -253,7 +341,7 @@ function OrganizationAddModify() {
     }));
   }
 
-  function handleCliaNumberChange(e) {
+  function handleCliaNumberChange(e: ChangeEvent<HTMLInputElement>) {
     setSaveButton(false);
     setOrgInfoPost((prevOrgInfoPost) => ({
       ...prevOrgInfoPost,
@@ -265,7 +353,7 @@ function OrganizationAddModify() {
     }));
   }
 
-  function handleIsActiveChange(e) {
+  function handleIsActiveChange(e: ChangeEvent<HTMLInputElement>) {
     setSaveButton(false);
     setOrgInfoPost((prevOrgInfoPost) => ({
       ...prevOrgInfoPost,
@@ -277,7 +365,7 @@ function OrganizationAddModify() {
     }));
   }
 
-  function handleInternetAddressChange(e) {
+  function handleInternetAddressChange(e: ChangeEvent<HTMLInputElement>) {
     setSaveButton(false);
     const value = e.target.value.trim();
     const urlPattern =
@@ -310,7 +398,7 @@ function OrganizationAddModify() {
     }));
   }
 
-  function handleParentOrganizationName(e) {
+  function handleParentOrganizationName(e: ChangeEvent<HTMLInputElement>) {
     setParentOrgPost({
       ...parentOrgPost,
       parentOrganizationName: e.target.value,
@@ -318,12 +406,12 @@ function OrganizationAddModify() {
     setSaveButton(false);
   }
 
-  function handleAutoCompleteParentOrganizationNames(parentOrgId) {
+  function handleAutoCompleteParentOrganizationNames(parentOrgId: string) {
     setParentOrgId(parentOrgId);
     setSaveButton(false);
   }
 
-  const handleParentOrgPost = (res) => {
+  const handleParentOrgPost = (res?: ParentOrganization) => {
     if (!res) {
       setLoading(true);
     } else {
@@ -387,7 +475,7 @@ function OrganizationAddModify() {
     setNotificationVisible(true);
   };
 
-  const renderCell = (cell, row) => {
+  const renderCell = (cell: CarbonTableCell, row: CarbonTableRow) => {
     if (cell.info.header === "select") {
       return (
         <TableSelectRow

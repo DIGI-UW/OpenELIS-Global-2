@@ -31,28 +31,54 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import LogoUploadSection from "./LogoUploadSection";
+import type { LogoUploadSectionHandle } from "./LogoUploadSection";
 import ColorPickerSection from "./ColorPickerSection";
 import config from "../../../../config.json";
 
+interface BrandingConfig {
+  id?: string | number | null;
+  headerColor: string;
+  primaryColor: string;
+  secondaryColor: string;
+  colorMode: string;
+  useHeaderLogoForLogin: boolean;
+  headerLogoUrl?: string | null;
+  loginLogoUrl?: string | null;
+  faviconUrl?: string | null;
+}
+
+interface NotificationContextValue {
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (notification: {
+    kind: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
 function SiteBrandingConfig() {
   const intl = useIntl();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original router subscription
   const history = useHistory();
   const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
+    useContext(NotificationContext) as NotificationContextValue;
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [branding, setBranding] = useState(null);
-  const [savedBranding, setSavedBranding] = useState(null); // Track saved state
+  const [branding, setBranding] = useState<BrandingConfig | null>(null);
+  const [savedBranding, setSavedBranding] = useState<BrandingConfig | null>(
+    null,
+  ); // Track saved state
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [hasPendingFiles, setHasPendingFiles] = useState(false);
-  const initialBrandingRef = useRef(null);
+  const initialBrandingRef = useRef<BrandingConfig | null>(null);
 
   // Refs for LogoUploadSection components to trigger uploads
-  const headerLogoRef = useRef(null);
-  const loginLogoRef = useRef(null);
-  const faviconRef = useRef(null);
+  const headerLogoRef = useRef<LogoUploadSectionHandle | null>(null);
+  const loginLogoRef = useRef<LogoUploadSectionHandle | null>(null);
+  const faviconRef = useRef<LogoUploadSectionHandle | null>(null);
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
@@ -70,7 +96,7 @@ function SiteBrandingConfig() {
 
   const loadBranding = () => {
     setIsLoading(true);
-    getBranding((response) => {
+    getBranding((response: BrandingConfig | null) => {
       console.debug("loadBranding response:", response);
       console.debug("Logo URLs in response:", {
         headerLogoUrl: response?.headerLogoUrl,
@@ -127,7 +153,7 @@ function SiteBrandingConfig() {
 
     // Compare only the fields that can be changed via the save button
     // Exclude logo URLs as they are managed separately via upload endpoints
-    const compareFields = (obj) => {
+    const compareFields = (obj: BrandingConfig | null) => {
       if (!obj) return {};
       return {
         id: obj.id || null,
@@ -157,7 +183,7 @@ function SiteBrandingConfig() {
 
   // Task Reference: T073 - Warn user when navigating away with unsaved changes
   useEffect(() => {
-    const handleBeforeUnload = (e) => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
         e.returnValue = intl.formatMessage({
@@ -176,7 +202,7 @@ function SiteBrandingConfig() {
 
   // Task Reference: T046 - Update favicon in document head
   // Apply branding colors to the DOM immediately
-  const applyBrandingColors = (brandingData) => {
+  const applyBrandingColors = (brandingData: BrandingConfig | null) => {
     if (!brandingData) {
       console.warn("applyBrandingColors called with null/undefined data");
       return;
@@ -233,7 +259,7 @@ function SiteBrandingConfig() {
     );
   };
 
-  const updateFavicon = (faviconUrl) => {
+  const updateFavicon = (faviconUrl: string) => {
     // Remove existing favicon links
     const existingLinks = document.querySelectorAll('link[rel*="icon"]');
     existingLinks.forEach((link) => link.remove());
@@ -259,7 +285,7 @@ function SiteBrandingConfig() {
   };
 
   // Handler for when a file is selected in LogoUploadSection
-  const handleFileSelected = (file, type) => {
+  const handleFileSelected = (_file: File, _type: string) => {
     setHasPendingFiles(true);
   };
 
@@ -285,73 +311,76 @@ function SiteBrandingConfig() {
 
     // Save branding configuration FIRST (including useHeaderLogoForLogin flag)
     // This must happen before logo uploads so the backend has correct state
-    updateBranding(dataToSend, async (status, errorMessage, responseData) => {
-      if (status !== 200 && status !== 201) {
+    updateBranding(
+      dataToSend,
+      async (status: number, errorMessage?: string | null) => {
+        if (status !== 200 && status !== 201) {
+          setIsSaving(false);
+          console.error("Save failed:", { status, errorMessage, dataToSend });
+          const errorText = errorMessage
+            ? `${intl.formatMessage({ id: "site.branding.save.error" })}: ${errorMessage}`
+            : intl.formatMessage({ id: "site.branding.save.error" });
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: errorText,
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+          return;
+        }
+
+        // Now upload any pending logo files AFTER branding config is saved
+        // Upload sequentially to avoid race conditions with DB updates
+        try {
+          if (headerLogoRef.current?.hasPendingFile()) {
+            console.debug("Uploading header logo...");
+            await headerLogoRef.current.uploadFile();
+            console.debug("Header logo uploaded successfully");
+          }
+          if (loginLogoRef.current?.hasPendingFile()) {
+            console.debug("Uploading login logo...");
+            await loginLogoRef.current.uploadFile();
+            console.debug("Login logo uploaded successfully");
+          }
+          if (faviconRef.current?.hasPendingFile()) {
+            console.debug("Uploading favicon...");
+            await faviconRef.current.uploadFile();
+            console.debug("Favicon uploaded successfully");
+          }
+
+          // Reset pending files state
+          setHasPendingFiles(false);
+        } catch (error) {
+          console.error("Error uploading logos:", error);
+          // Don't return early - continue to loadBranding to show any successful uploads
+          // The individual upload errors are already shown in their respective components
+        }
+
+        // All saves complete - finalize
         setIsSaving(false);
-        console.error("Save failed:", { status, errorMessage, dataToSend });
-        const errorText = errorMessage
-          ? `${intl.formatMessage({ id: "site.branding.save.error" })}: ${errorMessage}`
-          : intl.formatMessage({ id: "site.branding.save.error" });
+
+        // Task Reference: T074 - Re-fetch branding config after save to ensure consistency
+        // Apply colors immediately from the data we sent
+        console.debug(
+          "Save successful. Applying colors immediately from sent data:",
+          dataToSend,
+        );
+        applyBrandingColors(dataToSend);
+
+        // Reload from server to get complete state including logo URLs
+        loadBranding();
+
+        // Dispatch event to notify Header and other components to reload branding
+        window.dispatchEvent(new CustomEvent("branding-updated"));
+
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
-          message: errorText,
-          kind: NotificationKinds.error,
+          message: intl.formatMessage({ id: "site.branding.save.success" }),
+          kind: NotificationKinds.success,
         });
         setNotificationVisible(true);
-        return;
-      }
-
-      // Now upload any pending logo files AFTER branding config is saved
-      // Upload sequentially to avoid race conditions with DB updates
-      try {
-        if (headerLogoRef.current?.hasPendingFile()) {
-          console.debug("Uploading header logo...");
-          await headerLogoRef.current.uploadFile();
-          console.debug("Header logo uploaded successfully");
-        }
-        if (loginLogoRef.current?.hasPendingFile()) {
-          console.debug("Uploading login logo...");
-          await loginLogoRef.current.uploadFile();
-          console.debug("Login logo uploaded successfully");
-        }
-        if (faviconRef.current?.hasPendingFile()) {
-          console.debug("Uploading favicon...");
-          await faviconRef.current.uploadFile();
-          console.debug("Favicon uploaded successfully");
-        }
-
-        // Reset pending files state
-        setHasPendingFiles(false);
-      } catch (error) {
-        console.error("Error uploading logos:", error);
-        // Don't return early - continue to loadBranding to show any successful uploads
-        // The individual upload errors are already shown in their respective components
-      }
-
-      // All saves complete - finalize
-      setIsSaving(false);
-
-      // Task Reference: T074 - Re-fetch branding config after save to ensure consistency
-      // Apply colors immediately from the data we sent
-      console.debug(
-        "Save successful. Applying colors immediately from sent data:",
-        dataToSend,
-      );
-      applyBrandingColors(dataToSend);
-
-      // Reload from server to get complete state including logo URLs
-      loadBranding();
-
-      // Dispatch event to notify Header and other components to reload branding
-      window.dispatchEvent(new CustomEvent("branding-updated"));
-
-      addNotification({
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "site.branding.save.success" }),
-        kind: NotificationKinds.success,
-      });
-      setNotificationVisible(true);
-    });
+      },
+    );
   };
 
   const handleCancel = () => {
@@ -384,7 +413,7 @@ function SiteBrandingConfig() {
     setShowResetConfirm(false);
     setIsLoading(true);
 
-    resetBranding((status) => {
+    resetBranding((status: number) => {
       setIsLoading(false);
       if (status === 200 || status === 201) {
         // Reload branding after reset
@@ -471,7 +500,7 @@ function SiteBrandingConfig() {
             type="header"
             currentLogoUrl={branding?.headerLogoUrl}
             onFileSelected={handleFileSelected}
-            onLogoUploaded={(url) => {
+            onLogoUploaded={(_url: string) => {
               // Don't call loadBranding() here - handleSave calls it once after all uploads complete
               // Just dispatch event to notify Header to reload branding
               window.dispatchEvent(new CustomEvent("branding-updated"));
@@ -494,7 +523,7 @@ function SiteBrandingConfig() {
             currentLogoUrl={branding?.loginLogoUrl}
             useHeaderLogoForLogin={branding?.useHeaderLogoForLogin || false}
             onFileSelected={handleFileSelected}
-            onLogoUploaded={(url) => {
+            onLogoUploaded={(_url: string) => {
               // Don't call loadBranding() here - handleSave calls it once after all uploads complete
               // Just dispatch event to notify Header to reload branding
               window.dispatchEvent(new CustomEvent("branding-updated"));
@@ -507,7 +536,7 @@ function SiteBrandingConfig() {
             }}
             onUseHeaderLogoChange={(useHeader) => {
               setBranding((prev) => ({
-                ...prev,
+                ...prev!,
                 useHeaderLogoForLogin: useHeader,
               }));
             }}
@@ -551,7 +580,7 @@ function SiteBrandingConfig() {
             })}
             value={branding?.headerColor || "#295785"}
             onChange={(color) => {
-              setBranding((prev) => ({ ...prev, headerColor: color }));
+              setBranding((prev) => ({ ...prev!, headerColor: color }));
               // Apply color immediately for preview
               document.documentElement.style.setProperty(
                 "--site-branding-header",
@@ -571,7 +600,7 @@ function SiteBrandingConfig() {
             })}
             value={branding?.primaryColor || "#0f62fe"}
             onChange={(color) => {
-              setBranding((prev) => ({ ...prev, primaryColor: color }));
+              setBranding((prev) => ({ ...prev!, primaryColor: color }));
               // Apply color immediately for preview
               document.documentElement.style.setProperty(
                 "--cds-interactive-01",
@@ -595,7 +624,7 @@ function SiteBrandingConfig() {
             })}
             value={branding?.secondaryColor || "#393939"}
             onChange={(color) => {
-              setBranding((prev) => ({ ...prev, secondaryColor: color }));
+              setBranding((prev) => ({ ...prev!, secondaryColor: color }));
               // Apply color immediately for preview
               document.documentElement.style.setProperty(
                 "--cds-interactive-02",

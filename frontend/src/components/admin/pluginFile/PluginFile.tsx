@@ -14,6 +14,11 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { FormattedMessage, useIntl } from "react-intl";
 
+interface PluginListResponse {
+  pluginList?: string[];
+}
+
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
@@ -25,10 +30,10 @@ let breadcrumbs = [
 
 function PluginList() {
   const intl = useIntl();
-  const [plugins, setPlugins] = useState([]);
+  const [plugins, setPlugins] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const handlePlugins = (res) => {
+  const handlePlugins = (res?: PluginListResponse) => {
     if (res) {
       setPlugins(res.pluginList || []);
     }

@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import {
   Grid,
   Column,
@@ -15,7 +16,15 @@ import {
   TextInput,
   InlineNotification,
 } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
+
+interface ColorPickerSectionProps {
+  label: string;
+  description?: ReactNode;
+  value?: string;
+  onChange?: (color: string) => void;
+  helperText?: ReactNode;
+}
 
 function ColorPickerSection({
   label,
@@ -23,16 +32,16 @@ function ColorPickerSection({
   value,
   onChange,
   helperText,
-}) {
+}: ColorPickerSectionProps) {
   const intl = useIntl();
   const [colorValue, setColorValue] = useState(value || "#0f62fe");
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setColorValue(value || "#0f62fe");
   }, [value]);
 
-  const handleColorPickerChange = (event) => {
+  const handleColorPickerChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newColor = event.target.value;
     setColorValue(newColor);
     setError(null);
@@ -41,7 +50,7 @@ function ColorPickerSection({
     }
   };
 
-  const handleColorInputChange = (event) => {
+  const handleColorInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     // Accept any CSS color format - validation happens via the preview square.
     // Named colors (e.g., "rebeccapurple"), rgb(), hsl(), etc. are all valid.
     const newColor = event.target.value;
