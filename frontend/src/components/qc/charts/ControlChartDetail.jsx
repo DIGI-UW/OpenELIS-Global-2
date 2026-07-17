@@ -27,6 +27,7 @@ import {
   Tab,
   TabPanels,
   TabPanel,
+  Tag,
 } from "@carbon/react";
 import { Download, ZoomIn, ZoomOut, FitToScreen } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
@@ -36,6 +37,15 @@ import LeveyJenningsChart from "./LeveyJenningsChart";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./ControlChartDetail.css";
+
+// C.1 / OGC-704: sigma interpretation band -> Carbon Tag color
+const SIGMA_TAG_TYPE = {
+  WORLD_CLASS: "green",
+  ACCEPTABLE: "teal",
+  MARGINAL: "orange",
+  POOR: "red",
+  NOT_CALCULABLE: "gray",
+};
 
 const ControlChartDetail = () => {
   const intl = useIntl();
@@ -542,6 +552,42 @@ const ControlChartDetail = () => {
               <span className="stat-value">
                 {statistics.resultCount || statistics.n || chartData.length}
               </span>
+            </div>
+          </Column>
+          <Column lg={4} md={2} sm={4}>
+            <div className="stat-item">
+              <span className="stat-label">
+                {intl.formatMessage({ id: "qc.chart.stats.sigma" })}
+              </span>
+              <span className="stat-value" data-testid="sigma-value">
+                {statistics.sigma != null ? statistics.sigma.toFixed(2) : "—"}
+              </span>
+              {statistics.sigmaCategory && (
+                // Carbon <Tag> ignores a `title` prop, so the bias caveat lives
+                // on a wrapping span (native tooltip). Only meaningful when
+                // sigma is actually computed.
+                <span
+                  data-testid="sigma-badge"
+                  title={
+                    statistics.sigmaCategory === "NOT_CALCULABLE"
+                      ? undefined
+                      : intl.formatMessage({ id: "qc.chart.sigma.bias" })
+                  }
+                >
+                  <Tag
+                    type={SIGMA_TAG_TYPE[statistics.sigmaCategory] || "gray"}
+                    size="sm"
+                  >
+                    {statistics.sigmaCategory === "NOT_CALCULABLE"
+                      ? intl.formatMessage({
+                          id: "qc.chart.sigma.notCalculable",
+                        })
+                      : intl.formatMessage({
+                          id: `qc.chart.sigma.${statistics.sigmaCategory}`,
+                        })}
+                  </Tag>
+                </span>
+              )}
             </div>
           </Column>
         </Grid>
