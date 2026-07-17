@@ -158,7 +158,7 @@ public class StorageLocationFhirTransform {
 
         if (location.hasName()) {
             device.setName(location.getName());
-            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "device");
             if (GenericValidator.isBlankOrNull(device.getCode())) {
                 device.setCode(generatedCode);
             }
