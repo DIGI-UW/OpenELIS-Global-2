@@ -19,9 +19,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.qc.service.QCChartDataService;
+import org.openelisglobal.qc.service.QCControlLotService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.openelisglobal.test.service.TestService;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -38,6 +41,12 @@ public class QCChartDataRestControllerTest {
 
     @Mock
     private QCChartDataService chartDataService;
+
+    @Mock
+    private QCControlLotService controlLotService;
+
+    @Mock
+    private TestService testService;
 
     @InjectMocks
     private QCChartDataRestController controller;
@@ -126,6 +135,43 @@ public class QCChartDataRestControllerTest {
                 .andExpect(jsonPath("$.plus2SD").value(110.0)).andExpect(jsonPath("$.plus3SD").value(115.0))
                 .andExpect(jsonPath("$.minus1SD").value(95.0)).andExpect(jsonPath("$.minus2SD").value(90.0))
                 .andExpect(jsonPath("$.minus3SD").value(85.0));
+    }
+
+    @Test
+    public void getChartStatistics_computesSigmaFromTea() throws Exception {
+        // mean=100, sd=2 -> CV=2.0%; test TEa=10 -> sigma=5.0 -> ACCEPTABLE
+        QCStatistics stats = new QCStatistics();
+        stats.setMean(new BigDecimal("100.0"));
+        stats.setStandardDeviation(new BigDecimal("2.0"));
+        stats.setCalculationMethod("INITIAL_RUNS");
+        stats.setNumValues(20);
+        when(chartDataService.getLatestStatistics("lot-1")).thenReturn(stats);
+
+        QCControlLot lot = new QCControlLot();
+        lot.setTestId("412");
+        when(controlLotService.get("lot-1")).thenReturn(lot);
+
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        test.setTea(10.0);
+        when(testService.getTestById("412")).thenReturn(test);
+
+        mockMvc.perform(get("/rest/qc/charts/lot-1/statistics")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.sigma").value(5.0)).andExpect(jsonPath("$.sigmaCategory").value("ACCEPTABLE"));
+    }
+
+    @Test
+    public void getChartStatistics_sigmaNotCalculableWhenTeaMissing() throws Exception {
+        // lot resolves but the test has no TEa -> NOT_CALCULABLE, null cv/sigma
+        QCStatistics stats = new QCStatistics();
+        stats.setMean(new BigDecimal("100.0"));
+        stats.setStandardDeviation(new BigDecimal("2.0"));
+        stats.setCalculationMethod("INITIAL_RUNS");
+        stats.setNumValues(20);
+        when(chartDataService.getLatestStatistics("lot-1")).thenReturn(stats);
+        when(controlLotService.get("lot-1")).thenReturn(null);
+
+        mockMvc.perform(get("/rest/qc/charts/lot-1/statistics")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.sigmaCategory").value("NOT_CALCULABLE"));
     }
 
     @Test

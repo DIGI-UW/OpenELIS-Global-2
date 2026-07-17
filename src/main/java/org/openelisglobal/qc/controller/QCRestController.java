@@ -73,14 +73,20 @@ public class QCRestController extends BaseRestController {
     }
 
     /**
-     * Get all active control lots for a specific test and instrument. GET
-     * /rest/qc/controlLots?testId={testId}&instrumentId={instrumentId}
+     * Get active control lots for an instrument, optionally narrowed to a single
+     * test. GET /rest/qc/controlLots?instrumentId={instrumentId}[&testId={testId}]
+     *
+     * <p>
+     * {@code testId} is optional: the control-chart detail page queries by
+     * instrument alone, while the dashboard's control-chart tab passes both.
      */
     @GetMapping("/controlLots")
-    public ResponseEntity<List<QCControlLot>> getActiveControlLots(@RequestParam String testId,
+    public ResponseEntity<List<QCControlLot>> getActiveControlLots(@RequestParam(required = false) String testId,
             @RequestParam String instrumentId) {
         try {
-            List<QCControlLot> controlLots = controlLotService.getActiveControlLots(testId, instrumentId);
+            List<QCControlLot> controlLots = (testId == null || testId.isBlank())
+                    ? controlLotService.getActiveControlLotsByInstrument(instrumentId)
+                    : controlLotService.getActiveControlLots(testId, instrumentId);
             return ResponseEntity.ok(controlLots);
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getActiveControlLots", e.getMessage());
