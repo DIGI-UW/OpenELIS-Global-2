@@ -8,9 +8,14 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.qc.service.QCChartDataService;
+import org.openelisglobal.qc.service.QCControlLotService;
+import org.openelisglobal.qc.service.SigmaMetrics;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -34,6 +39,12 @@ public class QCChartDataRestController {
 
     @Autowired
     private QCChartDataService chartDataService;
+
+    @Autowired
+    private QCControlLotService controlLotService;
+
+    @Autowired
+    private TestService testService;
 
     /**
      * Get chart data for a specific control lot with optional filtering. GET
@@ -114,6 +125,20 @@ public class QCChartDataRestController {
             response.setMinus1SD(mean - sd);
             response.setMinus2SD(mean - 2 * sd);
             response.setMinus3SD(mean - 3 * sd);
+
+            // C.1 / OGC-704: Westgard sigma metric from the control mean/SD and the
+            // per-test TEa (null TEa -> NOT_CALCULABLE). Bias fixed at 0 (no peer data).
+            Double tea = null;
+            QCControlLot lot = controlLotService.get(controlLotId);
+            if (lot != null && lot.getTestId() != null) {
+                Test test = testService.getTestById(lot.getTestId());
+                if (test != null) {
+                    tea = test.getTea();
+                }
+            }
+            SigmaMetrics.SigmaResult sigma = SigmaMetrics.compute(stats.getMean(), stats.getStandardDeviation(), tea);
+            response.setSigma(sigma.sigma());
+            response.setSigmaCategory(sigma.category());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -258,6 +283,9 @@ public class QCChartDataRestController {
         private double minus1SD;
         private double minus2SD;
         private double minus3SD;
+        // C.1 / OGC-704: sigma metric; null sigma when NOT_CALCULABLE
+        private Double sigma;
+        private String sigmaCategory;
 
         public String getControlLotId() {
             return controlLotId;
@@ -345,6 +373,22 @@ public class QCChartDataRestController {
 
         public void setMinus3SD(double minus3SD) {
             this.minus3SD = minus3SD;
+        }
+
+        public Double getSigma() {
+            return sigma;
+        }
+
+        public void setSigma(Double sigma) {
+            this.sigma = sigma;
+        }
+
+        public String getSigmaCategory() {
+            return sigmaCategory;
+        }
+
+        public void setSigmaCategory(String sigmaCategory) {
+            this.sigmaCategory = sigmaCategory;
         }
     }
 }
