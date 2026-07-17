@@ -14,7 +14,6 @@ import {
   Toggle,
   NumberInput,
   Loading,
-  InlineNotification,
   Tag,
 } from "@carbon/react";
 import { Add, Edit, TrashCan, Star, StarFilled } from "@carbon/icons-react";
@@ -28,25 +27,47 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
+interface SupportedLocale {
+  id: string;
+  localeCode: string;
+  displayName: string;
+  active: boolean;
+  fallback: boolean;
+  sortOrder: number;
+}
+
+interface LocaleFormData {
+  localeCode: string;
+  displayName: string;
+  active: boolean;
+  fallback: boolean;
+  sortOrder: number | string;
+}
+
+type LocaleFormErrors = Partial<Record<"localeCode" | "displayName", string>>;
+
 const LanguageManagement = () => {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
+  const { addNotification } = useContext(NotificationContext);
 
-  const [locales, setLocales] = useState([]);
+  const [locales, setLocales] = useState<SupportedLocale[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editingLocale, setEditingLocale] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [formData, setFormData] = useState({
+  const [editingLocale, setEditingLocale] = useState<SupportedLocale | null>(
+    null,
+  );
+  const [deleteTarget, setDeleteTarget] = useState<SupportedLocale | null>(
+    null,
+  );
+  const [formData, setFormData] = useState<LocaleFormData>({
     localeCode: "",
     displayName: "",
     active: true,
     fallback: false,
     sortOrder: 0,
   });
-  const [formErrors, setFormErrors] = useState({});
+  const [formErrors, setFormErrors] = useState<LocaleFormErrors>({});
 
   useEffect(() => {
     fetchLocales();
@@ -54,16 +75,19 @@ const LanguageManagement = () => {
 
   const fetchLocales = () => {
     setLoading(true);
-    getFromOpenElisServer("/rest/supportedlocales", (response) => {
-      if (response) {
-        setLocales(response);
-      }
-      setLoading(false);
-    });
+    getFromOpenElisServer(
+      "/rest/supportedlocales",
+      (response?: SupportedLocale[]) => {
+        if (response) {
+          setLocales(response);
+        }
+        setLoading(false);
+      },
+    );
   };
 
   const validateForm = () => {
-    const errors = {};
+    const errors: LocaleFormErrors = {};
     if (!formData.localeCode || formData.localeCode.trim() === "") {
       errors.localeCode = intl.formatMessage({
         id: "error.field.required",
@@ -99,7 +123,7 @@ const LanguageManagement = () => {
     setIsModalOpen(true);
   };
 
-  const handleEdit = (locale) => {
+  const handleEdit = (locale: SupportedLocale) => {
     setEditingLocale(locale);
     setFormData({
       localeCode: locale.localeCode,
@@ -112,7 +136,7 @@ const LanguageManagement = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (locale) => {
+  const handleDelete = (locale: SupportedLocale) => {
     if (locale.fallback) {
       addNotification({
         kind: "error",
@@ -137,7 +161,7 @@ const LanguageManagement = () => {
 
     deleteFromOpenElisServerFullResponse(
       `/rest/supportedlocales/${deleteTarget.id}`,
-      (response) => {
+      (response: Response) => {
         setIsDeleteModalOpen(false);
         setDeleteTarget(null);
         if (response.ok) {
@@ -170,11 +194,11 @@ const LanguageManagement = () => {
     );
   };
 
-  const handleSetFallback = (locale) => {
+  const handleSetFallback = (locale: SupportedLocale) => {
     postToOpenElisServerFullResponse(
       `/rest/supportedlocales/${locale.id}/setFallback`,
       null,
-      (response) => {
+      (response: Response) => {
         if (response.ok) {
           addNotification({
             kind: "success",
@@ -212,7 +236,7 @@ const LanguageManagement = () => {
       ? `/rest/supportedlocales/${editingLocale.id}`
       : "/rest/supportedlocales";
 
-    const callback = (response) => {
+    const callback = (response: Response) => {
       if (response.ok) {
         addNotification({
           kind: "success",
@@ -332,13 +356,7 @@ const LanguageManagement = () => {
           </div>
 
           <DataTable rows={locales} headers={headers}>
-            {({
-              rows,
-              headers,
-              getTableProps,
-              getHeaderProps,
-              getRowProps,
-            }) => (
+            {({ headers, getTableProps, getHeaderProps }) => (
               <TableContainer>
                 <Table {...getTableProps()}>
                   <TableHead>

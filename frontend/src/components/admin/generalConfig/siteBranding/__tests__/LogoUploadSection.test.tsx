@@ -22,17 +22,12 @@ vi.mock("../../../../utils/BrandingUtils", () => ({
 
 import React from "react";
 import "@testing-library/jest-dom";
-import {
-  render,
-  screen,
-  fireEvent,
-  wait,
-  within,
-} from "@testing-library/react";
+import { render, screen, fireEvent, wait } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import LogoUploadSection from "../LogoUploadSection";
+import type { LogoUploadSectionHandle } from "../LogoUploadSection";
 import { postToOpenElisServerFormData } from "../../../../utils/Utils";
 import { removeLogo } from "../../../../utils/BrandingUtils";
 import messages from "../../../../../languages/en.json";
@@ -135,7 +130,7 @@ describe("LogoUploadSection", () => {
    */
   test("uploads valid file and calls onLogoUploaded callback", async () => {
     const onLogoUploaded = vi.fn();
-    const ref = React.createRef();
+    const ref = React.createRef<LogoUploadSectionHandle>();
 
     postToOpenElisServerFormData.mockImplementation(
       (url, formData, callback) => {
@@ -160,7 +155,7 @@ describe("LogoUploadSection", () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     // Trigger upload via ref (as parent component would do)
-    await ref.current.uploadFile();
+    await ref.current!.uploadFile();
 
     // Should call callback
     await wait(() => {
@@ -233,7 +228,7 @@ describe("LogoUploadSection", () => {
    * Test: Upload failure handling
    */
   test("shows error when upload fails", async () => {
-    const ref = React.createRef();
+    const ref = React.createRef<LogoUploadSectionHandle>();
 
     postToOpenElisServerFormData.mockImplementation(
       (url, formData, callback) => {
@@ -254,8 +249,8 @@ describe("LogoUploadSection", () => {
 
     // Trigger upload via ref (as parent component would do)
     try {
-      await ref.current.uploadFile();
-    } catch (e) {
+      await ref.current!.uploadFile();
+    } catch {
       // Expected to throw on failure
     }
 

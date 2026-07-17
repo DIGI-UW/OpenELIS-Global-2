@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
+import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import {
   Heading,
   Loading,
@@ -30,6 +31,58 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 
+interface OrganizationMenuItem {
+  id: string;
+  organizationName: string;
+  organization?: { organizationName?: string };
+  shortName?: string;
+  isActive?: boolean | string;
+  internetAddress?: string;
+  streetAddress?: string;
+  city?: string;
+  cliaNum?: string;
+}
+
+interface OrganizationMenuResponse {
+  menuList: OrganizationMenuItem[];
+  fromRecordCount: string;
+  toRecordCount: string;
+  totalRecordCount: string;
+}
+
+interface OrganizationTableRow {
+  id: string;
+  orgName: string;
+  parentOrg: string;
+  orgPrefix: string;
+  active: boolean | string;
+  internetAddress: string;
+  streetAddress: string;
+  city: string;
+  cliaNumber: string;
+}
+
+interface CarbonTableCell {
+  id: string;
+  value: ReactNode;
+  info: { header: string };
+}
+
+interface CarbonTableRow {
+  id: string;
+}
+
+interface NotificationContextValue {
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (notification: {
+    kind: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
@@ -41,7 +94,7 @@ let breadcrumbs = [
 
 function OrganizationManagement() {
   const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
+    useContext(NotificationContext) as NotificationContextValue;
 
   const intl = useIntl();
 
@@ -50,22 +103,26 @@ function OrganizationManagement() {
   const [pageSize, setPageSize] = useState(10);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [modifyButton, setModifyButton] = useState(true);
-  const [selectedRowIds, setSelectedRowIds] = useState([]);
-  const [selectedRowIdsPost, setSelectedRowIdsPost] = useState([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [selectedRowIdsPost, setSelectedRowIdsPost] = useState<
+    string[] | { selectedIDs: string[] }
+  >([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [startingRecNo, setStartingRecNo] = useState(1);
+  const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
   const [paging, setPaging] = useState(1);
   const [organizationsManagmentList, setOrganizationsManagmentList] =
-    useState();
+    useState<OrganizationMenuResponse>();
   const [organizationsManagmentListShow, setOrganizationsManagmentListShow] =
-    useState([]);
+    useState<OrganizationTableRow[]>([]);
 
-  function deleteDeactivateOrganizationManagament(event) {
+  function deleteDeactivateOrganizationManagament(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
     setLoading(true);
     postToOpenElisServerJsonResponse(
@@ -85,11 +142,11 @@ function OrganizationManagement() {
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
+    setStartingRecNo(Math.max(fromRecordCount as unknown as number, 1));
     setSelectedRowIds([]);
   };
 
-  const handlePanelSearchChange = (event) => {
+  const handlePanelSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setIsSearching(true);
     setPaging(1);
     setStartingRecNo(1);
@@ -115,13 +172,19 @@ function OrganizationManagement() {
     }, 200);
   };
 
-  const handlePageChange = ({ page, pageSize }) => {
+  const handlePageChange = ({
+    page,
+    pageSize,
+  }: {
+    page: number;
+    pageSize: number;
+  }) => {
     setPage(page);
     setPageSize(pageSize);
     setSelectedRowIds([]);
   };
 
-  const handleMenuItems = (res) => {
+  const handleMenuItems = (res?: OrganizationMenuResponse) => {
     if (!res) {
       setLoading(true);
     } else {
@@ -142,7 +205,7 @@ function OrganizationManagement() {
     };
   }, [paging, startingRecNo]);
 
-  const handleSearchedProviderMenuList = (res) => {
+  const handleSearchedProviderMenuList = (res?: OrganizationMenuResponse) => {
     if (!res) {
       setLoading(true);
     } else {
@@ -214,7 +277,7 @@ function OrganizationManagement() {
     }
   }, [isSearching, panelSearchTerm]);
 
-  const renderCell = (cell, row) => {
+  const renderCell = (cell: CarbonTableCell, row: CarbonTableRow) => {
     if (cell.info.header === "select") {
       return (
         <TableSelectRow
@@ -233,7 +296,7 @@ function OrganizationManagement() {
         />
       );
     } else if (cell.info.header === "active") {
-      return <TableCell key={cell.id}>{cell.value.toString()}</TableCell>;
+      return <TableCell key={cell.id}>{cell.value!.toString()}</TableCell>;
     } else {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }

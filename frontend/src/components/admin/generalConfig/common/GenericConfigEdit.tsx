@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+import type { ChangeEvent } from "react";
 import {
   Grid,
   Column,
@@ -17,21 +18,51 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
   postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../../common/CustomNotification";
-import config from "../../../../config.json";
 import { NotificationContext } from "../../../layout/Layout";
 
 import { FormattedMessage, useIntl } from "react-intl";
 
-const GenericConfigEdit = ({ menuType, ID }) => {
+interface GenericConfigEditProps {
+  menuType: string;
+  ID: string;
+}
+
+interface ConfigLocalization {
+  english?: string;
+  french?: string;
+  localeValues?: Record<string, string>;
+}
+
+interface FormEntryConfig {
+  paramName: string;
+  description: string;
+  value: string;
+  valueType: "boolean" | "dictionary" | "logoUpload" | "text" | "freeText";
+  tag?: string;
+  dictionaryValues?: string[];
+  localization?: ConfigLocalization;
+}
+
+interface NotificationContextValue {
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (notification: {
+    kind: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
+const GenericConfigEdit = ({ menuType, ID }: GenericConfigEditProps) => {
   const intl = useIntl();
 
-  const [FormEntryConfig, setFormEntryConfig] = useState(null);
+  const [FormEntryConfig, setFormEntryConfig] =
+    useState<FormEntryConfig | null>(null);
   const [radioValue, setRadioValue] = useState("");
   const [textInputEnglishValue, setTextInputEnglishValue] = useState("");
   const [textInputFrenchValue, setTextInputFrenchValue] = useState("");
@@ -40,18 +71,18 @@ const GenericConfigEdit = ({ menuType, ID }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [removeImage, setRemoveImage] = useState(false);
 
-  const [img, setImg] = useState(null);
-  const [file, setFile] = useState(null);
+  const [img, setImg] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
 
   const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
+    useContext(NotificationContext) as NotificationContextValue;
 
   useEffect(() => {
     setIsLoading(true);
     getFromOpenElisServer(`/rest/${menuType}?ID=${ID}`, handleMenuItems);
   }, [menuType, ID]);
 
-  const handleMenuItems = (res) => {
+  const handleMenuItems = (res?: FormEntryConfig) => {
     if (!res) {
       setIsLoading(false);
       return;
@@ -74,7 +105,7 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     if (res.valueType === "logoUpload") {
       getFromOpenElisServer(
         `/dbImage/siteInformation/${res.paramName}`,
-        (res) => {
+        (res: { value: string }) => {
           setImg(res.value);
         },
       );
@@ -83,53 +114,53 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     setIsLoading(false);
   };
 
-  const updateFormEntryConfig = (newState) => {
+  const updateFormEntryConfig = (newState: Partial<FormEntryConfig>) => {
     setFormEntryConfig((prevState) => ({
-      ...prevState,
+      ...prevState!,
       ...newState,
     }));
   };
 
-  const handleRadioChange = (value) => {
+  const handleRadioChange = (value: string) => {
     setRadioValue(value);
     updateFormEntryConfig({ value });
   };
 
-  const handleInputChange = (event) => {
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
     setTextInputValue(newValue);
     updateFormEntryConfig({ value: newValue });
   };
 
-  const handleInputEnglishChange = (event) => {
+  const handleInputEnglishChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
     setTextInputEnglishValue(newValue);
     updateFormEntryConfig({
       localization: {
-        ...FormEntryConfig.localization,
+        ...FormEntryConfig!.localization,
         english: newValue,
       },
     });
   };
 
-  const handleInputFrenchChange = (event) => {
+  const handleInputFrenchChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
     setTextInputFrenchValue(newValue);
     updateFormEntryConfig({
       localization: {
-        ...FormEntryConfig.localization,
+        ...FormEntryConfig!.localization,
         french: newValue,
       },
     });
   };
 
-  const handleDictionaryChange = (event) => {
+  const handleDictionaryChange = (event: { selectedItem: string }) => {
     const newValue = event.selectedItem;
     setSelectedDictionaryValue(newValue);
     updateFormEntryConfig({ value: newValue });
   };
 
-  const showAlertMessage = (msg, kind) => {
+  const showAlertMessage = (msg: string, kind: string) => {
     setNotificationVisible(true);
     addNotification({
       kind: kind,
@@ -139,12 +170,12 @@ const GenericConfigEdit = ({ menuType, ID }) => {
   };
 
   const handleSubmitButton = () => {
-    if (FormEntryConfig.valueType === "logoUpload") {
+    if (FormEntryConfig!.valueType === "logoUpload") {
       const formData = new FormData();
       if (!removeImage) {
-        formData.append("logoFile", file);
+        formData.append("logoFile", file as File);
       }
-      formData.append("logoName", FormEntryConfig.paramName);
+      formData.append("logoName", FormEntryConfig!.paramName);
       formData.append("removeImage", removeImage ? "true" : "false");
 
       postToOpenElisServerFormData(`/rest/logoUpload`, formData, handleSubmit);
@@ -156,10 +187,10 @@ const GenericConfigEdit = ({ menuType, ID }) => {
 
   const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
 
-    const file = files[0];
+    const file = files![0];
     if (!file) {
       return;
     }
@@ -177,13 +208,13 @@ const GenericConfigEdit = ({ menuType, ID }) => {
 
     reader.onloadend = () => {
       const base64String = reader.result;
-      setImg(base64String);
+      setImg(base64String as string);
     };
 
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (status) => {
+  const handleSubmit = (status: number) => {
     if (status === 200) {
       showAlertMessage(
         intl.formatMessage({ id: "save.config.success.msg" }),

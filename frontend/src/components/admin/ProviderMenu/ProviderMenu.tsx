@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
+import type { ChangeEvent, ReactNode, SyntheticEvent } from "react";
 import {
   Heading,
-  Button,
   Loading,
   Grid,
   Column,
@@ -14,7 +14,6 @@ import {
   TableHeader,
   TableCell,
   TableSelectRow,
-  TableSelectAll,
   TableContainer,
   Pagination,
   Search,
@@ -36,6 +35,75 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 import { getPhoneFormatHint } from "../../patient/phoneFormatHint";
 
+interface ProviderPerson {
+  lastName: string;
+  firstName: string;
+  workPhone?: string;
+  fax?: string;
+  email?: string;
+}
+
+interface ProviderRecord {
+  id: string;
+  fhirUuid: string;
+  person: ProviderPerson;
+  active: boolean;
+}
+
+interface ProviderMenuResponse {
+  providers?: ProviderRecord[];
+  fromRecordCount?: string;
+  toRecordCount?: string;
+  totalRecordCount?: string;
+}
+
+interface ProviderTableRow {
+  id: string;
+  fhirUuid: string;
+  lastName: string;
+  firstName: string;
+  active: boolean;
+  telephone?: string;
+  fax?: string;
+  email?: string;
+}
+
+interface YesNoOption {
+  id: "yes" | "no";
+  value: "Yes" | "No";
+}
+
+interface ValidationResult {
+  body: string;
+  status: boolean;
+}
+
+interface CarbonTableCell {
+  id: string;
+  value: ReactNode;
+  info: { header: string };
+}
+
+interface CarbonTableRow {
+  id: string;
+}
+
+interface NotificationContextValue {
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (notification: {
+    kind: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
+interface ConfigurationContextValue {
+  reloadConfiguration: () => void;
+  configurationProperties: Record<string, string>;
+}
+
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
@@ -46,9 +114,10 @@ let breadcrumbs = [
 ];
 function ProviderMenu() {
   const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
-  const { reloadConfiguration, configurationProperties } =
-    useContext(ConfigurationContext);
+    useContext(NotificationContext) as NotificationContextValue;
+  const { reloadConfiguration, configurationProperties } = useContext(
+    ConfigurationContext,
+  ) as ConfigurationContextValue;
 
   const intl = useIntl();
 
@@ -57,42 +126,50 @@ function ProviderMenu() {
   const [pageSize, setPageSize] = useState(10);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
-  const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
-  const [startingRecNo, setStartingRecNo] = useState(1);
-  const [providerMenuList, setProviderMenuList] = useState({});
-  const [providerMenuListShow, setProviderMenuListShow] = useState([]);
+  const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
+  const [providerMenuList, setProviderMenuList] =
+    useState<ProviderMenuResponse>({});
+  const [providerMenuListShow, setProviderMenuListShow] = useState<
+    ProviderTableRow[]
+  >([]);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
   const [paging, setPaging] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [currentProvider, setCurrentProvider] = useState(null);
+  const [currentProvider, setCurrentProvider] =
+    useState<ProviderTableRow | null>(null);
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
-  const [telephone, setTelephone] = useState("");
+  const [telephone, setTelephone] = useState<string | undefined>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
   const [fhirUuid, setFhirUuid] = useState("");
-  const [fax, setFax] = useState("");
+  const [fax, setFax] = useState<string | undefined>("");
   const [email, setEmail] = useState("");
-  const [isActive, setIsActive] = useState({ id: "yes", value: "Yes" });
-  const [phoneValidation, setPhoneValidation] = useState({
+  const [isActive, setIsActive] = useState<YesNoOption>({
+    id: "yes",
+    value: "Yes",
+  });
+  const [phoneValidation, setPhoneValidation] = useState<ValidationResult>({
     body: "",
     status: true,
   });
-  const [emailValidation, setEmailValidation] = useState({
+  const [emailValidation, setEmailValidation] = useState<ValidationResult>({
     body: "",
     status: true,
   });
 
-  const yesOrNo = [
+  const yesOrNo: YesNoOption[] = [
     { id: "yes", value: "Yes" },
     { id: "no", value: "No" },
   ];
 
-  const handleMenuItems = (res) => {
+  const handleMenuItems = (res?: ProviderMenuResponse) => {
     if (!res) {
       setLoading(true);
     } else {
@@ -113,7 +190,7 @@ function ProviderMenu() {
     };
   }, [paging, startingRecNo]);
 
-  const handleSearchedProviderMenuList = (res) => {
+  const handleSearchedProviderMenuList = (res?: ProviderMenuResponse) => {
     if (res) {
       setProviderMenuList(res);
     }
@@ -140,9 +217,9 @@ function ProviderMenu() {
           email: item.person.email,
         };
       });
-      setFromRecordCount(providerMenuList.fromRecordCount);
-      setToRecordCount(providerMenuList.toRecordCount);
-      setTotalRecordCount(providerMenuList.totalRecordCount);
+      setFromRecordCount(providerMenuList.fromRecordCount!);
+      setToRecordCount(providerMenuList.toRecordCount!);
+      setTotalRecordCount(providerMenuList.totalRecordCount!);
       setProviderMenuListShow(newProviderMenuList);
     }
   }, [providerMenuList]);
@@ -168,7 +245,7 @@ function ProviderMenu() {
     }
   }, [isSearching, panelSearchTerm]);
 
-  async function displayStatus(res) {
+  async function displayStatus(res: { status: string | number }) {
     setNotificationVisible(true);
     if (res.status == "201" || res.status == "200") {
       addNotification({
@@ -186,7 +263,7 @@ function ProviderMenu() {
     reloadConfiguration();
   }
 
-  function deleteDeactivateProvider(event) {
+  function deleteDeactivateProvider(event: SyntheticEvent) {
     event.preventDefault();
     setLoading(true);
     postToOpenElisServerFullResponse(
@@ -199,7 +276,13 @@ function ProviderMenu() {
     );
   }
 
-  const handlePageChange = ({ page, pageSize }) => {
+  const handlePageChange = ({
+    page,
+    pageSize,
+  }: {
+    page: number;
+    pageSize: number;
+  }) => {
     setPage(page);
     setPageSize(pageSize);
     setSelectedRowIds([]);
@@ -213,11 +296,11 @@ function ProviderMenu() {
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
+    setStartingRecNo(Math.max(fromRecordCount as unknown as number, 1));
     setSelectedRowIds([]);
   };
 
-  const handlePanelSearchChange = (event) => {
+  const handlePanelSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setIsSearching(true);
     setPaging(1);
     setStartingRecNo(1);
@@ -240,8 +323,8 @@ function ProviderMenu() {
     setIsAddModalOpen(false);
   };
 
-  const openUpdateModal = (providerId) => {
-    const provider = providerMenuListShow.find((p) => p.id === providerId);
+  const openUpdateModal = (providerId: string) => {
+    const provider = providerMenuListShow.find((p) => p.id === providerId)!;
     setCurrentProvider(provider);
     setLastName(provider.lastName);
     setFirstName(provider.firstName);
@@ -281,7 +364,7 @@ function ProviderMenu() {
 
   const handleUpdateProvider = () => {
     const updatedProvider = {
-      fhirUuid: currentProvider.fhirUuid,
+      fhirUuid: currentProvider!.fhirUuid,
       person: {
         lastName,
         firstName,
@@ -292,7 +375,7 @@ function ProviderMenu() {
       active: isActive.id === "yes",
     };
     postToOpenElisServerFullResponse(
-      "/rest/Provider/FhirUuid?fhirUuid=" + currentProvider.fhirUuid,
+      "/rest/Provider/FhirUuid?fhirUuid=" + currentProvider!.fhirUuid,
       JSON.stringify(updatedProvider),
       displayStatus,
     );
@@ -301,36 +384,36 @@ function ProviderMenu() {
     window.location.reload();
   };
 
-  const handleLastNameChange = (event) => {
+  const handleLastNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     if (value === "" || /^[A-Za-z\s]+$/.test(value)) {
       setLastName(value);
     }
   };
 
-  const handleFirstNameChange = (event) => {
+  const handleFirstNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     if (value === "" || /^[A-Za-z\s]+$/.test(value)) {
       setFirstName(value);
     }
   };
 
-  const handleTelephoneChange = (event) => {
+  const handleTelephoneChange = (event: ChangeEvent<HTMLInputElement>) => {
     setTelephone(event.target.value);
   };
 
-  const handlePhoneValidation = (e) => {
+  const handlePhoneValidation = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     getFromOpenElisServer(
       "/rest/PhoneNumberValidationProvider?fieldId=patientPhone&value=" +
         encodeURIComponent(value),
-      (resp) => {
+      (resp: ValidationResult) => {
         setPhoneValidation(resp);
       },
     );
   };
 
-  const handleEmailValidation = (e) => {
+  const handleEmailValidation = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (!value) {
       setEmailValidation({ body: "", status: true });
@@ -343,14 +426,15 @@ function ProviderMenu() {
     });
   };
 
-  const handleFaxChange = (event) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve original migration behavior
+  const handleFaxChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
       setFax(value);
     }
   };
 
-  const renderCell = (cell, row) => {
+  const renderCell = (cell: CarbonTableCell, row: CarbonTableRow) => {
     if (cell.info.header === "select") {
       return (
         <TableSelectRow
@@ -370,7 +454,7 @@ function ProviderMenu() {
         />
       );
     } else if (cell.info.header === "active") {
-      return <TableCell key={cell.id}>{cell.value.toString()}</TableCell>;
+      return <TableCell key={cell.id}>{cell.value!.toString()}</TableCell>;
     } else {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }
@@ -474,7 +558,9 @@ function ProviderMenu() {
             items={yesOrNo}
             itemToString={(item) => (item ? item.value : "")}
             selectedItem={isActive}
-            onChange={({ selectedItem }) => setIsActive(selectedItem)}
+            onChange={({ selectedItem }) =>
+              setIsActive(selectedItem as YesNoOption)
+            }
           />
           <TextInput
             id="fax"
@@ -542,7 +628,9 @@ function ProviderMenu() {
             items={yesOrNo}
             itemToString={(item) => (item ? item.value : "")}
             selectedItem={isActive}
-            onChange={({ selectedItem }) => setIsActive(selectedItem)}
+            onChange={({ selectedItem }) =>
+              setIsActive(selectedItem as YesNoOption)
+            }
           />
           <TextInput
             id="fax"
@@ -629,13 +717,7 @@ function ProviderMenu() {
                     },
                   ]}
                 >
-                  {({
-                    rows,
-                    headers,
-                    getHeaderProps,
-                    getTableProps,
-                    getSelectionProps,
-                  }) => (
+                  {({ rows, headers, getHeaderProps, getTableProps }) => (
                     <TableContainer>
                       <Table {...getTableProps()}>
                         <TableHead>
