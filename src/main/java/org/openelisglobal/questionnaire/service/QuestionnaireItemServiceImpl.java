@@ -1,8 +1,7 @@
-package org.openelisglobal.questionnaire.impl;
+package org.openelisglobal.questionnaire.service;
 
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.questionnaire.dao.QuestionnaireItemDao;
-import org.openelisglobal.questionnaire.service.QuestionnaireItemService;
 import org.openelisglobal.questionnaire.valueholder.QuestionnaireItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
