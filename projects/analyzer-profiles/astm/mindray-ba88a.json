@@ -3,16 +3,24 @@
   "profileMeta": {
     "id": "mindray-ba88a",
     "version": "1.2.0",
-    "displayName": "Mindray BA-88A"
+    "displayName": "Mindray BA-88A",
+    "confidence": "LOW"
   },
   "analyzer_name": "Mindray BA-88A",
   "manufacturer": "Mindray",
   "category": "CHEMISTRY",
-  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
+  "protocol": {
+    "name": "ASTM",
+    "version": "LIS2-A2"
+  },
   "identifier_pattern": "MINDRAY.*BA-88A|BA88A",
-  "transport": ["RS-232"],
+  "transport": [
+    "RS-232"
+  ],
   "transport_config": {
-    "RS-232": { "default_baud_rate": 9600 }
+    "RS-232": {
+      "default_baud_rate": 9600
+    }
   },
   "default_test_mappings": [
     {

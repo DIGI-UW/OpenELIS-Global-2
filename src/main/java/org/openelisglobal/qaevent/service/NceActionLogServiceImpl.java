@@ -18,6 +18,7 @@ public class NceActionLogServiceImpl extends AuditableBaseObjectServiceImpl<NceA
 
     public NceActionLogServiceImpl() {
         super(NceActionLog.class);
+        this.auditTrailLog = true;
     }
 
     @Override

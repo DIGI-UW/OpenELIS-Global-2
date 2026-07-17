@@ -8,6 +8,7 @@ public class TypeOfSampleTest extends BaseObject<String> {
     private String id;
     private String typeOfSampleId;
     private String testId;
+    private Integer displayOrder;
 
     public String getId() {
         return id;
@@ -31,5 +32,14 @@ public class TypeOfSampleTest extends BaseObject<String> {
 
     public void setTestId(String testId) {
         this.testId = testId;
+    }
+
+    /** Per-sample-type display position of this test (OGC-949 M12 / OGC-985). */
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
     }
 }

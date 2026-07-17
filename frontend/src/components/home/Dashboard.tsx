@@ -45,7 +45,7 @@ const TILE_ICONS: Record<string, any> = {
   ORDERS_IN_PROGRESS: InProgress,
   ORDERS_READY_FOR_VALIDATION: TaskView,
   ORDERS_COMPLETED_TODAY: CheckmarkFilled,
-  ORDERS_PATIALLY_COMPLETED_TODAY: IncompleteCancel,
+  ORDERS_PARTIALLY_COMPLETED_TODAY: IncompleteCancel,
   ORDERS_ENTERED_BY_USER_TODAY: DocumentAdd,
   ORDERS_REJECTED_TODAY: CloseOutline,
   UN_PRINTED_RESULTS: Printer,
@@ -77,7 +77,7 @@ type MetricType =
   | "ORDERS_IN_PROGRESS"
   | "ORDERS_READY_FOR_VALIDATION"
   | "ORDERS_COMPLETED_TODAY"
-  | "ORDERS_PATIALLY_COMPLETED_TODAY"
+  | "ORDERS_PARTIALLY_COMPLETED_TODAY"
   | "ORDERS_ENTERED_BY_USER_TODAY"
   | "ORDERS_REJECTED_TODAY"
   | "UN_PRINTED_RESULTS"
@@ -290,7 +290,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       subTitle: (
         <FormattedMessage id="dashboard.partially.completed.subtitle.label" />
       ),
-      type: "ORDERS_PATIALLY_COMPLETED_TODAY",
+      type: "ORDERS_PARTIALLY_COMPLETED_TODAY",
       value: counts.patiallyCompletedToday,
     },
     {
@@ -361,7 +361,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     "UN_PRINTED_RESULTS",
     "DELAYED_TURN_AROUND",
     "ORDERS_FOR_USER",
-    "ORDERS_PATIALLY_COMPLETED_TODAY",
+    "ORDERS_PARTIALLY_COMPLETED_TODAY",
   ];
 
   const handleMinimizeClick = () => {

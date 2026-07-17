@@ -11,7 +11,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.junit.Before;
@@ -145,93 +144,10 @@ public class HL7MessageServiceTest {
         assertTrue("Has OBX", lines.stream().anyMatch(l -> l.startsWith("OBX|")));
     }
 
-    @Test
-    public void generateOrmO01_producesValidOrm() {
-        HL7MessageService.OrmO01Request request = new TestOrmRequest();
-        String encoded = service.generateOrmO01(request);
-
-        assertNotNull(encoded);
-        assertTrue("ORM^O01", encoded.contains("ORM") && encoded.contains("O01"));
-        assertTrue("MSH", encoded.startsWith("MSH|"));
-        assertTrue("OpenELIS sender", encoded.contains("OpenELIS"));
-        assertTrue("MINDRAY receiver", encoded.contains("MINDRAY"));
-        assertTrue("PAT001", encoded.contains("PAT001"));
-        assertTrue("WBC", encoded.contains("WBC"));
-    }
-
-    @Test(expected = HL7MessageService.HL7GenerationException.class)
-    public void generateOrmO01_nullRequest_throws() {
-        service.generateOrmO01(null);
-    }
-
     private static String loadFixture(String path) throws IOException {
         ClassPathResource r = new ClassPathResource(path);
         try (InputStream in = r.getInputStream()) {
             return IOUtils.toString(in, StandardCharsets.UTF_8);
-        }
-    }
-
-    private static final class TestOrmRequest implements HL7MessageService.OrmO01Request {
-        @Override
-        public String getPatientId() {
-            return "PAT001";
-        }
-
-        @Override
-        public String getPatientLastName() {
-            return "DOE";
-        }
-
-        @Override
-        public String getPatientFirstName() {
-            return "JOHN";
-        }
-
-        @Override
-        public String getPatientDob() {
-            return "19800115";
-        }
-
-        @Override
-        public String getPatientGender() {
-            return "M";
-        }
-
-        @Override
-        public String getPlacerOrderNumber() {
-            return "ORD123";
-        }
-
-        @Override
-        public String getFillerOrderNumber() {
-            return "FILL001";
-        }
-
-        @Override
-        public String getReceivingApplication() {
-            return "MINDRAY";
-        }
-
-        @Override
-        public String getReceivingFacility() {
-            return "LAB";
-        }
-
-        @Override
-        public List<HL7MessageService.OrmOrderItem> getOrders() {
-            List<HL7MessageService.OrmOrderItem> items = new ArrayList<>();
-            items.add(new HL7MessageService.OrmOrderItem() {
-                @Override
-                public String getTestCode() {
-                    return "WBC";
-                }
-
-                @Override
-                public String getTestName() {
-                    return "WHITE BLOOD CELL";
-                }
-            });
-            return items;
         }
     }
 }

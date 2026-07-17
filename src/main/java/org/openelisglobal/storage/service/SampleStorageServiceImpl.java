@@ -14,6 +14,8 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +54,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -268,7 +273,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Override
     @Transactional
-    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
+    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
+            String sysUserId) {
         try {
             // Validate inputs
             if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
@@ -279,6 +285,17 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
             if (method == null || method.trim().isEmpty()) {
                 throw new LIMSRuntimeException("Disposal method is required");
+            }
+            // OGC-738: sysUserId is now required so the global audit row and the
+            // storage-movement row both reflect who actually disposed the sample.
+            if (sysUserId == null || sysUserId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("sysUserId is required for disposal audit");
+            }
+            Integer sysUserIdInt;
+            try {
+                sysUserIdInt = Integer.valueOf(sysUserId.trim());
+            } catch (NumberFormatException e) {
+                throw new LIMSRuntimeException("sysUserId must be numeric: " + sysUserId);
             }
 
             // Resolve SampleItem (handles internal ID, accession number, or external ID)
@@ -336,11 +353,15 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
-            // Update SampleItem status to "SampleDisposed"
+            // Update SampleItem status to "SampleDisposed" via the audit-emitting
+            // service path (OGC-738). SampleItemServiceImpl has auditTrailLog=true,
+            // so the global audit_trail row is written automatically. Going through
+            // sampleItemDAO directly would bypass that emission.
             String disposedStatusId = statusService
                     .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
             sampleItem.setStatusId(disposedStatusId);
-            sampleItemDAO.update(sampleItem);
+            sampleItem.setSysUserId(sysUserId);
+            sampleItemService.update(sampleItem);
 
             // Create audit movement record for disposal
             // Only create if there was a previous location (constraint requires at least
@@ -359,7 +380,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
                 movement.setReason(
                         "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
-                movement.setMovedByUserId(1); // Default to system user
+                movement.setMovedByUserId(sysUserIdInt);
 
                 movementIdInt = sampleStorageMovementDAO.insert(movement);
             }
@@ -389,6 +410,60 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
                     e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getSampleItemMovementsWithUserNames(String sampleItemId) {
+        List<SampleStorageMovement> movements = sampleStorageMovementDAO.findBySampleItemId(sampleItemId);
+        List<Map<String, Object>> response = new java.util.ArrayList<>();
+        if (movements == null || movements.isEmpty()) {
+            return response;
+        }
+        // Cache resolved names within the request so the typical small-N list
+        // (a few moves per sample) does one DB hit per distinct user.
+        java.util.Map<Integer, String> userNameCache = new java.util.HashMap<>();
+        for (SampleStorageMovement m : movements) {
+            Map<String, Object> row = new java.util.HashMap<>();
+            row.put("id", m.getId());
+            row.put("sampleItemId", m.getSampleItemIdAsString());
+            row.put("previousLocationId", m.getPreviousLocationId());
+            row.put("previousLocationType", m.getPreviousLocationType());
+            row.put("previousPositionCoordinate", m.getPreviousPositionCoordinate());
+            row.put("newLocationId", m.getNewLocationId());
+            row.put("newLocationType", m.getNewLocationType());
+            row.put("newPositionCoordinate", m.getNewPositionCoordinate());
+            row.put("movedByUserId", m.getMovedByUserId());
+            row.put("movedByUserName", resolveUserName(m.getMovedByUserId(), userNameCache));
+            row.put("movementDate", m.getMovementDate() != null ? m.getMovementDate().toString() : "");
+            row.put("reason", m.getReason() != null ? m.getReason() : "");
+            response.add(row);
+        }
+        return response;
+    }
+
+    private String resolveUserName(Integer userId, java.util.Map<Integer, String> cache) {
+        if (userId == null) {
+            return null;
+        }
+        if (cache.containsKey(userId)) {
+            return cache.get(userId);
+        }
+        String displayName = null;
+        try {
+            SystemUser user = systemUserService.get(userId.toString());
+            if (user != null) {
+                String first = user.getFirstName() != null ? user.getFirstName().trim() : "";
+                String last = user.getLastName() != null ? user.getLastName().trim() : "";
+                String combined = (first + " " + last).trim();
+                displayName = combined.isEmpty() ? null : combined;
+            }
+        } catch (RuntimeException e) {
+            // Audit display falls back to numeric id; don't fail the whole list.
+            logger.warn("Could not resolve display name for sysUserId={}", userId, e);
+        }
+        cache.put(userId, displayName);
+        return displayName;
     }
 
     /**

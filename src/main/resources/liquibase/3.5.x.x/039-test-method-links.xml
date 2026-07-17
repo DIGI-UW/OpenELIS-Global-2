@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Test-Method Links
+    Adds:
+      1. clinlims.method.code  — shortcode for macro-style result entry
+      2. clinlims.test_method  — per-test method links with default flag and effective date
+    -->
+
+    <!-- 1. Add shortcode column to existing method table -->
+    <changeSet id="OGC-746-method-code-column" author="OGC">
+        <addColumn schemaName="clinlims" tableName="method">
+            <column name="code" type="VARCHAR(20)">
+                <constraints nullable="true" unique="true" uniqueConstraintName="uq_method_code"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="method" columnName="code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 2. Sequence for test_method -->
+    <changeSet id="OGC-746-test-method-seq" author="OGC">
+        <createSequence schemaName="clinlims" sequenceName="test_method_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence schemaName="clinlims" sequenceName="test_method_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 3. Join table: test ↔ method with default flag and effective date -->
+    <changeSet id="OGC-746-test-method-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_method">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_method"/>
+            </column>
+            <column name="test_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_default" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <!-- BaseObject JPA superclass maps @Version to "last_updated" -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_method"/>
+        </rollback>
+    </changeSet>
+
+
+</databaseChangeLog>

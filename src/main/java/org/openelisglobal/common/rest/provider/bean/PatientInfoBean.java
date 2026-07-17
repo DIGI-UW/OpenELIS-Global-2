@@ -47,6 +47,12 @@ public class PatientInfoBean implements Serializable {
     private String targetDiseaseProgramme;
     private String primaryPhone;
     private String email;
+    // GPS coordinates stored on Person as BigDecimal; serialized as strings on
+    // the wire to match PatientManagementInfo (which round-trips them through
+    // the form). Without these the edit form re-opens blank for a patient
+    // whose GPS was previously saved (LO-01-01 UAT regression).
+    private String gpsLatitude;
+    private String gpsLongitude;
     private String patientType = "";
     private String healthRegion;
     private String education;
@@ -56,6 +62,10 @@ public class PatientInfoBean implements Serializable {
     private String otherNationality;
     private PatientContact patientContact;
     private boolean readOnly = false;
+    private boolean isMerged = false;
+    private String mergedIntoPatientId;
+    private String mergedIntoNationalId;
+    private String mergeDate;
     // Dynamic address hierarchy fields (addressHierarchy_0, addressHierarchy_1,
     // etc.)
     private Map<String, String> addressHierarchy = new HashMap<>();
@@ -346,5 +356,53 @@ public class PatientInfoBean implements Serializable {
 
     public void setAddressHierarchy(Map<String, String> addressHierarchy) {
         this.addressHierarchy = addressHierarchy;
+    }
+
+    public boolean getIsMerged() {
+        return isMerged;
+    }
+
+    public void setIsMerged(boolean isMerged) {
+        this.isMerged = isMerged;
+    }
+
+    public String getMergedIntoPatientId() {
+        return mergedIntoPatientId;
+    }
+
+    public void setMergedIntoPatientId(String mergedIntoPatientId) {
+        this.mergedIntoPatientId = mergedIntoPatientId;
+    }
+
+    public String getMergedIntoNationalId() {
+        return mergedIntoNationalId;
+    }
+
+    public void setMergedIntoNationalId(String mergedIntoNationalId) {
+        this.mergedIntoNationalId = mergedIntoNationalId;
+    }
+
+    public String getMergeDate() {
+        return mergeDate;
+    }
+
+    public void setMergeDate(String mergeDate) {
+        this.mergeDate = mergeDate;
+    }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
     }
 }

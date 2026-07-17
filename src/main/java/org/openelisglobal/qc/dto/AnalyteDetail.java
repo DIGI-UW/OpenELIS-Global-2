@@ -7,16 +7,16 @@ import java.math.BigDecimal;
  */
 public class AnalyteDetail {
 
-    private Integer testId;
+    private String testId;
     private String testName;
     private BigDecimal latestZScore;
     private String lastRunTime;
 
-    public Integer getTestId() {
+    public String getTestId() {
         return testId;
     }
 
-    public void setTestId(Integer testId) {
+    public void setTestId(String testId) {
         this.testId = testId;
     }
 

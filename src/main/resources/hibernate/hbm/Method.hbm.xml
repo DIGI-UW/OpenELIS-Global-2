@@ -27,6 +27,9 @@
         <property name="isActive" type="java.lang.String">
             <column name="IS_ACTIVE" length="1" />
         </property>
+        <property name="code" type="java.lang.String">
+            <column name="CODE" length="20" />
+        </property>
         <property name="activeBeginDate" type="java.sql.Date">
             <column name="ACTIVE_BEGIN" length="7" />
         </property>

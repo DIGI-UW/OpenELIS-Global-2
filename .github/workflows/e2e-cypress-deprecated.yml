@@ -98,13 +98,25 @@ jobs:
         run: npm ci --legacy-peer-deps
         working-directory: frontend
 
-      - name: Verify Google Chrome is available
+      - name: Ensure Google Chrome is available
         run: |
-          if ! command -v google-chrome >/dev/null; then
-            echo "::error::google-chrome missing from runner image — the ubuntu-latest manifest used to include it; check actions/runner-images" >&2
-            exit 1
+          if command -v google-chrome >/dev/null; then
+            google-chrome --version
+            exit 0
           fi
-          google-chrome --version
+          echo "google-chrome missing from runner image — installing on the fly"
+          APT_TIMEOUT_OPTS=(-o Acquire::http::timeout=120 -o Acquire::https::timeout=120)
+          for attempt in 1 2 3; do
+            if sudo apt-get "${APT_TIMEOUT_OPTS[@]}" update \
+              && sudo apt-get "${APT_TIMEOUT_OPTS[@]}" install -y --no-install-recommends google-chrome-stable; then
+              google-chrome --version
+              exit 0
+            fi
+            echo "Chrome install attempt $attempt failed" >&2
+            [ "$attempt" != "3" ] && sleep 10
+          done
+          echo "::error::Chrome install failed after 3 attempts"
+          exit 1
 
       - name: Prepare .env from template
         run: cp .env.example .env

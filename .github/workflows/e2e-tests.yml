@@ -205,31 +205,48 @@ jobs:
             exit 1
           fi
 
+          # Per-image retry handles GHCR's transient `unknown blob` eventual-
+          # consistency errors. xargs output goes to a temp file so xargs's
+          # exit code can be observed directly — piping to `sort` masks it
+          # under the default Actions shell (`bash -e`, no pipefail).
+          : > /tmp/e2e-image-map.raw
+          PUSH_FAILED=false
           xargs -r -I{} -P4 bash -lc '
             image="$1"
             [ -z "$image" ] && exit 0
-            if docker image inspect "$image" >/dev/null 2>&1; then
-              image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
-              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
-              docker tag "$image" "$ghcr_image"
-              push_err=$(docker push "$ghcr_image" 2>&1) && {
-                printf "%s|%s\n" "$image" "$ghcr_image"
-              } || {
-                echo "PUSH FAILED ($image): $push_err" >&2
-                exit 1
-              }
-            else
+            if ! docker image inspect "$image" >/dev/null 2>&1; then
               echo "WARN: skipping $image (not built locally)" >&2
+              exit 0
             fi
-          ' _ {} < /tmp/e2e-image-handoff/e2e-images-full.txt | sort -u > /tmp/e2e-image-map.txt
+            image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
+            ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
+            docker tag "$image" "$ghcr_image"
+            attempt=1
+            while [ $attempt -le 3 ]; do
+              if push_err=$(docker push "$ghcr_image" 2>&1); then
+                printf "%s|%s\n" "$image" "$ghcr_image"
+                exit 0
+              fi
+              echo "PUSH attempt $attempt failed ($image): $push_err" >&2
+              attempt=$((attempt + 1))
+              [ $attempt -le 3 ] && sleep $((attempt * 5))
+            done
+            echo "PUSH FAILED after 3 attempts ($image)" >&2
+            exit 1
+          ' _ {} < /tmp/e2e-image-handoff/e2e-images-full.txt > /tmp/e2e-image-map.raw || PUSH_FAILED=true
+
+          sort -u /tmp/e2e-image-map.raw > /tmp/e2e-image-map.txt
+
+          if [ "$PUSH_FAILED" = "true" ] || [ ! -s /tmp/e2e-image-map.txt ]; then
+            echo "::error::GHCR push incomplete — see PUSH FAILED lines above"
+            echo "Map contents so far:"
+            cat /tmp/e2e-image-map.txt || true
+            exit 1
+          fi
 
           awk -F'|' 'NR==FNR {base[$1]=1; next} ($1 in base) {print}' \
             /tmp/e2e-image-handoff/e2e-images-base.txt /tmp/e2e-image-map.txt > /tmp/e2e-image-map-base.txt
 
-          if [ ! -s /tmp/e2e-image-map.txt ]; then
-            echo "::error::No images were pushed to GHCR"
-            exit 1
-          fi
           if [ ! -s /tmp/e2e-image-map-base.txt ]; then
             echo "WARN: no base compose image mappings found; falling back to full image map."
             cp /tmp/e2e-image-map.txt /tmp/e2e-image-map-base.txt
