@@ -72,9 +72,13 @@ public class TestCatalogCreationServiceIntegrationTest extends BaseWebContextSen
     private void cleanup() {
         if (createdTestId != null) {
             jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", Long.parseLong(createdTestId));
+            // FR-56 pre-seeds a primary component on create; delete it before the test.
+            jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", Long.parseLong(createdTestId));
             jdbc.update("DELETE FROM clinlims.test WHERE id = ?", Long.parseLong(createdTestId));
             createdTestId = null;
         }
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id IN"
+                + " (SELECT id FROM clinlims.test WHERE local_code = ?)", CODE);
         jdbc.update("DELETE FROM clinlims.test WHERE local_code = ?", CODE);
         if (createdSectionId != null) {
             java.util.List<Long> secLocIds = jdbc.queryForList(
@@ -126,6 +130,15 @@ public class TestCatalogCreationServiceIntegrationTest extends BaseWebContextSen
         assertFalse("sample-type link must be created",
                 typeOfSampleTestService.getTypeOfSampleTestsForTest(createdTestId).isEmpty());
         assertTrue("code must now be reported in use", creationService.codeInUse(CODE));
+        // FR-56 — one active PRIMARY component pre-seeded, label defaulting to the
+        // test name, result type left unset (required before activation, not here).
+        java.util.List<java.util.Map<String, Object>> components = jdbc
+                .queryForList("SELECT code, label, is_primary, result_type FROM clinlims.test_result_component"
+                        + " WHERE test_id = ? AND is_active = 'Y'", Long.parseLong(createdTestId));
+        assertEquals("exactly one pre-seeded component", 1, components.size());
+        assertEquals("PRIMARY", components.get(0).get("code"));
+        assertEquals(params.name, components.get(0).get("label"));
+        assertEquals(Boolean.TRUE, components.get(0).get("is_primary"));
     }
 
     @Test

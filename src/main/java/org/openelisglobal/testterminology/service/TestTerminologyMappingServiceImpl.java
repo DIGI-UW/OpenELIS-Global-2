@@ -69,6 +69,7 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
             TestTerminologyMapping target = byKey.get(k);
             if (target != null) {
                 target.setRelationship(d.getRelationship());
+                target.setDisplayName(d.getDisplayName());
                 target.setIsActive("Y");
                 target.setSysUserId(sysUserId);
                 update(target);
@@ -79,6 +80,7 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
                 fresh.setSource(d.getSource());
                 fresh.setCode(d.getCode());
                 fresh.setRelationship(d.getRelationship());
+                fresh.setDisplayName(d.getDisplayName());
                 fresh.setIsActive("Y");
                 fresh.setSysUserId(sysUserId);
                 insert(fresh);

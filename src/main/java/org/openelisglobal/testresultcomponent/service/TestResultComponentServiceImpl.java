@@ -106,24 +106,26 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 update(match);
                 keptIds.add(match.getId());
             } else {
-                // A soft-deleted component still occupies the (test_id, code) UNIQUE
-                // slot, so re-adding a previously removed code must reactivate that
-                // row in place — inserting a fresh row would violate the constraint.
-                TestResultComponent dead = baseObjectDAO.getByTestIdAndCode(testId, d.getCode());
-                if (dead != null && !"Y".equals(dead.getIsActive())) {
-                    dead.setLabel(d.getLabel());
-                    dead.setDisplayOrder(d.getDisplayOrder());
-                    dead.setResultType(d.getResultType());
-                    dead.setUomId(d.getUomId());
-                    dead.setSignificantDigits(d.getSignificantDigits());
-                    dead.setDefaultResult(d.getDefaultResult());
-                    dead.setAllowMultipleReadings(d.getAllowMultipleReadings());
-                    dead.setIsPrimary(d.getIsPrimary());
-                    dead.setShowOnReport(d.getShowOnReport());
-                    dead.setIsActive("Y");
-                    dead.setSysUserId(sysUserId);
-                    update(dead);
-                    keptIds.add(dead.getId());
+                // The (test_id, code) UNIQUE slot may already be occupied — by a
+                // soft-deleted row (re-added code) or by an active row the caller
+                // referenced without an id (e.g. the FR-56 pre-seeded PRIMARY).
+                // Either way the code is the natural key: reconcile that row in
+                // place — inserting a fresh one would violate the constraint.
+                TestResultComponent slot = baseObjectDAO.getByTestIdAndCode(testId, d.getCode());
+                if (slot != null) {
+                    slot.setLabel(d.getLabel());
+                    slot.setDisplayOrder(d.getDisplayOrder());
+                    slot.setResultType(d.getResultType());
+                    slot.setUomId(d.getUomId());
+                    slot.setSignificantDigits(d.getSignificantDigits());
+                    slot.setDefaultResult(d.getDefaultResult());
+                    slot.setAllowMultipleReadings(d.getAllowMultipleReadings());
+                    slot.setIsPrimary(d.getIsPrimary());
+                    slot.setShowOnReport(d.getShowOnReport());
+                    slot.setIsActive("Y");
+                    slot.setSysUserId(sysUserId);
+                    update(slot);
+                    keptIds.add(slot.getId());
                 } else {
                     d.setId(UUID.randomUUID().toString());
                     d.setTestId(testId);
@@ -430,10 +432,16 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     public void copyComponentsFromTest(String sourceTestId, String targetTestId, String sysUserId) {
         Test target = testService.getTestById(targetTestId);
         for (TestResultComponent src : baseObjectDAO.getActiveComponentsByTestId(sourceTestId)) {
-            if (getByTestIdAndCode(targetTestId, src.getCode()) != null) {
-                continue; // a component with this code already exists on the target
+            TestResultComponent existing = getByTestIdAndCode(targetTestId, src.getCode());
+            // A configured component (it has a result type) is never clobbered.
+            // A blank row — the FR-56 pre-seeded PRIMARY, or a soft-deleted stub —
+            // is reconciled from the source instead, so variant creation copies
+            // the source's primary configuration onto the pre-seeded row.
+            if (existing != null && existing.getResultType() != null && !existing.getResultType().isBlank()
+                    && "Y".equals(existing.getIsActive())) {
+                continue;
             }
-            TestResultComponent copy = new TestResultComponent();
+            TestResultComponent copy = existing != null ? existing : new TestResultComponent();
             copy.setTestId(targetTestId);
             copy.setCode(src.getCode());
             copy.setLabel(src.getLabel());
@@ -447,7 +455,11 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setShowOnReport(src.getShowOnReport());
             copy.setIsActive("Y");
             copy.setSysUserId(sysUserId);
-            insert(copy);
+            if (existing != null) {
+                update(copy);
+            } else {
+                insert(copy);
+            }
 
             List<TestResultInterpretation> interpCopies = new ArrayList<>();
             for (TestResultInterpretation si : interpretationService.getActiveByComponentId(src.getId())) {
@@ -471,6 +483,25 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 optionCopies.add(co);
             }
             testResultService.saveOptionsForComponent(target, copy.getId(), optionCopies, sysUserId);
+
+            // Non-dictionary components need their type-carrying test_result
+            // placeholder row (result entry derives the widget from it) — the
+            // option copy above only covers dictionary rows, so create it here,
+            // mirroring the saveSampleResults reconciliation.
+            String type = copy.getResultType();
+            if (type != null && !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(type)) {
+                TestResult placeholder = new TestResult();
+                placeholder.setTest(target);
+                placeholder.setTestResultType(type);
+                placeholder
+                        .setSortOrder(String.valueOf(copy.getDisplayOrder() == null ? 1 : copy.getDisplayOrder() + 1));
+                placeholder.setIsActive(true);
+                placeholder.setSignificantDigits(
+                        copy.getSignificantDigits() == null ? null : String.valueOf(copy.getSignificantDigits()));
+                placeholder.setComponentId(copy.getId());
+                placeholder.setSysUserId(sysUserId);
+                testResultService.insert(placeholder);
+            }
         }
         ensureSinglePrimary(targetTestId, sysUserId);
     }

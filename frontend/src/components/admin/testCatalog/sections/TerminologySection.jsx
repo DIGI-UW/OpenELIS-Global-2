@@ -58,7 +58,9 @@ const TerminologySection = ({ testId }) => {
   const [draft, setDraft] = useState({
     source: "",
     code: "",
-    relationship: "",
+    // Relationship is required (FR-70); default to SAME_AS, no "none" option.
+    relationship: "SAME_AS",
+    displayName: "",
     componentId: "",
   });
 
@@ -123,8 +125,32 @@ const TerminologySection = ({ testId }) => {
       prev.map((m, i) => (i === index ? { ...m, ...patch } : m)),
     );
 
+  // A mapping's identity is (source, code, scope). Warn specifically on a
+  // duplicate — the backend rejects it with a bodyless 422, which used to
+  // surface as nothing more than a generic failure.
+  const mappingKey = (m) =>
+    `${m.source}|${(m.code || "").trim()}|${m.componentId || ""}`;
+
+  const notifyDuplicate = (m) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind: "error",
+      title: intl.formatMessage({
+        id: "label.testCatalog.section.terminology",
+      }),
+      message: intl.formatMessage(
+        { id: "error.testCatalog.terminology.duplicate" },
+        { source: m.source, code: (m.code || "").trim() },
+      ),
+    });
+  };
+
   const addMapping = () => {
     if (!draft.source || !draft.code) {
+      return;
+    }
+    if (mappings.some((m) => mappingKey(m) === mappingKey(draft))) {
+      notifyDuplicate(draft);
       return;
     }
     setMappings((prev) => [
@@ -133,11 +159,18 @@ const TerminologySection = ({ testId }) => {
         id: null,
         source: draft.source,
         code: draft.code,
-        relationship: draft.relationship || null,
+        relationship: draft.relationship || "SAME_AS",
+        displayName: draft.displayName || null,
         componentId: draft.componentId || null,
       },
     ]);
-    setDraft({ source: "", code: "", relationship: "", componentId: "" });
+    setDraft({
+      source: "",
+      code: "",
+      relationship: "SAME_AS",
+      displayName: "",
+      componentId: "",
+    });
   };
 
   const removeMapping = (index) => {
@@ -156,12 +189,25 @@ const TerminologySection = ({ testId }) => {
         id: null,
         source: draft.source,
         code: draft.code,
-        relationship: draft.relationship || null,
+        relationship: draft.relationship || "SAME_AS",
+        displayName: draft.displayName || null,
         componentId: draft.componentId || null,
       });
     }
     // Persist only complete rows (source + code); drop blank/partial ones.
     const complete = all.filter((m) => m.source && m.code);
+
+    // Duplicate (source, code, scope) — catch it here with a specific message
+    // (in-place edits can collide too, not just the add form).
+    const seen = new Set();
+    for (const m of complete) {
+      const key = mappingKey(m);
+      if (seen.has(key)) {
+        notifyDuplicate(m);
+        return;
+      }
+      seen.add(key);
+    }
 
     setSaving(true);
     const payload = {
@@ -170,7 +216,8 @@ const TerminologySection = ({ testId }) => {
         id: m.id || null,
         source: m.source,
         code: m.code,
-        relationship: m.relationship || null,
+        relationship: m.relationship || "SAME_AS",
+        displayName: m.displayName || null,
         componentId: m.componentId || null,
       })),
     };
@@ -192,10 +239,28 @@ const TerminologySection = ({ testId }) => {
           });
           // Refresh with server-assigned ids + recomputed LOINC integrity so the
           // next edit updates in place rather than inserting duplicates.
-          setDraft({ source: "", code: "", relationship: "", componentId: "" });
+          setDraft({
+            source: "",
+            code: "",
+            relationship: "SAME_AS",
+            displayName: "",
+            componentId: "",
+          });
           setEditingRows(new Set());
           loadMappings();
           loadLoincIntegrity();
+        } else if (status === 422) {
+          // Server-side validation (duplicate mapping, unknown source/relationship,
+          // stale component scope) — name the cause instead of a generic failure.
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.terminology",
+            }),
+            message: intl.formatMessage({
+              id: "error.testCatalog.terminology.invalid",
+            }),
+          });
         } else {
           addNotification({
             kind: "error",
@@ -284,6 +349,9 @@ const TerminologySection = ({ testId }) => {
                 <FormattedMessage id="label.testCatalog.terminology.col.code" />
               </TableHeader>
               <TableHeader>
+                <FormattedMessage id="label.testCatalog.terminology.col.displayName" />
+              </TableHeader>
+              <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.relationship" />
               </TableHeader>
               <TableHeader>
@@ -339,22 +407,33 @@ const TerminologySection = ({ testId }) => {
                   </TableCell>
                   <TableCell>
                     {editing ? (
+                      <TextInput
+                        id={`mapping-display-${i}`}
+                        labelText=""
+                        value={m.displayName || ""}
+                        placeholder={intl.formatMessage({
+                          id: "label.testCatalog.terminology.displayName.placeholder",
+                        })}
+                        onChange={(e) =>
+                          updateMapping(i, { displayName: e.target.value })
+                        }
+                      />
+                    ) : (
+                      m.displayName || ""
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editing ? (
                       <Select
                         id={`mapping-rel-${i}`}
                         labelText=""
-                        value={m.relationship || ""}
+                        value={m.relationship || "SAME_AS"}
                         onChange={(e) =>
                           updateMapping(i, {
-                            relationship: e.target.value || null,
+                            relationship: e.target.value,
                           })
                         }
                       >
-                        <SelectItem
-                          value=""
-                          text={intl.formatMessage({
-                            id: "label.testCatalog.terminology.rel.none",
-                          })}
-                        />
                         {RELATIONSHIPS.map((r) => (
                           <SelectItem
                             key={r}
@@ -459,6 +538,14 @@ const TerminologySection = ({ testId }) => {
           value={draft.code}
           onChange={(e) => setDraft({ ...draft, code: e.target.value })}
         />
+        <TextInput
+          id="terminology-display-name"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.terminology.col.displayName",
+          })}
+          value={draft.displayName}
+          onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
+        />
         <Select
           id="terminology-relationship"
           labelText={intl.formatMessage({
@@ -467,12 +554,6 @@ const TerminologySection = ({ testId }) => {
           value={draft.relationship}
           onChange={(e) => setDraft({ ...draft, relationship: e.target.value })}
         >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "label.testCatalog.terminology.rel.none",
-            })}
-          />
           {RELATIONSHIPS.map((r) => (
             <SelectItem
               key={r}

@@ -51,6 +51,12 @@ public class TestTerminologyMapping extends BaseObject<String> {
     @Column(name = "relationship", length = 20)
     private String relationship;
 
+    /**
+     * Human-readable label for the standard term (FR-69), e.g. the LOINC long name.
+     */
+    @Column(name = "display_name", length = 255)
+    private String displayName;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -107,6 +113,14 @@ public class TestTerminologyMapping extends BaseObject<String> {
 
     public void setRelationship(String relationship) {
         this.relationship = relationship;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
 
     public String getIsActive() {
