@@ -12,12 +12,14 @@ import {
   TableCell,
   Loading,
   InlineNotification,
+  Modal,
 } from "@carbon/react";
-import { Add, TrashCan } from "@carbon/icons-react";
+import { Add, TrashCan, View, ArrowUp, ArrowDown } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   putToOpenElisServer,
+  postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 
@@ -48,8 +50,40 @@ const PanelsSection = ({ testId }) => {
   const [saving, setSaving] = useState(false);
   const [memberships, setMemberships] = useState([]);
   const [panels, setPanels] = useState([]);
-  const [showCreateHint, setShowCreateHint] = useState(false);
+  const [newPanelName, setNewPanelName] = useState("");
+  const [creating, setCreating] = useState(false);
   const [comboKey, setComboKey] = useState(0);
+  // FR-79: removing a panel membership is confirmed, not immediate.
+  const [panelToRemove, setPanelToRemove] = useState(null);
+  // FR-42: show the panel's other tests for context when repositioning.
+  const [contextPanelId, setContextPanelId] = useState(null);
+  const [contextTests, setContextTests] = useState([]);
+
+  const toggleContext = (panelId) => {
+    if (contextPanelId === panelId) {
+      setContextPanelId(null);
+      setContextTests([]);
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/test-catalog/panels/${panelId}/test-order`,
+      (res) => {
+        setContextTests(res && Array.isArray(res.tests) ? res.tests : []);
+        setContextPanelId(panelId);
+      },
+    );
+  };
+
+  const nudgePosition = (panelId, delta) =>
+    setMemberships((prev) =>
+      prev.map((m) => {
+        if (m.panelId !== panelId) {
+          return m;
+        }
+        const current = toInt(m.position) || 0;
+        return { ...m, position: Math.max(1, current + delta) };
+      }),
+    );
 
   useEffect(() => {
     if (!testId) {
@@ -91,6 +125,48 @@ const PanelsSection = ({ testId }) => {
 
   const removePanel = (panelId) =>
     setMemberships((prev) => prev.filter((m) => m.panelId !== panelId));
+
+  // FR-43: name-only inline create. The panel is created, added to the picker,
+  // and this test assigned to it; further setup lives in Panel Management.
+  const createPanel = () => {
+    const name = newPanelName.trim();
+    if (!name) {
+      return;
+    }
+    setCreating(true);
+    postToOpenElisServerFullResponse(
+      "/rest/test-catalog/panels",
+      JSON.stringify({ name }),
+      (response) => {
+        setCreating(false);
+        if (response && response.status === 201) {
+          response.json().then((panel) => {
+            setPanels((prev) => [...prev, panel]);
+            addPanel(panel);
+            setNewPanelName("");
+            setNotificationVisible(true);
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({
+                id: "label.testCatalog.section.panels",
+              }),
+              message: intl.formatMessage(
+                { id: "notification.testCatalog.panels.created" },
+                { name: panel.name },
+              ),
+            });
+          });
+        } else {
+          setNotificationVisible(true);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "error.title" }),
+            message: intl.formatMessage({ id: "server.error.msg" }),
+          });
+        }
+      },
+    );
+  };
 
   const handleSave = () => {
     setSaving(true);
@@ -219,45 +295,129 @@ const PanelsSection = ({ testId }) => {
                     kind="ghost"
                     size="sm"
                     hasIconOnly
+                    renderIcon={ArrowUp}
+                    iconDescription={intl.formatMessage({
+                      id: "label.testCatalog.panels.moveUp",
+                    })}
+                    onClick={() => nudgePosition(m.panelId, -1)}
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
+                    renderIcon={ArrowDown}
+                    iconDescription={intl.formatMessage({
+                      id: "label.testCatalog.panels.moveDown",
+                    })}
+                    onClick={() => nudgePosition(m.panelId, 1)}
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
+                    renderIcon={View}
+                    iconDescription={intl.formatMessage({
+                      id: "label.testCatalog.panels.viewOrder",
+                    })}
+                    onClick={() => toggleContext(m.panelId)}
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
                     renderIcon={TrashCan}
                     iconDescription={intl.formatMessage({
                       id: "label.testCatalog.panels.remove",
                     })}
-                    onClick={() => removePanel(m.panelId)}
+                    onClick={() => setPanelToRemove(m)}
                   />
                 </TableCell>
               </TableRow>
             ))}
+            {contextPanelId &&
+              contextTests.length > 0 &&
+              memberships.some((m) => m.panelId === contextPanelId) && (
+                <TableRow>
+                  <TableCell colSpan={3}>
+                    <strong>
+                      <FormattedMessage id="label.testCatalog.panels.orderContext" />
+                    </strong>
+                    <ol>
+                      {contextTests.map((t) => (
+                        <li
+                          key={t.testId}
+                          style={{
+                            fontWeight: t.testId === testId ? "bold" : "normal",
+                          }}
+                        >
+                          {t.testName || t.testId}
+                          {t.testId === testId && " ←"}
+                        </li>
+                      ))}
+                    </ol>
+                  </TableCell>
+                </TableRow>
+              )}
           </TableBody>
         </Table>
       )}
 
       <Stack gap={3}>
-        <Button
-          kind="ghost"
-          renderIcon={Add}
-          onClick={() => setShowCreateHint(true)}
-        >
-          <FormattedMessage id="label.testCatalog.panels.createPanel" />
-        </Button>
-        {showCreateHint && (
-          <InlineNotification
-            kind="info"
-            lowContrast
-            onCloseButtonClick={() => setShowCreateHint(false)}
-            title={intl.formatMessage({
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
+          <TextInput
+            id="new-panel-name"
+            labelText={intl.formatMessage({
               id: "label.testCatalog.panels.createPanel",
             })}
-            subtitle={intl.formatMessage({
-              id: "label.testCatalog.panels.createPanelHint",
-            })}
+            value={newPanelName}
+            onChange={(e) => setNewPanelName(e.target.value)}
           />
-        )}
+          <Button
+            kind="tertiary"
+            renderIcon={Add}
+            disabled={creating || !newPanelName.trim()}
+            onClick={createPanel}
+            data-testid="create-panel-button"
+          >
+            <FormattedMessage id="label.testCatalog.panels.createPanel" />
+          </Button>
+        </div>
+        <p style={{ color: "var(--cds-text-secondary, #525252)" }}>
+          <FormattedMessage id="label.testCatalog.panels.createPanelHint" />
+        </p>
       </Stack>
 
       <Button kind="primary" disabled={saving} onClick={handleSave}>
         <FormattedMessage id="label.button.save" />
       </Button>
+
+      {/* FR-79: confirm before dropping a panel membership. */}
+      <Modal
+        open={panelToRemove !== null}
+        danger
+        modalHeading={intl.formatMessage({
+          id: "label.testCatalog.panels.remove.confirm.heading",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "label.testCatalog.panels.remove",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setPanelToRemove(null)}
+        onSecondarySubmit={() => setPanelToRemove(null)}
+        onRequestSubmit={() => {
+          if (panelToRemove) {
+            removePanel(panelToRemove.panelId);
+          }
+          setPanelToRemove(null);
+        }}
+      >
+        <p>
+          <FormattedMessage
+            id="label.testCatalog.panels.remove.confirm.body"
+            values={{ panel: panelToRemove?.panelName || "" }}
+          />
+        </p>
+      </Modal>
     </Stack>
   );
 };

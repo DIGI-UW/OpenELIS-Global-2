@@ -50,14 +50,19 @@ const displayAge = (range) => {
   };
 };
 
-const RangeModal = ({ range, onSave, onCancel }) => {
+const RangeModal = ({ range, components = [], onSave, onCancel }) => {
   const intl = useIntl();
   const editing = !!(range && range.id);
+
+  // Default a range to the test's only component so a single-component test's
+  // ranges are never saved unassociated (FR-19).
+  const defaultComponentId = components.length === 1 ? components[0].id : "";
 
   const [draft, setDraft] = useState(() => {
     if (!range) {
       return {
         id: undefined,
+        componentId: defaultComponentId,
         gender: "",
         ageUnit: "years",
         minAgeValue: "0",
@@ -66,21 +71,33 @@ const RangeModal = ({ range, onSave, onCancel }) => {
         highNormal: "",
         lowCritical: "",
         highCritical: "",
+        lowValid: "",
+        highValid: "",
       };
     }
     return {
       id: range.id,
+      // Preserve the existing association; fall back to the sole component.
+      componentId: range.componentId || defaultComponentId,
       gender: range.gender || "",
       ...displayAge(range),
       lowNormal: numOrEmpty(range.lowNormal),
       highNormal: numOrEmpty(range.highNormal),
       lowCritical: numOrEmpty(range.lowCritical),
       highCritical: numOrEmpty(range.highCritical),
+      lowValid: numOrEmpty(range.lowValid),
+      highValid: numOrEmpty(range.highValid),
     };
   });
   const [ageError, setAgeError] = useState(false);
+  const [boundsError, setBoundsError] = useState(false);
 
-  const set = (patch) => setDraft((prev) => ({ ...prev, ...patch }));
+  const set = (patch) =>
+    setDraft((prev) => {
+      setAgeError(false);
+      setBoundsError(false);
+      return { ...prev, ...patch };
+    });
 
   const handleSubmit = () => {
     const minDays =
@@ -96,8 +113,26 @@ const RangeModal = ({ range, onSave, onCancel }) => {
       setAgeError(true);
       return;
     }
+    // Bounds must nest outward: valid ⊇ critical ⊇ normal, i.e.
+    // lowValid ≤ lowCritical ≤ lowNormal ≤ highNormal ≤ highCritical ≤ highValid.
+    // Blank bounds are unbounded (skipped); the entered ones must stay in order.
+    const chain = [
+      parseOrNull(draft.lowValid),
+      parseOrNull(draft.lowCritical),
+      parseOrNull(draft.lowNormal),
+      parseOrNull(draft.highNormal),
+      parseOrNull(draft.highCritical),
+      parseOrNull(draft.highValid),
+    ].filter((v) => v !== null);
+    for (let i = 1; i < chain.length; i++) {
+      if (chain[i] < chain[i - 1]) {
+        setBoundsError(true);
+        return;
+      }
+    }
     onSave({
       id: draft.id,
+      componentId: draft.componentId || null,
       gender: draft.gender || null,
       minAge: minDays,
       maxAge: maxDays,
@@ -105,6 +140,8 @@ const RangeModal = ({ range, onSave, onCancel }) => {
       highNormal: parseOrNull(draft.highNormal),
       lowCritical: parseOrNull(draft.lowCritical),
       highCritical: parseOrNull(draft.highCritical),
+      lowValid: parseOrNull(draft.lowValid),
+      highValid: parseOrNull(draft.highValid),
     });
   };
 
@@ -133,6 +170,27 @@ const RangeModal = ({ range, onSave, onCancel }) => {
       onSecondarySubmit={onCancel}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {components.length > 1 && (
+          <Select
+            id="range-component"
+            labelText={intl.formatMessage({
+              id: "label.testCatalog.ranges.modal.component",
+            })}
+            value={draft.componentId || ""}
+            onChange={(e) => set({ componentId: e.target.value })}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "label.testCatalog.ranges.modal.component.all",
+              })}
+            />
+            {components.map((c) => (
+              <SelectItem key={c.id} value={c.id} text={c.label} />
+            ))}
+          </Select>
+        )}
+
         <Select
           id="range-sex"
           labelText={intl.formatMessage({
@@ -201,6 +259,20 @@ const RangeModal = ({ range, onSave, onCancel }) => {
             "label.testCatalog.ranges.modal.highCritical",
           )}
         </div>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          {numField("lowValid", "label.testCatalog.ranges.modal.lowValid")}
+          {numField("highValid", "label.testCatalog.ranges.modal.highValid")}
+        </div>
+        {boundsError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "label.testCatalog.ranges.modal.boundsError",
+            })}
+          />
+        )}
       </div>
     </Modal>
   );

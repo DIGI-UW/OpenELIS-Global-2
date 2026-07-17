@@ -60,7 +60,9 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
   useEffect(() => {
-    if (!editorTestId) {
+    // "new" (create-in-place) and "group" (combined editor) are not real test
+    // ids — don't fetch an envelope for them (it would 500).
+    if (!editorTestId || editorTestId === "new" || editorTestId === "group") {
       return undefined;
     }
     const controller = new AbortController();
