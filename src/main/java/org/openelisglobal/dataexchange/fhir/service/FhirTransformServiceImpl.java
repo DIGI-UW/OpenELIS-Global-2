@@ -220,6 +220,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private AnalyzerService analyzerService;
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
+    @Autowired
     private MethodService methodService;
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;

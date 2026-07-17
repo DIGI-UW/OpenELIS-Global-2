@@ -41,6 +41,7 @@ public class DeviceProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
+
     @Autowired
     private FhirTransformService fhirTransformService;
 
@@ -57,9 +58,11 @@ public class DeviceProvider implements IResourceProvider {
 
     @Read
     public Device readDevice(@IdParam IdType theId) {
+
         String method = "readDevice";
 
         try {
+
             if (theId == null || theId.isEmpty()) {
                 throw new InvalidRequestException("Device ID must be provided");
             }
@@ -67,189 +70,252 @@ public class DeviceProvider implements IResourceProvider {
             String analyzerId = theId.getIdPart();
 
             UUID uuid;
+
             try {
                 uuid = UUID.fromString(analyzerId);
-            } catch (IllegalArgumentException e) {
-
+            } catch (Exception e) {
                 throw new InvalidRequestException("Device ID must be a valid UUID");
             }
 
             List<Analyzer> analyzers = analyzerService.getAllMatching("fhirUuid", uuid);
 
             if (analyzers == null || analyzers.isEmpty()) {
-                // 404 NOT FOUND (valid UUID but no resource)
-                throw new ResourceNotFoundException("Device with FHIR ID: " + analyzerId + " does not exist");
+                throw new ResourceNotFoundException("Device with ID " + analyzerId + " not found");
             }
 
             if (analyzers.size() > 1) {
-                LogEvent.logError(this.getClass().getSimpleName(), method,
-                        "Duplicate Analyzer records found for fhirUuid=" + analyzerId);
 
-                throw new InternalErrorException("Multiple Analyzer records found for FHIR UUID: " + analyzerId);
+                LogEvent.logError(this.getClass().getSimpleName(), method,
+                        "Multiple analyzers found for " + analyzerId);
+
+                throw new InternalErrorException("Multiple Analyzer records exist for Device UUID");
             }
 
-            Analyzer analyzer = analyzers.get(0);
-
-            Device device = fhirTransformService.transformAnalyzerToDevice(analyzer);
+            Device device = fhirTransformService.transformAnalyzerToDevice(analyzers.get(0));
 
             if (device == null) {
-                throw new ResourceNotFoundException(
-                        "No Device resource could be created for Analyzer with FHIR ID: " + analyzerId);
+                throw new InternalErrorException("Unable to transform Analyzer to Device");
             }
 
             return device;
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
+
             throw e;
 
         } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while reading Device: " + e.getMessage());
 
-            throw new InternalErrorException("Unexpected server error while reading Device", e);
+            LogEvent.logError(this.getClass().getSimpleName(), method, e.getMessage());
+
+            throw new InternalErrorException("Unexpected error reading Device", e);
         }
     }
 
     @Create
     public MethodOutcome createDevice(@ResourceParam Device device, HttpServletRequest request) {
+
         String method = "createDevice";
+
         try {
+
             if (device == null) {
-                throw new IllegalArgumentException("Device resource must be provided");
+                throw new InvalidRequestException("Device resource is required");
             }
+
             Analyzer analyzer = fhirTransformService.transformDeviceToAnalyzer(device);
+
             if (analyzer == null) {
-                throw new UnprocessableEntityException(
-                        "Provided Device resource could not be transformed to an Analyzer");
+                throw new UnprocessableEntityException("Unable to transform Device into Analyzer");
             }
-            analyzer.getAnalyzerType().setSysUserId(FhirProviderUtils.getSysUserId(request));
-            analyzer.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            Analyzer createdAnalyzer = analyzerService.save(analyzer);
-            if (createdAnalyzer == null) {
-                throw new InternalErrorException(
-                        "Failed to persist the Analyzer created from the provided Device resource");
+
+            String userId = FhirProviderUtils.getSysUserId(request);
+
+            analyzer.setSysUserId(userId);
+
+            if (analyzer.getAnalyzerType() != null) {
+                analyzer.getAnalyzerType().setSysUserId(userId);
             }
-            Device createdDevice = fhirTransformService.transformAnalyzerToDevice(createdAnalyzer);
-            FhirProviderUtils.syncToFhirStore(fhirPersistanceService, createdDevice, this.getClass().getSimpleName(),
-                    method);
-            return FhirProviderUtils.buildCreateOutcome(createdDevice);
+
+            Analyzer saved = analyzerService.save(analyzer);
+
+            if (saved == null) {
+                throw new InternalErrorException("Analyzer was not saved");
+            }
+
+            Device savedDevice = fhirTransformService.transformAnalyzerToDevice(saved);
+
+            if (savedDevice == null) {
+                throw new InternalErrorException("Unable to create FHIR Device");
+            }
+
+            FhirProviderUtils.syncToFhirStore(fhirPersistanceService, savedDevice, getClass().getSimpleName(), method);
+
+            return FhirProviderUtils.buildCreateOutcome(savedDevice);
+
         } catch (UnprocessableEntityException | InvalidRequestException e) {
+
             throw e;
 
         } catch (Exception e) {
 
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while creating Practitioner: " + e.getMessage());
+            LogEvent.logError(getClass().getSimpleName(), method, e.getMessage());
 
-            throw new InternalErrorException("Unexpected server error while creating Practitioner", e);
+            throw new InternalErrorException("Unexpected error creating Device", e);
         }
 
     }
 
     @Update
     public MethodOutcome updateDevice(@IdParam IdType theId, @ResourceParam Device device, HttpServletRequest request) {
-        String method = "createDevice";
-        try {
-            if (theId == null || theId.isEmpty()) {
-                throw new IllegalArgumentException("Device ID must be provided");
-            }
-            if (device == null) {
-                throw new IllegalArgumentException("Device resource must be provided");
-            }
-            Analyzer analyzer = fhirTransformService.transformDeviceToAnalyzer(device);
-            if (analyzer == null) {
-                throw new UnprocessableEntityException(
-                        "Provided Device resource could not be transformed to an Analyzer");
-            }
-            analyzer.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            Analyzer createdAnalyzer = analyzerService.update(analyzer);
-            if (createdAnalyzer == null) {
-                throw new InternalErrorException(
-                        "Failed to persist the Analyzer created from the provided Device resource");
-            }
-            Device createdDevice = fhirTransformService.transformAnalyzerToDevice(createdAnalyzer);
-            FhirProviderUtils.syncToFhirStore(fhirPersistanceService, createdDevice, this.getClass().getSimpleName(),
-                    method);
-            return FhirProviderUtils.buildUpdateOutcome(createdDevice);
-        } catch (UnprocessableEntityException | InvalidRequestException e) {
-            throw e;
 
+        String method = "updateDevice";
+
+        try {
+
+            if (theId == null || theId.isEmpty()) {
+
+                throw new InvalidRequestException("Device ID required");
+            }
+
+            if (device == null) {
+
+                throw new InvalidRequestException("Device resource required");
+            }
+
+            Analyzer analyzer = fhirTransformService.transformDeviceToAnalyzer(device);
+
+            if (analyzer == null) {
+
+                throw new UnprocessableEntityException("Cannot transform Device");
+            }
+
+            analyzer.setSysUserId(FhirProviderUtils.getSysUserId(request));
+
+            Analyzer updated = analyzerService.update(analyzer);
+
+            if (updated == null) {
+
+                throw new InternalErrorException("Analyzer update failed");
+            }
+
+            Device updatedDevice = fhirTransformService.transformAnalyzerToDevice(updated);
+
+            if (updatedDevice == null) {
+
+                throw new InternalErrorException("FHIR Device transformation failed");
+            }
+
+            FhirProviderUtils.syncToFhirStore(fhirPersistanceService, updatedDevice, getClass().getSimpleName(),
+                    method);
+
+            return FhirProviderUtils.buildUpdateOutcome(updatedDevice);
+
+        } catch (UnprocessableEntityException | InvalidRequestException e) {
+
+            throw e;
         } catch (Exception e) {
 
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while creating Practitioner: " + e.getMessage());
-
-            throw new InternalErrorException("Unexpected server error while creating Practitioner", e);
+            throw new InternalErrorException("Unexpected error updating Device", e);
         }
-
     }
 
     @Delete
     public MethodOutcome deleteDevice(@IdParam IdType theId, HttpServletRequest request) {
+
         String method = "deleteDevice";
+
         try {
+
             if (theId == null || theId.isEmpty()) {
-                throw new IllegalArgumentException("Device ID must be provided");
+
+                throw new InvalidRequestException("Device ID required");
             }
-            String analyzerId = theId.getIdPart();
-            List<Analyzer> analyzers = analyzerService.getAllMatching("fhirUuid", UUID.fromString(analyzerId));
+
+            String id = theId.getIdPart();
+
+            UUID uuid;
+
+            try {
+                uuid = UUID.fromString(id);
+            } catch (Exception e) {
+
+                throw new InvalidRequestException("Device ID must be UUID");
+            }
+
+            List<Analyzer> analyzers = analyzerService.getAllMatching("fhirUuid", uuid);
+
             if (analyzers == null || analyzers.isEmpty()) {
-                throw new ResourceNotFoundException("Device with FHIR ID: " + analyzerId + " does not exist");
+
+                throw new ResourceNotFoundException("Device not found");
             }
+
             if (analyzers.size() > 1) {
-                LogEvent.logError(this.getClass().getSimpleName(), method,
-                        "Duplicate Analyzer records found for fhirUuid=" + analyzerId);
-                throw new InternalErrorException("Multiple Analysis records found for ServiceRequest UUID");
+
+                throw new InternalErrorException("Multiple Analyzer records found");
             }
-            Analyzer analyzer = analyzers.getFirst();
+
+            Analyzer analyzer = analyzers.get(0);
+
             analyzer.setActive(false);
+
             analyzer.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            Analyzer createdAnalyzer = analyzerService.save(analyzer);
-            if (createdAnalyzer == null) {
-                throw new InternalErrorException(
-                        "Failed to persist the Analyzer created from the provided Device resource");
+
+            Analyzer saved = analyzerService.save(analyzer);
+
+            if (saved == null) {
+
+                throw new InternalErrorException("Failed deleting Device");
             }
-            Device deletedDevice = fhirTransformService.transformAnalyzerToDevice(createdAnalyzer);
-            FhirProviderUtils.syncToFhirStore(fhirPersistanceService, deletedDevice, this.getClass().getSimpleName(),
-                    method);
+
+            Device deleted = fhirTransformService.transformAnalyzerToDevice(saved);
+
+            if (deleted != null) {
+
+                FhirProviderUtils.syncToFhirStore(fhirPersistanceService, deleted, getClass().getSimpleName(), method);
+            }
+
             return FhirProviderUtils.buildDeleteOutcome(theId, "Device");
-        } catch (UnprocessableEntityException | InvalidRequestException e) {
+
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
+
             throw e;
 
         } catch (Exception e) {
 
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while creating Practitioner: " + e.getMessage());
-
-            throw new InternalErrorException("Unexpected server error while creating Practitioner", e);
+            throw new InternalErrorException("Unexpected error deleting Device", e);
         }
-
     }
 
     @Search
-    public Bundle searchPractitionerBundle(@OptionalParam(name = Device.SP_IDENTIFIER) TokenAndListParam identifier,
+    public Bundle searchDeviceBundle(@OptionalParam(name = Device.SP_IDENTIFIER) TokenAndListParam identifier,
+
             @OptionalParam(name = Device.SP_DEVICE_NAME) TokenAndListParam deviceName,
 
             @OptionalParam(name = Device.SP_TYPE) TokenAndListParam type,
 
             @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PARTICIPANT,
-                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER, }) HashSet<Include> revIncludes,
+                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER }) HashSet<Include> revIncludes,
+
             HttpServletRequest request) {
 
-        String methodName = "searchDeviceBundle";
-        LogEvent.logDebug(this.getClass().getSimpleName(), methodName,
-                "Searching for Practitioners (returning Bundle)");
+        String method = "searchDeviceBundle";
 
         try {
 
             Bundle bundle = util.forwardSearchToFhirStore(request);
 
+            if (bundle == null) {
+
+                throw new InternalErrorException("FHIR server returned empty Bundle");
+            }
+
             return bundle;
 
         } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), methodName,
-                    "Error searching Devices: " + e.getMessage());
-            throw new InternalErrorException("Error searching Practitioners", e);
+
+            LogEvent.logError(getClass().getSimpleName(), method, e.getMessage());
+
+            throw new InternalErrorException("Error searching Device", e);
         }
     }
 
