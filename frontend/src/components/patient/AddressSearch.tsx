@@ -4,6 +4,7 @@ import { TextInput, Layer, Tag } from "@carbon/react";
 import { Search, Close, ChevronRight } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 import "./AddressSearch.css";
+import type { AddressHierarchyLevel, AddressSearchResult } from "./types";
 
 /**
  * AddressSearch component - Provides a search-based address selection similar to OpenMRS.
@@ -21,18 +22,23 @@ const AddressSearch = ({
   addressHierarchyLevels = [],
   placeholder,
   disabled = false,
+}: {
+  onAddressSelect?: (hierarchyLevels: AddressHierarchyLevel[]) => void;
+  addressHierarchyLevels?: AddressHierarchyLevel[];
+  placeholder?: string;
+  disabled?: boolean;
 }) => {
   const intl = useIntl();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState<AddressSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const containerRef = useRef(null);
-  const inputRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Debounced search
-  const performSearch = useCallback((term) => {
+  const performSearch = useCallback((term: string) => {
     if (!term || term.trim().length < 2) {
       setSearchResults([]);
       setIsLoading(false);
@@ -42,7 +48,7 @@ const AddressSearch = ({
     setIsLoading(true);
     getFromOpenElisServer(
       `/rest/address-hierarchy/search?query=${encodeURIComponent(term)}&limit=20`,
-      (results) => {
+      (results: AddressSearchResult[]) => {
         const resultsArray = Array.isArray(results) ? results : [];
         setSearchResults(resultsArray);
         setIsLoading(false);
@@ -53,22 +59,28 @@ const AddressSearch = ({
 
   // Debounce effect
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (searchTerm && searchTerm.length >= 2) {
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         performSearch(searchTerm);
       }, 300);
-      return () => clearTimeout(timer);
     } else {
       setSearchResults([]);
       setIsOpen(false);
     }
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [searchTerm, performSearch]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
+        event.target instanceof Node &&
         !containerRef.current.contains(event.target)
       ) {
         setIsOpen(false);
@@ -80,7 +92,7 @@ const AddressSearch = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = (result) => {
+  const handleSelect = (result: AddressSearchResult) => {
     if (onAddressSelect && result.hierarchyLevels) {
       onAddressSelect(result.hierarchyLevels);
     }
@@ -90,7 +102,7 @@ const AddressSearch = ({
     setHighlightedIndex(-1);
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen || searchResults.length === 0) return;
 
     switch (e.key) {
@@ -129,7 +141,7 @@ const AddressSearch = ({
     inputRef.current?.focus();
   };
 
-  const getLevelName = (levelNum) => {
+  const getLevelName = (levelNum?: number) => {
     const level = addressHierarchyLevels.find((l) => l.level === levelNum);
     return level ? level.typeName : `Level ${levelNum}`;
   };

@@ -1,4 +1,12 @@
 import config from "../../../config.json";
+import type {
+  PatientMergeApiError,
+  PatientMergeRequest,
+  PatientMergeResult,
+  PatientRecord,
+  PatientSearchCriteria,
+  PatientSearchResponse,
+} from "../types";
 
 /**
  * Patient Merge API Service
@@ -10,7 +18,23 @@ import config from "../../../config.json";
  * @param {string} patientId - The patient ID
  * @returns {Promise<Object>} Patient merge details
  */
-export const getPatientMergeDetails = async (patientId) => {
+type FormatMessage = (descriptor: { id: string }) => string;
+
+const readErrorData = async (
+  response: Response,
+  fallbackMessage: string,
+): Promise<PatientMergeApiError> => {
+  const errorData = await response.json().catch(() => ({}));
+  return {
+    status: response.status,
+    message: errorData.message || fallbackMessage,
+    ...errorData,
+  };
+};
+
+export const getPatientMergeDetails = async (
+  patientId: string,
+): Promise<PatientRecord> => {
   const response = await fetch(
     `${config.serverBaseUrl}/rest/patient/merge/details/${patientId}`,
     {
@@ -20,12 +44,7 @@ export const getPatientMergeDetails = async (patientId) => {
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw {
-      status: response.status,
-      message: errorData.message || `Failed to get patient details`,
-      ...errorData,
-    };
+    throw await readErrorData(response, "Failed to get patient details");
   }
 
   return response.json();
@@ -39,7 +58,9 @@ export const getPatientMergeDetails = async (patientId) => {
  * @param {string} request.primaryPatientId - ID of patient to keep
  * @returns {Promise<Object>} Validation result with errors/warnings
  */
-export const validatePatientMerge = async (request) => {
+export const validatePatientMerge = async (
+  request: PatientMergeRequest,
+): Promise<PatientMergeResult> => {
   const response = await fetch(
     `${config.serverBaseUrl}/rest/patient/merge/validate`,
     {
@@ -60,12 +81,7 @@ export const validatePatientMerge = async (request) => {
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw {
-      status: response.status,
-      message: errorData.message || `Validation failed`,
-      ...errorData,
-    };
+    throw await readErrorData(response, "Validation failed");
   }
 
   return response.json();
@@ -80,7 +96,9 @@ export const validatePatientMerge = async (request) => {
  * @param {string} request.reason - Reason for merge
  * @returns {Promise<Object>} Execution result with audit ID
  */
-export const executePatientMerge = async (request) => {
+export const executePatientMerge = async (
+  request: PatientMergeRequest,
+): Promise<PatientMergeResult> => {
   const response = await fetch(
     `${config.serverBaseUrl}/rest/patient/merge/execute`,
     {
@@ -101,12 +119,7 @@ export const executePatientMerge = async (request) => {
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw {
-      status: response.status,
-      message: errorData.message || `Merge execution failed`,
-      ...errorData,
-    };
+    throw await readErrorData(response, "Merge execution failed");
   }
 
   return response.json();
@@ -117,7 +130,9 @@ export const executePatientMerge = async (request) => {
  * @param {Object} searchParams - Search parameters
  * @returns {Promise<Object>} Search results
  */
-export const searchPatients = async (searchParams) => {
+export const searchPatients = async (
+  searchParams: PatientSearchCriteria,
+): Promise<PatientSearchResponse> => {
   const queryParams = new URLSearchParams({
     lastName: searchParams.lastName || "",
     firstName: searchParams.firstName || "",
@@ -128,7 +143,9 @@ export const searchPatients = async (searchParams) => {
     guid: searchParams.guid || "",
     dateOfBirth: searchParams.dateOfBirth || "",
     gender: searchParams.gender || "",
-    suppressExternalSearch: searchParams.suppressExternalSearch || "true",
+    suppressExternalSearch: String(
+      searchParams.suppressExternalSearch || "true",
+    ),
   });
 
   const response = await fetch(
@@ -152,7 +169,10 @@ export const searchPatients = async (searchParams) => {
  * @param {Function} intl - React Intl formatMessage function
  * @returns {string} User-friendly error message
  */
-export const getErrorMessage = (error, intl) => {
+export const getErrorMessage = (
+  error: PatientMergeApiError,
+  intl: { formatMessage: FormatMessage },
+): string => {
   switch (error.status) {
     case 401:
       return intl.formatMessage({ id: "accessDenied.message" });
