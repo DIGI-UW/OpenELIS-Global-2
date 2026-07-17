@@ -1168,12 +1168,16 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
             }
-            bySystem.computeIfAbsent(system, k -> new ArrayList<>())
-                    .add(new Candidate(mapping.getCode(), "SAME_AS".equalsIgnoreCase(mapping.getRelationship())));
+            // Coding.display: the mapping's curated display name (the standard
+            // term's label, FR-69) when present; otherwise the test name.
+            String codingDisplay = GenericValidator.isBlankOrNull(mapping.getDisplayName()) ? display
+                    : mapping.getDisplayName();
+            bySystem.computeIfAbsent(system, k -> new ArrayList<>()).add(new Candidate(mapping.getCode(),
+                    "SAME_AS".equalsIgnoreCase(mapping.getRelationship()), codingDisplay));
         }
         if (!GenericValidator.isBlankOrNull(test.getLoinc())) {
             bySystem.computeIfAbsent("http://loinc.org", k -> new ArrayList<>())
-                    .add(new Candidate(test.getLoinc(), true));
+                    .add(new Candidate(test.getLoinc(), true, display));
         }
 
         // Emit one system's codings at a time. Within a system the SAME_AS mapping is
@@ -1189,7 +1193,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     continue;
                 }
                 if (seenCodes.add(candidate.code)) {
-                    codeableConcept.addCoding(new Coding(system, candidate.code, display));
+                    codeableConcept.addCoding(new Coding(system, candidate.code, candidate.display));
                 }
             }
         }
@@ -1243,7 +1247,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
             }
-            codeableConcept.addCoding(new Coding(system, mapping.getCode(), label));
+            // Coding.display: the mapping's curated display name (FR-69) when
+            // present; otherwise the component's name.
+            String codingDisplay = GenericValidator.isBlankOrNull(mapping.getDisplayName()) ? label
+                    : mapping.getDisplayName();
+            codeableConcept.addCoding(new Coding(system, mapping.getCode(), codingDisplay));
         }
         if (!component.getIsPrimary()) {
             codeableConcept.addCoding(
@@ -1255,15 +1263,18 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
     /**
      * A candidate code for one terminology system, flagged if it is a SAME_AS
-     * mapping.
+     * mapping, carrying the display to emit on its Coding (the mapping's curated
+     * display name when present, else the test/component name).
      */
     private static final class Candidate {
         private final String code;
         private final boolean sameAs;
+        private final String display;
 
-        private Candidate(String code, boolean sameAs) {
+        private Candidate(String code, boolean sameAs, String display) {
             this.code = code;
             this.sameAs = sameAs;
+            this.display = display;
         }
     }
 

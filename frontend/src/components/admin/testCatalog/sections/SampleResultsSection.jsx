@@ -4,6 +4,7 @@ import {
   Accordion,
   AccordionItem,
   TextInput,
+  NumberInput,
   ComboBox,
   Select,
   SelectItem,
@@ -58,13 +59,23 @@ const PlainPanel = ({ children }) => <div>{children}</div>;
  * the admin edits. Disabled so nothing is entered/saved from it.
  */
 const ResultEntryPreview = ({ component, uoms, intl }) => {
-  const type = component.resultType || "N";
+  const type = component.resultType || null;
   const label = component.label || component.code || "";
   const options = component.options || [];
   const unit = (uoms.find((u) => u.id === component.uomId) || {}).value || "";
 
   let control = null;
-  if (type === "N") {
+  if (type === null) {
+    // FR-56 — the pre-seeded component carries no result type until the admin
+    // explicitly picks one; say so instead of previewing a control that lies.
+    control = (
+      <p style={{ color: "var(--cds-text-secondary, #525252)" }}>
+        {intl.formatMessage({
+          id: "label.testCatalog.sampleResults.preview.noType",
+        })}
+      </p>
+    );
+  } else if (type === "N") {
     control = (
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
         <TextInput id="preview-n" labelText="" placeholder="0" disabled />
@@ -182,6 +193,25 @@ const SampleResultsSection = ({ testId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
+  // FR-76 — changing the result type resets fields that don't apply to the new
+  // type, so a component can't carry stale numeric units into a select-list type
+  // (or leftover options into a numeric one). Returns the patch to apply.
+  const typeAwareDefaults = (component, nextType) => {
+    const patch = { resultType: nextType };
+    const isSelectList = ["D", "M", "C"].includes(nextType);
+    if (nextType !== "N") {
+      // Numeric-only fields.
+      patch.uomId = "";
+      patch.significantDigits = null;
+      patch.allowMultipleReadings = false;
+    }
+    if (!isSelectList) {
+      // Select-list options are meaningless for non-list types.
+      patch.options = [];
+    }
+    return patch;
+  };
+
   // ── Immutable updaters ─────────────────────────────────────────────────────
   const patchComponent = (ci, patch) =>
     setComponents((prev) =>
@@ -230,9 +260,13 @@ const SampleResultsSection = ({ testId }) => {
       parts.push(c.code);
     }
     parts.push(
-      intl.formatMessage({
-        id: `label.testCatalog.sampleResults.resultType.${c.resultType || "N"}`,
-      }),
+      c.resultType
+        ? intl.formatMessage({
+            id: `label.testCatalog.sampleResults.resultType.${c.resultType}`,
+          })
+        : intl.formatMessage({
+            id: "label.testCatalog.sampleResults.resultType.none",
+          }),
     );
     return parts.join(" · ");
   };
@@ -243,7 +277,9 @@ const SampleResultsSection = ({ testId }) => {
   // behind an "Advanced / legacy types" disclosure so a test saved as one of
   // them stays editable without the type being silently dropped (FR-37).
   const renderTypeChooser = (c, ci) => {
-    const current = c.resultType || "N";
+    // No silent default (FR-56): an unset type shows no tile selected, and the
+    // save requires an explicit choice.
+    const current = c.resultType || null;
     const showAdvanced =
       advancedTypesOpen[ci] ?? ADVANCED_RESULT_TYPES.includes(current);
     const tile = (t) => (
@@ -270,7 +306,7 @@ const SampleResultsSection = ({ testId }) => {
             id: "label.testCatalog.sampleResults.resultType",
           })}
           valueSelected={current}
-          onChange={(value) => patchComponent(ci, { resultType: value })}
+          onChange={(value) => patchComponent(ci, typeAwareDefaults(c, value))}
         >
           {PRIMARY_RESULT_TYPES.map(tile)}
           {showAdvanced && ADVANCED_RESULT_TYPES.map(tile)}
@@ -301,7 +337,8 @@ const SampleResultsSection = ({ testId }) => {
         code: prev.length === 0 ? "PRIMARY" : "",
         label: "",
         displayOrder: prev.length + 1,
-        resultType: "N",
+        // The type is an explicit choice (FR-56/28) — no silent Numeric default.
+        resultType: null,
         significantDigits: null,
         defaultResult: "",
         allowMultipleReadings: false,
@@ -410,6 +447,30 @@ const SampleResultsSection = ({ testId }) => {
     setOptionComboReset((prev) => ({ ...prev, [ci]: (prev[ci] || 0) + 1 }));
   };
 
+  // FR-83 — add a blank, free-text option not backed by a dictionary entry. Its
+  // `value` renders as an editable field (valueName stays null) so the admin can
+  // type a one-off option without first curating a dictionary term.
+  const addCustomOption = (ci) =>
+    setComponents((prev) =>
+      prev.map((c, i) =>
+        i === ci
+          ? {
+              ...c,
+              options: [
+                ...c.options,
+                {
+                  value: "",
+                  valueName: null,
+                  resultType: c.resultType,
+                  sortOrder: c.options.length + 1,
+                  normal: false,
+                },
+              ],
+            }
+          : c,
+      ),
+    );
+
   const addInterpretation = (ci) =>
     setComponents((prev) =>
       prev.map((c, i) =>
@@ -460,6 +521,23 @@ const SampleResultsSection = ({ testId }) => {
         message: intl.formatMessage({
           id: "label.testCatalog.sampleResults.labelRequired",
         }),
+      });
+      return;
+    }
+    // FR-56/59 — the result type is a required explicit choice; refuse the save
+    // naming the component rather than persisting a typeless row.
+    const untyped = normalized.find((c) => !c.resultType);
+    if (untyped) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage(
+          { id: "label.testCatalog.sampleResults.resultTypeRequired" },
+          { component: untyped.label || untyped.code },
+        ),
       });
       return;
     }
@@ -761,16 +839,26 @@ const SampleResultsSection = ({ testId }) => {
                         </div>
                       </div>
                     )}
-                    <TextInput
+                    <NumberInput
                       id={`comp-sigdig-${ci}`}
-                      type="number"
-                      labelText={intl.formatMessage({
+                      label={intl.formatMessage({
                         id: "label.testCatalog.sampleResults.significantDigits",
                       })}
-                      value={c.significantDigits ?? ""}
-                      onChange={(e) =>
+                      helperText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.significantDigits.helper",
+                      })}
+                      min={0}
+                      max={10}
+                      allowEmpty
+                      value={
+                        c.significantDigits === null ||
+                        c.significantDigits === undefined
+                          ? ""
+                          : c.significantDigits
+                      }
+                      onChange={(_e, { value }) =>
                         patchComponent(ci, {
-                          significantDigits: e.target.value,
+                          significantDigits: value === "" ? null : value,
                         })
                       }
                     />
@@ -823,6 +911,24 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.options" />
                     </h6>
+                    <p
+                      style={{
+                        color: "var(--cds-text-secondary, #525252)",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder.helper" />
+                    </p>
+                    {(c.options || []).length === 0 && (
+                      <InlineNotification
+                        kind="info"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.options.empty",
+                        })}
+                      />
+                    )}
                     <Table size="sm">
                       <TableHead>
                         <TableRow>
@@ -918,6 +1024,15 @@ const SampleResultsSection = ({ testId }) => {
                         addDictionaryOption(ci, selectedItem)
                       }
                     />
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      renderIcon={Add}
+                      data-testid={`add-custom-option-${ci}`}
+                      onClick={() => addCustomOption(ci)}
+                    >
+                      <FormattedMessage id="label.testCatalog.sampleResults.addCustomOption" />
+                    </Button>
                   </>
                 )}
 
@@ -927,6 +1042,16 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
                     </h6>
+                    {(c.interpretations || []).length === 0 && (
+                      <InlineNotification
+                        kind="info"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.interpretations.empty",
+                        })}
+                      />
+                    )}
                     <Table size="sm">
                       <TableHead>
                         <TableRow>

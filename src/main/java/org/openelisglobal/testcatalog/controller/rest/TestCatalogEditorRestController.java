@@ -16,6 +16,9 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationServiceImpl;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -27,6 +30,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testcatalog.service.CatalogHealthService;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testcatalog.service.TestCatalogCreationService;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -124,6 +128,19 @@ public class TestCatalogEditorRestController {
     @Autowired(required = false)
     private TestSectionService testSectionService;
 
+    // Field-injected (optional) so the existing all-args constructor used by unit
+    // tests stays unchanged; drives the FR-61–65 per-row issue tags.
+    @Autowired(required = false)
+    private CatalogHealthService catalogHealthService;
+
+    // Field-injected (optional) for the FR-46 grouped list view.
+    @Autowired(required = false)
+    private org.openelisglobal.testvariant.service.TestVariantLinkService variantLinkService;
+
+    // Field-injected (optional) for the FR-43 panel-create name localization.
+    @Autowired(required = false)
+    private LocalizationService localizationService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
@@ -158,6 +175,15 @@ public class TestCatalogEditorRestController {
         public boolean active;
         public boolean amr;
         public boolean coverageIncomplete;
+        // FR-71: whether the test carries a LOINC code; drives the "No LOINC" tag.
+        public boolean hasLoinc;
+        // FR-46: variant-group id (null = ungrouped/singleton); drives grouped view.
+        public String groupId;
+        // FR-61/62: catalog-health findings for this row, plus severity roll-up.
+        public List<CatalogHealthService.Finding> findings = new ArrayList<>();
+        public int errorCount;
+        public int warningCount;
+        public int infoCount;
     }
 
     public static class TestListPage {
@@ -165,14 +191,33 @@ public class TestCatalogEditorRestController {
         public int pageSize;
         public int total;
         public List<TestListRow> rows = new ArrayList<>();
+        // FR-61(d): catalog-wide roll-up for the "N tests have configuration issues"
+        // banner and severity counts, across the whole filtered set (not just page).
+        public int totalWithIssues;
+        public int totalErrors;
+        public int totalWarnings;
+        public int totalInfo;
     }
 
     @GetMapping(value = "/tests", produces = MediaType.APPLICATION_JSON_VALUE)
     public TestListPage listTests(@RequestParam(required = false) String domain,
             @RequestParam(required = false, defaultValue = "all") String status,
             @RequestParam(required = false) Boolean amr, @RequestParam(required = false) String sampleType,
-            @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "25") int pageSize) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "false") boolean issuesOnly,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize) {
+        // FR-61/62 findings are computed once for the whole catalog (cached) and
+        // consulted both for the "issues only" filter and per-row decoration.
+        Map<String, List<CatalogHealthService.Finding>> findingsByTest = catalogHealthService != null
+                ? catalogHealthService.getAll()
+                : Map.of();
+        // Variant-group id per test (one query) for the FR-46 grouped list view.
+        Map<String, String> groupByTest = new HashMap<>();
+        if (variantLinkService != null) {
+            for (org.openelisglobal.testvariant.valueholder.TestVariantLink link : variantLinkService.getAllLinks()) {
+                groupByTest.put(link.getTestId(), link.getGroupId());
+            }
+        }
         String searchLower = search == null ? null : search.toLowerCase(Locale.ROOT);
         // Resolve the test ids for the requested sample type once (one query),
         // rather than looking up each test's sample types while filtering.
@@ -207,6 +252,10 @@ public class TestCatalogEditorRestController {
                     && (name == null || !name.toLowerCase(Locale.ROOT).contains(searchLower))) {
                 continue;
             }
+            List<CatalogHealthService.Finding> findings = findingsByTest.getOrDefault(test.getId(), List.of());
+            if (issuesOnly && findings.isEmpty()) {
+                continue;
+            }
             TestListRow row = new TestListRow();
             row.testId = test.getId();
             row.name = name;
@@ -214,8 +263,20 @@ public class TestCatalogEditorRestController {
             row.domain = test.getDomain();
             row.active = active;
             row.amr = testAmr;
+            row.hasLoinc = !isBlank(test.getLoinc());
+            row.groupId = groupByTest.get(test.getId());
             // Coverage-incomplete decoration is wired with Ranges/Coverage Validation (M7).
             row.coverageIncomplete = false;
+            row.findings = findings;
+            for (CatalogHealthService.Finding f : findings) {
+                if (f.severity == CatalogHealthService.Severity.ERROR) {
+                    row.errorCount++;
+                } else if (f.severity == CatalogHealthService.Severity.WARNING) {
+                    row.warningCount++;
+                } else {
+                    row.infoCount++;
+                }
+            }
             filtered.add(row);
         }
         filtered.sort((a, b) -> {
@@ -226,6 +287,15 @@ public class TestCatalogEditorRestController {
 
         TestListPage result = new TestListPage();
         result.total = filtered.size();
+        // Catalog-wide roll-up (FR-61d) over the filtered set, for the banner counts.
+        for (TestListRow r : filtered) {
+            if (!r.findings.isEmpty()) {
+                result.totalWithIssues++;
+            }
+            result.totalErrors += r.errorCount;
+            result.totalWarnings += r.warningCount;
+            result.totalInfo += r.infoCount;
+        }
         result.pageSize = Math.max(1, pageSize);
         result.page = Math.max(1, page);
         int from = Math.min((result.page - 1) * result.pageSize, filtered.size());
@@ -291,6 +361,9 @@ public class TestCatalogEditorRestController {
         public Boolean amr;
         public Boolean orderable;
         public String description;
+        // FR-52/54: when creating a specimen variant, the source test to copy
+        // configuration from and link into the same assay group.
+        public String copyFromId;
     }
 
     public static class CreatedTest {
@@ -320,7 +393,19 @@ public class TestCatalogEditorRestController {
         params.amr = body.amr;
         params.orderable = body.orderable;
         params.description = body.description;
-        String newId = testCatalogCreationService.createInactiveTest(params, ControllerUtills.getSysUserId(request));
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        String newId = testCatalogCreationService.createInactiveTest(params, sysUserId);
+        // FR-52/53 — specimen variant: copy the source's result components (incl.
+        // options/interpretations) and link the new test into the source's assay
+        // group (FR-54). Not copied here: panels, analyzers, reflex/calc rules,
+        // alerts, terminology/LOINC (FR-53) — those stay per-test.
+        if (!isBlank(body.copyFromId) && testService.getTestById(body.copyFromId) != null) {
+            componentService.copyComponentsFromTest(body.copyFromId, newId, sysUserId);
+            if (variantLinkService != null) {
+                variantLinkService.addToGroupOf(body.copyFromId, newId, sysUserId);
+            }
+            invalidateHealth();
+        }
         // Creating a test may have activated a previously-inactive lab unit; refresh
         // the cached section lists (which back the order-entry section filter) and
         // clear the sample-type cache so the new sample-type link is picked up once
@@ -537,6 +622,7 @@ public class TestCatalogEditorRestController {
         if (body.active != null || body.orderable != null || !isBlank(body.labUnitId) || !isBlank(body.sampleTypeId)) {
             refreshTestCaches();
         }
+        invalidateHealth();
         return ResponseEntity.ok(toBasicInfo(updated));
     }
 
@@ -713,7 +799,18 @@ public class TestCatalogEditorRestController {
             optionsByCode.put(c.code, opts);
         }
         componentService.saveSampleResults(testId, desired, interpsByCode, optionsByCode, sysUserId);
+        invalidateHealth();
         return ResponseEntity.ok(toSampleResults(testId));
+    }
+
+    /**
+     * FR-65 — drop cached catalog-health findings after a write that can change
+     * them.
+     */
+    private void invalidateHealth() {
+        if (catalogHealthService != null) {
+            catalogHealthService.invalidate();
+        }
     }
 
     @PostMapping(value = "/tests/{testId}/sample-results/copy-from/{sourceId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1356,6 +1453,8 @@ public class TestCatalogEditorRestController {
         public String source;
         public String code;
         public String relationship;
+        // Human-readable label for the standard term (FR-69), e.g. LOINC long name.
+        public String displayName;
         // Null = test-level mapping (default). Otherwise the id of a result
         // component of this test that the mapping is scoped to (OGC-1128).
         public String componentId;
@@ -1424,9 +1523,11 @@ public class TestCatalogEditorRestController {
             e.setSource(m.source);
             e.setCode(m.code);
             e.setRelationship(isBlank(m.relationship) ? null : m.relationship);
+            e.setDisplayName(isBlank(m.displayName) ? null : m.displayName.trim());
             desired.add(e);
         }
         terminologyService.saveMappingsForTest(testId, desired, ControllerUtills.getSysUserId(request));
+        invalidateHealth();
         return ResponseEntity.ok(toTerminology(testId));
     }
 
@@ -1439,6 +1540,7 @@ public class TestCatalogEditorRestController {
             dto.source = m.getSource();
             dto.code = m.getCode();
             dto.relationship = m.getRelationship();
+            dto.displayName = m.getDisplayName();
             dto.componentId = m.getComponentId();
             resp.mappings.add(dto);
         }
@@ -1518,12 +1620,22 @@ public class TestCatalogEditorRestController {
         if (body == null || isBlank(body.name)) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        String name = body.name.trim();
+        // panel.name_localization_id is NOT NULL — create the name localization
+        // first, mirroring the legacy panel-add flow.
+        Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(name, name,
+                LocalizationServiceImpl.LocalizationType.PANEL_NAME);
+        nameLocalization.setSysUserId(sysUserId);
+        String localizationId = localizationService.insert(nameLocalization);
+
         Panel panel = new Panel();
-        panel.setPanelName(body.name.trim());
-        panel.setDescription(body.name.trim());
+        panel.setPanelName(name);
+        panel.setDescription(name);
+        panel.setLocalization(localizationService.get(localizationId));
         panel.setIsActive("Y");
         panel.setSortOrderInt(Integer.MAX_VALUE);
-        panel.setSysUserId(ControllerUtills.getSysUserId(request));
+        panel.setSysUserId(sysUserId);
         String id = panelService.insert(panel);
         PanelOption created = new PanelOption();
         created.id = id;

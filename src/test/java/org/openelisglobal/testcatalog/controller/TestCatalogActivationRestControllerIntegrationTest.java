@@ -18,6 +18,8 @@ import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestC
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestController.ActivateRequest;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService.CoverageReport;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,6 +49,12 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
     private TestActivationAcknowledgmentService ackService;
 
     @Autowired
+    private TestResultComponentService componentService;
+
+    @Autowired
+    private TestResultService testResultService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private TestCatalogActivationRestController controller;
@@ -59,13 +67,21 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogActivationRestController(testService, resultLimitService, coverageService,
-                ackService);
+                ackService, componentService, testResultService);
         cleanup();
         // Seed the test INACTIVE so a successful activation visibly flips it.
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'N', ?, NOW())",
                 TEST_ID, "ActivateIT", "activate IT", UUID.randomUUID().toString());
+        // Seed an active PRIMARY numeric component so the FR-57 completeness gate is
+        // satisfied and these tests exercise the coverage gate, not completeness.
+        jdbc.update(
+                "INSERT INTO clinlims.test_result_component"
+                        + " (id, test_id, code, label, display_order, result_type, allow_multiple_readings,"
+                        + " is_primary, show_on_report, is_active, lastupdated)"
+                        + " VALUES (?, ?, 'PRIMARY', 'Result', 0, 'N', false, true, true, 'Y', NOW())",
+                UUID.randomUUID().toString(), TEST_ID);
         resultTypeId = jdbc.queryForObject("SELECT min(id) FROM clinlims.type_of_test_result", String.class);
     }
 
@@ -77,6 +93,7 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.test_activation_acknowledgment WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
     }
 
@@ -113,7 +130,7 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
     @org.junit.Test
     public void completeCoverage_activatesDirectly() {
         seedRange(null, 0d, Double.POSITIVE_INFINITY); // all-sex, full coverage from birth
-        ResponseEntity<CoverageReport> resp = controller.activateTest(String.valueOf(TEST_ID), null, authedRequest());
+        ResponseEntity<?> resp = controller.activateTest(String.valueOf(TEST_ID), null, authedRequest());
         assertEquals(200, resp.getStatusCode().value());
         assertTrue(testActive());
         assertEquals(0L, ackCount());
@@ -122,9 +139,9 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
     @org.junit.Test
     public void coverageGapsWithoutAck_returns409_andDoesNotActivate() {
         seedRange("M", 1d, Double.POSITIVE_INFINITY); // leading gap [0,1] for male
-        ResponseEntity<CoverageReport> resp = controller.activateTest(String.valueOf(TEST_ID), null, authedRequest());
+        ResponseEntity<?> resp = controller.activateTest(String.valueOf(TEST_ID), null, authedRequest());
         assertEquals(409, resp.getStatusCode().value());
-        assertTrue(resp.getBody().hasGaps());
+        assertTrue(((CoverageReport) resp.getBody()).hasGaps());
         assertFalse("a 409 must not activate the test", testActive());
         assertEquals(0L, ackCount());
     }
@@ -134,7 +151,7 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
         seedRange("M", 1d, Double.POSITIVE_INFINITY);
         ActivateRequest body = new ActivateRequest();
         body.gapsAcknowledged = "{\"male\":{\"status\":\"GAP\"}}";
-        ResponseEntity<CoverageReport> resp = controller.activateTest(String.valueOf(TEST_ID), body, authedRequest());
+        ResponseEntity<?> resp = controller.activateTest(String.valueOf(TEST_ID), body, authedRequest());
         assertEquals(200, resp.getStatusCode().value());
         assertTrue(testActive());
         assertEquals("an acknowledgment audit row (JSONB) is written", 1L, ackCount());

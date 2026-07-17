@@ -28,8 +28,30 @@ import StorageHistoryModal from "./StorageHistoryModal";
  * (OGC-979 — v1 records the flag; in-progress-order behavior is order-entry's
  * concern). Persisted as a singleton via PUT /rest/test-catalog/tests/{id}/storage.
  */
-const CONDITIONS = ["REFRIGERATED", "FROZEN", "DEEP_FROZEN", "AMBIENT"];
-const DISPOSALS = ["INCINERATION", "AUTOCLAVE", "BIOHAZARD", "STANDARD"];
+// FR-86: full standard-lab value lists (stored as varchar codes in
+// test_sample_handling — no schema change). Review the set with the lab lead.
+const CONDITIONS = [
+  "AMBIENT",
+  "CONTROLLED_ROOM_TEMPERATURE",
+  "COOL_ROOM",
+  "COLD_ROOM",
+  "REFRIGERATED",
+  "FROZEN",
+  "DEEP_FROZEN",
+  "ULTRA_LOW_FREEZER",
+  "WARM_INCUBATOR",
+];
+const DISPOSALS = [
+  "INCINERATION",
+  "AUTOCLAVE",
+  "CHEMICAL_DISINFECTION",
+  "BIOHAZARD",
+  "SHARPS_CONTAINER",
+  "SEWER",
+  "RETURN_TO_SENDER",
+  "ARCHIVE",
+  "STANDARD",
+];
 const UNITS = ["hours", "days", "weeks", "months"];
 
 const toInt = (v) => {
