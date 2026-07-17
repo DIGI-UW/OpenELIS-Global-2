@@ -53,6 +53,17 @@ const BasicInfoSection = ({ testId }) => {
   const [domainRadioKey, setDomainRadioKey] = useState(0);
   const [ackModalOpen, setAckModalOpen] = useState(false);
   const [coverageReport, setCoverageReport] = useState(null);
+  // FR-57/FR-58 — the completeness checklist returned (422) when activation is
+  // refused because the test isn't in an activatable state.
+  const [completenessReport, setCompletenessReport] = useState(null);
+  // FR-58 — the same gaps, fetched proactively on load, shown as a persistent
+  // checklist beside the status toggle for an inactive test.
+  const [completenessGaps, setCompletenessGaps] = useState([]);
+
+  // FR-52/54 — specimen-variant create: ?copyFrom=<sourceTestId> seeds the copy
+  // source and links the new test into that assay group on save.
+  const copyFromId = new URLSearchParams(location.search).get("copyFrom") || "";
+  const [sourceInfo, setSourceInfo] = useState(null);
 
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
@@ -76,6 +87,31 @@ const BasicInfoSection = ({ testId }) => {
     setDomainRadioKey((k) => k + 1);
   };
 
+  // FR-54/54a — prefill the variant form from its source: domain is inherited
+  // (all variants of an assay share a domain), AMR carries over. Name/Code/Sample
+  // type remain the admin's to set (specimen is identity).
+  useEffect(() => {
+    if (!isCreate || !copyFromId) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${copyFromId}/basic-info`,
+      (res) => {
+        if (!res) {
+          return;
+        }
+        setSourceInfo(res);
+        setCreateForm((f) => ({
+          ...f,
+          domain: res.domain || f.domain,
+          antimicrobialResistance: !!res.antimicrobialResistance,
+          labUnitId: res.labUnitId || f.labUnitId,
+        }));
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreate, copyFromId]);
+
   useEffect(() => {
     if (!testId || isCreate) {
       return;
@@ -91,6 +127,18 @@ const BasicInfoSection = ({ testId }) => {
           return;
         }
         setForm(res);
+      },
+    );
+    // FR-58 — proactively fetch what still blocks activation so the editor can
+    // show the checklist before the user tries to activate.
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/completeness`,
+      (res) => {
+        if (res && !res.complete) {
+          setCompletenessGaps(res.messages || []);
+        } else {
+          setCompletenessGaps([]);
+        }
       },
     );
   }, [testId, isCreate]);
@@ -137,6 +185,7 @@ const BasicInfoSection = ({ testId }) => {
       amr: createForm.antimicrobialResistance,
       orderable: createForm.orderable,
       description: createForm.description,
+      copyFromId: copyFromId || undefined,
     };
     postToOpenElisServerFullResponse(
       "/rest/test-catalog/tests",
@@ -208,7 +257,11 @@ const BasicInfoSection = ({ testId }) => {
       `/rest/test-catalog/tests/${testId}/activate`,
       JSON.stringify(gapsAcknowledged ? { gapsAcknowledged } : {}),
       (res) => {
-        if (res && (res.status === 409 || res.statusCode === 409)) {
+        if (res && (res.status === 422 || res.statusCode === 422)) {
+          // FR-57/FR-59 — incomplete test: surface the checklist, never silently
+          // succeed or flip the toggle.
+          setCompletenessReport(res);
+        } else if (res && (res.status === 409 || res.statusCode === 409)) {
           setCoverageReport(res);
           setAckModalOpen(true);
         } else if (res && !res.error) {
@@ -245,6 +298,21 @@ const BasicInfoSection = ({ testId }) => {
   if (isCreate) {
     return (
       <Stack gap={6}>
+        {copyFromId && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            data-testid="variant-copy-banner"
+            title={intl.formatMessage({
+              id: "label.testCatalog.variant.copyBanner.title",
+            })}
+            subtitle={intl.formatMessage(
+              { id: "label.testCatalog.variant.copyBanner.subtitle" },
+              { source: sourceInfo ? sourceInfo.name || "" : "" },
+            )}
+          />
+        )}
         <TextInput
           id="basic-info-name"
           labelText={intl.formatMessage({ id: "label.testCatalog.testName" })}
@@ -509,6 +577,18 @@ const BasicInfoSection = ({ testId }) => {
           }
         }}
       />
+      {!form.active && completenessGaps.length > 0 && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "label.testCatalog.activation.incomplete.heading",
+          })}
+          subtitle={completenessGaps.join(" ")}
+          data-testid="completeness-checklist"
+        />
+      )}
       <Toggle
         id="basic-info-orderable"
         labelText={intl.formatMessage({
@@ -565,6 +645,28 @@ const BasicInfoSection = ({ testId }) => {
           onAcknowledge={() => handleActivate(JSON.stringify(coverageReport))}
           onCancel={cancelAck}
         />
+      )}
+
+      {completenessReport && (
+        <Modal
+          open={!!completenessReport}
+          passiveModal
+          modalHeading={intl.formatMessage({
+            id: "label.testCatalog.activation.incomplete.heading",
+          })}
+          onRequestClose={() => setCompletenessReport(null)}
+        >
+          <p style={{ marginBottom: "1rem" }}>
+            <FormattedMessage id="label.testCatalog.activation.incomplete.body" />
+          </p>
+          <ul style={{ listStyle: "disc", paddingLeft: "1.5rem" }}>
+            {(completenessReport.messages || []).map((msg, idx) => (
+              <li key={idx} style={{ marginBottom: "0.25rem" }}>
+                {msg}
+              </li>
+            ))}
+          </ul>
+        </Modal>
       )}
     </Stack>
   );

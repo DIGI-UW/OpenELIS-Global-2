@@ -587,7 +587,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 SAMPLE_TYPE_ID, TEST_ID);
 
         TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null,
-                "SampleResultsIT", 1, 25);
+                "SampleResultsIT", false, 1, 25);
         TestCatalogEditorRestController.TestListRow row = page.rows.stream()
                 .filter(r -> r.testId.equals(String.valueOf(TEST_ID))).findFirst().orElseThrow();
         assertTrue("test name must be disambiguated by its sample type, got: " + row.name,

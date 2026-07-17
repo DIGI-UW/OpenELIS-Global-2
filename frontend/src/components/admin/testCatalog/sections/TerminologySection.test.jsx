@@ -102,7 +102,14 @@ describe("TerminologySection", () => {
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     const mappings = JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings;
     expect(mappings).toEqual([
-      { id: null, source: "LOINC", code: "1558-6", relationship: "SAME_AS" },
+      {
+        id: null,
+        source: "LOINC",
+        code: "1558-6",
+        relationship: "SAME_AS",
+        displayName: null,
+        componentId: null,
+      },
     ]);
   });
 
@@ -125,7 +132,14 @@ describe("TerminologySection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual([
-      { id: null, source: "SNOMED", code: "12345", relationship: null },
+      {
+        id: null,
+        source: "SNOMED",
+        code: "12345",
+        relationship: "SAME_AS",
+        displayName: null,
+        componentId: null,
+      },
     ]);
   });
 
@@ -149,8 +163,41 @@ describe("TerminologySection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual([
-      { id: "a", source: "LOINC", code: "9999-9", relationship: "SAME_AS" },
+      {
+        id: "a",
+        source: "LOINC",
+        code: "9999-9",
+        relationship: "SAME_AS",
+        displayName: null,
+        componentId: null,
+      },
     ]);
+  });
+
+  it("refuses to save a duplicate (source, code) mapping instead of PUTting", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({
+        testId: "42",
+        mappings: [
+          { id: "a", source: "LOINC", code: "1558-6", relationship: "SAME_AS" },
+        ],
+      }),
+    );
+    renderSection();
+    await screen.findByTestId("mapping-row-a");
+
+    // Draft the same (source, code) again and try to save straight away.
+    fireEvent.change(
+      screen.getByLabelText(messages["label.testCatalog.terminology.source"]),
+      { target: { value: "LOINC" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText(messages["label.testCatalog.terminology.code"]),
+      { target: { value: "1558-6" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    // The duplicate is caught client-side with a specific warning — no PUT.
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
   });
 
   it("removes a mapping so it drops out of the saved payload", async () => {

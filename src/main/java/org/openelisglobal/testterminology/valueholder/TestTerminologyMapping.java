@@ -34,6 +34,14 @@ public class TestTerminologyMapping extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
+    /**
+     * Optional scope: when set, this mapping applies to a single result component
+     * ({@code test_result_component.id}, a VARCHAR(36)); when null the mapping is
+     * test-level (today's behavior).
+     */
+    @Column(name = "component_id", length = 36)
+    private String componentId;
+
     @Column(name = "source", nullable = false, length = 20)
     private String source;
 
@@ -42,6 +50,12 @@ public class TestTerminologyMapping extends BaseObject<String> {
 
     @Column(name = "relationship", length = 20)
     private String relationship;
+
+    /**
+     * Human-readable label for the standard term (FR-69), e.g. the LOINC long name.
+     */
+    @Column(name = "display_name", length = 255)
+    private String displayName;
 
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
@@ -69,6 +83,14 @@ public class TestTerminologyMapping extends BaseObject<String> {
         this.testId = testId;
     }
 
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
     public String getSource() {
         return source;
     }
@@ -91,6 +113,14 @@ public class TestTerminologyMapping extends BaseObject<String> {
 
     public void setRelationship(String relationship) {
         this.relationship = relationship;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
 
     public String getIsActive() {

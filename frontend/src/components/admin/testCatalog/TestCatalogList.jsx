@@ -25,12 +25,22 @@ import {
   Button,
   Pagination,
   Tag,
+  Toggle,
   Loading,
   InlineNotification,
 } from "@carbon/react";
-import { Add, Edit, Filter } from "@carbon/icons-react";
+import {
+  Add,
+  Edit,
+  Filter,
+  Link as LinkIcon,
+  Unlink,
+} from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { DEFAULT_SECTION } from "./sectionConfig";
 
@@ -69,6 +79,9 @@ const AMR_OPTIONS = [
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+// FR-61 — errors sort ahead of warnings ahead of info in the per-row tag list.
+const SEVERITY_RANK = { ERROR: 0, WARNING: 1, INFO: 2 };
+
 const TestCatalogList = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -94,6 +107,17 @@ const TestCatalogList = () => {
     initParams.get("search") || "",
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // FR-61 — "only tests with issues" toggle + dismissible roll-up banner.
+  const [issuesOnly, setIssuesOnly] = useState(
+    initParams.get("issuesOnly") === "true",
+  );
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  // FR-50 — grouped (default) vs flat view; flat persists as ?view=flat.
+  const [view, setView] = useState(
+    initParams.get("view") === "flat" ? "flat" : "grouped",
+  );
+  // Refresh trigger after a link/unlink mutation.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Sample types for the filter dropdown — fetched once (static reference data).
   useEffect(() => {
@@ -121,6 +145,8 @@ const TestCatalogList = () => {
     if (amr) params.set("amr", amr);
     if (sampleType) params.set("sampleType", sampleType);
     if (debouncedSearch) params.set("search", debouncedSearch);
+    if (issuesOnly) params.set("issuesOnly", "true");
+    if (view === "flat") params.set("view", "flat");
     params.set("page", String(page));
     params.set("pageSize", String(pageSize));
     history.replace({ search: params.toString() });
@@ -150,6 +176,9 @@ const TestCatalogList = () => {
     amr,
     sampleType,
     debouncedSearch,
+    issuesOnly,
+    view,
+    refreshKey,
     page,
     pageSize,
     history,
@@ -210,6 +239,37 @@ const TestCatalogList = () => {
     );
   };
 
+  // FR-51 — link ≥2 selected ungrouped rows into one assay group.
+  const linkVariants = (selectedRows) => {
+    const testIds = selectedRows.map((r) => r.id);
+    postToOpenElisServerJsonResponse(
+      "/rest/test-catalog/variants/link",
+      JSON.stringify({ testIds }),
+      (res) => {
+        if (res && res.groupId) {
+          setRefreshKey((k) => k + 1);
+        }
+      },
+    );
+  };
+
+  // FR-51 — remove selected rows from their groups without touching any field.
+  const unlinkVariants = (selectedRows) => {
+    let remaining = selectedRows.length;
+    selectedRows.forEach((r) => {
+      postToOpenElisServerJsonResponse(
+        "/rest/test-catalog/variants/unlink",
+        JSON.stringify({ testId: r.id }),
+        () => {
+          remaining -= 1;
+          if (remaining <= 0) {
+            setRefreshKey((k) => k + 1);
+          }
+        },
+      );
+    });
+  };
+
   const sampleTypeItems = [
     {
       id: "",
@@ -226,7 +286,7 @@ const TestCatalogList = () => {
     (amr ? 1 : 0) +
     (sampleType ? 1 : 0);
 
-  const tableRows = (pageData.rows || []).map((r) => ({
+  const baseRows = (pageData.rows || []).map((r) => ({
     id: r.testId,
     name: r.name,
     sampleType: r.sampleType || "",
@@ -235,7 +295,65 @@ const TestCatalogList = () => {
     active: r.active,
     amr: r.amr,
     coverageIncomplete: r.coverageIncomplete,
+    hasLoinc: r.hasLoinc,
+    groupId: r.groupId || null,
+    findings: r.findings || [],
   }));
+
+  // FR-46/47 — group metadata for the current page, keyed by groupId. Only groups
+  // with ≥2 members on this page get group chrome; single-member groups and
+  // ungrouped rows render flat (FR-48).
+  const groupMeta = {};
+  baseRows.forEach((r) => {
+    if (!r.groupId) {
+      return;
+    }
+    const g = (groupMeta[r.groupId] = groupMeta[r.groupId] || {
+      count: 0,
+      activeCount: 0,
+      domains: new Set(),
+      errorCount: 0,
+      warningCount: 0,
+    });
+    g.count += 1;
+    if (r.active) {
+      g.activeCount += 1;
+    }
+    if (r.domain) {
+      g.domains.add(r.domain);
+    }
+    (r.findings || []).forEach((f) => {
+      if (f.severity === "ERROR") {
+        g.errorCount += 1;
+      } else if (f.severity === "WARNING") {
+        g.warningCount += 1;
+      }
+    });
+  });
+  const isRealGroup = (gid) =>
+    gid && groupMeta[gid] && groupMeta[gid].count >= 2;
+
+  // In grouped view, order rows so members of the same real group are adjacent
+  // (FR-47); flat view keeps the server's name order exactly (FR-50).
+  const tableRows =
+    view === "grouped"
+      ? [...baseRows].sort((a, b) => {
+          const ga = isRealGroup(a.groupId) ? a.groupId : `~${a.id}`;
+          const gb = isRealGroup(b.groupId) ? b.groupId : `~${b.id}`;
+          if (ga !== gb) {
+            return ga < gb ? -1 : 1;
+          }
+          return (a.name || "").localeCompare(b.name || "");
+        })
+      : baseRows;
+
+  // FR-63 — finding severity → Carbon tag color.
+  const findingTagType = (severity) =>
+    severity === "ERROR"
+      ? "red"
+      : severity === "WARNING"
+        ? "warm-gray"
+        : "gray";
 
   return (
     <>
@@ -338,10 +456,59 @@ const TestCatalogList = () => {
                     setSampleType(selectedItem ? selectedItem.id : "");
                   }}
                 />
+                <Toggle
+                  id="filter-issues-only"
+                  size="sm"
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.list.filter.issuesOnly",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={issuesOnly}
+                  onToggle={(checked) => {
+                    setPage(1);
+                    setIssuesOnly(checked);
+                  }}
+                />
               </div>
             )}
           </div>
         </Column>
+
+        {!issuesOnly &&
+          !bannerDismissed &&
+          (pageData.totalWithIssues || 0) > 0 && (
+            <Column lg={16} md={8} sm={4}>
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                data-testid="health-banner"
+                title={intl.formatMessage(
+                  { id: "label.testCatalog.list.health.banner" },
+                  {
+                    count: pageData.totalWithIssues,
+                    errors: pageData.totalErrors || 0,
+                    warnings: pageData.totalWarnings || 0,
+                  },
+                )}
+                actions={
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setPage(1);
+                      setIssuesOnly(true);
+                    }}
+                  >
+                    {intl.formatMessage({
+                      id: "label.testCatalog.list.health.show",
+                    })}
+                  </Button>
+                }
+                onCloseButtonClick={() => setBannerDismissed(true)}
+              />
+            </Column>
+          )}
 
         <Column lg={16} md={8} sm={4}>
           {loading ? (
@@ -381,6 +548,24 @@ const TestCatalogList = () => {
                           id: "button.testCatalog.editRelated",
                         })}
                       </TableBatchAction>
+                      <TableBatchAction
+                        renderIcon={LinkIcon}
+                        disabled={selectedRows.length < 2}
+                        onClick={() => linkVariants(selectedRows)}
+                      >
+                        {intl.formatMessage({
+                          id: "button.testCatalog.linkVariants",
+                        })}
+                      </TableBatchAction>
+                      <TableBatchAction
+                        renderIcon={Unlink}
+                        disabled={selectedRows.length < 1}
+                        onClick={() => unlinkVariants(selectedRows)}
+                      >
+                        {intl.formatMessage({
+                          id: "button.testCatalog.unlinkVariants",
+                        })}
+                      </TableBatchAction>
                     </TableBatchActions>
                     <TableToolbarContent>
                       <Search
@@ -396,6 +581,23 @@ const TestCatalogList = () => {
                         }}
                         value={search}
                       />
+                      <Button
+                        kind="ghost"
+                        onClick={() => {
+                          setPage(1);
+                          setView((v) =>
+                            v === "grouped" ? "flat" : "grouped",
+                          );
+                        }}
+                        data-testid="view-toggle"
+                      >
+                        {intl.formatMessage({
+                          id:
+                            view === "grouped"
+                              ? "button.testCatalog.view.flat"
+                              : "button.testCatalog.view.grouped",
+                        })}
+                      </Button>
                       <Button
                         renderIcon={Add}
                         onClick={openNewTest}
@@ -432,76 +634,178 @@ const TestCatalogList = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {rows.map((row) => {
+                        {rows.map((row, rowIndex) => {
                           const source = tableRows.find((t) => t.id === row.id);
+                          // FR-47 — in grouped view, emit a group header before the
+                          // first member of each real (≥2) group on this page.
+                          const gid = source && source.groupId;
+                          const prevSource =
+                            rowIndex > 0
+                              ? tableRows.find(
+                                  (t) => t.id === rows[rowIndex - 1].id,
+                                )
+                              : null;
+                          const prevGid = prevSource && prevSource.groupId;
+                          const showGroupHeader =
+                            view === "grouped" &&
+                            isRealGroup(gid) &&
+                            gid !== prevGid;
+                          const meta = gid ? groupMeta[gid] : null;
+                          const groupHeader =
+                            showGroupHeader && meta ? (
+                              <TableRow
+                                key={`group-${gid}`}
+                                data-testid={`group-header-${gid}`}
+                              >
+                                <TableCell colSpan={hdrs.length + 1}>
+                                  <strong>{source.name}</strong>{" "}
+                                  <Tag type="blue" size="sm">
+                                    {intl.formatMessage(
+                                      {
+                                        id: "label.testCatalog.list.group.variantCount",
+                                      },
+                                      { count: meta.count },
+                                    )}
+                                  </Tag>{" "}
+                                  <Tag type="cool-gray" size="sm">
+                                    {intl.formatMessage(
+                                      {
+                                        id: "label.testCatalog.list.group.statusUnion",
+                                      },
+                                      {
+                                        active: meta.activeCount,
+                                        inactive: meta.count - meta.activeCount,
+                                      },
+                                    )}
+                                  </Tag>{" "}
+                                  {meta.errorCount > 0 && (
+                                    <Tag type="red" size="sm">
+                                      {meta.errorCount}
+                                    </Tag>
+                                  )}
+                                  {meta.warningCount > 0 && (
+                                    <Tag type="warm-gray" size="sm">
+                                      {meta.warningCount}
+                                    </Tag>
+                                  )}{" "}
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    renderIcon={Add}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      history.push(
+                                        `/MasterListsPage/TestCatalogEditor/new/${DEFAULT_SECTION}?copyFrom=${source.id}`,
+                                      );
+                                    }}
+                                  >
+                                    {intl.formatMessage({
+                                      id: "button.testCatalog.addVariant",
+                                    })}
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ) : null;
                           return (
-                            <TableRow
-                              {...getRowProps({ row })}
-                              key={row.id}
-                              onClick={() => openEditor(row.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  openEditor(row.id);
-                                }
-                              }}
-                              tabIndex={0}
-                              style={{ cursor: "pointer" }}
-                              data-cy={`test-row-${row.id}`}
-                            >
-                              {/* Selecting a row must not open the editor. */}
-                              <TableSelectRow
-                                {...getSelectionProps({ row })}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {cell.info.header === "domain" ? (
-                                    <>
-                                      {cell.value && (
-                                        <Tag type="gray" size="sm">
-                                          {intl.formatMessage({
-                                            id: `label.testCatalog.basicInfo.domain.${cell.value}`,
-                                            defaultMessage: cell.value,
-                                          })}
-                                        </Tag>
-                                      )}
-                                      {source && source.amr && (
+                            <React.Fragment key={row.id}>
+                              {groupHeader}
+                              <TableRow
+                                {...getRowProps({ row })}
+                                onClick={() => openEditor(row.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    openEditor(row.id);
+                                  }
+                                }}
+                                tabIndex={0}
+                                style={{ cursor: "pointer" }}
+                                data-cy={`test-row-${row.id}`}
+                              >
+                                {/* Selecting a row must not open the editor. */}
+                                <TableSelectRow
+                                  {...getSelectionProps({ row })}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                {row.cells.map((cell) => (
+                                  <TableCell key={cell.id}>
+                                    {cell.info.header === "domain" ? (
+                                      <>
+                                        {cell.value && (
+                                          <Tag type="gray" size="sm">
+                                            {intl.formatMessage({
+                                              id: `label.testCatalog.basicInfo.domain.${cell.value}`,
+                                              defaultMessage: cell.value,
+                                            })}
+                                          </Tag>
+                                        )}
+                                      </>
+                                    ) : cell.info.header === "status" ? (
+                                      <Tag
+                                        type={
+                                          source && source.active
+                                            ? "green"
+                                            : "cool-gray"
+                                        }
+                                        size="sm"
+                                      >
+                                        <FormattedMessage
+                                          id={
+                                            source && source.active
+                                              ? "label.testCatalog.basicInfo.active"
+                                              : "label.testCatalog.list.filter.inactive"
+                                          }
+                                        />
+                                      </Tag>
+                                    ) : (
+                                      cell.value
+                                    )}
+                                    {cell.info.header === "name" &&
+                                      source &&
+                                      source.amr && (
                                         <Tag type="magenta" size="sm">
                                           <FormattedMessage id="label.testCatalog.list.amrTag" />
                                         </Tag>
                                       )}
-                                    </>
-                                  ) : cell.info.header === "status" ? (
-                                    <Tag
-                                      type={
-                                        source && source.active
-                                          ? "green"
-                                          : "cool-gray"
-                                      }
-                                      size="sm"
-                                    >
-                                      <FormattedMessage
-                                        id={
-                                          source && source.active
-                                            ? "label.testCatalog.basicInfo.active"
-                                            : "label.testCatalog.list.filter.inactive"
-                                        }
-                                      />
-                                    </Tag>
-                                  ) : (
-                                    cell.value
-                                  )}
-                                  {cell.info.header === "name" &&
-                                    source &&
-                                    source.coverageIncomplete && (
-                                      <Tag type="red" size="sm">
-                                        <FormattedMessage id="label.testCatalog.list.coverageIncomplete" />
-                                      </Tag>
-                                    )}
-                                </TableCell>
-                              ))}
-                            </TableRow>
+                                    {cell.info.header === "name" &&
+                                      source &&
+                                      source.active &&
+                                      !source.hasLoinc && (
+                                        <Tag type="warm-gray" size="sm">
+                                          <FormattedMessage id="label.testCatalog.list.noLoinc" />
+                                        </Tag>
+                                      )}
+                                    {cell.info.header === "name" &&
+                                      source &&
+                                      source.coverageIncomplete && (
+                                        <Tag type="red" size="sm">
+                                          <FormattedMessage id="label.testCatalog.list.coverageIncomplete" />
+                                        </Tag>
+                                      )}
+                                    {/* FR-61b/62/63 — per-row issue tags, errors first,
+                                      tooltip carries the one-line explanation. */}
+                                    {cell.info.header === "name" &&
+                                      source &&
+                                      [...source.findings]
+                                        .sort(
+                                          (a, b) =>
+                                            SEVERITY_RANK[a.severity] -
+                                            SEVERITY_RANK[b.severity],
+                                        )
+                                        .map((f, fi) => (
+                                          <Tag
+                                            key={fi}
+                                            type={findingTagType(f.severity)}
+                                            size="sm"
+                                            title={f.message}
+                                          >
+                                            {f.message}
+                                          </Tag>
+                                        ))}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            </React.Fragment>
                           );
                         })}
                       </TableBody>

@@ -838,6 +838,11 @@ public abstract class PatientReport extends Report {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         StringBuilder reportBuilder = new StringBuilder();
         for (TestResultComponent component : components) {
+            // OGC-1127: a component flagged not to print is omitted from the report.
+            // The primary is always kept so the test never renders with no result.
+            if (!component.getIsPrimary() && !component.getShowOnReport()) {
+                continue;
+            }
             List<Result> componentResults = new ArrayList<>();
             for (Result result : resultList) {
                 if (result.getParentResult() != null) {
