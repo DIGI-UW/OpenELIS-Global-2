@@ -167,6 +167,19 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     }
 
     @org.junit.Test
+    public void saveRanges_validBoundsRoundTrip() {
+        // OGC-1117: the Valid range is now editable in this dialog and must persist.
+        RangeDto r = range(null, "M", 0d, 30d);
+        r.lowValid = 2d;
+        r.highValid = 20d;
+        controller.saveRanges(testId(), body(r), authedRequest());
+
+        RangeDto loaded = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(Double.valueOf(2d), loaded.lowValid);
+        assertEquals(Double.valueOf(20d), loaded.highValid);
+    }
+
+    @org.junit.Test
     public void saveRanges_openEndedMaxAgeRoundTripsAsNull_andCoversToInfinity() {
         // maxAge null → open-ended; a single 0..∞ all-sex range fully covers both.
         controller.saveRanges(testId(), body(range(null, null, 0d, null)), authedRequest());
@@ -211,9 +224,12 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
 
     @org.junit.Test
     public void saveRanges_withAnUncoveredAgeWindow_reportsAMaleGap() {
-        // Male covered 0–30d and 60–365d, leaving days 30–60 UNCOVERED — the kind of
-        // gap the activation safety gate must catch. No female ranges → female EMPTY.
-        RangesResponse put = body(range(null, "M", 0d, 30d), range(null, "M", 60d, 365d));
+        // Male covered 0–30d and 60d–open-ended, leaving days 30–60 UNCOVERED — the
+        // kind of gap the activation safety gate must catch. The top band is
+        // open-ended so the only gap under test is [30,60] (a finite top would also
+        // leave an uncovered tail — see the coverage unit tests). No female ranges →
+        // female EMPTY.
+        RangesResponse put = body(range(null, "M", 0d, 30d), range(null, "M", 60d, null));
         RangesResponse saved = controller.saveRanges(testId(), put, authedRequest()).getBody();
 
         assertEquals(Status.GAP, saved.coverage.male.status);

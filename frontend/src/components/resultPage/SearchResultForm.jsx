@@ -858,6 +858,10 @@ export function SearchResults(props) {
   const [storageModalRow, setStorageModalRow] = useState(null);
 
   const componentMounted = useRef(false);
+  // Saved multiselect values per row, frozen once the user starts editing so
+  // the Current Result column keeps showing what is persisted, not the
+  // in-progress selection (multiSelectResultValues is the editable field).
+  const savedMultiSelectValues = useRef({});
 
   useEffect(() => {
     componentMounted.current = true;
@@ -1080,10 +1084,12 @@ export function SearchResults(props) {
     {
       id: "result",
       name: intl.formatMessage({ id: "column.name.result" }),
-      cell: (row, index, column, id) => {
-        return renderCell(row, index, column, id);
-      },
-      width: "20rem",
+      cell: (row, index, column, id) => (
+        <div style={{ paddingLeft: "1.5rem", width: "100%" }}>
+          {renderCell(row, index, column, id)}
+        </div>
+      ),
+      width: "14rem",
     },
     {
       id: "currentResult",
@@ -1190,7 +1196,7 @@ export function SearchResults(props) {
 
       case "accept":
         return (
-          <div style={{ paddingRight: "1.5rem", marginRight: "0.5rem" }}>
+          <div style={{ paddingRight: "2rem", marginRight: "1rem" }}>
             <AcceptUnconditionallyGuard
               rowId={row.id}
               accepted={!!acceptAsIs[row.id]}
@@ -1389,7 +1395,39 @@ export function SearchResults(props) {
       case "currentResult":
         switch (row.resultType) {
           case "M":
-          case "C":
+          case "C": {
+            const labelFor = (dictId) =>
+              row.dictionaryResults?.find((result) => result.id == dictId)
+                ?.value || dictId;
+            const snapshotKey = `${row.analysisId}_${row.testResultComponentId || ""}`;
+            if (row.isModified !== "true") {
+              savedMultiSelectValues.current[snapshotKey] =
+                row.multiSelectResultValues || "{}";
+            }
+            let groups;
+            try {
+              groups = JSON.parse(
+                savedMultiSelectValues.current[snapshotKey] || "{}",
+              );
+            } catch {
+              groups = {};
+            }
+            const lines = Object.keys(groups)
+              .sort((a, b) => Number(a) - Number(b))
+              .map((k) =>
+                groups[k].split(",").filter(Boolean).map(labelFor).join(", "),
+              )
+              .filter(Boolean);
+            return (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {lines.map((line, index) => (
+                  <div key={index}>
+                    {row.resultType === "C" ? `[ ${line} ]` : line}
+                  </div>
+                ))}
+              </div>
+            );
+          }
           case "D":
             return (
               <>

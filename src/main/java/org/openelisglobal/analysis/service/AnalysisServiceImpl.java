@@ -780,6 +780,12 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds) {
+        return baseObjectDAO.getAnalysisStartedOnByStatusId(startedDate, statusIds);
+    }
+
+    @Override
     public List<Analysis> getAnalysesResultEnteredOnExcludedByStatusId(Date completedDate, Set<String> statusIds) {
         return baseObjectDAO.getAnalysesResultEnteredOnExcludedByStatusId(completedDate, statusIds);
     }
