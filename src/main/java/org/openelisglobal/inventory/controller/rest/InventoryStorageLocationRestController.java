@@ -132,6 +132,11 @@ public class InventoryStorageLocationRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             location.setSysUserId(sysUserId);
 
+            // Generate FHIR UUID if not provided
+            if (location.getFhirUuid() == null) {
+                location.setFhirUuid(java.util.UUID.randomUUID());
+            }
+
             InventoryStorageLocation savedLocation = storageLocationService.save(location);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLocation);
         } catch (Exception e) {

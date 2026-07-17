@@ -25,12 +25,12 @@ public interface QCDashboardService {
     /**
      * Get compliance status for a specific instrument using default 1-month window.
      */
-    InstrumentQCStatus getInstrumentComplianceStatus(Integer instrumentId);
+    InstrumentQCStatus getInstrumentComplianceStatus(String instrumentId);
 
     /**
      * Get compliance status for a specific instrument within a date range.
      */
-    InstrumentQCStatus getInstrumentComplianceStatus(Integer instrumentId, Timestamp startDate, Timestamp endDate);
+    InstrumentQCStatus getInstrumentComplianceStatus(String instrumentId, Timestamp startDate, Timestamp endDate);
 
     /**
      * Get dashboard summary using default 1-month window.

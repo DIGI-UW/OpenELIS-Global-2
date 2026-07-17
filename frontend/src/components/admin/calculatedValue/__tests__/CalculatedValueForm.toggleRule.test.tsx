@@ -6,33 +6,22 @@ import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 
 /**
- * Regression for OGC-655 — "Toggle Rule" on Calculated Values has no
- * persistence path.
+ * OGC-655 — "Toggle Rule" persists Active state, while display
+ * expand/collapse is owned by an Accordion that wraps the editor body.
  *
- * Bug-by-design: clicking the Toggle Rule switch on a calculation only
- * mutates local React state (`toggleCalculation` at
- * CalculatedValueForm.tsx:622-626). It does not fire any API request, and
- * the GET endpoint that loads calculations clobbers `toggled` to false on
- * every read (CalculatedValueRestController.java:78). So even if local
- * state persisted across reloads, the BE would erase it.
- *
- * This test asserts the *current* behavior — local state changes, no fetch
- * fires — to lock the bug-confirmed state. When OGC-655 is fixed (the
- * toggle starts persisting), this test will need to flip its assertions.
+ * - Clicking Toggle Rule POSTs to /rest/activate-test-calculation/{id} or
+ *   /rest/deactivate-test-calculation/{id} and mirrors the new state into
+ *   the local `active` flag.
+ * - Clicking Toggle Rule does NOT collapse the editor body — the Accordion
+ *   chevron is the only display affordance.
  */
 
-// Capture POST/PATCH calls so we can prove no API fires on toggle click.
-// Hoisted so the vi.mock factory below (which runs at top-of-file before
-// regular let/const initializations) can reference it.
 const { postSpy } = vi.hoisted(() => ({ postSpy: vi.fn() }));
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn((url, callback) => {
     if (typeof callback !== "function") return;
     if (url === "/rest/test-calculations") {
-      // One ACTIVE calculation with toggled=true, so the editor body renders
-      // (gated by `{calculation.toggled && (...)}`) and we can assert a
-      // toggle click HIDES it (proving local state changed).
       callback([
         {
           id: 1,
@@ -74,7 +63,13 @@ vi.mock("../../../utils/Utils", () => ({
     }
     callback([]);
   }),
-  postToOpenElisServer: postSpy,
+  // Default the post callback to a 200 status so toggle clicks don't revert.
+  // Utils.js#postToOpenElisServer passes response.status (a NUMBER) — mirror
+  // that here so the test catches strict-equality regressions in callers.
+  postToOpenElisServer: vi.fn((url, _body, callback) => {
+    postSpy(url);
+    if (typeof callback === "function") callback(200);
+  }),
 }));
 
 vi.mock("../../../layout/Layout", () => ({
@@ -109,52 +104,63 @@ const renderForm = () =>
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-describe("OGC-655 — Calculated Values 'Toggle Rule' has no persistence path", () => {
+describe("OGC-655 — Calculated Values 'Toggle Rule' persists Active state", () => {
   beforeEach(() => {
     postSpy.mockReset();
   });
 
-  test("clicking Toggle Rule does not fire any POST/PATCH (no API call)", async () => {
+  test("toggle OFF fires POST /rest/deactivate-test-calculation/{id}", async () => {
     const user = userEvent.setup();
     renderForm();
     await flush();
 
-    // Carbon Toggle renders an input[role="switch"]. The id is `${index}_toggle`
-    // per CalculatedValueForm.tsx:668.
     const toggle = await screen.findByRole("switch", {
-      name: /toggle/i,
+      name: /activate.*deactivate|toggle/i,
     });
-
     await user.click(toggle);
     await flush();
 
     expect(
       postSpy,
-      "OGC-655: Toggle Rule click must not fire any persistence call (current bug-by-design state)",
-    ).not.toHaveBeenCalled();
+      "OGC-655: toggle off must persist via deactivate endpoint",
+    ).toHaveBeenCalledWith("/rest/deactivate-test-calculation/1");
   });
 
-  test("Toggle Rule click HIDES the editor body (local state changes only)", async () => {
+  test("toggle OFF updates Active label without collapsing the editor body", async () => {
     const user = userEvent.setup();
     renderForm();
     await flush();
 
-    // The editor body is gated by `{calculation.toggled && ...}`. With
-    // toggled=true (initial state we mocked), the "Add" buttons inside the
-    // editor render. Confirm one is visible before the click.
+    // Open the accordion so the editor body is visible for the assertion.
+    // The Rule details title is the accordion header (a button).
+    const accordionHeader = await screen.findByRole("button", {
+      name: /view rule|rule details/i,
+    });
+    await user.click(accordionHeader);
+    await flush();
+
+    // Pre-condition: rule active=true, editor body visible after expanding.
     expect(
       screen.queryByRole("button", { name: /test result/i }),
-      "editor body should be visible while toggled=true",
+      "editor body should be visible after expanding the accordion",
     ).not.toBeNull();
 
-    const toggle = await screen.findByRole("switch", { name: /toggle/i });
+    const toggle = await screen.findByRole("switch", {
+      name: /activate.*deactivate|toggle/i,
+    });
     await user.click(toggle);
     await flush();
 
-    // After clicking, toggled flips to false; the gated editor unmounts.
+    // Active label flips to reflect the new state.
+    expect(
+      screen.queryByText(/active:\s*false/i),
+      "OGC-655: Active label should reflect the new state",
+    ).not.toBeNull();
+
+    // Editor body stays expanded — toggle controls activation, not display.
     expect(
       screen.queryByRole("button", { name: /test result/i }),
-      "editor body should be hidden after toggle off",
-    ).toBeNull();
+      "editor body should remain visible after toggle off — Accordion owns display",
+    ).not.toBeNull();
   });
 });

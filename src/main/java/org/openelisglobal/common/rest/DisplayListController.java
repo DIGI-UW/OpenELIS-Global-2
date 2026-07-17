@@ -255,6 +255,34 @@ public class DisplayListController extends BaseRestController {
         return displayListform;
     }
 
+    @Autowired
+    private org.openelisglobal.testmethod.service.TestMethodService testMethodService;
+
+    public static class MethodsForTestResponse {
+        public List<IdValuePair> methods;
+        public String defaultMethodId;
+
+        public MethodsForTestResponse(List<IdValuePair> methods, String defaultMethodId) {
+            this.methods = methods;
+            this.defaultMethodId = defaultMethodId;
+        }
+    }
+
+    /**
+     * Returns methods linked to the given test plus the default method id. Falls
+     * back to all active methods (no default) if the test has no configured links.
+     */
+    @GetMapping(value = "methods-for-test/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public MethodsForTestResponse getMethodsForTest(@PathVariable String testId) {
+        List<IdValuePair> methodList = testMethodService.getMethodDisplayListForTest(testId);
+        if (methodList != null) {
+            return new MethodsForTestResponse(methodList, testMethodService.getDefaultMethodId(testId));
+        }
+        return new MethodsForTestResponse(DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS),
+                null);
+    }
+
     @GetMapping(value = "tests-by-sample", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getTestsBySample(@RequestParam String sampleType) {
@@ -305,6 +333,14 @@ public class DisplayListController extends BaseRestController {
         configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
         configs.put(Property.USE_NEW_ADDRESS_HIERARCHY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY));
+        configs.put(Property.PATIENT_NATIONAL_ID_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED));
+        configs.put(Property.PATIENT_ALIAS_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_ENABLED));
+        configs.put(Property.PATIENT_ALIAS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_LABEL));
+        configs.put(Property.PATIENT_ID_DOCUMENTS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL));
         return configs;
     }
 
@@ -319,6 +355,12 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRefSiteEntry));
         configs.put(Property.PHONE_FORMAT.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT));
+        configs.put(Property.PHONE_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT_LABEL));
+        configs.put(Property.PHONE_INTERNATIONAL_VALIDATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION));
+        configs.put(Property.PHONE_INTERNATIONAL_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL));
         configs.put(Property.DEFAULT_NATIONALITY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_NATIONALITY));
         configs.put(Property.releaseNumber.toString(),
@@ -529,7 +571,8 @@ public class DisplayListController extends BaseRestController {
             List<IdValuePair> resultList = new ArrayList<>();
             List<TestResult> results = testResultService.getActiveTestResultsByTest(test.getId());
             results.forEach(result -> {
-                if (result.getValue() != null) {
+                String type = result.getTestResultType();
+                if (result.getValue() != null && ("D".equals(type) || "M".equals(type) || "C".equals(type))) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
                     if (dict != null) {
                         resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));

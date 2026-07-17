@@ -174,6 +174,7 @@ const PatientInfo = (props) => {
                   }
                 >
                   <CreatePatientForm
+                    key={selectedPatient.patientPK || "new"}
                     showActionsButton={false}
                     selectedPatient={selectedPatient}
                     orderFormValues={orderFormValues}

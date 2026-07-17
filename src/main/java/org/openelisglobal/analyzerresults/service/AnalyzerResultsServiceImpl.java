@@ -50,6 +50,7 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     AnalyzerResultsServiceImpl() {
         super(AnalyzerResults.class);
+        this.auditTrailLog = true;
     }
 
     @Override

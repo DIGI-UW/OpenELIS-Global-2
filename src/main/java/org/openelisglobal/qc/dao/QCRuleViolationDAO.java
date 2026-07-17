@@ -14,7 +14,7 @@ public interface QCRuleViolationDAO extends BaseDAO<QCRuleViolation, String> {
     /**
      * Get all violations for a specific instrument.
      */
-    List<QCRuleViolation> findByInstrument(Integer instrumentId) throws LIMSRuntimeException;
+    List<QCRuleViolation> findByInstrument(String instrumentId) throws LIMSRuntimeException;
 
     /**
      * Get unresolved violations.
@@ -29,13 +29,13 @@ public interface QCRuleViolationDAO extends BaseDAO<QCRuleViolation, String> {
     /**
      * Get violations by instrument and date range.
      */
-    List<QCRuleViolation> findByInstrumentAndDateRange(Integer instrumentId, Timestamp startDate, Timestamp endDate)
+    List<QCRuleViolation> findByInstrumentAndDateRange(String instrumentId, Timestamp startDate, Timestamp endDate)
             throws LIMSRuntimeException;
 
     /**
      * Get unresolved violations for a specific instrument.
      */
-    List<QCRuleViolation> findUnresolvedByInstrument(Integer instrumentId) throws LIMSRuntimeException;
+    List<QCRuleViolation> findUnresolvedByInstrument(String instrumentId) throws LIMSRuntimeException;
 
     /**
      * Get violations for a specific triggering QC result.

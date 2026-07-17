@@ -1,36 +1,15 @@
 import React from "react";
-import { render, screen, prettyDOM, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route } from "react-router-dom";
+import { vi } from "vitest";
 import OEHeader from "./Header";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./Layout";
 import messages from "../../languages/en.json";
 import { getFromOpenElisServer } from "../utils/Utils";
-
-/**
- * DOM Inspection Helper
- *
- * Use these helpers to debug DOM structure in tests:
- *
- * - logDOM(container) - Logs entire rendered DOM tree
- * - logDOM(container, '.cds--side-nav__menu-item') - Logs specific element
- * - screen.debug() - React Testing Library's built-in debug (logs to console)
- *
- * Example usage:
- *   const { container } = render(<Component />);
- *   logDOM(container, '.cds--side-nav__link--current'); // Inspect active link
- */
-const logDOM = (container, selector = null) => {
-  const element = selector ? container.querySelector(selector) : container;
-  if (element) {
-    console.log(prettyDOM(element));
-  } else {
-    console.log(`Element not found: ${selector}`);
-  }
-};
 
 // Mock Utils
 vi.mock("../utils/Utils", async () => {
@@ -312,6 +291,7 @@ const renderHeader = (options = {}) => {
     initialRoute = "/",
     sidenavMode = "close",
     menuData = MOCK_MENU_DATA,
+    navContext = "main",
   } = options;
   const mockGetFromServer = getFromOpenElisServer;
   mockGetFromServer.mockImplementation((url, callback) => {
@@ -319,6 +299,8 @@ const renderHeader = (options = {}) => {
       callback(menuData);
     } else if (url.includes("/notifications")) {
       callback([]);
+    } else if (url === "/rest/database-cleaning/status") {
+      callback({ trainingInstallation: false });
     }
   });
 
@@ -340,6 +322,13 @@ const renderHeader = (options = {}) => {
                 toggleSideNav={mockToggle}
                 setMode={mockSetMode}
                 SIDENAV_MODES={SIDENAV_MODES}
+                navContext={navContext}
+              />
+              <Route
+                path="*"
+                render={({ location }) => (
+                  <span data-testid="current-path">{location.pathname}</span>
+                )}
               />
             </NotificationContext.Provider>
           </ConfigurationContext.Provider>
@@ -823,12 +812,7 @@ describe("Header Component - M2b Enhancement Tests", () => {
     });
   });
 
-  // Pages that own their own internal sub-nav (currently /admin and
-  // /MasterListsPage) can't share horizontal space with the side drawer.
-  // The leaf-click handler fires setMode(CLOSE) once on the click — no
-  // route-watching, no admin-context state machine. After this single
-  // call, the drawer behaves normally; user can re-open if they want.
-  describe("Close drawer on click for pages with own sub-nav", () => {
+  describe("Admin navigation context switching", () => {
     const MENU_DATA = [
       {
         menu: {
@@ -850,7 +834,7 @@ describe("Header Component - M2b Enhancement Tests", () => {
       },
     ];
 
-    test("clicking link to /MasterListsPage fires setMode('close') once", async () => {
+    test("clicking link to /MasterListsPage does not force persisted nav closed", async () => {
       const { container, mockSetMode } = renderHeader({
         sidenavMode: "lock",
         menuData: MENU_DATA,
@@ -862,8 +846,7 @@ describe("Header Component - M2b Enhancement Tests", () => {
       });
 
       fireEvent.click(container.querySelector("#menu_administration_nav"));
-      expect(mockSetMode).toHaveBeenCalledTimes(1);
-      expect(mockSetMode).toHaveBeenCalledWith("close");
+      expect(mockSetMode).not.toHaveBeenCalled();
     });
 
     test("clicking a non-admin leaf does NOT call setMode", async () => {
@@ -877,6 +860,59 @@ describe("Header Component - M2b Enhancement Tests", () => {
 
       fireEvent.click(container.querySelector("#menu_home_nav"));
       expect(mockSetMode).not.toHaveBeenCalled();
+    });
+
+    test("admin context renders Admin nav contents instead of main menu contents", async () => {
+      renderHeader({
+        initialRoute: "/MasterListsPage",
+        sidenavMode: "lock",
+        menuData: MENU_DATA,
+        navContext: "admin",
+      });
+
+      expect(await screen.findByText("Back to main menu")).toBeInTheDocument();
+      expect(
+        screen.getByText(messages["sidenav.label.admin.testmgt"]),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(messages["banner.menu.home"]),
+      ).not.toBeInTheDocument();
+      const statusCalls = getFromOpenElisServer.mock.calls.filter(
+        ([url]) => url === "/rest/database-cleaning/status",
+      );
+      expect(statusCalls).toHaveLength(1);
+    });
+
+    test("admin nav items expose href and current-route state", async () => {
+      renderHeader({
+        initialRoute: "/MasterListsPage/billingMenuManagement",
+        sidenavMode: "lock",
+        navContext: "admin",
+      });
+
+      const billingLink = (
+        await screen.findByText(messages["sidenav.label.admin.menu.billing"])
+      ).closest("a");
+
+      expect(billingLink).toHaveAttribute(
+        "href",
+        "/MasterListsPage/billingMenuManagement",
+      );
+      expect(billingLink).toHaveAttribute("aria-current", "page");
+    });
+
+    test("admin back control navigates to /Dashboard", async () => {
+      renderHeader({
+        initialRoute: "/MasterListsPage",
+        sidenavMode: "lock",
+        navContext: "admin",
+      });
+
+      fireEvent.click(await screen.findByText("Back to main menu"));
+
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/Dashboard",
+      );
     });
   });
 });

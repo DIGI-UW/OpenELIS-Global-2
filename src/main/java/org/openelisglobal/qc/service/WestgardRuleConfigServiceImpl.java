@@ -77,7 +77,7 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
      */
     @Override
     @Transactional(readOnly = true)
-    public List<WestgardRuleConfig> findByTestAndInstrument(Integer testId, Integer instrumentId) {
+    public List<WestgardRuleConfig> findByTestAndInstrument(String testId, String instrumentId) {
         return ruleConfigDAO.findByTestAndInstrument(testId, instrumentId);
     }
 
@@ -86,7 +86,7 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
      */
     @Override
     @Transactional(readOnly = true)
-    public List<WestgardRuleConfig> findEnabledByTestAndInstrument(Integer testId, Integer instrumentId) {
+    public List<WestgardRuleConfig> findEnabledByTestAndInstrument(String testId, String instrumentId) {
         return ruleConfigDAO.findEnabledByTestAndInstrument(testId, instrumentId);
     }
 
@@ -125,7 +125,7 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
      */
     @Override
     @Transactional
-    public List<WestgardRuleConfig> applyPreset(Integer testId, Integer instrumentId, String preset)
+    public List<WestgardRuleConfig> applyPreset(String testId, String instrumentId, String preset)
             throws IllegalArgumentException {
 
         // Validate preset name
@@ -201,7 +201,7 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
      */
     @Override
     @Transactional
-    public List<WestgardRuleConfig> createDefaultConfig(Integer testId, Integer instrumentId) {
+    public List<WestgardRuleConfig> createDefaultConfig(String testId, String instrumentId) {
         List<WestgardRuleConfig> defaultConfigs = new ArrayList<>();
 
         // Rule definitions: [code, severity]
@@ -248,8 +248,8 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
         List<TestInstrumentPair> pairs = ruleConfigDAO.findDistinctTestInstrumentPairs();
 
         // Pre-fetch analyzer and test names to avoid N+1
-        Map<Integer, String> analyzerNames = new HashMap<>();
-        Map<Integer, String> testNames = new HashMap<>();
+        Map<String, String> analyzerNames = new HashMap<>();
+        Map<String, String> testNames = new HashMap<>();
         for (TestInstrumentPair pair : pairs) {
             analyzerNames.computeIfAbsent(pair.getInstrumentId(), this::resolveAnalyzerName);
             testNames.computeIfAbsent(pair.getTestId(), this::resolveTestName);
@@ -308,7 +308,7 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
         return mappings;
     }
 
-    private String resolveAnalyzerName(Integer instrumentId) {
+    private String resolveAnalyzerName(String instrumentId) {
         try {
             Optional<Analyzer> analyzer = analyzerService.getWithType(String.valueOf(instrumentId));
             return analyzer.map(Analyzer::getName).orElse("Analyzer " + instrumentId);
@@ -319,7 +319,7 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
         }
     }
 
-    private String resolveTestName(Integer testId) {
+    private String resolveTestName(String testId) {
         try {
             Test test = testService.getTestById(String.valueOf(testId));
             if (test != null && test.getDescription() != null) {

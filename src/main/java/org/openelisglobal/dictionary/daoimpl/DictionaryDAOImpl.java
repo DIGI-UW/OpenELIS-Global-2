@@ -170,21 +170,35 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
     @Override
     public boolean duplicateDictionaryExists(Dictionary dictionary) throws LIMSRuntimeException {
         try {
-            String sql = null;
-            if (dictionary.getDictionaryCategory() != null) {
-                sql = "from Dictionary t where ((trim(lower(t.dictEntry)) = :param and"
-                        + " trim(lower(t.dictionaryCategory.categoryName)) = :param2 and t.id != :param3)"
-                        + " or (trim(lower(t.localAbbreviation)) = :param4 and"
-                        + " trim(lower(t.dictionaryCategory.categoryName)) = :param2 and t.id != :param3))" + " ";
+            // local_abbrev is nullable in the schema (e.g. legacy 2012 seed
+            // categories like marital status). Build the abbreviation clause
+            // only when the dictionary actually has one so we don't NPE on
+            // null.toLowerCase().
+            String abbrev = dictionary.getLocalAbbreviation();
+            String trimmedAbbrev = abbrev == null ? null : abbrev.toLowerCase().trim();
+            boolean hasAbbrev = trimmedAbbrev != null && !trimmedAbbrev.isEmpty();
 
+            String sql;
+            if (dictionary.getDictionaryCategory() != null) {
+                sql = "from Dictionary t where (trim(lower(t.dictEntry)) = :param"
+                        + " and trim(lower(t.dictionaryCategory.categoryName)) = :param2 and t.id != :param3)";
+                if (hasAbbrev) {
+                    sql += " or (trim(lower(t.localAbbreviation)) = :param4"
+                            + " and trim(lower(t.dictionaryCategory.categoryName)) = :param2 and t.id != :param3)";
+                }
             } else {
-                sql = "from Dictionary t where ((trim(lower(t.dictEntry)) = :param and t.dictionaryCategory"
-                        + " is null and t.id != :param3) or (trim(lower(t.localAbbreviation)) = :param4 and"
-                        + " t.dictionaryCategory is null and t.id != :param3)) ";
+                sql = "from Dictionary t where (trim(lower(t.dictEntry)) = :param"
+                        + " and t.dictionaryCategory is null and t.id != :param3)";
+                if (hasAbbrev) {
+                    sql += " or (trim(lower(t.localAbbreviation)) = :param4"
+                            + " and t.dictionaryCategory is null and t.id != :param3)";
+                }
             }
             Query<Dictionary> query = entityManager.unwrap(Session.class).createQuery(sql, Dictionary.class);
             query.setParameter("param", dictionary.getDictEntry().toLowerCase().trim());
-            query.setParameter("param4", dictionary.getLocalAbbreviation().toLowerCase().trim());
+            if (hasAbbrev) {
+                query.setParameter("param4", trimmedAbbrev);
+            }
             if (dictionary.getDictionaryCategory() != null) {
                 query.setParameter("param2", dictionary.getDictionaryCategory().getCategoryName().toLowerCase().trim());
             }

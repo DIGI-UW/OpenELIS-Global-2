@@ -1,5 +1,6 @@
 package org.openelisglobal.config;
 
+import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -16,6 +17,7 @@ import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.dataexchange.fhir.FhirMediaTypeMessageConverter;
 import org.openelisglobal.fhir.springserialization.QuestionnaireDeserializer;
 import org.openelisglobal.fhir.springserialization.QuestionnaireResponseDeserializer;
 import org.openelisglobal.fhir.springserialization.QuestionnaireResponseSerializer;
@@ -190,10 +192,22 @@ public class AppConfig implements WebMvcConfigurer {
         return messageConverter;
     }
 
+    @Autowired(required = false)
+    private FhirContext fhirContext;
+
     @Override
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
         // Add our custom-configured Jackson converter while keeping default converters
         // (including ResourceHttpMessageConverter for serving files)
         converters.add(0, jacksonMessageConverter());
+        // OGC-740/741: FHIR converter must beat Jackson for IBaseResource
+        // bodies (CapabilityStatement, Bundle, etc.) — Jackson would otherwise
+        // serialize HAPI internals (formatCommentsPre, nanos, idElement.idElement)
+        // into a 150KB blob. AbstractHttpMessageConverter.supports() filters by
+        // class so only IBaseResource bodies route through HAPI; non-FHIR JSON
+        // continues to flow through Jackson.
+        if (fhirContext != null) {
+            converters.add(0, new FhirMediaTypeMessageConverter(fhirContext));
+        }
     }
 }

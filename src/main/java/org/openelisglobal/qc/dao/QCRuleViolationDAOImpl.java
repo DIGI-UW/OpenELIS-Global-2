@@ -23,7 +23,7 @@ public class QCRuleViolationDAOImpl extends BaseDAOImpl<QCRuleViolation, String>
     }
 
     @Override
-    public List<QCRuleViolation> findByInstrument(Integer instrumentId) throws LIMSRuntimeException {
+    public List<QCRuleViolation> findByInstrument(String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCRuleViolation> cq = cb.createQuery(QCRuleViolation.class);
@@ -65,7 +65,7 @@ public class QCRuleViolationDAOImpl extends BaseDAOImpl<QCRuleViolation, String>
     }
 
     @Override
-    public List<QCRuleViolation> findByInstrumentAndDateRange(Integer instrumentId, Timestamp startDate,
+    public List<QCRuleViolation> findByInstrumentAndDateRange(String instrumentId, Timestamp startDate,
             Timestamp endDate) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -82,7 +82,7 @@ public class QCRuleViolationDAOImpl extends BaseDAOImpl<QCRuleViolation, String>
     }
 
     @Override
-    public List<QCRuleViolation> findUnresolvedByInstrument(Integer instrumentId) throws LIMSRuntimeException {
+    public List<QCRuleViolation> findUnresolvedByInstrument(String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCRuleViolation> cq = cb.createQuery(QCRuleViolation.class);

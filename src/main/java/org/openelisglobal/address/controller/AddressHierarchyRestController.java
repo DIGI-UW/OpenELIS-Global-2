@@ -58,8 +58,11 @@ public class AddressHierarchyRestController {
                 String defaultValue = getDefaultValueForLevel(level);
                 String defaultId = resolveDefaultValueToId(defaultValue, orgType.getName());
                 String inputType = getInputTypeForLevel(level);
+                String displayKey = getDisplayKeyForLevel(level);
+                Integer sortOrder = getSortOrderForLevel(level);
+                String bindKey = getBindKeyForLevel(level);
                 levels.add(new AddressHierarchyLevel(level, orgType.getId(), orgType.getName(), defaultValue, defaultId,
-                        inputType));
+                        inputType, displayKey, sortOrder, bindKey));
             }
         }
 
@@ -105,6 +108,34 @@ public class AddressHierarchyRestController {
         // legacy code path or manual DB write that bypassed the handler's
         // write-side normalization, the frontend must receive a known token.
         return AddressHierarchyConfigurationHandler.normalizeInputType(siteInfo.getValue());
+    }
+
+    private String getDisplayKeyForLevel(int level) {
+        return getMetadataValue(AddressHierarchyConfigurationHandler.getDisplayKeySiteInfoName(level));
+    }
+
+    private Integer getSortOrderForLevel(int level) {
+        String value = getMetadataValue(AddressHierarchyConfigurationHandler.getSortOrderSiteInfoName(level));
+        if (GenericValidator.isBlankOrNull(value)) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String getBindKeyForLevel(int level) {
+        return getMetadataValue(AddressHierarchyConfigurationHandler.getBindKeySiteInfoName(level));
+    }
+
+    private String getMetadataValue(String siteInfoName) {
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
+        if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
+            return null;
+        }
+        return siteInfo.getValue();
     }
 
     private String resolveDefaultValueToId(String defaultValue, String typeName) {
@@ -367,6 +398,9 @@ public class AddressHierarchyRestController {
         private String defaultValue;
         private String defaultId;
         private String inputType;
+        private String displayKey;
+        private Integer sortOrder;
+        private String bindKey;
 
         public AddressHierarchyLevel(int level, String typeId, String typeName) {
             this(level, typeId, typeName, null, null, DEFAULT_INPUT_TYPE);
@@ -378,12 +412,20 @@ public class AddressHierarchyRestController {
 
         public AddressHierarchyLevel(int level, String typeId, String typeName, String defaultValue, String defaultId,
                 String inputType) {
+            this(level, typeId, typeName, defaultValue, defaultId, inputType, null, null, null);
+        }
+
+        public AddressHierarchyLevel(int level, String typeId, String typeName, String defaultValue, String defaultId,
+                String inputType, String displayKey, Integer sortOrder, String bindKey) {
             this.level = level;
             this.typeId = typeId;
             this.typeName = typeName;
             this.defaultValue = defaultValue;
             this.defaultId = defaultId;
             this.inputType = inputType;
+            this.displayKey = displayKey;
+            this.sortOrder = sortOrder;
+            this.bindKey = bindKey;
         }
 
         public int getLevel() {
@@ -432,6 +474,30 @@ public class AddressHierarchyRestController {
 
         public void setInputType(String inputType) {
             this.inputType = inputType;
+        }
+
+        public String getDisplayKey() {
+            return displayKey;
+        }
+
+        public void setDisplayKey(String displayKey) {
+            this.displayKey = displayKey;
+        }
+
+        public Integer getSortOrder() {
+            return sortOrder;
+        }
+
+        public void setSortOrder(Integer sortOrder) {
+            this.sortOrder = sortOrder;
+        }
+
+        public String getBindKey() {
+            return bindKey;
+        }
+
+        public void setBindKey(String bindKey) {
+            this.bindKey = bindKey;
         }
     }
 
