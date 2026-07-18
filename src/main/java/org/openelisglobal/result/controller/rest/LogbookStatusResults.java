@@ -35,16 +35,16 @@ public class LogbookStatusResults {
 
     private static final boolean REVERSE_SORT_ORDER = false;
 
-    private static final Set<Integer> excludedStatusIds;
+    private static final Set<String> excludedStatusIds;
 
     static {
         // currently this is the only one being excluded for Haiti_LNSP. If it
         // gets more complicate use the status sets
         excludedStatusIds = new HashSet<>();
-        excludedStatusIds.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.Canceled)));
-        excludedStatusIds.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.SampleRejected)));
+        excludedStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.Canceled));
+        excludedStatusIds.add(
+                SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.SampleRejected));
     }
 
     public LogbookStatusResults(AnalysisService analysisService, SampleService sampleService,
@@ -190,7 +190,7 @@ public class LogbookStatusResults {
     }
 
     private List<Analysis> getAnalysisForTest(String testId) {
-        List<Integer> excludedStatusIntList = new ArrayList<>();
+        List<String> excludedStatusIntList = new ArrayList<>();
         excludedStatusIntList.addAll(excludedStatusIds);
         return analysisService.getAllAnalysisByTestAndExcludedStatus(testId, excludedStatusIntList);
     }

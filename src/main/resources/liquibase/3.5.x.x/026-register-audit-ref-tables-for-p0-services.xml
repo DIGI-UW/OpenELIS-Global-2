@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    Several entity services extend AuditableBaseObjectServiceImpl and need
+    `auditTrailLog = true` flipped on. AuditTrailServiceImpl.saveHistory
+    throws when the table's reference_tables row is missing, so the row
+    must exist before the flag is flipped. These six rows are missing on
+    fresh deploys today; register each with keep_history='Y' to enable
+    audit emit.
+
+    Name lookup is case-insensitive (trim+lower) in ReferenceTablesDAOImpl,
+    so lowercase here is fine.
+  -->
+
+  <changeSet author="oe" id="026-register-audit-ref-tables-1">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables
+         WHERE LOWER(name) = 'patient_id_document'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="patient_id_document"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+  </changeSet>
+
+  <changeSet author="oe" id="026-register-audit-ref-tables-2">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables
+         WHERE LOWER(name) = 'order_attachment'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="order_attachment"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+  </changeSet>
+
+  <changeSet author="oe" id="026-register-audit-ref-tables-3">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables
+         WHERE LOWER(name) = 'qc_control_lot'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="qc_control_lot"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+  </changeSet>
+
+  <changeSet author="oe" id="026-register-audit-ref-tables-4">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables
+         WHERE LOWER(name) = 'patient_photo'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="patient_photo"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

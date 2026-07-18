@@ -67,7 +67,7 @@ public class RetroCIReflexActions extends ReflexAction {
     private static Analyte ANALYTE_CD4_PER_RESULT;
     private static TestResult TEST_RESULT_CD4_CALCULATED;
 
-    private static List<Integer> CD4_RESULT_TEST_DEPENDANCIES;
+    private static List<String> CD4_RESULT_TEST_DEPENDANCIES;
     private static Map<String, String> hivStatusToDictonaryIDMap;
 
     static {
@@ -113,11 +113,11 @@ public class RetroCIReflexActions extends ReflexAction {
         CD4_RESULT_TEST_DEPENDANCIES = new ArrayList<>();
 
         Test test = testService.getTestByLocalizedName("GB");
-        CD4_RESULT_TEST_DEPENDANCIES.add(Integer.parseInt(test.getId()));
+        CD4_RESULT_TEST_DEPENDANCIES.add(test.getId());
         test = testService.getTestByLocalizedName("Lymph %", Locale.ENGLISH);
-        CD4_RESULT_TEST_DEPENDANCIES.add(Integer.parseInt(test.getId()));
+        CD4_RESULT_TEST_DEPENDANCIES.add(test.getId());
         test = testService.getTestByLocalizedName("CD4 percentage count", Locale.ENGLISH);
-        CD4_RESULT_TEST_DEPENDANCIES.add(Integer.parseInt(test.getId()));
+        CD4_RESULT_TEST_DEPENDANCIES.add(test.getId());
         test = testService.getTestByLocalizedName("CD4 absolute count", Locale.ENGLISH);
 
         List<TestResult> resultList = testResultService.getAllActiveTestResultsPerTest(test);
@@ -154,9 +154,9 @@ public class RetroCIReflexActions extends ReflexAction {
         List<Analysis> analysisList = analysisService.getAnalysisBySampleAndTestIds(sample.getId(),
                 CD4_RESULT_TEST_DEPENDANCIES);
 
-        List<Integer> analysisIDList = new ArrayList<>();
+        List<String> analysisIDList = new ArrayList<>();
         for (Analysis analysis : analysisList) {
-            analysisIDList.add(Integer.parseInt(analysis.getId()));
+            analysisIDList.add(analysis.getId());
         }
 
         Result CD4Result = resultService.getResultForAnalyteInAnalysisSet(ANALYTE_CD4_PER_RESULT.getId(),

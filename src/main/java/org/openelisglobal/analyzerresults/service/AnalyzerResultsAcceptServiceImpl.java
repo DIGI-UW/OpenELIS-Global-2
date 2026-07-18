@@ -621,6 +621,23 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         }
     }
 
+    /**
+     * The existing Result bound to the given component (null = PRIMARY), preferring
+     * the last match to preserve prior single-component behavior. Null when none of
+     * the analysis's results belongs to that component.
+     */
+    private Result findResultForComponent(List<Result> resultList, String componentId) {
+        Result match = null;
+        for (Result candidate : resultList) {
+            String candidateComponentId = candidate.getTestResult() == null ? null
+                    : candidate.getTestResult().getComponentId();
+            if (componentId == null ? candidateComponentId == null : componentId.equals(candidateComponentId)) {
+                match = candidate;
+            }
+        }
+        return match;
+    }
+
     private Analysis getExistingAnalysis(AnalyzerResultItem resultItem) {
         List<Analysis> analysisList = analysisService.getAnalysisByAccessionAndTestId(resultItem.getAccessionNumber(),
                 resultItem.getTestId());
@@ -634,8 +651,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (analysis.getId() != null) {
             List<Result> resultList = resultService.getResultsByAnalysis(analysis);
 
-            if (!resultList.isEmpty()) {
-                result = resultList.get(resultList.size() - 1);
+            // OGC-1129: update the existing Result for THIS component, not just the last
+            // one — otherwise multiplex components sharing an analysis clobber each other.
+            result = findResultForComponent(resultList, resultItem.getComponentId());
+            if (result != null) {
                 String resultValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
                 TestResult resolvedTestResult = getTestResultForResult(resultItem);
                 result.setTestResult(resolvedTestResult);
@@ -715,14 +734,22 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     private TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
-        List<TestResult> candidates = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
-        if (candidates == null || candidates.isEmpty()) {
+        List<TestResult> all = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
+        if (all == null || all.isEmpty()) {
             return null;
         }
+        // OGC-1129: bind to the test_result rows of the resolved component so the
+        // created Result carries the component (null = PRIMARY, today's behavior).
+        List<TestResult> candidates = filterTestResultsByComponent(all, resultItem.getComponentId());
         boolean hasDictCandidates = candidates.stream().anyMatch(c -> "D".equals(c.getTestResultType()));
         if (hasDictCandidates) {
             TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
                     resultItem.getResult());
+            // Only trust the test-scoped dictionary match when it belongs to the target
+            // component; otherwise fall through to the component-filtered candidates.
+            if (testResult != null && !candidates.contains(testResult)) {
+                testResult = null;
+            }
             if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
                 String desired = resultItem.getResult().trim();
                 for (TestResult candidate : candidates) {
@@ -742,6 +769,22 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             }
         }
         return candidates.get(0);
+    }
+
+    /**
+     * Keep only the test_result rows belonging to the resolved component (null =
+     * PRIMARY / legacy component_id-null rows). Falls back to the full list when no
+     * row matches, so a test whose test_result rows predate components still works.
+     */
+    private List<TestResult> filterTestResultsByComponent(List<TestResult> candidates, String componentId) {
+        List<TestResult> filtered = new ArrayList<>();
+        for (TestResult candidate : candidates) {
+            String candidateComponentId = candidate.getComponentId();
+            if (componentId == null ? candidateComponentId == null : componentId.equals(candidateComponentId)) {
+                filtered.add(candidate);
+            }
+        }
+        return filtered.isEmpty() ? candidates : filtered;
     }
 
     private void addMinMaxNormal(Result result, AnalyzerResultItem resultItem, Patient patient) {

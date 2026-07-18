@@ -27,17 +27,10 @@ public class AnalyzerFieldDAOImpl extends BaseDAOImpl<AnalyzerField, String> imp
                 throw new LIMSRuntimeException("Analyzer ID cannot be null or empty");
             }
 
-            Integer analyzerIdInt;
-            try {
-                analyzerIdInt = Integer.parseInt(analyzerId);
-            } catch (NumberFormatException e) {
-                throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
-            }
-
-            // HQL join on legacy Analyzer (XML-mapped) via relationship path
+            // Analyzer.id is String in Java (LIMSStringNumberUserType), so pass String
             String hql = "SELECT af FROM AnalyzerField af " + "JOIN af.analyzer a " + "WHERE a.id = :analyzerId";
             Query<AnalyzerField> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerField.class);
-            query.setParameter("analyzerId", analyzerIdInt);
+            query.setParameter("analyzerId", analyzerId);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding AnalyzerField by analyzer ID", e);
@@ -81,17 +74,11 @@ public class AnalyzerFieldDAOImpl extends BaseDAOImpl<AnalyzerField, String> imp
                 throw new LIMSRuntimeException("Analyzer ID cannot be null or empty");
             }
 
-            Integer analyzerIdInt;
-            try {
-                analyzerIdInt = Integer.parseInt(analyzerId);
-            } catch (NumberFormatException e) {
-                throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
-            }
-
+            // Analyzer.id is String in Java (LIMSStringNumberUserType), so pass String
             String hql = "SELECT af FROM AnalyzerField af " + "JOIN af.analyzer a "
                     + "WHERE a.id = :analyzerId AND af.fieldName = :fieldName";
             Query<AnalyzerField> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerField.class);
-            query.setParameter("analyzerId", analyzerIdInt);
+            query.setParameter("analyzerId", analyzerId);
             query.setParameter("fieldName", fieldName);
             AnalyzerField result = query.uniqueResult();
             return java.util.Optional.ofNullable(result);

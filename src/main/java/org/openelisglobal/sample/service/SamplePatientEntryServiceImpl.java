@@ -30,6 +30,9 @@ import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
+import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.labelpreset.service.OrderLabelRequestService;
+import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -125,6 +128,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private SampleEQAService sampleEQAService;
     @Autowired
     private BarcodeInfoService barcodeInfoService;
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private OrderLabelRequestService orderLabelRequestService;
 
     @Transactional
     @Override
@@ -165,6 +172,16 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         request.getSession().setAttribute("lastAccessionNumber", updateData.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", updateData.getPatientId());
+
+        // Publish post-persist event INSIDE this @Transactional method so any
+        // listener (e.g. SampleStorageAssignmentListener) runs while this tx
+        // is still open. If a listener throws, Spring stamps the tx as
+        // rollback-only and the entire persist (sample, patient, etc.) gets
+        // rolled back — same mechanism Edit Order uses. Previously this was
+        // published from the controller after persistData returned, so the
+        // tx had already committed by the time listeners ran.
+        eventPublisher.publishEvent(new org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent(this,
+                updateData, patientInfo, form));
     }
 
     private void persistObservations(SamplePatientUpdateData updateData) {
@@ -667,5 +684,51 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         // this will be used as an identifier for the service request as well
         analysis.setFhirUuid(UUID.randomUUID());
         return analysis;
+    }
+
+    /**
+     * OGC-285 M5b — see {@link SamplePatientEntryService#persistLabelRequests}.
+     * Lives in this scanned service (not the scan-excluded REST controller) so the
+     * positional correlation logic is reachable by a real-DB integration test that
+     * drives the same code the save hook calls.
+     */
+    @Transactional
+    @Override
+    public List<OrderLabelRequest> persistLabelRequests(SamplePatientUpdateData updateData,
+            OrderLabelPersistRequest payload, String sysUserId) {
+        if (payload == null || updateData == null || updateData.getSample() == null) {
+            return new ArrayList<>();
+        }
+        String orderId = updateData.getSample().getId();
+        if (orderId == null) {
+            return new ArrayList<>();
+        }
+
+        // Correlate by list position over the in-memory, ordered, ID-bearing
+        // sampleItemsTests (populated by persistData) — NOT a re-fetch + sortOrder
+        // sort (sortOrder is a String, lexically ordered: "10" < "2").
+        Map<String, String> sampleIdMap = new LinkedHashMap<>();
+        Map<String, List<String>> testIdsBySampleLocal = new LinkedHashMap<>();
+        List<SampleTestCollection> sampleItemsTests = updateData.getSampleItemsTests();
+        if (sampleItemsTests != null) {
+            for (int i = 0; i < sampleItemsTests.size(); i++) {
+                SampleTestCollection stc = sampleItemsTests.get(i);
+                String local = String.valueOf(i);
+                if (stc.item != null && stc.item.getId() != null) {
+                    sampleIdMap.put(local, stc.item.getId());
+                }
+                List<String> testIds = new ArrayList<>();
+                if (stc.tests != null) {
+                    for (Test test : stc.tests) {
+                        if (test != null && test.getId() != null) {
+                            testIds.add(test.getId());
+                        }
+                    }
+                }
+                testIdsBySampleLocal.put(local, testIds);
+            }
+        }
+
+        return orderLabelRequestService.persistRequest(orderId, sampleIdMap, payload, sysUserId, testIdsBySampleLocal);
     }
 }

@@ -84,10 +84,8 @@ public abstract class CovidResultsBuilderImpl implements CovidResultsBuilder {
         List<Test> tests = testService.getActiveTestsByLoinc(COVID_LOINC_CODES);
 
         List<Analysis> analysises = analysisService.getAllAnalysisByTestsAndStatusAndCompletedDateRange(
-                tests.stream().map(test -> Integer.parseInt(test.getId())).collect(Collectors.toList()),
-                ANALYSIS_STATUS_IDS.stream().map(val -> Integer.parseInt(val)).collect(Collectors.toList()),
-                SAMPLE_STATUS_IDS.stream().map(val -> Integer.parseInt(val)).collect(Collectors.toList()),
-                this.dateRange.getLowDate(), this.dateRange.getHighDate());
+                tests.stream().map(test -> test.getId()).collect(Collectors.toList()), ANALYSIS_STATUS_IDS,
+                SAMPLE_STATUS_IDS, this.dateRange.getLowDate(), this.dateRange.getHighDate());
 
         return analysises;
 

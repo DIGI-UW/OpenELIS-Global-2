@@ -41,10 +41,10 @@ public class WestgardRuleConfigServiceIntegrationTest extends BaseWebContextSens
     private JdbcTemplate jdbcTemplate;
 
     // Test IDs — use high values to avoid collisions with seeded data
-    private static final int TEST_ID_A = 90001;
-    private static final int INSTRUMENT_ID_A = 90001;
-    private static final int TEST_ID_B = 90002;
-    private static final int INSTRUMENT_ID_B = 90002;
+    private static final String TEST_ID_A = "90001";
+    private static final String INSTRUMENT_ID_A = "90001";
+    private static final String TEST_ID_B = "90002";
+    private static final String INSTRUMENT_ID_B = "90002";
 
     @Before
     public void setUp() throws Exception {
@@ -77,22 +77,28 @@ public class WestgardRuleConfigServiceIntegrationTest extends BaseWebContextSens
         }
 
         // Insert analyzer rows (required by FK on westgard_rule_config and
-        // qc_control_lot)
-        for (int instrumentId : new int[] { INSTRUMENT_ID_A, INSTRUMENT_ID_B }) {
+        // qc_control_lot). Note: testId/instrumentId are exposed as String
+        // in Java via LIMSStringNumberUserType, but the SQL columns are
+        // NUMERIC — JDBC binds primitives to NUMERIC natively, so we
+        // convert at the boundary.
+        for (String instrumentId : new String[] { INSTRUMENT_ID_A, INSTRUMENT_ID_B }) {
+            long instrumentIdNum = Long.parseLong(instrumentId);
             int analyzerExists = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM analyzer WHERE id = ?",
-                    Integer.class, instrumentId);
+                    Integer.class, instrumentIdNum);
             if (analyzerExists == 0) {
                 jdbcTemplate.update("INSERT INTO analyzer (id, name, is_active, last_updated) VALUES (?, ?, ?, NOW())",
-                        instrumentId, "TestAnalyzer-" + instrumentId, true);
+                        instrumentIdNum, "TestAnalyzer-" + instrumentId, true);
             }
         }
 
-        for (int testId : new int[] { TEST_ID_A, TEST_ID_B }) {
-            int exists = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM test WHERE id = ?", Integer.class, testId);
+        for (String testId : new String[] { TEST_ID_A, TEST_ID_B }) {
+            long testIdNum = Long.parseLong(testId);
+            int exists = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM test WHERE id = ?", Integer.class,
+                    testIdNum);
             if (exists == 0) {
                 // Create localization + localization_value rows (required by Test.getName())
-                int locId = testId; // reuse same ID for simplicity
-                int locValId = testId; // reuse for value row
+                long locId = testIdNum; // reuse same ID for simplicity
+                long locValId = testIdNum; // reuse for value row
                 jdbcTemplate.update("INSERT INTO localization (id, description, lastupdated) VALUES (?, ?, NOW())",
                         locId, "test name");
                 jdbcTemplate.update(
@@ -101,7 +107,7 @@ public class WestgardRuleConfigServiceIntegrationTest extends BaseWebContextSens
                 jdbcTemplate.update(
                         "INSERT INTO test (id, name, description, is_active, guid, "
                                 + "name_localization_id, lastupdated) VALUES (?, ?, ?, ?, ?, ?, NOW())",
-                        testId, "IntTest-" + testId, "IntegrationTest-" + testId, "Y", UUID.randomUUID().toString(),
+                        testIdNum, "IntTest-" + testId, "IntegrationTest-" + testId, "Y", UUID.randomUUID().toString(),
                         locId);
             }
         }
@@ -121,23 +127,25 @@ public class WestgardRuleConfigServiceIntegrationTest extends BaseWebContextSens
     }
 
     // ---- Helper: insert a rule config row directly via SQL ----
-    private void insertRuleConfig(int testId, int instrumentId, String ruleCode, boolean enabled, String severity) {
+    private void insertRuleConfig(String testId, String instrumentId, String ruleCode, boolean enabled,
+            String severity) {
         String id = UUID.randomUUID().toString();
         jdbcTemplate.update(
                 "INSERT INTO westgard_rule_config " + "(id, test_id, instrument_id, rule_code, enabled, severity, "
                         + "requires_corrective_action, sys_user_id) " + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                id, testId, instrumentId, ruleCode, enabled, severity, "REJECTION".equals(severity), 1);
+                id, Long.parseLong(testId), Long.parseLong(instrumentId), ruleCode, enabled, severity,
+                "REJECTION".equals(severity), 1);
     }
 
     // ---- Helper: insert a control lot row directly via SQL ----
-    private void insertControlLot(int testId, int instrumentId, String status) {
+    private void insertControlLot(String testId, String instrumentId, String status) {
         String id = UUID.randomUUID().toString();
         jdbcTemplate.update(
                 "INSERT INTO qc_control_lot " + "(id, test_id, instrument_id, product_name, lot_number, "
                         + "manufacturer, control_level, status, calculation_method, "
                         + "initial_runs_count, sys_user_id) " + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                id, testId, instrumentId, "Test Control", "LOT-" + id.substring(0, 8), "TestMfg", "Level 1", status,
-                "MANUFACTURER_FIXED", 20, 1);
+                id, Long.parseLong(testId), Long.parseLong(instrumentId), "Test Control", "LOT-" + id.substring(0, 8),
+                "TestMfg", "Level 1", status, "MANUFACTURER_FIXED", 20, 1);
     }
 
     // ==================== getAllRuleConfigSummaries tests ====================

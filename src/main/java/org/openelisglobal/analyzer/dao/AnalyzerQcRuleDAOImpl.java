@@ -25,7 +25,7 @@ public class AnalyzerQcRuleDAOImpl extends BaseDAOImpl<AnalyzerQcRule, String> i
         }
         String hql = "FROM AnalyzerQcRule r WHERE r.analyzerId = :analyzerId ORDER BY r.displayOrder";
         Query<AnalyzerQcRule> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerQcRule.class);
-        query.setParameter("analyzerId", parseAnalyzerId(analyzerId));
+        query.setParameter("analyzerId", analyzerId.trim());
         return query.getResultList();
     }
 
@@ -38,7 +38,7 @@ public class AnalyzerQcRuleDAOImpl extends BaseDAOImpl<AnalyzerQcRule, String> i
         String hql = "FROM AnalyzerQcRule r WHERE r.analyzerId = :analyzerId"
                 + " AND r.active = true ORDER BY r.displayOrder";
         Query<AnalyzerQcRule> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerQcRule.class);
-        query.setParameter("analyzerId", parseAnalyzerId(analyzerId));
+        query.setParameter("analyzerId", analyzerId.trim());
         return query.getResultList();
     }
 
@@ -50,7 +50,7 @@ public class AnalyzerQcRuleDAOImpl extends BaseDAOImpl<AnalyzerQcRule, String> i
         }
         String hql = "SELECT COUNT(r) FROM AnalyzerQcRule r WHERE r.analyzerId = :analyzerId" + " AND r.active = true";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-        query.setParameter("analyzerId", parseAnalyzerId(analyzerId));
+        query.setParameter("analyzerId", analyzerId.trim());
         Long count = query.uniqueResult();
         return count == null ? 0 : count;
     }
@@ -80,7 +80,7 @@ public class AnalyzerQcRuleDAOImpl extends BaseDAOImpl<AnalyzerQcRule, String> i
                 + " WHERE r.analyzerId = :analyzerId AND r.ruleType = :ruleType AND r.operand = :operand"
                 + (targetField != null ? " AND r.targetField = :targetField" : " AND r.targetField IS NULL");
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-        query.setParameter("analyzerId", parseAnalyzerId(analyzerId));
+        query.setParameter("analyzerId", analyzerId.trim());
         query.setParameter("ruleType", AnalyzerQcRule.RuleType.valueOf(ruleType));
         query.setParameter("operand", operand);
         if (targetField != null) {
@@ -88,13 +88,5 @@ public class AnalyzerQcRuleDAOImpl extends BaseDAOImpl<AnalyzerQcRule, String> i
         }
         Long count = query.uniqueResult();
         return count != null && count > 0;
-    }
-
-    private Integer parseAnalyzerId(String analyzerId) {
-        try {
-            return Integer.parseInt(analyzerId.trim());
-        } catch (NumberFormatException e) {
-            throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
-        }
     }
 }

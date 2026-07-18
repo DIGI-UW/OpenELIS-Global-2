@@ -20,6 +20,9 @@ public class MappedTestName {
     private String openElisTestName;
     private String analyzerId;
     private String testId;
+    // OGC-1129: optional result component this analyzer target maps to. Null ⇒
+    // the test's PRIMARY component (today's behavior).
+    private String componentId;
 
     public String getAnalyzerTestName() {
         return analyzerTestName;
@@ -51,5 +54,13 @@ public class MappedTestName {
 
     public String getAnalyzerId() {
         return analyzerId;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
     }
 }

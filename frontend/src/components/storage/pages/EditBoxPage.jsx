@@ -159,7 +159,7 @@ export default function EditBoxPage() {
 
   if (loading) {
     return (
-      <div className="storage-edit-page">
+      <div className="storage-edit-page pageContent">
         <BreadcrumbNav crumbs={crumbs} />
         <InlineLoading
           description={intl.formatMessage({
@@ -173,7 +173,7 @@ export default function EditBoxPage() {
 
   if (error && !formData) {
     return (
-      <div className="storage-edit-page">
+      <div className="storage-edit-page pageContent">
         <BreadcrumbNav crumbs={crumbs} />
         <InlineNotification
           kind="error"
@@ -188,7 +188,7 @@ export default function EditBoxPage() {
   }
 
   return (
-    <div className="storage-edit-page">
+    <div className="storage-edit-page pageContent">
       <BreadcrumbNav crumbs={crumbs} />
       <h1>
         <FormattedMessage

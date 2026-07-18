@@ -137,6 +137,13 @@
         <class>org.openelisglobal.qc.valueholder.QCRuleViolation</class>
         <class>org.openelisglobal.qc.valueholder.QCAlert</class>
 
+        <!-- Barcode Label Presets (OGC-285 M2) -->
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPreset</class>
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPresetField</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelConfig</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
+        <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

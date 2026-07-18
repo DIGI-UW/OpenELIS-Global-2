@@ -15,4 +15,11 @@ public interface MethodService extends BaseObjectService<Method, String> {
     void refreshNames();
 
     List<Method> getAllActiveMethods();
+
+    /**
+     * Nullable lookup by id — returns null instead of throwing
+     * ObjectNotFoundException when the method does not exist. Use on read paths
+     * that must tolerate a dangling reference (e.g. an orphaned test_method link).
+     */
+    Method findById(String id);
 }

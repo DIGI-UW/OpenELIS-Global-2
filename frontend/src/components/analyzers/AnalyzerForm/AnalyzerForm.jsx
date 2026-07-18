@@ -510,7 +510,10 @@ const AnalyzerForm = () => {
 
   return (
     <>
-      <div data-testid="analyzer-form" className="analyzer-form-page">
+      <div
+        data-testid="analyzer-form"
+        className="analyzer-form-page pageContent"
+      >
         <div data-testid="analyzer-form-header">
           <PageTitle
             breadcrumbs={[

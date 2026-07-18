@@ -62,8 +62,8 @@ public class PrintBarcodeController extends BaseController {
     private static final String[] ALLOWED_FIELDS = new String[] {};
 
     private static final SampleEditItemComparator testComparator = new SampleEditItemComparator();
-    private static final Set<Integer> excludedAnalysisStatusList = new HashSet<>();
-    private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
+    private static final Set<String> excludedAnalysisStatusList = new HashSet<>();
+    private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
     private static final Collection<String> ABLE_TO_CANCEL_ROLE_NAMES = new ArrayList<>();
 
     @Autowired
@@ -85,8 +85,8 @@ public class PrintBarcodeController extends BaseController {
 
     @PostConstruct
     private void initialize() {
-        excludedAnalysisStatusList.add(Integer.parseInt(statusService.getStatusID(AnalysisStatus.Canceled)));
-        ENTERED_STATUS_SAMPLE_LIST.add(Integer.parseInt(statusService.getStatusID(SampleStatus.Entered)));
+        excludedAnalysisStatusList.add(statusService.getStatusID(AnalysisStatus.Canceled));
+        ENTERED_STATUS_SAMPLE_LIST.add(statusService.getStatusID(SampleStatus.Entered));
         ABLE_TO_CANCEL_ROLE_NAMES.add("Validator");
         ABLE_TO_CANCEL_ROLE_NAMES.add("Validation");
         ABLE_TO_CANCEL_ROLE_NAMES.add("Biologist");

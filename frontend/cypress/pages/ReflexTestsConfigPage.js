@@ -6,6 +6,7 @@ class ReflexTestsConfigPage {
       ruleName: '[id="0_rulename"]',
       toggleSwitch: ".cds--toggle__switch",
       validateToggle: ".cds--toggle__text",
+      ruleAccordionHeader: ".cds--accordion__heading",
       overAllOption: '[id="0_overall"]',
       selectSample: "[data-cy='addSample']",
       searchTest: '[id="0_0_conditionTestId"]',
@@ -46,6 +47,10 @@ class ReflexTestsConfigPage {
 
   verifyPageLoads(value) {
     cy.contains("h2", value).should("be.visible");
+  }
+
+  expandRuleBody() {
+    cy.get(this.selectors.ruleAccordionHeader).first().click();
   }
   //Reflex Tests Management
 

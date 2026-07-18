@@ -396,6 +396,7 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setUnits(getUnits(result.getUnits()));
         resultItem.setId(result.getId());
         resultItem.setTestId(result.getTestId());
+        resultItem.setComponentId(result.getComponentId());
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());
         resultItem.setReadOnly((result.isReadOnly() || result.getTestId() == null));

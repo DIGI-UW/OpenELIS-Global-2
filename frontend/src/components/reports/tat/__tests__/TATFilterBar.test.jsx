@@ -112,29 +112,45 @@ describe("TATFilterBar", () => {
     expect(checkbox).not.toBeChecked();
   });
 
-  test("onGenerate callback includes priority when selected", () => {
+  test("priority dropdown shows all options by visible text and selects STAT", () => {
     renderWithIntl(<TATFilterBar onGenerate={mockOnGenerate} />);
 
-    // Open the priority dropdown — Carbon Dropdown uses Downshift
-    const priorityWrapper = document.getElementById("tat-priority");
-    const trigger = priorityWrapper.querySelector(
-      "button.cds--list-box__field",
-    );
+    const trigger = document
+      .getElementById("tat-priority")
+      .querySelector("button.cds--list-box__field");
     fireEvent.click(trigger);
 
-    // Select the STAT option (index 2: All=0, Routine=1, STAT=2, ASAP=3)
-    // Carbon renders items as role="option" but without visible text in JSDOM
-    // because itemToString defaults to String(item) for object items
-    const options = priorityWrapper.querySelectorAll('[role="option"]');
-    expect(options.length).toBe(4);
-    fireEvent.click(options[2]); // STAT
+    expect(screen.getByRole("option", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Routine" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "STAT" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "ASAP" })).toBeInTheDocument();
 
-    // Click Generate and verify the priority is passed through
+    fireEvent.click(screen.getByRole("option", { name: "STAT" }));
     fireEvent.click(screen.getByTestId("generate-report-button"));
 
     expect(mockOnGenerate).toHaveBeenCalledTimes(1);
-    const filters = mockOnGenerate.mock.calls[0][0];
-    expect(filters).toHaveProperty("priority", "STAT");
+    expect(mockOnGenerate.mock.calls[0][0]).toHaveProperty("priority", "STAT");
+  });
+
+  test("segment dropdown shows all 7 segments by visible text", () => {
+    renderWithIntl(<TATFilterBar onGenerate={mockOnGenerate} />);
+
+    const trigger = document
+      .getElementById("tat-segment")
+      .querySelector("button.cds--list-box__field");
+    fireEvent.click(trigger);
+
+    for (const name of [
+      "Receipt to Validation",
+      "Order to Collection",
+      "Collection to Receipt",
+      "Receipt to Testing Started",
+      "Receipt to Result Entry",
+      "Result Entry to Validation",
+      "Overall TAT",
+    ]) {
+      expect(screen.getByRole("option", { name })).toBeInTheDocument();
+    }
   });
 
   test("renders new filter controls (lab unit, test, sample type, ordering site)", () => {
@@ -148,28 +164,31 @@ describe("TATFilterBar", () => {
     expect(comboboxes.length).toBeGreaterThanOrEqual(2);
   });
 
-  test("date preset 'Last 7 Days' sets correct date range", () => {
+  test("date preset 'Last 7 Days' populates visible inputs and filter state", () => {
     act(() => {
       renderWithIntl(<TATFilterBar onGenerate={mockOnGenerate} />);
     });
 
-    // Click the "Last 7 Days" preset tag
     const presetTag = screen.getByText(
       messages["reports.tat.preset.7days"] || "Last 7 Days",
     );
     fireEvent.click(presetTag);
 
-    // Click Generate to capture the filter state
-    fireEvent.click(screen.getByTestId("generate-report-button"));
+    const fromInput = screen.getByLabelText(/Date Range \(From\)/);
+    const toInput = screen.getByLabelText(/Date Range \(To\)/);
+    expect(fromInput.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(toInput.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
+    const visibleDiffDays = Math.round(
+      (new Date(toInput.value) - new Date(fromInput.value)) / 86400000,
+    );
+    expect(visibleDiffDays).toBe(7);
+
+    fireEvent.click(screen.getByTestId("generate-report-button"));
     expect(mockOnGenerate).toHaveBeenCalledTimes(1);
     const filters = mockOnGenerate.mock.calls[0][0];
-
-    // Verify the date range is approximately 7 days
-    const from = new Date(filters.fromDate);
-    const to = new Date(filters.toDate);
-    const diffDays = Math.round((to - from) / (1000 * 60 * 60 * 24));
-    expect(diffDays).toBe(7);
+    expect(filters.fromDate).toBe(fromInput.value);
+    expect(filters.toDate).toBe(toInput.value);
   });
 
   test("onGenerate includes new filter fields", () => {
