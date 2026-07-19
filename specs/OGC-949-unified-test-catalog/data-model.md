@@ -131,7 +131,12 @@ where applicable; FKs to `TEST(ID)` as `numeric(10)`.
   column).
 - **Localization of test names** → `LOCALIZATION`/`LOCALIZATION_VALUE` via
   `TEST.name_localization_id` / `reporting_name_localization_id`.
-- **Methods** → `test_method` (039, ported in M0).
+- **Methods** → `test_method` (`039`, ported in M0). **Correction `044`
+  (post-merge, R13)**: `039` created the FK columns `test_id`/`method_id` as
+  `VARCHAR(36)`, violating the "FK columns referencing `TEST` must be
+  `numeric(10)`" convention above; `044` retypes them to `numeric(10,0)` and adds
+  the FKs (`test_id→TEST` CASCADE, `method_id→METHOD` RESTRICT). The PK
+  `test_method.id` correctly stays `VARCHAR(36)` (UUID).
 - **Analyzers (read-only)** → analyzer field-mapping tables (no change).
 
 ## Deferred / flagged decisions
@@ -154,3 +159,6 @@ where applicable; FKs to `TEST(ID)` as `numeric(10)`.
 4. **043 — acknowledgment + terminology** (OGC-939): `test_activation_acknowledgment`;
    `test_terminology_mapping` + LOINC backfill.
 5. OGC-940 (legacy decommission) → **M-DC**, not M1.
+6. **`044` — post-merge remediation** (PR #3714, R13): `test_method`
+   `test_id`/`method_id` → `numeric(10,0)` + FKs; unique-active index; drop dead
+   `test_method_seq`. Additive to the merged `039` (immutable).

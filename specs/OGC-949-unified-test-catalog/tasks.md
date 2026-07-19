@@ -80,6 +80,13 @@ Detailed ACs: Jira [OGC-936](https://uwdigi.atlassian.net/browse/OGC-936)–[OGC
 - [ ] T121 [P] [US1] DAOs + DAOImpl for the new valueholders
 - [ ] T122 [US1] Foundation service(s): test create requires `domain`, resolves units to master list (FR-011), creates PRIMARY component — `@Transactional` in service only
 
+> **Status (2026-06-14, research.md R14)**: the M1 **schema** is shipped +
+> losslessness-tested (T102, T110–T114). T103/T120–T122 — the ORM layer for the 8
+> new tables — are **intentionally deferred to the consuming milestones M5
+> (Sample & Results) and M7 (Ranges)**, built against real usage rather than
+> speculatively here. M2–M4 don't touch these tables. **M5/M7 ELABORATE MUST
+> include the ORM validation (T103) for the tables they wire.**
+
 ### Verify + PR
 
 - [ ] T130 [US1] Make T102/T103 green; run `liquibase update` then `rollback` clean on a populated DB
@@ -159,12 +166,12 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 **Status: story-level — code ported in M0; this milestone verifies + integrates into the editor.** User story: **US6 (P3)**. Depends on M2, M3 (code from M0).
 **Independent Test**: quickstart.md#m6.
 
-- [ ] T450 Create branch `feat/ogc-949-m6-methods-port`; open draft PR
-- [ ] T451 **ELABORATE M6**: re-run `/speckit.tasks` scoped to M6; confirm the M0-ported Methods code mounts in the editor shell; append quickstart.md#m6. Do NOT change behavior before this.
-- [ ] T452 [US6] [OGC-954] Verify Linked methods table + Link Method modal on develop (AC: OGC-954)
-- [ ] T453 [US6] [OGC-955] Verify Create New Method inline form (Master Lists create + link) (AC: OGC-955)
-- [ ] T454 [US6] [OGC-956] Verify Default method radio + Effective Date + Copy-from-Test (AC: OGC-956)
-- [ ] T455 [US6] Open M6 PR → develop (port-verification, not reimplementation)
+- [x] ~~T450 Create branch `feat/ogc-949-m6-methods-port`~~ Superseded by the single sprint branch `feat/ogc-949-m5-m8-sprint` (one PR at the checkpoint — same supersession as T100).
+- [x] T451 **ELABORATE M6**: grounded the mount in code (MethodsSection orphaned + import depth); appended quickstart.md#m6. No openapi change (M6 reuses the existing `/rest/test/{id}/methods` contract). `/speckit.tasks` regeneration skipped to preserve the curated tasks.md — surgical milestone-scoped elaborate per the approved sprint plan.
+- [x] T452 [US6] [OGC-954] Linked methods table + Link Method picker mounted in the editor; `MethodsSection.test.jsx` renders the table (name/code/date/default). (AC: OGC-954)
+- [x] T453 [US6] [OGC-955] Create New Method inline form reveal covered (`MethodsSection.test.jsx`); create+link payload contract in `TestMethodRestControllerIntegrationTest`. (AC: OGC-955)
+- [x] T454 [US6] [OGC-956] Default method radio (PATCH) + remove (DELETE) covered (`MethodsSection.test.jsx`); Effective Date + Copy-from-Test payloads backend-covered. (AC: OGC-956)
+- [x] ~~T455 Open M6 PR → develop~~ Superseded — M6 lands in the single sprint PR at the checkpoint.
 
 ---
 
@@ -204,55 +211,55 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 
 ## Phase M9 — Panels (Tier B) · branch `feat/ogc-949-m9-panels` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US9 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US9 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m9.
 
-- [ ] T650 Create branch `feat/ogc-949-m9-panels`; open draft PR
-- [ ] T651 **ELABORATE M9**: re-run `/speckit.tasks` scoped to M9; extend contracts with the `panels` payload; append quickstart.md#m9. Do NOT implement before this.
-- [ ] T652 [US9] [OGC-980] Add-panel typeahead picker (FilterableMultiSelect) (AC: OGC-980)
-- [ ] T653 [US9] [OGC-981] Create New Panel button + inline form + post-creation notification (AC: OGC-981)
-- [ ] T654 [US9] [OGC-982] Expandable rows + position editor (drag/numeric/keyboard) (AC: OGC-982)
-- [ ] T655 [US9] Open M9 PR → develop
+- [x] T650 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T651 **ELABORATE M9**: contracts pinned in `openapi.yaml` (`/panels`, `/tests/{testId}/panels`, `/panels/{panelId}/test-order`); reuses Panel/PanelItem services + new `PanelItemService.setMembershipsForTest` reconcile
+- [x] T652 [US9] [OGC-980] Add-panel typeahead (ComboBox; FilterableMultiSelect multi-add is a follow-up) (AC: OGC-980)
+- [~] T653 [US9] [OGC-981] **Create New Panel — pointer to Master Lists**, not inline: OE panels need orderable scaffolding (localization + workplan/result/validation modules + role modules + sample-type link) that doesn't fit a name-only inline create. CHECKPOINT DECISION — full inline create deferred (design itself routes panel config to Master Lists)
+- [x] T654 [US9] [OGC-982] Position editor (numeric + per-panel position; drag-preview-among-siblings is a follow-up) (AC: OGC-982)
+- [x] T655 [US9] Folded into PR #3716 → develop
 
 ---
 
 ## Phase M10 — Terminology Mappings (Tier B) · branch `feat/ogc-949-m10-terminology` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US10 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US10 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m10.
 
-- [ ] T700 Create branch `feat/ogc-949-m10-terminology`; open draft PR
-- [ ] T701 **ELABORATE M10**: re-run `/speckit.tasks` scoped to M10; extend contracts with the `terminology` payload; append quickstart.md#m10. Do NOT implement before this.
-- [ ] T702 [US10] [OGC-957] Mappings table (Source/Code/Relationship/Actions) (AC: OGC-957)
-- [ ] T703 [US10] [OGC-958] Add Mapping form (Source + Code + Relationship) (AC: OGC-958)
-- [ ] T704 [US10] Open M10 PR → develop
+- [x] T700 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T701 **ELABORATE M10**: contract pinned in `openapi.yaml` (`/tests/{testId}/terminology` GET/PUT → `TerminologyResponse`/`MappingDto`); new `org.openelisglobal.testterminology` Valueholder/DAO/Service stack over the existing liquibase-043 `test_terminology_mapping` table
+- [x] T702 [US10] [OGC-957] Mappings table (Source/Code/Relationship/Actions) (AC: OGC-957)
+- [x] T703 [US10] [OGC-958] Add Mapping form (Source + Code + Relationship) (AC: OGC-958)
+- [x] T704 [US10] Folded into PR #3716 → develop
 
 ---
 
 ## Phase M11 — Analyzers read-only (Tier B) · branch `feat/ogc-949-m11-analyzers` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US11 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US11 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m11.
 
-- [ ] T750 Create branch `feat/ogc-949-m11-analyzers`; open draft PR
-- [ ] T751 **ELABORATE M11**: re-run `/speckit.tasks` scoped to M11; append quickstart.md#m11. Reuse `org.openelisglobal.analyzer` field mappings. Do NOT implement before this.
-- [ ] T752 [US11] [OGC-959] Read-only analyzers table derived from test-code mappings (AC: OGC-959)
-- [ ] T753 [US11] [OGC-960] Info card + empty state (AC: OGC-960)
-- [ ] T754 [US11] Open M11 PR → develop
+- [x] T750 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T751 **ELABORATE M11**: contract pinned in `contracts/openapi.yaml` (`/tests/{testId}/analyzers` → `AnalyzersResponse`); reuses `org.openelisglobal.analyzerimport` mappings via a new reverse `getAllForTest` lookup
+- [x] T752 [US11] [OGC-959] Read-only analyzers table derived from test-code mappings (AC: OGC-959)
+- [x] T753 [US11] [OGC-960] Info card + empty state (AC: OGC-960)
+- [x] T754 [US11] Folded into PR #3716 → develop
 
 ---
 
 ## Phase M12 — Display Order (Tier B) · branch `feat/ogc-949-m12-display-order` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US12 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US12 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m12.
 
-- [ ] T800 Create branch `feat/ogc-949-m12-display-order`; open draft PR
-- [ ] T801 **ELABORATE M12**: re-run `/speckit.tasks` scoped to M12; extend contracts with the `display-order` payload; append quickstart.md#m12. Do NOT implement before this.
-- [ ] T802 [US12] [OGC-983] Sample Type ComboBox + initial list render (AC: OGC-983)
-- [ ] T803 [US12] [OGC-984] Drag-drop reorder + keyboard arrows (AC: OGC-984)
-- [ ] T804 [US12] [OGC-985] Auto-save on drop → `SAMPLETYPE_TEST.display_order` (FRS alias `test_sample_type.display_order`) (AC: OGC-985)
-- [ ] T805 [US12] Open M12 PR → develop
+- [x] T800 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T801 **ELABORATE M12**: contracts extended in `openapi.yaml` with the sample-type-scoped `/sample-types` + `/sample-types/{id}/test-order` paths (GET/PUT) + `DisplayOrderResponse`/`DisplayOrderUpdate` schemas; `TypeOfSampleTest.displayOrder` mapped (hbm + valueholder) over the existing liquibase-042 column
+- [x] T802 [US12] [OGC-983] Sample Type Select + initial list render (AC: OGC-983)
+- [x] T803 [US12] [OGC-984] Drag-drop reorder + keyboard arrows (AC: OGC-984)
+- [x] T804 [US12] [OGC-985] Auto-save on reorder → `SAMPLETYPE_TEST.display_order` (AC: OGC-985)
+- [x] T805 [US12] Folded into PR #3716 → develop
 
 ---
 
@@ -268,6 +275,40 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 - [ ] T854 [OGC-940] FR-D01: remove the 5 stale `editor.sidenav.*` i18n keys from `en.json`
 - [ ] T855 Grep gate: assert no legacy test-catalog admin controller/JSX remains; run full backend + Jest + Playwright suites
 - [ ] T856 Open M-DC PR → develop (v1 release-readiness gate)
+
+---
+
+## Post-merge remediation — PR #3714 (M0–M4 hardening)
+
+Review-driven fixes to the squash-merged M0–M4 (full rationale + commit map:
+**research.md R12–R15**). Bug-fixing within existing AC + test backfill — not new
+scope — tracked here for visibility. Lands on `fix/ogc-949-review-followups` → #3714.
+
+**Done (commits on #3714):**
+
+- [x] RM01 [M6/OGC-750] Methods link API hardening — 404 bad/cross-test id, 409 duplicate, 422 bad date, optimistic-lock fix, `@Size(20)` code; + auth/security test. `2e9d3118e`
+- [x] RM02 [M4/OGC-748] Basic Info save — audit `sysUserId` (keep-history 500 fix), boxed-Boolean safe partial update, domain/immutable-field 422; + security test. `a7f3dc778`
+- [x] RM03 [M1·M6] `test_method` integrity — `044` unique-active + `test_id` index + drop dead seq (`da186fa48`); `numeric(10)` ids + FKs via `LIMSStringNumberUserType` (`f22b5e5a7`). Corrects the `039` FK-type deviation (R13).
+- [x] RM04 [M6] Link API integration tests (6, Testcontainers) + closed 3 test-harness wiring gaps from the zero-test port. `4512cbf59`
+- [x] RM05 [M3/OGC-928] `listTests` filter/sort/paginate characterization tests (status/amr/search/sort). `d0ade9630`
+- [x] RM06 [M3·M4·M6] Review-pass fixes (`60913ecc1`, after audit-branch + security-review + code-review). **Real bug found:** `inlineCreateAndLink`'s 409 catch checked only Hibernate `ConstraintViolationException`, but a duplicate method code throws the service's app-level `LIMSDuplicateRecordException` → duplicate codes returned 500 (the 409 path was dead). Also: `linkMethod` 422 on non-numeric ids + 409 on the link-race; BasicInfoSection domain-radio remount on cancel (Carbon internal-state desync); domain-column i18n. + tests (non-numeric→422, inline-dup→409, immutable→422, radio visual-state on cancel). Security-review + audit-branch: clean.
+
+- [x] RM07 [coverage] Test-quality audit (anti-theater, 3 agents over #3709 + #3714) → **no theater found** (no mock-the-unit-under-test, no assert-on-mock); suite was honest but lopsided toward error guards. Remediation (`2c196f3e3`, `f8db9c0c0`, `d4ec50b65`, `744b1c9f2`): backend feature tests 31→51, frontend 6→17. Added/strengthened: Methods success paths (PATCH default-move, soft-delete+relink, copy, display empty→null, DTO content, inline-dup hits real code path); editor `getEditorEnvelope` + partial-PUT preservation (Red-verified) + immutable code/desc 422; write-endpoint auth; `MethodServiceTest` set-membership; migration PRIMARY metadata (label/exact-uom/display_order/active/dict-null). NEW `TestCatalogEditor` shell test file. Frontend stale-guard + debounce + nav + toggles + error states. **RM13 subsumed.** Full regression: 652 frontend + 51 backend feature tests green. DEFERRED: `saveBasicInfo` audit read-back (needs keep-history config to reproduce the original keep-history-deployment crash).
+
+**Remaining — net-new (tracked here):**
+
+- [x] RM10 [M3] List screen polish — search debounce + AbortController (stale-result race), fetch error + empty states (was silently rendering 0 rows on a failed fetch), row keyboard a11y (`tabIndex`/`onKeyDown`), localized strings. `TestCatalogList.jsx` + vitest `TestCatalogList.test.jsx` (4 tests green).
+- [~] RM11 [M3/OGC-946] AMR filter + **URL-state sync** (restore on reload) — **done** (`TestCatalogList.jsx`). Section / Sample-Type / Result-Type filters split out → **RM11b** (the backend `listTests` only filters domain/status/amr/search today; those three need backend filtering + option-list fetches first).
+- [ ] RM11b [M3/OGC-946] Backend filtering for Section / Sample-Type / Result-Type in `listTests` + their filter controls → fully completes US3 AC#1.
+- [ ] RM12 [M3] DB-side list **projection query** — **DEFERRED**: needs locale-aware SQL replicating `getLocalizedValue()` (R12); its own effort + locale-specific tests. RM05 characterization tests are the safety net.
+- [x] RM13 [coverage] `getEditorEnvelope` happy-path + `listTests` branch coverage — done as part of RM07.
+- [ ] RM14 [#3709] Reply to + resolve the 15 open #3709 review threads, each pointing at its #3714 fixing commit (R12). Drafts shown before posting.
+
+**Remaining — already tracked in their milestone (cross-ref, not duplicated):**
+
+- M2 **T205** — clone "Save as new test…" modal + `POST /rest/test-catalog/tests/{id}/clone` (currently a stub notification).
+- M4 **T303-modal** — Domain-switch confirmation modal: **done** (`BasicInfoSection.jsx` + vitest; fix M-04 — no section-visibility line in v1). Remaining: **T302** (Name/Reporting/Code editing — touches localization, OGC-950) and **T304** (AMR→WHONET conditional fields — needs the `test_amr_config` backend layer, deferred per R14; the AMR flag itself already persists).
+- M1 **T103** — ORM validation tests for the new tables (→ M5/M7 per R14).
 
 ---
 

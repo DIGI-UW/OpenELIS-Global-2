@@ -89,6 +89,9 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
     @Autowired
     private TestService testService;
 
+    @Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
+
     @PostMapping(value = "/analyzer/fhir", consumes = { "application/fhir+json", MediaType.APPLICATION_JSON_VALUE,
             MediaType.ALL_VALUE })
     public ResponseEntity<Map<String, Object>> importFhirBundle(HttpServletRequest request,
@@ -303,6 +306,20 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
         return null;
     }
 
+    /** True when the component id is an active component of the given test. */
+    private boolean componentBelongsToTest(String componentId, String testId) {
+        if (componentId == null || testId == null) {
+            return false;
+        }
+        for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent c : testResultComponentService
+                .getActiveComponentsByTestId(testId)) {
+            if (componentId.equals(c.getId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private AnalyzerResults mapObservationToAnalyzerResult(Observation obs, Map<String, String> specimenAccessions,
             Analyzer analyzer) {
 
@@ -378,6 +395,38 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
                 ar.setReadOnly(true);
                 ar.setImportIssueReason("unmapped_loinc:" + testCode);
             }
+        }
+
+        // OGC-1129: resolve the result component within the test (multiplex targets
+        // such as SARS-CoV-2 N2/E or GeneXpert rpoB probes). A null component ⇒ the
+        // test's PRIMARY component, i.e. today's single-component behavior.
+        if (ar.getTestId() != null && !"-1".equals(ar.getTestId()) && testCode != null && !testCode.isBlank()) {
+            String resolvedComponentId = null;
+            // (a) An explicit analyzer target→component mapping (analyzer_test_map).
+            if (analyzer != null) {
+                org.openelisglobal.analyzerimport.util.MappedTestName mapped = org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache
+                        .getInstance().getMappedTestByAnalyzerId(analyzer.getId(), testCode);
+                if (mapped != null && mapped.getComponentId() != null) {
+                    resolvedComponentId = mapped.getComponentId();
+                }
+            }
+            // (b) Otherwise match the target against a component's stable code on this
+            // test.
+            if (resolvedComponentId == null) {
+                org.openelisglobal.testresultcomponent.valueholder.TestResultComponent byCode = testResultComponentService
+                        .getByTestIdAndCode(ar.getTestId(), testCode);
+                if (byCode != null && "Y".equals(byCode.getIsActive())) {
+                    resolvedComponentId = byCode.getId();
+                }
+            }
+            // Never trust a mapping that points outside this test — surface it instead
+            // of silently binding to the wrong (or a deleted) component.
+            if (resolvedComponentId != null && !componentBelongsToTest(resolvedComponentId, ar.getTestId())) {
+                resolvedComponentId = null;
+                ar.setReadOnly(true);
+                ar.setImportIssueReason("unmapped_component:" + testCode);
+            }
+            ar.setComponentId(resolvedComponentId);
         }
 
         // Result value

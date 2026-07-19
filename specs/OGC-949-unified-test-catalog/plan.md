@@ -179,6 +179,11 @@ graph TD
   consume develop via merges; OGC-949 never targets demo-silnas. Only
   test-catalog-scoped, develop-clean commits are ported back (see research.md
   port policy).
+- **Post-merge remediation (2026-06-14)**: #3709 was squash-merged (M0–M4) with
+  open review threads (the conversation-resolution gate was off — now re-enabled).
+  Review fixes land on a follow-up branch `fix/ogc-949-review-followups` → **PR
+  #3714 → develop**, not by reopening #3709. Scope = bug-fixing within M0–M4 AC +
+  test backfill (research.md R12–R15; tasks.md "Post-merge remediation").
 
 ## Project Structure
 
@@ -252,6 +257,6 @@ No Constitution violations requiring justification.
 
 ### Checkpoint Validations
 
-- [x] **After M1 (Entities/Migration)**: ORM validation + losslessness tests pass before any section starts.
+- [~] **After M1 (Entities/Migration)**: **losslessness test passes** (the real M1 risk — R8) ✅. **ORM validation deferred to consuming milestones M5/M7** (research.md R14) — the 8 new tables have no entities yet; they are built against actual usage in M5/M7, not speculatively in M1. The schema/migration gate is met; the entity-mapping gate moves to each consuming section's ELABORATE (which MUST add its ORM validation).
 - [x] **After each section milestone**: that section's unit + integration + Jest pass; Playwright smoke green.
 - [x] **After M-DC**: full regression + grep gate (no legacy controller/JSX remains) + Playwright suite green before v1 release.

@@ -94,6 +94,46 @@ OGC-939 (043).
    the new backend service requires `domain` and resolves units to the master
    list. See spec US1 acceptance scenarios.
 
+## M6 — Methods section (OGC-750) ✅ mounted in the editor
+
+The Methods backend was ported in M0 and hardened in #3714 (13 integration + 6
+security tests). M6 **mounts** the existing `MethodsSection.jsx` into the editor
+shell — port-verification, not reimplementation. The component moved from
+`admin/testManagementConfigMenu/` to `admin/testCatalog/sections/` (its
+`utils/Utils` import depth adjusted from `../../` to `../../../`) and is rendered
+by `TestCatalogEditor.jsx` when the `methods` SideNav section is active. It calls
+the unchanged `/rest/test/{testId}/methods` API — the editor's `/rest/test-catalog`
+base does **not** apply to methods (R10/R15).
+
+**Independent Test (M6)**: open the editor for a test → click **Methods** → the
+linked-methods table renders; **Link Method** opens the picker; **Create New
+Method** reveals the inline form; the default radio and remove act on the link.
+Frontend coverage: `MethodsSection.test.jsx` (render OGC-954; set-default PATCH +
+remove DELETE OGC-956; inline-create reveal OGC-955) + the editor mount assertion
+in `TestCatalogEditor.test.jsx`. The submit-payload contracts (link /
+inline-create / copy) — gated behind Carbon's DatePicker/ComboBox, impractical to
+drive in jsdom — are covered against a real DB by
+`TestMethodRestControllerIntegrationTest`.
+
+## M9 — E2E video proof (OGC-949) — in progress
+
+Playwright specs that assert the core user stories end-to-end **and** record a
+video (stakeholder proof). Specs live in `frontend/playwright/tests/demo/core/`,
+auto-registered by the `**/demo/core/**` glob in `playwright.config.ts`.
+
+- **Asserting check (CI-safe):** `npm run pw:test:core-demo`
+- **Record the videos:** `npm run pw:test:core-demo-video` → videos at
+  `frontend/test-results/<test>/video.webm`, screenshot evidence at
+  `frontend/e2e-evidence/`.
+- Specs reuse `createDemoPresentation` (title / step / scene cards + `evidence()`)
+  and stable hooks: `data-cy="test-row-*"`, `data-cy="section-*"`,
+  `data-testid="add-component"` / `"methods-section"`, `#basic-info-name`.
+
+**Shipped:** `ogc-949-test-catalog-editor.spec.ts` — US3 (list) → open editor →
+US4 (Basic Info) → US5 (Sample & Results, incl. add-component) → US6 (Methods),
+kept non-mutating so it is safely repeatable. **Pending M7/M8:** US7 (Ranges +
+activation gate) and US8 (Storage) videos.
+
 ## Milestone elaboration protocol (M2–M12)
 
 Each section milestone is **story-level** in tasks.md until it starts. When you

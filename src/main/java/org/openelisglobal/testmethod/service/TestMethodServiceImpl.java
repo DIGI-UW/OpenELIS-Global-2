@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -38,6 +37,12 @@ public class TestMethodServiceImpl extends AuditableBaseObjectServiceImpl<TestMe
     @Override
     protected TestMethodDAO getBaseObjectDAO() {
         return baseObjectDAO;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TestMethod findLinkById(String id) {
+        return baseObjectDAO.get(id).orElse(null);
     }
 
     @Override
@@ -94,7 +99,7 @@ public class TestMethodServiceImpl extends AuditableBaseObjectServiceImpl<TestMe
             return null;
         }
         return links.stream().map(tm -> {
-            Method m = methodService.get(tm.getMethodId());
+            Method m = methodService.findById(tm.getMethodId());
             return m != null ? new IdValuePair(m.getId(), m.getLocalizedValue()) : null;
         }).filter(java.util.Objects::nonNull).collect(Collectors.toList());
     }
@@ -147,9 +152,6 @@ public class TestMethodServiceImpl extends AuditableBaseObjectServiceImpl<TestMe
         method.setLocalization(localization);
         methodService.insert(method);
 
-        DisplayListService.getInstance().refreshList(DisplayListService.ListType.METHODS);
-        DisplayListService.getInstance().refreshList(DisplayListService.ListType.METHODS_INACTIVE);
-
         TestMethod tm = new TestMethod();
         tm.setTestId(testId);
         tm.setMethodId(method.getId());
@@ -166,7 +168,7 @@ public class TestMethodServiceImpl extends AuditableBaseObjectServiceImpl<TestMe
         dto.methodId = tm.getMethodId();
         dto.isDefault = tm.getIsDefaultMethod();
         dto.effectiveDate = tm.getEffectiveDate() != null ? tm.getEffectiveDate().toString() : null;
-        Method m = methodService.get(tm.getMethodId());
+        Method m = methodService.findById(tm.getMethodId());
         if (m != null) {
             dto.methodName = m.getLocalizedValue();
             dto.methodCode = m.getCode();

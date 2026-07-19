@@ -270,3 +270,132 @@ Testcontainers/CI DBs (no durable DB recorded its checksum) pre-merge.
 
 **Same lesson as R9/R10**: grep the existing columns before adding one. `domain`
 was verified genuinely new (no pre-existing test.domain); only AMR collided.
+
+## R12 — Post-merge review remediation (PR #3714, 2026-06-14)
+
+**What happened**: #3709 (M0–M4: spec + schema + editor shell + list + Basic
+Info) was **squash-merged to develop (`89ee29b83`) before its review threads
+resolved** (the conversation-resolution branch-protection gate was off; it has
+since been re-enabled). A post-merge review pass (5 independent reviewers + 15
+Copilot threads) found a cluster of defects, concentrated in the **M0 Methods
+backend** — which had been ported from `demo-silnas` (R1) **with zero tests**,
+so nothing forced its correctness or its wiring into the test harness.
+
+**Decision**: remediate on a dedicated follow-up branch
+`fix/ogc-949-review-followups` → **PR #3714 → develop** (since #3709 is closed),
+rather than reopen #3709. Each #3709 thread is answered with the fixing commit
+and resolved, for traceability. This is **bug-fixing within M0–M4's existing
+acceptance criteria**, not new scope — so it does not require a `/speckit.specify`
+cycle; it is recorded here and reflected in tasks.md status.
+
+**Fixes landed (with commits on #3714)**:
+
+- **Methods link API hardening** (`2e9d3118e`): PATCH/DELETE on an unknown or
+  cross-test link id → **404** (was 500); orphaned `method_id` no longer 500s the
+  list; `updateLink` optimistic-lock 500 fixed (new values carried on a fresh
+  unmanaged instance); malformed `effectiveDate` → **422**; duplicate active link
+  → **409**; `refreshList` moved post-commit; `MethodCreateForm.methodCode`
+  bounded `@Size(max=20)`. Plus the missing **auth/security test** (401/403/200).
+- **Basic Info save** (`a7f3dc778`): set `sysUserId` for the audit trail (was
+  **crashing on keep-history deployments** + misattributing); boxed `Boolean` +
+  apply-if-present so a partial PUT no longer silently deactivates; domain enum →
+  422; immutable name/code/description change → 422.
+- **`test_method` integrity** (`da186fa48` indexes + `f22b5e5a7` FKs/types):
+  unique-active partial index (duplicate-link TOCTOU), `test_id` index, dropped
+  dead `test_method_seq`; FK + numeric-id correction → see **R13**.
+- **Tests** (`4512cbf59` link API IT, `d0ade9630` list characterization): six
+  link-API integration tests + list filter/sort/paginate characterization tests,
+  all green via Testcontainers (full Liquibase + real Postgres).
+
+**Test-harness wiring gaps (the zero-test delivery's real cost)**: registering
+`TestMethod` for tests surfaced **three** places #3709 never wired it in:
+Spring `@ComponentScan` (AppTestConfig), and the JPA test allow-list
+(`test-persistence.xml`, `exclude-unlisted-classes="true"`). Production resolves
+the `@Entity` via JPA classpath auto-scan (`persistence.xml` omits
+`exclude-unlisted-classes`), so the gap was **test-only, not a prod bug** — but
+it means no test exercised the Methods backend until #3714.
+
+**Deferred (rationale recorded so the "why" is not lost)**:
+
+- **List query performance** (the in-memory `testService.getAll()` filter/sort in
+  `TestCatalogEditorRestController.listTests`, flagged vs plan.md's M3 perf goal):
+  **deferred, not trivial.** `Test.getName()` resolves a `Localization` record for
+  the **current request locale** (fallback to `description`) and the list
+  searches/sorts on that *computed* name. A faithful DB projection must join
+  `localization`, pick the locale column dynamically, `COALESCE` to description,
+  and match `getLocalizedValue()` exactly — a real correctness risk in non-English
+  locales that single-locale tests would not catch. Belongs in its own effort with
+  locale-specific tests (M3 follow-up; characterization tests already landed as the
+  safety net).
+- **Known traps to address in their owning milestone** (not regressions, but
+  flagged for the consuming milestone): legacy `MethodCreateRestController`
+  swallow-and-return-200; `test_sample_handling.version` is a plain `INTEGER` but
+  named like a JPA `@Version` (M8 must decide optimistic-locking intent before
+  wiring an entity); `DisplayListService` global-cache thread-safety; OGC-950
+  Name/Code editing (the Basic Info PUT currently treats them as immutable).
+
+## R13 — `test_method` id-type + FK correction (changeset 044, 2026-06-14)
+
+**What happened**: the merged `039` (ported Methods, M0) created
+`test_method.test_id` **and** `test_method.method_id` as `VARCHAR(36)` — violating
+this feature's own grounded convention (**data-model.md "FK columns referencing
+`TEST` must be `numeric(10)`"**). The same ungrounded-port class as R9/R10/R11,
+but inherited from demo-silnas rather than authored here. No FKs existed either,
+so an orphaned `method_id` was insertable.
+
+**Decision**: NEW additive changeset **`044`** (the merged `039`–`043` are
+immutable): retype both columns `VARCHAR(36) → numeric(10,0)` (the table is new in
+#3709 and effectively empty, so the change carries no data) and add FKs —
+`test_id → TEST(id)` `ON DELETE CASCADE` (a link is owned by its test),
+`method_id → METHOD(id)` `ON DELETE RESTRICT` (a method is shared reference data).
+The `TestMethod` entity maps both via `LIMSStringNumberUserType` (the existing
+`String`-field ↔ `numeric` idiom, same as `AnalyzerResults.analyzerId`), so the
+service/controller String contract is unchanged. The PK `test_method.id` stays
+`VARCHAR(36)` — that is a correct UUID PK per the new-table convention; only the
+**FK columns** were wrong.
+
+**Consequence for tests**: an orphaned `method_id` can no longer be inserted, so
+the integration test seeds real `method` rows. The Phase-1 null-safe list
+rendering remains as cheap defense, not load-bearing.
+
+## R14 — M1 "Backend Foundation" status: schema delivered, ORM layer deferred to consumers
+
+**Finding (from the 2026-06-14 spec↔code analysis)**: OGC-747 is
+"Schema Migrations **+ Backend Foundation**." The **schema** is fully delivered
+and losslessness-tested (`040`–`043`; `ComponentBackfillMigrationTest`). The
+**backend layer is not**: the 8 new tables (`test_result_component`,
+`test_result_interpretation`, `test_amr_config`, `whonet_antibiotic_codes`,
+`test_sample_handling`, `test_sample_handling_history`,
+`test_activation_acknowledgment`, `test_terminology_mapping`) have **no JPA
+valueholder / DAO / service** yet — tasks T103, T120–T122 are honestly unchecked.
+Only the existing `Test` entity (domain/AMR/status via `TestService`) is used by
+the shipped M2–M4.
+
+**Decision**: this is **acceptable and intentional**, not a defect. Those tables
+are consumed by **M5 (Sample & Results)** and **M7 (Ranges)** via `component_id`;
+their valueholders/DAOs/services are built as part of those milestones, against
+their actual usage, rather than speculatively in M1. plan.md's "After M1: ORM
+validation + losslessness before any section starts" gate is **refined**: the
+*migration-correctness* gate (losslessness) passed and was the real M1 risk (R8);
+the *entity-mapping* gate moves to each consuming section's ELABORATE.
+
+**Risk + mitigation**: the new tables currently have no ORM-validation test
+(T103), so a future column mismap wouldn't be caught until its section. **M5/M7
+ELABORATE MUST include ORM validation for the tables they wire.** M2/M3/M4 are
+unaffected (they don't touch these tables).
+
+## R15 — Contract path drift reconciled (openapi.yaml, 2026-06-14)
+
+**What happened**: `contracts/openapi.yaml` and R10 both still document the editor
+base as `/rest/tests/**`, but the M2 ELABORATE decision (tasks.md T201) corrected
+it to **`/rest/test-catalog`**, which is what the code ships
+(`TestCatalogEditorRestController` `@RequestMapping("/rest/test-catalog")`). The
+contract's documented paths would 404. Additionally, the **shipped `basic-info`
+GET/PUT** and the **entire ported Methods API** (`/rest/test/{testId}/methods` —
+6 endpoints, hardened in R12) are undocumented.
+
+**Decision**: update openapi.yaml to the real `/rest/test-catalog/tests` base;
+elaborate the shipped `basic-info` section (per the contract's own
+"elaborate-when-shipped" rule); and record the Methods API location with a note
+that its full schema is elaborated at **M6** (Methods is ported but its milestone
+is not yet started). This supersedes R10's `/rest/tests` provisional naming.

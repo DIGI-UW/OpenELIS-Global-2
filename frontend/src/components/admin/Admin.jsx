@@ -27,6 +27,7 @@ import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
 import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
+import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
@@ -90,7 +91,11 @@ function Admin() {
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
       <Route
-        path={`${path}/TestCatalogEditor/:testId?`}
+        path={`${path}/TestCatalogEditor/group/:ids/:section?`}
+        component={CombinedTestEditor}
+      />
+      <Route
+        path={`${path}/TestCatalogEditor/:testId?/:section?`}
         component={TestCatalogEditor}
       />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
@@ -153,6 +158,9 @@ function Admin() {
         path={`${path}/ResultSelectListAdd`}
         component={ResultSelectListAdd}
       />
+      {/* OGC-1112 FR-38: the unified New test flow (TestCatalogEditor/new) is the
+          intended create path. The legacy 7-step Add Test and the legacy Modify Test
+          are kept available in parallel temporarily during the transition. */}
       <Route path={`${path}/TestAdd`} component={TestAdd} />
       <Route path={`${path}/TestModifyEntry`} component={TestModifyEntry} />
       <Route path={`${path}/TestOrderability`} component={TestOrderability} />

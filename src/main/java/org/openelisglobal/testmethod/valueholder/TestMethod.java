@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Date;
 import java.util.UUID;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
 
 @Entity
@@ -18,10 +19,12 @@ public class TestMethod extends EnumValueItemImpl {
     @Column(name = "id", length = 36)
     private String id;
 
-    @Column(name = "test_id", nullable = false)
+    @Column(name = "test_id", nullable = false, precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
-    @Column(name = "method_id", nullable = false)
+    @Column(name = "method_id", nullable = false, precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String methodId;
 
     @Column(name = "is_default", nullable = false)
