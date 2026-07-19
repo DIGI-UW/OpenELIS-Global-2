@@ -4,7 +4,6 @@ import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import org.openelisglobal.fhir.FhirConstants;
-import org.openelisglobal.fhir.providers.FhirProviderUtils;
 
 public class PractitionerSearchParams extends BaseSearchParam {
 
@@ -39,20 +38,42 @@ public class PractitionerSearchParams extends BaseSearchParam {
 
     @Override
     public SearchParameterMap toSearchParameterMap() {
+        SearchParameterMap map = new SearchParameterMap();
 
-        return baseSearchParameterMap()
-                .addParameter(FhirConstants.FIRST_NAME_SEARCH_HANDLER,
-                        FhirProviderUtils.stringValueFromStringAndListParam(getGiven()))
-                .addParameter(FhirConstants.LAST_NAME_SEARCH_HANDLER,
-                        FhirProviderUtils.stringValueFromStringAndListParam(getFamily()))
-                .addParameter(FhirConstants.CITY_SEARCH_HANDLER,
-                        FhirProviderUtils.stringValueFromStringAndListParam(getCity()))
-                .addParameter(FhirConstants.STATE_SEARCH_HANDLER,
-                        FhirProviderUtils.stringValueFromStringAndListParam(getState()))
-                .addParameter(FhirConstants.POSTALCODE_SEARCH_HANDLER,
-                        FhirProviderUtils.stringValueFromStringAndListParam(getPostalCode()))
-                .addParameter(FhirConstants.COUNTRY_SEARCH_HANDLER,
-                        FhirProviderUtils.stringValueFromStringAndListParam(getCountry()));
+        // 1. Add inherited parent fields safely
+        if (getId() != null) {
+            map.addParameter(FhirConstants.ID_PROPERTY, getId());
+        }
+        if (getIdentifier() != null) {
+            map.addParameter(FhirConstants.IDENTIFIER_SEARCH_HANDLER, getIdentifier());
+        }
+        if (getLastUpdated() != null) {
+            map.addParameter(FhirConstants.LAST_UPDATED_PROPERTY, getLastUpdated());
+        }
+
+        // 2. Add resource-specific parameters as complete objects to preserve nested
+        // AND/OR tokens
+
+        if (getGiven() != null) {
+            map.addParameter(FhirConstants.FIRST_NAME_SEARCH_HANDLER, getGiven());
+        }
+        if (getFamily() != null) {
+            map.addParameter(FhirConstants.LAST_NAME_SEARCH_HANDLER, getFamily());
+        }
+        if (getCity() != null) {
+            map.addParameter(FhirConstants.CITY_SEARCH_HANDLER, getCity());
+        }
+        if (getState() != null) {
+            map.addParameter(FhirConstants.STATE_SEARCH_HANDLER, getState());
+        }
+        if (getPostalCode() != null) {
+            map.addParameter(FhirConstants.POSTALCODE_SEARCH_HANDLER, getPostalCode());
+        }
+        if (getCountry() != null) {
+            map.addParameter(FhirConstants.COUNTRY_SEARCH_HANDLER, getCountry());
+        }
+
+        return map;
     }
 
     public StringAndListParam getName() {
@@ -110,5 +131,4 @@ public class PractitionerSearchParams extends BaseSearchParam {
     public void setCountry(StringAndListParam country) {
         this.country = country;
     }
-
 }

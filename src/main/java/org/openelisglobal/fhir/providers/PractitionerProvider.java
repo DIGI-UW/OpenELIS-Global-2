@@ -1,8 +1,10 @@
 package org.openelisglobal.fhir.providers;
 
+import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.IncludeParam;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
@@ -19,10 +21,12 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashSet;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Practitioner;
+import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -220,14 +224,20 @@ public class PractitionerProvider implements IResourceProvider {
 
     @Search
     public IBundleProvider searchPractitioner(@OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
+
             @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier,
+
+            @OptionalParam(name = Practitioner.SP_NAME) StringAndListParam name,
+
             @OptionalParam(name = Practitioner.SP_GIVEN) StringAndListParam given,
+
             @OptionalParam(name = Practitioner.SP_FAMILY) StringAndListParam family,
+
             @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
-            // @IncludeParam(reverse = true, allow = {
-            // "Encounter:" + Encounter.SP_PARTICIPANT,
-            // "ServiceRequest:" + ServiceRequest.SP_REQUESTER
-            // }) HashSet<Include> revIncludes,
+
+            @IncludeParam(reverse = true, allow = {
+                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER }) HashSet<Include> revIncludes,
+
             HttpServletRequest request) {
 
         String methodName = "searchPractitionerBundle";
@@ -235,18 +245,16 @@ public class PractitionerProvider implements IResourceProvider {
         LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Practitioners");
 
         try {
-
-            PractitionerSearchParams params = new PractitionerSearchParams(identifier, null, given, family, null, null,
+            PractitionerSearchParams params = new PractitionerSearchParams(identifier, name, given, family, null, null,
                     null, id, lastUpdated, null);
 
             return practitionerSearchService.searchPractitioners(params);
 
-        } catch (Exception e) {
-
+        } catch (Exception exception) {
             LogEvent.logError(this.getClass().getSimpleName(), methodName,
-                    "Error searching Practitioners: " + e.getMessage());
+                    "Error searching Practitioners: " + exception.getMessage());
 
-            throw new InternalErrorException("Error searching Practitioners", e);
+            throw new InternalErrorException("Error searching Practitioners", exception);
         }
     }
 }
