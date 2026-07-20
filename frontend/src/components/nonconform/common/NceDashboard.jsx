@@ -44,17 +44,34 @@ const STATUS_CONFIG = {
     icon: InProgress,
     labelKey: "nce.status.underInvestigation",
   },
-  "Corrective Action": {
+  CAPA: {
     type: "purple",
     icon: CheckmarkFilled,
-    labelKey: "nce.status.correctiveAction",
+    labelKey: "nce.status.capa",
   },
-  Closed: {
+  Completed: {
     type: "gray",
     icon: CheckmarkFilled,
-    labelKey: "nce.status.closed",
+    labelKey: "nce.status.completed",
   },
 };
+
+// action_type codes → i18n label keys.
+// ponytail: same 3-code mapping lives in CapaRegister.jsx / NCECorrectiveAction.jsx;
+// kept a small local copy rather than cross-importing a page component.
+const ACTION_TYPE_KEYS = {
+  1: "banner.menu.nonconformity.correctiveActions",
+  2: "nonconform.nce.preventive.action",
+  3: "nonconform.nce.concurrent.control.action",
+};
+
+const formatActionType = (actionType, intl) =>
+  (actionType || "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter((c) => ACTION_TYPE_KEYS[c])
+    .map((c) => intl.formatMessage({ id: ACTION_TYPE_KEYS[c] }))
+    .join(", ");
 
 export const NceDashboard = () => {
   const intl = useIntl();
@@ -161,8 +178,8 @@ export const NceDashboard = () => {
       else if (nce.severity === "MINOR" || nce.severity === "LOW")
         counts.minor++;
 
-      // Check if overdue (more than 7 days old and not closed)
-      if (nce.status !== "Closed" && nce.dateOfEvent) {
+      // Check if overdue (more than 7 days old and not completed)
+      if (nce.status !== "Completed" && nce.dateOfEvent) {
         const eventDate = new Date(nce.dateOfEvent);
         const daysDiff = Math.floor((now - eventDate) / (1000 * 60 * 60 * 24));
         if (daysDiff > 7) counts.overdue++;
@@ -231,7 +248,7 @@ export const NceDashboard = () => {
 
   // Check if NCE is overdue
   const isOverdue = (nce) => {
-    if (nce.status === "Closed") return false;
+    if (nce.status === "Completed") return false;
     const days = getDaysSince(nce.dateOfEvent);
     return days !== null && days > 7;
   };
@@ -612,8 +629,8 @@ export const NceDashboard = () => {
           />
           <SelectItem value="Pending" text="Open" />
           <SelectItem value="Under Investigation" text="Under Investigation" />
-          <SelectItem value="Corrective Action" text="Corrective Action" />
-          <SelectItem value="Closed" text="Closed" />
+          <SelectItem value="CAPA" text="CAPA" />
+          <SelectItem value="Completed" text="Completed" />
         </Select>
         <Select
           id="category-filter"
@@ -1043,12 +1060,68 @@ export const NceDashboard = () => {
 
                     {/* CAPA Tab */}
                     <TabPanel>
-                      <p>
-                        <FormattedMessage
-                          id="nce.capa.noItems"
-                          defaultMessage="No corrective/preventive actions recorded yet."
-                        />
-                      </p>
+                      <div style={{ marginBottom: "1rem" }}>
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          renderIcon={Add}
+                          onClick={() =>
+                            history.push(
+                              `/NCECorrectiveAction?nceNumber=${encodeURIComponent(
+                                nce.nceNumber,
+                              )}`,
+                            )
+                          }
+                        >
+                          <FormattedMessage
+                            id="nce.capa.add"
+                            defaultMessage="Add"
+                          />
+                        </Button>
+                      </div>
+                      {nce.actionLogs && nce.actionLogs.length > 0 ? (
+                        <div className="nce-capa-list">
+                          {nce.actionLogs.map((log, idx) => (
+                            <div
+                              key={log.id || idx}
+                              className="nce-detail-section"
+                            >
+                              <h4>
+                                {formatActionType(log.actionType, intl) ||
+                                  intl.formatMessage({ id: "nce.tab.capa" })}
+                              </h4>
+                              <p>{log.correctiveAction || "-"}</p>
+                              <div className="nce-item-meta">
+                                {log.personResponsible && (
+                                  <span>
+                                    <FormattedMessage id="qa.qms.capaRegister.column.assignee" />
+                                    : {log.personResponsible}
+                                  </span>
+                                )}
+                                {log.dueDate && (
+                                  <span>
+                                    <FormattedMessage id="nce.capa.dueDate" />:{" "}
+                                    {log.dueDate}
+                                  </span>
+                                )}
+                                {log.dateCompleted && (
+                                  <span>
+                                    <FormattedMessage id="qa.qms.capaRegister.column.completed" />
+                                    : {log.dateCompleted}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>
+                          <FormattedMessage
+                            id="nce.capa.noItems"
+                            defaultMessage="No corrective/preventive actions recorded yet."
+                          />
+                        </p>
+                      )}
                     </TabPanel>
 
                     {/* History Tab */}
