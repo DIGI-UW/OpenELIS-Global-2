@@ -206,6 +206,18 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
                 jdbcConn.commit();
 
+                // truncateTablesInConnection TRUNCATEs every table the dataset names
+                // and REFRESH re-inserts only the dataset's own rows — so a dataset
+                // that declares system_user without an id=1 row leaves the shared
+                // container missing the audit user every later sample insert FKs to
+                // (sample_sysuser_fk). Seven datasets do exactly that
+                // (analysis-qa-event-action, sample-qa-event-action,
+                // pathology-sample, result-select-list, role-module,
+                // system-user-module, system-user-section), which made unrelated
+                // tests fail order-dependently. Restore the seed invariant after
+                // every load so no dataset can drop it.
+                ensureAuditSystemUser();
+
                 // Refresh StatusService cache to pick up any status_of_sample changes
                 // from the loaded test data
                 if (statusService != null) {
@@ -328,6 +340,23 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     protected void ensureReferenceTables(String... names) {
         for (String name : names) {
             ensureReferenceTable(name);
+        }
+    }
+
+    /**
+     * Resync a Postgres sequence to {@code MAX(id)+1} of its table. DBUnit fixture
+     * loads insert rows with explicit ids without advancing the sequence, so a
+     * later sequence-backed insert can collide with a seeded id depending on test
+     * order (e.g. {@code person_pk id=2 already exists}). Call this before
+     * sequence-backed inserts into a fixture-seeded table.
+     */
+    protected void resyncSequence(String sequence, String table) {
+        try (Connection conn = dataSource.getConnection(); Statement st = conn.createStatement()) {
+            // id columns are numeric(10); setval needs a bigint.
+            st.execute("SELECT setval('" + sequence + "', (SELECT COALESCE(MAX(id), 0) + 1 FROM " + table
+                    + ")::bigint, false)");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
         }
     }
 

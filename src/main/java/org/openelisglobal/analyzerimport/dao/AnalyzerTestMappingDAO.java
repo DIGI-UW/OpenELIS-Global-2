@@ -24,6 +24,9 @@ public interface AnalyzerTestMappingDAO extends BaseDAO<AnalyzerTestMapping, Ana
 
     List<AnalyzerTestMapping> getAllForAnalyzer(String analyzerId);
 
+    /** Reverse lookup: every analyzer mapping that targets the given OE test. */
+    List<AnalyzerTestMapping> getAllForTest(String testId);
+
     // List<AnalyzerTestMapping> getAllAnalyzerTestMappings() throws
     // LIMSRuntimeException;
 

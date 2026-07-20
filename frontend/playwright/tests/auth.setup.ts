@@ -32,18 +32,25 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   const password = process.env.TEST_PASS || "adminADMIN!";
 
   // ── Step 1: Backend health check ──────────────────────────────
+  // /health is an nginx route of the local build/dev stacks; remote
+  // deployments (e.g. testing.openelis-global.org) route it elsewhere — it
+  // 502s after ~4s or times out outright. Probe each endpoint inside its own
+  // error boundary so a slow/dead /health can never mask the fallback: the
+  // LoginPage endpoint is served by the webapp itself and is the
+  // authoritative "backend is up" signal on any environment.
+  const probe = async (path: string) => {
+    try {
+      const res = await request.get(path, { timeout: SHORT_TIMEOUT });
+      return res.ok();
+    } catch {
+      return false;
+    }
+  };
   const healthCheckResult = await expect
     .poll(
-      async () => {
-        try {
-          const health = await request.get("/health", {
-            timeout: SHORT_TIMEOUT,
-          });
-          return health.ok();
-        } catch {
-          return false;
-        }
-      },
+      async () =>
+        (await probe("/health")) ||
+        (await probe("/api/OpenELIS-Global/LoginPage")),
       {
         timeout: NAV_TIMEOUT,
         intervals: [1_000, 2_000, 5_000],

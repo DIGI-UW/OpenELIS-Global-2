@@ -2,16 +2,19 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
 import CustomDatePicker from "./CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 
 const renderWithConfig = (props, locale = "en-US") =>
   render(
-    <ConfigurationContext.Provider
-      value={{ configurationProperties: { DEFAULT_DATE_LOCALE: locale } }}
-    >
-      <CustomDatePicker {...props} />
-    </ConfigurationContext.Provider>,
+    <IntlProvider locale="en" messages={{}} onError={() => {}}>
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: locale } }}
+      >
+        <CustomDatePicker {...props} />
+      </ConfigurationContext.Provider>
+    </IntlProvider>,
   );
 
 const findInput = () => {
