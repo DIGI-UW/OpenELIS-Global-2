@@ -255,6 +255,34 @@ public class DisplayListController extends BaseRestController {
         return displayListform;
     }
 
+    @Autowired
+    private org.openelisglobal.testmethod.service.TestMethodService testMethodService;
+
+    public static class MethodsForTestResponse {
+        public List<IdValuePair> methods;
+        public String defaultMethodId;
+
+        public MethodsForTestResponse(List<IdValuePair> methods, String defaultMethodId) {
+            this.methods = methods;
+            this.defaultMethodId = defaultMethodId;
+        }
+    }
+
+    /**
+     * Returns methods linked to the given test plus the default method id. Falls
+     * back to all active methods (no default) if the test has no configured links.
+     */
+    @GetMapping(value = "methods-for-test/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public MethodsForTestResponse getMethodsForTest(@PathVariable String testId) {
+        List<IdValuePair> methodList = testMethodService.getMethodDisplayListForTest(testId);
+        if (methodList != null) {
+            return new MethodsForTestResponse(methodList, testMethodService.getDefaultMethodId(testId));
+        }
+        return new MethodsForTestResponse(DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS),
+                null);
+    }
+
     @GetMapping(value = "tests-by-sample", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getTestsBySample(@RequestParam String sampleType) {

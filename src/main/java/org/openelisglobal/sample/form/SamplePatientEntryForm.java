@@ -11,6 +11,7 @@ import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
+import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientClinicalInfo;
 import org.openelisglobal.patient.action.bean.PatientEnhancedSearch;
@@ -106,6 +107,17 @@ public class SamplePatientEntryForm extends BaseForm {
     private List<IdValuePair> rejectReasonList;
     private LabelsSectionForm labelsSection;
     private PostSavePrintDialogForm postSavePrintDialog;
+
+    /**
+     * OGC-285 M5b: the technician's chosen per-order / per-sample label quantities
+     * (the {@code persistPayload} emitted by the Order Entry LabelsSection in API
+     * mode). Null on every legacy/decoupled save that does not render the dynamic
+     * LabelsSection — the save hook fires the label persistence ONLY when this is
+     * non-null, so existing saves are untouched. Survives
+     * {@code JSON.stringify(orderFormValues)} via the class-level
+     * {@link JsonIgnoreProperties} even when the frontend omits it.
+     */
+    private OrderLabelPersistRequest labelPersistRequest;
 
     public SamplePatientEntryForm() {
         setFormName("samplePatientEntryForm");
@@ -333,5 +345,13 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setOrderEntryOnly(boolean orderEntryOnly) {
         this.orderEntryOnly = orderEntryOnly;
+    }
+
+    public OrderLabelPersistRequest getLabelPersistRequest() {
+        return labelPersistRequest;
+    }
+
+    public void setLabelPersistRequest(OrderLabelPersistRequest labelPersistRequest) {
+        this.labelPersistRequest = labelPersistRequest;
     }
 }
