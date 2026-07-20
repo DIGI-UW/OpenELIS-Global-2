@@ -22,7 +22,11 @@ import {
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
-import { getAnalyzers } from "../../../services/analyzerService";
+import {
+  getAnalyzers,
+  type AnalyzerFilters,
+  type AnalyzersResponse,
+} from "../../../services/analyzerService";
 // AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
@@ -30,75 +34,115 @@ import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 
 import PageTitle from "../../common/PageTitle/PageTitle";
+import type { Analyzer, AnalyzerStatus } from "../types";
 import "./AnalyzersList.css";
+
+interface AnalyzerStats {
+  total: number;
+  active: number;
+  inactive: number;
+  pluginWarnings: number;
+}
+
+interface AnalyzerModalState {
+  open: boolean;
+  analyzer: Analyzer | null;
+}
+
+interface ListNotification {
+  kind: "success" | "error" | "info" | "warning";
+  title: string;
+  subtitle?: string;
+}
+
+interface AnalyzerTableRow {
+  id: string;
+  name: string;
+  type: string;
+  connection: string;
+  testUnits: string;
+  status: AnalyzerStatus;
+  lastModified: string;
+  actions: string;
+  _analyzer: Analyzer;
+}
 
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
-  const searchTimeoutRef = useRef(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [analyzers, setAnalyzers] = useState([]);
-  const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [, setAnalyzers] = useState<Analyzer[]>([]);
+  const [filteredAnalyzers, setFilteredAnalyzers] = useState<Analyzer[]>([]);
+  const [, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<AnalyzerFilters>({
     status: "",
     testUnit: "",
     analyzerType: "",
   });
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<AnalyzerStats>({
     total: 0,
     active: 0,
     inactive: 0,
     pluginWarnings: 0,
   });
-  const [testConnectionModal, setTestConnectionModal] = useState({
+  const [testConnectionModal, setTestConnectionModal] =
+    useState<AnalyzerModalState>({
+      open: false,
+      analyzer: null,
+    });
+  const [deleteModal, setDeleteModal] = useState<AnalyzerModalState>({
     open: false,
     analyzer: null,
   });
-  const [deleteModal, setDeleteModal] = useState({
-    open: false,
-    analyzer: null,
-  });
-  const [copyMappingsModal, setCopyMappingsModal] = useState({
-    open: false,
-    analyzer: null,
-  });
+  const [copyMappingsModal, setCopyMappingsModal] =
+    useState<AnalyzerModalState>({
+      open: false,
+      analyzer: null,
+    });
   // Banner shown in the list view after a successful save from AnalyzerForm.
   // The form's own InlineNotification disappears when the modal closes 1s
   // after save, and then loadAnalyzers() re-sorts the table — users had no
   // way to see what was just edited. This persists for 5s in the list view.
-  const [listNotification, setListNotification] = useState(null);
+  const [listNotification, setListNotification] =
+    useState<ListNotification | null>(null);
 
-  const loadAnalyzers = useCallback((searchFilters = {}, signal = null) => {
-    setLoading(true);
-    getAnalyzers(
-      searchFilters,
-      (data) => {
-        const list =
-          data && Array.isArray(data.analyzers) ? data.analyzers : [];
-        setAnalyzers(list);
-        setFilteredAnalyzers(list);
+  const loadAnalyzers = useCallback(
+    (
+      searchFilters: AnalyzerFilters = {},
+      signal: AbortSignal | null = null,
+    ) => {
+      setLoading(true);
+      getAnalyzers(
+        searchFilters,
+        (data: AnalyzersResponse | undefined) => {
+          const list =
+            data && Array.isArray(data.analyzers) ? data.analyzers : [];
+          setAnalyzers(list);
+          setFilteredAnalyzers(list);
 
-        // Calculate statistics based on unified status
-        const activeCount = list.filter((a) => a.status === "ACTIVE").length;
-        const inactiveCount = list.filter(
-          (a) => a.status === "INACTIVE",
-        ).length;
-        const pluginWarningCount = list.filter(
-          (a) => a.pluginLoaded === false,
-        ).length;
-        setStats({
-          total: list.length,
-          active: activeCount,
-          inactive: inactiveCount,
-          pluginWarnings: pluginWarningCount,
-        });
-        setLoading(false);
-      },
-      signal,
-    );
-  }, []);
+          // Calculate statistics based on unified status
+          const activeCount = list.filter((a) => a.status === "ACTIVE").length;
+          const inactiveCount = list.filter(
+            (a) => a.status === "INACTIVE",
+          ).length;
+          const pluginWarningCount = list.filter(
+            (a) => a.pluginLoaded === false,
+          ).length;
+          setStats({
+            total: list.length,
+            active: activeCount,
+            inactive: inactiveCount,
+            pluginWarnings: pluginWarningCount,
+          });
+          setLoading(false);
+        },
+        signal,
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -126,7 +170,7 @@ const AnalyzersList = () => {
     if (storedScrollY) {
       try {
         window.scrollTo(0, parseInt(storedScrollY, 10));
-      } catch (_) {
+      } catch {
         // ignore
       }
     }
@@ -142,7 +186,7 @@ const AnalyzersList = () => {
     };
   }, [loadAnalyzers]);
 
-  const handleSearch = (value) => {
+  const handleSearch = (value: string) => {
     setSearchTerm(value);
 
     if (searchTimeoutRef.current) {
@@ -150,7 +194,7 @@ const AnalyzersList = () => {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      const searchFilters = { ...filters };
+      const searchFilters: AnalyzerFilters = { ...filters };
       if (value.trim()) {
         searchFilters.search = value.trim();
       }
@@ -165,7 +209,10 @@ const AnalyzersList = () => {
     }, 300);
   };
 
-  const handleFilterChange = (filterName, value) => {
+  const handleFilterChange = (
+    filterName: keyof AnalyzerFilters,
+    value: string,
+  ) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
     loadAnalyzers(newFilters);
@@ -209,7 +256,7 @@ const AnalyzersList = () => {
     },
   ];
 
-  const rows = filteredAnalyzers.map((analyzer) => {
+  const rows: AnalyzerTableRow[] = filteredAnalyzers.map((analyzer) => {
     // Connection column: TCP analyzers show ip:port; FILE analyzers show
     // the watched import directory so lab techs can verify the data source.
     const connection =
@@ -222,7 +269,7 @@ const AnalyzersList = () => {
     const unifiedStatus = analyzer.status || "SETUP";
 
     return {
-      id: analyzer.id,
+      id: analyzer.id || "",
       name: analyzer.name || "-",
       type: analyzer.analyzerType || analyzer.type || "-",
       connection: connection,
@@ -234,6 +281,7 @@ const AnalyzersList = () => {
       lastModified: analyzer.lastModified
         ? new Date(analyzer.lastModified).toLocaleDateString()
         : "-",
+      actions: "",
       _analyzer: analyzer, // Store full analyzer object for actions (prefixed with _ to avoid conflicts)
     };
   });
@@ -460,11 +508,10 @@ const AnalyzersList = () => {
                   </TableHead>
                   <TableBody>
                     {rows.map((row) => {
-                      const analyzer =
-                        row._analyzer ||
-                        filteredAnalyzers.find((a) => a.id === row.id);
-                      const unifiedStatus =
-                        analyzer?.status || row.status || "SETUP";
+                      const analyzer = filteredAnalyzers.find(
+                        (a) => a.id === row.id,
+                      );
+                      const unifiedStatus = analyzer?.status || "SETUP";
 
                       return (
                         <TableRow
@@ -472,7 +519,7 @@ const AnalyzersList = () => {
                           {...getRowProps({ row })}
                           data-testid={`analyzer-row-${row.id}`}
                         >
-                          {row.cells.map((cell, index) => {
+                          {row.cells.map((cell) => {
                             const headerKey = cell.info.header;
                             let testId = null;
                             let cellContent = cell.value;
@@ -503,7 +550,10 @@ const AnalyzersList = () => {
                               testId = `analyzer-test-units-${row.id}`;
                             } else if (headerKey === "status") {
                               testId = `analyzer-status-${row.id}`;
-                              const statusColorMap = {
+                              const statusColorMap: Record<
+                                AnalyzerStatus,
+                                "gray" | "blue" | "green" | "red" | "purple"
+                              > = {
                                 INACTIVE: "gray",
                                 SETUP: "gray",
                                 VALIDATION: "blue",
@@ -650,7 +700,7 @@ const AnalyzersList = () => {
           onClose={() => {
             setDeleteModal({ open: false, analyzer: null });
           }}
-          onConfirm={(deletedId) => {
+          onConfirm={() => {
             loadAnalyzers();
           }}
         />
@@ -668,7 +718,7 @@ const AnalyzersList = () => {
           onClose={() => {
             setCopyMappingsModal({ open: false, analyzer: null });
           }}
-          onSuccess={(result, targetAnalyzerId) => {}}
+          onSuccess={() => undefined}
         />
       )}
     </div>
