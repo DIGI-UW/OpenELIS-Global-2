@@ -23,6 +23,7 @@ import org.openelisglobal.qaevent.service.NceNumberGeneratorService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qaevent.valueholder.NceActionLog;
 import org.openelisglobal.qaevent.valueholder.NceAttachment;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceHistory;
@@ -252,6 +253,27 @@ public class NceEnhancementRestController extends BaseRestController {
             item.history = historyDTOs;
             item.notes = noteDTOs;
             item.notesCount = noteDTOs.size();
+
+            // Fetch corrective/preventive actions (CAPA) so the dashboard CAPA
+            // tab/count reflects nce_action_log (the C.2 register reads the same rows).
+            // ponytail: per-NCE fetch matches this loop's existing per-NCE style
+            // (specimens/attachments/history) and is N+1; switch to a bulk grouped
+            // query like getCapaRegister if NCE volume ever makes it hurt.
+            List<NceActionLog> actionLogs = nceActionLogService.getNceActionLogByNceId(event.getId());
+            List<ActionLogDTO> actionLogDTOs = new ArrayList<>();
+            for (NceActionLog log : actionLogs) {
+                ActionLogDTO logDTO = new ActionLogDTO();
+                logDTO.id = log.getId();
+                logDTO.correctiveAction = log.getCorrectiveAction();
+                logDTO.actionType = log.getActionType();
+                logDTO.personResponsible = log.getPersonResponsible();
+                logDTO.dueDate = log.getDueDate() != null ? log.getDueDate().toLocalDate().toString() : null;
+                logDTO.dateCompleted = log.getDateCompleted() != null ? log.getDateCompleted().toLocalDate().toString()
+                        : null;
+                actionLogDTOs.add(logDTO);
+            }
+            item.actionLogs = actionLogDTOs;
+            item.capaCount = actionLogDTOs.size();
 
             nceList.add(item);
         }
@@ -499,10 +521,21 @@ public class NceEnhancementRestController extends BaseRestController {
         public String assignedTo;
         public String assignedToName;
         public int notesCount;
+        public int capaCount;
         public List<NoteDTO> notes;
         public List<LinkedSpecimenDTO> linkedSpecimens;
         public List<AttachmentDTO> attachments;
         public List<HistoryDTO> history;
+        public List<ActionLogDTO> actionLogs;
+    }
+
+    public static class ActionLogDTO {
+        public Integer id;
+        public String correctiveAction;
+        public String actionType;
+        public String personResponsible;
+        public String dueDate;
+        public String dateCompleted;
     }
 
     public static class NoteDTO {
