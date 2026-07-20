@@ -10,6 +10,12 @@ import { Add } from "@carbon/icons-react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import useCreateLocation from "../../pages/hooks/useCreateLocation";
+import type {
+  LocationLevel,
+  LocationSelection,
+  SelectedLocation,
+  StorageLocationOption,
+} from "../types";
 import "./CreateForm.css";
 
 /**
@@ -39,7 +45,18 @@ import "./CreateForm.css";
 //   - GET list parent param: "{parent}Id"   (e.g. roomId, deviceId)
 //   - POST body parent field: "parent{Parent}Id" (e.g. parentRoomId)
 //   - Identifier field: "name" for Room/Device, "label" for Shelf/Rack/Box
-const LEVELS = [
+interface LevelMeta {
+  key: LocationLevel;
+  label: string;
+  labelId: string;
+  endpoint: string;
+  parentLevel: LocationLevel | null;
+  listParam: string | null;
+  createParam: string | null;
+  createField: "name" | "label";
+}
+
+const LEVELS: LevelMeta[] = [
   {
     key: "room",
     label: "Room",
@@ -92,21 +109,42 @@ const LEVELS = [
   },
 ];
 
-export default function CreateForm({ selection, onLevelChange }) {
+type LevelOptions = Record<LocationLevel, StorageLocationOption[]>;
+
+interface InlineCreateState {
+  level: LocationLevel;
+  name: string;
+  type: string | null;
+  code: string | null;
+  rows: string | number | null;
+  columns: string | number | null;
+}
+
+interface CreateFormProps {
+  selection: LocationSelection;
+  onLevelChange: (level: LocationLevel, value?: SelectedLocation) => void;
+}
+
+export default function CreateForm({
+  selection,
+  onLevelChange,
+}: CreateFormProps) {
   const intl = useIntl();
   const createLocation = useCreateLocation();
-  const [options, setOptions] = useState({
+  const [options, setOptions] = useState<LevelOptions>({
     room: [],
     device: [],
     shelf: [],
     rack: [],
     box: [],
   });
-  const [inlineCreate, setInlineCreate] = useState(null); // { level, name, type? } | null
-  const [createError, setCreateError] = useState(null);
+  const [inlineCreate, setInlineCreate] = useState<InlineCreateState | null>(
+    null,
+  );
+  const [createError, setCreateError] = useState<string | null>(null);
   // Device types are pulled from the backend (StorageDevice.DeviceType enum)
   // so adding/removing a value only touches the Java enum.
-  const [deviceTypes, setDeviceTypes] = useState([]);
+  const [deviceTypes, setDeviceTypes] = useState<string[]>([]);
 
   useEffect(() => {
     getFromOpenElisServer("/rest/storage/devices/types", (response) => {
@@ -116,7 +154,7 @@ export default function CreateForm({ selection, onLevelChange }) {
     });
   }, []);
 
-  const openInlineCreate = (level) => {
+  const openInlineCreate = (level: LocationLevel) => {
     setCreateError(null);
     setInlineCreate({
       level,
@@ -135,7 +173,10 @@ export default function CreateForm({ selection, onLevelChange }) {
     setInlineCreate(null);
   };
 
-  const setLevelOptions = (key, values) => {
+  const setLevelOptions = (
+    key: LocationLevel,
+    values: StorageLocationOption[] | unknown,
+  ) => {
     setOptions((prev) => ({
       ...prev,
       [key]: Array.isArray(values) ? values : [],
@@ -230,10 +271,13 @@ export default function CreateForm({ selection, onLevelChange }) {
     ) {
       return;
     }
-    const meta = LEVELS.find((l) => l.key === level);
+    const meta = LEVELS.find((l) => l.key === level)!;
     // Map to the right backend field — Room/Device use `name`,
     // Shelf/Rack/Box use `label` (see LEVELS.createField).
-    const body = { [meta.createField]: name.trim(), active: true };
+    const body: Record<string, unknown> = {
+      [meta.createField]: name.trim(),
+      active: true,
+    };
     if (level === "device") {
       body.type = type;
     }
@@ -257,10 +301,13 @@ export default function CreateForm({ selection, onLevelChange }) {
     // can rely on it being present here. Backend uses `parent{Parent}Id`
     // for POST bodies (distinct from GET's `{parent}Id` query param).
     if (meta.parentLevel) {
-      body[meta.createParam] = selection[meta.parentLevel].id;
+      body[meta.createParam!] = selection[meta.parentLevel].id;
     }
     try {
-      const response = await createLocation(meta.endpoint, body);
+      const response = (await createLocation(
+        meta.endpoint,
+        body,
+      )) as StorageLocationOption;
       onLevelChange(level, {
         id: response.id,
         name: response.name || response.label,
@@ -284,7 +331,8 @@ export default function CreateForm({ selection, onLevelChange }) {
   // Carbon's design guidance and produces fighting sentinel focus traps
   // that leave inner inputs unfocusable.
   const renderInlineCreate = () => {
-    const levelMeta = LEVELS.find((l) => l.key === inlineCreate.level);
+    const currentInlineCreate = inlineCreate!;
+    const levelMeta = LEVELS.find((l) => l.key === currentInlineCreate.level)!;
     const heading = intl.formatMessage(
       {
         id: "storage.picker.inlineCreate.heading",
@@ -300,12 +348,12 @@ export default function CreateForm({ selection, onLevelChange }) {
       },
     );
     const submitDisabled =
-      !inlineCreate.name.trim() ||
-      (inlineCreate.level === "device" && !inlineCreate.type) ||
-      (inlineCreate.level === "box" &&
-        (!inlineCreate.code?.trim() ||
-          !(Number(inlineCreate.rows) >= 1) ||
-          !(Number(inlineCreate.columns) >= 1)));
+      !currentInlineCreate.name.trim() ||
+      (currentInlineCreate.level === "device" && !currentInlineCreate.type) ||
+      (currentInlineCreate.level === "box" &&
+        (!currentInlineCreate.code?.trim() ||
+          !(Number(currentInlineCreate.rows) >= 1) ||
+          !(Number(currentInlineCreate.columns) >= 1)));
     return (
       <section
         className="storage-location-picker-inline-create"
@@ -332,12 +380,15 @@ export default function CreateForm({ selection, onLevelChange }) {
             id: "label.name",
             defaultMessage: "Name",
           })}
-          value={inlineCreate.name}
+          value={currentInlineCreate.name}
           onChange={(e) =>
-            setInlineCreate({ ...inlineCreate, name: e.target.value })
+            setInlineCreate({
+              ...currentInlineCreate,
+              name: e.target.value,
+            })
           }
         />
-        {inlineCreate.level === "device" && (
+        {currentInlineCreate.level === "device" && (
           <Dropdown
             id="location-picker-inline-create-device-type"
             titleText={intl.formatMessage({
@@ -350,16 +401,16 @@ export default function CreateForm({ selection, onLevelChange }) {
             })}
             items={deviceTypes}
             itemToString={(item) => item || ""}
-            selectedItem={inlineCreate.type || null}
+            selectedItem={currentInlineCreate.type || null}
             onChange={({ selectedItem }) =>
               setInlineCreate({
-                ...inlineCreate,
+                ...currentInlineCreate,
                 type: selectedItem || "",
               })
             }
           />
         )}
-        {inlineCreate.level === "box" && (
+        {currentInlineCreate.level === "box" && (
           <>
             <TextInput
               id="location-picker-inline-create-box-code"
@@ -372,9 +423,12 @@ export default function CreateForm({ selection, onLevelChange }) {
                 defaultMessage: "Up to 10 characters",
               })}
               maxLength={10}
-              value={inlineCreate.code || ""}
+              value={currentInlineCreate.code || ""}
               onChange={(e) =>
-                setInlineCreate({ ...inlineCreate, code: e.target.value })
+                setInlineCreate({
+                  ...currentInlineCreate,
+                  code: e.target.value,
+                })
               }
             />
             <NumberInput
@@ -384,9 +438,13 @@ export default function CreateForm({ selection, onLevelChange }) {
                 defaultMessage: "Rows",
               })}
               min={1}
-              value={inlineCreate.rows === "" ? "" : Number(inlineCreate.rows)}
+              value={
+                currentInlineCreate.rows === ""
+                  ? ""
+                  : Number(currentInlineCreate.rows)
+              }
               onChange={(_e, { value }) =>
-                setInlineCreate({ ...inlineCreate, rows: value })
+                setInlineCreate({ ...currentInlineCreate, rows: value })
               }
             />
             <NumberInput
@@ -397,10 +455,15 @@ export default function CreateForm({ selection, onLevelChange }) {
               })}
               min={1}
               value={
-                inlineCreate.columns === "" ? "" : Number(inlineCreate.columns)
+                currentInlineCreate.columns === ""
+                  ? ""
+                  : Number(currentInlineCreate.columns)
               }
               onChange={(_e, { value }) =>
-                setInlineCreate({ ...inlineCreate, columns: value })
+                setInlineCreate({
+                  ...currentInlineCreate,
+                  columns: value,
+                })
               }
             />
           </>

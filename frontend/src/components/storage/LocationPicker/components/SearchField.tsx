@@ -3,6 +3,11 @@ import { TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { LEVEL_ORDER } from "../useLocationPicker";
+import type {
+  LocationLevel,
+  LocationSelection,
+  StorageLocationOption,
+} from "../types";
 
 /**
  * SearchField — flat type-ahead input for the LocationPicker.
@@ -27,6 +32,15 @@ import { LEVEL_ORDER } from "../useLocationPicker";
 const DEBOUNCE_MS = 300;
 const MIN_QUERY_LENGTH = 2;
 
+interface SearchFieldProps {
+  query: string;
+  results: StorageLocationOption[];
+  onQueryChange: (query: string) => void;
+  onResultsChange: (results: StorageLocationOption[]) => void;
+  onSelect: (result: StorageLocationOption) => void;
+  selectedSelection?: LocationSelection;
+}
+
 export default function SearchField({
   query,
   results,
@@ -34,16 +48,19 @@ export default function SearchField({
   onResultsChange,
   onSelect,
   selectedSelection = {},
-}) {
+}: SearchFieldProps) {
   const intl = useIntl();
-  const debounceRef = useRef(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(-1);
 
-  const deepestSelectedLevel = LEVEL_ORDER.reduce((deepest, level) => {
-    if (selectedSelection[level]?.id) return level;
-    return deepest;
-  }, null);
+  const deepestSelectedLevel = LEVEL_ORDER.reduce<LocationLevel | null>(
+    (deepest, level) => {
+      if (selectedSelection[level]?.id) return level;
+      return deepest;
+    },
+    null,
+  );
   const selectedResultId = deepestSelectedLevel
     ? String(selectedSelection[deepestSelectedLevel].id)
     : null;
@@ -79,11 +96,15 @@ export default function SearchField({
     debounceRef.current = setTimeout(() => {
       getFromOpenElisServer(
         `/rest/storage/locations/search?q=${encodeURIComponent(query)}`,
-        (response) => {
+        (response: unknown) => {
           if (requestId !== requestIdRef.current) {
             return;
           }
-          onResultsChange(Array.isArray(response) ? response : []);
+          onResultsChange(
+            Array.isArray(response)
+              ? (response as StorageLocationOption[])
+              : [],
+          );
         },
       );
     }, DEBOUNCE_MS);
@@ -93,7 +114,6 @@ export default function SearchField({
         debounceRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, onResultsChange]);
 
   return (
