@@ -126,7 +126,12 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 reportDate = new java.sql.Date(System.currentTimeMillis());
             }
 
-            ncEvent.setStatus("Pending");
+            // Seed "Pending" only on the initial report; preserve an existing workflow
+            // status (Under Investigation / CAPA / Completed) across later detail edits
+            // so editing an NCE never silently reopens it.
+            if (ncEvent.getStatus() == null || ncEvent.getStatus().isEmpty()) {
+                ncEvent.setStatus("Pending");
+            }
             ncEvent.setReportDate(reportDate);
             ncEvent.setDateOfEvent(dateOfEvent);
             ncEvent.setName(form.getName());
@@ -378,6 +383,26 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEvent.setDateCompleted(getDate(form.getDateCompleted(), "dd/MM/yyyy")); // Convert the string to a Date
                                                                                       // object
             setActionLogs(form, ncEvent);
+
+            // F-4: record the effectiveness verdict when the review was answered. Only a
+            // "Yes" verdict resolves the NCE (routed to resolveNCEvent by the controller);
+            // a "No" verdict lands here and is persisted without closing, so the
+            // ineffective outcome is not discarded.
+            String effective = form.getEffective();
+            boolean reviewed = effective != null && !effective.isEmpty();
+            if (reviewed) {
+                ncEvent.setEffective(effective);
+            }
+
+            // Saving a corrective action advances the NCE into "CAPA" so the list badge
+            // and status filter distinguish it from NCEs without any. Guarded: never
+            // override a resolved ("Completed") NCE, and don't re-log when already "CAPA".
+            String status = ncEvent.getStatus();
+            boolean advancedToCapa = !"Completed".equals(status) && !"CAPA".equals(status);
+            if (advancedToCapa) {
+                ncEvent.setStatus("CAPA");
+            }
+
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);
 
@@ -385,6 +410,15 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             Integer userId = parseIntegerSafely(form.getCurrentUserId());
             nceHistoryService.logActivity(ncEvent.getId(), "CORRECTIVE_ACTION", "Corrective action updated", null, null,
                     userId);
+            if (advancedToCapa) {
+                nceHistoryService.logActivity(ncEvent.getId(), "STATUS_CHANGED", "Status changed to CAPA", null, "CAPA",
+                        userId);
+            }
+            if (reviewed) {
+                nceHistoryService.logActivity(ncEvent.getId(), "EFFECTIVENESS_REVIEW",
+                        "Effectiveness review: " + ("Yes".equalsIgnoreCase(effective) ? "effective" : "not effective"),
+                        null, null, userId);
+            }
 
             return true;
         }
