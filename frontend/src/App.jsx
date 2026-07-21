@@ -37,6 +37,7 @@ import QAPlaceholder from "./components/qa/QAPlaceholder";
 import QAOverview from "./components/qa/overview/QAOverview";
 import QIDashboard from "./components/qa/qi/QIDashboard";
 import QIConfigList from "./components/qa/qi/QIConfigList";
+import QIEnabledRoute from "./components/qa/qi/QIEnabledRoute";
 import AmendmentReport from "./components/qa/qi/AmendmentReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
@@ -836,13 +837,21 @@ export default function App() {
                 <SecureRoute
                   path="/qa/qi/tat"
                   exact
-                  component={() => <TATReport breadcrumbs={qaTatBreadcrumbs} />}
+                  component={() => (
+                    <QIEnabledRoute indicator="TAT">
+                      <TATReport breadcrumbs={qaTatBreadcrumbs} />
+                    </QIEnabledRoute>
+                  )}
                   role={[Roles.RESULTS, Roles.REPORTS]}
                 />
                 <SecureRoute
                   path="/qa/qi/amendment"
                   exact
-                  component={() => <AmendmentReport />}
+                  component={() => (
+                    <QIEnabledRoute indicator="AMENDMENT">
+                      <AmendmentReport />
+                    </QIEnabledRoute>
+                  )}
                   role={[Roles.RESULTS, Roles.REPORTS]}
                 />
                 <SecureRoute
