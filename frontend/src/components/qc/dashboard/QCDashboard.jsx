@@ -9,7 +9,13 @@
  * Auto-refreshes every 5 minutes.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useContext,
+} from "react";
 import {
   Loading,
   InlineNotification,
@@ -20,15 +26,17 @@ import {
   TabPanels,
   TabPanel,
 } from "@carbon/react";
-import { Renew } from "@carbon/icons-react";
+import { Renew, Download } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import ActiveViolationsBanner from "./ActiveViolationsBanner";
 import QCSummaryTiles from "./QCSummaryTiles";
 import InstrumentsTab from "./InstrumentsTab";
 import AlertsTab from "./AlertsTab";
+import QCExportModal from "./QCExportModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import "./QCDashboard.css";
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -43,6 +51,14 @@ const QCDashboard = ({ initialTab = 0 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [showExport, setShowExport] = useState(false);
+
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  // The real gate is the backend @PreAuthorize(qa.view.qc); this only hides the
+  // entry point from users who would get a 403 anyway.
+  const canExport =
+    userSessionDetails?.permissions?.includes("qa.view.qc") ||
+    userSessionDetails?.roles?.includes("Global Administrator");
 
   const loadDashboardData = useCallback(() => {
     setLoading(true);
@@ -162,6 +178,17 @@ const QCDashboard = ({ initialTab = 0 }) => {
             {intl.formatMessage({ id: "qc.dashboard.lastUpdated" })}:{" "}
             {formatLastUpdated()}
           </span>
+          {canExport && (
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Download}
+              onClick={() => setShowExport(true)}
+              data-testid="qc-dashboard-export-button"
+            >
+              {intl.formatMessage({ id: "qc.dashboard.export.button" })}
+            </Button>
+          )}
           <Button
             kind="ghost"
             size="sm"
@@ -213,6 +240,12 @@ const QCDashboard = ({ initialTab = 0 }) => {
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      <QCExportModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        instruments={instruments}
+      />
     </div>
   );
 };

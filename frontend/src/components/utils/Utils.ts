@@ -97,6 +97,20 @@ const handleSessionError = (response: Response): Response => {
   return response;
 };
 
+/**
+ * Format a Date as a local `yyyy-MM-dd` string. Unlike `Date.toISOString()`,
+ * this reads the browser's LOCAL date components, so a date-only value picked in
+ * a UTC+ timezone is not rolled back a day when sent to the server. Non-Date
+ * input is returned as-is (or "" for null/undefined).
+ */
+export const toLocalIsoDate = (d: Date | string | null | undefined): string => {
+  if (!(d instanceof Date)) return d || "";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
   endPoint: string,
   callback: (response: T | undefined) => void,
