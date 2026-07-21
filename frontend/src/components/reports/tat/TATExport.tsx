@@ -3,11 +3,17 @@ import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 import { Download } from "@carbon/react/icons";
 import { useIntl } from "react-intl";
 import config from "../../../config.json";
+import type { BuildTatQueryString, TatFilters } from "./types";
 
-function TATExport({ filters, buildQueryString }) {
+interface TATExportProps {
+  filters: TatFilters;
+  buildQueryString: BuildTatQueryString;
+}
+
+function TATExport({ filters, buildQueryString }: TATExportProps) {
   const intl = useIntl();
 
-  const handleExport = (format) => {
+  const handleExport = (format: "CSV") => {
     const qs = buildQueryString(filters, `&format=${format}`);
     window.open(`${config.serverBaseUrl}/rest/reports/tat/export?${qs}`, "_blank");
   };
