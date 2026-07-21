@@ -847,6 +847,11 @@ public class ResultsLoadUtility {
 
         testItem.setAccessionNumber(accessionNumber);
         testItem.setAnalysisId(analysis.getId());
+        // OGC-1020 (FR-O2): version token the unified Results page round-trips
+        // on save so a stale editor is rejected instead of overwriting
+        if (analysis.getLastupdated() != null) {
+            testItem.setAnalysisLastupdated(String.valueOf(analysis.getLastupdated().getTime()));
+        }
         // Set SampleItem ID for storage location lookup
         if (analysis.getSampleItem() != null && analysis.getSampleItem().getId() != null) {
             testItem.setSampleItemId(analysis.getSampleItem().getId());

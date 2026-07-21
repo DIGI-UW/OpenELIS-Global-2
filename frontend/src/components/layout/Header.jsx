@@ -391,6 +391,29 @@ function OEHeader({
       );
     }
 
+    // OGC-1020 (R1): the unified /Results worklist consolidates the legacy
+    // result-entry pages behind the results.entry.unifiedRoute site flag —
+    // show exactly one of the two menu shapes, never both.
+    const unifiedResultsOn =
+      configurationProperties?.RESULTS_ENTRY_UNIFIED_ROUTE === "true";
+    const legacyResultEntryItems = [
+      "menu_results_logbook",
+      "menu_results_patient",
+      "menu_results_accession",
+      "menu_results_range",
+      "menu_results_status",
+    ];
+    if (
+      (menuItem.menu.elementId === "menu_results_unified" &&
+        !unifiedResultsOn) ||
+      (legacyResultEntryItems.includes(menuItem.menu.elementId) &&
+        unifiedResultsOn)
+    ) {
+      return (
+        <React.Fragment key={menuItem.menu.elementId || path}></React.Fragment>
+      );
+    }
+
     // URL matching helpers
     // Normalize to ignore query/hash to fix cases like /WorkPlanByTest?type=test
     const normalizePath = (url) => {

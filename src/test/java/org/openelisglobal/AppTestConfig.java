@@ -360,6 +360,11 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Bean
+    public org.openelisglobal.result.controller.rest.ResultEntryRestController resultEntryRestController() {
+        return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
+    }
+
+    @Bean
     @Profile("test")
     public PagingProperties pagingProperties() {
         return new PagingProperties();
