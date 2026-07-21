@@ -36,6 +36,7 @@ import EQAResultsPage from "./components/eqa/EQAResultsPage";
 import QAPlaceholder from "./components/qa/QAPlaceholder";
 import QAOverview from "./components/qa/overview/QAOverview";
 import QIDashboard from "./components/qa/qi/QIDashboard";
+import QIConfigList from "./components/qa/qi/QIConfigList";
 import AmendmentReport from "./components/qa/qi/AmendmentReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
@@ -824,6 +825,13 @@ export default function App() {
                   exact
                   component={() => <QIDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qi/config"
+                  exact
+                  component={() => <QIConfigList />}
+                  permission="qa.manage.qi"
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/qa/qi/tat"
