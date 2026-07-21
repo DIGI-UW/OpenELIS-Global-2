@@ -146,7 +146,12 @@ export default [
   // no role and silently disables features.
   {
     files: ["src/**/*.{js,jsx,ts,tsx}"],
-    ignores: ["src/components/utils/Utils.js", "src/**/*.test.{js,jsx,ts,tsx}"],
+    // Utils.{js,ts} is the canonical home of the Roles/RoleEquivalentPrivileges
+    // definitions (develop migrated it to TypeScript), so it is exempt.
+    ignores: [
+      "src/components/utils/Utils.{js,ts}",
+      "src/**/*.test.{js,jsx,ts,tsx}",
+    ],
     rules: {
       "no-restricted-syntax": [
         "error",
@@ -160,7 +165,7 @@ export default [
           "CytoPathologist",
         ].map((roleName) => ({
           selector: `Literal[value="${roleName}"]`,
-          message: `Hardcoded role name "${roleName}" — use Roles.* from Utils.js, or better, hasPrivilege() with a Privileges.* constant.`,
+          message: `Hardcoded role name "${roleName}" — use Roles.* from Utils, or better, hasPrivilege() with a Privileges.* constant.`,
         })),
       ],
     },
