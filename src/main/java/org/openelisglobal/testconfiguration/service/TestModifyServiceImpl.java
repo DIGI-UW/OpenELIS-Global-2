@@ -27,6 +27,8 @@ import org.openelisglobal.testconfiguration.controller.TestModifyEntryController
 import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.TestSet;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
@@ -65,6 +67,10 @@ public class TestModifyServiceImpl implements TestModifyService {
     private PanelService panelService;
     @Autowired
     private TestSectionService testSectionService;
+    @Autowired
+    private TestTerminologyMappingService terminologyMappingService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
 
     @Override
     @Transactional
@@ -163,6 +169,7 @@ public class TestModifyServiceImpl implements TestModifyService {
                 resultLimit.setTestId(set.test.getId());
                 resultLimitService.insert(resultLimit);
             }
+            testResultComponentService.syncPrimaryComponentFromLegacy(testAddParams.testId, currentUserId);
         }
 
         saveQcThresholds(testAddParams, currentUserId);
@@ -251,6 +258,7 @@ public class TestModifyServiceImpl implements TestModifyService {
             test.setOrderable(orderable);
             test.setTimeHolding(timeHolding);
             testService.update(test);
+            terminologyMappingService.syncLegacyLoinc(testId, loinc, userId);
         }
     }
 

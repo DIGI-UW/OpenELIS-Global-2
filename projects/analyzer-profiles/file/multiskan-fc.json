@@ -1,12 +1,14 @@
 {
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "profileMeta": {
     "id": "multiskan-fc",
     "version": "2.0.0",
     "displayName": "Thermo Multiskan FC",
+    "confidence": "MEDIUM_HIGH",
     "manufacturer": "Thermo Fisher",
     "validation_status": "PENDING - v2.0 updated for dual plate-grid format. Validated against real SkanIt CSV export description from Confluence tracker. French locale confirmed (semicolons, comma decimals)."
   },
-  "category": "IMMUNOASSAY",
+  "category": "IMMUNOLOGY",
   "protocol": {
     "name": "FILE",
     "format": "CSV"
@@ -37,31 +39,88 @@
       "dual_grid": true,
       "od_grid_header": "Abs",
       "sample_id_grid_header": "Echantillon",
-      "metadata_rows": ["Instrument", "Protocol", "Date", "Time", "Filter", "Plate Type"],
+      "metadata_rows": [
+        "Instrument",
+        "Protocol",
+        "Date",
+        "Time",
+        "Filter",
+        "Plate Type"
+      ],
       "grid_rows": 8,
       "grid_cols": 12
     },
     "well_per_row": {
       "description": "One row per well with Well, Sample ID, Absorbance",
-      "columns": ["Well", "Sample ID", "Absorbance (450 nm)", "Content"]
+      "columns": [
+        "Well",
+        "Sample ID",
+        "Absorbance (450 nm)",
+        "Content"
+      ]
     }
   },
   "default_test_mappings": [
-    { "test_code": "HIV ELISA", "test_name_hint": "HIV ELISA (OD)", "loinc": "68961-2", "unit": "S/CO" },
-    { "test_code": "Dengue IgG", "test_name_hint": "Dengue virus IgG Ab [Presence] in Serum", "loinc": "7854-3", "unit": "" },
-    { "test_code": "Dengue IgM", "test_name_hint": "Dengue virus IgM Ab [Presence] in Serum", "loinc": "7852-7", "unit": "" }
+    {
+      "test_code": "HIV ELISA",
+      "test_name_hint": "HIV ELISA (OD)",
+      "loinc": "68961-2",
+      "unit": "S/CO"
+    },
+    {
+      "test_code": "Dengue IgG",
+      "test_name_hint": "Dengue virus IgG Ab [Presence] in Serum",
+      "loinc": "7854-3",
+      "unit": ""
+    },
+    {
+      "test_code": "Dengue IgM",
+      "test_name_hint": "Dengue virus IgM Ab [Presence] in Serum",
+      "loinc": "7852-7",
+      "unit": ""
+    }
   ],
   "configDefaults": {
     "fileFormat": "CSV",
     "delimiter": ";",
     "hasHeader": true,
     "qcRules": [
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NEG", "isActive": true, "sortOrder": 1 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "POS", "isActive": true, "sortOrder": 2 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NC", "isActive": true, "sortOrder": 3 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PC", "isActive": true, "sortOrder": 4 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANC", "isActive": true, "sortOrder": 5 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANK", "isActive": true, "sortOrder": 6 }
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "NEG",
+        "isActive": true,
+        "sortOrder": 1
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "POS",
+        "isActive": true,
+        "sortOrder": 2
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "NC",
+        "isActive": true,
+        "sortOrder": 3
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "PC",
+        "isActive": true,
+        "sortOrder": 4
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "BLANC",
+        "isActive": true,
+        "sortOrder": 5
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "BLANK",
+        "isActive": true,
+        "sortOrder": 6
+      }
     ]
   }
 }

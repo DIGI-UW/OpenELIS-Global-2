@@ -186,6 +186,13 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 
 ## Active Technologies
 
+- Java 21 LTS (Temurin); JavaScript / React 17 + Spring Framework 6.2
+  (Traditional MVC, **not** Spring Boot), Jakarta EE 9 (`jakarta.*`),
+  Hibernate/JPA, `@carbon/react`, React Intl (spec/ogc-949-unified-test-catalog)
+- PostgreSQL 14+ via JPA/Hibernate; schema changes via Liquibase 4.8
+  (`src/main/resources/liquibase/3.5.x.x/`, latest changeset
+  `039-test-method-links.xml`) (spec/ogc-949-unified-test-catalog)
+
 - Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)

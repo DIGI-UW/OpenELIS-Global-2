@@ -3,51 +3,288 @@
   "profileMeta": {
     "id": "genexpert-astm",
     "version": "2.1.0",
-    "displayName": "Cepheid GeneXpert (ASTM Mode)"
+    "displayName": "Cepheid GeneXpert (ASTM Mode)",
+    "confidence": "HIGH"
   },
   "analyzer_name": "Cepheid GeneXpert (ASTM Mode)",
   "manufacturer": "Cepheid",
   "category": "MOLECULAR",
-  "protocol": { "name": "ASTM", "version": "E-1394-97" },
+  "protocol": {
+    "name": "ASTM",
+    "version": "E-1394-97"
+  },
   "identifier_pattern": "GENEXPERT|CEPHEID",
-  "transport": ["RS-232", "TCP/IP"],
+  "transport": [
+    "RS-232",
+    "TCP/IP"
+  ],
   "transport_config": {
-    "RS-232": { "default_baud_rate": 9600 },
+    "RS-232": {
+      "default_baud_rate": 9600
+    },
     "TCP/IP": {}
   },
   "communication": {
-    "mode": "ANALYZER_INITIATED",
-    "supports_lis_initiated": false
+    "mode": "BOTH",
+    "supports_lis_initiated": true
   },
   "default_test_mappings": [
-    { "test_code": "MTB",          "loinc": "85362-2",  "unit": "" },
-    { "test_code": "MTB-RIF",      "loinc": "85362-2",  "unit": "" },
-    { "test_code": "RIF",          "loinc": "46244-0",  "unit": "" },
-    { "test_code": "COVID19",      "loinc": "94500-6",  "unit": "" },
-    { "test_code": "SARSCOV2",     "loinc": "94500-6",  "unit": "" },
-    { "test_code": "SARS-CoV-2",   "loinc": "94500-6",  "unit": "" },
-    { "test_code": "Xpress",       "loinc": "94500-6",  "unit": "" },
-    { "test_code": "HIV-VL",       "loinc": "20447-9",  "unit": "copies/mL" },
-    { "test_code": "HIV",          "loinc": "20447-9",  "unit": "copies/mL" },
-    { "test_code": "HIV-1 Viral",  "loinc": "20447-9",  "unit": "copies/mL" },
-    { "test_code": "VL",           "loinc": "20447-9",  "unit": "" },
-    { "test_code": "HIV-1 Qual",   "loinc": "5017-9",   "unit": "" },
-    { "test_code": "HIV-1 DBS",    "loinc": "10351-5",  "unit": "" },
-    { "test_code": "HBV",          "loinc": "42595-9",  "unit": "IU/mL" },
-    { "test_code": "HCV Viral",    "loinc": "11011-4",  "unit": "IU/mL" },
-    { "test_code": "HPV HR",       "loinc": "82675-0",  "unit": "" },
-    { "test_code": "HPV 16_18-45", "loinc": "82354-2",  "unit": "" },
-    { "test_code": "CT",           "loinc": "21613-5",  "unit": "" },
-    { "test_code": "NG",           "loinc": "24111-7",  "unit": "" },
-    { "test_code": "EV",           "loinc": "29558-4",  "unit": "" },
-    { "test_code": "CDIFF",        "loinc": "54067-4",  "unit": "" },
-    { "test_code": "MRSA",         "loinc": "35492-8",  "unit": "" },
-    { "test_code": "SA",           "loinc": "94512-1",  "unit": "" },
-    { "test_code": "TV",           "loinc": "69937-1",  "unit": "" },
-    { "test_code": "VANA",         "loinc": "62261-3",  "unit": "" },
-    { "test_code": "VANB",         "loinc": "62261-3",  "unit": "" },
-    { "test_code": "Mpox",         "loinc": "100383-9", "unit": "" },
-    { "test_code": "WB",           "loinc": "53601-1",  "unit": "" }
+    {
+      "test_code": "MTB",
+      "loinc": "85362-2",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "MTB-RIF",
+      "loinc": "85362-2",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "RIF",
+      "loinc": "46244-0",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "COVID19",
+      "loinc": "94500-6",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "SARSCOV2",
+      "loinc": "94500-6",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "SARS-CoV-2",
+      "loinc": "94500-6",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "Xpress",
+      "loinc": "94500-6",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "HIV-VL",
+      "loinc": "20447-9",
+      "unit": "copies/mL",
+      "result_type": "quantitative"
+    },
+    {
+      "test_code": "HIV",
+      "loinc": "20447-9",
+      "unit": "copies/mL",
+      "result_type": "quantitative"
+    },
+    {
+      "test_code": "HIV-1 Viral",
+      "loinc": "20447-9",
+      "unit": "copies/mL",
+      "result_type": "quantitative"
+    },
+    {
+      "test_code": "VL",
+      "loinc": "20447-9",
+      "unit": "",
+      "result_type": "quantitative"
+    },
+    {
+      "test_code": "HIV-1 Qual",
+      "loinc": "5017-9",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "HIV-1 DBS",
+      "loinc": "10351-5",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "HBV",
+      "loinc": "42595-9",
+      "unit": "IU/mL",
+      "result_type": "quantitative"
+    },
+    {
+      "test_code": "HCV Viral",
+      "loinc": "11011-4",
+      "unit": "IU/mL",
+      "result_type": "quantitative"
+    },
+    {
+      "test_code": "HPV HR",
+      "loinc": "82675-0",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "HPV 16_18-45",
+      "loinc": "82354-2",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "CT",
+      "loinc": "21613-5",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "NG",
+      "loinc": "24111-7",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "EV",
+      "loinc": "29558-4",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "CDIFF",
+      "loinc": "54067-4",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "MRSA",
+      "loinc": "35492-8",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "SA",
+      "loinc": "94512-1",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "TV",
+      "loinc": "69937-1",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "VANA",
+      "loinc": "62261-3",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "VANB",
+      "loinc": "62261-3",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "Mpox",
+      "loinc": "100383-9",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    },
+    {
+      "test_code": "WB",
+      "loinc": "53601-1",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "DETECTED",
+        "NOT DETECTED"
+      ]
+    }
   ],
   "configDefaults": {
     "connectionRole": "SERVER",

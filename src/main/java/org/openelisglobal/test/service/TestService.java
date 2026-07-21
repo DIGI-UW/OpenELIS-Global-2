@@ -3,6 +3,7 @@ package org.openelisglobal.test.service;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -139,4 +140,13 @@ public interface TestService extends BaseObjectService<Test, String> {
     List<Test> getTriggeringAntimicrobialResistanceTests();
 
     Optional<TestQcThreshold> getQcThreshold(String testId);
+
+    /**
+     * Resolves the {@code localization} ids backing a test's localizable name
+     * fields, so the editor can read/write per-locale values through the existing
+     * {@code /rest/localizations/{id}} endpoints (no per-test translation store).
+     * Keys are field names ("name", "reportingName"); a field is omitted when the
+     * test has no localization link for it.
+     */
+    Map<String, String> getNameLocalizationIds(String testId);
 }

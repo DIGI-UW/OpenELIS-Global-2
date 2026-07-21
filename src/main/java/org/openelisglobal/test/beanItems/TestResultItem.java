@@ -109,6 +109,12 @@ public class TestResultItem implements ResultItem, Serializable {
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String testId;
 
+    // Which result component of the test this row records (multi-component tests
+    // render one row per component). Component UUID; null for single-component
+    // tests.
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    private String testResultComponentId;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String testKit1InventoryId;
 
@@ -657,6 +663,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setTestId(String testId) {
         this.testId = testId;
+    }
+
+    public String getTestResultComponentId() {
+        return testResultComponentId;
+    }
+
+    public void setTestResultComponentId(String testResultComponentId) {
+        this.testResultComponentId = testResultComponentId;
     }
 
     public String getResultValue() {

@@ -3,10 +3,6 @@ package org.openelisglobal.analyzer.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,6 +21,7 @@ import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.service.BridgeHttpClient;
 import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.service.QcRuleDto;
@@ -78,6 +75,9 @@ public class AnalyzerRestController extends BaseRestController {
     private org.openelisglobal.analyzer.service.AnalyzerQueryService analyzerQueryService;
 
     @Autowired
+    private org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService analyzerOrderDispatchService;
+
+    @Autowired
     private PluginAnalyzerService pluginAnalyzerService;
 
     @Autowired
@@ -88,6 +88,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private BridgeRegistrationService bridgeRegistrationService;
+
+    @Autowired
+    private BridgeHttpClient bridgeHttpClient;
 
     @Autowired
     private AnalyzerQcRuleService analyzerQcRuleService;
@@ -300,6 +303,21 @@ public class AnalyzerRestController extends BaseRestController {
                     if (isFileProtocol(configData)) {
                         fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName(),
                                 getSysUserId(request));
+                    }
+
+                    // The profile is the source of truth for a profile-created analyzer's
+                    // communication mode, so apply it whenever the profile declares one —
+                    // overriding the form's value. We can't gate on "form left it null": the
+                    // SPA only reads the legacy flat `communication_mode` (profiles carry the
+                    // nested `communication.mode` block), so it always falls back to the
+                    // ANALYZER_INITIATED default and submits a non-null mode. Without this
+                    // override, profile-created analyzers stay non-dispatchable (effective
+                    // ANALYZER_INITIATED) and never appear in the LIS-initiated dispatch UI.
+                    CommunicationMode profileMode = communicationModeFromProfile(configData);
+                    if (profileMode != null) {
+                        analyzer.setCommunicationMode(profileMode);
+                        analyzer.setSysUserId(getSysUserId(request));
+                        analyzerService.update(analyzer);
                     }
                 } else {
                     logger.warn("Could not load default config '{}' for test mapping auto-creation",
@@ -921,42 +939,10 @@ public class AnalyzerRestController extends BaseRestController {
         String endpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/api/test-connectivity";
 
         try {
-            URL url = new URL(endpoint);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
-                javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
-                javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
-                sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return new java.security.cert.X509Certificate[0];
-                    }
-
-                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
-                    }
-
-                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
-                    }
-                } }, new java.security.SecureRandom());
-                httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
-                httpsConn.setHostnameVerifier((hostname, session) -> true);
-            }
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setDoOutput(true);
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(10000);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(json.getBytes(StandardCharsets.UTF_8));
-            }
-
-            int status = conn.getResponseCode();
-            String body = "";
-            try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
-                if (is != null) {
-                    body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                }
-            }
+            BridgeHttpClient.BridgeResponse resp = bridgeHttpClient.post(endpoint, json,
+                    java.time.Duration.ofSeconds(10));
+            int status = resp.status;
+            String body = resp.body;
 
             if (status == 200) {
                 try {
@@ -1058,36 +1044,9 @@ public class AnalyzerRestController extends BaseRestController {
         String healthUrl = analyzerBridgeUrl.replaceAll("/+$", "") + "/actuator/health";
 
         try {
-            URL url = new URL(healthUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
-                javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
-                javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
-                sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return new java.security.cert.X509Certificate[0];
-                    }
-
-                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
-                    }
-
-                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
-                    }
-                } }, new java.security.SecureRandom());
-                httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
-                httpsConn.setHostnameVerifier((hostname, session) -> true);
-            }
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
-
-            int status = conn.getResponseCode();
-            String body = "";
-            try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
-                if (is != null) {
-                    body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                }
-            }
+            BridgeHttpClient.BridgeResponse resp = bridgeHttpClient.get(healthUrl, java.time.Duration.ofSeconds(5));
+            int status = resp.status;
+            String body = resp.body;
 
             boolean healthy = false;
             if (status == 200) {
@@ -1144,7 +1103,7 @@ public class AnalyzerRestController extends BaseRestController {
                 String protocol = analyzer.getProtocolVersion() != null && analyzer.getProtocolVersion().isHl7() ? "HL7"
                         : "ASTM";
                 registered = bridgeRegistrationService.registerTcp(id, name, analyzer.getIpAddress(),
-                        analyzer.getPort(), protocol);
+                        analyzer.getPort(), protocol, analyzer.getIdentifierPattern());
             }
 
             // FILE analyzers: register by watch directory (unified fields on Analyzer)
@@ -1199,6 +1158,55 @@ public class AnalyzerRestController extends BaseRestController {
                     .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         } catch (Exception e) {
             logger.error("Error starting query job for analyzer: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /rest/analyzer/analyzers/{id}/send-order Dispatch an outbound LIS-
+     * initiated order to the given analyzer via the bridge.
+     *
+     * <p>
+     * Body: {@code { accessionNumber: string, patientId?: string, testCodes:
+     * string[] }}. Returns HTTP 200 on successful bridge accept, 502 on bridge-side
+     * failure (failed ACK, connection refused), 400 on validation, 422 on
+     * configuration problems (missing IP/port, missing bridge URL).
+     */
+    @PostMapping("/analyzers/{id}/send-order")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> sendOrder(@PathVariable String id,
+            @RequestBody Map<String, Object> body) {
+        // OE2 is analyzer-agnostic: it sends only {accessionNumber}. The backend
+        // resolves the accession's ordered tests → their LOINCs and posts a
+        // LOINC order to the bridge, which owns LOINC→analyzer-code + message
+        // building. No test codes cross this boundary.
+        String accessionNumber = body.get("accessionNumber") instanceof String s ? s : null;
+        try {
+            org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService.DispatchResult result = analyzerOrderDispatchService
+                    .dispatchOrder(id, accessionNumber);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", result.success ? "DISPATCHED" : "FAILED");
+            response.put("protocol", result.protocol);
+            response.put("analyzerId", id);
+            response.put("accessionNumber", accessionNumber);
+            response.put("loincCodes", result.loincCodes);
+            if (!result.success) {
+                response.put("error", result.error);
+            }
+            return result.success ? ResponseEntity.ok(response)
+                    : ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (java.io.IOException e) {
+            logger.warn("Bridge IO failure dispatching order for analyzer {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Unexpected error dispatching order for analyzer {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
@@ -1335,44 +1343,11 @@ public class AnalyzerRestController extends BaseRestController {
         }
     }
 
-    @PostMapping("/analyzers/{id}/profiles/{protocol}/{name}/apply")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> applyProfileToAnalyzer(@PathVariable String id,
-            @PathVariable String protocol, @PathVariable String name, HttpServletRequest request) {
-        try {
-            Analyzer analyzer = analyzerService.get(id);
-            if (analyzer == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(AnalyzerControllerHelper.wrapError("Analyzer not found: " + id));
-            }
-
-            Map<String, Object> configData = loadDefaultConfigFile(protocol + "/" + name);
-            if (configData == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                        AnalyzerControllerHelper.wrapError("Analyzer profile not found: " + protocol + "/" + name));
-            }
-
-            String sysUserId = getSysUserId(request);
-            analyzerService.autoCreateTestMappings(id, configData, sysUserId);
-            if (isFileProtocol(configData)) {
-                fileImportService.autoCreateFromProfile(id, configData, analyzer.getName(), sysUserId);
-            }
-
-            Analyzer updatedAnalyzer = analyzerService.getWithType(id).orElse(analyzer);
-            boolean bridgeRegistered = registerWithBridge(updatedAnalyzer);
-
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("analyzerId", id);
-            response.put("profileId", protocol + "/" + name);
-            response.put("applied", true);
-            response.put("bridgeRegistered", bridgeRegistered);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.error("Error applying analyzer profile {}/{} to analyzer {}", protocol, name, id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        }
-    }
+    // NOTE: a profile is a one-time bootstrap applied at analyzer CREATE (see the
+    // create endpoint's defaultConfigId block). There is intentionally no
+    // "re-apply profile to existing analyzer" endpoint: re-applying would clobber
+    // analyzer-specific config (IP/port/local tweaks) vs profile-derived config in
+    // a surprising way. Existing analyzers are changed via the normal update (PUT).
 
     /**
      * Resolve a pluginTypeId that may be numeric (database ID) or a well-known
@@ -1450,6 +1425,25 @@ public class AnalyzerRestController extends BaseRestController {
         }
 
         return templateFile;
+    }
+
+    /**
+     * Resolve the communication mode declared by a profile (the top-level
+     * {@code communication.mode} block, or legacy {@code communication_mode}), or
+     * null if absent/unrecognized.
+     */
+    static CommunicationMode communicationModeFromProfile(Map<String, Object> configData) {
+        String mode = null;
+        Object comm = configData.get("communication");
+        if (comm instanceof Map) {
+            Object m = ((Map<?, ?>) comm).get("mode");
+            if (m != null) {
+                mode = String.valueOf(m);
+            }
+        } else if (configData.get("communication_mode") != null) {
+            mode = String.valueOf(configData.get("communication_mode"));
+        }
+        return mode != null ? CommunicationMode.fromValue(mode) : null;
     }
 
     /**
