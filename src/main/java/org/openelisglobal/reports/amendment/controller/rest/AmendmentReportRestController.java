@@ -6,8 +6,10 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.reports.amendment.bean.AmendmentBreakdownResponse;
 import org.openelisglobal.reports.amendment.bean.AmendmentDetailResponse;
 import org.openelisglobal.reports.amendment.bean.AmendmentSummaryResponse;
+import org.openelisglobal.reports.amendment.bean.AmendmentTrendResponse;
 import org.openelisglobal.reports.amendment.service.AmendmentReportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,6 +104,66 @@ public class AmendmentReportRestController extends BaseRestController {
 
         logger.info("Amendment detail by user {} | range {}-{} | page {} size {} | {} total", getSysUserId(request),
                 fromDate, toDate, page, pageSize, response.getTotalCount());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/trend")
+    public ResponseEntity<?> getTrend(@RequestParam String fromDate, @RequestParam String toDate,
+            @RequestParam(defaultValue = "DAILY") String interval, HttpServletRequest request) {
+
+        requireAuthenticatedUser(request);
+
+        LocalDate from;
+        LocalDate to;
+        try {
+            from = LocalDate.parse(fromDate);
+            to = LocalDate.parse(toDate);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid parameter: " + e.getMessage()));
+        }
+
+        if (from.isAfter(to)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "fromDate must not be after toDate"));
+        }
+        if (ChronoUnit.DAYS.between(from, to) > MAX_DATE_RANGE_DAYS) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Date range must not exceed 1 year"));
+        }
+
+        AmendmentTrendResponse response = amendmentReportService.getTrend(from, to, interval);
+
+        logger.info("Amendment trend by user {} | range {}-{} | interval {} | {} points", getSysUserId(request),
+                fromDate, toDate, interval, response.getPoints().size());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/breakdown")
+    public ResponseEntity<?> getBreakdown(@RequestParam String fromDate, @RequestParam String toDate,
+            HttpServletRequest request) {
+
+        requireAuthenticatedUser(request);
+
+        LocalDate from;
+        LocalDate to;
+        try {
+            from = LocalDate.parse(fromDate);
+            to = LocalDate.parse(toDate);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid parameter: " + e.getMessage()));
+        }
+
+        if (from.isAfter(to)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "fromDate must not be after toDate"));
+        }
+        if (ChronoUnit.DAYS.between(from, to) > MAX_DATE_RANGE_DAYS) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Date range must not exceed 1 year"));
+        }
+
+        AmendmentBreakdownResponse response = amendmentReportService.getBreakdown(from, to);
+
+        logger.info("Amendment breakdown by user {} | range {}-{} | {} tests", getSysUserId(request), fromDate, toDate,
+                response.getRows().size());
 
         return ResponseEntity.ok(response);
     }
