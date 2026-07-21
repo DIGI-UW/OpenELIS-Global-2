@@ -230,4 +230,32 @@
         </rollback>
     </changeSet>
 
+    <!-- OGC-709 [QA-C.3]: qa.manage.qi shipped reserved-but-ungranted in qa-021.
+         This grant activates it for QI Configuration management. Management is
+         scoped no wider than its view permission: QA Officer + Global Admin only.
+         A NEW changeSet (never edit qa-023/024 — that breaks their checksum). -->
+    <changeSet author="openelisglobal" id="qa-028-grant-qa-manage-qi">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.manage.qi'</sqlCheck>
+        </preConditions>
+        <comment>Grant qa.manage.qi to QA Officer and Global Administrator</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_module
+                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM clinlims.system_role r, clinlims.system_module m
+            WHERE r.name IN ('QA Officer', 'Global Administrator') AND m.name = 'qa.manage.qi'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.system_role_module srm
+                  WHERE srm.system_role_id = r.id AND srm.system_module_id = m.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'qa.manage.qi');
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
