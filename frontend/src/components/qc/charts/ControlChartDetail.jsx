@@ -32,7 +32,7 @@ import {
 import { Download, ZoomIn, ZoomOut, FitToScreen } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useParams, useHistory } from "react-router-dom";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import LeveyJenningsChart from "./LeveyJenningsChart";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -143,20 +143,10 @@ const ControlChartDetail = () => {
       // Build date range query params (only params the backend accepts)
       const params = new URLSearchParams();
       if (dateRange[0]) {
-        params.append(
-          "startDate",
-          dateRange[0] instanceof Date
-            ? dateRange[0].toISOString().split("T")[0]
-            : dateRange[0],
-        );
+        params.append("startDate", toLocalIsoDate(dateRange[0]));
       }
       if (dateRange[1]) {
-        params.append(
-          "endDate",
-          dateRange[1] instanceof Date
-            ? dateRange[1].toISOString().split("T")[0]
-            : dateRange[1],
-        );
+        params.append("endDate", toLocalIsoDate(dateRange[1]));
       }
 
       const qs = params.toString() ? `?${params.toString()}` : "";

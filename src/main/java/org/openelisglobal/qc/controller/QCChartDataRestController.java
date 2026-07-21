@@ -8,14 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.qc.service.QCChartDataService;
-import org.openelisglobal.qc.service.QCControlLotService;
-import org.openelisglobal.qc.service.SigmaMetrics;
-import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -39,12 +34,6 @@ public class QCChartDataRestController {
 
     @Autowired
     private QCChartDataService chartDataService;
-
-    @Autowired
-    private QCControlLotService controlLotService;
-
-    @Autowired
-    private TestService testService;
 
     /**
      * Get chart data for a specific control lot with optional filtering. GET
@@ -102,12 +91,13 @@ public class QCChartDataRestController {
     public ResponseEntity<ChartStatisticsResponse> getChartStatistics(
             @PathVariable("controlLotId") String controlLotId) {
         try {
-            QCStatistics stats = chartDataService.getLatestStatistics(controlLotId);
+            QCChartDataService.StatsWithSigma statsWithSigma = chartDataService.getStatisticsWithSigma(controlLotId);
 
-            if (stats == null) {
+            if (statsWithSigma == null || statsWithSigma.statistics() == null) {
                 return ResponseEntity.notFound().build();
             }
 
+            QCStatistics stats = statsWithSigma.statistics();
             ChartStatisticsResponse response = new ChartStatisticsResponse();
             response.setControlLotId(controlLotId);
             response.setMean(stats.getMean() != null ? stats.getMean().doubleValue() : 0.0);
@@ -126,19 +116,10 @@ public class QCChartDataRestController {
             response.setMinus2SD(mean - 2 * sd);
             response.setMinus3SD(mean - 3 * sd);
 
-            // C.1 / OGC-704: Westgard sigma metric from the control mean/SD and the
-            // per-test TEa (null TEa -> NOT_CALCULABLE). Bias fixed at 0 (no peer data).
-            Double tea = null;
-            QCControlLot lot = controlLotService.get(controlLotId);
-            if (lot != null && lot.getTestId() != null) {
-                Test test = testService.getTestById(lot.getTestId());
-                if (test != null) {
-                    tea = test.getTea();
-                }
-            }
-            SigmaMetrics.SigmaResult sigma = SigmaMetrics.compute(stats.getMean(), stats.getStandardDeviation(), tea);
-            response.setSigma(sigma.sigma());
-            response.setSigmaCategory(sigma.category());
+            // C.1 / OGC-704: Westgard sigma metric (mean/SD + per-test TEa, bias 0).
+            // Shared with the OGC-706 export via QCChartDataService#getStatisticsWithSigma.
+            response.setSigma(statsWithSigma.sigma().sigma());
+            response.setSigmaCategory(statsWithSigma.sigma().category());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
