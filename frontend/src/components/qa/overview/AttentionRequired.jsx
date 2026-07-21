@@ -4,6 +4,7 @@ import { useHistory } from "react-router-dom";
 import { CheckmarkOutline } from "@carbon/icons-react";
 import ComingSoon from "./ComingSoon";
 import QAEmptyState from "../common/QAEmptyState";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import {
   NCE_DRILL_URL,
   countCriticalPending,
@@ -43,11 +44,18 @@ const AttentionRequired = () => {
   // undefined = loading, null = fetch yielded no data
   const [nceList, setNceList] = useState();
   const [summary, setSummary] = useState();
+  // OGC-711: hide the critical-NCE row when the NCE indicator is disabled.
+  // Fail-open — default true until/unless resolve says enabled === false.
+  const [nceEnabled, setNceEnabled] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     fetchNceList((list) => mounted && setNceList(list));
     fetchOverviewSummary((data) => mounted && setSummary(data));
+    getFromOpenElisServer(
+      "/rest/qi-config/resolve?indicator=NCE",
+      (res) => mounted && res && setNceEnabled(res.enabled !== false),
+    );
     return () => {
       mounted = false;
     };
@@ -59,7 +67,8 @@ const AttentionRequired = () => {
 
   // All live queues loaded and empty — surface a calm "all clear" above the
   // rows (placeholders still render below).
-  const allClear = criticalNce === 0 && qcViolations === 0 && eqaDue === 0;
+  const allClear =
+    (!nceEnabled || criticalNce === 0) && qcViolations === 0 && eqaDue === 0;
 
   return (
     <section className="qa-overview-section" aria-label={title}>
@@ -75,12 +84,14 @@ const AttentionRequired = () => {
             subheadKey="qa.empty.attention.subhead"
           />
         )}
-        <LiveRow
-          count={criticalNce}
-          labelKey="qa.overview.attention.criticalNce"
-          alert={criticalNce > 0}
-          onClick={() => history.push(NCE_DRILL_URL)}
-        />
+        {nceEnabled && (
+          <LiveRow
+            count={criticalNce}
+            labelKey="qa.overview.attention.criticalNce"
+            alert={criticalNce > 0}
+            onClick={() => history.push(NCE_DRILL_URL)}
+          />
+        )}
         <ComingSoon
           variant="row"
           titleKey="qa.overview.attention.criticalResults"

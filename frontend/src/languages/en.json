@@ -6063,6 +6063,8 @@
   "qa.qi.dashboard.viewDetail": "View detail",
   "qa.qi.dashboard.tileInfo": "What does this tile measure?",
   "qa.qi.dashboard.comingSoon": "Coming soon — {ticket}",
+  "qa.qi.disabled.toast.title": "Indicator disabled",
+  "qa.qi.disabled.toast.message": "This quality indicator is disabled in QI Configuration; its detail page is unavailable.",
   "qa.qi.dashboard.tile.tat.label": "Average TAT",
   "qa.qi.dashboard.tile.tat.tooltip": "Average turnaround time from sample receipt to result validation, across all completed test orders in the reporting window.",
   "qa.qi.dashboard.tile.tat.vsPriorDays": "vs prior {days} days",
