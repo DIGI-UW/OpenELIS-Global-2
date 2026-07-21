@@ -7,6 +7,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ResultReportingConfigurationService {
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_MODIFY')")
+    // Result-reporting CONFIGURATION: writes site-information settings + cron
+    // schedulers, a system-configuration concern (its collaborators
+    // SiteInformationService.persistData / scheduler config are the
+    // PRIV_SYSTEM_CONFIGURE surface), not result data modification.
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     void updateInformationAndSchedulers(List<SiteInformation> informationList, List<CronScheduler> scheduleList);
 }
