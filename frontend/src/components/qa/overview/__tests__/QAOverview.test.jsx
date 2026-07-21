@@ -160,9 +160,10 @@ describe("QAOverview", () => {
       expect(within(region).queryAllByText("Coming soon")).toHaveLength(slots);
     });
 
-    // One shared NCE fetch, one overview summary, two TAT windows, plus the
-    // Amendment tile's own summary fetch
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(5);
+    // One shared NCE fetch, one overview summary, two TAT windows, the
+    // Amendment tile's own summary fetch, plus AttentionRequired's NCE
+    // enabled-config resolve (OGC-711)
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(6);
   });
 
   test("Today tiles carry the KPI titles, tickets, and the live TAT/Amendment/NCE values", async () => {

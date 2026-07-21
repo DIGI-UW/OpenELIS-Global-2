@@ -6,6 +6,7 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import messages from "../../../../languages/en.json";
 import QIDashboard from "../QIDashboard";
+import { NotificationContext } from "../../../layout/Layout";
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
@@ -13,14 +14,26 @@ vi.mock("../../../utils/Utils", () => ({
 
 import { getFromOpenElisServer } from "../../../utils/Utils";
 
+// The dashboard mounts <AlertDialog/> (for the OGC-711 disabled-route redirect
+// toast), which reads NotificationContext — provided by Layout in the app.
+const notificationValue = {
+  notifications: [],
+  addNotification: vi.fn(),
+  removeNotification: vi.fn(),
+  setNotificationVisible: vi.fn(),
+  notificationVisible: false,
+};
+
 // Rendering with the real en.json fails loudly if a referenced i18n key
 // is missing (react-intl falls back to the raw key, breaking assertions).
 const renderPage = () =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <MemoryRouter>
-        <QIDashboard />
-      </MemoryRouter>
+      <NotificationContext.Provider value={notificationValue}>
+        <MemoryRouter>
+          <QIDashboard />
+        </MemoryRouter>
+      </NotificationContext.Provider>
     </IntlProvider>,
   );
 
@@ -80,6 +93,8 @@ const mockApis = ({
       callback(amendCall++ === 0 ? amendCurrent : amendPrior);
     } else if (url.includes("/rest/nce/dashboard")) {
       callback(nce === null ? undefined : { nceList: nce });
+    } else if (url.includes("/rest/qi-config/resolve")) {
+      callback({ enabled: true });
     }
   });
 };
@@ -214,12 +229,13 @@ describe("QIDashboard", () => {
   test("refresh refetches every indicator and rate-limits the button", async () => {
     mockApis();
     renderPage();
-    // TAT + Amendment fire current+prior (2 each); NCE Pulse fires once
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(5);
+    // TAT + Amendment fire current+prior (2 each); NCE Pulse once; plus the
+    // OGC-711 enabled-config resolve for TAT/AMENDMENT/NCE (3) = 8
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(8);
 
     const refresh = screen.getByTestId("qi-dashboard-refresh");
     fireEvent.click(refresh);
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(10);
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(16);
     expect(refresh).toBeDisabled();
   });
 });
