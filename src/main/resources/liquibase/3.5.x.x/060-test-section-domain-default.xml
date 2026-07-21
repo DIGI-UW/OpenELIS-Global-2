@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Post-merge fix: test_section.domain was introduced NOT NULL (042-test-section-domain.xml)
+    without a DB-level default, relying on the app to always set it. But callers that INSERT
+    test_section rows directly (raw SQL, DBUnit datasets, and the develop-side test-catalog
+    flows merged in) omit the column, hitting a NOT NULL violation. develop's sibling
+    test.domain column defines defaultValue="CLINICAL"; mirror that here so unqualified
+    inserts default to CLINICAL instead of failing.
+    -->
+    <changeSet id="OGC-361-test-section-domain-db-default" author="OGC">
+        <addDefaultValue schemaName="clinlims" tableName="test_section"
+            columnName="domain" columnDataType="VARCHAR(20)" defaultValue="CLINICAL"/>
+        <rollback>
+            <dropDefaultValue schemaName="clinlims" tableName="test_section"
+                columnName="domain" columnDataType="VARCHAR(20)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

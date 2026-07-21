@@ -539,6 +539,14 @@ public class ResultsLoadUtility {
         return testService.getTestsByTestSection(id);
     }
 
+    // Anchor-less overload: for non-pool analyses the sample item resolves
+    // straight off the analysis, so callers (and tests) that have no
+    // AnalysisAnchor can load results without constructing one.
+    private List<TestResultItem> getTestResultItemFromAnalysis(Analysis analysis, String patientName,
+            String patientInfo, String nationalId) throws LIMSRuntimeException {
+        return getTestResultItemFromAnalysis(analysis, null, patientName, patientInfo, nationalId);
+    }
+
     private List<TestResultItem> getTestResultItemFromAnalysis(Analysis analysis, AnalysisAnchor anchor,
             String patientName, String patientInfo, String nationalId) throws LIMSRuntimeException {
         List<TestResultItem> testResultList = new ArrayList<>();
