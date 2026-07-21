@@ -51,6 +51,18 @@ public class SigmaMetricsTest {
         assertNotCalculable(SigmaMetrics.compute(new BigDecimal("100"), null, 10.0));
     }
 
+    @Test
+    public void cvIsComputableIndependentlyOfTea() {
+        // CV = SD/mean*100 — available even when the sigma metric is NOT_CALCULABLE.
+        assertEquals(2.0, SigmaMetrics.cv(new BigDecimal("100"), new BigDecimal("2")), 1e-9);
+        assertEquals(8.088, SigmaMetrics.cv(new BigDecimal("1250.31"), new BigDecimal("101.12")), 1e-3);
+        assertNull(SigmaMetrics.cv(null, new BigDecimal("2")));
+        assertNull(SigmaMetrics.cv(new BigDecimal("0"), new BigDecimal("2")));
+        // Contract preserved: compute()'s RESULT still carries cv=null when TEa is
+        // missing, even though cv() alone is non-null for the same mean/SD.
+        assertNull(SigmaMetrics.compute(new BigDecimal("1250.31"), new BigDecimal("101.12"), null).cv());
+    }
+
     private static void assertNotCalculable(SigmaResult r) {
         assertNull(r.cv());
         assertNull(r.sigma());
