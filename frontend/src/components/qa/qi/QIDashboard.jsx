@@ -17,6 +17,7 @@ import { Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { AlertDialog } from "../../common/CustomNotification";
 import { formatTat, tatDelta } from "../../reports/tat/tatUtils";
 import {
   NCE_DRILL_URL,
@@ -76,6 +77,9 @@ const QIDashboard = () => {
   const [tat, setTat] = useState({ loading: true });
   const [amendment, setAmendment] = useState({ loading: true });
   const [nce, setNce] = useState({ loading: true });
+  // OGC-711 disable cascade: per-indicator enabled flag from qi_config.
+  // Fail-open — an indicator absent from the map renders (config fetch failed).
+  const [enabledMap, setEnabledMap] = useState({});
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [refreshDisabled, setRefreshDisabled] = useState(false);
   const [, setTick] = useState(0); // re-render so "last refreshed" stays fresh
@@ -143,10 +147,31 @@ const QIDashboard = () => {
     });
   }, []);
 
+  // OGC-711: resolve each indicator's enabled flag (default config, no override).
+  // REJECTION is a data-less "coming soon" tile — gate it when OGC-697 lights up.
+  const fetchConfig = useCallback(() => {
+    ["TAT", "AMENDMENT", "NCE"].forEach((key) =>
+      getFromOpenElisServer(
+        `/rest/qi-config/resolve?indicator=${key}`,
+        (res) => {
+          if (res && typeof res.enabled === "boolean") {
+            setEnabledMap((m) => ({ ...m, [key]: res.enabled }));
+          }
+        },
+      ),
+    );
+  }, []);
+
+  const isEnabled = (key) => enabledMap[key] !== false; // fail-open
+
   useEffect(() => {
     fetchTat();
     fetchAmendment();
   }, [fetchTat, fetchAmendment]);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
 
   useEffect(() => {
     fetchNce();
@@ -169,6 +194,7 @@ const QIDashboard = () => {
     fetchTat();
     fetchAmendment();
     fetchNce();
+    fetchConfig();
     setRefreshDisabled(true);
     cooldownRef.current = setTimeout(
       () => setRefreshDisabled(false),
@@ -258,6 +284,7 @@ const QIDashboard = () => {
 
   return (
     <div className="adminPageContent qi-dashboard" data-testid="qi-dashboard">
+      <AlertDialog />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
         <FormattedMessage id="qa.qi.dashboard.title" />
@@ -313,73 +340,79 @@ const QIDashboard = () => {
         </div>
       </div>
       <div className="qi-dashboard__tiles">
-        <QITile
-          testId="qi-tile-tat"
-          titleKey="qa.qi.dashboard.tile.tat.label"
-          tooltipKey="qa.qi.dashboard.tile.tat.tooltip"
-          accent="blue"
-          loading={tat.loading}
-          primary={formatTat(tatData?.mean)}
-          delta={delta}
-          targetLine={
-            windowId === "ytd"
-              ? intl.formatMessage({
-                  id: "qa.qi.dashboard.tile.tat.vsPriorPeriod",
-                })
-              : intl.formatMessage(
-                  { id: "qa.qi.dashboard.tile.tat.vsPriorDays" },
-                  { days: win.days },
-                )
-          }
-          secondary={tatSecondary}
-          message={tatMessage}
-          detailPath="/qa/qi/tat"
-        />
+        {isEnabled("TAT") && (
+          <QITile
+            testId="qi-tile-tat"
+            titleKey="qa.qi.dashboard.tile.tat.label"
+            tooltipKey="qa.qi.dashboard.tile.tat.tooltip"
+            accent="blue"
+            loading={tat.loading}
+            primary={formatTat(tatData?.mean)}
+            delta={delta}
+            targetLine={
+              windowId === "ytd"
+                ? intl.formatMessage({
+                    id: "qa.qi.dashboard.tile.tat.vsPriorPeriod",
+                  })
+                : intl.formatMessage(
+                    { id: "qa.qi.dashboard.tile.tat.vsPriorDays" },
+                    { days: win.days },
+                  )
+            }
+            secondary={tatSecondary}
+            message={tatMessage}
+            detailPath="/qa/qi/tat"
+          />
+        )}
         <QITile
           testId="qi-tile-rejection"
           titleKey="qa.qi.dashboard.tile.rejection.label"
           comingSoonTicket="OGC-697"
         />
-        <QITile
-          testId="qi-tile-amendment"
-          titleKey="qa.qi.dashboard.tile.amendment.label"
-          tooltipKey="qa.qi.dashboard.tile.amendment.tooltip"
-          accent="blue"
-          loading={amendment.loading}
-          primary={
-            amendmentData?.ratePercent != null
-              ? `${amendmentData.ratePercent.toFixed(2)}%`
-              : ""
-          }
-          delta={amendmentDelta}
-          targetLine={
-            windowId === "ytd"
-              ? intl.formatMessage({
-                  id: "qa.qi.dashboard.tile.amendment.vsPriorPeriod",
-                })
-              : intl.formatMessage(
-                  { id: "qa.qi.dashboard.tile.amendment.vsPriorDays" },
-                  { days: win.days },
-                )
-          }
-          secondary={amendmentSecondary}
-          message={amendmentMessage}
-          detailPath="/qa/qi/amendment"
-        />
-        <QITile
-          testId="qi-tile-nce-pulse"
-          titleKey="qa.qi.dashboard.tile.ncePulse.label"
-          tooltipKey="qa.qi.dashboard.tile.ncePulse.tooltip"
-          accent={nceCount != null ? pulseColor(nceCount) : "blue"}
-          loading={nce.loading}
-          primary={nceCount != null ? String(nceCount) : ""}
-          targetLine={intl.formatMessage({
-            id: "qa.qi.dashboard.tile.ncePulse.criticalPending",
-          })}
-          secondary={nceSecondary}
-          message={nceMessage}
-          detailPath={NCE_DRILL_URL}
-        />
+        {isEnabled("AMENDMENT") && (
+          <QITile
+            testId="qi-tile-amendment"
+            titleKey="qa.qi.dashboard.tile.amendment.label"
+            tooltipKey="qa.qi.dashboard.tile.amendment.tooltip"
+            accent="blue"
+            loading={amendment.loading}
+            primary={
+              amendmentData?.ratePercent != null
+                ? `${amendmentData.ratePercent.toFixed(2)}%`
+                : ""
+            }
+            delta={amendmentDelta}
+            targetLine={
+              windowId === "ytd"
+                ? intl.formatMessage({
+                    id: "qa.qi.dashboard.tile.amendment.vsPriorPeriod",
+                  })
+                : intl.formatMessage(
+                    { id: "qa.qi.dashboard.tile.amendment.vsPriorDays" },
+                    { days: win.days },
+                  )
+            }
+            secondary={amendmentSecondary}
+            message={amendmentMessage}
+            detailPath="/qa/qi/amendment"
+          />
+        )}
+        {isEnabled("NCE") && (
+          <QITile
+            testId="qi-tile-nce-pulse"
+            titleKey="qa.qi.dashboard.tile.ncePulse.label"
+            tooltipKey="qa.qi.dashboard.tile.ncePulse.tooltip"
+            accent={nceCount != null ? pulseColor(nceCount) : "blue"}
+            loading={nce.loading}
+            primary={nceCount != null ? String(nceCount) : ""}
+            targetLine={intl.formatMessage({
+              id: "qa.qi.dashboard.tile.ncePulse.criticalPending",
+            })}
+            secondary={nceSecondary}
+            message={nceMessage}
+            detailPath={NCE_DRILL_URL}
+          />
+        )}
       </div>
     </div>
   );
