@@ -43,4 +43,7 @@
   <include file="liquibase/qa/005-add-esig-log-menu.xml" />
 
   <include file="liquibase/qa/006-add-capa-register-menu.xml" />
+
+  <!-- QA Phase C -->
+  <include file="liquibase/qa/007-create-qi-config-table.xml" />
 </databaseChangeLog>
