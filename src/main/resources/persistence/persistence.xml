@@ -129,6 +129,9 @@
         <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
 
+        <!-- QI Configuration (OGC-709) -->
+        <class>org.openelisglobal.qaevent.qiconfig.valueholder.QiConfig</class>
+
         <!-- QC Westgard Rules entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
         <class>org.openelisglobal.qc.valueholder.QCResult</class>
