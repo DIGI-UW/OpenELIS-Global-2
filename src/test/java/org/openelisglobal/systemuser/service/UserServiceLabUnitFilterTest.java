@@ -1,4 +1,4 @@
-package org.openelisglobal.systemUser.service;
+package org.openelisglobal.systemuser.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -17,7 +17,6 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
-import org.openelisglobal.systemuser.service.UserServiceImpl;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
 
