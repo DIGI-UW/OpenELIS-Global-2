@@ -1,0 +1,115 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="1" description="Test Description 1" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="TB" />
+
+    <system_user id="1" external_id="EXT003" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <!-- ORDER statuses: name must match StatusService.addToOrderMap() exactly -->
+    <status_of_sample id="1" description="Test Entered"
+        code="1" status_type="ORDER" lastupdated="2025-03-18"
+        name="Test Entered" display_key="sample.status.entered" is_active="Y" />
+    <status_of_sample id="2"
+        description="Testing finished" code="3" status_type="ORDER"
+        lastupdated="2025-03-18" name="Testing finished"
+        display_key="sample.status.finished" is_active="Y" />
+
+    <!-- ANALYSIS statuses: name must match StatusService.addToAnalysisMap()
+        exactly -->
+    <status_of_sample id="5" description="Not Tested"
+        code="5" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Not Tested" display_key="status.analysis.not.started"
+        is_active="Y" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Finalized" display_key="status.analysis.finalized" is_active="Y" />
+
+    <type_of_sample id="1" description="Blood Sample"
+        domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
+
+    <organization id="3" lastupdated="2024-06-03 12:00:00.0"
+        name="Global Health Org" city="New York" zip_code="10001"
+        short_name="GHG" street_address="123 Health St" state="NY"
+        code="GHG001" />
+
+    <test_section id="1" name="TB" description="Section1"
+        org_id="3" is_external="N" lastupdated="2025-03-20 12:00:00.0"
+        sort_order="1" name_localization_id="1" display_key="TestKey1" />
+
+    <test id="1" description="Test 1" reporting_description="T1"
+        active_begin="2025-01-01 12:00:00" active_end="2025-12-31 12:00:00"
+        time_holding="30" time_wait="15" time_ta_average="60"
+        time_ta_warning="90" time_ta_max="120"
+        lastupdated="2025-03-20 12:00:00" test_section_id="1" sort_order="1"
+        name="Test 1" orderable="true" guid="abc-123" name_localization_id="1"
+        reporting_name_localization_id="1" is_active="Y" />
+    <test id="2" description="Test 2" reporting_description="T2"
+        active_begin="2025-01-01 12:00:00" active_end="2025-12-31 12:00:00"
+        time_holding="30" time_wait="15" time_ta_average="60"
+        time_ta_warning="90" time_ta_max="120"
+        lastupdated="2025-03-20 12:00:00" test_section_id="1" sort_order="2"
+        name="Test 2" orderable="true" guid="def-456" name_localization_id="1"
+        reporting_name_localization_id="1" is_active="Y" />
+
+    <analyte id="1" analyte_id="1" name="Analyte1"
+        external_id="EXT1" lastupdated="2025-03-05 09:45:00" />
+    <analyte id="2" analyte_id="2" name="Analyte2"
+        external_id="EXT2" lastupdated="2025-03-05 09:45:00" />
+
+    <test_result id="1" test_id="1" result_group="1"
+        tst_rslt_type="N" value="5.6" lastupdated="2025-04-01 12:00:00"
+        sort_order="1" is_quantifiable="true" is_active="true"
+        is_normal="true" />
+    <test_result id="2" test_id="2" result_group="1"
+        tst_rslt_type="N" value="10.0" lastupdated="2025-04-01 12:00:00"
+        sort_order="1" is_quantifiable="true" is_active="true"
+        is_normal="true" />
+
+    <!-- Sample in "Test Entered" (status_id = 1) -->
+    <sample id="1" accession_number="12345" status_id="1"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample_item id="601" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Analysis 1: Not Tested (status_id = 5) — will be finalized in test
+        1 -->
+    <analysis id="1" sampitem_id="601" test_id="1"
+        test_sect_id="1" revision="1" status_id="5" analysis_type="ROUTINE"
+        started_date="2025-07-07 10:00:00" entry_date="2025-07-07 09:00:00"
+        is_reportable="Y" lastupdated="2025-07-07 14:00:00" />
+
+    <!-- Analysis 2: already Finalized (status_id = 6) -->
+    <analysis id="2" sampitem_id="601" test_id="2"
+        test_sect_id="1" revision="1" status_id="6" analysis_type="ROUTINE"
+        started_date="2025-07-07 11:00:00" entry_date="2025-07-07 10:00:00"
+        is_reportable="Y" lastupdated="2025-07-07 14:00:00" />
+
+    <!-- Result for analysis 1 -->
+    <result id="1" analysis_id="1" sort_order="1" result_type="N"
+        value="85.0" analyte_id="1" test_result_id="1" is_reportable="Y"
+        lastupdated="2025-04-04 14:00:00" min_normal="70.0" max_normal="100.0"
+        significant_digits="1" grouping="0" />
+
+    <!-- Result for analysis 2 -->
+    <result id="2" analysis_id="2" sort_order="1" result_type="N"
+        value="10.0" analyte_id="2" test_result_id="2" is_reportable="Y"
+        lastupdated="2025-04-04 14:00:00" min_normal="5.0" max_normal="15.0"
+        significant_digits="1" grouping="0" />
+
+    <!-- Reference Tables -->
+    <reference_tables id="1" name="analysis"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2024-02-22" />
+
+    <!-- Note -->
+    <note id="1" sys_user_id="1" reference_id="1" reference_table="1"
+        note_type="I" subject="Initial Subject" text="Initial Text"
+        lastupdated="2024-02-22 10:00:00" />
+</dataset>
