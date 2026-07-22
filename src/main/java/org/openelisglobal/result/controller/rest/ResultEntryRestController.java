@@ -143,7 +143,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (resultsRole == null) {
             return Collections.emptyList();
         }
-        List<IdValuePair> sections = userService.getUserTestSections(getSysUserId(request), resultsRole.getId());
+        List<IdValuePair> sections = userService.getUserTestSections(getSysUserId(request),
+                String.valueOf(resultsRole.getId()));
         List<Map<String, String>> labUnits = new ArrayList<>();
         for (IdValuePair pair : sections) {
             Map<String, String> unit = new HashMap<>();
