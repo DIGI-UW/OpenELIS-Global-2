@@ -11,6 +11,10 @@ import CascadingMultiSelect from "../../common/cascadingMultiSelect";
  * one so stored values stay compatible. Cascading (C), remark (R) and
  * alphanumeric (A) reuse the legacy behavior. When the row is read-only
  * (FR-A2: saved until Edit) the stored display value renders as plain text.
+ *
+ * A multi-component test yields one row PER COMPONENT sharing an analysisId
+ * (FR-A′1), so widget identity and change events are keyed by the composite
+ * row key — never by analysisId alone.
  */
 
 export interface DictionaryOption {
@@ -21,6 +25,7 @@ export interface DictionaryOption {
 export interface ResultCellRow {
   id: string;
   analysisId: string;
+  testResultComponentId?: string;
   resultType: string;
   resultValue?: string;
   multiSelectResultValues?: string;
@@ -28,11 +33,18 @@ export interface ResultCellRow {
   unitsOfMeasure?: string;
 }
 
+/** Unique identity for a worklist row: one analysis may render N component rows. */
+export function worklistRowKey(row: {
+  analysisId: string;
+  testResultComponentId?: string;
+}): string {
+  return `${row.analysisId}-${row.testResultComponentId || "primary"}`;
+}
+
 interface PolymorphicResultCellProps {
   row: ResultCellRow;
   editable: boolean;
   onValueChange: (
-    analysisId: string,
     field: "resultValue" | "multiSelectResultValues",
     value: string,
   ) => void;
@@ -67,6 +79,8 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
   editable,
   onValueChange,
 }) => {
+  const rowKey = worklistRowKey(row);
+
   if (!editable) {
     return (
       <span className="unifiedResultsReadOnlyValue">
@@ -79,11 +93,11 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "D":
       return (
         <Select
-          id={`unifiedResultValue-${row.analysisId}`}
-          name={`unifiedResultValue-${row.analysisId}`}
+          id={`unifiedResultValue-${rowKey}`}
+          name={`unifiedResultValue-${rowKey}`}
           noLabel
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-            onValueChange(row.analysisId, "resultValue", e.target.value)
+            onValueChange("resultValue", e.target.value)
           }
           value={row.resultValue || ""}
         >
@@ -97,16 +111,12 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "M":
       return (
         <ResultMultiSelect
-          id={`unifiedMultiResultValue-${row.analysisId}`}
-          name={`unifiedMultiResultValue-${row.analysisId}`}
+          id={`unifiedMultiResultValue-${rowKey}`}
+          name={`unifiedMultiResultValue-${rowKey}`}
           dictionaryValues={row.dictionaryResults || []}
           value={row.multiSelectResultValues}
           onChange={(e: { target: { value: string } }) =>
-            onValueChange(
-              row.analysisId,
-              "multiSelectResultValues",
-              e.target.value,
-            )
+            onValueChange("multiSelectResultValues", e.target.value)
           }
         />
       );
@@ -114,16 +124,12 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "C":
       return (
         <CascadingMultiSelect
-          id={`unifiedCascadingResultValue-${row.analysisId}`}
-          name={`unifiedCascadingResultValue-${row.analysisId}`}
+          id={`unifiedCascadingResultValue-${rowKey}`}
+          name={`unifiedCascadingResultValue-${rowKey}`}
           dictionaryValues={row.dictionaryResults || []}
           value={row.multiSelectResultValues}
           onChange={(e: { target: { value: string } }) =>
-            onValueChange(
-              row.analysisId,
-              "multiSelectResultValues",
-              e.target.value,
-            )
+            onValueChange("multiSelectResultValues", e.target.value)
           }
         />
       );
@@ -131,12 +137,12 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "N":
       return (
         <TextInput
-          id={`unifiedResultValue-${row.analysisId}`}
+          id={`unifiedResultValue-${rowKey}`}
           labelText=""
           type="number"
           value={row.resultValue || ""}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            onValueChange(row.analysisId, "resultValue", e.target.value)
+            onValueChange("resultValue", e.target.value)
           }
         />
       );
@@ -145,12 +151,12 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "A":
       return (
         <TextArea
-          id={`unifiedResultValue-${row.analysisId}`}
+          id={`unifiedResultValue-${rowKey}`}
           rows={1}
           labelText=""
           value={row.resultValue || ""}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-            onValueChange(row.analysisId, "resultValue", e.target.value)
+            onValueChange("resultValue", e.target.value)
           }
         />
       );

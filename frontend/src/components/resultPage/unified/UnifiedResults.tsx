@@ -42,7 +42,10 @@ import {
 import ESignatureButton, {
   SignatureMeaning,
 } from "../../esignature/ESignatureButton";
-import PolymorphicResultCell, { ResultCellRow } from "./PolymorphicResultCell";
+import PolymorphicResultCell, {
+  ResultCellRow,
+  worklistRowKey,
+} from "./PolymorphicResultCell";
 import {
   RowEditState,
   initialRowState,
@@ -86,6 +89,7 @@ interface WorklistRow extends ResultCellRow {
   normalRange?: string;
   analysisStatusId?: string;
   analysisLastupdated?: string;
+  testResultComponentId?: string;
   [key: string]: unknown;
 }
 
@@ -149,7 +153,9 @@ const UnifiedResults: React.FC = () => {
       setRows(loaded);
       const states: Record<string, RowEditState> = {};
       for (const row of loaded) {
-        states[row.analysisId] = initialRowState(
+        // one analysis may render N component rows (FR-A′1) — each row keeps
+        // its own edit state under its composite key
+        states[worklistRowKey(row)] = initialRowState(
           Boolean(row.resultValue) ||
             Boolean(
               row.multiSelectResultValues &&
@@ -166,31 +172,47 @@ const UnifiedResults: React.FC = () => {
     [],
   );
 
-  const loadWorklist = useCallback(() => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (searchText) {
-      params.set("labNumber", searchText);
-    }
-    if (selectedLabUnit) {
-      params.set("testSectionId", selectedLabUnit);
-    }
-    if (collectionDate) {
-      params.set("collectionDate", collectionDate);
-    }
-    params.set("doRange", "false");
-    params.set("finished", "false");
-    getFromOpenElisServer(
-      "/rest/LogbookResults?" + params.toString(),
-      applyLoadedRows,
-    );
-  }, [searchText, selectedLabUnit, collectionDate, applyLoadedRows]);
+  const loadWorklist = useCallback(
+    (labNumberOverride?: string) => {
+      setLoading(true);
+      const params = new URLSearchParams();
+      const labNumber = labNumberOverride ?? searchText;
+      if (labNumber) {
+        params.set("labNumber", labNumber);
+      }
+      if (selectedLabUnit) {
+        params.set("testSectionId", selectedLabUnit);
+      }
+      if (collectionDate) {
+        params.set("collectionDate", collectionDate);
+      }
+      params.set("doRange", "false");
+      params.set("finished", "false");
+      getFromOpenElisServer(
+        "/rest/LogbookResults?" + params.toString(),
+        applyLoadedRows,
+      );
+    },
+    [searchText, selectedLabUnit, collectionDate, applyLoadedRows],
+  );
 
   useEffect(() => {
     if (selectedLabUnit) {
       loadWorklist();
     }
   }, [selectedLabUnit]);
+
+  // Deep link: /Results?accessionNumber=XXX (e.g. the in-progress dashboard
+  // or a redirected legacy /result?type=order link) loads that order directly
+  useEffect(() => {
+    const accession = new URLSearchParams(window.location.search).get(
+      "accessionNumber",
+    );
+    if (accession) {
+      setSearchText(accession);
+      loadWorklist(accession);
+    }
+  }, []);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -223,55 +245,61 @@ const UnifiedResults: React.FC = () => {
 
   const handleValueChange = useCallback(
     (
-      analysisId: string,
+      target: WorklistRow,
       field: "resultValue" | "multiSelectResultValues",
       value: string,
     ) => {
+      // FR-A′3: a multi-component analysis renders one row per component —
+      // update ONLY the edited row (keyed by analysisId + componentId), never
+      // its sibling component rows
+      const key = worklistRowKey(target);
       setRows((current) =>
         current.map((row) =>
-          row.analysisId === analysisId ? { ...row, [field]: value } : row,
+          worklistRowKey(row) === key ? { ...row, [field]: value } : row,
         ),
       );
       setRowStates((current) => ({
         ...current,
-        [analysisId]: nextRowState(current[analysisId] || "EMPTY", {
+        [key]: nextRowState(current[key] || "EMPTY", {
           type: "VALUE_CHANGED",
         }),
       }));
       // FR-O3: entering a fresh result counts as having the analysis "open
       // in Edit" — colleagues should see the presence hint for this row too
-      setEditingAnalysisId(analysisId);
+      setEditingAnalysisId(target.analysisId);
     },
     [],
   );
 
-  const handleEdit = useCallback((analysisId: string) => {
+  const handleEdit = useCallback((target: WorklistRow) => {
+    const key = worklistRowKey(target);
     setRowStates((current) => ({
       ...current,
-      [analysisId]: nextRowState(current[analysisId] || "SAVED", {
+      [key]: nextRowState(current[key] || "SAVED", {
         type: "EDIT_CLICKED",
       }),
     }));
-    setEditingAnalysisId(analysisId);
+    setEditingAnalysisId(target.analysisId);
   }, []);
 
   const handleSaveResponse = useCallback(
-    (analysisId: string, response: SaveResponse | undefined) => {
+    (target: WorklistRow, response: SaveResponse | undefined) => {
       if (!response) {
         return;
       }
+      const key = worklistRowKey(target);
       if (response.status === 409) {
         // FR-O2: the stale editor loses — nothing merged, refresh offered.
         setStaleInfo((current) => ({
           ...current,
-          [analysisId]: {
+          [key]: {
             modifiedBy: response.modifiedBy,
             modifiedAt: response.modifiedAt,
           },
         }));
         setRowStates((current) => ({
           ...current,
-          [analysisId]: nextRowState(current[analysisId] || "EDITING", {
+          [key]: nextRowState(current[key] || "EDITING", {
             type: "SAVE_REJECTED_STALE",
           }),
         }));
@@ -289,14 +317,16 @@ const UnifiedResults: React.FC = () => {
       }
       setRowStates((current) => ({
         ...current,
-        [analysisId]: nextRowState(current[analysisId] || "EDITING", {
+        [key]: nextRowState(current[key] || "EDITING", {
           type: "SAVE_SUCCEEDED",
         }),
       }));
       if (response.analysisLastupdated) {
+        // the version token is per ANALYSIS — refresh it on every component
+        // row of this analysis so a sibling save isn't falsely rejected
         setRows((current) =>
           current.map((row) =>
-            row.analysisId === analysisId
+            row.analysisId === target.analysisId
               ? { ...row, analysisLastupdated: response.analysisLastupdated }
               : row,
           ),
@@ -304,11 +334,11 @@ const UnifiedResults: React.FC = () => {
       }
       setStaleInfo((current) => {
         const next = { ...current };
-        delete next[analysisId];
+        delete next[key];
         return next;
       });
       setEditingAnalysisId((current) =>
-        current === analysisId ? null : current,
+        current === target.analysisId ? null : current,
       );
       const triggered = [
         ...(response.reflex || []),
@@ -344,7 +374,7 @@ const UnifiedResults: React.FC = () => {
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify({ testResult: item }),
         (response: SaveResponse | undefined) =>
-          handleSaveResponse(row.analysisId, response),
+          handleSaveResponse(row, response),
       );
     },
     [handleSaveResponse],
@@ -500,11 +530,12 @@ const UnifiedResults: React.FC = () => {
               </TableHead>
               <TableBody>
                 {pagedRows.map((row) => {
-                  const state = rowStates[row.analysisId] || "EMPTY";
-                  const stale = staleInfo[row.analysisId];
+                  const key = worklistRowKey(row);
+                  const state = rowStates[key] || "EMPTY";
+                  const stale = staleInfo[key];
                   const reviewer = presence[row.analysisId];
                   return (
-                    <React.Fragment key={row.analysisId}>
+                    <React.Fragment key={key}>
                       <TableRow>
                         <TableCell>
                           {subjectCell(row)}
@@ -526,7 +557,9 @@ const UnifiedResults: React.FC = () => {
                           <PolymorphicResultCell
                             row={row}
                             editable={isRowEditable(state)}
-                            onValueChange={handleValueChange}
+                            onValueChange={(field, value) =>
+                              handleValueChange(row, field, value)
+                            }
                           />
                         </TableCell>
                         <TableCell>
@@ -537,7 +570,7 @@ const UnifiedResults: React.FC = () => {
                             <Button
                               kind="tertiary"
                               size="sm"
-                              onClick={() => handleEdit(row.analysisId)}
+                              onClick={() => handleEdit(row)}
                             >
                               <FormattedMessage id="label.results.edit" />
                             </Button>

@@ -31,10 +31,27 @@ export const UnifiedResultsRoute: React.FC = () => {
 
 /**
  * Wraps a legacy results route: redirects to /Results when the flag is on,
- * renders the legacy page otherwise.
+ * renders the legacy page otherwise. An accessionNumber on the legacy URL
+ * (e.g. the in-progress dashboard's /result?type=order&accessionNumber=X
+ * links) is carried through so the unified page loads that order directly.
  */
 export const LegacyResultsGate: React.FC<{ children: React.ReactElement }> = ({
   children,
 }) => {
-  return useUnifiedResultsEnabled() ? <Redirect to="/Results" /> : children;
+  const enabled = useUnifiedResultsEnabled();
+  if (!enabled) {
+    return children;
+  }
+  const accession = new URLSearchParams(window.location.search).get(
+    "accessionNumber",
+  );
+  return (
+    <Redirect
+      to={
+        accession
+          ? `/Results?accessionNumber=${encodeURIComponent(accession)}`
+          : "/Results"
+      }
+    />
+  );
 };
