@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -170,6 +171,9 @@ public class TestCatalogEditorRestController {
         public String testId;
         public String name;
         public String sampleType;
+        // OGC-1145 FR-9: every associated specimen, first one first; the list cell
+        // renders "{first} +{n}" from this. `sampleType` stays the primary name.
+        public List<String> sampleTypes = new ArrayList<>();
         public String code;
         public String domain;
         public boolean active;
@@ -308,8 +312,10 @@ public class TestCatalogEditorRestController {
         for (TestListRow row : result.rows) {
             Test test = testService.getTestById(row.testId);
             row.name = TestServiceImpl.getLocalizedTestNameWithType(test);
-            TypeOfSample sampleTypeOfRow = testService.getTypeOfSample(test);
-            row.sampleType = sampleTypeOfRow != null ? sampleTypeOfRow.getLocalizedName() : null;
+            for (TypeOfSample typeOfRow : testService.getTypeOfSamples(test)) {
+                row.sampleTypes.add(typeOfRow.getLocalizedName());
+            }
+            row.sampleType = row.sampleTypes.isEmpty() ? null : row.sampleTypes.get(0);
         }
         return result;
     }
@@ -357,6 +363,9 @@ public class TestCatalogEditorRestController {
         public String code;
         public String labUnitId;
         public String sampleTypeId;
+        // OGC-1145 FR-1/2: every sample type the test runs on. Takes precedence
+        // over the legacy scalar when present.
+        public List<String> sampleTypeIds;
         public String domain;
         public Boolean amr;
         public Boolean orderable;
@@ -375,9 +384,19 @@ public class TestCatalogEditorRestController {
         if (testCatalogCreationService == null) {
             return ResponseEntity.status(503).build();
         }
+        List<String> desiredSampleTypes = body == null ? List.of()
+                : resolveSampleTypeIds(body.sampleTypeIds, body.sampleTypeId);
         if (body == null || isBlank(body.name) || isBlank(body.reportingName) || isBlank(body.code)
-                || isBlank(body.domain) || !DOMAINS.contains(body.domain) || isBlank(body.sampleTypeId)) {
+                || isBlank(body.domain) || !DOMAINS.contains(body.domain) || desiredSampleTypes.isEmpty()) {
             return ResponseEntity.unprocessableEntity().build();
+        }
+        // D-030 domain guard (OGC-1145 FR-3): every sample type must be compatible
+        // with the test's domain.
+        for (String sampleTypeId : desiredSampleTypes) {
+            TypeOfSample type = typeOfSampleService.get(sampleTypeId);
+            if (type == null || !sampleTypeDomainCompatible(body.domain, type)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
         }
         // Code uniqueness (FR-4) → 409 so the UI can flag the field.
         if (testCatalogCreationService.codeInUse(body.code)) {
@@ -388,7 +407,7 @@ public class TestCatalogEditorRestController {
         params.reportingName = body.reportingName;
         params.code = body.code;
         params.labUnitId = body.labUnitId;
-        params.sampleTypeId = body.sampleTypeId;
+        params.sampleTypeIds = desiredSampleTypes;
         params.domain = body.domain;
         params.amr = body.amr;
         params.orderable = body.orderable;
@@ -520,6 +539,42 @@ public class TestCatalogEditorRestController {
 
     private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
 
+    // D-030 (OGC-1145 FR-3): test.domain (CLINICAL/ENVIRONMENTAL/VECTOR) vs the
+    // legacy type_of_sample.domain chars (sample_domain table: Human, Newborn,
+    // Environmental, Animal). Sample types with no domain stay offerable
+    // everywhere so legacy data never blocks the editor.
+    private static final Map<String, Set<String>> COMPATIBLE_SAMPLE_DOMAINS = Map.of("CLINICAL", Set.of("H", "N"),
+            "ENVIRONMENTAL", Set.of("E"), "VECTOR", Set.of("A"));
+
+    private static boolean sampleTypeDomainCompatible(String testDomain, TypeOfSample type) {
+        if (type == null) {
+            return false;
+        }
+        if (isBlank(testDomain) || isBlank(type.getDomain())) {
+            return true;
+        }
+        Set<String> allowed = COMPATIBLE_SAMPLE_DOMAINS.get(testDomain);
+        return allowed == null || allowed.contains(type.getDomain());
+    }
+
+    /**
+     * Desired sample-type ids for a write: the list wins when present, otherwise
+     * the legacy scalar; blanks and duplicates dropped, order preserved.
+     */
+    private static List<String> resolveSampleTypeIds(List<String> sampleTypeIds, String sampleTypeId) {
+        LinkedHashSet<String> resolved = new LinkedHashSet<>();
+        if (sampleTypeIds != null) {
+            for (String id : sampleTypeIds) {
+                if (!isBlank(id)) {
+                    resolved.add(id);
+                }
+            }
+        } else if (!isBlank(sampleTypeId)) {
+            resolved.add(sampleTypeId);
+        }
+        return new ArrayList<>(resolved);
+    }
+
     /** OGC-748 Basic Info — identity + domain + AMR flag + status. */
     public static class BasicInfo {
         public String testId;
@@ -529,6 +584,9 @@ public class TestCatalogEditorRestController {
         public String domain;
         public String labUnitId;
         public String sampleTypeId;
+        // OGC-1145 FR-1/2: all associated sample types (order preserved, primary
+        // first). On write this list wins over the legacy scalar when present.
+        public List<String> sampleTypeIds;
         public Boolean antimicrobialResistance;
         public Boolean active;
         public Boolean orderable;
@@ -552,6 +610,25 @@ public class TestCatalogEditorRestController {
         }
         if (body.domain != null && !DOMAINS.contains(body.domain)) {
             return ResponseEntity.unprocessableEntity().build();
+        }
+        // OGC-1145 FR-1/2/3 — validate the sample-type set up front so a rejected
+        // request leaves the test untouched. Absent list + blank scalar means the
+        // caller didn't send the field (partial PUT): skip reconcile entirely.
+        List<String> desiredSampleTypes = resolveSampleTypeIds(body.sampleTypeIds, body.sampleTypeId);
+        boolean reconcileSampleTypes = body.sampleTypeIds != null || !isBlank(body.sampleTypeId);
+        if (reconcileSampleTypes) {
+            boolean effectiveOrderable = body.orderable != null ? body.orderable
+                    : Boolean.TRUE.equals(test.getOrderable());
+            boolean effectiveActive = body.active != null ? body.active : test.isActive();
+            if (desiredSampleTypes.isEmpty() && (effectiveActive || effectiveOrderable)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            String effectiveDomain = body.domain != null ? body.domain : test.getDomain();
+            for (String sampleTypeId : desiredSampleTypes) {
+                if (!sampleTypeDomainCompatible(effectiveDomain, typeOfSampleService.get(sampleTypeId))) {
+                    return ResponseEntity.unprocessableEntity().build();
+                }
+            }
         }
         // The display name is localized — it is edited in the Localization section
         // (which owns the per-locale + English values), so it stays immutable here.
@@ -598,28 +675,31 @@ public class TestCatalogEditorRestController {
         }
         test.setSysUserId(ControllerUtills.getSysUserId(request));
         Test updated = testService.update(test);
-        // Sample type is editable on modify too. The editor models one sample type
-        // per test, so reconcile the type_of_sample_test link to the chosen type
-        // (replace-all, matching the legacy modify flow).
-        if (!isBlank(body.sampleTypeId)) {
+        // OGC-1145 FR-2: reconcile the type_of_sample_test junction to the desired
+        // set — delete removed links, insert added ones, and drop duplicate rows
+        // for the same type (validated above, so this cannot fail mid-write).
+        if (reconcileSampleTypes) {
             String sysUserId = ControllerUtills.getSysUserId(request);
-            List<TypeOfSampleTest> current = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId);
-            boolean alreadyLinked = current.size() == 1 && body.sampleTypeId.equals(current.get(0).getTypeOfSampleId());
-            if (!alreadyLinked) {
-                for (TypeOfSampleTest link : current) {
+            Set<String> kept = new HashSet<>();
+            for (TypeOfSampleTest link : typeOfSampleTestService.getTypeOfSampleTestsForTest(testId)) {
+                if (!desiredSampleTypes.contains(link.getTypeOfSampleId()) || !kept.add(link.getTypeOfSampleId())) {
                     typeOfSampleTestService.delete(link.getId(), sysUserId);
                 }
-                TypeOfSampleTest link = new TypeOfSampleTest();
-                link.setTypeOfSampleId(body.sampleTypeId);
-                link.setTestId(testId);
-                link.setSysUserId(sysUserId);
-                typeOfSampleTestService.insert(link);
+            }
+            for (String sampleTypeId : desiredSampleTypes) {
+                if (!kept.contains(sampleTypeId)) {
+                    TypeOfSampleTest link = new TypeOfSampleTest();
+                    link.setTypeOfSampleId(sampleTypeId);
+                    link.setTestId(testId);
+                    link.setSysUserId(sysUserId);
+                    typeOfSampleTestService.insert(link);
+                }
             }
         }
         // Reflect active / orderable / lab-unit / sample-type changes in the cached
         // order-picker lists immediately; otherwise the change lags until an
         // unrelated refresh (same stale-cache cause as OGC-1116).
-        if (body.active != null || body.orderable != null || !isBlank(body.labUnitId) || !isBlank(body.sampleTypeId)) {
+        if (body.active != null || body.orderable != null || !isBlank(body.labUnitId) || reconcileSampleTypes) {
             refreshTestCaches();
         }
         invalidateHealth();
@@ -657,8 +737,11 @@ public class TestCatalogEditorRestController {
         info.description = test.getDescription();
         info.domain = test.getDomain();
         info.labUnitId = test.getTestSection() == null ? null : test.getTestSection().getId();
-        TypeOfSample sampleType = testService.getTypeOfSample(test);
-        info.sampleTypeId = sampleType == null ? null : sampleType.getId();
+        info.sampleTypeIds = new ArrayList<>();
+        for (TypeOfSample type : testService.getTypeOfSamples(test)) {
+            info.sampleTypeIds.add(type.getId());
+        }
+        info.sampleTypeId = info.sampleTypeIds.isEmpty() ? null : info.sampleTypeIds.get(0);
         info.antimicrobialResistance = Boolean.TRUE.equals(test.getAntimicrobialResistance());
         info.active = test.isActive();
         info.orderable = Boolean.TRUE.equals(test.getOrderable());
@@ -1356,6 +1439,9 @@ public class TestCatalogEditorRestController {
     public static class SampleTypeOption {
         public String id;
         public String name;
+        // OGC-1145 FR-3: legacy sample-domain char (H/N/E/A, may be null) so the
+        // editor can enforce the D-030 domain guard client-side.
+        public String domain;
     }
 
     /** One test's position within a sample type. */
@@ -1381,12 +1467,18 @@ public class TestCatalogEditorRestController {
     }
 
     @GetMapping(value = "/sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<SampleTypeOption> listSampleTypes() {
+    public List<SampleTypeOption> listSampleTypes(@RequestParam(required = false) String domain) {
         List<SampleTypeOption> options = new ArrayList<>();
         for (TypeOfSample t : typeOfSampleService.getAllTypeOfSamplesSortOrdered()) {
+            // OGC-1145 FR-3: an explicit test-domain filter only offers compatible
+            // sample types (D-030 guard); without it all types are listed.
+            if (!isBlank(domain) && !sampleTypeDomainCompatible(domain, t)) {
+                continue;
+            }
             SampleTypeOption o = new SampleTypeOption();
             o.id = t.getId();
             o.name = !isBlank(t.getDescription()) ? t.getDescription() : t.getLocalAbbreviation();
+            o.domain = t.getDomain();
             options.add(o);
         }
         return options;

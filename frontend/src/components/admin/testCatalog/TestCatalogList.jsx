@@ -290,6 +290,8 @@ const TestCatalogList = () => {
     id: r.testId,
     name: r.name,
     sampleType: r.sampleType || "",
+    // OGC-1145 FR-9: all associated specimens; the cell shows "{first} +{n}".
+    sampleTypes: r.sampleTypes || [],
     code: r.code || "",
     domain: r.domain || "",
     active: r.active,
@@ -757,6 +759,25 @@ const TestCatalogList = () => {
                                           }
                                         />
                                       </Tag>
+                                    ) : cell.info.header === "sampleType" &&
+                                      source &&
+                                      (source.sampleTypes || []).length > 1 ? (
+                                      // OGC-1145 FR-9 — one row per test; the cell
+                                      // summarizes its specimens, full list in the
+                                      // tooltip.
+                                      <span
+                                        title={source.sampleTypes.join(", ")}
+                                      >
+                                        {intl.formatMessage(
+                                          {
+                                            id: "label.testCatalog.list.sampleTypesSummary",
+                                          },
+                                          {
+                                            first: source.sampleTypes[0],
+                                            n: source.sampleTypes.length - 1,
+                                          },
+                                        )}
+                                      </span>
                                     ) : (
                                       cell.value
                                     )}
