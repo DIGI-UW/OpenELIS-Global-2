@@ -73,6 +73,10 @@ public class ReferenceLabResultsAcceptRejectTest extends BaseWebContextSensitive
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/referral.xml");
+        // referral.xml seeds referral_status_history id=100; advance the sequence
+        // past it so lifecycle inserts don't collide on the PK when this class runs
+        // before other tests have already bumped the sequence.
+        resyncSequence("clinlims.referral_status_history_seq", "clinlims.referral_status_history");
         // Mock FHIR so the best-effort publish calls don't hit a real store.
         fhirReferralServiceMock = Mockito.mock(FhirReferralService.class);
         originalFhirReferralService = ReflectionTestUtils.getField(referralService, "fhirReferralService");

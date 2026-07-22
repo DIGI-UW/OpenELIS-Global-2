@@ -116,6 +116,22 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         clearBarcodeSiteInformation();
         runRealSeedChangesetSql();
         executeSeedSql(dataSource, FIELD_SEED_CHANGESET);
+        reapplyUniversalFlag(dataSource);
+    }
+
+    /**
+     * Re-apply changeset 032's universal-flag update on the Specimen Label system
+     * preset. The re-run of changeset 030 above re-inserts system presets with
+     * is_universal at its column default (false); the flag is normally set by the
+     * later changeset 032, which Liquibase does not re-run here. Sibling tests
+     * (e.g. OrderEntryLabelRequestServiceAggregationTest) depend on the
+     * fully-migrated state, so restore it explicitly.
+     */
+    static void reapplyUniversalFlag(DataSource dataSource) throws Exception {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.execute("UPDATE clinlims.label_preset SET is_universal = true, last_updated = CURRENT_TIMESTAMP"
+                    + " WHERE is_system = true AND name = 'Specimen Label'");
+        }
     }
 
     @Test

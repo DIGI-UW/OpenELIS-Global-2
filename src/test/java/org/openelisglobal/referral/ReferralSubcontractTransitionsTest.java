@@ -59,6 +59,10 @@ public class ReferralSubcontractTransitionsTest extends BaseWebContextSensitiveT
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/referral.xml");
+        // referral.xml seeds referral_status_history id=100; advance the sequence
+        // past it so lifecycle inserts don't collide on the PK when this class runs
+        // before other tests have already bumped the sequence.
+        resyncSequence("clinlims.referral_status_history_seq", "clinlims.referral_status_history");
         fhirReferralServiceMock = Mockito.mock(FhirReferralService.class);
         originalFhirReferralServiceOnReferralService = ReflectionTestUtils.getField(referralService,
                 "fhirReferralService");

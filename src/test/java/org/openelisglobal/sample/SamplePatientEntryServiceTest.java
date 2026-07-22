@@ -152,6 +152,7 @@ public class SamplePatientEntryServiceTest extends BaseWebContextSensitiveTest {
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1); // audit trail FKs sys_user_id -> system_user; id=1 is the seeded admin
         request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, usd);
 
         PatientManagementUpdate patientUpdate = new PatientManagementUpdate();
@@ -167,6 +168,7 @@ public class SamplePatientEntryServiceTest extends BaseWebContextSensitiveTest {
     private MockHttpServletRequest newRequestWithSession() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1); // audit trail FKs sys_user_id -> system_user; id=1 is the seeded admin
         request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, usd);
         return request;
     }
@@ -186,6 +188,10 @@ public class SamplePatientEntryServiceTest extends BaseWebContextSensitiveTest {
 
         PatientManagementUpdate patientManagementUpdate = newPatientManagementUpdate();
         patientManagementUpdate.setPatientUpdateStatus(patientInfo);
+        // Resolve currentUserId from the session's UserSessionData (id=1) so the
+        // persisted patient/person/address rows carry a valid sys_user_id; without
+        // this the audit trail fails with "System User ID is null".
+        patientManagementUpdate.setSysUserIdFromRequest(request);
 
         SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
         updateData.setSample(sample);
