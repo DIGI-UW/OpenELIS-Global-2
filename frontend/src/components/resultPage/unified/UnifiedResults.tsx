@@ -192,6 +192,21 @@ const UnifiedResults: React.FC = () => {
         "/rest/LogbookResults?" + params.toString(),
         applyLoadedRows,
       );
+      // FRS: the selected Lab Unit (and filters) are the page's primary
+      // state — keep them in the URL so refresh and share links reproduce
+      // the same worklist
+      const urlState = new URLSearchParams(window.location.search);
+      const setOrDrop = (key: string, value: string) =>
+        value ? urlState.set(key, value) : urlState.delete(key);
+      setOrDrop("accessionNumber", labNumber);
+      setOrDrop("testSectionId", selectedLabUnit);
+      setOrDrop("collectionDate", collectionDate);
+      const query = urlState.toString();
+      window.history.replaceState(
+        null,
+        "",
+        query ? `/Results?${query}` : "/Results",
+      );
     },
     [searchText, selectedLabUnit, collectionDate, applyLoadedRows],
   );
@@ -202,17 +217,46 @@ const UnifiedResults: React.FC = () => {
     }
   }, [selectedLabUnit]);
 
-  // Deep link: /Results?accessionNumber=XXX (e.g. the in-progress dashboard
-  // or a redirected legacy /result?type=order link) loads that order directly
+  // Restore the worklist from the URL: deep links from the in-progress
+  // dashboard (?accessionNumber=) and refreshes of a loaded page
+  // (?testSectionId=&collectionDate=&status=) reproduce the same view
   useEffect(() => {
-    const accession = new URLSearchParams(window.location.search).get(
-      "accessionNumber",
-    );
+    const urlState = new URLSearchParams(window.location.search);
+    const accession = urlState.get("accessionNumber");
+    const unit = urlState.get("testSectionId");
+    const date = urlState.get("collectionDate");
+    const status = urlState.get("status");
+    if (date) {
+      setCollectionDate(date);
+    }
+    if (status) {
+      setStatusFilter(status);
+    }
     if (accession) {
       setSearchText(accession);
+    }
+    if (unit) {
+      setSelectedLabUnit(unit); // triggers the worklist load effect
+    } else if (accession) {
       loadWorklist(accession);
     }
   }, []);
+
+  // Keep the status chip in the URL too (client-side filter, no refetch)
+  useEffect(() => {
+    const urlState = new URLSearchParams(window.location.search);
+    if (statusFilter === "ALL") {
+      urlState.delete("status");
+    } else {
+      urlState.set("status", statusFilter);
+    }
+    const query = urlState.toString();
+    window.history.replaceState(
+      null,
+      "",
+      query ? `/Results?${query}` : "/Results",
+    );
+  }, [statusFilter]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
