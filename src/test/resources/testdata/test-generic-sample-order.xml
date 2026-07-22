@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Localization seeds -->
+    <localization id="1" description="English Localization" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="English" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <!-- Status of Sample seeds (essential to prevent FK errors when status
+        is looked up via StatusService) -->
+    <status_of_sample id="1" code="1" status_type="SAMPLE"
+        lastupdated="2026-07-22 12:00:00" name="SampleEntered"
+        display_key="status.sample.entered" is_active="Y" />
+    <status_of_sample id="2" code="2" status_type="ORDER"
+        lastupdated="2026-07-22 12:00:00" name="Test Entered"
+        display_key="status.order.entered" is_active="Y" />
+
+    <!-- Sample Type seeds -->
+    <type_of_sample id="1" description="Serum" domain="H"
+        local_abbrev="SERUM" is_active="true" sort_order="1"
+        name_localization_id="1" display_key="type.sample.serum" />
+    <type_of_sample id="2" description="Whole Blood"
+        domain="H" local_abbrev="WB" is_active="true" sort_order="2"
+        name_localization_id="1" display_key="type.sample.wb" />
+
+    <!-- Unit of Measure seeds -->
+    <unit_of_measure id="1" name="ml"
+        description="Milliliter" code="ml" ucum_code="mL"
+        lastupdated="2026-07-22 12:00:00" />
+    <unit_of_measure id="2" name="ul"
+        description="Microliter" code="ul" ucum_code="uL"
+        lastupdated="2026-07-22 12:00:00" />
+
+    <!-- Organization types -->
+    <organization_type id="1" short_name="Clinic"
+        description="Clinic type" lastupdated="2026-07-22 12:00:00" />
+
+    <!-- Organizations -->
+    <organization id="1" name="Default Clinic" city="Seattle"
+        zip_code="98101" mls_sentinel_lab_flag="N" short_name="DC"
+        multiple_unit="DC Unit" street_address="123 Main St" state="WA"
+        internet_address="www.defaultclinic.org" clia_num="CLIA001"
+        pws_id="PWS001" mls_lab_flag="Y" is_active="Y" local_abbrev="DC"
+        code="DC001" lastupdated="2026-07-22 12:00:00" />
+
+    <!-- Test Section -->
+    <test_section id="1" name="Clinical Chemistry"
+        description="Chemistry section" display_key="section.chemistry"
+        is_external="N" is_active="Y" sort_order="1" org_id="1"
+        name_localization_id="1" lastupdated="2026-07-22 12:00:00" />
+
+    <!-- Program -->
+    <program id="7" code="PROG007" name="General Health Program"
+        manually_changed="false" test_section_id="1"
+        lastupdated="2026-07-22 12:00:00" />
+
+    <!-- Test & SampleType Test Catalog Seeds -->
+    <test id="1" guid="550e8400-e29b-41d4-a716-446655440000"
+        name="HIV Test" description="HIV Test" is_reportable="Y"
+        loinc="12345-6" lastupdated="2026-07-22 12:00:00" is_active="Y"
+        local_code="HIV-1" sort_order="1" test_section_id="1" orderable="true"
+        notify_results="true" name_localization_id="1"
+        reporting_description="HIV" />
+    <sampletype_test id="1" sample_type_id="1" test_id="1"
+        is_panel="false" />
+
+    <!-- Notebook template / instance -->
+    <notebook id="100" is_template="false"
+        title="Chemistry Notebook" status="DRAFT"
+        questionnaire_fhir_uuid="550e8400-e29b-41d4-a716-446655440022"
+        last_updated="2026-07-22 12:00:00" />
+</dataset>
