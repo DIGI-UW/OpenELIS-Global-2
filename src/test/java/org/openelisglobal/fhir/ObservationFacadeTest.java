@@ -54,6 +54,10 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
 
         executeDataSetWithStateManagement("testdata/result-facade.xml");
+        // result-facade.xml seeds result id=3/4; advance result_seq past them so a
+        // newly created Observation's result insert doesn't collide on result_pk
+        // when this class runs before others have bumped the sequence.
+        resyncSequence("clinlims.result_seq", "clinlims.result");
 
         servletContext = new MockServletContext();
 
