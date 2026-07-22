@@ -55,6 +55,15 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, Intege
         if (role == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "getRoleByName",
                     "Role not found in database: '" + name + "'");
+            // Preserve the never-null contract callers rely on (e.g.
+            // ServiceRequestProvider -> getUserSampleTypes): a sentinel id of -1
+            // matches no persisted role, so downstream role-scoped lookups return
+            // empty rather than NPEing on a null Role. The RBAC migration made the
+            // id Integer; the sentinel moved from "-1" to -1 accordingly.
+            Role stub = new Role();
+            stub.setId(-1);
+            stub.setName(name);
+            return stub;
         }
         return role;
     }
