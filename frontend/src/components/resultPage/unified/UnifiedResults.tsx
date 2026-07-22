@@ -176,7 +176,10 @@ const UnifiedResults: React.FC = () => {
     (labNumberOverride?: string) => {
       setLoading(true);
       const params = new URLSearchParams();
-      const labNumber = labNumberOverride ?? searchText;
+      // guard: when wired directly to onClick the argument is the click
+      // event — only a string counts as an override
+      const labNumber =
+        typeof labNumberOverride === "string" ? labNumberOverride : searchText;
       if (labNumber) {
         params.set("labNumber", labNumber);
       }
@@ -464,6 +467,11 @@ const UnifiedResults: React.FC = () => {
 
         {/* Toolbar: search + Lab Unit + date (FR worklist toolbar) */}
         <Column lg={4} md={4} sm={4}>
+          {/* Carbon Search's labelText is visually hidden; render an explicit
+              label so the toolbar fields align on one horizontal level */}
+          <div className="cds--label">
+            <FormattedMessage id="label.button.search" />
+          </div>
           <Search
             id="unifiedResultsSearch"
             labelText={intl.formatMessage({ id: "label.results.search" })}
@@ -519,7 +527,9 @@ const UnifiedResults: React.FC = () => {
           </DatePicker>
         </Column>
         <Column lg={4} md={4} sm={4} className="unifiedResultsLoadColumn">
-          <Button onClick={loadWorklist} disabled={loading}>
+          {/* spacer keeps the button on the same level as the labeled fields */}
+          <div className="cds--label">&nbsp;</div>
+          <Button onClick={() => loadWorklist()} disabled={loading}>
             <FormattedMessage id="label.results.load" />
           </Button>
         </Column>
@@ -657,7 +667,7 @@ const UnifiedResults: React.FC = () => {
                                 <Button
                                   kind="ghost"
                                   size="sm"
-                                  onClick={loadWorklist}
+                                  onClick={() => loadWorklist()}
                                 >
                                   <FormattedMessage id="label.results.refresh" />
                                 </Button>
