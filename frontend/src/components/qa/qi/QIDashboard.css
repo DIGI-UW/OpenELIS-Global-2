@@ -84,6 +84,32 @@
   border-top-color: #b28600;
 }
 
+/* Amendment detail page (OGC-710) */
+.amendment-rate-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.amendment-section__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.amendment-trend-interval {
+  max-width: 11rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Carbon Tag has no amber type; between-thresholds band per OGC-699 colors.
+   .cds--tag prefix outweighs Carbon's own .cds--tag--gray rule. */
+.cds--tag.qi-rate-tag--amber {
+  background-color: #fcf4d6;
+  color: #684e00;
+}
+
 .qi-tile--red {
   border-top-color: var(--cds-support-error, #da1e28);
 }

@@ -10,6 +10,11 @@ vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
 }));
 
+// jsdom can't render @carbon/charts (SVG/resize observers) — stub it
+vi.mock("@carbon/charts-react", () => ({
+  LineChart: () => <div data-testid="amendment-trend-chart" />,
+}));
+
 import { getFromOpenElisServer } from "../../../utils/Utils";
 
 const DETAIL = {
@@ -115,8 +120,95 @@ describe("AmendmentReport", () => {
     getFromOpenElisServer.mockImplementation((url, callback) => callback());
     await renderPage();
 
+    // trend section and detail table each surface the error independently
     expect(
-      screen.getByText("Amendment data is unavailable."),
-    ).toBeInTheDocument();
+      screen.getAllByText("Amendment data is unavailable.").length,
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  test("renders rate header, trend chart and per-test breakdown (OGC-710)", async () => {
+    const TREND = {
+      points: [
+        {
+          period: "2026-07-01",
+          amendedCount: 1,
+          releasedCount: 40,
+          ratePercent: 2.5,
+        },
+      ],
+    };
+    const BREAKDOWN = {
+      rows: [
+        {
+          testName: "Complete Blood Count",
+          amendedCount: 1,
+          releasedCount: 40,
+          ratePercent: 2.5,
+        },
+      ],
+    };
+    // 2.5% sits between target (1) and action (5) -> amber band
+    const CONFIG = {
+      indicatorKey: "AMENDMENT",
+      enabled: true,
+      target: 1,
+      action: 5,
+      direction: "LOWER_BETTER",
+    };
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/reports/amendment/detail")) {
+        callback(DETAIL);
+      } else if (url.includes("/rest/reports/amendment/trend")) {
+        callback(TREND);
+      } else if (url.includes("/rest/reports/amendment/breakdown")) {
+        callback(BREAKDOWN);
+      } else if (url.includes("/rest/qi-config/resolve")) {
+        callback(CONFIG);
+      }
+    });
+    await renderPage();
+
+    // rate header: window rate derived from trend sums, amber-toned tag
+    const rateTexts = screen.getAllByText("2.50%");
+    const tag = rateTexts
+      .map((el) => el.closest(".amendment-rate-tag"))
+      .find(Boolean);
+    expect(tag).toBeTruthy();
+    expect(tag.className).toContain("qi-rate-tag--amber");
+    expect(screen.getByText("1 amended of 40 released")).toBeInTheDocument();
+
+    // trend chart rendered (stubbed)
+    expect(screen.getByTestId("amendment-trend-chart")).toBeInTheDocument();
+
+    // breakdown table
+    expect(screen.getByText("By test")).toBeInTheDocument();
+    expect(screen.getByText("40")).toBeInTheDocument();
+  });
+
+  test("rate tag stays gray when the indicator has no thresholds", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/reports/amendment/trend")) {
+        callback({
+          points: [
+            {
+              period: "2026-07-01",
+              amendedCount: 1,
+              releasedCount: 40,
+              ratePercent: 2.5,
+            },
+          ],
+        });
+      } else if (url.includes("/rest/qi-config/resolve")) {
+        callback({ indicatorKey: "AMENDMENT", enabled: true });
+      }
+    });
+    await renderPage();
+
+    const tag = screen
+      .getAllByText("2.50%")
+      .map((el) => el.closest(".amendment-rate-tag"))
+      .find(Boolean);
+    expect(tag).toBeTruthy();
+    expect(tag.className).not.toContain("qi-rate-tag--amber");
   });
 });
