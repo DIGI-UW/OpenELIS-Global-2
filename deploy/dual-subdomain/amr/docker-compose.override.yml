@@ -1,0 +1,54 @@
+# =============================================================================
+# amr.openelis-global.org — additive isolation overlay (Microbiology MVP, OGC-782)
+#
+# Layered LAST on top of the repo-root build.docker-compose.yml, own project:
+#   docker compose -p amr -f build.docker-compose.yml \
+#       -f deploy/dual-subdomain/amr/docker-compose.override.yml up -d \
+#       certs db.openelis.org oe.openelis.org fhir.openelis.org frontend.openelis.org
+#
+# Touches ONLY container_name / ports / networks (never volumes — those keep
+# flowing from the base, whose relative paths resolve against the amr checkout).
+# `proxy` is inherited but NEVER started (omitted from the service list above);
+# the umbrella router owns 80/443. ports:[] is a belt-and-suspenders backstop.
+# =============================================================================
+
+services:
+  certs:
+    container_name: amr-oe-certs
+
+  db.openelis.org:
+    container_name: amr-openelisglobal-database
+    ports: !reset []
+
+  oe.openelis.org:
+    container_name: amr-openelisglobal-webapp
+    ports: !reset []
+    networks:
+      default:
+        ipv4_address: 172.24.1.121   # moved into the remapped subnet below
+      edge:
+        aliases: [amr-oe]
+
+  fhir.openelis.org:
+    container_name: amr-external-fhir-api
+    ports: !reset []
+
+  frontend.openelis.org:
+    container_name: amr-openelisglobal-front-end
+    networks:
+      default:
+      edge:
+        aliases: [amr-frontend]
+
+  proxy:
+    container_name: amr-openelisglobal-proxy
+    ports: !reset []
+
+networks:
+  edge:
+    external: true
+    name: oe-edge
+  default:
+    ipam:
+      config:
+        - subnet: 172.24.1.0/24      # was 172.20.1.0/24 — distinct from analyzers' 172.25

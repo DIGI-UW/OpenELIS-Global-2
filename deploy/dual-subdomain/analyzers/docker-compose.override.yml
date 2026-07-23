@@ -1,0 +1,76 @@
+# =============================================================================
+# analyzers.openelis-global.org — additive isolation overlay
+# (Analyzer Types & Mapping, OGC-1054, WITH the analyzer harness)
+#
+# Layered LAST on the harness chain, own project:
+#   docker compose -p analyzers \
+#       -f projects/analyzer-harness/docker-compose.dev.yml \
+#       -f projects/analyzer-harness/docker-compose.base.yml \
+#       -f projects/analyzer-harness/docker-compose.analyzer-test.yml \
+#       -f deploy/dual-subdomain/analyzers/docker-compose.override.yml \
+#       up -d certs db.openelis.org oe.openelis.org fhir.openelis.org \
+#             frontend.openelis.org astm-simulator openelis-analyzer-bridge virtual-serial
+#   (run from projects/analyzer-harness so the harness `../..` build contexts resolve.)
+#
+# Isolation vs. the amr stack: distinct container_names, a remapped `default`
+# subnet, and per-instance harness image tags (so a rebuild here can't clobber
+# any other harness on the same Docker host). analyzer raw TCP ports stay
+# INTERNAL (ports:[]) per the deploy decision — reachable only on analyzer-net.
+# analyzer-net keeps its default 172.21 subnet: only one harness runs on this box.
+# =============================================================================
+
+services:
+  certs:
+    container_name: analyzers-oe-certs
+
+  db.openelis.org:
+    container_name: analyzers-openelisglobal-database
+    ports: !reset []
+
+  oe.openelis.org:
+    container_name: analyzers-openelisglobal-webapp
+    ports: !reset []
+    networks:
+      default:
+        ipv4_address: 172.25.1.121   # moved into the remapped subnet below
+      analyzer-net:                  # inherited from analyzer-test overlay — kept
+      edge:
+        aliases: [analyzers-oe]
+
+  fhir.openelis.org:
+    container_name: analyzers-external-fhir-api
+    ports: !reset []
+
+  frontend.openelis.org:
+    container_name: analyzers-openelisglobal-front-end
+    networks:
+      default:
+      edge:
+        aliases: [analyzers-frontend]
+
+  proxy:
+    container_name: analyzers-openelisglobal-proxy
+    ports: !reset []
+
+  astm-simulator:
+    container_name: analyzers-openelis-astm-simulator
+    image: openelis-astm-simulator.analyzers   # per-instance tag, not the shared .harness
+    ports: !reset []                                   # simulate API + listeners stay internal
+    environment:
+      # Keep the docker.sock-based network manager pointed at the renamed containers.
+      - BRIDGE_CONTAINER_NAME=analyzers-openelis-analyzer-bridge
+      - MOCK_CONTAINER_NAME=analyzers-openelis-astm-simulator
+
+  openelis-analyzer-bridge:
+    container_name: analyzers-openelis-analyzer-bridge
+    image: openelis-analyzer-bridge.analyzers   # per-instance tag
+    ports: !reset []                                   # HTTPS/ASTM/MLLP listeners stay internal
+
+networks:
+  edge:
+    external: true
+    name: oe-edge
+  default:
+    ipam:
+      config:
+        - subnet: 172.25.1.0/24      # was 172.20.1.0/24 — distinct from amr's 172.24

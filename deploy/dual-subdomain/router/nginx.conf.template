@@ -1,0 +1,150 @@
+# =============================================================================
+# Umbrella reverse proxy — Host-based dispatch to two isolated OpenELIS stacks
+# =============================================================================
+# Rendered by docker-entrypoint.sh via envsubst. Variables:
+#   ${AMR_DOMAIN}        — microbiology MVP stack (OGC-782)
+#   ${ANALYZERS_DOMAIN}  — analyzer types & mapping stack (OGC-1054, incl. harness)
+#   ${AMR_CERT} ${AMR_KEY} ${ANALYZERS_CERT} ${ANALYZERS_KEY}
+#       — per-domain cert paths, resolved by the entrypoint to the Let's Encrypt
+#         lineage when present, else a per-domain self-signed fallback.
+#
+# The two backend stacks bind NO host ports; they are reached only over the
+# shared external "oe-edge" Docker network by the aliases their override files
+# attach: amr-frontend / amr-oe and analyzers-frontend / analyzers-oe.
+#
+# DO NOT edit the rendered nginx.conf — edit this template.
+# =============================================================================
+
+worker_processes 1;
+
+events { worker_connections 1024; }
+
+http {
+    # Docker's embedded DNS. Combined with $variable upstreams below, this defers
+    # name resolution to request time, so the router starts and stays up even if a
+    # backend stack is not running yet (returns 502 until it is, instead of nginx
+    # refusing to start on an unresolvable upstream).
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
+    # -------------------------------------------------------------------------
+    # HTTP :80 — ACME HTTP-01 challenge for BOTH domains, then redirect to HTTPS.
+    # certbot writes tokens under /var/www/certbot for whichever domain is being
+    # validated, so both server_names share the same webroot.
+    # -------------------------------------------------------------------------
+    server {
+        listen 80;
+        server_name ${AMR_DOMAIN} ${ANALYZERS_DOMAIN};
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+    server {
+        listen 80 default_server;
+        server_name _;
+        return 301 https://$host$request_uri;
+    }
+
+    # -------------------------------------------------------------------------
+    # amr.openelis-global.org  ->  amr stack (build.docker-compose.yml)
+    # -------------------------------------------------------------------------
+    server {
+        listen 443 ssl;
+        server_name ${AMR_DOMAIN};
+
+        ssl_certificate     ${AMR_CERT};
+        ssl_certificate_key ${AMR_KEY};
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $server_name;
+        absolute_redirect off;
+
+        # Frontend. Host is rewritten to "localhost" so a Vite dev server (if the
+        # stack runs one) accepts the forwarded request (Vite 5 allowedHosts is
+        # strict); harmless for the static-nginx runtime build, which ignores Host.
+        location / {
+            set $amr_frontend "amr-frontend";
+            proxy_pass http://$amr_frontend;
+            proxy_redirect off;
+            proxy_set_header Host localhost;
+        }
+        location /api/ {
+            set $amr_oe "amr-oe";
+            proxy_pass https://$amr_oe:8443/api/;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+        }
+        location /rest/ {
+            set $amr_oe "amr-oe";
+            proxy_pass https://$amr_oe:8443/rest/;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    # analyzers.openelis-global.org  ->  analyzers stack (harness chain)
+    # -------------------------------------------------------------------------
+    server {
+        listen 443 ssl;
+        server_name ${ANALYZERS_DOMAIN};
+
+        ssl_certificate     ${ANALYZERS_CERT};
+        ssl_certificate_key ${ANALYZERS_KEY};
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $server_name;
+        absolute_redirect off;
+
+        location / {
+            set $an_frontend "analyzers-frontend";
+            proxy_pass http://$an_frontend;
+            proxy_redirect off;
+            proxy_set_header Host localhost;
+        }
+        location /api/ {
+            set $an_oe "analyzers-oe";
+            proxy_pass https://$an_oe:8443/api/;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+        }
+        location /rest/ {
+            set $an_oe "analyzers-oe";
+            proxy_pass https://$an_oe:8443/rest/;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    # Catch-all: any other Host lands here. Reuse amr's cert as an arbitrary
+    # default (a self-signed fallback always exists) and refuse the connection —
+    # no legitimate traffic should reach this block.
+    # -------------------------------------------------------------------------
+    server {
+        listen 443 ssl default_server;
+        server_name _;
+        ssl_certificate     ${AMR_CERT};
+        ssl_certificate_key ${AMR_KEY};
+        return 444;
+    }
+}

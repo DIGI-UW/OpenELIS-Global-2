@@ -1,0 +1,47 @@
+# =============================================================================
+# Umbrella reverse proxy — owns host :80/:443, terminates TLS for both
+# subdomains, dispatches by Host header to the two backend stacks over the
+# shared external "oe-edge" network. Own compose project: `-p oe-edge`.
+#
+#   docker network create oe-edge         # once (deploy.sh does this)
+#   docker compose -p oe-edge -f docker-compose.router.yml up -d --build
+#
+# Env (see ../.env.example): AMR_DOMAIN, ANALYZERS_DOMAIN, LETSENCRYPT_EMAIL.
+# =============================================================================
+
+services:
+  router:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: oe-edge-router
+    container_name: oe-edge-router
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - AMR_DOMAIN=${AMR_DOMAIN}
+      - ANALYZERS_DOMAIN=${ANALYZERS_DOMAIN}
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/nginx.conf.template:ro
+      # Shared with the cert scripts — LE lineages live here, one dir per domain.
+      - ./letsencrypt:/etc/letsencrypt:ro
+      # ACME HTTP-01 webroot; certbot writes challenge tokens here.
+      - ./certbot:/var/www/certbot
+      # Persists the self-signed fallbacks so a restart before ACME reuses them.
+      - selfsigned-vol:/etc/nginx/selfsigned
+    networks:
+      - edge
+
+  # NOTE: renewal is NOT a compose service — deploy.sh installs a host cron entry
+  # (/etc/cron.d/oe-edge-certbot-renew -> scripts/certbot-renew.sh) so it survives
+  # `compose down` and mirrors the proven vector-demo certbot.timer approach.
+
+volumes:
+  selfsigned-vol:
+
+networks:
+  edge:
+    external: true
+    name: oe-edge
