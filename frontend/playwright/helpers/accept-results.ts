@@ -74,6 +74,23 @@ export async function acceptAndVerifyResults(
   }
 
   for (let i = 0; i < stagedCountBeforeSave; i++) {
+    // OGC-1145 FR-8 — a specimen-ambiguous row (its test runs on several
+    // sample types) offers a chooser and would be HELD awaiting specimen if
+    // accepted without a choice. Do what the reviewer does: pick the first
+    // offered specimen.
+    const sampleTypeSelect = stagedRows()
+      .nth(i)
+      .locator('select[id$=".typeOfSampleId"]')
+      .first();
+    if ((await sampleTypeSelect.count()) > 0) {
+      const firstOption = await sampleTypeSelect
+        .locator('option:not([value=""])')
+        .first()
+        .getAttribute("value");
+      if (firstOption) {
+        await sampleTypeSelect.selectOption(firstOption);
+      }
+    }
     const acceptInput = stagedRows()
       .nth(i)
       .locator('input[id$=".isAccepted"]')
