@@ -16,7 +16,6 @@ package org.openelisglobal.test.dao;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.method.valueholder.Method;

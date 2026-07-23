@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
@@ -28,6 +27,7 @@ import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -219,40 +219,40 @@ public class PatientReportServiceImpl implements PatientReportService {
             return "";
         }
         switch (key) {
-            case "accessionNumber":
-                return item.getAccessionNumber() != null ? item.getAccessionNumber() : "";
-            case "patientName":
-                return item.getPatientName() != null ? item.getPatientName() : "";
-            case "patientExternalId":
-                return patient.getExternalId() != null ? patient.getExternalId() : "";
-            case "patientGender":
-                return patient.getGender() != null ? patient.getGender() : "";
-            case "patientDateOfBirth":
-                return patient.getBirthDateForDisplay() != null ? patient.getBirthDateForDisplay() : "";
-            case "organizationName":
-                return orgName != null ? orgName : "";
-            case "sampleCollectionDate":
-                return collectionDate != null ? collectionDate : "";
-            case "sampleReceivedDate":
-                return item.getReceivedDate() != null ? item.getReceivedDate() : "";
-            case "clinicianName":
-                return clinician != null ? clinician : "";
-            case "testName":
-                return item.getTestName() != null ? item.getTestName() : "";
-            case "testDescription":
-                if (item.getTestId() != null) {
-                    Test test = testsMap.get(item.getTestId());
-                    if (test != null && test.getDescription() != null) {
-                        return test.getDescription();
-                    }
+        case "accessionNumber":
+            return item.getAccessionNumber() != null ? item.getAccessionNumber() : "";
+        case "patientName":
+            return item.getPatientName() != null ? item.getPatientName() : "";
+        case "patientExternalId":
+            return patient.getExternalId() != null ? patient.getExternalId() : "";
+        case "patientGender":
+            return patient.getGender() != null ? patient.getGender() : "";
+        case "patientDateOfBirth":
+            return patient.getBirthDateForDisplay() != null ? patient.getBirthDateForDisplay() : "";
+        case "organizationName":
+            return orgName != null ? orgName : "";
+        case "sampleCollectionDate":
+            return collectionDate != null ? collectionDate : "";
+        case "sampleReceivedDate":
+            return item.getReceivedDate() != null ? item.getReceivedDate() : "";
+        case "clinicianName":
+            return clinician != null ? clinician : "";
+        case "testName":
+            return item.getTestName() != null ? item.getTestName() : "";
+        case "testDescription":
+            if (item.getTestId() != null) {
+                Test test = testsMap.get(item.getTestId());
+                if (test != null && test.getDescription() != null) {
+                    return test.getDescription();
                 }
-                return "";
-            case "analysisStatus":
-                return item.getAnalysisStatusId() != null ? item.getAnalysisStatusId() : "";
-            case "resultValue":
-                return item.getResultValue() != null ? item.getResultValue() : "";
-            default:
-                return "";
+            }
+            return "";
+        case "analysisStatus":
+            return item.getAnalysisStatusId() != null ? item.getAnalysisStatusId() : "";
+        case "resultValue":
+            return item.getResultValue() != null ? item.getResultValue() : "";
+        default:
+            return "";
         }
     }
 }

@@ -384,9 +384,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
             }
 
             String hql = "from Test t where t.id in (:ids)";
-            Query<Test> query = entityManager
-                    .unwrap(Session.class)
-                    .createQuery(hql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(hql, Test.class);
 
             query.setParameter("ids", ids);
 
