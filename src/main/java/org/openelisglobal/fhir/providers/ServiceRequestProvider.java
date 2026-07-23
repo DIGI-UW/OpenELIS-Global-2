@@ -204,7 +204,8 @@ public class ServiceRequestProvider implements IResourceProvider {
                     : " " + sampleOrder.getReceivedTime();
 
             final List<Test> tests = requireNonEmpty(
-                    fhirTransformService.resolveTestsFromServiceRequest(serviceRequest),
+
+                    fhirTransformService.resolveTestsFromCodeableConcept(serviceRequest.getCode()),
                     "No tests resolved from ServiceRequest");
 
             final List<SampleEditItem> editItems = requireNonEmpty(

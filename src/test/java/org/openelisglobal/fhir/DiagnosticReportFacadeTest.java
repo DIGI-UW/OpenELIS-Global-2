@@ -114,4 +114,5 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
         assertNotNull(response);
         org.junit.Assert.assertTrue(response.getStatus() != 404);
     }
+
 }

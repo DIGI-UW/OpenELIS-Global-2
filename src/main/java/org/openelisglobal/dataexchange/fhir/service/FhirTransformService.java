@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.HumanName;
@@ -112,7 +113,9 @@ public interface FhirTransformService {
     List<SampleEditItem> buildSampleEditItemsListFromServiceRequest(ServiceRequest serviceRequest, String sysUserId)
             throws Exception;
 
-    List<Test> resolveTestsFromServiceRequest(ServiceRequest serviceRequest);
+    List<Test> resolveTestsFromCodeableConcept(CodeableConcept codeableConcept);
+
+    ResultsUpdateDataSet createResultUpdateDataSetFromReport(DiagnosticReport report, String sysuserId);
 
     Specimen transformToSpecimen(SampleItem sampleItem);
 
