@@ -1,0 +1,43 @@
+# =============================================================================
+# Light self-hosted Grist — authoring layer for the reviewer UAT checklists.
+# Single container, built-in SQLite (no external DB/S3), joined to the shared
+# oe-edge network as alias "grist" so the umbrella router can proxy to it.
+# Own project so it starts/stops independently of the router/stacks:
+#
+#   docker compose -p oe-grist -f docker-compose.grist.yml up -d
+#
+# Reachable by humans only through the router vhost (grist.openelis-global.org,
+# basic-auth, TLS) once that DNS resolves; the seed + generator reach it over
+# the internal network and need no public DNS.
+# =============================================================================
+
+services:
+  grist:
+    image: gristlabs/grist:latest
+    container_name: oe-edge-grist
+    restart: unless-stopped
+    environment:
+      # Public URL the human UI is served under (set even before DNS resolves;
+      # the REST API used by seed/generate works over the internal net regardless).
+      - APP_HOME_URL=https://grist.openelis-global.org
+      # Light: no gVisor/pynbox sandbox. Acceptable for an internal, single-tenant
+      # authoring instance behind basic-auth; do NOT expose formula editing to
+      # untrusted users in this mode.
+      - GRIST_SANDBOX_FLAVOR=unsandboxed
+      - GRIST_SINGLE_ORG=openelis
+      - GRIST_DEFAULT_EMAIL=admin@openelis-global.org
+      # Trust the umbrella router's forwarded proto so Grist builds https URLs.
+      - GRIST_FORWARD_URL_HOST=1
+    volumes:
+      - grist-data:/persist
+    networks:
+      edge:
+        aliases: [grist]
+
+volumes:
+  grist-data:
+
+networks:
+  edge:
+    external: true
+    name: oe-edge
