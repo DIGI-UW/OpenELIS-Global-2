@@ -27,30 +27,41 @@
   }
 
   // ---- mount host + shadow root (isolated) ----------------------------------
-  var host = document.createElement("div");
-  host.id = "oe-review-host";
-  host.style.cssText = "all:initial";
-  document.body.appendChild(host);
-  var root = host.attachShadow({ mode: "closed" });
-
-  var style = document.createElement("style");
-  style.textContent = CSS();
-  root.appendChild(style);
-  var wrap = document.createElement("div");
-  wrap.className = "wrap";
-  root.appendChild(wrap);
-
-  // ---- load UAT script, then render -----------------------------------------
+  // Assigned in boot(), which runs once the body exists: the injected script
+  // executes during <head> parsing, so document.body is null at top level.
+  var host, root, wrap;
   var uat = { title: LABEL + " review", sections: [] };
-  fetch(UAT_URL, { cache: "no-store" })
-    .then(function (r) {
-      return r.ok ? r.json() : null;
-    })
-    .then(function (j) {
-      if (j) uat = j;
-    })
-    .catch(function () {})
-    .finally(render);
+
+  function boot() {
+    host = document.createElement("div");
+    host.id = "oe-review-host";
+    host.style.cssText = "all:initial";
+    document.body.appendChild(host);
+    root = host.attachShadow({ mode: "closed" });
+
+    var style = document.createElement("style");
+    style.textContent = CSS();
+    root.appendChild(style);
+    wrap = document.createElement("div");
+    wrap.className = "wrap";
+    root.appendChild(wrap);
+
+    fetch(UAT_URL, { cache: "no-store" })
+      .then(function (r) {
+        return r.ok ? r.json() : null;
+      })
+      .then(function (j) {
+        if (j) uat = j;
+      })
+      .catch(function () {})
+      .finally(render);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 
   function render() {
     wrap.innerHTML = "";
