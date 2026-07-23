@@ -70,8 +70,7 @@ describe("TerminologySection", () => {
     await screen.findByTestId("mapping-row-a");
     // The Specimen column renders with the shared default on the row.
     expect(
-      screen.getAllByText(messages["label.testCatalog.override.shared"])
-        .length,
+      screen.getAllByText(messages["label.testCatalog.override.shared"]).length,
     ).toBeGreaterThan(0);
 
     // Scope the mapping to CSF and save — the payload carries the scope.
