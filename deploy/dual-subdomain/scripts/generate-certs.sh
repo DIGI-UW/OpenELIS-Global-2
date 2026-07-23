@@ -46,6 +46,7 @@ issue_one() {
 
 issue_one "$AMR_DOMAIN"
 issue_one "$ANALYZERS_DOMAIN"
+[ -n "${GRIST_DOMAIN:-}" ] && issue_one "$GRIST_DOMAIN"
 
 echo ">> reloading router so it serves the issued certs (entrypoint re-resolves LE paths)"
 docker restart "$ROUTER" >/dev/null

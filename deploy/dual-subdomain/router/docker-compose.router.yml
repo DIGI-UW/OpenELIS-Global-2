@@ -23,11 +23,15 @@ services:
     environment:
       - AMR_DOMAIN=${AMR_DOMAIN}
       - ANALYZERS_DOMAIN=${ANALYZERS_DOMAIN}
+      - GRIST_DOMAIN=${GRIST_DOMAIN:-grist.openelis-global.org}
     volumes:
       - ./nginx.conf.template:/etc/nginx/nginx.conf.template:ro
       # Reviewer overlay assets (widget.js + per-instance UAT scripts), served
       # by the router at /__review/ and injected via sub_filter.
       - ../review:/etc/nginx/review:ro
+      # Basic-auth gate for the Grist vhost. Generated on the box (deploy.sh),
+      # never committed; must exist before the router starts or nginx -t fails.
+      - ./grist.htpasswd:/etc/nginx/grist.htpasswd:ro
       # Shared with the cert scripts — LE lineages live here, one dir per domain.
       - ./letsencrypt:/etc/letsencrypt:ro
       # ACME HTTP-01 webroot; certbot writes challenge tokens here.

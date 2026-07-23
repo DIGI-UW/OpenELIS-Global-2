@@ -26,14 +26,20 @@ http {
     # refusing to start on an unresolvable upstream).
     resolver 127.0.0.11 valid=10s ipv6=off;
 
+    # WebSocket upgrade passthrough (Grist relies on it).
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ""      close;
+    }
+
     # -------------------------------------------------------------------------
-    # HTTP :80 — ACME HTTP-01 challenge for BOTH domains, then redirect to HTTPS.
+    # HTTP :80 — ACME HTTP-01 challenge for all domains, then redirect to HTTPS.
     # certbot writes tokens under /var/www/certbot for whichever domain is being
-    # validated, so both server_names share the same webroot.
+    # validated, so all server_names share the same webroot.
     # -------------------------------------------------------------------------
     server {
         listen 80;
-        server_name ${AMR_DOMAIN} ${ANALYZERS_DOMAIN};
+        server_name ${AMR_DOMAIN} ${ANALYZERS_DOMAIN} ${GRIST_DOMAIN};
 
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
@@ -156,6 +162,39 @@ http {
             proxy_ssl_verify off;
             proxy_ssl_server_name on;
             proxy_set_header Host $host;
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    # grist.openelis-global.org -> Grist UAT authoring UI (basic-auth gated).
+    # Grist runs login-less in this light mode; the router enforces access.
+    # SSO (Grist OIDC against an IdP) is the intended upgrade — see grist/README.md.
+    # -------------------------------------------------------------------------
+    server {
+        listen 443 ssl;
+        server_name ${GRIST_DOMAIN};
+
+        ssl_certificate     ${GRIST_CERT};
+        ssl_certificate_key ${GRIST_KEY};
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        auth_basic "OpenELIS UAT authoring";
+        auth_basic_user_file /etc/nginx/grist.htpasswd;
+
+        client_max_body_size 32m;
+
+        location / {
+            set $grist_up "grist";
+            proxy_pass http://$grist_up:8484;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
     }
 
