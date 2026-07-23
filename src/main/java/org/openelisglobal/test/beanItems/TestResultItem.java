@@ -162,6 +162,12 @@ public class TestResultItem implements ResultItem, Serializable {
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
 
+    // OGC-1020 (FR-O2): epoch-millis snapshot of Analysis.lastupdated at load
+    // time; round-tripped by the unified Results page so a save over a result
+    // modified since load is rejected (409) instead of silently overwriting
+    @Pattern(regexp = "^[0-9]*$", groups = { LogbookResultsForm.LogbookResults.class })
+    private String analysisLastupdated;
+
     private String sampleItemExternalId;
 
     private String analysisStatusId;
@@ -646,6 +652,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setAnalysisId(String analysisId) {
         this.analysisId = analysisId;
+    }
+
+    public String getAnalysisLastupdated() {
+        return analysisLastupdated;
+    }
+
+    public void setAnalysisLastupdated(String analysisLastupdated) {
+        this.analysisLastupdated = analysisLastupdated;
     }
 
     public String getSampleItemExternalId() {
