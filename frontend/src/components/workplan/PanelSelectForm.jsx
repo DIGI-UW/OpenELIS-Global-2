@@ -26,7 +26,7 @@ function PanelSelectForm(props) {
     mounted.current = true;
     let panelId = new URLSearchParams(window.location.search).get("panelId");
     panelId = panelId ? panelId : "";
-    getFromOpenElisServer("/rest/panels", (fetchedPanels) => {
+    getFromOpenElisServer("/rest/displayList/PANELS", (fetchedPanels) => {
       let panel = fetchedPanels.find((panel) => panel.id === panelId);
       let panelLabel = panel
         ? panel.value

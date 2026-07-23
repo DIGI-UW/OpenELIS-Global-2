@@ -233,7 +233,7 @@ public class TestSectionDAOImpl extends BaseDAOImpl<TestSection, String> impleme
             if (!StringUtil.isNullorNill(testSection.getId())) {
                 testSectionId = testSection.getId();
             }
-            query.setParameter("id", Integer.parseInt(testSectionId));
+            query.setParameter("id", testSectionId);
 
             List<TestSection> list = query.list();
 

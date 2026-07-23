@@ -26,7 +26,7 @@ import {
 } from "../utils/Utils";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import PatientInfo from "../addOrder/PatientInfo";
-import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
+import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
 import LabelsSection from "../barcodeWorkflow/LabelsSection";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
@@ -109,7 +109,8 @@ const SampleBatchEntry = (props) => {
   }, []);
 
   useEffect(() => {
-    OrderEntryValidationSchema.validate(orderFormValues, { abortEarly: false })
+    createOrderEntryValidationSchema(configurationProperties)
+      .validate(orderFormValues, { abortEarly: false })
       .then((validData) => {
         setErrors([]);
         console.debug("Valid Data:", validData);
@@ -118,7 +119,7 @@ const SampleBatchEntry = (props) => {
         setErrors(errors);
         console.error("Validation Errors:", errors.errors);
       });
-  }, [orderFormValues]);
+  }, [configurationProperties, orderFormValues]);
 
   useEffect(() => {
     getFromOpenElisServer(

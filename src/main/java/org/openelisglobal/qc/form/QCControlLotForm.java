@@ -34,13 +34,16 @@ public class QCControlLotForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String controlLevel = "";
 
-    @NotNull
-    @Positive
-    private Integer testId;
+    // testId / instrumentId are String + LIMSStringNumberUserType on the
+    // entity (matching Test.id / Analyzer.id convention). Validate as
+    // positive numeric Strings since `@Positive` only applies to Number.
+    @NotBlank
+    @Pattern(regexp = "[1-9]\\d*", message = "must be a positive numeric ID")
+    private String testId;
 
-    @NotNull
-    @Positive
-    private Integer instrumentId;
+    @NotBlank
+    @Pattern(regexp = "[1-9]\\d*", message = "must be a positive numeric ID")
+    private String instrumentId;
 
     @NotBlank
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
@@ -120,19 +123,19 @@ public class QCControlLotForm extends BaseForm {
         this.controlLevel = controlLevel;
     }
 
-    public Integer getTestId() {
+    public String getTestId() {
         return testId;
     }
 
-    public void setTestId(Integer testId) {
+    public void setTestId(String testId) {
         this.testId = testId;
     }
 
-    public Integer getInstrumentId() {
+    public String getInstrumentId() {
         return instrumentId;
     }
 
-    public void setInstrumentId(Integer instrumentId) {
+    public void setInstrumentId(String instrumentId) {
         this.instrumentId = instrumentId;
     }
 

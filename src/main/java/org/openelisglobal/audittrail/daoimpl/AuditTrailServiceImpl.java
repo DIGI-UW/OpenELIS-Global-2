@@ -18,8 +18,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.sql.Timestamp;
+import java.util.Set;
 import java.util.Vector;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -31,6 +33,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
+import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +41,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class AuditTrailServiceImpl implements AuditTrailService {
+
+    // Field names whose old-values must NOT be written into history.changes.
+    // Two categories: payload-blobs (large base64 strings that would balloon
+    // history rows) and sensitive data (PII/secrets that shouldn't be copied
+    // into a denormalized audit table). Entities can also opt out of a single
+    // field by exposing a `get<Field>_Audit()` getter that returns a redacted
+    // value — the reflection picks that up automatically.
+    private static final Set<String> SENSITIVE_FIELD_NAMES = Set.of("documentData", // PatientIdDocument: base64 image
+                                                                                    // payload
+            "photoData", // PatientPhoto: base64 image payload
+            "thumbnailData" // PatientIdDocument + PatientPhoto: base64 thumbnail payload
+    );
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
@@ -205,7 +220,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     }
 
     /**
-     * Returns an array of all fields used by this object from it's class and all
+     * Returns an array of all fields used by this object from its class and all
      * superclasses.
      *
      * @param objectClass the class
@@ -294,6 +309,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
 
             String fieldName = fields[ii].getName();
+            if (SENSITIVE_FIELD_NAMES.contains(fieldName)) {
+                continue fieldIteration;
+            }
             if ((!fieldName.equals("id"))
                     // bugzilla 2574
                     // && (!fieldName.equals("lastupdated"))
@@ -322,7 +340,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                         Object objPropNewState = fields[ii].get(newObject);
                         if (objPropNewState != null) {
                             try {
-                                propertyNewState = objPropNewState.toString();
+                                propertyNewState = AuditFieldStringifier.stringify(objPropNewState);
                             } catch (org.hibernate.LazyInitializationException e) {
                                 // Skip lazy-loaded collections that cannot be accessed outside session
                                 LogEvent.logTrace(this.getClass().getName(), "getChanges", "Skipping field " + fieldName
@@ -375,7 +393,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     Object objPreUpdateState = fields[ii].get(existingObject);
                     if (objPreUpdateState != null) {
                         try {
-                            propertyPreUpdateState = objPreUpdateState.toString();
+                            propertyPreUpdateState = AuditFieldStringifier.stringify(objPreUpdateState);
                         } catch (org.hibernate.LazyInitializationException e) {
                             // Skip lazy-loaded collections that cannot be accessed outside session
                             LogEvent.logTrace(this.getClass().getName(), "getChanges",
@@ -1346,8 +1364,15 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         for (int i = 0; i < list.size(); i++) {
             LabelValuePair lvp = (LabelValuePair) list.elementAt(i);
-            XMLUtil.appendKeyValue(lvp.getLabel(), lvp.getValue(), xml);
-            xml.append("\n");
+            // Always emit the tag — even when the old value is blank/null — so
+            // blank-to-filled transitions (e.g. first-time email/phone capture,
+            // merge flags going null→true) are recorded. XMLUtil.appendKeyValue
+            // skips blanks, which is right for non-audit XML but loses signal
+            // here: the field name itself is the record of what changed.
+            String label = lvp.getLabel();
+            String value = lvp.getValue() == null ? "" : lvp.getValue().trim();
+            xml.append(XMLUtil.makeStartTag(label)).append(Encode.forXmlContent(value))
+                    .append(XMLUtil.makeEndTag(label)).append("\n");
         }
 
         return xml.toString();

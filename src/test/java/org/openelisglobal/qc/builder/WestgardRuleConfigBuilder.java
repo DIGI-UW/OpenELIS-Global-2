@@ -14,8 +14,8 @@ public class WestgardRuleConfigBuilder {
         ruleConfig = new WestgardRuleConfig();
         // Set sensible defaults
         ruleConfig.setId(UUID.randomUUID().toString());
-        ruleConfig.setTestId(1);
-        ruleConfig.setInstrumentId(1);
+        ruleConfig.setTestId("1");
+        ruleConfig.setInstrumentId("1");
         ruleConfig.setRuleCode("1_3s");
         ruleConfig.setEnabled(true);
         ruleConfig.setSeverity("WARNING");
@@ -31,12 +31,12 @@ public class WestgardRuleConfigBuilder {
         return this;
     }
 
-    public WestgardRuleConfigBuilder withTestId(Integer testId) {
+    public WestgardRuleConfigBuilder withTestId(String testId) {
         ruleConfig.setTestId(testId);
         return this;
     }
 
-    public WestgardRuleConfigBuilder withInstrumentId(Integer instrumentId) {
+    public WestgardRuleConfigBuilder withInstrumentId(String instrumentId) {
         ruleConfig.setInstrumentId(instrumentId);
         return this;
     }

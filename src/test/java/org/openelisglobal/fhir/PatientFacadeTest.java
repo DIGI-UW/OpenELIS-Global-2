@@ -70,6 +70,8 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/facade-patient.xml");
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     private MockHttpServletRequest buildRequest(String method, String pathInfo) {
@@ -95,6 +97,14 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         List<PatientIdentity> identities = patientIdentityService.getAll();
         List<Person> persons = personService.getAll();
         List<PersonAddress> personAddresses = personAddressService.getAll();
+
+        // Fixture-loaded entities have null sys_user_id; the audit pipeline
+        // rejects deletes without one. Stamp before the deleteAll fan-out.
+        identities.forEach(e -> e.setSysUserId("1"));
+        contacts.forEach(e -> e.setSysUserId("1"));
+        personAddresses.forEach(e -> e.setSysUserId("1"));
+        patients.forEach(e -> e.setSysUserId("1"));
+        persons.forEach(e -> e.setSysUserId("1"));
 
         patientIdentityService.deleteAll(identities);
         patientContactService.deleteAll(contacts);

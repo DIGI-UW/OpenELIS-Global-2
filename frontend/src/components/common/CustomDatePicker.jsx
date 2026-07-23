@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { DatePicker, DatePickerInput } from "@carbon/react";
 import { format } from "date-fns";
+import { useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 
 const CustomDatePicker = (props) => {
@@ -8,10 +9,16 @@ const CustomDatePicker = (props) => {
     props.value ? props.value : "",
   );
   const { configurationProperties } = useContext(ConfigurationContext);
+  const intl = useIntl();
   function handleDatePickerChange(e) {
-    let date = new Date(e[0]);
+    const raw = e?.[0];
+    if (!raw || isNaN(new Date(raw).getTime())) {
+      setCurrentDate("");
+      props.onChange("");
+      return;
+    }
     const formatDate = format(
-      new Date(date),
+      new Date(raw),
       configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
         ? "dd/MM/yyyy"
         : "MM/dd/yyyy",
@@ -23,6 +30,15 @@ const CustomDatePicker = (props) => {
   function handleInputChange(e) {
     const inputValue = e.target.value;
 
+    // Empty input must clear state and propagate to the parent. The partial
+    // regex below accepts the empty string (all groups are zero-or-more), so
+    // without this branch a manual clear silently leaves the prior value in
+    // place.
+    if (inputValue === "") {
+      setCurrentDate("");
+      return;
+    }
+
     const isFrenchLocale =
       configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR";
     const partialDateRegex = isFrenchLocale
@@ -33,10 +49,12 @@ const CustomDatePicker = (props) => {
       ? /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/
       : /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
 
-    if (partialDateRegex.test(inputValue)) {
-      e.target.value = inputValue;
-    } else {
-      e.target.value = ""; // Clear invalid input
+    if (!partialDateRegex.test(inputValue)) {
+      e.target.value = "";
+      return;
+    }
+    if (fullDateRegex.test(inputValue)) {
+      setCurrentDate(inputValue);
     }
   }
 
@@ -86,11 +104,16 @@ const CustomDatePicker = (props) => {
       >
         <DatePickerInput
           id={props.id}
-          placeholder={
-            configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
-              ? "dd/mm/yyyy"
-              : "mm/dd/yyyy"
-          }
+          placeholder={intl.formatMessage({
+            id:
+              configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
+                ? "datepicker.placeholder.dmy"
+                : "datepicker.placeholder.mdy",
+            defaultMessage:
+              configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
+                ? "dd/mm/yyyy"
+                : "mm/dd/yyyy",
+          })}
           type="text"
           labelText={props.labelText}
           invalid={props.invalid}

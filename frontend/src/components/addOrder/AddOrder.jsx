@@ -1,23 +1,44 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Button,
   Checkbox,
+  DataTable,
+  FileUploaderDropContainer,
+  InlineNotification,
   Link,
+  Modal,
   Select,
   SelectItem,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TextArea,
   TextInput,
   Column,
   Grid,
 } from "@carbon/react";
+import { Download, TrashCan, View } from "@carbon/react/icons";
+import config from "../../config.json";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import CustomDatePicker from "../common/CustomDatePicker";
 import CustomTimePicker from "../common/CustomTimePicker";
-import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  deleteFromOpenElisServer,
+  getFromOpenElisServer,
+  postToOpenElisServerFormData,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { priorities } from "../data/orderOptions";
 import { NotificationKinds } from "../common/CustomNotification";
 import AutoComplete from "../common/AutoComplete";
 import OrderResultReporting from "./OrderResultReporting";
+import LabelsSection from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 const AddOrder = (props) => {
@@ -37,18 +58,226 @@ const AddOrder = (props) => {
     isModifyOrder,
     changed,
     setChanged,
+    stagedAttachments,
+    setStagedAttachments,
   } = props;
   const [otherSamplingVisible, setOtherSamplingVisible] = useState(false);
   const [providers, setProviders] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState([]);
   const [samplingPerformed, setSamplingPerformed] = useState([]);
   const [siteNames, setSiteNames] = useState([]);
-  const [innitialized, setInnitialized] = useState(false);
+  // Ref (not state) because the value gates a one-time init inside an effect
+  // and is never read during render — using state would trigger an extra
+  // render and a react-hooks/set-state-in-effect lint violation.
+  const initializedRef = useRef(false);
   const [departments, setDepartments] = useState([]);
+  const [attachmentError, setAttachmentError] = useState(null);
+  const [savedAttachments, setSavedAttachments] = useState([]);
+  const [attachmentToDelete, setAttachmentToDelete] = useState(null);
+  // OGC-285 M5b: the POST /api/orderEntry/labelRequest aggregation response that
+  // drives the order-level LabelsSection (API mode). Null until the first fetch
+  // (or when no sample carries tests), in which case the section is not shown.
+  const [labelRequest, setLabelRequest] = useState(null);
+
+  const ATTACHMENT_MAX_FILES = 5;
+  const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
+  const ATTACHMENT_ALLOWED_EXTS = [
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".tif",
+    ".tiff",
+  ];
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + " " + units[i];
+  };
+
+  const handleAttachmentAdd = (addedFiles) => {
+    setAttachmentError(null);
+    if (!addedFiles || addedFiles.length === 0) return;
+    const current = stagedAttachments || [];
+    if (current.length + addedFiles.length > ATTACHMENT_MAX_FILES) {
+      setAttachmentError(
+        intl.formatMessage(
+          { id: "order.attachment.error.maxFiles" },
+          { maxFiles: ATTACHMENT_MAX_FILES },
+        ),
+      );
+      return;
+    }
+    const accepted = [];
+    for (const file of addedFiles) {
+      const lowerName = file.name.toLowerCase();
+      const ext = lowerName.includes(".")
+        ? lowerName.substring(lowerName.lastIndexOf("."))
+        : "";
+      if (!ATTACHMENT_ALLOWED_EXTS.includes(ext)) {
+        setAttachmentError(
+          intl.formatMessage(
+            { id: "order.attachment.error.type" },
+            { types: ATTACHMENT_ALLOWED_EXTS.join(", ") },
+          ),
+        );
+        return;
+      }
+      if (file.size > ATTACHMENT_MAX_SIZE) {
+        setAttachmentError(
+          intl.formatMessage(
+            { id: "order.attachment.error.size" },
+            { maxSize: "10MB" },
+          ),
+        );
+        return;
+      }
+      accepted.push({
+        id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+    }
+    if (setStagedAttachments) {
+      setStagedAttachments([...current, ...accepted]);
+    }
+  };
+
+  const handleAttachmentRemove = (id) => {
+    if (!setStagedAttachments) return;
+    setStagedAttachments((stagedAttachments || []).filter((a) => a.id !== id));
+  };
+
+  const loadSavedAttachments = (accessionNumber) => {
+    if (!accessionNumber) return;
+    getFromOpenElisServer(
+      "/rest/order/" + encodeURIComponent(accessionNumber) + "/attachments",
+      (data) => {
+        if (componentMounted.current && Array.isArray(data)) {
+          setSavedAttachments(data);
+        }
+      },
+    );
+  };
+
+  const validateAttachmentBatch = (addedFiles, currentCount) => {
+    if (currentCount + addedFiles.length > ATTACHMENT_MAX_FILES) {
+      return intl.formatMessage(
+        { id: "order.attachment.error.maxFiles" },
+        { maxFiles: ATTACHMENT_MAX_FILES },
+      );
+    }
+    for (const file of addedFiles) {
+      const lower = file.name.toLowerCase();
+      const ext = lower.includes(".")
+        ? lower.substring(lower.lastIndexOf("."))
+        : "";
+      if (!ATTACHMENT_ALLOWED_EXTS.includes(ext)) {
+        return intl.formatMessage(
+          { id: "order.attachment.error.type" },
+          { types: ATTACHMENT_ALLOWED_EXTS.join(", ") },
+        );
+      }
+      if (file.size > ATTACHMENT_MAX_SIZE) {
+        return intl.formatMessage(
+          { id: "order.attachment.error.size" },
+          { maxSize: "10MB" },
+        );
+      }
+    }
+    return null;
+  };
+
+  const handleSavedAttachmentUpload = (addedFiles) => {
+    setAttachmentError(null);
+    if (!addedFiles || addedFiles.length === 0) return;
+    const accessionNumber = orderFormValues?.sampleOrderItems?.labNo;
+    if (!accessionNumber) return;
+    const validationError = validateAttachmentBatch(
+      addedFiles,
+      savedAttachments.length,
+    );
+    if (validationError) {
+      setAttachmentError(validationError);
+      return;
+    }
+    const formData = new FormData();
+    addedFiles.forEach((file) => formData.append("files", file, file.name));
+    postToOpenElisServerFormData(
+      "/rest/order/" + encodeURIComponent(accessionNumber) + "/attachments",
+      formData,
+      (status) => {
+        if (status >= 200 && status < 300) {
+          loadSavedAttachments(accessionNumber);
+        } else {
+          setAttachmentError(
+            intl.formatMessage({ id: "order.attachment.upload.failed" }),
+          );
+        }
+      },
+    );
+  };
+
+  const handleSavedAttachmentDownload = (attachmentId) => {
+    window.open(
+      config.serverBaseUrl +
+        "/rest/order/attachments/" +
+        encodeURIComponent(attachmentId) +
+        "/download",
+      "_blank",
+    );
+  };
+
+  const handleSavedAttachmentView = (attachmentId) => {
+    window.open(
+      config.serverBaseUrl +
+        "/rest/order/attachments/" +
+        encodeURIComponent(attachmentId) +
+        "/view",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
+  const confirmSavedAttachmentDelete = () => {
+    if (!attachmentToDelete) return;
+    const id = attachmentToDelete.id;
+    const accessionNumber = orderFormValues?.sampleOrderItems?.labNo;
+    setAttachmentToDelete(null);
+    deleteFromOpenElisServer(
+      "/rest/order/attachments/" + encodeURIComponent(id),
+      (status) => {
+        if (status >= 200 && status < 300) {
+          loadSavedAttachments(accessionNumber);
+        } else {
+          setAttachmentError(
+            intl.formatMessage({ id: "order.attachment.delete.failed" }),
+          );
+        }
+      },
+    );
+  };
+
+  useEffect(() => {
+    if (isModifyOrder && orderFormValues?.sampleOrderItems?.labNo) {
+      loadSavedAttachments(orderFormValues.sampleOrderItems.labNo);
+    }
+  }, [isModifyOrder, orderFormValues?.sampleOrderItems?.labNo]);
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/SamplePatientEntry", getSampleEntryPreform);
+    getFromOpenElisServer("/rest/SamplePatientEntry", (response) => {
+      if (componentMounted.current) {
+        setSiteNames(response.sampleOrderItems.referringSiteList);
+        setPaymentOptions(response.sampleOrderItems.paymentOptions);
+        setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
+        setProviders(response.sampleOrderItems.providersList);
+      }
+    });
     window.scrollTo(0, 0);
     return () => {
       componentMounted.current = false;
@@ -69,6 +298,9 @@ const AddOrder = (props) => {
         break;
       case "nextVisitDate":
         obj = { ...orderFormValues.sampleOrderItems, nextVisitDate: date };
+        break;
+      case "consentRecordedAt":
+        obj = { ...orderFormValues.sampleOrderItems, consentRecordedAt: date };
         break;
       default:
     }
@@ -367,16 +599,17 @@ const AddOrder = (props) => {
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
         consentGiven: checked,
-        // Clear reference number if unchecking consent
+        // Clear all consent fields if unchecking consent
         consentFormReference: checked
           ? orderFormValues.sampleOrderItems.consentFormReference
           : "",
+        consentRecordedAt: checked
+          ? orderFormValues.sampleOrderItems.consentRecordedAt
+          : "",
+        consentRecordedBy: checked
+          ? orderFormValues.sampleOrderItems.consentRecordedBy
+          : "",
       },
-    });
-    setChanged({
-      ...changed,
-      "sampleOrderItems.consentGiven": true,
-      "sampleOrderItems.consentFormReference": true,
     });
   }
 
@@ -388,11 +621,20 @@ const AddOrder = (props) => {
         consentFormReference: e.target.value,
       },
     });
-    setChanged({ ...changed, "sampleOrderItems.consentFormReference": true });
+  }
+
+  function handleConsentRecordedByChange(e) {
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        consentRecordedBy: e.target.value,
+      },
+    });
   }
 
   useEffect(() => {
-    if (!innitialized) {
+    if (!initializedRef.current) {
       setOrderFormValues({
         ...orderFormValues,
         sampleOrderItems: {
@@ -405,7 +647,7 @@ const AddOrder = (props) => {
       });
     }
     if (orderFormValues.sampleOrderItems.requestDate != "") {
-      setInnitialized(true);
+      initializedRef.current = true;
     }
   }, [orderFormValues]);
 
@@ -448,6 +690,87 @@ const AddOrder = (props) => {
     }
   }
 
+  // OGC-285 M5b — the samples that actually reach the backend, in the SAME order
+  // the save's sampleXML is built (Index.jsx iterates `samples` and emits a
+  // <sample> only when tests.length > 0). The backend parses those in document
+  // order into getSampleItemsTests(); the i-th entry is keyed sample_id_local =
+  // String(i). Keying off this filtered list (NOT the raw `samples` index) is
+  // what makes the per-sample label rows correlate to the right SampleItem.
+  const orderLabelSamples = useMemo(
+    () => (samples || []).filter((s) => s.tests && s.tests.length > 0),
+    [samples],
+  );
+
+  // Stable signature of the selected tests + sample types — re-fetch the
+  // aggregation only when these change (not on every unrelated AddOrder render).
+  const orderLabelSignature = useMemo(
+    () =>
+      JSON.stringify(
+        orderLabelSamples.map((s) => [
+          s.sampleTypeId,
+          (s.tests || []).map((t) => t.id),
+        ]),
+      ),
+    [orderLabelSamples],
+  );
+
+  // Fetch POST /api/orderEntry/labelRequest with all selected test ids + the
+  // filtered samples (each carrying its positional sample_id_local). Renders via
+  // LabelsSection's API mode. Clears when no sample carries tests.
+  useEffect(() => {
+    if (orderLabelSamples.length === 0) {
+      setLabelRequest(null);
+      return;
+    }
+    const testIds = [
+      ...new Set(
+        orderLabelSamples.flatMap((s) =>
+          (s.tests || []).map((t) => Number(t.id)),
+        ),
+      ),
+    ];
+    const requestBody = {
+      test_ids: testIds,
+      samples: orderLabelSamples.map((s, index) => ({
+        sample_id_local: String(index),
+        sample_type: s.sampleTypeId,
+      })),
+    };
+    postToOpenElisServerJsonResponse(
+      "/api/orderEntry/labelRequest",
+      JSON.stringify(requestBody),
+      (response) => {
+        if (response && !response.error) {
+          setLabelRequest(response);
+        }
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderLabelSignature]);
+
+  // Human-facing row label for the sample table: the sample type name, falling
+  // back to "Sample N" (the filtered position the backend correlates by).
+  const orderLabelSampleFormatter = (row) => {
+    const sample = orderLabelSamples[Number(row.sampleIdLocal)];
+    if (sample && sample.name) {
+      return sample.name;
+    }
+    return intl.formatMessage(
+      { id: "orderEntry.labels.sampleRow.header" },
+      { number: row.sampleNumber, id: row.sampleIdLocal },
+    );
+  };
+
+  // Capture the LabelsSection's chosen quantities (persistPayload, already shaped
+  // as OrderLabelPersistRequest) and lift it onto orderFormValues so Index.jsx's
+  // save POST body carries it as the top-level labelPersistRequest.
+  const handleOrderLabelsChange = ({ persistPayload }) => {
+    setOrderFormValues((prev) => ({
+      ...prev,
+      labelPersistRequest: persistPayload,
+    }));
+  };
+
   const reportingNotifications = (object) => {
     setOrderFormValues({
       ...orderFormValues,
@@ -457,15 +780,6 @@ const AddOrder = (props) => {
       providerSMSNotificationTestIds: object.providerSMSNotificationTestIds,
       providerEmailNotificationTestIds: object.providerEmailNotificationTestIds,
     });
-  };
-
-  const getSampleEntryPreform = (response) => {
-    if (componentMounted.current) {
-      setSiteNames(response.sampleOrderItems.referringSiteList);
-      setPaymentOptions(response.sampleOrderItems.paymentOptions);
-      setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
-      setProviders(response.sampleOrderItems.providersList);
-    }
   };
 
   const handleKeyPress = (event) => {
@@ -716,7 +1030,7 @@ const AddOrder = (props) => {
               />
             </Column>
             <Column lg={8} md={4} sm={4}>
-              <TextInput
+              <TextArea
                 name="provisionalDiagnosis"
                 placeholder={intl.formatMessage({
                   id: "input.placeholder.provisionalClinicalDiagnosis",
@@ -729,6 +1043,7 @@ const AddOrder = (props) => {
                   id: "order.requester.provisionalDiagnosis.label",
                 })}
                 id="provisionalDiagnosisId"
+                rows={3}
               />
             </Column>
             {/* <Column lg={8} md={4} sm={4}>
@@ -984,10 +1299,281 @@ const AddOrder = (props) => {
                     maxLength={100}
                   />
                 </Column>
+
+                {/* Consent Recorded By Field */}
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    name="consentRecordedBy"
+                    labelText={intl.formatMessage({
+                      id: "label.informedConsent.recordedBy",
+                    })}
+                    placeholder={intl.formatMessage({
+                      id: "placeholder.informedConsent.recordedBy",
+                    })}
+                    maxLength={255}
+                    value={orderFormValues.sampleOrderItems.consentRecordedBy}
+                    onChange={handleConsentRecordedByChange}
+                    id="consentRecordedById"
+                  />
+                </Column>
+
+                {/* Consent Recorded At Field */}
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <CustomDatePicker
+                    id="consentRecordedAtId"
+                    labelText={intl.formatMessage({
+                      id: "label.informedConsent.recordedAt",
+                    })}
+                    autofillDate={false}
+                    value={orderFormValues.sampleOrderItems.consentRecordedAt}
+                    disallowFutureDate={true}
+                    onChange={(date) =>
+                      handleDatePickerChange("consentRecordedAt", date)
+                    }
+                  />
+                </Column>
               </>
             )}
           </Grid>
         </div>
+        {!isModifyOrder && setStagedAttachments && (
+          <div className="orderLegendBody">
+            <h3>
+              <FormattedMessage id="order.attachment.heading" />
+            </h3>
+            <Stack gap={3}>
+              <p>
+                <FormattedMessage
+                  id="order.attachment.hint"
+                  values={{ maxFiles: ATTACHMENT_MAX_FILES }}
+                />
+              </p>
+              {attachmentError && (
+                <InlineNotification
+                  kind="error"
+                  hideCloseButton={false}
+                  title={intl.formatMessage({ id: "notification.title" })}
+                  subtitle={attachmentError}
+                  onCloseButtonClick={() => setAttachmentError(null)}
+                />
+              )}
+              <FileUploaderDropContainer
+                accept={ATTACHMENT_ALLOWED_EXTS}
+                multiple
+                disabled={
+                  (stagedAttachments || []).length >= ATTACHMENT_MAX_FILES
+                }
+                labelText={intl.formatMessage({
+                  id: "order.attachment.dropzone",
+                })}
+                onAddFiles={(_event, { addedFiles }) =>
+                  handleAttachmentAdd(addedFiles)
+                }
+              />
+              {(stagedAttachments || []).length > 0 && (
+                <Stack gap={2}>
+                  {stagedAttachments.map((a) => (
+                    <Grid key={a.id} condensed style={{ alignItems: "center" }}>
+                      <Column lg={10} md={5} sm={3}>
+                        <span>{a.fileName}</span>
+                      </Column>
+                      <Column lg={4} md={2} sm={1}>
+                        <span>{formatFileSize(a.fileSize)}</span>
+                      </Column>
+                      <Column lg={2} md={1} sm={4}>
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          hasIconOnly
+                          renderIcon={TrashCan}
+                          iconDescription={intl.formatMessage({
+                            id: "label.button.remove",
+                          })}
+                          onClick={() => handleAttachmentRemove(a.id)}
+                        />
+                      </Column>
+                    </Grid>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </div>
+        )}
+        {isModifyOrder && orderFormValues?.sampleOrderItems?.labNo && (
+          <div className="orderLegendBody">
+            <h3>
+              <FormattedMessage id="order.attachment.heading" />
+            </h3>
+            <Stack gap={3}>
+              <p>
+                <FormattedMessage
+                  id="order.attachment.hint"
+                  values={{ maxFiles: ATTACHMENT_MAX_FILES }}
+                />
+              </p>
+              {attachmentError && (
+                <InlineNotification
+                  kind="error"
+                  hideCloseButton={false}
+                  title={intl.formatMessage({ id: "notification.title" })}
+                  subtitle={attachmentError}
+                  onCloseButtonClick={() => setAttachmentError(null)}
+                />
+              )}
+              <FileUploaderDropContainer
+                accept={ATTACHMENT_ALLOWED_EXTS}
+                multiple
+                disabled={savedAttachments.length >= ATTACHMENT_MAX_FILES}
+                labelText={intl.formatMessage({
+                  id: "order.attachment.dropzone",
+                })}
+                onAddFiles={(_event, { addedFiles }) =>
+                  handleSavedAttachmentUpload(addedFiles)
+                }
+              />
+              <DataTable
+                rows={savedAttachments.map((a) => ({
+                  id: String(a.id),
+                  fileName: a.fileName,
+                  fileType: a.fileType,
+                  fileSizeBytes: a.fileSizeBytes,
+                  uploadedAt: a.uploadedAt,
+                }))}
+                headers={[
+                  {
+                    key: "fileName",
+                    header: intl.formatMessage({
+                      id: "order.attachment.column.fileName",
+                    }),
+                  },
+                  {
+                    key: "fileType",
+                    header: intl.formatMessage({
+                      id: "order.attachment.column.fileType",
+                    }),
+                  },
+                  {
+                    key: "fileSizeBytes",
+                    header: intl.formatMessage({
+                      id: "order.attachment.column.fileSize",
+                    }),
+                  },
+                  {
+                    key: "uploadedAt",
+                    header: intl.formatMessage({
+                      id: "order.attachment.column.uploadedAt",
+                    }),
+                  },
+                  {
+                    key: "actions",
+                    header: intl.formatMessage({
+                      id: "order.attachment.column.actions",
+                    }),
+                  },
+                ]}
+              >
+                {({ rows, headers, getTableProps, getHeaderProps }) => (
+                  <TableContainer>
+                    <Table {...getTableProps()}>
+                      <TableHead>
+                        <TableRow>
+                          {headers.map((header) => (
+                            <TableHeader
+                              key={header.key}
+                              {...getHeaderProps({ header })}
+                            >
+                              {header.header}
+                            </TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {rows.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={headers.length}>
+                              <FormattedMessage id="order.attachment.empty" />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {rows.map((row) => {
+                          const cells = {};
+                          row.cells.forEach((c) => {
+                            cells[c.info.header] = c.value;
+                          });
+                          return (
+                            <TableRow key={row.id}>
+                              <TableCell>{cells.fileName}</TableCell>
+                              <TableCell>{cells.fileType}</TableCell>
+                              <TableCell>
+                                {formatFileSize(cells.fileSizeBytes)}
+                              </TableCell>
+                              <TableCell>{cells.uploadedAt}</TableCell>
+                              <TableCell>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={View}
+                                  iconDescription={intl.formatMessage({
+                                    id: "order.attachment.action.view",
+                                  })}
+                                  onClick={() =>
+                                    handleSavedAttachmentView(row.id)
+                                  }
+                                />
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={Download}
+                                  iconDescription={intl.formatMessage({
+                                    id: "order.attachment.action.download",
+                                  })}
+                                  onClick={() =>
+                                    handleSavedAttachmentDownload(row.id)
+                                  }
+                                />
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={TrashCan}
+                                  iconDescription={intl.formatMessage({
+                                    id: "order.attachment.action.delete",
+                                  })}
+                                  onClick={() =>
+                                    setAttachmentToDelete({
+                                      id: row.id,
+                                      fileName: cells.fileName,
+                                    })
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </DataTable>
+            </Stack>
+          </div>
+        )}
         <div className="orderLegendBody">
           <h3>
             <FormattedMessage id="order.result.reporting.heading" />
@@ -1009,7 +1595,37 @@ const AddOrder = (props) => {
             }
           })}
         </div>
+        {labelRequest && (
+          <div className="orderLegendBody">
+            <h3>
+              <FormattedMessage id="orderEntry.labels.heading" />
+            </h3>
+            <LabelsSection
+              labelRequest={labelRequest}
+              onChange={handleOrderLabelsChange}
+              sampleLabelFormatter={orderLabelSampleFormatter}
+            />
+          </div>
+        )}
       </Stack>
+      <Modal
+        open={attachmentToDelete !== null}
+        modalHeading={intl.formatMessage({
+          id: "order.attachment.delete.confirm.title",
+        })}
+        primaryButtonText={intl.formatMessage({ id: "label.button.delete" })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setAttachmentToDelete(null)}
+        onRequestSubmit={confirmSavedAttachmentDelete}
+        danger
+      >
+        <p>
+          <FormattedMessage
+            id="order.attachment.delete.confirm.body"
+            values={{ fileName: attachmentToDelete?.fileName ?? "" }}
+          />
+        </p>
+      </Modal>
     </>
   );
 };

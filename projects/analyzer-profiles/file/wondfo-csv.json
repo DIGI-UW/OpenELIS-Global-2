@@ -1,12 +1,14 @@
 {
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "profileMeta": {
     "id": "wondfo-csv",
     "version": "1.0.0",
     "displayName": "Wondfo Finecare FS-205 (CSV)",
+    "confidence": "HIGH",
     "manufacturer": "Wondfo Biotech",
     "validation_status": "PENDING - profile built from OGC-344 spec (40-column CSV, 4 real records validated). Header names inferred from column descriptions; must be validated against real history.csv."
   },
-  "category": "POCT",
+  "category": "IMMUNOLOGY",
   "protocol": {
     "name": "FILE",
     "format": "CSV"
@@ -52,11 +54,36 @@
     "hasHeader": true,
     "skipRows": 1,
     "qcRules": [
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NEG", "isActive": true, "sortOrder": 1 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "POS", "isActive": true, "sortOrder": 2 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NC", "isActive": true, "sortOrder": 3 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PC", "isActive": true, "sortOrder": 4 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANC", "isActive": true, "sortOrder": 5 }
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "NEG",
+        "isActive": true,
+        "sortOrder": 1
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "POS",
+        "isActive": true,
+        "sortOrder": 2
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "NC",
+        "isActive": true,
+        "sortOrder": 3
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "PC",
+        "isActive": true,
+        "sortOrder": 4
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "BLANC",
+        "isActive": true,
+        "sortOrder": 5
+      }
     ]
   },
   "parsing_notes": {

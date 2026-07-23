@@ -146,6 +146,18 @@ export const ViewNonConformingEvent = () => {
               setData(data);
               setNceTypes(data.nceTypes);
               setTData(null);
+              // Pre-fill the category/type form fields from the saved event so
+              // the user sees what was set during the original NCE report.
+              const event = data.nceEventsSearchResults[0];
+              setFormData((prev) => ({
+                ...prev,
+                nceCategory: event?.nceCategoryId
+                  ? String(event.nceCategoryId)
+                  : prev.nceCategory,
+                nceType: event?.nceTypeId
+                  ? String(event.nceTypeId)
+                  : prev.nceType,
+              }));
             } else {
               setTData(data);
               setData(null);
@@ -165,18 +177,17 @@ export const ViewNonConformingEvent = () => {
     }
   };
 
-  useEffect(() => {
-    if (data) {
-      setNceTypes(
-        data.nceTypes.filter((obj) => {
-          let bol = Number(obj.categoryId) === Number(formData.nceCategory);
-          return bol;
-        }),
-      );
-    }
-  }, [formData.nceCategory]);
+  const canSubmitNceForm =
+    !!formData.labComponent &&
+    !!formData.nceCategory &&
+    !!formData.nceType &&
+    !!formData.consequences &&
+    !!formData.recurrence;
 
   const handleNCEFormSubmit = () => {
+    if (!canSubmitNceForm) {
+      return;
+    }
     let body = {
       id: data.nceEventsSearchResults[0].id,
       laboratoryComponent: formData.labComponent,
@@ -245,6 +256,18 @@ export const ViewNonConformingEvent = () => {
               setData(data);
               setNceTypes(data.nceTypes);
               setTData(null);
+              // Pre-fill the category/type form fields from the saved event so
+              // the user sees what was set during the original NCE report.
+              const event = data.nceEventsSearchResults[0];
+              setFormData((prev) => ({
+                ...prev,
+                nceCategory: event?.nceCategoryId
+                  ? String(event.nceCategoryId)
+                  : prev.nceCategory,
+                nceType: event?.nceTypeId
+                  ? String(event.nceTypeId)
+                  : prev.nceType,
+              }));
             }
           },
         );
@@ -455,7 +478,7 @@ export const ViewNonConformingEvent = () => {
               </span>
             </div>
             <div style={{ marginBottom: "10px" }}>
-              {data.specimens[0].typeOfSample.description}
+              {data.specimens?.[0]?.typeOfSample?.description || "—"}
             </div>
           </Column>
           <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
@@ -643,7 +666,7 @@ export const ViewNonConformingEvent = () => {
                 <SelectItem
                   key={option.id}
                   value={option.id}
-                  text={option.name}
+                  text={option.value}
                 />
               ))}
             </Select>
@@ -665,7 +688,7 @@ export const ViewNonConformingEvent = () => {
                 <SelectItem
                   key={option.id}
                   value={option.id}
-                  text={option.name}
+                  text={option.value}
                 />
               ))}
             </Select>
@@ -809,14 +832,18 @@ export const ViewNonConformingEvent = () => {
           </Column>
 
           <Column lg={16} md={8} sm={4}>
-            {false && (
+            {!canSubmitNceForm && (
               <div style={{ color: "#c62828", margin: 4 }}>
-                {formData.error}
+                <FormattedMessage
+                  id="nonconform.view.requiredFields"
+                  defaultMessage="Lab component, NCE category, NCE type, severity consequence and recurrence are all required."
+                />
               </div>
             )}
             <Button
               type="button"
               data-testid="nce-submit-button"
+              disabled={!canSubmitNceForm}
               onClick={() => handleNCEFormSubmit()}
             >
               <FormattedMessage id="label.button.submit" />
