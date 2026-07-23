@@ -192,6 +192,20 @@ export async function createAnalyzerFromProfile(
     await presentation.pause(500);
   }
 
+  // Fill required import directory for FILE analyzers. The UI intentionally
+  // does NOT auto-generate this (per product decision) — tests must set it
+  // explicitly. Mirror the mock server's targetDir so the analyzer watches
+  // where the mock drops fixtures.
+  if (config.protocol === "FILE") {
+    const importDir =
+      config.push.protocol === "FILE"
+        ? config.push.targetDir ||
+          `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`
+        : `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`;
+    await form.fillImportDirectory(importDir);
+    await presentation.pause(500);
+  }
+
   // Save
   await waitForAnalyzerApiReady(page);
   await form.save();

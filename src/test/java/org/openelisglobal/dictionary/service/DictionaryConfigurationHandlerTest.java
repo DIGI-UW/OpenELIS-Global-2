@@ -117,7 +117,7 @@ public class DictionaryConfigurationHandlerTest {
         existingDict.setDictEntry("Existing Entry");
         existingDict.setDictionaryCategory(testCategory);
 
-        when(dictionaryService.getDictionaryEntrysByNameAndCategoryDescription("Existing Entry", "Test Category"))
+        when(dictionaryService.getDictionaryEntryByNameAndCategoryName("Existing Entry", "Test Category"))
                 .thenReturn(existingDict);
         when(dictionaryService.update(any(Dictionary.class))).thenReturn(existingDict);
 

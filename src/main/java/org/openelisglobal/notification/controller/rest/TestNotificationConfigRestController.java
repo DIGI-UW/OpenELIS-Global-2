@@ -78,9 +78,6 @@ public class TestNotificationConfigRestController extends BaseController {
             throw new RuntimeException("Validation errors occurred");
         }
         String sysUserId = this.getSysUserId(request);
-        if (form.getConfig().getDefaultPayloadTemplate() == null) {
-            form.getConfig().setDefaultPayloadTemplate(form.getSystemDefaultPayloadTemplate());
-        }
         testNotificationConfigService.saveStatusAndMessages(form.getConfig(), sysUserId);
         if (form.getEditSystemDefaultPayloadTemplate()) {
             payloadTemplateService.updatePayloadTemplateMessagesAndSubject(form.getSystemDefaultPayloadTemplate(),

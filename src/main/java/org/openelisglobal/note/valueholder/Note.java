@@ -24,6 +24,7 @@ public class Note extends BaseObject<String> {
     public static final String INTERNAL = "I";
     public static final String REJECT_REASON = "R";
     public static final String NON_CONFORMITY = "N";
+    public static final String UNCONDITIONAL_ACCEPTANCE_REASON = "U";
 
     private String id;
 

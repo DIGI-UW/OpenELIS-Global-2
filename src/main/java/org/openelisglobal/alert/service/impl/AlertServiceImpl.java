@@ -20,9 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Business logic: - Alert creation with deduplication (30-minute window) -
- * Alert lifecycle management (OPEN → ACKNOWLEDGED → RESOLVED) - Event
- * publishing for downstream processing
+ * Business logic: - Alert creation with one-alert-per-lifecycle deduplication
+ * (an existing OPEN/ACKNOWLEDGED alert for the same (type, entity) is reused;
+ * its duplicate count and lastDuplicateTime are bumped instead of inserting a
+ * new row) - Alert lifecycle management (OPEN → ACKNOWLEDGED → RESOLVED) -
+ * Event publishing for downstream processing
  */
 @Service
 @Transactional
@@ -36,8 +38,6 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
-
-    private static final int DEDUPLICATION_WINDOW_MINUTES = 30;
 
     public AlertServiceImpl() {
         super(Alert.class);
@@ -132,34 +132,34 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
         return alertDAO.countActiveAlertsForEntity(entityType, entityId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Alert> getUnacknowledgedAlertsOlderThan(String entityType, AlertStatus status, AlertSeverity severity,
+            OffsetDateTime cutoff) {
+        return alertDAO.getUnacknowledgedAlertsOlderThan(entityType, status, severity, cutoff);
+    }
+
     /**
-     * Find duplicate alert within deduplication window.
+     * Find an active alert for the same (type, entity) so a repeat condition just
+     * bumps the duplicate count instead of inserting a new row. We deliberately do
+     * NOT use a sliding time window here: with schedulers firing every 5 min and a
+     * 30-min window, any condition lasting longer than half an hour spawned a fresh
+     * alert each time the window expired — which is how dev systems accumulated
+     * thousands of duplicate rows for the same underlying problem.
      *
      * <p>
-     * Checks for active alert of same type for same entity created/updated within
-     * last 30 minutes.
-     *
-     * @return Existing alert if found, null otherwise
+     * One alert per lifecycle: if an OPEN or ACKNOWLEDGED alert already exists for
+     * the same (alertType, entityType, entityId), reuse it. A new alert can only be
+     * created once the existing one is RESOLVED (status filter below).
      */
     private Alert findDuplicateAlert(AlertType alertType, String entityType, Long entityId) {
         List<Alert> existingAlerts = alertDAO.getAlertsByEntity(entityType, entityId);
-
-        OffsetDateTime deduplicationCutoff = OffsetDateTime.now().minusMinutes(DEDUPLICATION_WINDOW_MINUTES);
-
         for (Alert existingAlert : existingAlerts) {
             if (existingAlert.getAlertType() == alertType && (existingAlert.getStatus() == AlertStatus.OPEN
                     || existingAlert.getStatus() == AlertStatus.ACKNOWLEDGED)) {
-
-                OffsetDateTime lastUpdate = existingAlert.getLastDuplicateTime() != null
-                        ? existingAlert.getLastDuplicateTime()
-                        : existingAlert.getStartTime();
-
-                if (lastUpdate.isAfter(deduplicationCutoff)) {
-                    return existingAlert;
-                }
+                return existingAlert;
             }
         }
-
         return null;
     }
 }

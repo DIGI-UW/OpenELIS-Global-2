@@ -3,7 +3,7 @@
  *
  * References:
  * - Testing Roadmap: .specify/guides/testing-roadmap.md
- * - Jest Best Practices: .specify/guides/jest-best-practices.md
+ * - Vitest Best Practices: .specify/guides/vitest-best-practices.md
  *
  * TDD Workflow (MANDATORY):
  * - RED: Write failing test first
@@ -57,11 +57,11 @@ const renderWithIntl = (component) => {
 // ========== TESTS ==========
 
 describe("MappingActivationModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnConfirm = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnConfirm = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -400,7 +400,7 @@ describe("MappingActivationModal", () => {
    */
   test("testActivation_WithConcurrentEdit_ShowsOptimisticLockWarning", async () => {
     // Arrange: Modal with concurrent edit detected
-    const mockOnReloadPage = jest.fn();
+    const mockOnReloadPage = vi.fn();
     renderWithIntl(
       <MappingActivationModal
         open={true}

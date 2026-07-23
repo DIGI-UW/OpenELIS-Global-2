@@ -7,10 +7,10 @@ import messages from "../../../../languages/en.json";
 import CsvImportPreview from "../CsvImportPreview";
 
 // Mock Layout context
-jest.mock("../../../layout/Layout", () => ({
-  NotificationContext: require("react").createContext({
-    setNotificationVisible: jest.fn(),
-    addNotification: jest.fn(),
+vi.mock("../../../layout/Layout", () => ({
+  NotificationContext: React.createContext({
+    setNotificationVisible: vi.fn(),
+    addNotification: vi.fn(),
   }),
 }));
 
@@ -23,11 +23,11 @@ const renderWithIntl = (component) => {
 };
 
 describe("CsvImportPreview", () => {
-  const mockOnClose = jest.fn();
-  const mockOnImportComplete = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnImportComplete = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders modal with import title", () => {
@@ -53,8 +53,9 @@ describe("CsvImportPreview", () => {
       />,
     );
 
-    // FileUploader renders a button to choose files
-    expect(screen.getByText(/Choose/i)).toBeInTheDocument();
+    // FileUploader renders a button/label to choose files (may appear multiple times in Carbon latest)
+    const chooseElements = screen.getAllByText(/Choose/i);
+    expect(chooseElements.length).toBeGreaterThanOrEqual(1);
   });
 
   test("primary button disabled when no rows parsed", () => {

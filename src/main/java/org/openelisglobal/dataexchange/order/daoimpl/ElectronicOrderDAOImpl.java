@@ -181,7 +181,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
 
     @Override
     public List<ElectronicOrder> getElectronicOrdersContainingValueExludedByOrderedBy(String searchValue,
-            List<Integer> excludedStatuses, SortOrder sortOrder) {
+            List<String> excludedStatuses, SortOrder sortOrder) {
 
         String sql = "from ElectronicOrder eo join eo.patient patient join patient.person person  where"
                 + " lower(eo.data) like concat('%', lower(:searchValue), '%') or"
@@ -356,7 +356,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
                 query.setParameter("endDate", endDate);
             }
             if (!GenericValidator.isBlankOrNull(statusId)) {
-                query.setParameter("statusId", Integer.parseInt(statusId));
+                query.setParameter("statusId", statusId);
             }
             return query.list();
         } catch (HibernateException e) {
@@ -401,7 +401,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
                 query.setParameter("endDate", endTimestamp);
             }
             if (!GenericValidator.isBlankOrNull(statusId)) {
-                query.setParameter("statusId", Integer.parseInt(statusId));
+                query.setParameter("statusId", statusId);
             }
             return query.list();
         } catch (HibernateException e) {
@@ -428,7 +428,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
                 query.setParameter("endDate", endTimestamp);
             }
             if (!GenericValidator.isBlankOrNull(statusId)) {
-                query.setParameter("statusId", Integer.parseInt(statusId));
+                query.setParameter("statusId", statusId);
             }
             Long count = query.uniqueResult();
             return count.intValue();
@@ -455,7 +455,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
                 query.setParameter("endDate", endDate);
             }
             if (!GenericValidator.isBlankOrNull(statusId)) {
-                query.setParameter("statusId", Integer.parseInt(statusId));
+                query.setParameter("statusId", statusId);
             }
             Long count = query.uniqueResult();
             return count.intValue();
@@ -466,7 +466,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
     }
 
     @Override
-    public int getCountOfElectronicOrdersByStatusList(List<Integer> statusIds) {
+    public int getCountOfElectronicOrdersByStatusList(List<String> statusIds) {
         String hql = "SELECT COUNT(*) From ElectronicOrder eo WHERE 1 = 1 ";
 
         if (statusIds != null) {
@@ -487,7 +487,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
     }
 
     @Override
-    public List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<Integer> statusIds, SortOrder sortOrder) {
+    public List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<String> statusIds, SortOrder sortOrder) {
         String hql = "From ElectronicOrder eo WHERE 1 = 1 ";
 
         if (statusIds != null) {

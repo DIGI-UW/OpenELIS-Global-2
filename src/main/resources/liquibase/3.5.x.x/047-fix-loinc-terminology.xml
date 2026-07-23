@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      OGC-949 / OGC-957..958 — repair the legacy LOINC mapping backfill.
+
+      The 043 backfill (OGC-939-loinc-mapping-backfill) already copied every
+      test.loinc into test_terminology_mapping, but with two defects this fixes:
+
+      1. relationship = 'EQUIVALENT', which is not one of the app's relationship
+         values (SAME_AS / BROADER_THAN / NARROWER_THAN). The editor renders the
+         relationship through i18n key label.testCatalog.terminology.rel.<value>,
+         so 'EQUIVALENT' shows the raw key instead of a label. Re-map it to the
+         intended SAME_AS.
+
+      2. last_updated (the Hibernate @Version column) left NULL, so the first
+         edit of a backfilled mapping fails optimistic locking with
+         StaleStateException. Seed it from the populated lastupdated.
+
+      Both statements are idempotent (guarded by the value being repaired).
+    -->
+    <changeSet author="openelis" id="OGC-957-fix-loinc-mapping-relationship">
+        <sql>
+            UPDATE clinlims.test_terminology_mapping SET relationship = 'SAME_AS' WHERE relationship = 'EQUIVALENT';
+        </sql>
+        <!-- One-way data repair: a rollback flipping SAME_AS back to EQUIVALENT
+             would clobber legitimate user-entered SAME_AS rows, so it is a no-op. -->
+        <rollback/>
+    </changeSet>
+
+    <changeSet author="openelis" id="OGC-957-fix-terminology-mapping-version">
+        <update schemaName="clinlims" tableName="test_terminology_mapping">
+            <column name="last_updated" valueComputed="lastupdated"/>
+            <where>last_updated IS NULL</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

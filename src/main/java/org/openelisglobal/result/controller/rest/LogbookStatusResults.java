@@ -35,16 +35,16 @@ public class LogbookStatusResults {
 
     private static final boolean REVERSE_SORT_ORDER = false;
 
-    private static final Set<Integer> excludedStatusIds;
+    private static final Set<String> excludedStatusIds;
 
     static {
         // currently this is the only one being excluded for Haiti_LNSP. If it
         // gets more complicate use the status sets
         excludedStatusIds = new HashSet<>();
-        excludedStatusIds.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.Canceled)));
-        excludedStatusIds.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.SampleRejected)));
+        excludedStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.Canceled));
+        excludedStatusIds.add(
+                SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.SampleRejected));
     }
 
     public LogbookStatusResults(AnalysisService analysisService, SampleService sampleService,
@@ -56,7 +56,17 @@ public class LogbookStatusResults {
 
     public List<TestResultItem> setSearchResults(StatusResultsForm form, ResultsLoadUtility resultsUtility)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        List<TestResultItem> tests = getSelectedTests(form, resultsUtility);
+        return setSearchResults(form, resultsUtility, null);
+    }
+
+    /**
+     * OGC-1020: same date/status search, optionally constrained to one test section
+     * — the unified worklist combines the Lab Unit selector with the date filter,
+     * which the legacy pages never did.
+     */
+    public List<TestResultItem> setSearchResults(StatusResultsForm form, ResultsLoadUtility resultsUtility,
+            String testSectionId) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        List<TestResultItem> tests = getSelectedTests(form, resultsUtility, testSectionId);
         form.setSearchFinished(Boolean.TRUE);
 
         if (resultsUtility.inventoryNeeded()) {
@@ -70,7 +80,8 @@ public class LogbookStatusResults {
         return tests;
     }
 
-    private List<TestResultItem> getSelectedTests(StatusResultsForm form, ResultsLoadUtility resultsUtility) {
+    private List<TestResultItem> getSelectedTests(StatusResultsForm form, ResultsLoadUtility resultsUtility,
+            String testSectionId) {
         String collectionDate = form.getCollectionDate();
         String receivedDate = form.getRecievedDate();
         String analysisStatus = form.getSelectedAnalysisStatus();
@@ -109,6 +120,14 @@ public class LogbookStatusResults {
 
         if (!(GenericValidator.isBlankOrNull(test) || test.equals("0"))) {
             analysisList = blendLists(analysisList, getAnalysisForTest(test));
+            if (analysisList.isEmpty()) {
+                return new ArrayList<>();
+            }
+        }
+
+        if (!GenericValidator.isBlankOrNull(testSectionId)) {
+            analysisList.removeIf(analysis -> analysis.getTestSection() == null
+                    || !testSectionId.equals(analysis.getTestSection().getId()));
             if (analysisList.isEmpty()) {
                 return new ArrayList<>();
             }
@@ -190,7 +209,7 @@ public class LogbookStatusResults {
     }
 
     private List<Analysis> getAnalysisForTest(String testId) {
-        List<Integer> excludedStatusIntList = new ArrayList<>();
+        List<String> excludedStatusIntList = new ArrayList<>();
         excludedStatusIntList.addAll(excludedStatusIds);
         return analysisService.getAllAnalysisByTestAndExcludedStatus(testId, excludedStatusIntList);
     }

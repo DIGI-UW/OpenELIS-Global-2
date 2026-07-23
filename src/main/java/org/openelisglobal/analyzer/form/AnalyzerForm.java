@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -8,8 +9,15 @@ import java.util.Map;
 /**
  * Form object for Analyzer entity - used for REST API input validation
  * Following OpenELIS pattern: Form objects for transport, entities for
- * persistence
+ * persistence.
+ *
+ * <p>
+ * {@code ignoreUnknown=true} so older frontend builds that still send removed
+ * fields (e.g. {@code archiveDirectory} / {@code errorDirectory} dropped in
+ * Liquibase 012) don't break the POST — defensive forward-compat against
+ * frontend/backend version drift.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AnalyzerForm {
 
     private String id;
@@ -41,10 +49,6 @@ public class AnalyzerForm {
     private String communicationMode; // ANALYZER_INITIATED, LIS_INITIATED, BOTH (nullable = infer from protocol)
 
     private String importDirectory;
-
-    private String archiveDirectory;
-
-    private String errorDirectory;
 
     private String filePattern;
 
@@ -162,22 +166,6 @@ public class AnalyzerForm {
 
     public void setImportDirectory(String importDirectory) {
         this.importDirectory = importDirectory;
-    }
-
-    public String getArchiveDirectory() {
-        return archiveDirectory;
-    }
-
-    public void setArchiveDirectory(String archiveDirectory) {
-        this.archiveDirectory = archiveDirectory;
-    }
-
-    public String getErrorDirectory() {
-        return errorDirectory;
-    }
-
-    public void setErrorDirectory(String errorDirectory) {
-        this.errorDirectory = errorDirectory;
     }
 
     public String getFilePattern() {

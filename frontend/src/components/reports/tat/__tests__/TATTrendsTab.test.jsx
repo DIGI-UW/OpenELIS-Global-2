@@ -1,17 +1,19 @@
+import TATTrendsTab from "../TATTrendsTab";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 
-jest.mock("../../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
-const { getFromOpenElisServer } = require("../../../utils/Utils");
+// Replaced inline utils require
 
-const TATTrendsTab = require("../TATTrendsTab").default;
+
 
 const renderWithIntl = (component) => {
   return render(
@@ -28,7 +30,7 @@ const mockFilters = {
   calculationMode: "CALENDAR",
 };
 
-const mockBuildQueryString = jest.fn(
+const mockBuildQueryString = vi.fn(
   (filters, extra) => `fromDate=${filters.fromDate}${extra || ""}`,
 );
 
@@ -48,7 +50,11 @@ const mockTrendData = {
 
 describe("TATTrendsTab", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    await new Promise((r) => setTimeout(r, 0));
   });
 
   test("shows no results when data is null", () => {

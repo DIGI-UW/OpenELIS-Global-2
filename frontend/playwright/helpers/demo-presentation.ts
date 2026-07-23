@@ -5,7 +5,7 @@ import { showSceneLabel, showStepCard, showTitleCard } from "./title-card";
 import { isVideoProject, videoPause } from "./video-pause";
 
 /** Directory where loose screenshot evidence files are saved (video mode). */
-const EVIDENCE_DIR = path.resolve(__dirname, "../../e2e-evidence");
+const EVIDENCE_DIR = new URL("../../e2e-evidence", import.meta.url).pathname;
 
 export type DemoPresentation = {
   readonly isVideo: boolean;

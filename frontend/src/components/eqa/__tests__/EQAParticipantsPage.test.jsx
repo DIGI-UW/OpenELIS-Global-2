@@ -3,20 +3,23 @@ import { render, screen, act, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import EQAParticipantsPage from "../EQAParticipantsPage";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
-  putToOpenElisServer: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  putToOpenElisServer: vi.fn(),
 }));
 
-jest.mock("../../common/PageBreadCrumb", () => {
-  return function MockBreadCrumb() {
-    return <div data-testid="breadcrumb">breadcrumb</div>;
+vi.mock("../../common/PageBreadCrumb", () => {
+  return {
+    default: function MockBreadCrumb() {
+      return <div data-testid="breadcrumb">breadcrumb</div>;
+    },
   };
 });
 
-const { getFromOpenElisServer } = require("../../utils/Utils");
+// Replaced inline utils require
 
 const mockPrograms = [
   { id: 1, name: "Chemistry PT", isActive: true },
@@ -67,7 +70,7 @@ const renderPage = () => {
 
 describe("EQAParticipantsPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url === "/rest/eqa/programs") {
         callback(mockPrograms);

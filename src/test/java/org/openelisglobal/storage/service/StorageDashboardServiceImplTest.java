@@ -39,6 +39,12 @@ public class StorageDashboardServiceImplTest extends BaseWebContextSensitiveTest
         for (Map<String, Object> sample : result) {
             String status = (String) sample.get("status");
             String location = (String) sample.get("location");
+            // Service-layer callers see the raw DB status ID; the REST
+            // controller translates to the spec enum "active"|"disposed"
+            // at the response boundary (SampleStorageRestController
+            // .normalizeStatusForResponse). Test fixture samples in Room A
+            // are all in status id "1" (Test Entered = non-Disposed), so the
+            // "active" filter returns them and they carry the raw "1" here.
             assertTrue("1".equals(status));
             assertTrue(location.contains("Room A"));
         }

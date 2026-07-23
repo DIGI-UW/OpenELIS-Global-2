@@ -1,7 +1,7 @@
 import { assessValue } from "../loadPatientTestData/helpers";
 import { showNotification } from "../commons";
 import { TreeNode } from "../filter/filter-types";
-import { getFromOpenElisServer } from "../../../utils/Utils.js";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useMemo, useState, useEffect } from "react";
 
 function computeTrendlineData(treeNode: TreeNode): Array<TreeNode> {

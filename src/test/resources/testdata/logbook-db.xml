@@ -123,7 +123,7 @@
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
@@ -323,7 +323,7 @@
 
     <test_reflex id="2" tst_rslt_id="2" flags="R"
         lastupdated="2025-08-06 10:10:00" test_analyte_id="2" test_id="2"
-        add_test_id="1" sibling_reflex="1001" scriptlet_id="2"
+        add_test_id="1" sibling_reflex="1" scriptlet_id="2"
         non_dictionary_value="14.5" relation="EQUALS"
         internal_note="Reflex Internal B" external_note="Reflex External B" />
 
