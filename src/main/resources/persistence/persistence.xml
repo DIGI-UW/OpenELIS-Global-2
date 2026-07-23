@@ -132,6 +132,9 @@
         <!-- QI Configuration (OGC-709) -->
         <class>org.openelisglobal.qaevent.qiconfig.valueholder.QiConfig</class>
 
+        <!-- Critical Callback capture (OGC-714) -->
+        <class>org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback</class>
+
         <!-- QC Westgard Rules entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
         <class>org.openelisglobal.qc.valueholder.QCResult</class>

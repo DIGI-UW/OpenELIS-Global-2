@@ -46,4 +46,7 @@
 
   <!-- QA Phase C -->
   <include file="liquibase/qa/007-create-qi-config-table.xml" />
+
+  <!-- QA Phase C.4 — Critical Callback -->
+  <include file="liquibase/qa/008-create-critical-callback-table.xml" />
 </databaseChangeLog>
