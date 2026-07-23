@@ -130,6 +130,8 @@ beforeEach(() => {
       callback(++tatCalls === 1 ? TAT_CURRENT : TAT_PRIOR);
     } else if (url.includes("/rest/reports/amendment/summary")) {
       callback({ amendedCount: 8, releasedCount: 2580, ratePercent: 0.31 });
+    } else if (url.includes("/rest/qi-config/resolve")) {
+      callback({ enabled: true });
     }
   });
 });
@@ -161,9 +163,10 @@ describe("QAOverview", () => {
     });
 
     // One shared NCE fetch, one overview summary, two TAT windows, the
-    // Amendment tile's own summary fetch, plus AttentionRequired's NCE
-    // enabled-config resolve (OGC-711)
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(6);
+    // Amendment tile's own summary fetch, plus the OGC-711 enabled-config
+    // resolves: AttentionRequired (NCE), TodayTiles (TAT/AMENDMENT/NCE),
+    // PillarStatus (TAT) = 1 + 1 + 2 + 1 + 1 + 3 + 1 = 10
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(10);
   });
 
   test("Today tiles carry the KPI titles, tickets, and the live TAT/Amendment/NCE values", async () => {
