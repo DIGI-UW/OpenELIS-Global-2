@@ -391,8 +391,8 @@ constitution compliance
       All 8 principles verified
 - [x] T050 Manual testing with large dataset: Start dev environment
       `docker compose -f dev.docker-compose.yml up -d`, navigate to
-      `https://localhost/Storage/samples`, verify page loads in <2 seconds with
-      100k+ samples, verify pagination controls work (Next, Previous, page
+      `https://localhost/Storage/sample-items`, verify page loads in <2 seconds
+      with 100k+ samples, verify pagination controls work (Next, Previous, page
       numbers, page size selector), verify page state preserved when switching
       tabs - ⏳ Manual testing plan created in manual-test-results.md (requires
       dev environment execution)

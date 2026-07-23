@@ -99,7 +99,7 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
 
             List<ObservationHistory> observationList = query.list();
             return observationList;
@@ -117,7 +117,7 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("sampleId", Integer.parseInt(sampleId));
+            query.setParameter("sampleId", sampleId);
 
             List<ObservationHistory> observationList = query.list();
             return observationList;
@@ -137,8 +137,8 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("patientId", Integer.parseInt(patientId));
-            query.setParameter("ohTypeId", Integer.parseInt(observationHistoryTypeId));
+            query.setParameter("patientId", patientId);
+            query.setParameter("ohTypeId", observationHistoryTypeId);
 
             List<ObservationHistory> ohList = query.list();
             return ohList;
@@ -158,8 +158,8 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("sampleId", Integer.parseInt(sampleId));
-            query.setParameter("ohTypeId", Integer.parseInt(observationHistoryTypeId));
+            query.setParameter("sampleId", sampleId);
+            query.setParameter("ohTypeId", observationHistoryTypeId);
 
             ObservationHistory oh = query.setMaxResults(1).uniqueResult();
             return oh;
@@ -180,7 +180,7 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("typeId", Integer.parseInt(typeId));
+            query.setParameter("typeId", typeId);
             query.setParameter("value", value);
             query.setParameter("valueType", valueType);
 

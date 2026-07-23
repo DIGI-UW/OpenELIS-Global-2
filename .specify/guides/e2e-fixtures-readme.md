@@ -6,7 +6,9 @@ consistent.
 
 ## Canonical fixture loader
 
-- **Unified loader**: `./src/test/resources/load-test-fixtures.sh`
+- **Unified loader**:
+  `./src/test/resources/load-test-fixtures.sh --profile=core` (or
+  `--profile=harness` for analyzer harness lane)
 - **Overview**: `src/test/resources/FIXTURE_LOADER_README.md`
 
 This loader is the preferred way to ensure baseline E2E data exists (patients,

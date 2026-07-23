@@ -5,7 +5,7 @@ name: 03 - E2E
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, fix/madagascar-accession-results-file-e2e]
   push:
     branches: [develop]
   release:
@@ -28,30 +28,30 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image_transfer: ${{ steps.push-images.outputs.mode }}
+      image_transfer: ${{ steps.transfer-mode.outputs.mode }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
           persist-credentials: false
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Prepare .env
@@ -74,90 +74,24 @@ jobs:
         working-directory: plugins
 
       - name: Stage plugin jars for runtime loading
+        # Generic plugins only (GenericASTM, GenericFile, GenericHL7).
+        # Legacy plugins (Sysmex, Cobas, etc.) each register a row in
+        # clinlims.analyzer at OE startup via PluginAnalyzerService —
+        # 30+ rows for ~30 plugin jars — which pollutes the dashboard
+        # and confuses bridge-sync. The harness only needs the 3 generic
+        # plugins; analyzer instances are created via REST seed.
         run: |
           rm -rf volume/plugins/*
-          find plugins/analyzers -type f -path "*/target/*.jar" \
+          find plugins/analyzers -type f -path "*/target/Generic*.jar" \
             ! -name "*sources.jar" ! -name "*javadoc.jar" \
+            ! -name "*-tests.jar" ! -name "*-test.jar" ! -name "*-original.jar" \
             -exec cp {} volume/plugins/ \;
           ls -lah volume/plugins
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build all compose images (cached)
-        uses: docker/bake-action@v5
-        with:
-          files: |
-            build.docker-compose.yml
-            .github/ci/ci.analyzer-harness.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=e2e-shared
-            *.cache-to=type=gha,scope=e2e-shared,mode=max
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Tag and push compose images to GHCR
-        id: push-images
+      - name: Prepare build context metadata (early)
         run: |
-          TAG="sha-${GITHUB_SHA}"
-          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          export TAG OWNER_LOWER
-          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
-          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
-
-          PUSH_FAILED=false
-          xargs -r -I{} -P4 bash -lc '
-            image="$1"
-            [ -z "$image" ] && exit 0
-            if docker image inspect "$image" >/dev/null 2>&1; then
-              image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
-              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
-              docker tag "$image" "$ghcr_image"
-              push_err=$(docker push "$ghcr_image" 2>&1) && {
-                printf "%s|%s\n" "$image" "$ghcr_image"
-              } || {
-                echo "PUSH FAILED ($image): $push_err" >&2
-                exit 1
-              }
-            else
-              echo "WARN: skipping $image (not built locally)" >&2
-            fi
-          ' _ {} < /tmp/e2e-images-full.txt | sort -u > /tmp/e2e-image-map.txt || PUSH_FAILED=true
-
-          if [ "$PUSH_FAILED" = "false" ] && [ -s /tmp/e2e-image-map.txt ]; then
-            echo "mode=ghcr" >> "$GITHUB_OUTPUT"
-            echo "GHCR push succeeded — using registry transfer"
-
-            awk -F'|' 'NR==FNR {base[$1]=1; next} ($1 in base) {print}' \
-              /tmp/e2e-images-base.txt /tmp/e2e-image-map.txt > /tmp/e2e-image-map-base.txt
-
-            if [ ! -s /tmp/e2e-image-map-base.txt ]; then
-              echo "WARN: no base compose image mappings found; falling back to full image map."
-              cp /tmp/e2e-image-map.txt /tmp/e2e-image-map-base.txt
-            fi
-            echo "Pushed image mappings:"
-            cat /tmp/e2e-image-map.txt
-          elif [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
-            echo "mode=fork-fallback" >> "$GITHUB_OUTPUT"
-            echo "::warning::GHCR push denied for fork PR — delegated fork executor will rebuild from cache"
-          else
-            echo "::error::GHCR push failed (non-fork path)"
-            exit 1
-          fi
-
-      - name: Prepare build context data
-        if: always()
-        run: |
-          mkdir -p /tmp/e2e-build-context
-          MODE="${{ steps.push-images.outputs.mode }}"
-          echo "${MODE:-none}" > /tmp/e2e-build-context/image_transfer
-          echo "${{ github.event_name }}" > /tmp/e2e-build-context/event_name
+          mkdir -p /tmp/e2e-build-context-core
+          echo "${{ github.event_name }}" > /tmp/e2e-build-context-core/event_name
 
           IS_FORK="false"
           PR_NUMBER=""
@@ -173,24 +107,198 @@ jobs:
             fi
           fi
 
-          echo "$IS_FORK" > /tmp/e2e-build-context/is_fork
-          echo "$PR_NUMBER" > /tmp/e2e-build-context/pr_number
-          echo "$PR_SHA" > /tmp/e2e-build-context/pr_sha
-          echo "$HEAD_SHA" > /tmp/e2e-build-context/head_sha
+          echo "$IS_FORK" > /tmp/e2e-build-context-core/is_fork
+          echo "$PR_NUMBER" > /tmp/e2e-build-context-core/pr_number
+          echo "$PR_SHA" > /tmp/e2e-build-context-core/pr_sha
+          echo "$HEAD_SHA" > /tmp/e2e-build-context-core/head_sha
 
-          echo "Build context: mode=${MODE:-none} event=${{ github.event_name }} fork=$IS_FORK pr=#$PR_NUMBER"
+          echo "Early context: event=${{ github.event_name }} fork=$IS_FORK pr=#$PR_NUMBER"
 
-      - name: Upload build context for E2E wrapper workflow
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Upload early build context
+        uses: actions/upload-artifact@v6
         with:
-          name: e2e-build-context
-          path: /tmp/e2e-build-context/
+          name: e2e-build-context-core
+          path: /tmp/e2e-build-context-core/
+          retention-days: 1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build all compose images (cached, writable)
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            docker buildx bake \
+              -f build.docker-compose.yml \
+              -f .github/ci/ci.analyzer-harness.yml \
+              --load \
+              --set "*.cache-from=type=gha,scope=e2e-shared" \
+              --set "*.cache-to=type=gha,scope=e2e-shared,mode=max"
+
+      - name: Build all compose images (cached, read-only)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            docker buildx bake \
+              -f build.docker-compose.yml \
+              -f .github/ci/ci.analyzer-harness.yml \
+              --load \
+              --set "*.cache-from=type=gha,scope=e2e-shared"
+
+      - name: Enumerate compose images
+        run: |
+          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
+          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
+
+      - name: Export fork image handoff artifact
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true
+        run: |
+          mkdir -p /tmp/e2e-image-handoff
+          EXISTING_IMAGES=()
+          while IFS= read -r image; do
+            [ -z "$image" ] && continue
+            if docker image inspect "$image" >/dev/null 2>&1; then
+              EXISTING_IMAGES+=("$image")
+            else
+              echo "WARN: image not found locally, skipping handoff: $image"
+            fi
+          done < /tmp/e2e-images-full.txt
+
+          if [ "${#EXISTING_IMAGES[@]}" -eq 0 ]; then
+            echo "::error::No images available for fork handoff."
+            exit 1
+          fi
+
+          printf '%s\n' "${EXISTING_IMAGES[@]}" > /tmp/e2e-image-handoff/e2e-images-full.txt
+          cp /tmp/e2e-images-base.txt /tmp/e2e-image-handoff/e2e-images-base.txt
+
+          docker save "${EXISTING_IMAGES[@]}" | gzip -1 > /tmp/e2e-image-handoff/e2e-images.tar.gz
+          ls -lh /tmp/e2e-image-handoff/e2e-images.tar.gz
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push compose images to GHCR
+        id: push-images
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true
+        run: |
+          TAG="sha-${GITHUB_SHA}"
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          export TAG OWNER_LOWER
+
+          # Per-image retry handles GHCR's transient `unknown blob` eventual-
+          # consistency errors. xargs output goes to a temp file so xargs's
+          # exit code can be observed directly — piping to `sort` masks it
+          # under the default Actions shell (`bash -e`, no pipefail).
+          : > /tmp/e2e-image-map.raw
+          PUSH_FAILED=false
+          xargs -r -I{} -P4 bash -lc '
+            image="$1"
+            [ -z "$image" ] && exit 0
+            if ! docker image inspect "$image" >/dev/null 2>&1; then
+              echo "WARN: skipping $image (not built locally)" >&2
+              exit 0
+            fi
+            image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
+            ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
+            docker tag "$image" "$ghcr_image"
+            attempt=1
+            while [ $attempt -le 3 ]; do
+              if push_err=$(docker push "$ghcr_image" 2>&1); then
+                printf "%s|%s\n" "$image" "$ghcr_image"
+                exit 0
+              fi
+              echo "PUSH attempt $attempt failed ($image): $push_err" >&2
+              attempt=$((attempt + 1))
+              [ $attempt -le 3 ] && sleep $((attempt * 5))
+            done
+            echo "PUSH FAILED after 3 attempts ($image)" >&2
+            exit 1
+          ' _ {} < /tmp/e2e-images-full.txt > /tmp/e2e-image-map.raw || PUSH_FAILED=true
+
+          sort -u /tmp/e2e-image-map.raw > /tmp/e2e-image-map.txt
+
+          if [ "$PUSH_FAILED" = "true" ] || [ ! -s /tmp/e2e-image-map.txt ]; then
+            echo "::error::GHCR push incomplete — see PUSH FAILED lines above"
+            echo "Map contents so far:"
+            cat /tmp/e2e-image-map.txt || true
+            exit 1
+          fi
+
+          echo "GHCR push succeeded — using registry transfer"
+
+          awk -F'|' 'NR==FNR {base[$1]=1; next} ($1 in base) {print}' \
+            /tmp/e2e-images-base.txt /tmp/e2e-image-map.txt > /tmp/e2e-image-map-base.txt
+
+          if [ ! -s /tmp/e2e-image-map-base.txt ]; then
+            echo "WARN: no base compose image mappings found; falling back to full image map."
+            cp /tmp/e2e-image-map.txt /tmp/e2e-image-map-base.txt
+          fi
+          echo "Pushed image mappings:"
+          cat /tmp/e2e-image-map.txt
+
+      - name: Resolve transfer mode
+        id: transfer-mode
+        if: always()
+        run: |
+          MODE="none"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
+            if [ -s /tmp/e2e-image-handoff/e2e-images.tar.gz ]; then
+              MODE="fork-handoff"
+            fi
+          elif [ "${{ steps.push-images.outcome }}" = "success" ] && [ -s /tmp/e2e-image-map.txt ]; then
+            MODE="ghcr"
+          fi
+
+          if [ "$MODE" = "none" ]; then
+            echo "::error::Unable to determine image transfer mode."
+            exit 1
+          fi
+
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Resolved transfer mode: $MODE"
+
+      - name: Prepare transfer state data
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-transfer-state
+          MODE="${{ steps.transfer-mode.outputs.mode }}"
+          echo "${MODE:-none}" > /tmp/e2e-transfer-state/image_transfer
+          echo "${{ github.event_name }}" > /tmp/e2e-transfer-state/event_name
+          echo "Transfer state: mode=${MODE:-none} event=${{ github.event_name }}"
+
+      - name: Upload transfer state for E2E wrapper workflow
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-build-transfer-state
+          path: /tmp/e2e-transfer-state/
+          retention-days: 1
+
+      - name: Upload fork image handoff artifact
+        if: steps.transfer-mode.outputs.mode == 'fork-handoff'
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-image-handoff
+          path: /tmp/e2e-image-handoff/
           retention-days: 1
 
       - name: Upload plugin jars artifact
-        if: steps.push-images.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v4
+        if: steps.transfer-mode.outputs.mode == 'ghcr' || steps.transfer-mode.outputs.mode == 'fork-handoff'
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-plugin-jars
           path: volume/plugins/*.jar
@@ -198,8 +306,8 @@ jobs:
           retention-days: 1
 
       - name: Upload Docker image map artifact
-        if: steps.push-images.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v4
+        if: steps.transfer-mode.outputs.mode == 'ghcr'
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
@@ -207,8 +315,8 @@ jobs:
           retention-days: 1
 
       - name: Upload base Docker image map artifact
-        if: steps.push-images.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v4
+        if: steps.transfer-mode.outputs.mode == 'ghcr'
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map-base.txt

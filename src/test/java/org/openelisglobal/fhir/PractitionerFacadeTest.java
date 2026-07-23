@@ -56,12 +56,18 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         objectMapper = new ObjectMapper();
 
         executeDataSetWithStateManagement("testdata/provider.xml");
+        ensureReferenceTables("PROVIDER", "PERSON");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     private MockHttpServletRequest buildRequest(String method) {
         List<Provider> providers = providerService.getAll();
+        // Fixture-loaded rows have null sys_user_id; audit emit rejects deletes
+        // without one, so stamp before fanning out the deleteAll calls.
+        providers.forEach(p -> p.setSysUserId("1"));
         providerService.deleteAll(providers);
         List<Person> people = personService.getAll();
+        people.forEach(p -> p.setSysUserId("1"));
         personService.deleteAll(people);
 
         return buildFhirRequest(method, "/Practitioner");
@@ -108,8 +114,12 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
     @Test
     public void createPractitioner_shouldReturnSuccess() throws Exception {
         List<Provider> providers = providerService.getAll();
+        providers.forEach(p -> p.setSysUserId("1"));
         providerService.deleteAll(providers);
         List<Person> people = personService.getAll();
+        // Fixture-loaded persons have null sys_user_id; audit emit rejects
+        // deletes without one (PersonServiceImpl has auditTrailLog=true).
+        people.forEach(p -> p.setSysUserId("1"));
         personService.deleteAll(people);
 
         MockHttpServletRequest request = buildRequest("POST");

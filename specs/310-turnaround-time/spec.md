@@ -370,8 +370,12 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
   all TAT segments and both Calendar and Working Time values. TAT values in CSV
   MUST be decimal hours (e.g., `3.7`) for spreadsheet compatibility, not
   formatted strings. Raw timestamps MUST be ISO 8601.
-- **FR-TAT-021**: System MUST support PDF export including summary stats,
-  histogram, breakdown table, trend chart, and up to 1,000 detail rows.
+- **FR-TAT-021**: ~~System MUST support PDF export including summary stats,
+  histogram, breakdown table, trend chart, and up to 1,000 detail rows.~~
+  **[Deferred]** PDF export deferred to future milestone. CSV export
+  (FR-TAT-020) covers primary data sharing and accreditation needs. PDF requires
+  server-side chart rendering (JasperReports or similar) which is significant
+  implementation effort for a P3 feature.
 - **FR-TAT-022**: System MUST handle 10,000+ results without browser performance
   degradation through server-side computation and pagination.
 - **FR-TAT-023**: System MUST respect user permissions for report page access

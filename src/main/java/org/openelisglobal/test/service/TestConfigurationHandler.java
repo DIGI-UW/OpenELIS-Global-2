@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.common.log.LogEvent;
@@ -17,6 +18,8 @@ import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -81,6 +84,15 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
+
+    // Bridge loaded tests into the new editor model (PRIMARY component under
+    // Sample & Results, LOINC under Terminology) — config-loaded tests otherwise
+    // exist only in the legacy shape.
+    @Autowired
+    private TestResultComponentService testResultComponentService;
+
+    @Autowired
+    private TestTerminologyMappingService terminologyMappingService;
 
     @Override
     public String getDomainName() {
@@ -148,6 +160,20 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+            }
+        }
+
+        // Bridge each loaded test into the new editor model: a PRIMARY result
+        // component under Sample & Results and its LOINC as a terminology mapping.
+        for (Test loaded : processedTests) {
+            try {
+                testResultComponentService.syncPrimaryComponentFromLegacy(loaded.getId(), "1");
+                if (loaded.getLoinc() != null && !loaded.getLoinc().trim().isEmpty()) {
+                    terminologyMappingService.syncLegacyLoinc(loaded.getId(), loaded.getLoinc(), "1");
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
+                        "Failed to bridge test " + loaded.getId() + " to the new editor model: " + e.getMessage());
             }
         }
 
@@ -286,7 +312,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
                                                                                            // TestServiceImpl
                 // Use normalized matching to find existing tests that should be overridden
                 // (e.g., "Stat-Pak(Plasma)" matches "Stat PaK(Plasma)")
-                Test existingTest = testService.getTestByNormalizedDescription(testNameWithSampleType);
+                Test existingTest = findExistingTest(testNameWithSampleType, values, localizationColumns);
 
                 Test test;
                 if (existingTest != null) {
@@ -311,7 +337,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
             return lastCreatedTest;
         } else {
-            Test existingTest = testService.getTestByNormalizedDescription(baseTestName);
+            Test existingTest = findExistingTest(baseTestName, values, localizationColumns);
 
             Test test;
             if (existingTest != null) {
@@ -328,6 +354,23 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
             return test;
         }
+    }
+
+    private Test findExistingTest(String testName, String[] values, Map<String, Integer> localizationColumns) {
+        Test existingTest = testService.getTestByNormalizedDescription(testName);
+        if (existingTest == null) {
+            for (Map.Entry<String, Integer> entry : localizationColumns.entrySet()) {
+                String translationValue = getValueOrEmpty(values, entry.getValue());
+                if (!translationValue.isEmpty()) {
+                    existingTest = testService.getTestByLocalizedName(translationValue,
+                            Locale.forLanguageTag(entry.getKey()));
+                    if (existingTest != null) {
+                        break;
+                    }
+                }
+            }
+        }
+        return existingTest;
     }
 
     private String getValueOrEmpty(String[] values, int index) {

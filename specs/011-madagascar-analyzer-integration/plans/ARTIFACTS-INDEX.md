@@ -1,3 +1,11 @@
+> **STATUS: Historical (bannered 2026-04-18)** — this index catalogs a pre-March
+> 2026 layout. Several indexed files were retired 2026-04-18 to
+> `.specify/plan-archive/` (see `.specify/plan-archive/README.md`). Treat paths
+> below as historical references.
+>
+> - **Current live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Current seed authority:** `projects/analyzer-harness/seed-analyzers.sh`
+
 # Feature 011: Artifacts Index
 
 **Feature:** Madagascar Analyzer Integration **Last Updated:** 2026-02-08

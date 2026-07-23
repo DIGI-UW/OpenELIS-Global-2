@@ -67,7 +67,7 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
 
     @Override
     @Transactional(readOnly = true)
-    public List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<Integer> enteredStatusSampleList) {
+    public List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<String> enteredStatusSampleList) {
         return baseObjectDAO.getSampleItemsBySampleIdAndStatus(id, enteredStatusSampleList);
     }
 

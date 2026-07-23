@@ -715,16 +715,6 @@
             value="/pages/common/saveCancelFooterButtons.jsp" />
     </definition>
 
-    <definition name="accessionResultDefinition"
-        extends="baseDefinition">
-        <put-attribute name="preSelectionHeaderFragment"
-            value="/pages/common/actionSuccess.jsp" />
-        <put-attribute name="bodyFragment"
-            value="accessionResultsCore" />
-        <put-attribute name="footerFragment"
-            value="/pages/common/saveCancelFooterButtons.jsp" />
-    </definition>
-
     <definition name="accessionValidationDefinition"
         extends="baseDefinition">
         <put-attribute name="preSelectionHeaderFragment"

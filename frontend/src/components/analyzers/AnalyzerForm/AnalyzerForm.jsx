@@ -1,25 +1,27 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
+  ButtonSet,
   TextInput,
+  TextArea,
   Dropdown,
+  Checkbox,
   InlineNotification,
   FormGroup,
-  Tile,
+  Loading,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { useHistory, useParams } from "react-router-dom";
 import {
   createAnalyzer,
   updateAnalyzer,
+  getAnalyzer,
   getDefaultConfigs,
   getDefaultConfig,
   getAnalyzerTypes,
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
+import PageTitle from "../../common/PageTitle/PageTitle";
 import {
   PROTOCOL_VERSIONS,
   PLUGIN_PROTOCOL_DEFAULTS,
@@ -30,9 +32,13 @@ import {
 } from "../constants";
 import "./AnalyzerForm.css";
 
-const AnalyzerForm = ({ analyzer, open, onClose }) => {
+const AnalyzerForm = () => {
   const intl = useIntl();
-  const isEditMode = !!analyzer;
+  const history = useHistory();
+  const { id: analyzerId } = useParams();
+  const isEditMode = !!analyzerId;
+  const [analyzer, setAnalyzer] = useState(null);
+  const [loadingAnalyzer, setLoadingAnalyzer] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -45,6 +51,14 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     testUnitIds: [],
     status: "SETUP",
     identifierPattern: "",
+    // FILE protocol fields
+    importDirectory: "",
+    fileFormat: "CSV",
+    filePattern: "*.csv",
+    columnMappings: "{}",
+    delimiter: ",",
+    hasHeader: true,
+    skipRows: 0,
   });
 
   const [errors, setErrors] = useState({});
@@ -74,52 +88,71 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     },
   ];
 
-  // Unified status options (manual transitions only - ACTIVE, ERROR_PENDING, OFFLINE are automatic)
-  const statusOptions = [
-    {
-      id: "INACTIVE",
-      text: intl.formatMessage({ id: "analyzer.status.inactive" }),
-    },
-    { id: "SETUP", text: intl.formatMessage({ id: "analyzer.status.setup" }) },
-    {
-      id: "VALIDATION",
-      text: intl.formatMessage({ id: "analyzer.status.validation" }),
-    },
-  ];
+  // Unified status options (manual transitions only - ACTIVE, ERROR_PENDING, OFFLINE are automatic).
+  // PENDING_REGISTRATION stubs (discovered by the bridge) can only transition to SETUP or
+  // INACTIVE per backend rules in AnalyzerServiceImpl.isValidTransition.
+  const statusOptions =
+    analyzer?.status === "PENDING_REGISTRATION"
+      ? [
+          {
+            id: "SETUP",
+            text: intl.formatMessage({ id: "analyzer.status.setup" }),
+          },
+          {
+            id: "INACTIVE",
+            text: intl.formatMessage({ id: "analyzer.status.inactive" }),
+          },
+        ]
+      : [
+          {
+            id: "INACTIVE",
+            text: intl.formatMessage({ id: "analyzer.status.inactive" }),
+          },
+          {
+            id: "SETUP",
+            text: intl.formatMessage({ id: "analyzer.status.setup" }),
+          },
+          {
+            id: "VALIDATION",
+            text: intl.formatMessage({ id: "analyzer.status.validation" }),
+          },
+        ];
 
+  // Fetch analyzer data when editing (route-param driven)
   useEffect(() => {
-    if (analyzer) {
-      setFormData({
-        name: analyzer.name || "",
-        analyzerType: analyzer.analyzerType || analyzer.type || "",
-        pluginTypeId: analyzer.pluginTypeId || analyzer.analyzerTypeId || "",
-        ipAddress: analyzer.ipAddress || "",
-        port: analyzer.port ? String(analyzer.port) : "",
-        protocolVersion: analyzer.protocolVersion || DEFAULT_PROTOCOL_VERSION,
-        communicationMode:
-          analyzer.communicationMode || DEFAULT_COMMUNICATION_MODE,
-        testUnitIds: analyzer.testUnitIds || [],
-        status: analyzer.status || "SETUP",
-        identifierPattern: analyzer.identifierPattern || "",
-      });
-    } else {
-      setFormData({
-        name: "",
-        analyzerType: "",
-        pluginTypeId: "",
-        ipAddress: "",
-        port: "",
-        protocolVersion: DEFAULT_PROTOCOL_VERSION,
-        communicationMode: DEFAULT_COMMUNICATION_MODE,
-        testUnitIds: [],
-        status: "SETUP",
-        identifierPattern: "",
+    if (isEditMode) {
+      setLoadingAnalyzer(true);
+      getAnalyzer(analyzerId, (data) => {
+        setLoadingAnalyzer(false);
+        const a = data?.analyzers?.[0] || data;
+        setAnalyzer(a);
+        setFormData({
+          name: a.name || "",
+          analyzerType: a.analyzerType || a.type || "",
+          pluginTypeId: a.pluginTypeId || a.analyzerTypeId || "",
+          ipAddress: a.ipAddress || "",
+          port: a.port ? String(a.port) : "",
+          protocolVersion: a.protocolVersion || DEFAULT_PROTOCOL_VERSION,
+          communicationMode: a.communicationMode || DEFAULT_COMMUNICATION_MODE,
+          testUnitIds: a.testUnitIds || [],
+          status: a.status || "SETUP",
+          identifierPattern: a.identifierPattern || "",
+          importDirectory: a.importDirectory || "",
+          fileFormat: a.fileFormat || "CSV",
+          filePattern: a.filePattern || "*.csv",
+          columnMappings: a.columnMappings
+            ? JSON.stringify(a.columnMappings, null, 2)
+            : "{}",
+          delimiter: a.delimiter || ",",
+          hasHeader: a.hasHeader ?? true,
+          skipRows: a.skipRows ?? 0,
+        });
       });
     }
     setErrors({});
     setNotification(null);
     setSelectedDefault(null);
-  }, [analyzer, open]);
+  }, [analyzerId, isEditMode]);
 
   useEffect(() => {
     return () => {
@@ -130,31 +163,26 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     };
   }, []);
 
-  // Clear close timeout when modal is closed manually (prevents timer firing after user dismisses)
-  const handleModalClose = () => {
+  const navigateBack = () => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
-    onClose();
+    history.push("/analyzers");
   };
 
+  // Load plugin types on mount
   useEffect(() => {
-    if (open) {
-      setLoadingPluginTypes(true);
-      getAnalyzerTypes({ active: true }, (data) => {
-        setLoadingPluginTypes(false);
-        if (Array.isArray(data) && data.length > 0) {
-          // Show all active types — pluginLoaded is informational only.
-          // Admins may configure analyzers before plugin JARs are deployed.
-          setPluginTypes(data);
-        } else {
-          // No plugin types loaded — plugin system may not be initialized yet
-          setPluginTypes([]);
-        }
-      });
-    }
-  }, [open]);
+    setLoadingPluginTypes(true);
+    getAnalyzerTypes({ active: true }, (data) => {
+      setLoadingPluginTypes(false);
+      if (Array.isArray(data) && data.length > 0) {
+        setPluginTypes(data);
+      } else {
+        setPluginTypes([]);
+      }
+    });
+  }, []);
 
   const selectedPluginType = pluginTypes.find(
     (t) => t.id === formData.pluginTypeId,
@@ -191,19 +219,19 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     return defaultConfigs.filter((c) => c.protocol === proto);
   }, [defaultConfigs, selectedPluginType]);
 
+  // Load default configs once on mount — form is always rendered as a page,
+  // so no modal-open gate is needed.
   useEffect(() => {
-    if (open) {
-      setLoadingDefaults(true);
-      getDefaultConfigs((data) => {
-        setLoadingDefaults(false);
-        if (Array.isArray(data)) {
-          setDefaultConfigs(data);
-        } else {
-          setDefaultConfigs([]);
-        }
-      });
-    }
-  }, [open]);
+    setLoadingDefaults(true);
+    getDefaultConfigs((data) => {
+      setLoadingDefaults(false);
+      if (Array.isArray(data)) {
+        setDefaultConfigs(data);
+      } else {
+        setDefaultConfigs([]);
+      }
+    });
+  }, []);
 
   const validateIPAddress = (ip) => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -235,6 +263,28 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     }
   };
 
+  const fileFormatOptions = [
+    { id: "CSV", text: "CSV" },
+    { id: "TSV", text: "TSV" },
+    { id: "EXCEL", text: "Excel (.xls/.xlsx)" },
+  ];
+
+  const FILE_FORMAT_PATTERNS = {
+    CSV: "*.csv",
+    TSV: "*.tsv",
+    EXCEL: "*.{xls,xlsx}",
+  };
+
+  const handleFileFormatChange = (format) => {
+    setFormData((prev) => ({
+      ...prev,
+      fileFormat: format,
+      filePattern: FILE_FORMAT_PATTERNS[format] || prev.filePattern,
+      delimiter:
+        format === "TSV" ? "\t" : format === "CSV" ? "," : prev.delimiter,
+    }));
+  };
+
   const handleDefaultConfigSelect = (defaultItem) => {
     if (!defaultItem || !defaultItem.id) {
       return;
@@ -255,21 +305,53 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             t.isGenericPlugin && t.protocol?.toUpperCase() === protocolUpper,
         );
 
-        setFormData((prev) => ({
-          ...prev,
-          identifierPattern:
-            configData.identifier_pattern || prev.identifierPattern,
+        // Base fields from profile
+        const baseUpdates = {
+          identifierPattern: configData.identifier_pattern || undefined,
           analyzerType:
             configData.category ||
             configData.profileMeta?.category ||
-            prev.analyzerType,
-          protocolVersion:
-            PLUGIN_PROTOCOL_DEFAULTS[protocolUpper] || prev.protocolVersion,
+            undefined,
+          protocolVersion: PLUGIN_PROTOCOL_DEFAULTS[protocolUpper] || undefined,
           communicationMode:
             configData.communication_mode ||
             configData.communication?.mode ||
-            prev.communicationMode,
-          pluginTypeId: matchingPluginType?.id || prev.pluginTypeId,
+            undefined,
+          pluginTypeId: matchingPluginType?.id || undefined,
+        };
+
+        // FILE protocol: auto-fill file import fields from profile
+        const fileUpdates = {};
+        if (protocolUpper === "FILE") {
+          const defaults = configData.configDefaults || {};
+          const extensions = configData.supported_extensions || [];
+          const format =
+            defaults.fileFormat || configData.protocol?.format || "CSV";
+          fileUpdates.fileFormat = format;
+          fileUpdates.filePattern =
+            extensions.length > 0
+              ? `*{${extensions.join(",")}}`
+              : FILE_FORMAT_PATTERNS[format] || "*.csv";
+          fileUpdates.delimiter =
+            defaults.delimiter ||
+            (format === "CSV" ? "," : format === "TSV" ? "\t" : ",");
+          fileUpdates.hasHeader = defaults.hasHeader ?? true;
+          fileUpdates.skipRows = defaults.skipRows ?? 0;
+          if (configData.column_mapping) {
+            fileUpdates.columnMappings = JSON.stringify(
+              configData.column_mapping,
+              null,
+              2,
+            );
+          }
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          ...Object.fromEntries(
+            Object.entries(baseUpdates).filter(([, v]) => v !== undefined),
+          ),
+          ...fileUpdates,
         }));
 
         setNotification({
@@ -310,6 +392,13 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       });
     }
 
+    if (isFileProtocol && !formData.importDirectory.trim()) {
+      newErrors.importDirectory = intl.formatMessage({
+        id: "analyzer.form.validation.importDirectory.required",
+        defaultMessage: "Import directory is required for file-based analyzers",
+      });
+    }
+
     if (!isFileProtocol && formData.ipAddress) {
       const ipError = validateIPAddress(formData.ipAddress);
       if (ipError) {
@@ -338,6 +427,25 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     setIsSubmitting(true);
     setNotification(null);
 
+    // Parse column mappings JSON for FILE protocol
+    let columnMappingsObj = {};
+    if (isFileProtocol && formData.columnMappings) {
+      try {
+        columnMappingsObj = JSON.parse(formData.columnMappings);
+      } catch {
+        setNotification({
+          kind: "error",
+          title: intl.formatMessage({ id: "analyzer.form.error.save" }),
+          subtitle: intl.formatMessage({
+            id: "analyzer.form.validation.columnMappings.invalid",
+            defaultMessage: "Column mappings must be valid JSON",
+          }),
+        });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     const submitData = {
       ...formData,
       port: formData.port ? parseInt(formData.port, 10) : null,
@@ -347,6 +455,17 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         ipAddress: null,
         port: null,
         protocolVersion: null,
+        columnMappings: columnMappingsObj,
+      }),
+      // Clear file import fields for non-FILE protocol — not applicable
+      ...(!isFileProtocol && {
+        importDirectory: null,
+        filePattern: null,
+        fileFormat: null,
+        columnMappings: null,
+        delimiter: null,
+        hasHeader: null,
+        skipRows: null,
       }),
     };
 
@@ -367,13 +486,13 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           kind: "success",
           title: intl.formatMessage({ id: "analyzer.form.success.save" }),
         });
-        // Close modal after short delay; timer cleared on unmount or when user closes manually
+        // Navigate back after short delay so user sees the success notification.
         if (closeTimeoutRef.current) {
           clearTimeout(closeTimeoutRef.current);
         }
         closeTimeoutRef.current = setTimeout(() => {
           closeTimeoutRef.current = null;
-          onClose();
+          navigateBack();
         }, 1000);
       }
     };
@@ -385,23 +504,36 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     }
   };
 
+  if (loadingAnalyzer) {
+    return <Loading withOverlay={false} />;
+  }
+
   return (
     <>
-      <ComposedModal
-        open={open}
-        onClose={handleModalClose}
+      <div
         data-testid="analyzer-form"
-        className="analyzer-form-modal"
+        className="analyzer-form-page pageContent"
       >
-        <ModalHeader
-          title={intl.formatMessage({
-            id: isEditMode
-              ? "analyzer.form.editTitle"
-              : "analyzer.form.addTitle",
-          })}
-          data-testid="analyzer-form-header"
-        />
-        <ModalBody>
+        <div data-testid="analyzer-form-header">
+          <PageTitle
+            breadcrumbs={[
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.root",
+                }),
+                link: "/analyzers",
+              },
+              {
+                label: intl.formatMessage({
+                  id: isEditMode
+                    ? "analyzer.form.editTitle"
+                    : "analyzer.form.addTitle",
+                }),
+              },
+            ]}
+          />
+        </div>
+        <div className="analyzer-form-content">
           {notification && (
             <InlineNotification
               kind={notification.kind}
@@ -664,33 +796,129 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             </FormGroup>
           )}
 
-          {/* Section 3b — FILE protocol info */}
+          {/* Section 3b — FILE protocol: import configuration */}
           {isFileProtocol && (
-            <FormGroup legendText="">
-              <Tile data-testid="analyzer-form-file-protocol-info">
-                <p>
-                  <strong>
-                    {intl.formatMessage({
-                      id: "analyzer.form.fileProtocol.title",
-                      defaultMessage: "File Import Protocol",
+            <FormGroup
+              legendText={intl.formatMessage({
+                id: "analyzer.form.fileImport.title",
+                defaultMessage: "File Import Settings",
+              })}
+            >
+              <Dropdown
+                id="analyzer-file-format"
+                data-testid="analyzer-form-file-format-dropdown"
+                titleText={intl.formatMessage({
+                  id: "analyzer.form.fileFormat",
+                  defaultMessage: "File Format",
+                })}
+                items={fileFormatOptions}
+                selectedItem={
+                  fileFormatOptions.find(
+                    (opt) => opt.id === formData.fileFormat,
+                  ) || fileFormatOptions[0]
+                }
+                itemToString={(item) => (item ? item.text : "")}
+                onChange={({ selectedItem }) =>
+                  handleFileFormatChange(selectedItem?.id || "CSV")
+                }
+              />
+
+              <TextInput
+                id="analyzer-import-directory"
+                data-testid="analyzer-form-import-directory-input"
+                labelText={intl.formatMessage({
+                  id: "analyzer.form.importDirectory",
+                  defaultMessage: "Import Directory",
+                })}
+                placeholder="/data/analyzer-imports/my-analyzer/incoming"
+                value={formData.importDirectory}
+                onChange={(e) =>
+                  handleFieldChange("importDirectory", e.target.value)
+                }
+                invalid={!!errors.importDirectory}
+                invalidText={errors.importDirectory}
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.importDirectory.helperText",
+                  defaultMessage:
+                    "Directory the bridge watches for incoming result files",
+                })}
+              />
+
+              <TextInput
+                id="analyzer-file-pattern"
+                data-testid="analyzer-form-file-pattern-input"
+                labelText={intl.formatMessage({
+                  id: "analyzer.form.filePattern",
+                  defaultMessage: "File Pattern",
+                })}
+                placeholder="*.csv"
+                value={formData.filePattern}
+                onChange={(e) =>
+                  handleFieldChange("filePattern", e.target.value)
+                }
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.filePattern.helperText",
+                  defaultMessage: "Glob pattern to match result files",
+                })}
+              />
+
+              <TextArea
+                id="analyzer-column-mappings"
+                data-testid="analyzer-form-column-mappings-input"
+                labelText={intl.formatMessage({
+                  id: "analyzer.form.columnMappings",
+                  defaultMessage: "Column Mappings (JSON)",
+                })}
+                placeholder='{"Sample Name": "sampleId", "Target Name": "testCode", "Quantity Mean": "result"}'
+                value={formData.columnMappings}
+                onChange={(e) =>
+                  handleFieldChange("columnMappings", e.target.value)
+                }
+                rows={4}
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.columnMappings.helperText",
+                  defaultMessage:
+                    "Maps file column names to internal field names",
+                })}
+              />
+
+              {formData.fileFormat !== "EXCEL" && (
+                <>
+                  <TextInput
+                    id="analyzer-delimiter"
+                    data-testid="analyzer-form-delimiter-input"
+                    labelText={intl.formatMessage({
+                      id: "analyzer.form.delimiter",
+                      defaultMessage: "Delimiter",
                     })}
-                  </strong>
-                </p>
-                <p>
-                  {intl.formatMessage({
-                    id: "analyzer.form.fileProtocol.description",
-                    defaultMessage:
-                      "This analyzer imports results from files. File import settings will be configured after saving.",
-                  })}
-                </p>
-              </Tile>
+                    placeholder=","
+                    value={formData.delimiter}
+                    onChange={(e) =>
+                      handleFieldChange("delimiter", e.target.value)
+                    }
+                  />
+
+                  <Checkbox
+                    id="analyzer-has-header"
+                    data-testid="analyzer-form-has-header-checkbox"
+                    labelText={intl.formatMessage({
+                      id: "analyzer.form.hasHeader",
+                      defaultMessage: "File has header row",
+                    })}
+                    checked={formData.hasHeader}
+                    onChange={(_, { checked }) =>
+                      handleFieldChange("hasHeader", checked)
+                    }
+                  />
+                </>
+              )}
             </FormGroup>
           )}
-        </ModalBody>
-        <ModalFooter>
+        </div>
+        <ButtonSet className="analyzer-form-actions">
           <Button
             kind="secondary"
-            onClick={onClose}
+            onClick={navigateBack}
             data-testid="analyzer-form-cancel-button"
           >
             {intl.formatMessage({ id: "analyzer.form.cancel" })}
@@ -703,8 +931,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           >
             {intl.formatMessage({ id: "analyzer.form.save" })}
           </Button>
-        </ModalFooter>
-      </ComposedModal>
+        </ButtonSet>
+      </div>
       <TestConnectionModal
         analyzer={
           formData.ipAddress && formData.port

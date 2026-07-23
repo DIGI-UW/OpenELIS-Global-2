@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Admin system user (from base DB: OpenELIS-Global.sql) -->
+    <system_user id="1" external_id="1" login_name="admin"
+        last_name="ELIS" first_name="Open" initials="OE" is_active="Y"
+        is_employee="Y" lastupdated="2006-11-08 11:11:14.312" />
+
+    <!-- Admin login credentials (password: adminADMIN!) -->
+    <login_user id="1" login_name="admin"
+        password="$2a$10$uhFDEbHodC1Fv/nFQ3pCe.AbPxJqThyanWtC117EvdFrwEAQry0Wa"
+        password_expired_dt="2030-04-09" account_locked="N"
+        account_disabled="N" is_admin="Y" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+</dataset>

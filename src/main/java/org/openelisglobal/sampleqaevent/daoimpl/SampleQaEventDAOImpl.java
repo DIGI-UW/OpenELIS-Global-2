@@ -95,7 +95,7 @@ public class SampleQaEventDAOImpl extends BaseDAOImpl<SampleQaEvent, String> imp
         List<SampleQaEvent> sampleQaEvents = new ArrayList<>();
 
         try {
-            String sql = "from SampleQaEvent aqe where aqe.sample = :param";
+            String sql = "from SampleQaEvent aqe where aqe.sample.id = :param";
             Query<SampleQaEvent> query = entityManager.unwrap(Session.class).createQuery(sql, SampleQaEvent.class);
             query.setParameter("param", sampleQaEvent.getSample().getId());
 
@@ -116,9 +116,9 @@ public class SampleQaEventDAOImpl extends BaseDAOImpl<SampleQaEvent, String> imp
         List<SampleQaEvent> sampleQaEvents;
 
         try {
-            String sql = "from SampleQaEvent aqe where aqe.sample = :sampleId";
+            String sql = "from SampleQaEvent aqe where aqe.sample.id = :sampleId";
             Query<SampleQaEvent> query = entityManager.unwrap(Session.class).createQuery(sql, SampleQaEvent.class);
-            query.setParameter("sampleId", Integer.parseInt(sample.getId()));
+            query.setParameter("sampleId", sample.getId());
 
             sampleQaEvents = query.list();
 
@@ -137,10 +137,10 @@ public class SampleQaEventDAOImpl extends BaseDAOImpl<SampleQaEvent, String> imp
         try {
             // Use an expression to read in the SampleQaEvent whose
             // sample and qaevent is given
-            String sql = "from SampleQaEvent aqe where aqe.sample = :param and aqe.qaEvent = :param2";
+            String sql = "from SampleQaEvent aqe where aqe.sample.id = :param and aqe.qaEvent.id = :param2";
             Query<SampleQaEvent> query = entityManager.unwrap(Session.class).createQuery(sql, SampleQaEvent.class);
-            query.setParameter("param", Integer.parseInt(sampleQaEvent.getSample().getId()));
-            query.setParameter("param2", Integer.parseInt(sampleQaEvent.getQaEvent().getId()));
+            query.setParameter("param", sampleQaEvent.getSample().getId());
+            query.setParameter("param2", sampleQaEvent.getQaEvent().getId());
             List<SampleQaEvent> list = query.list();
             if ((list != null) && !list.isEmpty()) {
                 analQaEvent = list.get(0);

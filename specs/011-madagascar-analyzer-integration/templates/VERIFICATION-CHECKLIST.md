@@ -1,3 +1,12 @@
+> **STATUS: Historical (bannered 2026-04-18)** — checklist below is organised
+> around per-plugin JARs (`plugins/analyzers/<Name>/`) which do NOT exist for
+> generic-plugin analyzers. Current architecture: three generic plugins
+> (GenericASTM / GenericHL7 / GenericFile) driven by JSON profiles. Use the
+> checklist as a field-verification skeleton only.
+>
+> - **Live harness:** `projects/analyzer-harness/README.md`
+> - **Live profiles:** `projects/analyzer-profiles/{astm,hl7,file}/*.json`
+
 # Analyzer Deployment Verification Checklist
 
 **Version:** 1.0.0  

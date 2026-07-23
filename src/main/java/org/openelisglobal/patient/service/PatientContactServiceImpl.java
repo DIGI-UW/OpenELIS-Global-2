@@ -16,6 +16,7 @@ public class PatientContactServiceImpl extends AuditableBaseObjectServiceImpl<Pa
 
     public PatientContactServiceImpl() {
         super(PatientContact.class);
+        this.auditTrailLog = true;
     }
 
     @Override

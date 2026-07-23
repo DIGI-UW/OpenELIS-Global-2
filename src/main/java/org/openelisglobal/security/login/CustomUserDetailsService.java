@@ -59,18 +59,14 @@ public class CustomUserDetailsService implements UserDetailsService {
                     }
                     Role role = roleService.getRoleById(roleId.trim());
                     if (role != null && role.getName() != null && !role.getName().trim().isEmpty()) {
-                        authorityNames.add(toRoleAuthority(role.getName()));
-                        if (Constants.ROLE_GLOBAL_ADMIN.equalsIgnoreCase(role.getName())) {
-                            authorityNames.add("ROLE_ADMIN");
-                        }
+                        addAuthoritiesForRole(role.getName(), authorityNames);
                     }
                 }
             }
         }
 
         if (user != null && IActionConstants.YES.equalsIgnoreCase(user.getIsAdmin())) {
-            authorityNames.add(toRoleAuthority(Constants.ROLE_GLOBAL_ADMIN));
-            authorityNames.add("ROLE_ADMIN");
+            addAuthoritiesForRole(Constants.ROLE_GLOBAL_ADMIN, authorityNames);
         }
 
         List<GrantedAuthority> authorities = new ArrayList<>();
@@ -80,7 +76,27 @@ public class CustomUserDetailsService implements UserDetailsService {
         return authorities;
     }
 
-    private String toRoleAuthority(String roleName) {
+    /*
+     * Shared with KeycloakAuthoritiesExtractor so SAML/SSO logins produce the same
+     * ROLE_* authorities as form logins; @PreAuthorize("hasRole('ADMIN')")
+     * otherwise fails for SSO users because Keycloak ships role names like
+     * "oeg-Global Administrator".
+     */
+    public static void addAuthoritiesForRole(String roleName, Set<String> sink) {
+        if (roleName == null) {
+            return;
+        }
+        String trimmed = roleName.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        sink.add(toRoleAuthority(trimmed));
+        if (Constants.ROLE_GLOBAL_ADMIN.equalsIgnoreCase(trimmed)) {
+            sink.add("ROLE_ADMIN");
+        }
+    }
+
+    public static String toRoleAuthority(String roleName) {
         if (Constants.ROLE_GLOBAL_ADMIN.equalsIgnoreCase(roleName)) {
             return "ROLE_GLOBAL_ADMIN";
         }

@@ -95,16 +95,16 @@ prerequisite that unblocks everything.
 
 ### PR Strategy
 
-- **Spec PR**: `spec/310-OGC-310-turnaround-time` > `develop` (this spec + plan,
-  no code)
-- **M0**: `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` > `develop`
-- **M1**: `feat/310-OGC-306-turnaround-time-m1-calendar-backend` > `develop`
-- **M2**: `feat/310-OGC-306-turnaround-time-m2-calendar-frontend-e2e` >
-  `develop`
-- **M3**: `feat/310-OGC-307-turnaround-time-m3-tat-backend` > `develop`
-- **M4**: `feat/310-OGC-307-turnaround-time-m4-tat-summary-e2e` > `develop`
-- **M5**: `feat/310-OGC-307-turnaround-time-m5-tat-detail-trends-e2e` >
-  `develop`
+> **Note (2026-04-03)**: Milestones M0-M5 were consolidated into a single PR
+> (#3290, branch `feat/310-OGC-310-turnaround-time-m1-m5-implementation`) for
+> pragmatic velocity reasons. The original multi-PR plan is preserved below for
+> reference, but the actual implementation shipped as one PR.
+
+- **Actual PR**: `feat/310-OGC-310-turnaround-time-m1-m5-implementation` >
+  `develop` (PR #3290 — all milestones combined)
+- _Originally planned (not used):_
+  - M0: `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` > `develop`
+  - M1-M5: separate branches (consolidated into single PR)
 
 ## Project Structure
 
@@ -160,7 +160,7 @@ src/main/java/org/openelisglobal/reports/
             └── TATReportRestController.java
 
 # Liquibase
-src/main/resources/liquibase/2.8.x.x/
+src/main/resources/liquibase/3.5.x.x/
 ├── public_holiday.xml
 └── tat_permissions.xml
 
@@ -204,17 +204,17 @@ frontend/src/components/reports/tat/__tests__/
 ├── TATDetailListTab.test.js
 └── TATTrendsTab.test.js
 
-# Playwright E2E
+# Playwright E2E (consolidated — 2 files cover all 5 user stories)
 frontend/playwright/tests/demo/core/
 ├── ogc-306-calendar-management.spec.ts      # US1 video demo
-├── ogc-307-tat-summary.spec.ts              # US2 video demo
-├── ogc-307-tat-detail-list.spec.ts          # US3 video demo
-├── ogc-307-tat-trends.spec.ts               # US4 video demo
-└── ogc-307-tat-export.spec.ts               # US5 video demo
+└── ogc-307-tat-report.spec.ts               # US2-5 video demo (combined)
 
-frontend/playwright/fixtures/
-├── calendar-management.ts                    # Page object
-└── tat-report.ts                            # Page object
+frontend/playwright/helpers/
+├── seed-calendar-data.ts                     # API-based holiday setup/teardown
+└── seed-tat-data.ts                         # API-based sample lifecycle setup
+
+# Note: Page objects were not created — tests use direct selectors.
+# TATHistogram.js and TATStatCards.js were inlined into TATSummaryTab.js.
 ```
 
 **Structure Decision**: Web application with Java backend and React frontend,

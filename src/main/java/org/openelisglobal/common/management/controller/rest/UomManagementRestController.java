@@ -3,6 +3,7 @@ package org.openelisglobal.common.management.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.management.form.UomManagementForm;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class UomManagementRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] {};

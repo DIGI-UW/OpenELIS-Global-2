@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Add TrainingInstallation flag to site_information (siteIdentity domain) -->
+  <changeSet author="oe" id="031-training-installation-1">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'TrainingInstallation'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="TrainingInstallation" />
+      <column name="description" value="If true, allows deletion of all patient data for training purposes. Enable only on training/demo instances." />
+      <column name="value" value="false" />
+      <column name="value_type" value="text" />
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="lastupdated" valueComputed="now()" />
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="site_information">
+        <where>name = 'TrainingInstallation'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
