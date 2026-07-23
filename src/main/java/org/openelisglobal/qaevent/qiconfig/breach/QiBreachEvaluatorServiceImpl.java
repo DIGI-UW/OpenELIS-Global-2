@@ -49,12 +49,16 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
     @Autowired
     private QiBreachNceService qiBreachNceService;
 
-    // Daily at 01:00 — QI rates move slowly, so once a day is ample; the per-month
-    // dedup in QiBreachNceService makes extra runs harmless. Each indicator is
-    // evaluated independently: one indicator's failure (e.g. an absent config
-    // row or a compute error) is logged and must not suppress the others.
+    // Fixed-rate poller, same shape as the FHIR task poller
+    // (FhirApiWorkFlowServiceImpl): first run 10s after startup, then every 2
+    // minutes, overridable via org.openelisglobal.qi.breach.poll.frequency (ms).
+    // Frequent runs are harmless — the per-month dedup in QiBreachNceService
+    // means a breach creates its NCE once and every later pass is a no-op read.
+    // Each indicator is evaluated independently: one indicator's failure (e.g.
+    // an absent config row or a compute error) is logged and must not suppress
+    // the others.
     @Override
-    @Scheduled(cron = "0 0 1 * * *")
+    @Scheduled(initialDelay = 10 * 1000, fixedRateString = "${org.openelisglobal.qi.breach.poll.frequency:120000}")
     public void evaluateBreaches() {
         evaluateSafely("AMENDMENT", this::evaluateAmendment);
         evaluateSafely("REJECTION", this::evaluateRejection);
