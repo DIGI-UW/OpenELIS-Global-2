@@ -15,13 +15,16 @@
 services:
   certs:
     container_name: amr-oe-certs
+    image: certgen.amr
 
   db.openelis.org:
     container_name: amr-openelisglobal-database
+    image: openelisglobal-database.amr
     ports: !reset []
 
   oe.openelis.org:
     container_name: amr-openelisglobal-webapp
+    image: openelisglobal-webapp.amr
     ports: !reset []
     networks:
       default:
@@ -31,10 +34,12 @@ services:
 
   fhir.openelis.org:
     container_name: amr-external-fhir-api
+    image: external-fhir-api.amr
     ports: !reset []
 
   frontend.openelis.org:
     container_name: amr-openelisglobal-front-end
+    image: frontend.amr
     networks:
       default:
       edge:

@@ -22,13 +22,16 @@
 services:
   certs:
     container_name: analyzers-oe-certs
+    image: certgen.analyzers
 
   db.openelis.org:
     container_name: analyzers-openelisglobal-database
+    image: openelisglobal-database.analyzers
     ports: !reset []
 
   oe.openelis.org:
     container_name: analyzers-openelisglobal-webapp
+    image: openelisglobal-webapp.analyzers
     ports: !reset []
     networks:
       default:
@@ -39,10 +42,12 @@ services:
 
   fhir.openelis.org:
     container_name: analyzers-external-fhir-api
+    image: external-fhir-api.analyzers
     ports: !reset []
 
   frontend.openelis.org:
     container_name: analyzers-openelisglobal-front-end
+    image: frontend.analyzers
     networks:
       default:
       edge:
