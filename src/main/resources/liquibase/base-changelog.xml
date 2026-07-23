@@ -49,4 +49,7 @@
 
   <!-- QA Phase C.4 — Critical Callback -->
   <include file="liquibase/qa/008-create-critical-callback-table.xml" />
+
+  <!-- QA Phase C.3 — OGC-710: TAT thresholds become duration (hours) -->
+  <include file="liquibase/qa/009-tat-duration-thresholds.xml" />
 </databaseChangeLog>

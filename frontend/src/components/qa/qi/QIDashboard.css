@@ -164,13 +164,15 @@
 
 .qi-tile__target,
 .qi-tile__secondary,
+.qi-tile__threshold,
 .qi-tile__message {
   font-size: 0.8125rem;
   color: var(--cds-text-secondary, #525252);
   margin: 0;
 }
 
-.qi-tile__target {
+.qi-tile__target,
+.qi-tile__threshold {
   font-size: 0.75rem;
 }
 

@@ -25,39 +25,47 @@ import { rateTone } from "./qiThresholds";
 import "./QIDashboard.css";
 
 /**
- * Amendment Rate detail page (OGC-698, full visuals OGC-710) at
- * /qa/qi/amendment: rate header colored against qi_config thresholds, rate
- * trend with target/action lines, per-test breakdown, and the amendment list
- * with prior/current values from the result audit history. No Pareto — no
- * amendment-reason data exists until OGC-713.
+ * Rejection Rate detail page (OGC-697 tile, full visuals OGC-710) at
+ * /qa/qi/rejection: rate header colored against qi_config thresholds, rate
+ * trend with target/action lines, reason Pareto (rejection reasons are
+ * dictionary-driven, unlike amendments), per-test breakdown, and the
+ * rejection list. Mirrors AmendmentReport so the two detail pages stay
+ * reviewable side by side.
  */
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sideNav.label.qa", link: "" },
   { label: "sideNav.label.qa.qi.dashboard", link: "/qa/qi/dashboard" },
-  { label: "qa.qi.dashboard.tile.amendment.label", link: "" },
+  { label: "qa.qi.dashboard.tile.rejection.label", link: "" },
 ];
 
 const HEADERS = [
-  { key: "amendedAt", labelKey: "qa.qi.amendment.column.amendedAt" },
-  { key: "labNumber", labelKey: "qa.qi.amendment.column.labNumber" },
-  { key: "testName", labelKey: "qa.qi.amendment.column.test" },
-  { key: "priorValue", labelKey: "qa.qi.amendment.column.priorValue" },
-  { key: "currentValue", labelKey: "qa.qi.amendment.column.currentValue" },
-  { key: "amendedBy", labelKey: "qa.qi.amendment.column.amendedBy" },
-  { key: "releasedAt", labelKey: "qa.qi.amendment.column.releasedAt" },
-  { key: "timeToAmend", labelKey: "qa.qi.amendment.column.timeToAmend" },
+  { key: "rejectedAt", labelKey: "qa.qi.rejection.column.rejectedAt" },
+  { key: "labNumber", labelKey: "qa.qi.rejection.column.labNumber" },
+  { key: "testName", labelKey: "qa.qi.rejection.column.test" },
+  { key: "reason", labelKey: "qa.qi.rejection.column.reason" },
+  { key: "rejectedBy", labelKey: "qa.qi.rejection.column.rejectedBy" },
+];
+
+const REASON_HEADERS = [
+  { key: "reason", labelKey: "qa.qi.rejection.reasons.column.reason" },
+  { key: "count", labelKey: "qa.qi.rejection.reasons.column.count" },
+  { key: "percent", labelKey: "qa.qi.rejection.reasons.column.percent" },
+  {
+    key: "cumulative",
+    labelKey: "qa.qi.rejection.reasons.column.cumulative",
+  },
 ];
 
 const BREAKDOWN_HEADERS = [
-  { key: "testName", labelKey: "qa.qi.amendment.breakdown.column.test" },
-  { key: "amendedCount", labelKey: "qa.qi.amendment.breakdown.column.amended" },
+  { key: "testName", labelKey: "qa.qi.rejection.breakdown.column.test" },
   {
-    key: "releasedCount",
-    labelKey: "qa.qi.amendment.breakdown.column.released",
+    key: "rejectedCount",
+    labelKey: "qa.qi.rejection.breakdown.column.rejected",
   },
-  { key: "ratePercent", labelKey: "qa.qi.amendment.breakdown.column.rate" },
+  { key: "totalCount", labelKey: "qa.qi.rejection.breakdown.column.total" },
+  { key: "ratePercent", labelKey: "qa.qi.rejection.breakdown.column.rate" },
 ];
 
 const INTERVALS = [
@@ -81,21 +89,7 @@ function formatTimestamp(value) {
   return value ? new Date(value).toLocaleString() : "—";
 }
 
-function formatMinutes(minutes) {
-  if (minutes == null) {
-    return "—";
-  }
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h ${minutes % 60}m`;
-  }
-  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
-}
-
-const AmendmentReport = () => {
+const RejectionReport = () => {
   const intl = useIntl();
   const [range, setRange] = useState(defaultRange);
   const [page, setPage] = useState(0);
@@ -111,7 +105,7 @@ const AmendmentReport = () => {
   const fetchDetail = useCallback(() => {
     setDetail(undefined);
     getFromOpenElisServer(
-      `/rest/reports/amendment/detail?fromDate=${range.fromDate}` +
+      `/rest/reports/rejection/detail?fromDate=${range.fromDate}` +
         `&toDate=${range.toDate}&page=${page}&pageSize=${pageSize}`,
       (res) => setDetail(res ?? null),
     );
@@ -124,7 +118,7 @@ const AmendmentReport = () => {
   useEffect(() => {
     setTrend(undefined);
     getFromOpenElisServer(
-      `/rest/reports/amendment/trend?fromDate=${range.fromDate}` +
+      `/rest/reports/rejection/trend?fromDate=${range.fromDate}` +
         `&toDate=${range.toDate}&interval=${interval}`,
       (res) => setTrend(res ?? null),
     );
@@ -133,7 +127,7 @@ const AmendmentReport = () => {
   useEffect(() => {
     setBreakdown(undefined);
     getFromOpenElisServer(
-      `/rest/reports/amendment/breakdown?fromDate=${range.fromDate}` +
+      `/rest/reports/rejection/breakdown?fromDate=${range.fromDate}` +
         `&toDate=${range.toDate}`,
       (res) => setBreakdown(res ?? null),
     );
@@ -141,7 +135,7 @@ const AmendmentReport = () => {
 
   useEffect(() => {
     getFromOpenElisServer(
-      "/rest/qi-config/resolve?indicator=AMENDMENT",
+      "/rest/qi-config/resolve?indicator=REJECTION",
       (res) => setConfig(res ?? null),
     );
   }, []);
@@ -159,11 +153,11 @@ const AmendmentReport = () => {
   // Window totals derive from the trend buckets — same SQL predicates as the
   // summary endpoint, just grouped; no separate summary fetch needed.
   const points = trend?.points || [];
-  const totalAmended = points.reduce((sum, p) => sum + p.amendedCount, 0);
-  const totalReleased = points.reduce((sum, p) => sum + p.releasedCount, 0);
+  const totalRejected = points.reduce((sum, p) => sum + p.rejectedCount, 0);
+  const totalStarted = points.reduce((sum, p) => sum + p.totalCount, 0);
   const windowRate =
-    totalReleased > 0
-      ? Math.round((totalAmended * 10000) / totalReleased) / 100 // 2dp, like the backend
+    totalStarted > 0
+      ? Math.round((totalRejected * 10000) / totalStarted) / 100 // 2dp, like the backend
       : null;
 
   const tone = rateTone(windowRate, config);
@@ -173,7 +167,7 @@ const AmendmentReport = () => {
     .map((p) => ({
       period: p.period,
       value: p.ratePercent,
-      group: intl.formatMessage({ id: "qa.qi.amendment.trend.series" }),
+      group: intl.formatMessage({ id: "qa.qi.rejection.trend.series" }),
     }));
 
   const thresholds =
@@ -182,14 +176,14 @@ const AmendmentReport = () => {
           {
             value: config.target,
             label: intl.formatMessage({
-              id: "qa.qi.amendment.threshold.target",
+              id: "qa.qi.rejection.threshold.target",
             }),
             fillColor: "#198038",
           },
           {
             value: config.action,
             label: intl.formatMessage({
-              id: "qa.qi.amendment.threshold.action",
+              id: "qa.qi.rejection.threshold.action",
             }),
             fillColor: "#da1e28",
           },
@@ -214,35 +208,86 @@ const AmendmentReport = () => {
     legend: { enabled: false },
   };
 
-  const breakdownRows = (breakdown?.rows || []).map((row, index) => ({
+  const reasonRows = (breakdown?.reasons || []).map((row, index) => ({
+    id: `${row.reason}-${index}`,
+    reason: row.reason,
+    count: row.count,
+    percent:
+      row.percentOfRejections != null
+        ? `${row.percentOfRejections.toFixed(2)}%`
+        : "—",
+    cumulative:
+      row.cumulativePercent != null
+        ? `${row.cumulativePercent.toFixed(2)}%`
+        : "—",
+  }));
+
+  const breakdownRows = (breakdown?.tests || []).map((row, index) => ({
     id: `${row.testName}-${index}`,
     testName: row.testName,
-    amendedCount: row.amendedCount,
-    releasedCount: row.releasedCount,
+    rejectedCount: row.rejectedCount,
+    totalCount: row.totalCount,
     ratePercent:
       row.ratePercent != null ? `${row.ratePercent.toFixed(2)}%` : "—",
   }));
 
   const rows = (detail?.items || []).map((item, index) => ({
     id: `${item.analysisId}-${index}`,
-    amendedAt: formatTimestamp(item.amendedAt),
+    rejectedAt: formatTimestamp(item.rejectedAt),
     labNumber: item.labNumber || "—",
     testName: item.testName || "—",
-    priorValue: item.priorValue ?? "—",
-    currentValue: item.currentValue ?? "—",
-    amendedBy: item.amendedBy || "—",
-    releasedAt: formatTimestamp(item.releasedAt),
-    timeToAmend: formatMinutes(item.minutesToAmend),
+    reason: item.reason || "—",
+    rejectedBy: item.rejectedBy || "—",
   }));
+
+  const renderTable = (tableRows, headers) => (
+    <DataTable
+      rows={tableRows}
+      headers={headers.map((h) => ({
+        key: h.key,
+        header: intl.formatMessage({ id: h.labelKey }),
+      }))}
+    >
+      {({
+        rows: bodyRows,
+        headers: tableHeaders,
+        getHeaderProps,
+        getRowProps,
+      }) => (
+        <TableContainer>
+          <Table size="sm">
+            <TableHead>
+              <TableRow>
+                {tableHeaders.map((header) => (
+                  <TableHeader {...getHeaderProps({ header })} key={header.key}>
+                    {header.header}
+                  </TableHeader>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {bodyRows.map((row) => (
+                <TableRow {...getRowProps({ row })} key={row.id}>
+                  {row.cells.map((cell) => (
+                    <TableCell key={cell.id}>{cell.value}</TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </DataTable>
+  );
 
   return (
     <div className="adminPageContent qi-dashboard">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
-        <FormattedMessage id="qa.qi.amendment.title" />
+        <FormattedMessage id="qa.qi.rejection.title" />
       </h2>
       <p className="qi-dashboard__subtitle">
-        <FormattedMessage id="qa.qi.amendment.subtitle" />
+        <FormattedMessage id="qa.qi.rejection.subtitle" />
       </p>
       <DatePicker
         datePickerType="range"
@@ -251,29 +296,29 @@ const AmendmentReport = () => {
         onChange={handleDates}
       >
         <DatePickerInput
-          id="amendment-from"
+          id="rejection-from"
           labelText={intl.formatMessage({
-            id: "qa.qi.amendment.filter.from",
+            id: "qa.qi.rejection.filter.from",
           })}
           placeholder="yyyy-mm-dd"
         />
         <DatePickerInput
-          id="amendment-to"
-          labelText={intl.formatMessage({ id: "qa.qi.amendment.filter.to" })}
+          id="rejection-to"
+          labelText={intl.formatMessage({ id: "qa.qi.rejection.filter.to" })}
           placeholder="yyyy-mm-dd"
         />
       </DatePicker>
 
       {trend === null ? (
         <p className="qi-tile__message">
-          <FormattedMessage id="qa.qi.amendment.error" />
+          <FormattedMessage id="qa.qi.rejection.error" />
         </p>
       ) : (
         trend !== undefined && (
           <>
             <div className="amendment-rate-header">
               <span className="qi-tile__title">
-                <FormattedMessage id="qa.qi.amendment.rate.label" />
+                <FormattedMessage id="qa.qi.rejection.rate.label" />
               </span>
               <Tag
                 type={tone === "amber" ? "gray" : tone}
@@ -287,21 +332,21 @@ const AmendmentReport = () => {
               </Tag>
               <span className="qi-tile__secondary">
                 <FormattedMessage
-                  id="qa.qi.dashboard.tile.amendment.secondary"
-                  values={{ amended: totalAmended, released: totalReleased }}
+                  id="qa.qi.dashboard.tile.rejection.secondary"
+                  values={{ rejected: totalRejected, total: totalStarted }}
                 />
               </span>
             </div>
 
             <h4 className="amendment-section__title">
-              <FormattedMessage id="qa.qi.amendment.trend.title" />
+              <FormattedMessage id="qa.qi.rejection.trend.title" />
             </h4>
             <Dropdown
-              id="amendment-trend-interval"
+              id="rejection-trend-interval"
               size="sm"
               className="amendment-trend-interval"
               titleText={intl.formatMessage({
-                id: "qa.qi.amendment.trend.interval",
+                id: "qa.qi.rejection.trend.interval",
               })}
               label=""
               items={INTERVALS}
@@ -313,7 +358,7 @@ const AmendmentReport = () => {
             />
             {chartData.length === 0 ? (
               <p className="qi-tile__message">
-                <FormattedMessage id="qa.qi.amendment.trend.empty" />
+                <FormattedMessage id="qa.qi.rejection.trend.empty" />
               </p>
             ) : (
               <LineChart data={chartData} options={chartOptions} />
@@ -322,46 +367,21 @@ const AmendmentReport = () => {
         )
       )}
 
+      {reasonRows.length > 0 && (
+        <>
+          <h4 className="amendment-section__title">
+            <FormattedMessage id="qa.qi.rejection.reasons.title" />
+          </h4>
+          {renderTable(reasonRows, REASON_HEADERS)}
+        </>
+      )}
+
       {breakdownRows.length > 0 && (
         <>
           <h4 className="amendment-section__title">
-            <FormattedMessage id="qa.qi.amendment.breakdown.title" />
+            <FormattedMessage id="qa.qi.rejection.breakdown.title" />
           </h4>
-          <DataTable
-            rows={breakdownRows}
-            headers={BREAKDOWN_HEADERS.map((h) => ({
-              key: h.key,
-              header: intl.formatMessage({ id: h.labelKey }),
-            }))}
-          >
-            {({ rows: tableRows, headers, getHeaderProps, getRowProps }) => (
-              <TableContainer>
-                <Table size="sm">
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          {...getHeaderProps({ header })}
-                          key={header.key}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {tableRows.map((row) => (
-                      <TableRow {...getRowProps({ row })} key={row.id}>
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>{cell.value}</TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </DataTable>
+          {renderTable(breakdownRows, BREAKDOWN_HEADERS)}
         </>
       )}
 
@@ -369,50 +389,16 @@ const AmendmentReport = () => {
         <DataTableSkeleton columnCount={HEADERS.length} rowCount={5} />
       ) : detail === null ? (
         <p className="qi-tile__message">
-          <FormattedMessage id="qa.qi.amendment.error" />
+          <FormattedMessage id="qa.qi.rejection.error" />
         </p>
       ) : rows.length === 0 ? (
         <QAEmptyState
-          titleKey="qa.empty.amendment.title"
-          subheadKey="qa.empty.amendment.subhead"
+          titleKey="qa.empty.rejection.title"
+          subheadKey="qa.empty.rejection.subhead"
         />
       ) : (
         <>
-          <DataTable
-            rows={rows}
-            headers={HEADERS.map((h) => ({
-              key: h.key,
-              header: intl.formatMessage({ id: h.labelKey }),
-            }))}
-          >
-            {({ rows: tableRows, headers, getHeaderProps, getRowProps }) => (
-              <TableContainer>
-                <Table size="sm">
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          {...getHeaderProps({ header })}
-                          key={header.key}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {tableRows.map((row) => (
-                      <TableRow {...getRowProps({ row })} key={row.id}>
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>{cell.value}</TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </DataTable>
+          {renderTable(rows, HEADERS)}
           <Pagination
             page={page + 1}
             pageSize={pageSize}
@@ -429,4 +415,4 @@ const AmendmentReport = () => {
   );
 };
 
-export default AmendmentReport;
+export default RejectionReport;

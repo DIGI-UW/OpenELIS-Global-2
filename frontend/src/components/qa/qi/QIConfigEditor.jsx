@@ -20,6 +20,7 @@ import {
   getFromOpenElisServer,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import { unitFor } from "./qiThresholds";
 
 /**
  * OGC-709 — two-level editor for one indicator: the lab-wide default
@@ -48,6 +49,12 @@ function QIConfigEditor({ indicator, onClose }) {
   const intl = useIntl();
   const key = indicator.indicatorKey;
   const direction = indicator.direction;
+  // TAT thresholds are mean-TAT hours, rates are % (C.3 gap #3 decision).
+  const unit = unitFor(key);
+  const withUnit = (labelId) =>
+    unit
+      ? `${intl.formatMessage({ id: labelId })} (${unit})`
+      : intl.formatMessage({ id: labelId });
 
   const [enabled, setEnabled] = useState(indicator.enabled !== false);
   const [target, setTarget] = useState(indicator.target ?? "");
@@ -228,9 +235,7 @@ function QIConfigEditor({ indicator, onClose }) {
               <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
                 <NumberInput
                   id="qi-config-target"
-                  label={intl.formatMessage({
-                    id: "qa.qiConfig.field.target",
-                  })}
+                  label={withUnit("qa.qiConfig.field.target")}
                   value={target}
                   min={0}
                   max={100}
@@ -239,9 +244,7 @@ function QIConfigEditor({ indicator, onClose }) {
                 />
                 <NumberInput
                   id="qi-config-action"
-                  label={intl.formatMessage({
-                    id: "qa.qiConfig.field.action",
-                  })}
+                  label={withUnit("qa.qiConfig.field.action")}
                   value={action}
                   min={0}
                   max={100}
@@ -249,6 +252,14 @@ function QIConfigEditor({ indicator, onClose }) {
                   onChange={(e, { value }) => setAction(value)}
                 />
               </div>
+              {thresholdsRequired(key) && (
+                <p
+                  className="qi-dashboard__subtitle"
+                  style={{ marginTop: "0.75rem" }}
+                >
+                  <FormattedMessage id="qa.qiConfig.editor.autoNce" />
+                </p>
+              )}
             </Section>
 
             <Section style={{ marginTop: "1.5rem" }}>
@@ -296,9 +307,7 @@ function QIConfigEditor({ indicator, onClose }) {
                   />
                   <NumberInput
                     id={`qi-config-override-target-${idx}`}
-                    label={intl.formatMessage({
-                      id: "qa.qiConfig.field.target",
-                    })}
+                    label={withUnit("qa.qiConfig.field.target")}
                     value={o.target}
                     min={0}
                     max={100}
@@ -309,9 +318,7 @@ function QIConfigEditor({ indicator, onClose }) {
                   />
                   <NumberInput
                     id={`qi-config-override-action-${idx}`}
-                    label={intl.formatMessage({
-                      id: "qa.qiConfig.field.action",
-                    })}
+                    label={withUnit("qa.qiConfig.field.action")}
                     value={o.action}
                     min={0}
                     max={100}

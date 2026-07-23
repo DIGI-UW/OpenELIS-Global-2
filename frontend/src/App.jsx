@@ -41,6 +41,7 @@ import QIDashboard from "./components/qa/qi/QIDashboard";
 import QIConfigList from "./components/qa/qi/QIConfigList";
 import QIEnabledRoute from "./components/qa/qi/QIEnabledRoute";
 import AmendmentReport from "./components/qa/qi/AmendmentReport";
+import RejectionReport from "./components/qa/qi/RejectionReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
 import InventoryManagement from "./components/inventory/InventoryManagement";
@@ -838,6 +839,16 @@ export default function App() {
                   component={() => (
                     <QIEnabledRoute indicator="TAT">
                       <TATReport breadcrumbs={qaTatBreadcrumbs} />
+                    </QIEnabledRoute>
+                  )}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
+                />
+                <SecureRoute
+                  path="/qa/qi/rejection"
+                  exact
+                  component={() => (
+                    <QIEnabledRoute indicator="REJECTION">
+                      <RejectionReport />
                     </QIEnabledRoute>
                   )}
                   role={[Roles.RESULTS, Roles.REPORTS]}

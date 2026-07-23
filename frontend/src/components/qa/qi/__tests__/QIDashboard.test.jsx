@@ -64,6 +64,31 @@ const priorAmendment = {
   ratePercent: 0.42, // delta = -0.11% => fewer amendments, "good"
 };
 
+const currentRejection = {
+  rejectedCount: 70,
+  totalCount: 2500,
+  ratePercent: 2.8, // between target 2 and action 5 => amber
+};
+
+const priorRejection = {
+  rejectedCount: 76,
+  totalCount: 2450,
+  ratePercent: 3.1, // delta = -0.30% => fewer rejections, "good"
+};
+
+// Resolved qi_config per indicator (OGC-710): thresholds drive tile accents.
+const resolvedConfigs = {
+  TAT: { enabled: true, target: 24, action: 48, direction: "LOWER_BETTER" },
+  REJECTION: { enabled: true, target: 2, action: 5, direction: "LOWER_BETTER" },
+  AMENDMENT: {
+    enabled: true,
+    target: 0.5,
+    action: 2,
+    direction: "LOWER_BETTER",
+  },
+  NCE: { enabled: true, target: null, action: null, direction: "LOWER_BETTER" },
+};
+
 // 3 critical pending (amber band) + 2 in corrective action; the rest is noise
 // the predicates must ignore.
 const nceList = [
@@ -82,19 +107,26 @@ const mockApis = ({
   tatPrior = priorSummary,
   amendCurrent = currentAmendment,
   amendPrior = priorAmendment,
+  rejectCurrent = currentRejection,
+  rejectPrior = priorRejection,
   nce = nceList,
+  configs = resolvedConfigs,
 } = {}) => {
   let tatCall = 0;
   let amendCall = 0;
+  let rejectCall = 0;
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url.includes("/rest/reports/tat/summary")) {
       callback(tatCall++ === 0 ? tatCurrent : tatPrior);
     } else if (url.includes("/rest/reports/amendment/summary")) {
       callback(amendCall++ === 0 ? amendCurrent : amendPrior);
+    } else if (url.includes("/rest/reports/rejection/summary")) {
+      callback(rejectCall++ === 0 ? rejectCurrent : rejectPrior);
     } else if (url.includes("/rest/nce/dashboard")) {
       callback(nce === null ? undefined : { nceList: nce });
     } else if (url.includes("/rest/qi-config/resolve")) {
-      callback({ enabled: true });
+      const key = new URLSearchParams(url.split("?")[1]).get("indicator");
+      callback(configs[key] || { enabled: true });
     }
   });
 };
@@ -127,9 +159,31 @@ describe("QIDashboard", () => {
     const detailLinks = screen.getAllByRole("link", { name: /View detail/ });
     expect(detailLinks.map((l) => l.getAttribute("href"))).toEqual([
       "/qa/qi/tat",
+      "/qa/qi/rejection",
       "/qa/qi/amendment",
       "/NceDashboard?severity=CRITICAL&status=Pending",
     ]);
+  });
+
+  test("tiles color against their resolved thresholds and caption them", async () => {
+    mockApis();
+    renderPage();
+
+    // TAT mean 18.78h ≤ target 24h => green; caption shows both bands.
+    const tatTile = screen.getByTestId("qi-tile-tat");
+    await waitFor(() => expect(tatTile).toHaveTextContent("18h 47m"));
+    expect(tatTile.className).toContain("qi-tile--green");
+    expect(tatTile).toHaveTextContent("Target ≤ 24h · action ≥ 48h");
+
+    // Rejection 2.8% sits between target 2% and action 5% => amber.
+    const rejectionTile = screen.getByTestId("qi-tile-rejection");
+    expect(rejectionTile.className).toContain("qi-tile--amber");
+    expect(rejectionTile).toHaveTextContent("Target ≤ 2% · action ≥ 5%");
+
+    // Amendment 0.31% ≤ target 0.5% => green.
+    const amendmentTile = screen.getByTestId("qi-tile-amendment");
+    expect(amendmentTile.className).toContain("qi-tile--green");
+    expect(amendmentTile).toHaveTextContent("Target ≤ 0.5% · action ≥ 2%");
   });
 
   test("amendment tile shows rate, improving delta, and counts", async () => {
@@ -157,19 +211,23 @@ describe("QIDashboard", () => {
     expect(tile.className).toContain("qi-tile--amber");
   });
 
-  test("rejection tile remains a ticket-annotated placeholder", () => {
+  test("rejection tile shows rate, improving delta, and counts", async () => {
     mockApis();
     renderPage();
 
-    expect(screen.getByTestId("qi-tile-rejection")).toHaveTextContent(
-      "Coming soon — OGC-697",
-    );
+    const tile = screen.getByTestId("qi-tile-rejection");
+    await waitFor(() => expect(tile).toHaveTextContent("2.80%"));
+    expect(tile).toHaveTextContent("↓ 0.30%");
+    expect(tile).toHaveTextContent("70 rejected of 2500 started");
+    expect(tile).toHaveTextContent("vs prior 30 days");
+    expect(tile).not.toHaveTextContent("Coming soon");
   });
 
   test("shows empty states when the window has no activity", async () => {
     mockApis({
       tatCurrent: { totalCount: 0, mean: null, breakdown: [] },
       amendCurrent: { amendedCount: 0, releasedCount: 0, ratePercent: null },
+      rejectCurrent: { rejectedCount: 0, totalCount: 0, ratePercent: null },
     });
     renderPage();
 
@@ -180,6 +238,9 @@ describe("QIDashboard", () => {
     );
     expect(screen.getByTestId("qi-tile-amendment")).toHaveTextContent(
       "No results released in this window.",
+    );
+    expect(screen.getByTestId("qi-tile-rejection")).toHaveTextContent(
+      "No tests started in this window.",
     );
   });
 
@@ -196,6 +257,9 @@ describe("QIDashboard", () => {
     );
     expect(screen.getByTestId("qi-tile-amendment")).toHaveTextContent(
       "Amendment data is unavailable.",
+    );
+    expect(screen.getByTestId("qi-tile-rejection")).toHaveTextContent(
+      "Rejection data is unavailable.",
     );
     expect(screen.getByTestId("qi-tile-nce-pulse")).toHaveTextContent(
       "NCE data is unavailable.",
@@ -229,13 +293,13 @@ describe("QIDashboard", () => {
   test("refresh refetches every indicator and rate-limits the button", async () => {
     mockApis();
     renderPage();
-    // TAT + Amendment fire current+prior (2 each); NCE Pulse once; plus the
-    // OGC-711 enabled-config resolve for TAT/AMENDMENT/NCE (3) = 8
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(8);
+    // TAT + Rejection + Amendment fire current+prior (2 each); NCE Pulse once;
+    // plus the config resolve for all four indicators (4) = 11
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(11);
 
     const refresh = screen.getByTestId("qi-dashboard-refresh");
     fireEvent.click(refresh);
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(16);
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(22);
     expect(refresh).toBeDisabled();
   });
 });
