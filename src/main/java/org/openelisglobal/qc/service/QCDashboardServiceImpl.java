@@ -84,9 +84,9 @@ public class QCDashboardServiceImpl implements QCDashboardService {
     @Transactional(readOnly = true)
     public List<InstrumentQCStatus> getAllInstrumentComplianceStatus(Timestamp startDate, Timestamp endDate) {
         // Collect instrument IDs from both QC results and unresolved violations
-        Set<Integer> instrumentIds = new HashSet<>();
+        Set<String> instrumentIds = new HashSet<>();
         try {
-            List<Integer> resultInstrumentIds = resultDAO.findDistinctInstrumentIds();
+            List<String> resultInstrumentIds = resultDAO.findDistinctInstrumentIds();
             instrumentIds.addAll(resultInstrumentIds);
         } catch (Exception e) {
             LogEvent.logWarn(this.getClass().getName(), "getAllInstrumentComplianceStatus",
@@ -101,10 +101,10 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         }
 
         // Pre-fetch analyzers to avoid N+1
-        Map<Integer, Analyzer> analyzerCache = new HashMap<>();
-        for (Integer id : instrumentIds) {
+        Map<String, Analyzer> analyzerCache = new HashMap<>();
+        for (String id : instrumentIds) {
             try {
-                Optional<Analyzer> analyzer = analyzerService.getWithType(String.valueOf(id));
+                Optional<Analyzer> analyzer = analyzerService.getWithType(id);
                 analyzer.ifPresent(a -> analyzerCache.put(id, a));
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getName(), "getAllInstrumentComplianceStatus",
@@ -114,7 +114,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
         List<InstrumentQCStatus> statuses = new ArrayList<>();
 
-        for (Integer instrumentId : instrumentIds) {
+        for (String instrumentId : instrumentIds) {
             InstrumentQCStatus status = buildInstrumentStatus(instrumentId, startDate, endDate,
                     analyzerCache.get(instrumentId));
             statuses.add(status);
@@ -138,14 +138,14 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
     @Override
     @Transactional(readOnly = true)
-    public InstrumentQCStatus getInstrumentComplianceStatus(Integer instrumentId) {
+    public InstrumentQCStatus getInstrumentComplianceStatus(String instrumentId) {
         Timestamp[] range = defaultDateRange();
         return getInstrumentComplianceStatus(instrumentId, range[0], range[1]);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public InstrumentQCStatus getInstrumentComplianceStatus(Integer instrumentId, Timestamp startDate,
+    public InstrumentQCStatus getInstrumentComplianceStatus(String instrumentId, Timestamp startDate,
             Timestamp endDate) {
         Analyzer analyzer = null;
         try {
@@ -211,7 +211,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
      * Build the compliance status for a specific instrument within a date range.
      * Loads violations and results for the instrument within the window.
      */
-    private InstrumentQCStatus buildInstrumentStatus(Integer instrumentId, Timestamp startDate, Timestamp endDate,
+    private InstrumentQCStatus buildInstrumentStatus(String instrumentId, Timestamp startDate, Timestamp endDate,
             Analyzer analyzer) {
 
         // Load ALL unresolved violations (not date-scoped) — compliance state is
@@ -290,10 +290,10 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
         // Derive test IDs from QC results (not violations) — fixes analyteDetails for
         // instruments with results but no violations
-        Set<Integer> testIds = resultsInRange.stream().map(QCResult::getTestId).collect(Collectors.toSet());
+        Set<String> testIds = resultsInRange.stream().map(QCResult::getTestId).collect(Collectors.toSet());
 
         // Group results by test ID to find latest per test
-        Map<Integer, QCResult> latestByTest = new HashMap<>();
+        Map<String, QCResult> latestByTest = new HashMap<>();
         for (QCResult result : resultsInRange) {
             QCResult current = latestByTest.get(result.getTestId());
             if (current == null || (result.getRunDateTime() != null && current.getRunDateTime() != null
@@ -304,7 +304,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
         List<AnalyteDetail> analyteDetails = new ArrayList<>();
         String lastResultTime = null;
-        for (Integer testId : testIds) {
+        for (String testId : testIds) {
             AnalyteDetail detail = buildAnalyteDetail(testId, latestByTest.get(testId));
             if (detail != null) {
                 analyteDetails.add(detail);
@@ -335,7 +335,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
     /**
      * Build analyte detail from a test ID and the latest QC result for that test.
      */
-    private AnalyteDetail buildAnalyteDetail(Integer testId, QCResult latestResult) {
+    private AnalyteDetail buildAnalyteDetail(String testId, QCResult latestResult) {
         AnalyteDetail detail = new AnalyteDetail();
         detail.setTestId(testId);
 

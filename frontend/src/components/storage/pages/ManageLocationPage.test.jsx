@@ -82,7 +82,7 @@ describe("ManageLocationPage", () => {
     expect(mockAssignSampleItem).not.toHaveBeenCalled();
   });
 
-  test("shows validation error for room-only selection", async () => {
+  test("accepts room-only selection and calls assignSampleItem", async () => {
     mockLocationState = {
       sample: {
         sampleItemId: "123",
@@ -101,8 +101,36 @@ describe("ManageLocationPage", () => {
       });
     });
 
+    expect(mockAssignSampleItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locationId: "2",
+        locationType: "room",
+      }),
+    );
+    expect(mockMoveSampleItem).not.toHaveBeenCalled();
+  });
+
+  test("shows validation error when nothing is selected", async () => {
+    mockLocationState = {
+      sample: {
+        sampleItemId: "123",
+        sampleAccessionNumber: "ACC-123",
+      },
+    };
+
+    renderPage();
+
+    await act(async () => {
+      await capturedPickerProps.onSave({
+        selection: {},
+        position: null,
+        reason: "",
+        notes: "",
+      });
+    });
+
     expect(
-      screen.getByText("Select a device, shelf, rack, or box before saving"),
+      screen.getByText("Select a storage location before saving"),
     ).toBeInTheDocument();
     expect(mockMoveSampleItem).not.toHaveBeenCalled();
     expect(mockAssignSampleItem).not.toHaveBeenCalled();

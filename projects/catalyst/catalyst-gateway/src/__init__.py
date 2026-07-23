@@ -1,1 +1,0 @@
-"""Catalyst Gateway package."""

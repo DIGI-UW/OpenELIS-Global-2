@@ -200,7 +200,8 @@ public class TestAddRestController extends BaseRestController {
         String currentTestId = null;
         String dictionaryIdGroup = null;
         for (TestResult testResult : testResults) {
-            if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())) {
+            if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())
+                    && testResult.getValue() != null && !testResult.getValue().trim().isEmpty()) {
                 if (testResult.getTest().getId().equals(currentTestId)) {
                     dictionaryIdGroup += "," + testResult.getValue();
                 } else {

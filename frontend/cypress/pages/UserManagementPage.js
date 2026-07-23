@@ -256,7 +256,17 @@ class UserManagementPage {
   }
 
   searchUser(value) {
-    cy.get(this.selectors.searchBar).clear().type(value);
+    // Require the search bar to be stable/actionable before typing so cy.type()
+    // can't race a concurrent re-render (Cypress "Cannot read properties of
+    // undefined (reading 'KeyboardEvent')" flake when a filter refetch re-renders
+    // the page mid-keystroke). The input is also briefly DISABLED while a filter
+    // refetch is in flight ("cy.type() failed because it targeted a disabled
+    // element"), so require enabled too.
+    cy.get(this.selectors.searchBar)
+      .should("be.visible")
+      .and("be.enabled")
+      .clear()
+      .type(value);
   }
 
   clearSearchBar() {
@@ -281,6 +291,9 @@ class UserManagementPage {
 
   activeUser() {
     cy.contains(this.selectors.span, "Only Active").click();
+    // Let the filter's async table re-render settle before any subsequent typing,
+    // so a following searchUser() cy.type() does not race the re-render.
+    cy.get(this.selectors.tableData).should("be.visible");
   }
 
   uncheckActiveUser() {

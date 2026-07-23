@@ -92,9 +92,6 @@ projects/*/volume/
 **/playwright/.auth/
 **/test-results/
 # Note: frontend/playwright/ test sources are tracked (not ignored)
-# Catalyst dev files
-projects/catalyst/.env
-projects/catalyst/logs/
 *.pyc
 __pycache__/
 .pytest_cache/
@@ -151,3 +148,4 @@ frontend/npm-test-*.log
 
 # Per-PR scratch session notes (never commit)
 PR-*-STATUS-REPORT.md
+volume/nce-attachments/

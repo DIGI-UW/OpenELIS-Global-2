@@ -8,8 +8,10 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
@@ -113,13 +115,14 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             "testResult*.referralCanceled", "testResult*.considerRejectReason", "testResult*.hasQualifiedResult",
             "testResult*.shadowResultValue", "testResult*.reflexJSONResult", "testResult*.testDate",
             "testResult*.analysisMethod", "testResult*.testMethod", "testResult*.testKitInventoryId",
-            "testResult*.forceTechApproval", "testResult*.lowerNormalRange", "testResult*.upperNormalRange",
-            "testResult*.lowerCritical", "testResult*.higherCritical", "testResult*.significantDigits",
-            "testResult*.resultValue", "testResult*.qualifiedResultValue", "testResult*.multiSelectResultValues",
-            "testResult*.testMethod", "testResult*.multiSelectResultValues", "testResult*.qualifiedResultValue",
-            "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut", "testResult*.referredOut",
-            "testResult*.referralReasonId", "testResult*.technician", "testResult*.shadowRejected",
-            "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note", "paging.currentPage", //
+            "testResult*.forceTechApproval", "testResult*.forceTechApprovalNote", "testResult*.lowerNormalRange",
+            "testResult*.upperNormalRange", "testResult*.lowerCritical", "testResult*.higherCritical",
+            "testResult*.significantDigits", "testResult*.resultValue", "testResult*.qualifiedResultValue",
+            "testResult*.multiSelectResultValues", "testResult*.testMethod", "testResult*.multiSelectResultValues",
+            "testResult*.qualifiedResultValue", "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut",
+            "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",
+            "testResult*.shadowRejected", "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note",
+            "paging.currentPage", //
             "testResult*.refer", "testResult*.referralItem.referralReasonId",
             "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
             "testResult*.referralItem.referredSendDate" };
@@ -513,31 +516,31 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     private void createAnalysisOnlyUpdates(ResultsUpdateDataSet actionDataSet) {
         for (TestResultItem testResultItem : actionDataSet.getAnalysisOnlyChangeResults()) {
 
-            Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+            Analysis analysis = ResultUtil.resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setSysUserId(getSysUserId(request));
-            analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testResultItem.getTestDate()));
+            analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testResultItem.getTestDate()));
             if (testResultItem.getAnalysisMethod() != null) {
                 analysis.setAnalysisType(testResultItem.getAnalysisMethod());
             }
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
-            actionDataSet.getModifiedAnalysis().add(analysis);
         }
     }
 
     private void createResultsFromItems(ResultsUpdateDataSet actionDataSet, boolean supportReferrals,
             boolean alwaysValidate, boolean useTechnicianName, String statusRuleSet) {
 
+        Set<String> correctedFlagComputedIds = new HashSet<>();
+
         for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
 
-            Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+            Analysis analysis = ResultUtil.resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
             analysis.setSysUserId(getSysUserId(request));
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
-            actionDataSet.getModifiedAnalysis().add(analysis);
 
             actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
                     testResultItem.getNote(), RESULT_SUBJECT, getSysUserId(request)));
@@ -559,8 +562,13 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             List<Result> results = resultSaveService.createResultsFromTestResultItem(bean,
                     actionDataSet.getDeletableResults());
 
-            analysis.setCorrectedSincePatientReport(
-                    resultSaveService.isUpdatedResult() && analysisService.patientReportHasBeenDone(analysis));
+            boolean correctedSinceReport = resultSaveService.isUpdatedResult()
+                    && analysisService.patientReportHasBeenDone(analysis);
+            if (correctedFlagComputedIds.add(analysis.getId())) {
+                analysis.setCorrectedSincePatientReport(correctedSinceReport);
+            } else if (correctedSinceReport) {
+                analysis.setCorrectedSincePatientReport(true);
+            }
 
             if (analysisService.hasBeenCorrectedSinceLastPatientReport(analysis)) {
                 Note note = noteService.createSavableNote(analysis, NoteType.EXTERNAL,
@@ -788,7 +796,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         if (statusRuleSet.equals(STATUS_RULES_RETROCI)) {
             if (!SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)
                     .equals(analysis.getStatusId())) {
-                analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testDate));
+                analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testDate));
                 analysis.setStatusId(
                         SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
             }
@@ -797,7 +805,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
                         AnalysisStatus.TechnicalAcceptance)
                 || (analysis.isReferredOut()
                         && !GenericValidator.isBlankOrNull(testResultItem.getShadowResultValue()))) {
-            analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testDate));
+            analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testDate));
         }
     }
 

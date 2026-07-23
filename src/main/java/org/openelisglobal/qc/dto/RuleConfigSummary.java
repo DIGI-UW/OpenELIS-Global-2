@@ -8,27 +8,27 @@ import java.util.List;
  */
 public class RuleConfigSummary {
 
-    private Integer testId;
-    private Integer instrumentId;
+    private String testId;
+    private String instrumentId;
     private String testName;
     private String instrumentName;
     private int enabledRuleCount;
     private int totalRuleCount;
     private List<RuleConfigDetail> rules;
 
-    public Integer getTestId() {
+    public String getTestId() {
         return testId;
     }
 
-    public void setTestId(Integer testId) {
+    public void setTestId(String testId) {
         this.testId = testId;
     }
 
-    public Integer getInstrumentId() {
+    public String getInstrumentId() {
         return instrumentId;
     }
 
-    public void setInstrumentId(Integer instrumentId) {
+    public void setInstrumentId(String instrumentId) {
         this.instrumentId = instrumentId;
     }
 

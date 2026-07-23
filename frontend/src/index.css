@@ -25,6 +25,20 @@ code {
   border-bottom: none;
 }
 
+/*
+ * HeaderName layout — restore horizontal flex.
+ * Vite's pre-bundled @carbon/react wraps HeaderName children in an extra
+ * <span>, so the rendered tree is:
+ *   <a class="cds--header__name"> <span> <span#header-logo> <div.banner> </span> </a>
+ * We need flex on BOTH the <a> and the inner wrapping <span> so the logo
+ * and the banner block sit side by side. Doubled selector for specificity.
+ */
+a.cds--header__name.cds--header__name,
+a.cds--header__name.cds--header__name > span {
+  display: flex;
+  align-items: center;
+}
+
 .slide-over-root {
   position: fixed;
   top: 0;

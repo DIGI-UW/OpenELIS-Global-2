@@ -1,1 +1,0 @@
-"""Catalyst MCP server package."""

@@ -81,7 +81,10 @@ function NonConformityMenuManagement() {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/menu/menu_nonconformity", handleMenuItems);
+    getFromOpenElisServer(
+      "/rest/admin/menu/menu_nonconformity",
+      handleMenuItems,
+    );
     return () => {
       componentMounted.current = false;
     };
