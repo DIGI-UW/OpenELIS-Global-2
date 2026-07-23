@@ -25,6 +25,9 @@ services:
       - ANALYZERS_DOMAIN=${ANALYZERS_DOMAIN}
     volumes:
       - ./nginx.conf.template:/etc/nginx/nginx.conf.template:ro
+      # Reviewer overlay assets (widget.js + per-instance UAT scripts), served
+      # by the router at /__review/ and injected via sub_filter.
+      - ../review:/etc/nginx/review:ro
       # Shared with the cert scripts — LE lineages live here, one dir per domain.
       - ./letsencrypt:/etc/letsencrypt:ro
       # ACME HTTP-01 webroot; certbot writes challenge tokens here.

@@ -1,0 +1,64 @@
+{
+  "title": "Microbiology MVP — review",
+  "instance": "amr",
+  "jira": "OGC-782",
+  "intro": "Task-based walkthrough of the Microbiology / AMR MVP. Sign in as admin / adminADMIN! first. NOTE: the worklist and case pages are real but not yet in the sidenav — use the 'Go to' links below to reach them directly. Mark each step Pass/Fail/N-A and note anything confusing or broken.",
+  "sections": [
+    {
+      "title": "Open the microbiology worklist",
+      "steps": [
+        {
+          "do": "Sign in (admin / adminADMIN!), then open the Microbiology Worklist directly.",
+          "expect": "The worklist loads and lists the seeded case(s). (It has no sidenav entry yet — that is a known gap, note it if it blocks you.)",
+          "route": "/MicrobiologyWorklist"
+        }
+      ]
+    },
+    {
+      "title": "Open the seeded case",
+      "steps": [
+        {
+          "do": "From the worklist, open the seeded bacteriology case.",
+          "expect": "The case workbench opens showing the specimen at stage RECEIVED, with patient/order context and space to record isolates and AST.",
+          "route": "/MicrobiologyWorklist"
+        },
+        {
+          "do": "Review how the specimen, workflow type, and case are keyed together.",
+          "expect": "The case is tied to a SampleItem × workflow type; the layout reads clearly (inline, not modal-heavy)."
+        }
+      ]
+    },
+    {
+      "title": "Drive the workflow (reviewer-performed)",
+      "steps": [
+        {
+          "do": "Record an isolate / organism on the received specimen.",
+          "expect": "You can add an isolate and advance the case beyond RECEIVED; the state change is reflected in the workbench."
+        },
+        {
+          "do": "Enter an AST result using the seeded reference data (breakpoint standard + antibiotic + panel).",
+          "expect": "The AST entry surface uses the seeded breakpoints/antibiotics; an S/I/R interpretation is derivable; nothing forces you through a dead end."
+        }
+      ]
+    },
+    {
+      "title": "Shared-specimen TB case",
+      "steps": [
+        {
+          "do": "Find the sibling TB (mycobacteriology) case that shares the same specimen.",
+          "expect": "One specimen carries both a bacterial and a TB case; opening one does not corrupt or hide the other; the workflow-type routing is clear.",
+          "route": "/MicrobiologyWorklist"
+        }
+      ]
+    },
+    {
+      "title": "Overall impression",
+      "steps": [
+        {
+          "do": "Reflect: does this cover enough of a real microbiology bench workflow to be useful, and what's the most important missing piece?",
+          "expect": "The MVP feels like a coherent starting point; note the single highest-value gap for the next iteration."
+        }
+      ]
+    }
+  ]
+}

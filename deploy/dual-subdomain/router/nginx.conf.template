@@ -66,14 +66,28 @@ http {
         proxy_set_header X-Forwarded-Host $server_name;
         absolute_redirect off;
 
+        # Reviewer overlay assets, served locally by the router. This prefix is
+        # more specific than "location /", so it wins over the SPA proxy below.
+        location /__review/ {
+            alias /etc/nginx/review/;
+            types { application/javascript js; application/json json; }
+            default_type application/octet-stream;
+            add_header Cache-Control "no-store";
+        }
+
         # Frontend. Host is rewritten to "localhost" so a Vite dev server (if the
         # stack runs one) accepts the forwarded request (Vite 5 allowedHosts is
         # strict); harmless for the static-nginx runtime build, which ignores Host.
+        # sub_filter injects the reviewer overlay before </head>; Accept-Encoding
+        # is cleared so nginx sees uncompressed HTML to substitute into.
         location / {
             set $amr_frontend "amr-frontend";
             proxy_pass http://$amr_frontend;
             proxy_redirect off;
             proxy_set_header Host localhost;
+            proxy_set_header Accept-Encoding "";
+            sub_filter_once on;
+            sub_filter '</head>' '<script src="/__review/widget.js" data-instance="amr" data-label="Microbiology MVP (OGC-782)"></script></head>';
         }
         location /api/ {
             set $amr_oe "amr-oe";
@@ -111,11 +125,21 @@ http {
         proxy_set_header X-Forwarded-Host $server_name;
         absolute_redirect off;
 
+        location /__review/ {
+            alias /etc/nginx/review/;
+            types { application/javascript js; application/json json; }
+            default_type application/octet-stream;
+            add_header Cache-Control "no-store";
+        }
+
         location / {
             set $an_frontend "analyzers-frontend";
             proxy_pass http://$an_frontend;
             proxy_redirect off;
             proxy_set_header Host localhost;
+            proxy_set_header Accept-Encoding "";
+            sub_filter_once on;
+            sub_filter '</head>' '<script src="/__review/widget.js" data-instance="analyzers" data-label="Analyzer Types &amp; Mapping (OGC-1054)"></script></head>';
         }
         location /api/ {
             set $an_oe "analyzers-oe";
