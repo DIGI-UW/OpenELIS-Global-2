@@ -179,11 +179,22 @@ http {
         ssl_protocols TLSv1.2 TLSv1.3;
         ssl_prefer_server_ciphers off;
 
-        auth_basic "OpenELIS UAT authoring";
-        auth_basic_user_file /etc/nginx/grist.htpasswd;
-
         client_max_body_size 32m;
 
+        # Dex IdP endpoints (OIDC discovery/auth/token/keys) under /dex — public,
+        # since the browser OIDC flow hits them. No prefix stripping: Dex's issuer
+        # path is /dex, so it serves its handlers there.
+        location /dex/ {
+            set $dex_up "dex";
+            proxy_pass http://$dex_up:5556;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Grist. Login is Grist's own OIDC flow against Dex — no basic-auth gate;
+        # Grist redirects unauthenticated users to Dex and back to /oauth2/callback.
         location / {
             set $grist_up "grist";
             proxy_pass http://$grist_up:8484;
@@ -192,12 +203,6 @@ http {
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection $connection_upgrade;
             proxy_set_header Host $host;
-            # Strip the basic-auth Authorization header after the gate: Grist only
-            # accepts a 'Bearer' scheme and 401s on 'Basic'.
-            proxy_set_header Authorization "";
-            # Trusted-proxy auth: hand Grist the authenticated basic-auth username
-            # (an email) so it logs the reviewer straight into the doc UI.
-            proxy_set_header X-Remote-User $remote_user;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;

@@ -26,14 +26,13 @@ services:
       - GRIST_SANDBOX_FLAVOR=unsandboxed
       - GRIST_SINGLE_ORG=openelis
       - GRIST_DEFAULT_EMAIL=admin@openelis-global.org
-      # Trusted-proxy auth: Grist logs the user in from this header, which the
-      # router sets to the basic-auth username ($remote_user). So the htpasswd
-      # username must be an email Grist knows (admin@openelis-global.org).
-      - GRIST_FORWARD_AUTH_HEADER=X-Remote-User
-      # Stable boot key (login-less Grist requires a one-time /boot sign-in to
-      # bootstrap the admin). Value comes from the box-side .env, never committed.
-      # SSO (oauth2-proxy → OIDC) removes the need for this entirely.
-      - GRIST_BOOT_KEY=${GRIST_BOOT_KEY:-}
+      # OIDC login against the Dex IdP (simple static users + OAuth2 connectors).
+      # Replaces the login-less boot-key: Grist redirects to Dex, the user signs
+      # in, and lands in the doc UI as that email. Client secret is box-side env.
+      - GRIST_OIDC_IDP_ISSUER=https://grist.openelis-global.org/dex
+      - GRIST_OIDC_IDP_CLIENT_ID=grist
+      - GRIST_OIDC_IDP_CLIENT_SECRET=${DEX_GRIST_CLIENT_SECRET:-}
+      - GRIST_OIDC_IDP_SCOPES=openid email profile
       # Trust the umbrella router's forwarded proto so Grist builds https URLs.
       - GRIST_FORWARD_URL_HOST=1
     volumes:
@@ -41,9 +40,30 @@ services:
     networks:
       edge:
         aliases: [grist]
+    depends_on:
+      - dex
+
+  # Identity provider: simple static users + OAuth2 connectors. Served under
+  # grist.openelis-global.org/dex (routed by the umbrella router). Secrets
+  # (client secret, password hashes) come from the box-side .env, never committed.
+  dex:
+    image: dexidp/dex:latest
+    container_name: oe-edge-dex
+    restart: unless-stopped
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    environment:
+      - DEX_GRIST_CLIENT_SECRET=${DEX_GRIST_CLIENT_SECRET:-}
+      - DEX_REVIEWER_PASSWORD_HASH=${DEX_REVIEWER_PASSWORD_HASH:-}
+    volumes:
+      - ./dex/config.yaml:/etc/dex/config.yaml:ro
+      - dex-data:/data
+    networks:
+      edge:
+        aliases: [dex]
 
 volumes:
   grist-data:
+  dex-data:
 
 networks:
   edge:

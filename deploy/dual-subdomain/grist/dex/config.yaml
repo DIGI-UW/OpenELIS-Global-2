@@ -1,0 +1,48 @@
+# Dex identity provider for Grist — simple static users now, OAuth2 connectors
+# later. Served under a path on the Grist host, so no extra DNS/cert.
+# Secrets (client secret, password hashes) come from box-side env, never committed.
+
+issuer: https://grist.openelis-global.org/dex
+
+storage:
+  type: sqlite3
+  config:
+    file: /data/dex.db
+
+web:
+  http: 0.0.0.0:5556
+
+# Skip the "approve access" screen — this is a single trusted first-party client.
+oauth2:
+  skipApprovalScreen: true
+
+# Grist is the only client. Secret + Grist's OIDC callback.
+staticClients:
+  - id: grist
+    name: OpenELIS Grist
+    secretEnv: DEX_GRIST_CLIENT_SECRET
+    redirectURIs:
+      - https://grist.openelis-global.org/oauth2/callback
+
+# --- simple user control: local username/password accounts ---
+# Hashes are bcrypt, supplied via env (hashFromEnv) so nothing secret is committed.
+# Add more reviewers by adding entries here + the matching *_PASSWORD_HASH env.
+enablePasswordDB: true
+staticPasswords:
+  - email: reviewer@openelis-global.org
+    username: reviewer
+    userID: reviewer
+    hashFromEnv: DEX_REVIEWER_PASSWORD_HASH
+
+# --- OAuth2 "on the side": add upstream connectors here when ready ---
+# Each needs a client id/secret you register with the provider. Example (Google):
+#   connectors:
+#     - type: google
+#       id: google
+#       name: Google
+#       config:
+#         clientID: $GOOGLE_CLIENT_ID
+#         clientSecret: $GOOGLE_CLIENT_SECRET
+#         redirectURI: https://grist.openelis-global.org/dex/callback
+# (GitHub/Azure/OIDC are analogous.) Left empty until you provide credentials.
+connectors: []
