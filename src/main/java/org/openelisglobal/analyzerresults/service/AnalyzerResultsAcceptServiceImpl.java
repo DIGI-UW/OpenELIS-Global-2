@@ -887,8 +887,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         boolean limitsFound = false;
 
         if (resultItem != null) {
+            // OGC-1145 Phase 2: the reviewer-resolved specimen (when present)
+            // selects a scoped limit over the shared set.
             ResultLimit resultLimit = resultLimitService.getResultLimitForTestAndPatient(resultItem.getTestId(),
-                    patient);
+                    patient, resultItem.getTypeOfSampleId());
             if (resultLimit != null) {
                 result.setMinNormal(resultLimit.getLowNormal());
                 result.setMaxNormal(resultLimit.getHighNormal());

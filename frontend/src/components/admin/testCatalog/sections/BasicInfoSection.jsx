@@ -79,11 +79,6 @@ const BasicInfoSection = ({ testId }) => {
   // checklist beside the status toggle for an inactive test.
   const [completenessGaps, setCompletenessGaps] = useState([]);
 
-  // FR-52/54 — specimen-variant create: ?copyFrom=<sourceTestId> seeds the copy
-  // source and links the new test into that assay group on save.
-  const copyFromId = new URLSearchParams(location.search).get("copyFrom") || "";
-  const [sourceInfo, setSourceInfo] = useState(null);
-
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -105,31 +100,6 @@ const BasicInfoSection = ({ testId }) => {
     setPendingDomain(null);
     setDomainRadioKey((k) => k + 1);
   };
-
-  // FR-54/54a — prefill the variant form from its source: domain is inherited
-  // (all variants of an assay share a domain), AMR carries over. Name/Code/Sample
-  // type remain the admin's to set (specimen is identity).
-  useEffect(() => {
-    if (!isCreate || !copyFromId) {
-      return;
-    }
-    getFromOpenElisServer(
-      `/rest/test-catalog/tests/${copyFromId}/basic-info`,
-      (res) => {
-        if (!res) {
-          return;
-        }
-        setSourceInfo(res);
-        setCreateForm((f) => ({
-          ...f,
-          domain: res.domain || f.domain,
-          antimicrobialResistance: !!res.antimicrobialResistance,
-          labUnitId: res.labUnitId || f.labUnitId,
-        }));
-      },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCreate, copyFromId]);
 
   useEffect(() => {
     if (!testId || isCreate) {
@@ -270,7 +240,6 @@ const BasicInfoSection = ({ testId }) => {
       amr: createForm.antimicrobialResistance,
       orderable: createForm.orderable,
       description: createForm.description,
-      copyFromId: copyFromId || undefined,
     };
     postToOpenElisServerFullResponse(
       "/rest/test-catalog/tests",
@@ -383,21 +352,6 @@ const BasicInfoSection = ({ testId }) => {
   if (isCreate) {
     return (
       <Stack gap={6}>
-        {copyFromId && (
-          <InlineNotification
-            kind="info"
-            lowContrast
-            hideCloseButton
-            data-testid="variant-copy-banner"
-            title={intl.formatMessage({
-              id: "label.testCatalog.variant.copyBanner.title",
-            })}
-            subtitle={intl.formatMessage(
-              { id: "label.testCatalog.variant.copyBanner.subtitle" },
-              { source: sourceInfo ? sourceInfo.name || "" : "" },
-            )}
-          />
-        )}
         <TextInput
           id="basic-info-name"
           labelText={intl.formatMessage({ id: "label.testCatalog.testName" })}
