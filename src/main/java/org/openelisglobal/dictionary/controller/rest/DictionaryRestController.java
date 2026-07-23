@@ -175,7 +175,7 @@ public class DictionaryRestController extends BaseController {
 
         try {
             String id = form.getId();
-            if (!(id == null || "0".equals(id))) {
+            if (StringUtils.isNotBlank(id) && !"0".equals(id)) {
                 // UPDATE
                 // bugzilla 2062
                 boolean isDictionaryFrozenCheckRequired = checkForDictionaryFrozenCheck(form);

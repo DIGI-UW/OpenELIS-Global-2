@@ -14,7 +14,9 @@ Review these artifacts before creating any implementation branch:
 - `specs/013-hjra-hl7-stream-alignment/research.md`
 - `specs/013-hjra-hl7-stream-alignment/contracts/hl7-branch-contract.md`
 - `specs/013-hjra-hl7-stream-alignment/contracts/hl7-readiness-gates.md`
-- `specs/roadmaps/parallel_analyzer_lanes_af342372.plan.md`
+- `specs/roadmaps/madagascar-analyzer-roadmap.md` (canonical; the earlier
+  `parallel_analyzer_lanes_af342372.plan.md` was retired 2026-04-18 and is at
+  `.specify/plan-archive/`)
 - `specs/roadmaps/madagascar-atlassian-alignment.md`
 
 ## 2. Sync the working tree and submodules

@@ -1,3 +1,43 @@
+> **STATUS: Architecture shipped, deferred test coverage + site validation open
+> (updated 2026-04-20).** The `GenericFile` plugin, file-reader dispatch, and
+> Upload/Review UI foundation (OGC-329 / OGC-324) are on `develop`. Per the
+> 2026-03-18 Ownership Override (below), the bridge owns file watching and
+> transport delivery; **OpenELIS owns file parsing and ingestion** —
+> `FileImportServiceImpl` is an OpenELIS service (in this repo under
+> `src/main/java/org/openelisglobal/...`), backed by `CSVAnalyzerReader` /
+> `AnalyzerXLSLineReader` (also in this repo). `GenericFile` is a peer of
+> `GenericASTM` / `GenericHL7`. Adding a new flat-file analyzer is now a
+> profile-JSON drop in
+> [`projects/analyzer-profiles/file/`](../../projects/analyzer-profiles/file/).
+>
+> - **Live per-analyzer status:** see the
+>   [Confluence analyzer tracker](https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396)
+>   (canonical for Pattern C).
+> - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`.
+
+## Remaining Work to Finish Line (2026-04-20)
+
+This plan's scope is the **generic FILE stream architecture**. Per-analyzer
+field validation, vendor-doc review, and site-deployment readiness live on the
+Confluence tracker, not here.
+
+**Deferred test coverage (code shipped, tests not):**
+
+- [ ] M2 Upload/Review UI: T030–T031 (Jest component tests) + T038–T045
+      (upload-flow Playwright E2E) — see [tasks.md § M2](./tasks.md)
+- [ ] M4 watcher + upload: T073 (bridge watcher integration test) + T078
+      (upload-flow E2E) — see [tasks.md § M4](./tasks.md)
+
+**Record demo evidence:**
+
+- [ ] GenericFile E2E demo video (file drop → bridge → OE → Accept results)
+
+**Not tracked here (see Confluence tracker):** per-instrument site validation,
+format-fixture collection, vendor-export file availability, and deprioritization
+decisions for instruments without LIS connectivity.
+
+---
+
 # Implementation Plan: File Stream Alignment — GenericFile Coordination
 
 ## 2026-03-18 Ownership Override (014 Remediation)
@@ -17,8 +57,10 @@ Current remediation contract:
 **Spec**: [spec.md](spec.md)  
 **Input**: Feature specification from
 `specs/014-hjra-file-stream-alignment/spec.md`  
-**Roadmap**:
-[parallel_analyzer_lanes_af342372.plan.md](../roadmaps/parallel_analyzer_lanes_af342372.plan.md)
+**Roadmap (archived 2026-04-18)**:
+[parallel_analyzer_lanes_af342372.plan.md](../../.specify/plan-archive/parallel_analyzer_lanes_af342372.plan.md)
+— canonical live source is
+[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md)
 
 ## Summary
 
@@ -316,7 +358,7 @@ logic in the WAR (`src/main/java/.../analyzer/parsers/` does NOT exist).
 - [x] **Frontend Unit Tests**: FileImportConfiguration form (fileFormat
       dropdown), upload component, preview table.
 
-  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+  - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - Wrap in `<IntlProvider>` + `<BrowserRouter>`.
 
 - [x] **E2E Tests**: Admin creates file-import analyzer → tech uploads file →

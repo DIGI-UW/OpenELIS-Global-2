@@ -52,7 +52,7 @@ export async function acceptAndVerifyResults(
   }
 
   // ── Accept All ──────────────────────────────────────────────────
-  await presentation.step(stepOffset + 1, "Accept All Results", 2000);
+  await presentation.step(stepOffset + 1, "Accept All Results");
 
   const stagedRows = () =>
     page
@@ -90,7 +90,7 @@ export async function acceptAndVerifyResults(
   await presentation.pause(1_500);
 
   // ── Save ────────────────────────────────────────────────────────
-  await presentation.step(stepOffset + 2, "Save Accepted Results", 2000);
+  await presentation.step(stepOffset + 2, "Save Accepted Results");
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
   await expect(saveButton).toBeVisible({ timeout: SHORT_TIMEOUT });
@@ -151,7 +151,10 @@ export async function acceptAndVerifyResults(
   }
 
   // ── Verify in OE results view, not on the staging page ───────────
-  await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
+  await presentation.step(
+    stepOffset + 3,
+    "Viewing accepted results in OpenELIS",
+  );
   await openAccessionResultsAndWaitForText(
     page,
     stagedAccession,
@@ -164,5 +167,6 @@ export async function acceptAndVerifyResults(
   await expect(locatorForAccessionNumber(page, stagedAccession)).toBeVisible({
     timeout: UI_TIMEOUT,
   });
-  await presentation.pause(3_000);
+  // Hold on AccessionResults so the viewer can see the final outcome
+  await presentation.pause(5_000);
 }

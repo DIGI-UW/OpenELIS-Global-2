@@ -1,3 +1,4 @@
 testSectionName,description,isActive,sortOrder,isExternal,localization:en,localization:fr
 Hematology,Hematology Department,Y,1,N,Hematology,Hématologie
 Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie
+Immunology,Immunology Department,Y,3,N,Immunology,Immunologie

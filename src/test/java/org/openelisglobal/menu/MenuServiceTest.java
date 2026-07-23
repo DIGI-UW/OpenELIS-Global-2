@@ -61,4 +61,25 @@ public class MenuServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(6, activeMenus.size());
         Assert.assertTrue(activeMenus.stream().allMatch(Menu::getIsActive));
     }
+
+    @Test
+    public void saveSingleMenuItem_shouldPersistExistingMenuUpdates() {
+        MenuItem menuItem = new MenuItem();
+        Menu menu = new Menu();
+        menu.setElementId("testElement2");
+        menu.setActionURL("/billing");
+        menu.setIsActive(true);
+        menuItem.setMenu(menu);
+
+        MenuItem savedItem = menuService.save(menuItem);
+        Menu reloadedMenu = menuService.getMenuByElementId("testElement2");
+
+        Assert.assertNotNull(savedItem);
+        Assert.assertEquals("testElement2", savedItem.getMenu().getElementId());
+        Assert.assertTrue(savedItem.getMenu().getIsActive());
+        Assert.assertEquals("/billing", savedItem.getMenu().getActionURL());
+        Assert.assertNotNull(reloadedMenu);
+        Assert.assertTrue(reloadedMenu.getIsActive());
+        Assert.assertEquals("/billing", reloadedMenu.getActionURL());
+    }
 }

@@ -497,7 +497,7 @@ with_timeout_wait 120 "simulator readiness" "curl -s -f --connect-timeout 2 --ma
 
 (
   cd "$REPO_ROOT"
-  ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+  ./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify
 ) 2>&1 | tee -a "$RUN_LOG"
 
 (

@@ -9,8 +9,8 @@ analyzer mapping specification and Figma Analyzer Field Mapping designs."
 
 Primary reference artifacts (non-exhaustive):
 
-- OGC-49 analyzer mapping specification
-  (`.dev-docs/OGC-49/OpenELIS_ASTM_Analyzer_Mapping_Specification.*`)
+- OGC-49 analyzer mapping specification (external — source docs not in-repo; see
+  Figma links below)
 - Figma Analyzer Field Mapping Make:
   [`Analyzer-Field-Mapping-Feature`](https://www.figma.com/make/QseQZxQyOWsqciEpLjwkxb/Analyzer-Field-Mapping-Feature?node-id=0-1&t=wPkVXZVaIRyqh4SR-1)
 - Figma OGC-49 design pages:
@@ -1192,11 +1192,11 @@ measurability.
 
 This specification is derived from and should be read in conjunction with:
 
-- **OGC-49 Comprehensive Specification**: `.dev-docs/OGC-49/docs.md` and
-  `.dev-docs/OGC-49/OpenELIS_ASTM_Analyzer_Mapping_Specification.pdf` - Contains
-  detailed functional requirements, business rules, API endpoint specifications,
-  validation rules, security/permissions model, and UI design guidance using
-  Carbon Design System components.
+- **OGC-49 Comprehensive Specification**: Original design docs lived outside
+  this repository (never committed); detailed functional requirements, business
+  rules, API endpoint specifications, validation rules, security/permissions
+  model, and UI design guidance are captured in the Figma files linked below and
+  in the spec body above.
 
 - **Figma Design Artifacts**:
   - Analyzer Field Mapping Make:
@@ -1207,14 +1207,13 @@ This specification is derived from and should be read in conjunction with:
     [`OGC-49`](https://www.figma.com/design/i63dxlyfZE8tvdoAibH55M/OGC-49?node-id=0-1&m=dev) -
     Detailed UI flows for analyzer management, field mapping, and error
     dashboard
-  - Figma Design Analysis: `.dev-docs/OGC-49/figma-design-analysis.md` -
-    Comprehensive analysis of Figma Make prototype and design pages, including
-    application hierarchy, component structure, navigation flows, behavioral
-    state machines, data models, user workflows, page layouts, and UI component
-    details. This document provides detailed UI/UX specifications extracted from
-    the Figma artifacts, including modal states, form field placeholders,
-    statistics card layouts, table column definitions, badge styles, and
-    interaction patterns.
+  - Figma Design Analysis: analysis of Figma Make prototype and design pages
+    (including application hierarchy, component structure, navigation flows,
+    behavioral state machines, data models, user workflows, page layouts, and UI
+    component details) is summarized in the spec body above. This provides
+    detailed UI/UX specifications extracted from the Figma artifacts, including
+    modal states, form field placeholders, statistics card layouts, table column
+    definitions, badge styles, and interaction patterns.
 
 **Note**: The OGC-49 specification document (docs.md) includes additional
 implementation details such as:

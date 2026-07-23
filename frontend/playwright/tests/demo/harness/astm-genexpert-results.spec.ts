@@ -23,7 +23,7 @@ const SIMULATOR_URL = "http://localhost:8085";
 // source IP is the registered GeneXpert mock IP (10.42.20.10).
 const BRIDGE_DESTINATION = "tcp://10.42.20.2:12001";
 const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
-const FIXTURE_SAMPLE_ID = "HARN-GX-2026-00001";
+const FIXTURE_SAMPLE_ID = "DEV01261000000000001";
 const RESULTS_TIMEOUT = 90_000;
 
 const EXPECTED_RESULT = "NEGATIVE";

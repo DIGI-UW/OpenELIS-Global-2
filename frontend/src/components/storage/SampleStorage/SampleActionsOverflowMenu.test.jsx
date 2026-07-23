@@ -21,11 +21,11 @@ describe("SampleActionsOverflowMenu", () => {
     status: "Active",
   };
 
-  const mockOnManageLocation = jest.fn();
-  const mockOnDispose = jest.fn();
+  const mockOnManageLocation = vi.fn();
+  const mockOnDispose = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -170,9 +170,7 @@ describe("SampleActionsOverflowMenu", () => {
    * This test would fail if Carbon OverflowMenuItem doesn't properly wire up onClick
    */
   test("testVerifiesOnClickHandlersAreAttached", () => {
-    const consoleSpy = jest
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     renderWithIntl(
       <SampleActionsOverflowMenu

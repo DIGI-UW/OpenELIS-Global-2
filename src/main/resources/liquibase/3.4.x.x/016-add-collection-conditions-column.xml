@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Add collection_conditions column to sample_item table -->
+  <changeSet id="3.4.0.0-add-collection-conditions-to-sample-item" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" columnName="collection_conditions" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+
+    <comment>Add collection_conditions column to sample_item for storing specimen collection conditions (e.g., fasting, room temp, iced)</comment>
+
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="collection_conditions" type="VARCHAR(255)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

@@ -31,7 +31,7 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
 
         String sql = "from " + className + " ps where ps.sample.id = :sampleId";
         Query<ProgramSample> query = entityManager.unwrap(Session.class).createQuery(sql, ProgramSample.class);
-        query.setParameter("sampleId", sampleId);
+        query.setParameter("sampleId", String.valueOf(sampleId));
         query.setMaxResults(1);
         ProgramSample programme = (ProgramSample) query.uniqueResult();
         return programme;

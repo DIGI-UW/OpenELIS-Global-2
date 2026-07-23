@@ -15,6 +15,12 @@ services:
 
   oe.openelis.org:
     image: itechuw/openelis-global-2-dev:develop
+    # Local build: `docker compose build oe.openelis.org` (or `reset-env.sh --build`)
+    # rebuilds this image from the branch's Dockerfile.dev so local source drives the
+    # webapp, overriding the pulled :develop image tag.
+    build:
+      context: ../..
+      dockerfile: Dockerfile.dev
     depends_on:
       db.openelis.org:
         condition: service_healthy
@@ -76,6 +82,17 @@ services:
 
   frontend.openelis.org:
     image: itechuw/openelis-global-2-frontend-dev:develop
+    # Local-dev default: `target: dev` selects the Vite dev-server stage
+    # of the single multi-stage Dockerfile — HMR + unminified React for
+    # legible errors during iteration. For CI-parity (ship-artifact) mode,
+    # use `compose_args_ci()` in compose-stack.sh which routes through
+    # build.docker-compose.yml (no `target:` → defaults to the `runtime`
+    # stage = nginx serving dist/). Both stages listen on :80 so the
+    # outer proxy config doesn't care which mode is active.
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      target: dev
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public

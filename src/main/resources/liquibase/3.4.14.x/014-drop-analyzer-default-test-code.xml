@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="014-drop-analyzer-default-test-code" author="pmanko">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="analyzer" columnName="default_test_code"/>
+        </preConditions>
+
+        <comment>Drop the default_test_code column from the analyzer table. This column
+        was added in 013-analyzer-default-test-code.xml (commit 567f0c4d) to persist a
+        file-wide test code fallback on an analyzer instance for file-based analyzers
+        whose result files have no per-row target column (e.g. Bruker Fluorocycler XT).
+
+        Reverted in v4 of plan mellow-honking-cascade because the scalar field is
+        a persistent assertion about test identity based only on filename and lab
+        workflow convention — silently miscodes any row when the lab deviates. The
+        correctness bar: test identity must come from the incoming file's own
+        content or the admin's explicit upload-time declaration, never from
+        persistent config.
+
+        The replacement mechanism is (a) FileNameSelfDeclarationScanner in the
+        bridge that reads the file's Result column content and requires exactly
+        one mapped test code mentioned with zero contradictions, and (b) a Test
+        dropdown on the bridge's /admin/upload UI populated from the analyzer's
+        AnalyzerTestMapping set. Both paths supply the test code event-scoped,
+        not persisted. See bridge PR #34 and plan §2.PARSER / §2.5.
+
+        The revert of 567f0c4d already removed 013 from the filesystem and from
+        the base.xml include list, so on fresh DBs the 013 changeset will never
+        run. This 014 changeset is the forward-only migration for already-deployed
+        DBs (dev, CI, any environment where 013 ran once) — it drops the column
+        cleanly on Liquibase upgrade.
+
+        The preConditions block above skips the drop if the column doesn't
+        exist on this DB (fresh-baseline DBs that never ran 013) so the
+        changeset is idempotent and safe to ship in a base.xml include list.</comment>
+
+        <dropColumn tableName="analyzer" columnName="default_test_code"/>
+    </changeSet>
+
+</databaseChangeLog>

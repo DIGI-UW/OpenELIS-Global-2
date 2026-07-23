@@ -64,6 +64,7 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
 
     TypeOfSampleServiceImpl() {
         super(TypeOfSample.class);
+        this.auditTrailLog = true;
     }
 
     @Override

@@ -45,7 +45,7 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
 
     protected static String ANALYSIS_FINALIZED_STATUS_ID;
 
-    protected static List<Integer> READY_FOR_REPORT_STATUS_IDS;
+    protected static List<String> READY_FOR_REPORT_STATUS_IDS;
     protected Patient reportPatient;
     protected Sample reportSample;
 
@@ -62,10 +62,8 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
 
     static {
         READY_FOR_REPORT_STATUS_IDS = new ArrayList<>();
-        READY_FOR_REPORT_STATUS_IDS
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished)));
-        READY_FOR_REPORT_STATUS_IDS
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Started)));
+        READY_FOR_REPORT_STATUS_IDS.add(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished));
+        READY_FOR_REPORT_STATUS_IDS.add(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Started));
 
         ANALYSIS_FINALIZED_STATUS_ID = SpringContext.getBean(IStatusService.class)
                 .getStatusID(AnalysisStatus.Finalized);
@@ -160,15 +158,14 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
         }
 
         if (onlyResults) {
-            Set<Integer> analysisStatusIds = new HashSet<>();
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-            analysisStatusIds.add(Integer
-                    .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            Set<String> analysisStatusIds = new HashSet<>();
+            analysisStatusIds
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+            analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+            analysisStatusIds
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+            analysisStatusIds
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
             sampleList = sampleList.stream().filter(
                     e -> (analysisService.getAnalysesBySampleIdAndStatusId(e.getId(), analysisStatusIds).size() > 0))
                     .collect(Collectors.toList());
@@ -316,12 +313,12 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
         return handledOrders;
     }
 
-    protected List<Integer> getProjIdsList(String projID) {
+    protected List<String> getProjIdsList(String projID) {
 
         String[] fields = projID.split(":");
-        List<Integer> projIDList = new ArrayList<>();
+        List<String> projIDList = new ArrayList<>();
         for (int i = 0; i < fields.length; i++) {
-            projIDList.add(Integer.parseInt(fields[i]));
+            projIDList.add(fields[i]);
         }
         return projIDList;
     }

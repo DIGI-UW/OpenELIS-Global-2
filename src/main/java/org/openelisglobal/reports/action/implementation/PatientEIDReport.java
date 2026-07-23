@@ -1,6 +1,5 @@
 package org.openelisglobal.reports.action.implementation;
 
-import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,7 +78,7 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
                 .getTimeOfLastNamedReport(reportSample, ReportTrackingService.ReportType.PATIENT, requestedReport);
         Boolean mayBeDuplicate = lastReport != null;
 
-        Date maxCompleationDate = null;
+        Timestamp maxCompleationDate = null;
         long maxCompleationTime = 0L;
         String invalidValue = MessageUtil.getMessage("report.test.status.inProgress");
 
@@ -123,7 +122,7 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
             }
         }
         if (maxCompleationDate != null) {
-            data.setCompleationdate(DateUtil.convertSqlDateToStringDate(maxCompleationDate));
+            data.setCompleationdate(DateUtil.convertTimestampToStringDate(maxCompleationDate));
         }
 
         String observation = getObservationValues(OBSERVATION_WHICH_PCR_ID);

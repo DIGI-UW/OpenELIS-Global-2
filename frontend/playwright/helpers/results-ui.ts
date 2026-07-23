@@ -16,7 +16,9 @@ export function convertAlphaNumLabNumForDisplay(labNumber: string): string {
   }
   const labNumberParts = labNumber.split("-");
   const isAnalysisLabNumber = labNumberParts.length > 1;
-  let labNumberForDisplay = labNumberParts[0];
+  // Declared without initializer — both branches below assign it
+  // unconditionally, so any initial value would be dead.
+  let labNumberForDisplay: string;
   if (labNumberParts[0].length < 8) {
     labNumberForDisplay = labNumberParts[0].slice(0, 2);
     if (labNumberParts[0].length > 2) {

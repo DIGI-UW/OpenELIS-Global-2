@@ -1,3 +1,9 @@
+> **STATUS: Historical (bannered 2026-04-18)** — bridge-owned FILE watcher is
+> current-state behavior, not a "remediation plan". This plan described the
+> transition.
+>
+> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+
 # File Workflow Remediation Archive Header
 
 - Source worktree: `<worktree-path>`

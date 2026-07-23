@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Add uom_type column to distinguish between result UOMs and sample collection UOMs -->
+
+  <changeSet id="3.4.0.0-add-uom-type-column" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="unit_of_measure" columnName="uom_type" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+
+    <comment>Add uom_type column to unit_of_measure table</comment>
+
+    <addColumn tableName="unit_of_measure" schemaName="clinlims">
+      <column name="uom_type" type="VARCHAR(20)" defaultValue="RESULT">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <!-- Set existing UOMs to RESULT type -->
+  <changeSet id="3.4.0.0-set-existing-uoms-to-result" author="reagan-meant">
+    <comment>Set existing UOMs to RESULT type</comment>
+    <update tableName="unit_of_measure" schemaName="clinlims">
+      <column name="uom_type" value="RESULT"/>
+      <where>uom_type IS NULL</where>
+    </update>
+  </changeSet>
+
+  <!-- Add sample collection units of measure -->
+  <changeSet id="3.4.0.0-add-sample-collection-uoms" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.unit_of_measure WHERE name = 'mL' AND uom_type = 'SAMPLE_COLLECTION'
+      </sqlCheck>
+    </preConditions>
+
+    <comment>Add sample collection units of measure (mL, uL, tubes, slides)</comment>
+
+    <insert tableName="unit_of_measure" schemaName="clinlims">
+      <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+      <column name="name" value="mL"/>
+      <column name="description" value="Milliliters"/>
+      <column name="uom_type" value="SAMPLE_COLLECTION"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+
+    <insert tableName="unit_of_measure" schemaName="clinlims">
+      <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+      <column name="name" value="uL"/>
+      <column name="description" value="Microliters"/>
+      <column name="uom_type" value="SAMPLE_COLLECTION"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+
+    <insert tableName="unit_of_measure" schemaName="clinlims">
+      <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+      <column name="name" value="tubes"/>
+      <column name="description" value="Tubes"/>
+      <column name="uom_type" value="SAMPLE_COLLECTION"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+
+    <insert tableName="unit_of_measure" schemaName="clinlims">
+      <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+      <column name="name" value="slides"/>
+      <column name="description" value="Slides"/>
+      <column name="uom_type" value="SAMPLE_COLLECTION"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

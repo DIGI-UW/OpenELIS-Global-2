@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    Phase 5c of the LocationPicker refactor.
+
+    The storage frontend now routes the Sample Items list through a
+    dedicated page at /Storage/sample-items (replacing the legacy
+    /Storage/samples Tab in StorageDashboard). The sidenav menu is
+    server-driven via /rest/menu, loaded from the clinlims.menu table,
+    so the URL for the "Sample Items" link is updated here.
+
+    Per the plan's "Design decisions locked in" §1: clean cutover, no
+    redirect. The frontend App.js deletes the /Storage/:tab catch-all
+    route in the same PR — old bookmarks like /Storage/samples now 404.
+
+    The other 5 storage sidenav entries (rooms, devices, shelves,
+    racks, boxes) keep their current URLs; those pages are extracted
+    in Phase 9 of the refactor.
+  -->
+  <changeSet id="rename-storage-samples-sidenav" author="locationPickerRefactor">
+    <comment>
+      Sidenav: /Storage/samples → /Storage/sample-items for the
+      new SampleItemsPage route.
+    </comment>
+    <sql>
+      UPDATE clinlims.menu
+         SET action_url = '/Storage/sample-items'
+       WHERE element_id = 'menu_storage_samples'
+         AND action_url = '/Storage/samples';
+    </sql>
+    <rollback>
+      UPDATE clinlims.menu
+         SET action_url = '/Storage/samples'
+       WHERE element_id = 'menu_storage_samples'
+         AND action_url = '/Storage/sample-items';
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
