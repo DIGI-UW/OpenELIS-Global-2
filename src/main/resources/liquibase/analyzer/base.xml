@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- FR-15: QC Sample Identification Rules -->
+  <include relativeToChangelogFile="true" file="004-012-create-analyzer-qc-rule.xml"/>
+  <include relativeToChangelogFile="true" file="004-013-seed-default-qc-rules.xml"/>
+
+</databaseChangeLog>

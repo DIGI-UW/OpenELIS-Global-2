@@ -119,7 +119,7 @@ export class Sidenav {
   }
 
   /** Navigate to storage section and wait for load */
-  async gotoStorage(path = "samples") {
+  async gotoStorage(path = "sample-items") {
     await this.page.goto(`/Storage/${path}`, {
       waitUntil: "domcontentloaded",
     });

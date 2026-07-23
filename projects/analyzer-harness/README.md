@@ -73,12 +73,16 @@ docker compose -f docker-compose.dev.yml -f docker-compose.base.yml up -d
 docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d
 ```
 
-Then load analyzer fixtures from the repo root (legacy flow):
+Then seed analyzers via the OE REST API (matches CI step
+`23_Seed analyzers via REST API`):
 
 ```bash
-cd /home/ubuntu/OpenELIS-Global-2
-./src/test/resources/load-analyzer-test-data.sh --dataset-011
+cd /home/ubuntu/OpenELIS-Global-2/projects/analyzer-harness
+./seed-analyzers.sh
 ```
+
+`ci-parity-test.sh` also runs `seed-analyzers.sh` as part of its normal flow, so
+the explicit call above is only needed when starting the stack manually.
 
 ## Hot reload (after backend code changes)
 

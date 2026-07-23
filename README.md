@@ -33,9 +33,18 @@ You can find more information on how to set up OpenELIS at our
 
 [![04 - Cypress Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml)
 
-[![Publish OpenELIS WebApp Docker Image Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml)
+[![E2E Wrapper Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml)
 
 [![Installer Packaging Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
+
+### CI Architecture
+
+For the current fork/non-fork E2E validation design, artifact contracts, and
+checkpoint/status model, see
+[`specs/plans/ci-e2e-architecture-spec.md`](specs/plans/ci-e2e-architecture-spec.md).
+
+For operational troubleshooting of the E2E wrapper and downstream execution, see
+[`specs/plans/e2e-ci-operator-model.md`](specs/plans/e2e-ci-operator-model.md).
 
 ### Contributing
 
@@ -46,6 +55,8 @@ We welcome community contributions to help improve OpenELIS Global!
    on the project wiki.
 2. Check out our [CONTRIBUTING guide](./CONTRIBUTING.md) for detailed
    contribution practices and [pull request tips](PULL_REQUEST_TIPS.md).
+3. To report a **security vulnerability**, follow [SECURITY.md](./SECURITY.md)
+   (private reporting — not public issues).
 
 ### Requirements
 
@@ -256,13 +267,16 @@ For E2E testing, integration testing, and manual testing, load test fixtures:
 
 ```bash
 # Basic usage (loads and verifies automatically)
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
+
+# Harness fixture lane (includes HARN-* lane data)
+./src/test/resources/load-test-fixtures.sh --profile=harness
 
 # Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --reset
+./src/test/resources/load-test-fixtures.sh --profile=core --reset
 
 # Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --no-verify
+./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 ```
 
 **Note**: The unified loader script provides dependency checks, verification,

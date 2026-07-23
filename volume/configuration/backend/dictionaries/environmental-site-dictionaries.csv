@@ -1,0 +1,15 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr,localization:es,localization:id
+Sampling Site Type,Water Source,WATER,Y,1,,Water Source,Source d'eau,Fuente de Agua,Sumber Air
+Sampling Site Type,Treatment Plant,TREAT,Y,2,,Treatment Plant,Station de Traitement,Planta de Tratamiento,Instalasi Pengolahan
+Sampling Site Type,Distribution Point,DIST,Y,3,,Distribution Point,Point de Distribution,Punto de Distribucion,Titik Distribusi
+Sampling Site Type,Monitoring Station,MONIT,Y,4,,Monitoring Station,Station de Surveillance,Estacion de Monitoreo,Stasiun Pemantauan
+Sampling Site Type,Food Facility,FOOD,Y,5,,Food Facility,Etablissement Alimentaire,Instalacion Alimentaria,Fasilitas Pangan
+Sampling Site Type,Soil Sampling Site,SOIL,Y,6,,Soil Sampling Site,Site d'Echantillonnage de Sol,Sitio de Muestreo de Suelo,Lokasi Pengambilan Tanah
+Sampling Site Type,Air Monitoring Station,AIR,Y,7,,Air Monitoring Station,Station de Surveillance de l'Air,Estacion de Monitoreo de Aire,Stasiun Pemantauan Udara
+Sampling Site Type,Other,OTHER,Y,8,,Other,Autre,Otro,Lainnya
+Environmental Zone,Urban,URBAN,Y,1,,Urban,Urbain,Urbano,Perkotaan
+Environmental Zone,Peri-Urban,PERIURB,Y,2,,Peri-Urban,Peri-Urbain,Peri-Urbano,Pinggiran Kota
+Environmental Zone,Rural,RURAL,Y,3,,Rural,Rural,Rural,Pedesaan
+Environmental Zone,Industrial,INDUST,Y,4,,Industrial,Industriel,Industrial,Industri
+Environmental Zone,Agricultural,AGRI,Y,5,,Agricultural,Agricole,Agricola,Pertanian
+Environmental Zone,Protected Area,PROTEC,Y,6,,Protected Area,Zone Protegee,Area Protegida,Kawasan Lindung

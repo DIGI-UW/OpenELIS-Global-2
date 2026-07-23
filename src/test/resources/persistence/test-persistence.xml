@@ -29,6 +29,16 @@
         <class>org.openelisglobal.testreflex.action.bean.ReflexRuleCondition</class>
         <class>org.openelisglobal.testreflex.action.bean.ReflexRule</class>
         <class>org.openelisglobal.testreflex.valueholder.TestReflex</class>
+        <class>org.openelisglobal.testmethod.valueholder.TestMethod</class>
+        <class>org.openelisglobal.testresultcomponent.valueholder.TestResultComponent</class>
+        <class>org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation</class>
+        <class>org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment</class>
+        <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling</class>
+        <class>org.openelisglobal.testterminology.valueholder.TestTerminologyMapping</class>
+        <class>org.openelisglobal.testvariant.valueholder.TestVariantLink</class>
+        <class>org.openelisglobal.testreagentlink.valueholder.TestReagentLink</class>
+        <class>org.openelisglobal.testalertrule.valueholder.TestAlertRule</class>
+        <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandlingHistory</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
@@ -84,6 +94,11 @@
         <!-- Notification entities -->
         <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
         <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
+        <class>org.openelisglobal.notifications.entity.Notification</class>
+
+        <!-- Dictionary entities (required by NoteBook.type relationship) -->
+        <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>
+        <class>org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory</class>
 
         <!-- Notebook Management entities -->
         <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
@@ -115,6 +130,7 @@
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerQcRule</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
@@ -123,6 +139,15 @@
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
+
+        <!-- Westgard QC entities (003-westgard-qc) -->
+        <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
+        <class>org.openelisglobal.qc.valueholder.QCResult</class>
+        <class>org.openelisglobal.qc.valueholder.QCStatistics</class>
+        <class>org.openelisglobal.qc.valueholder.QCRuleViolation</class>
+        <class>org.openelisglobal.qc.valueholder.QCViolationResult</class>
+        <class>org.openelisglobal.qc.valueholder.WestgardRuleConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCAlert</class>
 
         <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration
             M2) -->
@@ -150,6 +175,27 @@
         <class>org.openelisglobal.eqa.valueholder.EQAProgramEnrollment</class>
         <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
         <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
+
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
+        <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionAuthenticationData</class>
+        <class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
+
+        <!-- Electronic Signature entities (21 CFR Part 11) -->
+        <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
+        <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
+        <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
+        <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
+
+        <!-- Decoupled order workflow (OGC-356) -->
+        <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
+        <!-- Barcode Label Presets (OGC-285 M2) -->
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPreset</class>
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPresetField</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelConfig</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
+        <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"

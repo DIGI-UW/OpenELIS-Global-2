@@ -17,17 +17,10 @@ exists before inserting E2E fixtures.
 
 ```bash
 # From project root
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
 ```
 
-### Method 2: Via Cypress Convenience Wrapper
-
-```bash
-# From project root
-./frontend/cypress/support/load-storage-fixtures.sh
-```
-
-### Method 3: Via Cypress Tests (Automatic)
+### Method 2: Via Cypress Tests (Automatic)
 
 Cypress tests automatically use the unified loader via
 `cy.loadStorageFixtures()`.
@@ -51,7 +44,7 @@ export DB_NAME=clinlims
 export DB_HOST=localhost
 export DB_PORT=5432
 
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
 ```
 
 ## Cypress Integration
@@ -91,15 +84,12 @@ CYPRESS_SKIP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
 
 - Providers, Organizations (e2e-foundational-data.sql)
 
-### 2. Analyzer E2E Fixtures
+### 2. Profile-specific Fixture Data
 
-- **analyzer-test-data.sql** – Analyzers 1000–1004, configurations, fields,
-  mappings, errors (same as CI frontend-qa).
-- **011 Madagascar set** (Docker + Maven only) – When
-  `load-analyzer-test-data.sh` is available and Maven is on PATH, the script
-  runs `--dataset-011` to load analyzers 2000–2012
-  (madagascar-analyzer-test-data.xml). If this step fails, run manually:
-  `./src/test/resources/load-analyzer-test-data.sh --dataset-011`.
+- `--profile=core`: analyzer-minimal safety net, core demo patient, analyzer
+  cleanup baseline.
+- `--profile=harness`: everything in `core` plus
+  `analyzer-harness-lane-data.sql` (`HARN-*` lanes).
 
 ### 3. Storage + E2E Test Data
 
@@ -134,7 +124,7 @@ Ensure you're running from project root:
 
 ```bash
 cd /path/to/OpenELIS-Global-2
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
 ```
 
 ### Docker Container Not Found
@@ -153,6 +143,39 @@ Check PostgreSQL is running and credentials are correct:
 psql -U clinlims -d clinlims -h localhost -p 5432 -c "SELECT 1;"
 ```
 
+## OGC-285 seed-suite fixtures (`fixtures/v1-barcode-config*.sql`)
+
+These two fixtures are **not** loaded by `load-test-fixtures.sh` or the DbUnit
+loader. They are consumed directly by the migration seed tests
+(`src/test/java/org/openelisglobal/labelpreset/migration/`) via Spring's
+`ScriptUtils.executeSqlScript`, and they seed `clinlims.site_information` rows
+only (insert idiom mirrors `postgre-db-init/siteInfo.sql`).
+
+| Fixture                                    | Used by                              | Purpose                                                                                                                                                                                                  |
+| ------------------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fixtures/v1-barcode-config.sql`           | `SystemPresetSeedTest`               | Representative `barcode.{order,specimen,block,slide,freezer}.{height,width,default,max}` keys with values that intentionally **differ** from the seed's canonical fallback constants (25 / 76 / 1 / 10). |
+| `fixtures/v1-barcode-config-malformed.sql` | `SystemPresetSeedMalformedInputTest` | Same specimen keys but `barcode.specimen.default = 'garbage'` (non-numeric), with valid non-fallback height/width/max, to prove malformed-value normalization → fallback.                                |
+
+### The init-ordering subtlety (read before editing the seed tests)
+
+The seed changeset `liquibase/3.3.x.x/030-seed-system-presets.xml` runs **once
+at Liquibase context init**, before any JUnit fixture can load. The test DB's
+init data (`postgre-db-init/OpenELIS-Global.sql` + `siteInfo.sql`) seeds
+**zero** `barcode.*` keys, so that init run produced its 5 system presets
+entirely from fallback constants. Therefore the seed tests do **not** read those
+init rows; each test instead:
+
+1. `DELETE FROM clinlims.label_preset WHERE is_system = true` (FK cascade also
+   clears seeded `label_preset_field` rows);
+2. clears any `barcode.*` `site_information` keys, then loads its fixture;
+3. re-runs the **real** `<sql>` block extracted from
+   `030-seed-system-presets.xml` at runtime (DOM-parsed, not a hardcoded copy)
+   so the test stays inversion-worthy w.r.t. the production changeset.
+
+Because the base test runs `@Transactional(NOT_SUPPORTED)` (no rollback, shared
+static Testcontainer), each test is fully self-contained in `@Before` and
+restores the canonical fallback presets in `@After`.
+
 ## Migration from Old Scripts
 
 The following scripts have been **consolidated** into `load-test-fixtures.sh`:
@@ -161,6 +184,5 @@ The following scripts have been **consolidated** into `load-test-fixtures.sh`:
 - ❌ `load-storage-test-data.sh` (removed)
 - ✅ `load-test-fixtures.sh` (unified replacement)
 
-The Cypress convenience wrapper
-(`frontend/cypress/support/load-storage-fixtures.sh`) still exists but now calls
-the unified script.
+Cypress uses `cy.loadStorageFixtures()` which invokes the unified loader
+directly.

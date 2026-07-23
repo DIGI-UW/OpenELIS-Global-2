@@ -7,8 +7,8 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
 // Mock the API utilities
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
 const renderWithIntl = (component) => {
@@ -21,7 +21,7 @@ const renderWithIntl = (component) => {
 
 describe("StorageLocationsMetricCard", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**

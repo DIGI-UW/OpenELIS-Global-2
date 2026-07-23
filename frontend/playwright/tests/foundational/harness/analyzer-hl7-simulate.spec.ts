@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
 

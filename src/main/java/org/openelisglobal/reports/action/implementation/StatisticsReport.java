@@ -99,8 +99,7 @@ public class StatisticsReport extends IndicatorReport implements IReportCreator,
 
         Date lastDate = DateUtil.getLastDayOfTheYear(Integer.valueOf(form.getUpperYear()));
         List<Test> testList = testService.getAllActiveTests(false);
-        List<Integer> testSectionIds = form.getLabSections().stream().map(sectionId -> Integer.valueOf(sectionId))
-                .collect(Collectors.toList());
+        List<String> testSectionIds = form.getLabSections().stream().collect(Collectors.toList());
         reportItems = new ArrayList<>();
         testList.forEach(test -> {
             List<Analysis> yearAnalysis = new ArrayList();

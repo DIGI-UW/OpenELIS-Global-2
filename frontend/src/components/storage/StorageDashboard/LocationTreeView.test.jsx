@@ -7,8 +7,8 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
 // Mock the API utilities
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
 const renderWithIntl = (component) => {
@@ -50,7 +50,7 @@ describe("LocationTreeView", () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -67,7 +67,7 @@ describe("LocationTreeView", () => {
       }
     });
 
-    const onLocationSelect = jest.fn();
+    const onLocationSelect = vi.fn();
     renderWithIntl(<LocationTreeView onLocationSelect={onLocationSelect} />);
 
     // Wait for rooms to load
@@ -136,7 +136,7 @@ describe("LocationTreeView", () => {
       }
     });
 
-    const onLocationSelect = jest.fn();
+    const onLocationSelect = vi.fn();
     renderWithIntl(<LocationTreeView onLocationSelect={onLocationSelect} />);
 
     // Wait for rooms to load
@@ -173,7 +173,7 @@ describe("LocationTreeView", () => {
       }
     });
 
-    const onLocationSelect = jest.fn();
+    const onLocationSelect = vi.fn();
     renderWithIntl(<LocationTreeView onLocationSelect={onLocationSelect} />);
 
     const roomElement = await screen.findByText("Main Laboratory");
@@ -193,7 +193,7 @@ describe("LocationTreeView", () => {
       }
     });
 
-    const onLocationSelect = jest.fn();
+    const onLocationSelect = vi.fn();
     renderWithIntl(<LocationTreeView onLocationSelect={onLocationSelect} />);
 
     const roomElement = await screen.findByText("Main Laboratory");
@@ -225,7 +225,7 @@ describe("LocationTreeView", () => {
       }
     });
 
-    const onLocationSelect = jest.fn();
+    const onLocationSelect = vi.fn();
     renderWithIntl(<LocationTreeView onLocationSelect={onLocationSelect} />);
 
     // Wait for rooms to load

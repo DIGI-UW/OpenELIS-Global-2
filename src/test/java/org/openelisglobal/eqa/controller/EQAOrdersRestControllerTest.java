@@ -3,7 +3,6 @@ package org.openelisglobal.eqa.controller;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.sql.Timestamp;
@@ -18,12 +17,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.eqa.controller.rest.EQAOrdersRestController;
+import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
-import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
-import org.openelisglobal.organization.service.OrganizationService;
-import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.http.HttpStatus;
@@ -39,7 +37,7 @@ public class EQAOrdersRestControllerTest {
     private SampleService sampleService;
 
     @Mock
-    private OrganizationService organizationService;
+    private EQALabProgramEnrollmentService enrollmentService;
 
     @InjectMocks
     private EQAOrdersRestController controller;
@@ -47,16 +45,13 @@ public class EQAOrdersRestControllerTest {
     private SampleEQA sample1;
     private SampleEQA sample2;
     private SampleEQA overdueSample;
-    private EQAProgram program1;
 
     @Before
     public void setUp() {
-        program1 = new EQAProgram();
-        program1.setId(1L);
-        program1.setName("Chemistry PT");
-        Organization whoOrganization = new Organization();
-        whoOrganization.setOrganizationName("WHO");
-        program1.setOrganization(whoOrganization);
+        EQALabProgramEnrollment enrollment = new EQALabProgramEnrollment();
+        enrollment.setId(1L);
+        enrollment.setProgramName("Chemistry PT");
+        enrollment.setProvider("WHO");
 
         Sample order1 = new Sample();
         order1.setAccessionNumber("EQA-001");
@@ -68,39 +63,33 @@ public class EQAOrdersRestControllerTest {
         when(sampleService.get("100")).thenReturn(order1);
         when(sampleService.get("101")).thenReturn(order2);
         when(sampleService.get("102")).thenReturn(order3);
-
-        Organization whoOrg = new Organization();
-        whoOrg.setOrganizationName("WHO");
-        when(organizationService.get(anyString())).thenReturn(whoOrg);
+        when(enrollmentService.get(1L)).thenReturn(enrollment);
 
         sample1 = new SampleEQA();
         sample1.setId(1L);
         sample1.setSampleId(100L);
         sample1.setEqaProviderSampleId("EQA-001");
-        sample1.setEqaProgram(program1);
+        sample1.setEqaEnrollmentId(1L);
         sample1.setEqaPriority(EQAPriority.STANDARD);
         sample1.setEqaDeadline(Timestamp.valueOf(LocalDate.now().plusDays(7).atStartOfDay()));
-        sample1.setEqaProviderOrganizationId(1L);
         sample1.setSysUserId("1");
 
         sample2 = new SampleEQA();
         sample2.setId(2L);
         sample2.setSampleId(101L);
         sample2.setEqaProviderSampleId("EQA-002");
-        sample2.setEqaProgram(program1);
+        sample2.setEqaEnrollmentId(1L);
         sample2.setEqaPriority(EQAPriority.URGENT);
         sample2.setEqaDeadline(Timestamp.valueOf(LocalDate.now().plusDays(14).atStartOfDay()));
-        sample2.setEqaProviderOrganizationId(1L);
         sample2.setSysUserId("1");
 
         overdueSample = new SampleEQA();
         overdueSample.setId(3L);
         overdueSample.setSampleId(102L);
         overdueSample.setEqaProviderSampleId("EQA-003");
-        overdueSample.setEqaProgram(program1);
+        overdueSample.setEqaEnrollmentId(1L);
         overdueSample.setEqaPriority(EQAPriority.STANDARD);
         overdueSample.setEqaDeadline(Timestamp.valueOf(LocalDate.now().minusDays(3).atStartOfDay()));
-        overdueSample.setEqaProviderOrganizationId(1L);
         overdueSample.setSysUserId("1");
     }
 
@@ -127,15 +116,11 @@ public class EQAOrdersRestControllerTest {
     }
 
     @Test
-    public void testListOrders_FilterByProgramId() {
-        EQAProgram otherProgram = new EQAProgram();
-        otherProgram.setId(99L);
-        otherProgram.setName("Other Program");
-
+    public void testListOrders_FilterByEnrollmentId() {
         SampleEQA otherSample = new SampleEQA();
         otherSample.setId(4L);
         otherSample.setSampleId(103L);
-        otherSample.setEqaProgram(otherProgram);
+        otherSample.setEqaEnrollmentId(99L);
         otherSample.setEqaDeadline(Timestamp.valueOf(LocalDate.now().plusDays(5).atStartOfDay()));
         otherSample.setSysUserId("1");
 
@@ -181,17 +166,6 @@ public class EQAOrdersRestControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
-    }
-
-    @Test
-    public void testListOrders_SearchByProgramName() {
-        when(sampleEQAService.findEqaSamples()).thenReturn(List.of(sample1, sample2));
-
-        ResponseEntity<List<Map<String, Object>>> response =
-                controller.listOrders(null, null, null, null, null, "chemistry");
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(2, response.getBody().size());
     }
 
     @Test

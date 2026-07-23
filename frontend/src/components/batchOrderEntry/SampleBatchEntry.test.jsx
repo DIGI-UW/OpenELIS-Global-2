@@ -11,9 +11,9 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
 
-jest.mock("../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
 const baseOrderFormValues = {
@@ -41,13 +41,13 @@ const renderSampleBatchEntry = () =>
           <NotificationContext.Provider
             value={{
               notificationVisible: false,
-              setNotificationVisible: jest.fn(),
-              addNotification: jest.fn(),
+              setNotificationVisible: vi.fn(),
+              addNotification: vi.fn(),
             }}
           >
             <SampleBatchEntry
               orderFormValues={baseOrderFormValues}
-              setOrderFormValues={jest.fn()}
+              setOrderFormValues={vi.fn()}
             />
           </NotificationContext.Provider>
         </ConfigurationContext.Provider>
@@ -57,7 +57,7 @@ const renderSampleBatchEntry = () =>
 
 describe("SampleBatchEntry rollout", () => {
   beforeEach(() => {
-    window.scrollTo = jest.fn();
+    window.scrollTo = vi.fn();
     getFromOpenElisServer.mockImplementation((endpoint, callback) => {
       if (endpoint === "/rest/SamplePatientEntry") {
         callback({
@@ -73,7 +73,7 @@ describe("SampleBatchEntry rollout", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders shared labels section in batch flow", () => {

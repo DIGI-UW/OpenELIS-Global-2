@@ -59,7 +59,29 @@ public interface SampleStorageService {
     java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
             String notes);
 
-    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes);
+    /**
+     * Dispose a SampleItem. The audit emission for the global audit trail rides on
+     * {@code SampleItemService.update} (AuditableBaseObject path), so the caller
+     * MUST pass the acting user's sysUserId (numeric String). The same id is
+     * stamped on the storage-movement row for the per-sample audit modal.
+     *
+     * <p>
+     * OGC-738: previously the disposal hardcoded {@code movedByUserId=1} and called
+     * {@code sampleItemDAO.update} directly, bypassing audit emit.
+     */
+    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
+            String sysUserId);
+
+    /**
+     * List storage movements for a SampleItem with the acting user's display name
+     * resolved. Returns one Map per movement with the same shape the audit modal
+     * already renders, plus a {@code movedByUserName} field.
+     *
+     * <p>
+     * OGC-738a: the controller used to return the raw numeric user id; the View
+     * Audit modal showed "Moved By: 42" with no way to identify who.
+     */
+    java.util.List<java.util.Map<String, Object>> getSampleItemMovementsWithUserNames(String sampleItemId);
 
     /**
      * Get storage location for a specific SampleItem

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { Sidenav } from "../../../fixtures/sidenav";
 
 test.describe("Sidenav", () => {
@@ -10,13 +10,13 @@ test.describe("Sidenav", () => {
 
   test("storage page has expanded nav", async ({ page }) => {
     const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("samples");
+    await sidenav.gotoStorage("sample-items");
     await sidenav.expectExpanded();
   });
 
   test("can toggle sidenav on storage page", async ({ page }) => {
     const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("samples");
+    await sidenav.gotoStorage("sample-items");
 
     await sidenav.expectExpanded();
     await sidenav.toggle();
@@ -31,14 +31,14 @@ test.describe("Sidenav", () => {
    */
   test("preference persists after page refresh", async ({ page }) => {
     const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("samples");
+    await sidenav.gotoStorage("sample-items");
 
     // Storage defaults to expanded - collapse it
     await sidenav.expectExpanded();
     await sidenav.toggle();
     await sidenav.expectCollapsed();
 
-    await page.goto("/Storage/samples", { waitUntil: "domcontentloaded" });
+    await page.goto("/Storage/sample-items", { waitUntil: "load" });
     await expect(sidenav.menuButton).toBeVisible();
 
     // Should still be collapsed (preference persisted)
@@ -51,7 +51,7 @@ test.describe("Sidenav", () => {
    */
   test("content area has locked class when nav expanded", async ({ page }) => {
     const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("samples");
+    await sidenav.gotoStorage("sample-items");
 
     // Storage defaults to LOCK mode (expanded + content pushed)
     await sidenav.expectExpanded();
@@ -70,7 +70,7 @@ test.describe("Sidenav", () => {
 
   test("storage subnav updates active state", async ({ page }) => {
     const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("samples");
+    await sidenav.gotoStorage("sample-items");
 
     // Expand menus to see items
     await sidenav.expandMenu("Storage");
@@ -113,7 +113,7 @@ test.describe("Sidenav", () => {
     page,
   }) => {
     const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("samples");
+    await sidenav.gotoStorage("sample-items");
     await sidenav.expectExpanded();
 
     // Expand a parent menu and click a child to navigate
@@ -159,7 +159,7 @@ test.describe("Sidenav", () => {
     page,
   }) => {
     const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("samples");
+    await sidenav.gotoStorage("sample-items");
     await sidenav.expectExpanded();
 
     // Verify no parent with a collapsed submenu has the grey active background
@@ -179,7 +179,7 @@ test.describe("Sidenav", () => {
     });
 
     // Start from Storage so the nav is definitely present and expanded
-    await sidenav.gotoStorage("samples");
+    await sidenav.gotoStorage("sample-items");
     await sidenav.expectExpanded();
     await sidenav.expandAllMenus();
 
@@ -223,7 +223,7 @@ test.describe("Sidenav", () => {
       }
 
       // Return to a page with sidenav so the next iteration has .cds--side-nav in the DOM.
-      await sidenav.gotoStorage("samples");
+      await sidenav.gotoStorage("sample-items");
       await sidenav.expectExpanded();
     }
   });

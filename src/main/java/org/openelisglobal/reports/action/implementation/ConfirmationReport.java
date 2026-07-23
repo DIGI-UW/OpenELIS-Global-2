@@ -269,7 +269,7 @@ public class ConfirmationReport extends IndicatorReport implements IReportCreato
     }
 
     private String getCompleationDate(Analysis analysis) {
-        return DateUtil.convertSqlDateToStringDate(analysis.getCompletedDate());
+        return DateUtil.convertTimestampToStringDate(analysis.getCompletedDate());
     }
 
     @Override

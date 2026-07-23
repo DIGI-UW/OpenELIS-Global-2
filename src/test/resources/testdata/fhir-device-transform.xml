@@ -1,0 +1,36 @@
+<dataset>
+    <status_of_sample id="8001"
+        description="Sample Status" code="1" status_type="SampleType1"
+        lastupdated="2025-03-18" name="Status 1"
+        display_key="sample_display_key_1" is_active="Y" />
+
+    <test id="5001" description="Glucose Test" loinc="2345-7"
+        reporting_description="Glucose" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-01-01 12:00:00" active_end="2026-12-31 12:00:00"
+        is_reportable="Y" time_holding="30" time_wait="15"
+        time_ta_average="60" time_ta_warning="90" time_ta_max="120"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="GLU"
+        sort_order="2147483646" name="Glucose" orderable="true" guid="glu-001"
+        antimicrobial_resistance="false" />
+
+    <analyzer id="1" name="Mindray BC-5380"
+        machine_id="MINDRAY-5380-001" analyzer_type="HEMATOLOGY"
+        description="Hematology analyzer" location="Main Lab" is_active="true"
+        has_setup_page="false" last_updated="2025-01-01 12:00:00" />
+
+    <sample id="9001" accession_number="FHIR-DEV-001"
+        status_id="8001" entered_date="2025-06-01 10:00:00"
+        received_date="2025-06-01 10:00:00"
+        collection_date="2025-06-01 09:00:00"
+        lastupdated="2025-06-01 10:00:00" domain="H" />
+
+    <sample_item id="9001" samp_id="9001" sort_order="1"
+        status_id="8001" collection_date="2025-06-01 09:00:00"
+        lastupdated="2025-06-01 10:00:00"
+        fhir_uuid="11111111-1111-1111-1111-111111111111" />
+
+    <analysis id="1" test_id="5001" sampitem_id="9001"
+        analysis_type="AUTO" revision="0" status_id="8001"
+        lastupdated="2025-06-01 10:00:00"
+        fhir_uuid="22222222-2222-2222-2222-222222222222" />
+</dataset>

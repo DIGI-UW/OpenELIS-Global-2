@@ -63,6 +63,7 @@
 	<field name="uom" class="java.lang.String"/>
 	<field name="note" class="java.lang.String"/>
 	<field name="age" class="java.lang.String"/>
+	<field name="dob" class="java.lang.String"/>
 	<field name="testSection" class="java.lang.String"/>
 	<field name="testRefRange" class="java.lang.String"/>
 	<field name="dept" class="java.lang.String"/>
@@ -289,7 +290,7 @@
 						<textFieldExpression><![CDATA[$F{subjectNumber}]]></textFieldExpression>
 					</textField>
 					<textField isBlankWhenNull="true">
-						<reportElement x="256" y="0" width="105" height="14" backcolor="#FFFFFF"/>
+						<reportElement x="256" y="0" width="90" height="14" backcolor="#FFFFFF"/>
 						<box leftPadding="4">
 							<topPen lineWidth="0.5" lineStyle="Solid"/>
 							<leftPen lineWidth="0.0" lineStyle="Solid"/>
@@ -349,9 +350,10 @@
 					<reportElement x="-1" y="0" width="554" height="65" isRemoveLineWhenBlank="true" forecolor="#FF6666" backcolor="#33FFFF">
 						<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 					</reportElement>
+					<!-- Age label -->
 					<textField pattern="" isBlankWhenNull="true">
-						<reportElement mode="Opaque" x="402" y="0" width="50" height="21" backcolor="#E6E6E6"/>
-						<box leftPadding="3">
+						<reportElement mode="Opaque" x="387" y="0" width="22" height="21" backcolor="#E6E6E6"/>
+						<box leftPadding="2">
 							<pen lineWidth="0.5"/>
 							<topPen lineWidth="0.5"/>
 							<leftPen lineWidth="0.5"/>
@@ -359,14 +361,15 @@
 							<rightPen lineWidth="0.5"/>
 						</box>
 						<textElement verticalAlignment="Middle">
-							<font size="8"/>
+							<font size="7"/>
 							<paragraph lineSpacing="Single"/>
 						</textElement>
 						<textFieldExpression><![CDATA[$R{report.age}]]></textFieldExpression>
 					</textField>
+					<!-- Age value -->
 					<textField pattern="" isBlankWhenNull="true">
-						<reportElement x="452" y="0" width="34" height="21"/>
-						<box leftPadding="4">
+						<reportElement x="409" y="0" width="24" height="21"/>
+						<box leftPadding="2">
 							<pen lineWidth="0.5"/>
 							<topPen lineWidth="0.5"/>
 							<leftPen lineWidth="0.5"/>
@@ -374,16 +377,65 @@
 							<rightPen lineWidth="0.5"/>
 						</box>
 						<textElement verticalAlignment="Middle">
-							<font size="8"/>
+							<font size="7"/>
 							<paragraph lineSpacing="Single"/>
 						</textElement>
 						<textFieldExpression><![CDATA[$F{age}]]></textFieldExpression>
 					</textField>
+					<!-- DOB label -->
+					<textField>
+						<reportElement mode="Opaque" x="433" y="0" width="25" height="21" backcolor="#E6E6E6"/>
+						<box leftPadding="2">
+							<pen lineWidth="0.5"/>
+							<topPen lineWidth="0.5"/>
+							<leftPen lineWidth="0.5"/>
+							<bottomPen lineWidth="0.5"/>
+							<rightPen lineWidth="0.5"/>
+						</box>
+						<textElement verticalAlignment="Middle">
+							<font size="7"/>
+							<paragraph lineSpacing="Single"/>
+						</textElement>
+						<textFieldExpression><![CDATA[$R{report.dob}]]></textFieldExpression>
+					</textField>
+					<!-- DOB value -->
 					<textField pattern="" isBlankWhenNull="true">
-						<reportElement x="524" y="0" width="30" height="21">
+						<reportElement x="458" y="0" width="50" height="21"/>
+						<box leftPadding="2">
+							<pen lineWidth="0.5"/>
+							<topPen lineWidth="0.5"/>
+							<leftPen lineWidth="0.5"/>
+							<bottomPen lineWidth="0.5"/>
+							<rightPen lineWidth="0.5"/>
+						</box>
+						<textElement verticalAlignment="Middle">
+							<font size="7"/>
+							<paragraph lineSpacing="Single"/>
+						</textElement>
+						<textFieldExpression><![CDATA[$F{dob} != null && !$F{dob}.isEmpty() ? $F{dob} : "\u2014"]]></textFieldExpression>
+					</textField>
+					<!-- Sex label -->
+					<textField>
+						<reportElement mode="Opaque" x="508" y="0" width="20" height="21" backcolor="#E6E6E6"/>
+						<box leftPadding="2">
+							<pen lineWidth="0.5"/>
+							<topPen lineWidth="0.5"/>
+							<leftPen lineWidth="0.5"/>
+							<bottomPen lineWidth="0.5"/>
+							<rightPen lineWidth="0.5"/>
+						</box>
+						<textElement verticalAlignment="Middle">
+							<font size="7"/>
+							<paragraph lineSpacing="Single"/>
+						</textElement>
+						<textFieldExpression><![CDATA[$R{report.sex}]]></textFieldExpression>
+					</textField>
+					<!-- Sex value -->
+					<textField pattern="" isBlankWhenNull="true">
+						<reportElement x="528" y="0" width="26" height="21">
 							<printWhenExpression><![CDATA[!"0".equals($F{gender})]]></printWhenExpression>
 						</reportElement>
-						<box leftPadding="4">
+						<box leftPadding="2">
 							<pen lineWidth="0.5"/>
 							<topPen lineWidth="0.5"/>
 							<leftPen lineWidth="0.5"/>
@@ -395,21 +447,6 @@
 							<paragraph lineSpacing="Single"/>
 						</textElement>
 						<textFieldExpression><![CDATA[$F{gender}]]></textFieldExpression>
-					</textField>
-					<textField>
-						<reportElement mode="Opaque" x="485" y="0" width="39" height="21" backcolor="#E6E6E6"/>
-						<box leftPadding="3">
-							<pen lineWidth="0.5"/>
-							<topPen lineWidth="0.5"/>
-							<leftPen lineWidth="0.5"/>
-							<bottomPen lineWidth="0.5"/>
-							<rightPen lineWidth="0.5"/>
-						</box>
-						<textElement verticalAlignment="Middle">
-							<font size="8"/>
-							<paragraph lineSpacing="Single"/>
-						</textElement>
-						<textFieldExpression><![CDATA[$R{report.sex}]]></textFieldExpression>
 					</textField>
 					<textField>
 						<reportElement mode="Opaque" x="1" y="0" width="100" height="21" backcolor="#E6E6E6"/>

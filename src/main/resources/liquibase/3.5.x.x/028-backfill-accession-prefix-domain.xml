@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="openelis" id="backfill-accession-prefix-domain">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.site_information WHERE name = 'Accession number prefix' AND domain_id IS NULL</sqlCheck>
+        </preConditions>
+        <comment>Re-associates the 'Accession number prefix' site_information row with the siteIdentity domain so it appears under Admin &gt; General Configuration &gt; Site Information. The dev-init siteInfo.sql INSERT omitted domain_id, leaving the row orphaned; properties-file round-trip still worked because that path queries by name, but the admin menu (inner-join on domain) filtered the row out.</comment>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'Accession number prefix' AND domain_id IS NULL</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

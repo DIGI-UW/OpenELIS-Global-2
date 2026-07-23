@@ -1,8 +1,44 @@
 # Implementation Plan: HJRA HL7 Stream Coordination
 
 **Branch**: `spec/013-hjra-hl7-stream-alignment` | **Date**: 2026-03-10 |
-**Spec**: [spec.md](./spec.md) **Input**: Feature specification from
+**Updated**: 2026-04-20 (status reckoning) | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from
 `/specs/013-hjra-hl7-stream-alignment/spec.md`
+
+## Remaining Work to Finish Line (2026-04-20)
+
+**Coordination artifacts**: complete (M0 validation tasks all checked in
+[tasks.md](./tasks.md)). **Cross-cutting PR #3195** (test-connection parity and
+the `CommunicationMode` enum) is currently in review (not yet merged).
+
+Once any new HL7 analyzer's profile JSON is in
+[`projects/analyzer-profiles/hl7/`](../../projects/analyzer-profiles/hl7/) and
+the Jira-tracked milestone branch is opened, the work here is **architecture +
+readiness**, not per-instrument.
+
+**Still to do, in order:**
+
+1. **Pre-M1 readiness** (T009, T010): sync `develop`,
+   `tools/openelis-analyzer-bridge`, and `plugins` submodule pins; capture
+   paired bridge + main-repo team agreement in
+   `launch-checklists/pre-m1-readiness.md`.
+2. **Site networking**: HJRA bridge MLLP connectivity from live analyzer
+   networks (tracked per-site on Confluence, not here).
+3. **M1 (OGC-325)** — `feat/013-ogc-325-hl7-listener-foundation`: paired
+   bridge + main-repo PR, MLLP listener → `/analyzer/hl7`, Gate 1 evidence (see
+   `launch-checklists/gate1-ogc325-evidence.md`), mock-with-profile E2E proof.
+4. **M2 (OGC-327)** — first proving-target HL7 analyzer branch, Gate 2 evidence.
+5. **M3 (OGC-326)** — follow-on HL7 analyzer branch, Gate 3 evidence.
+6. **Post-MVP (optional)**: OGC-336 GeneXpert HL7 mode (QBP queries); HL7
+   bidirectional (`ORM^O01` worklist, `QRY^Q02` order download); `LIS_INITIATED`
+   outbound MLLP from the bridge.
+
+**Per-analyzer status** (confidence, spec/companion versions, real-file
+availability, site deployment) lives on the [Confluence tracker][tracker].
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+---
 
 ## Summary
 

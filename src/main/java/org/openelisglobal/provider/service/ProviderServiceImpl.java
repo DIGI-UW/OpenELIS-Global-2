@@ -102,6 +102,18 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Provider> getPagesOfSearchedProvidersByPhone(int startingRecNo, String phone) {
+        return baseObjectDAO.getPagesOfSearchedProvidersByPhone(startingRecNo, phone);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getTotalSearchedProviderCountByPhone(String phone) {
+        return baseObjectDAO.getTotalSearchedProviderCountByPhone(phone);
+    }
+
+    @Override
     @Transactional
     public void deactivateProviders(List<Provider> providers) {
         for (Provider deactivateProvider : providers) {

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        OGC-356: Create sample_type_request table for decoupled order workflow
+
+        This table stores requested sample types during Step 1 (Enter Order).
+        Actual sample_item records are created in Step 2 (Collect Sample) when
+        physical samples are collected.
+
+        This separation allows:
+        - Pre-registration of orders before sample collection
+        - Partial collection scenarios
+        - Clear distinction between "requested" vs "collected" samples
+    -->
+
+    <changeSet id="034-create-sample-type-request-table" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_type_request" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <createSequence
+            sequenceName="sample_type_request_seq"
+            schemaName="clinlims"
+            startValue="1"
+            incrementBy="1"/>
+
+        <createTable tableName="sample_type_request" schemaName="clinlims">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type_of_sample_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sort_order" type="numeric(2,0)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requested_quantity" type="numeric(10,2)" defaultValueNumeric="1">
+                <constraints nullable="true"/>
+            </column>
+            <column name="unit_of_measure_id" type="numeric(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Test selections stored as comma-separated IDs (same pattern as sampleXML) -->
+            <column name="requested_tests" type="text">
+                <constraints nullable="true"/>
+            </column>
+            <column name="requested_panels" type="text">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Status: REQUESTED, COLLECTED, CANCELLED -->
+            <column name="status" type="varchar(20)" defaultValue="REQUESTED">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Link to fulfilled sample_item (set when collected in Step 2) -->
+            <column name="sample_item_id" type="numeric(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Audit fields -->
+            <column name="created_date" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sysuser_id" type="numeric(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <!-- Foreign key to sample -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_type_request"
+            baseColumnNames="sample_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample"
+            referencedColumnNames="id"
+            constraintName="fk_sample_type_request_sample"
+            onDelete="CASCADE"/>
+
+        <!-- Foreign key to type_of_sample -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_type_request"
+            baseColumnNames="type_of_sample_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="type_of_sample"
+            referencedColumnNames="id"
+            constraintName="fk_sample_type_request_type_of_sample"/>
+
+        <!-- Foreign key to unit_of_measure (optional) -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_type_request"
+            baseColumnNames="unit_of_measure_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="unit_of_measure"
+            referencedColumnNames="id"
+            constraintName="fk_sample_type_request_uom"/>
+
+        <!-- Foreign key to sample_item (optional - set when fulfilled) -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_type_request"
+            baseColumnNames="sample_item_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            constraintName="fk_sample_type_request_sample_item"/>
+
+        <!-- Index for efficient lookup by sample -->
+        <createIndex tableName="sample_type_request" indexName="idx_sample_type_request_sample_id" schemaName="clinlims">
+            <column name="sample_id"/>
+        </createIndex>
+
+        <!-- Index for status queries -->
+        <createIndex tableName="sample_type_request" indexName="idx_sample_type_request_status" schemaName="clinlims">
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="sample_type_request" schemaName="clinlims"/>
+            <dropSequence sequenceName="sample_type_request_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

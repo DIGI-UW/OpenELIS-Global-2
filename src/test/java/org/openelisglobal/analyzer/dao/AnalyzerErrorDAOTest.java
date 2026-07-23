@@ -92,14 +92,14 @@ public class AnalyzerErrorDAOTest {
         // Arrange: Mock HQL query
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.createQuery(anyString(), eq(AnalyzerError.class))).thenReturn(query);
-        when(query.setParameter(eq("status"), eq("UNACKNOWLEDGED"))).thenReturn(query);
+        when(query.setParameter(eq("status"), eq(AnalyzerError.ErrorStatus.UNACKNOWLEDGED))).thenReturn(query);
 
         List<AnalyzerError> expectedResults = new ArrayList<>();
         expectedResults.add(testError1);
         when(query.list()).thenReturn(expectedResults);
 
         // Act
-        List<AnalyzerError> results = analyzerErrorDAO.findByStatus("UNACKNOWLEDGED");
+        List<AnalyzerError> results = analyzerErrorDAO.findByStatus(AnalyzerError.ErrorStatus.UNACKNOWLEDGED);
 
         // Assert
         assertNotNull("Results should not be null", results);
@@ -117,11 +117,10 @@ public class AnalyzerErrorDAOTest {
     @Test
     public void testFindByAnalyzerId_ReturnsErrorsForAnalyzer() {
         // Arrange: Mock HQL query
-        // Note: AnalyzerErrorDAO converts String "1" to Integer 1 for HQL parameter
-        // Reference: ID_TYPE_ANALYSIS.md - Legacy Analyzer uses LIMSStringNumberUserType
+        // Analyzer.id is String (LIMSStringNumberUserType), so parameter is passed as String
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.createQuery(anyString(), eq(AnalyzerError.class))).thenReturn(query);
-        when(query.setParameter(eq("analyzerId"), eq(1))).thenReturn(query);  // Integer, not String
+        when(query.setParameter(eq("analyzerId"), eq("1"))).thenReturn(query);
 
         List<AnalyzerError> expectedResults = new ArrayList<>();
         expectedResults.add(testError1);
@@ -151,14 +150,14 @@ public class AnalyzerErrorDAOTest {
         // Arrange: Mock HQL query
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.createQuery(anyString(), eq(AnalyzerError.class))).thenReturn(query);
-        when(query.setParameter(eq("errorType"), eq("MAPPING"))).thenReturn(query);
+        when(query.setParameter(eq("errorType"), eq(AnalyzerError.ErrorType.MAPPING))).thenReturn(query);
 
         List<AnalyzerError> expectedResults = new ArrayList<>();
         expectedResults.add(testError1);
         when(query.list()).thenReturn(expectedResults);
 
         // Act
-        List<AnalyzerError> results = analyzerErrorDAO.findByErrorType("MAPPING");
+        List<AnalyzerError> results = analyzerErrorDAO.findByErrorType(AnalyzerError.ErrorType.MAPPING);
 
         // Assert
         assertNotNull("Results should not be null", results);
@@ -177,14 +176,14 @@ public class AnalyzerErrorDAOTest {
         // Arrange: Mock HQL query
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.createQuery(anyString(), eq(AnalyzerError.class))).thenReturn(query);
-        when(query.setParameter(eq("severity"), eq("ERROR"))).thenReturn(query);
+        when(query.setParameter(eq("severity"), eq(AnalyzerError.Severity.ERROR))).thenReturn(query);
 
         List<AnalyzerError> expectedResults = new ArrayList<>();
         expectedResults.add(testError1);
         when(query.list()).thenReturn(expectedResults);
 
         // Act
-        List<AnalyzerError> results = analyzerErrorDAO.findBySeverity("ERROR");
+        List<AnalyzerError> results = analyzerErrorDAO.findBySeverity(AnalyzerError.Severity.ERROR);
 
         // Assert
         assertNotNull("Results should not be null", results);

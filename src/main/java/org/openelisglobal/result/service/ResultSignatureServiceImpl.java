@@ -17,6 +17,7 @@ public class ResultSignatureServiceImpl extends AuditableBaseObjectServiceImpl<R
 
     ResultSignatureServiceImpl() {
         super(ResultSignature.class);
+        this.auditTrailLog = true;
     }
 
     @Override

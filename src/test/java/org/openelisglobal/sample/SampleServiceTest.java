@@ -228,8 +228,8 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSamplesByStatusAndDomain_shouldReturnList() {
-        List<String> statuses = Arrays.asList("entered", "released");
-        List<Sample> results = sampleService.getSamplesByStatusAndDomain(statuses, "clinical");
+        List<String> statuses = Arrays.asList("1", "2");
+        List<Sample> results = sampleService.getSamplesByStatusAndDomain(statuses, "H");
         Assert.assertTrue(results.stream().allMatch(s -> statuses.contains(s.getStatus())));
     }
 
@@ -366,6 +366,37 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
         // Case B: Test the "False" path (Loop finishes without match)
         boolean falseResult = sampleService.sampleContainsTest(DEFAULT_ID, "99999_NON_EXISTENT");
         Assert.assertFalse("Should return false when test does not exist", falseResult);
+    }
+
+    @Test
+    public void getSampleByAccessionNumber_viaDAO_shouldReturnSample() {
+        Sample sample = sampleService.getSampleByAccessionNumber("12345");
+        Assert.assertNotNull(sample);
+        Assert.assertEquals("12345", sample.getAccessionNumber());
+    }
+
+    @Test
+    public void getSamplesByPriority_shouldReturnList() {
+        List<Sample> results = sampleService
+                .getSamplesByPriority(org.openelisglobal.sample.valueholder.OrderPriority.ROUTINE);
+        Assert.assertNotNull(results);
+    }
+
+    @Test
+    public void getSamplesByProjectAndStatusIDAndAccessionRange_listOverload_shouldReturnList() {
+        List<String> projectIds = Arrays.asList("1");
+        List<String> statusIds = Arrays.asList("1", "2");
+        List<Sample> results = sampleService.getSamplesByProjectAndStatusIDAndAccessionRange(projectIds, statusIds,
+                "12345", "52541");
+        Assert.assertNotNull(results);
+    }
+
+    @Test
+    public void getSamplesByProjectAndStatusIDAndAccessionRange_stringOverload_shouldReturnList() {
+        List<String> statusIds = Arrays.asList("1", "2");
+        List<Sample> results = sampleService.getSamplesByProjectAndStatusIDAndAccessionRange("1", statusIds, "12345",
+                "52541");
+        Assert.assertNotNull(results);
     }
 
     @Test

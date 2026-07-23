@@ -21,8 +21,8 @@ merged to `develop` branch before this enhancement can begin.
 
 ## Problem Statement
 
-Currently, the Sample Storage page (`/Storage/samples`) loads all sample storage
-assignments at once, causing:
+Currently, the Sample Storage page (`/Storage/sample-items`) loads all sample
+storage assignments at once, causing:
 
 - **Slow page loads**: 10-20 seconds with 100,000+ samples
 - **Browser memory issues**: High memory consumption affecting browser
@@ -53,8 +53,9 @@ items load immediately (page load time <2 seconds).
 **Acceptance Scenarios**:
 
 1. **Given** the Sample Storage page with 100,000+ samples, **When** a lab
-   technician navigates to `/Storage/samples`, **Then** only the first 25 sample
-   storage assignments are displayed and the page loads in under 2 seconds
+   technician navigates to `/Storage/sample-items`, **Then** only the first 25
+   sample storage assignments are displayed and the page loads in under 2
+   seconds
 2. **Given** the Sample Storage page is loaded, **When** the lab technician
    views the pagination controls, **Then** they see the total number of pages,
    current page number, and navigation buttons (previous, next, page numbers)
@@ -116,9 +117,23 @@ update accordingly.
    the lab technician changes to 100 items per page, **Then** the page resets to
    page 1 showing 100 items (prevents showing an invalid page number)
 3. **Given** the Sample Storage page with 100 items per page selected, **When**
-   the lab technician navigates to a different tab (e.g., "Rooms") and returns
-   to "Samples" tab, **Then** the page size preference of 100 items per page is
-   preserved
+   the lab technician navigates away and returns to the Sample Items route,
+   **Then** the current page and page-size behavior follows the active route
+   model defined in the addendum below
+
+## Clarifications
+
+### Session 2026-04-18
+
+- **Route clarification:** The active storage UI no longer uses the legacy
+  tabbed samples view route. Pagination now applies to `/Storage/sample-items`.
+- **FR-005 / FR-006 clarification:** In the current route-based architecture,
+  pagination state is local component state and resets on route entry. This is
+  consistent with the NoteBook reference implementation cited by this feature.
+  Cross-route persistence is out of scope for this PR and should be considered a
+  platform-level enhancement.
+- **FR-004 confirmation:** Allowed page-size options remain `25`, `50`, and
+  `100` in the routed storage pages.
 
 ---
 

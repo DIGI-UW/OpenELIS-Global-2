@@ -1,4 +1,4 @@
-import { expect, Locator, Page, test } from "@playwright/test";
+import { expect, Locator, Page, test } from "../../../helpers/test-base";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";
@@ -23,7 +23,7 @@ const SIMULATOR_URL = "http://localhost:8085";
 // source IP is the registered GeneXpert mock IP (10.42.20.10).
 const BRIDGE_DESTINATION = "tcp://10.42.20.2:12001";
 const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
-const FIXTURE_SAMPLE_ID = "HARN-GX-2026-00001";
+const FIXTURE_SAMPLE_ID = "DEV01261000000000001";
 const RESULTS_TIMEOUT = 90_000;
 
 const EXPECTED_RESULT = "NEGATIVE";

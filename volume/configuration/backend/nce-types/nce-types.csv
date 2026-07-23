@@ -1,0 +1,23 @@
+name,displayKey,categoryName,active,localization:en,localization:fr
+Sample collection error,nce.type.sampleCollectionError,Sample,Y,Sample collection error,Erreur de prélèvement
+Labeling error,nce.type.labelingError,Sample,Y,Labeling error,Erreur d'étiquetage
+Transport issue,nce.type.transportIssue,Sample,Y,Transport issue,Problème de transport
+Storage error,nce.type.storageError,Sample,Y,Storage error,Erreur de stockage
+Patient ID mismatch,nce.type.patientIdMismatch,Order,Y,Patient ID mismatch,Discordance d'identité patient
+Requisition incomplete,nce.type.requisitionIncomplete,Order,Y,Requisition incomplete,Demande incomplète
+Equipment malfunction,nce.type.equipmentMalfunction,Analysis,Y,Equipment malfunction,Dysfonctionnement d'équipement
+Reagent issue,nce.type.reagentIssue,Analysis,Y,Reagent issue,Problème de réactif
+QC failure,nce.type.qcFailure,Analysis,Y,QC failure,Échec du contrôle qualité
+Procedure deviation,nce.type.procedureDeviation,Analysis,Y,Procedure deviation,Écart de procédure
+Calibration failure,nce.type.calibrationFailure,Analysis,Y,Calibration failure,Échec de calibration
+Contamination,nce.type.contamination,Analysis,Y,Contamination,Contamination
+Transcription error,nce.type.transcriptionError,Post-Analytical,Y,Transcription error,Erreur de transcription
+Report distribution error,nce.type.reportDistributionError,Post-Analytical,Y,Report distribution error,Erreur de distribution du rapport
+Critical value not reported,nce.type.criticalValueNotReported,Post-Analytical,Y,Critical value not reported,Valeur critique non signalée
+Report delay,nce.type.reportDelay,Post-Analytical,Y,Report delay,Retard de rapport
+Result interpretation error,nce.type.resultInterpretationError,Post-Analytical,Y,Result interpretation error,Erreur d'interprétation des résultats
+Documentation error,nce.type.documentationError,General,Y,Documentation error,Erreur de documentation
+Training gap,nce.type.trainingGap,General,Y,Training gap,Lacune de formation
+Communication failure,nce.type.communicationFailure,General,Y,Communication failure,Échec de communication
+Policy violation,nce.type.policyViolation,General,Y,Policy violation,Violation de politique
+Resource shortage,nce.type.resourceShortage,General,Y,Resource shortage,Pénurie de ressources
