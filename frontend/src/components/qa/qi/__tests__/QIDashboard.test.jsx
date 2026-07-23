@@ -64,6 +64,22 @@ const priorAmendment = {
   ratePercent: 0.42, // delta = -0.11% => fewer amendments, "good"
 };
 
+const currentCallback = {
+  enabled: true,
+  criticalCount: 4,
+  confirmedCount: 4,
+  compliancePercent: 100.0,
+  target: 100,
+};
+
+const priorCallback = {
+  enabled: true,
+  criticalCount: 2,
+  confirmedCount: 1,
+  compliancePercent: 50.0, // delta = +50% => higher compliance, "good"
+  target: 100,
+};
+
 // 3 critical pending (amber band) + 2 in corrective action; the rest is noise
 // the predicates must ignore.
 const nceList = [
@@ -82,15 +98,20 @@ const mockApis = ({
   tatPrior = priorSummary,
   amendCurrent = currentAmendment,
   amendPrior = priorAmendment,
+  callbackCurrent = currentCallback,
+  callbackPrior = priorCallback,
   nce = nceList,
 } = {}) => {
   let tatCall = 0;
   let amendCall = 0;
+  let callbackCall = 0;
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url.includes("/rest/reports/tat/summary")) {
       callback(tatCall++ === 0 ? tatCurrent : tatPrior);
     } else if (url.includes("/rest/reports/amendment/summary")) {
       callback(amendCall++ === 0 ? amendCurrent : amendPrior);
+    } else if (url.includes("/rest/critical-callback/summary")) {
+      callback(callbackCall++ === 0 ? callbackCurrent : callbackPrior);
     } else if (url.includes("/rest/nce/dashboard")) {
       callback(nce === null ? undefined : { nceList: nce });
     } else if (url.includes("/rest/qi-config/resolve")) {
@@ -105,17 +126,22 @@ beforeEach(() => {
 });
 
 describe("QIDashboard", () => {
-  test("renders four tiles in fixed order with a live TAT tile", async () => {
+  test("renders five tiles in fixed order with a live TAT tile", async () => {
     mockApis();
     renderPage();
 
-    const tiles = ["tat", "rejection", "amendment", "nce-pulse"].map((id) =>
-      screen.getByTestId(`qi-tile-${id}`),
-    );
+    const tiles = [
+      "tat",
+      "rejection",
+      "amendment",
+      "nce-pulse",
+      "callback",
+    ].map((id) => screen.getByTestId(`qi-tile-${id}`));
     expect(tiles[0]).toHaveTextContent("Average TAT");
     expect(tiles[1]).toHaveTextContent("Rejection Rate");
     expect(tiles[2]).toHaveTextContent("Amendment Rate");
     expect(tiles[3]).toHaveTextContent("NCE Pulse");
+    expect(tiles[4]).toHaveTextContent("Critical Callback Compliance");
 
     await waitFor(() =>
       expect(screen.getByTestId("qi-tile-tat")).toHaveTextContent("18h 47m"),
@@ -129,6 +155,7 @@ describe("QIDashboard", () => {
       "/qa/qi/tat",
       "/qa/qi/amendment",
       "/NceDashboard?severity=CRITICAL&status=Pending",
+      "/qa/qi/callback",
     ]);
   });
 
@@ -229,13 +256,14 @@ describe("QIDashboard", () => {
   test("refresh refetches every indicator and rate-limits the button", async () => {
     mockApis();
     renderPage();
-    // TAT + Amendment fire current+prior (2 each); NCE Pulse once; plus the
-    // OGC-711 enabled-config resolve for TAT/AMENDMENT/NCE (3) = 8
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(8);
+    // TAT + Amendment + Callback fire current+prior (2 each); NCE Pulse once;
+    // plus the OGC-711 enabled-config resolve for TAT/AMENDMENT/NCE/CALLBACK
+    // (4) = 11
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(11);
 
     const refresh = screen.getByTestId("qi-dashboard-refresh");
     fireEvent.click(refresh);
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(16);
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(22);
     expect(refresh).toBeDisabled();
   });
 });
