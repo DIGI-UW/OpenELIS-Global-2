@@ -6181,6 +6181,7 @@
   "qa.overview.pillar.qc.noData": "No QC data yet",
   "qa.overview.pillar.qi.text": "Avg TAT {tat}",
   "qa.overview.pillar.qi.noData": "No TAT data yet",
+  "qa.overview.pillar.qi.disabled": "Not currently tracked",
   "qa.overview.pillar.qms.text": "{critical} critical pending · {capa} in corrective action",
   "qa.overview.activity.viewAudit": "View full audit trail",
   "qa.overview.activity.empty": "No activity in the last 24 hours",
