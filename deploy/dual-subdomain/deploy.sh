@@ -98,17 +98,21 @@ docker compose -p amr -f build.docker-compose.yml \
   -f "$EDGE_DIR/deploy/dual-subdomain/amr/docker-compose.override.yml" \
   up -d --build certs db.openelis.org oe.openelis.org fhir.openelis.org frontend.openelis.org
 
-echo "[deploy] analyzers harness bootstrap (populates volume/: database.env, config, plugins)"
-cd "$ANALYZERS_DIR/projects/analyzer-harness"
-printf 'LETSENCRYPT_DOMAIN=%s\n' "$ANALYZERS_DOMAIN" > .env
-./bootstrap.sh   # harness's own setup script; its rendered proxy/nginx is unused (router owns TLS)
-
-echo "[deploy] analyzers stack build+up"
+# Build the analyzers webapp FROM SOURCE (like amr), using the harness's CI chain
+# (compose_args_ci: build.docker-compose.yml + base + ci.analyzer-harness.yml).
+# NOT the dev chain (docker-compose.dev.yml), which host-mounts a pre-built
+# target/OpenELIS-Global.war and fails ("mount dir onto file") when it's absent.
+# Run from the repo root so the ci-harness `./tools/...` build contexts resolve.
+echo "[deploy] analyzers stack build+up (build-from-source CI harness chain)"
+cd "$ANALYZERS_DIR"
+mkdir -p projects/analyzer-harness/volume/analyzer-imports
 docker compose -p analyzers \
-  -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml \
+  -f build.docker-compose.yml \
+  -f projects/analyzer-harness/docker-compose.base.yml \
+  -f .github/ci/ci.analyzer-harness.yml \
   -f "$EDGE_DIR/deploy/dual-subdomain/analyzers/docker-compose.override.yml" \
   up -d --build certs db.openelis.org oe.openelis.org fhir.openelis.org frontend.openelis.org \
-        astm-simulator openelis-analyzer-bridge virtual-serial
+        astm-simulator openelis-analyzer-bridge
 
 echo "[deploy] waiting for both webapps healthy (up to 20 min)"
 for i in \$(seq 1 120); do
@@ -130,7 +134,10 @@ _poll() {
     sleep 45
     allow_ssh_ingress >/dev/null 2>&1 || true
     out="$(remote "tail -3 '$REMOTE_LOG' 2>/dev/null; echo ---; grep -q '$DONE_MARK' '$REMOTE_LOG' && echo DONE_OK; pgrep -f oe-dual-deploy.run.sh >/dev/null && echo RUNNING || echo STOPPED" 2>/dev/null || echo SSHFAIL)"
-    printf '%s\n' "$out" | grep -vE '^(DONE_OK|RUNNING|STOPPED|SSHFAIL|---)$' | sed 's/^/   /'
+    # SSHFAIL must NOT be silently treated as "still building" — it means we lost
+    # visibility (e.g. egress-IP churn), not that the build is progressing.
+    if [ "$out" = SSHFAIL ]; then warn "SSH unreachable this round (egress IP churn?) — can't read build state; retrying"; continue; fi
+    printf '%s\n' "$out" | grep -vE '^(DONE_OK|RUNNING|STOPPED|---)$' | sed 's/^/   /'
     printf '%s' "$out" | grep -q DONE_OK && { log "runner finished"; return 0; }
     printf '%s' "$out" | grep -q STOPPED && { warn "runner stopped without success marker — inspect: ./deploy.sh connect 'tail -60 $REMOTE_LOG'"; return 1; }
     log "still building… (polling 45s, up to ${DEPLOY_TIMEOUT}s)"
