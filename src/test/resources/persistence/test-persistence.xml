@@ -188,6 +188,8 @@
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
         <!-- QI Configuration (OGC-709) -->
         <class>org.openelisglobal.qaevent.qiconfig.valueholder.QiConfig</class>
+        <!-- Critical Callback capture (OGC-714) -->
+        <class>org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback</class>
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
 
