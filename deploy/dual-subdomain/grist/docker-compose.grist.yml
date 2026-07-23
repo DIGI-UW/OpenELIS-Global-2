@@ -30,6 +30,10 @@ services:
       # router sets to the basic-auth username ($remote_user). So the htpasswd
       # username must be an email Grist knows (admin@openelis-global.org).
       - GRIST_FORWARD_AUTH_HEADER=X-Remote-User
+      # Stable boot key (login-less Grist requires a one-time /boot sign-in to
+      # bootstrap the admin). Value comes from the box-side .env, never committed.
+      # SSO (oauth2-proxy → OIDC) removes the need for this entirely.
+      - GRIST_BOOT_KEY=${GRIST_BOOT_KEY:-}
       # Trust the umbrella router's forwarded proto so Grist builds https URLs.
       - GRIST_FORWARD_URL_HOST=1
     volumes:
