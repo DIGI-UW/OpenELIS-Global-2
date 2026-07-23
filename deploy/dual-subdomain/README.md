@@ -48,15 +48,44 @@ subnets** (`amr`=172.24, `analyzers`=172.25; both bases pin 172.20), and
 ```bash
 cp .env.example .env      # fill in domains, email, branches (host values pre-filled)
 
-./deploy.sh configure     # install Docker/git, make /opt/oe-{edge,amr,analyzers}, renew cron
+./deploy.sh configure     # install Docker/git, install renew cron
 ./deploy.sh deploy --yes  # build + bring up router + both stacks on self-signed (detached, ~20-40 min)
 # → point DNS: amr AND analyzers A-records → the host EIP (both share one IP)
 ./deploy.sh certs         # issue Let's Encrypt for both once DNS resolves
+./deploy.sh seed          # seed reviewable demo data on both instances
 ./deploy.sh status        # instance + both HTTPS codes + container states
 ```
 
 `configure` + `deploy` need no DNS — the stacks come up on self-signed and are
 fully verifiable via Host-header curl. Only `certs` requires DNS (ACME HTTP-01).
+
+Every command above runs over **SSM** (`aws ssm send-command`), not SSH — the
+box needs no inbound SSH rule for any of this, only a live `aws` session.
+`./deploy.sh connect` is the one SSH-based command (an interactive shell for a
+human), and needs your current IP in the SG (handled automatically, idempotent).
+
+### Seed data (`./deploy.sh seed`)
+
+Fresh instances come up with **zero demo data** — the Docker containers and
+routes are real, but there's nothing to look at until you seed:
+
+- **analyzers** — the harness's own `seed-analyzers.sh`, unmodified: 9 analyzers
+  (GeneXpert ASTM, BC-5380/BS-200 HL7, 6 FILE) with mock networks wired to the bridge.
+- **amr** — `scripts/seed-microbiology.sh`, which reuses the exact SQL from the
+  PR's own test fixture (`seedMicrobiologyWorklistCase` in
+  `frontend/playwright/helpers/seed-microbiology-data.ts`) run directly via
+  `psql` rather than through the full Playwright/browser toolchain: a
+  bacteriology case + a sibling TB case sharing one specimen, plus AST reference
+  data (breakpoint standard, antibiotic, panel). Left at `stage=RECEIVED` with no
+  isolates/AST readings on purpose — a reviewer exercising the case-detail
+  workflow should drive those steps themselves.
+
+**Known gap, not something this script should patch around:** neither
+`/MicrobiologyWorklist` nor `/MicrobiologyCaseView/:caseId` has a sidenav entry
+on the OGC-782 branch — they're real, working, unlinked routes (no `role=""`
+gate either — any authenticated user can reach them). `./deploy.sh seed` prints
+the direct worklist URL; reviewers need it, since clicking around the app alone
+won't surface these pages.
 
 ## Gotchas (learned from this repo)
 
