@@ -18,9 +18,11 @@ import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.reports.amendment.bean.AmendmentBreakdownResponse;
 import org.openelisglobal.reports.amendment.bean.AmendmentDetailResponse;
 import org.openelisglobal.reports.amendment.bean.AmendmentEvent;
 import org.openelisglobal.reports.amendment.bean.AmendmentSummaryResponse;
+import org.openelisglobal.reports.amendment.bean.AmendmentTrendResponse;
 import org.openelisglobal.reports.amendment.service.AmendmentReportService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -149,5 +151,71 @@ public class AmendmentReportServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(0, summary.getAmendedCount());
         assertEquals(0, summary.getReleasedCount());
         assertNull(summary.getRatePercent());
+    }
+
+    private static AmendmentTrendResponse.TrendPoint pointFor(AmendmentTrendResponse trend, String period) {
+        return trend.getPoints().stream().filter(p -> period.equals(p.getPeriod())).findFirst().orElse(null);
+    }
+
+    @Test
+    public void trend_bucketsReleasesAndAmendmentsByPeriod() {
+        // Amendment note lands "now", releases are 2025-07-07 — two buckets
+        amendResult("4", "15.9");
+        writeCorrectedNote("2");
+
+        AmendmentTrendResponse trend = amendmentReportService.getTrend(WINDOW_FROM, LocalDate.now(), "MONTHLY");
+
+        AmendmentTrendResponse.TrendPoint releaseMonth = pointFor(trend, "2025-07");
+        assertNotNull(releaseMonth);
+        assertEquals(0, releaseMonth.getAmendedCount());
+        assertEquals(2, releaseMonth.getReleasedCount());
+        assertEquals(0.0, releaseMonth.getRatePercent(), 0.001);
+
+        LocalDate now = LocalDate.now();
+        AmendmentTrendResponse.TrendPoint noteMonth = pointFor(trend,
+                now.getYear() + "-" + String.format("%02d", now.getMonthValue()));
+        assertNotNull("amendment must appear in a bucket even with no releases there", noteMonth);
+        assertEquals(1, noteMonth.getAmendedCount());
+        assertEquals(0, noteMonth.getReleasedCount());
+        assertNull(noteMonth.getRatePercent());
+    }
+
+    @Test
+    public void trend_periodKeyFormats() {
+        // Release-only window: one bucket per interval, key format per convention
+        AmendmentTrendResponse daily = amendmentReportService.getTrend(WINDOW_FROM, RELEASE_ONLY_TO, "DAILY");
+        assertEquals(1, daily.getPoints().size());
+        assertEquals("2025-07-07", daily.getPoints().get(0).getPeriod());
+        assertEquals(2, daily.getPoints().get(0).getReleasedCount());
+
+        AmendmentTrendResponse weekly = amendmentReportService.getTrend(WINDOW_FROM, RELEASE_ONLY_TO, "WEEKLY");
+        assertEquals(1, weekly.getPoints().size());
+        assertEquals("2025-W28", weekly.getPoints().get(0).getPeriod());
+
+        AmendmentTrendResponse monthly = amendmentReportService.getTrend(WINDOW_FROM, RELEASE_ONLY_TO, "MONTHLY");
+        assertEquals(1, monthly.getPoints().size());
+        assertEquals("2025-07", monthly.getPoints().get(0).getPeriod());
+    }
+
+    @Test
+    public void breakdown_groupsByTestAndOmitsUnamendedTests() {
+        amendResult("4", "15.9");
+        writeCorrectedNote("2");
+
+        AmendmentBreakdownResponse breakdown = amendmentReportService.getBreakdown(WINDOW_FROM, LocalDate.now());
+
+        assertEquals("only the amended test should be listed", 1, breakdown.getRows().size());
+        AmendmentBreakdownResponse.BreakdownRow row = breakdown.getRows().get(0);
+        assertEquals("Urinalysis", row.getTestName());
+        assertEquals(1, row.getAmendedCount());
+        assertEquals(1, row.getReleasedCount());
+        assertEquals(100.0, row.getRatePercent(), 0.001);
+    }
+
+    @Test
+    public void breakdown_emptyWindow_returnsNoRows() {
+        AmendmentBreakdownResponse breakdown = amendmentReportService.getBreakdown(LocalDate.of(2024, 1, 1),
+                LocalDate.of(2024, 1, 31));
+        assertTrue(breakdown.getRows().isEmpty());
     }
 }
