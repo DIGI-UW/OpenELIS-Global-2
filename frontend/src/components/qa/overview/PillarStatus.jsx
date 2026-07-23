@@ -114,7 +114,7 @@ const PillarStatus = () => {
   // OGC-711: the QI pillar is sourced from the TAT indicator, so disabling TAT
   // must stop it lighting the chip. (QC/EQA/QMS are other pillars — not gated on
   // a QI indicator's toggle.)
-  const isEnabled = useQiEnabled(["TAT"]);
+  const { isEnabled } = useQiEnabled(["TAT"]);
   const tatEnabled = isEnabled("TAT");
 
   useEffect(() => {

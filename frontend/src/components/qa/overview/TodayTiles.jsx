@@ -13,7 +13,7 @@ const GATED_INDICATORS = ["TAT", "AMENDMENT", "NCE"];
 const TodayTiles = () => {
   const intl = useIntl();
   const title = intl.formatMessage({ id: "qa.overview.section.today" });
-  const isEnabled = useQiEnabled(GATED_INDICATORS);
+  const { isEnabled } = useQiEnabled(GATED_INDICATORS);
   return (
     <section className="qa-overview-section" aria-label={title}>
       <div className="qa-sec-head">

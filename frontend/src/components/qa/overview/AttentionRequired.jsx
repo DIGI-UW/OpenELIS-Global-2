@@ -4,7 +4,7 @@ import { useHistory } from "react-router-dom";
 import { CheckmarkOutline } from "@carbon/icons-react";
 import ComingSoon from "./ComingSoon";
 import QAEmptyState from "../common/QAEmptyState";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import useQiEnabled from "../qi/useQiEnabled";
 import {
   NCE_DRILL_URL,
   countCriticalPending,
@@ -45,17 +45,13 @@ const AttentionRequired = () => {
   const [nceList, setNceList] = useState();
   const [summary, setSummary] = useState();
   // OGC-711: hide the critical-NCE row when the NCE indicator is disabled.
-  // Fail-open — default true until/unless resolve says enabled === false.
-  const [nceEnabled, setNceEnabled] = useState(true);
+  const { isEnabled } = useQiEnabled(["NCE"]);
+  const nceEnabled = isEnabled("NCE");
 
   useEffect(() => {
     let mounted = true;
     fetchNceList((list) => mounted && setNceList(list));
     fetchOverviewSummary((data) => mounted && setSummary(data));
-    getFromOpenElisServer(
-      "/rest/qi-config/resolve?indicator=NCE",
-      (res) => mounted && res && setNceEnabled(res.enabled !== false),
-    );
     return () => {
       mounted = false;
     };
