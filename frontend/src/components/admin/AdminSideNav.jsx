@@ -34,6 +34,7 @@ import {
   SideNavMenuItem,
 } from "@carbon/react";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
+import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
 
 const getAdminBasePath = (pathname) =>
   pathname.startsWith("/admin") ? "/admin" : "/MasterListsPage";
@@ -57,6 +58,15 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const editorMatch = location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
   const editorTestId = editorMatch ? editorMatch[1] : null;
 
+  // Sample Type editor context: /SampleTypeManagement/:sampleTypeId/:section?
+  // The plain list URL (no trailing id) leaves this null.
+  const sampleTypeEditorMatch = location.pathname.match(
+    /\/SampleTypeManagement\/([^/]+)/,
+  );
+  const editorSampleTypeId = sampleTypeEditorMatch
+    ? sampleTypeEditorMatch[1]
+    : null;
+
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
   useEffect(() => {
@@ -79,6 +89,42 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   }, [editorTestId]);
   const editorTestName =
     editorTest.id === editorTestId ? editorTest.name : null;
+
+  // Sample type name for the sidenav helper caption. "new" is create-in-place.
+  const [editorSampleType, setEditorSampleType] = useState({
+    id: null,
+    name: null,
+  });
+  useEffect(() => {
+    if (!editorSampleTypeId || editorSampleTypeId === "new") {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      "/rest/sample-types",
+      (res) => {
+        const list =
+          res && res.success && Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res)
+              ? res
+              : [];
+        const match = list.find(
+          (item) => String(item.id) === String(editorSampleTypeId),
+        );
+        setEditorSampleType({
+          id: editorSampleTypeId,
+          name: match ? match.name || match.description || null : null,
+        });
+      },
+      controller.signal,
+    );
+    return () => {
+      controller.abort();
+    };
+  }, [editorSampleTypeId]);
+  const editorSampleTypeName =
+    editorSampleType.id === editorSampleTypeId ? editorSampleType.name : null;
 
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
@@ -123,13 +169,70 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       {/* key flips with editor context to force a remount — Carbon SideNavMenu
           reads defaultExpanded only at mount. */}
       <SideNavMenu
-        key={editorTestId ? "testcatalog-editor" : "testcatalog"}
+        key={
+          editorTestId
+            ? "testcatalog-editor"
+            : editorSampleTypeId
+              ? "sampletype-editor"
+              : "testcatalog"
+        }
         data-cy="testCatalogManagement"
         renderIcon={Catalog}
-        isActive={!!editorTestId}
-        defaultExpanded={!!editorTestId}
+        isActive={!!editorTestId || !!editorSampleTypeId}
+        defaultExpanded={!!editorTestId || !!editorSampleTypeId}
         title={intl.formatMessage({ id: "sidenav.label.admin.testCatalog" })}
       >
+        <SideNavMenuItem
+          data-cy="sampleTypeManagement"
+          {...navProps(`${path}/SampleTypeManagement`)}
+        >
+          <FormattedMessage
+            id={
+              editorSampleTypeId
+                ? "sidenav.label.admin.sampleType.backToList"
+                : "sidenav.label.admin.sampleTypeManagement"
+            }
+          />
+        </SideNavMenuItem>
+        {editorSampleTypeId && (
+          <>
+            <li
+              id="sampleTypeSectionsHelp"
+              data-cy="sampleTypeSectionsContext"
+              className="adminSideNav__sectionsContext"
+              style={{
+                padding: "0.25rem 1rem 0.5rem",
+                fontSize: "0.75rem",
+                lineHeight: 1.3,
+                color: "var(--cds-text-secondary, #6f6f6f)",
+              }}
+            >
+              {editorSampleTypeId === "new" ? (
+                <FormattedMessage id="sidenav.label.admin.sampleType.addingNew" />
+              ) : editorSampleTypeName ? (
+                <FormattedMessage
+                  id="sidenav.label.admin.sampleType.editing"
+                  values={{ name: editorSampleTypeName }}
+                />
+              ) : (
+                <FormattedMessage id="sidenav.label.admin.sampleType.editingGeneric" />
+              )}
+            </li>
+            {SAMPLE_TYPE_SECTIONS.map((sectionKey) => (
+              <SideNavMenuItem
+                key={sectionKey}
+                data-cy={`sampleType-section-${sectionKey}`}
+                {...navProps(
+                  `${path}/SampleTypeManagement/${editorSampleTypeId}/${sectionKey}`,
+                )}
+              >
+                <FormattedMessage
+                  id={`label.sampleType.section.${sectionKey}`}
+                />
+              </SideNavMenuItem>
+            ))}
+          </>
+        )}
         <SideNavMenuItem
           data-cy="testCatalogList"
           {...navProps(`${path}/TestCatalogList`)}

@@ -29,6 +29,10 @@
             <column name="LOCAL_ABBREV" length="10" unique="true" />
         </property>
 
+        <property name="whonetCode" type="java.lang.String">
+            <column name="WHONET_CODE" length="5" />
+        </property>
+
         <property name="active" type="java.lang.Boolean">
             <column name="is_active" length="1" />
         </property>

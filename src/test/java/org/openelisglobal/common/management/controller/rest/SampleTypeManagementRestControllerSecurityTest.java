@@ -7,7 +7,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.Test;
 import org.openelisglobal.login.dao.UserModuleService;
+import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.testconfiguration.service.SampleTypeCreateService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.view.PageBuilderService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 @WebAppConfiguration
@@ -24,20 +28,21 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
     @Test
     public void testSampleTypeManagement_WithoutAuthentication_Returns401() throws Exception {
-        mockMvc.perform(get("/rest/SampleTypeManagement").contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/rest/sample-types").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     public void testSampleTypeManagement_NonAdminRole_Returns403() throws Exception {
-        mockMvc.perform(get("/rest/SampleTypeManagement").with(user("results").roles("RESULTS"))
+        mockMvc.perform(get("/rest/sample-types").with(user("results").roles("RESULTS"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
     }
 
     @Test
     public void testSampleTypeManagement_AdminRole_Returns200() throws Exception {
-        mockMvc.perform(get("/rest/SampleTypeManagement").with(user("admin").roles("ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+        mockMvc.perform(
+                get("/rest/sample-types").with(user("admin").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
     }
 
     @Configuration
@@ -55,8 +60,29 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
         }
 
         @Bean
-        SampleTypeManagementRestController sampleTypeManagementRestController() {
-            return new SampleTypeManagementRestController();
+        TypeOfSampleService typeOfSampleService() {
+            return mock(TypeOfSampleService.class);
+        }
+
+        @Bean
+        SampleTypeCreateService sampleTypeCreateService() {
+            return mock(SampleTypeCreateService.class);
+        }
+
+        @Bean
+        SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService() {
+            return mock(SampleTypeTerminologyMappingService.class);
+        }
+
+        @Bean
+        SampleTypeManagementRestController sampleTypeManagementRestController(TypeOfSampleService typeOfSampleService,
+                SampleTypeCreateService sampleTypeCreateService,
+                SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService) {
+            SampleTypeManagementRestController controller = new SampleTypeManagementRestController();
+            ReflectionTestUtils.setField(controller, "typeOfSampleService", typeOfSampleService);
+            ReflectionTestUtils.setField(controller, "sampleTypeCreateService", sampleTypeCreateService);
+            ReflectionTestUtils.setField(controller, "terminologyService", sampleTypeTerminologyMappingService);
+            return controller;
         }
 
         @Bean

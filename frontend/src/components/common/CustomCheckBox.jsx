@@ -13,6 +13,7 @@ const CustomCheckBox = (props) => {
       <Checkbox
         labelText={props.label}
         id={props.id}
+        checked={props.checked}
         onChange={(e) => handleCheckBox(e)}
       />
     </>

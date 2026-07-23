@@ -162,4 +162,10 @@
   <!-- OGC-1020 / R1: unified /Results worklist — lab-unit domain + route flag -->
   <include relativeToChangelogFile="true" file="059-results-r1-unified-worklist.xml"/>
 
+  <!-- Sample Type Management: persist WHONET code on TypeOfSample -->
+  <include relativeToChangelogFile="true" file="060-add-whonet-code-to-type-of-sample.xml"/>
+
+  <!-- Sample Type Management: persist standard terminology mappings per sample type -->
+  <include relativeToChangelogFile="true" file="061-sample-type-terminology-mapping.xml"/>
+
 </databaseChangeLog>
