@@ -34,6 +34,7 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class TestAddRestController extends BaseRestController {
 
     @Autowired
@@ -198,7 +200,8 @@ public class TestAddRestController extends BaseRestController {
         String currentTestId = null;
         String dictionaryIdGroup = null;
         for (TestResult testResult : testResults) {
-            if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())) {
+            if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())
+                    && testResult.getValue() != null && !testResult.getValue().trim().isEmpty()) {
                 if (testResult.getTest().getId().equals(currentTestId)) {
                     dictionaryIdGroup += "," + testResult.getValue();
                 } else {

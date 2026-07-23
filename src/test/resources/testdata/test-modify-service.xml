@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <localization id="1" description="CBC test name"
+        lastupdated="2025-01-01 00:00:00" />
+    <localization id="2" description="CBC reporting name"
+        lastupdated="2025-01-01 00:00:00" />
+    <localization id="3" description="Hematology section name"
+        lastupdated="2025-01-01 00:00:00" />
+    <localization id="4" description="Inactive section name"
+        lastupdated="2025-01-01 00:00:00" />
+    <localization id="5" description="Blood sample type name"
+        lastupdated="2025-01-01 00:00:00" />
+    <localization id="6" description="Urine sample type name"
+        lastupdated="2025-01-01 00:00:00" />
+    <localization id="7" description="CBC Panel name"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Complete Blood Count"
+        last_updated="2025-01-01 00:00:00" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Numération Formule Sanguine"
+        last_updated="2025-01-01 00:00:00" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="CBC Report" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Rapport NFS" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="Hematology" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Hématologie" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="Inactive Section"
+        last_updated="2025-01-01 00:00:00" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="Section Inactive"
+        last_updated="2025-01-01 00:00:00" />
+    <localization_value id="9" localization_id="5"
+        locale="en" value="Blood" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="10" localization_id="5"
+        locale="fr" value="Sang" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="11" localization_id="6"
+        locale="en" value="Urine" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="12" localization_id="6"
+        locale="fr" value="Urine" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="13" localization_id="7"
+        locale="en" value="CBC Panel" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="14" localization_id="7"
+        locale="fr" value="Panel NFS" last_updated="2025-01-01 00:00:00" />
+
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <unit_of_measure id="1" name="mg/dL"
+        description="Milligrams per deciliter" />
+    <unit_of_measure id="2" name="g/L"
+        description="Grams per liter" />
+
+    <organization id="10" lastupdated="2024-01-01 00:00:00.0"
+        name="Test Lab" city="Kampala" zip_code="00256"
+        mls_sentinel_lab_flag="Y" short_name="TL" multiple_unit="Main"
+        street_address="1 Lab Rd" state="KL"
+        internet_address="www.testlab.org" clia_num="CLIA99999"
+        pws_id="PWS999" mls_lab_flag="Y" is_active="Y" local_abbrev="T"
+        code="TL001" />
+
+    <test_section id="1" name="Hematology"
+        description="Blood cell analysis" org_id="10" is_external="N"
+        lastupdated="2025-01-01 00:00:00.0" sort_order="1" is_active="Y"
+        name_localization_id="3" display_key="section.hematology" />
+
+    <test_section id="2" name="InactiveSection"
+        description="Currently inactive lab section" org_id="10"
+        is_external="N" lastupdated="2025-01-01 00:00:00.0" sort_order="2"
+        is_active="N" name_localization_id="4" display_key="section.inactive" />
+
+    <test id="1" description="Blood Test" loinc="11111"
+        reporting_description="CBC" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-01-01 00:00:00" active_end="2025-12-31 00:00:00"
+        is_reportable="N" time_holding="30" time_wait="10"
+        time_ta_average="60" time_ta_warning="90" time_ta_max="120"
+        label_qty="1" lastupdated="2025-01-01 00:00:00" local_code="CBC"
+        sort_order="1" name="Complete Blood Count" orderable="true"
+        guid="modify-test-guid-001" name_localization_id="1"
+        reporting_name_localization_id="2" test_section_id="1" uom_id="1"
+        notify_results="false" in_lab_only="false"
+        antimicrobial_resistance="false" />
+
+    <type_of_sample id="100" description="whole blood"
+        domain="H" lastupdated="2025-01-01 00:00:00" local_abbrev="blood"
+        is_active="true" sort_order="1" name_localization_id="5"
+        display_key="sample.type.blood" />
+
+    <type_of_sample id="200" description="urine" domain="H"
+        lastupdated="2025-01-01 00:00:00" local_abbrev="urine"
+        is_active="true" sort_order="2" name_localization_id="6"
+        display_key="sample.type.urine" />
+
+    <sampletype_test id="1" sample_type_id="100"
+        test_id="1" is_panel="false" />
+
+    <panel id="1" name="CBC Panel"
+        description="Complete blood count panel" is_active="Y"
+        name_localization_id="7" loinc="11001" />
+
+    <panel_item id="1" panel_id="1" test_id="1" sort_order="1"
+        test_local_abbrev="CBC" method_name="manual"
+        lastupdated="2025-01-01 00:00:00" test_name="Complete Blood Count" />
+
+    <type_of_test_result id="1" description="Numeric"
+        test_result_type="N" hl7_value="NM" lastupdated="2023-11-01 00:00:00" />
+
+    <test_result id="1" test_id="1" tst_rslt_type="N"
+        value="7.5" significant_digits="2" sort_order="1" is_active="true"
+        is_quantifiable="false" is_normal="true"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <result_limits id="1" test_id="1" test_result_type_id="1"
+        min_age="0" max_age="120" gender="U" low_normal="4.0"
+        high_normal="11.0" low_valid="1.0" high_valid="20.0"
+        low_reporting_range="1.0" high_reporting_range="20.0"
+        lastupdated="2025-01-01 00:00:00" always_validate="false" />
+
+</dataset>

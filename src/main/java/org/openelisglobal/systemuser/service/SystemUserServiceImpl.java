@@ -20,6 +20,7 @@ public class SystemUserServiceImpl extends AuditableBaseObjectServiceImpl<System
 
     SystemUserServiceImpl() {
         super(SystemUser.class);
+        this.auditTrailLog = true;
     }
 
     @Override

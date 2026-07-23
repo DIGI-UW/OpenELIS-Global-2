@@ -20,7 +20,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CustomFieldType;
-import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.UnitMapping;
@@ -59,7 +58,7 @@ public class HibernateMappingValidationTest {
         // AnalyzerConfiguration removed: merged into Analyzer entity
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
-        configuration.addAnnotatedClass(FileImportConfiguration.class);
+        // FileImportConfiguration removed: merged into Analyzer entity
         configuration.addAnnotatedClass(ValidationRuleConfiguration.class);
         configuration.addAnnotatedClass(SerialPortConfiguration.class); //
         configuration.addAnnotatedClass(QualitativeResultMapping.class); // Migrated to annotations
@@ -110,8 +109,7 @@ public class HibernateMappingValidationTest {
                 sessionFactory.getMetamodel().entity(ValidationRuleConfiguration.class));
         assertNotNull("SerialPortConfiguration should be registered",
                 sessionFactory.getMetamodel().entity(SerialPortConfiguration.class)); //
-        assertNotNull("FileImportConfiguration should be registered",
-                sessionFactory.getMetamodel().entity(FileImportConfiguration.class)); //
+        // FileImportConfiguration removed: merged into Analyzer entity
     }
 
     /**
@@ -126,7 +124,7 @@ public class HibernateMappingValidationTest {
         Class<?>[] entities = { Analyzer.class, AnalyzerType.class, AnalyzerField.class, AnalyzerResults.class,
                 AnalyzerTestMapping.class, AnalyzerFieldMapping.class, QualitativeResultMapping.class,
                 UnitMapping.class, AnalyzerError.class, CustomFieldType.class, ValidationRuleConfiguration.class,
-                SerialPortConfiguration.class, FileImportConfiguration.class };
+                SerialPortConfiguration.class };
 
         for (Class<?> entityClass : entities) {
             // Check each entity independently for getter conflicts

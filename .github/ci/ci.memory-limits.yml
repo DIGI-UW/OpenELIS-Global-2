@@ -1,0 +1,49 @@
+# Docker Compose override: CI memory limits
+# Prevents uncapped containers from starving the Chromium browser during E2E tests.
+# ubuntu-latest public runners have 16 GB RAM.
+#
+# Budget (core):  2560 + 2048 + 1536 + 256 + 128 + 128 = 6656M
+# Budget (harness): +512 + 256 = 768M (ci.memory-limits-harness.yml)
+# Total max: 7424M → leaves ~8.5 GB for Chromium + OS + swap
+#
+# NOTE: We only set container memory limits here — NOT JVM heap flags.
+# The base compose sets CATALINA_OPTS and JAVA_OPTS with SSL/datasource props;
+# overriding those here would wipe critical config. Java 11+ respects cgroup
+# limits via -XX:+UseContainerSupport (on by default) and auto-sizes the heap.
+services:
+  oe.openelis.org:
+    deploy:
+      resources:
+        limits:
+          memory: 2560M
+
+  fhir.openelis.org:
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+
+  db.openelis.org:
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+
+  frontend.openelis.org:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  proxy:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  certs:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+

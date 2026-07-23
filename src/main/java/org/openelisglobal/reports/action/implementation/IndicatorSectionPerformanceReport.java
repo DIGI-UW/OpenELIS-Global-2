@@ -124,9 +124,8 @@ public class IndicatorSectionPerformanceReport extends RetroCIReport implements 
     }
 
     private void addTestItems() {
-        List<Integer> includedStatusList = new ArrayList<>();
-        includedStatusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
+        List<String> includedStatusList = new ArrayList<>();
+        includedStatusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
 
         List<Analysis> bioAnalysisList = analysisService.getAllAnalysisByTestSectionAndStatus(BIOCHEMISTRY_SECTION_ID,
                 includedStatusList, true);
@@ -147,9 +146,9 @@ public class IndicatorSectionPerformanceReport extends RetroCIReport implements 
     }
 
     private void addValidationItems() {
-        List<Integer> includedStatusList = new ArrayList<>();
-        includedStatusList.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+        List<String> includedStatusList = new ArrayList<>();
+        includedStatusList
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
 
         List<Analysis> bioAnalysisList = analysisService.getAllAnalysisByTestSectionAndStatus(BIOCHEMISTRY_SECTION_ID,
                 includedStatusList, true);

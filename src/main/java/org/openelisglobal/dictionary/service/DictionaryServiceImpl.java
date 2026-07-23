@@ -29,6 +29,7 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
 
     DictionaryServiceImpl() {
         super(Dictionary.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -73,6 +74,7 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
     @Transactional
     public void delete(Dictionary dictionary) {
         Dictionary oldData = get(dictionary.getId());
+        getBaseObjectDAO().evict(oldData);
         oldData.setIsActive(IActionConstants.NO);
         oldData.setSysUserId(dictionary.getSysUserId());
         updateDelete(oldData);
@@ -187,6 +189,18 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
         Map<String, Object> properties = new HashMap<>();
         properties.put("dictEntry", dictionaryName);
         properties.put("dictionaryCategory.description", categoryDescription);
+        return getMatch(properties).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Dictionary getDictionaryEntryByNameAndCategoryName(String dictionaryName, String categoryName) {
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("dictEntry", dictionaryName);
+        // The DB column is dictionary_category.NAME but the JPA attribute on
+        // DictionaryCategory is `categoryName` (see @Column(name = "NAME") on
+        // private String categoryName).
+        properties.put("dictionaryCategory.categoryName", categoryName);
         return getMatch(properties).orElse(null);
     }
 

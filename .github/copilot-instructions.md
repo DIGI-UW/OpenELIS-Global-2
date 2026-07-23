@@ -215,9 +215,11 @@ GOOD:
 ### VII. Internationalization first (frontend)
 
 - No hardcoded user-facing strings. Use React Intl and add message IDs to
-  `frontend/src/languages/{locale}.json`.
-- Minimum expectation for new UI text: provide at least **en + fr** (per project
-  guidance).
+  `frontend/src/languages/en.json` ONLY.
+- Do NOT edit non-English locale files (`fr.json`, `es.json`, etc.) —
+  translations are managed on
+  [Transifex](https://explore.transifex.com/openmrs/openelis-1/) and pulled
+  automatically. A CI check blocks PRs that modify non-English locale files.
 
 **Examples**
 
@@ -297,7 +299,8 @@ Flag changes that:
 ### Frontend (React 17 + Carbon + React Intl)
 
 - For new components/logic, ensure tests exist where appropriate (Jest/RTL).
-- Verify no hardcoded UI strings; message IDs added to language JSON files.
+- Verify no hardcoded UI strings; message IDs added to `en.json` only (Transifex
+  handles other locales).
 
 ### Cypress E2E (full chain, real backend + DB)
 

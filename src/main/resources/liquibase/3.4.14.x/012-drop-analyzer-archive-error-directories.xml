@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="012-drop-analyzer-archive-error-directories" author="pmanko">
+        <comment>Drop archive_directory and error_directory columns from the analyzer
+        table. These were added in 011-complete-file-config-unification as part of
+        unifying file_import_configuration onto the analyzer entity, but the analyzer
+        bridge's file-handling flow no longer uses them — it is strictly read-only with
+        respect to watched directories and tracks all processing state in a local
+        SQLite FileStateStore instead (DIGI-UW/openelis-analyzer-bridge#34, plan
+        mellow-honking-cascade Phase 1).
+
+        Direct drop (no expand/contract window) because Madagascar UAT has no existing
+        analyzer rows depending on these columns, so rollback cost is acceptable.
+        If rollback is needed after this ships, restore from DB backup — there is no
+        in-code path to restore the columns without losing data.</comment>
+
+        <dropColumn tableName="analyzer" columnName="archive_directory"/>
+        <dropColumn tableName="analyzer" columnName="error_directory"/>
+    </changeSet>
+
+</databaseChangeLog>

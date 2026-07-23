@@ -1,3 +1,11 @@
+> **STATUS: Historical (bannered 2026-04-18)** — verification steps below
+> reference `load-analyzer-test-data.sh --dataset-011` and fixed-IP mock setup.
+> Current verification path:
+>
+> - **`projects/analyzer-harness/README.md`**
+> - **`projects/analyzer-harness/ci-parity-test.sh`**
+> - **`projects/analyzer-harness/seed-analyzers.sh`**
+
 # Madagascar Analyzer Fixtures - Verification Guide
 
 **Version:** 1.0.0  
@@ -27,11 +35,14 @@ Dashboard.
 ```bash
 cd /home/ubuntu/OpenELIS-Global-2
 
-# Start OpenELIS with analyzer infrastructure (mock server + ASTM bridge)
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up -d
+# Start OpenELIS with analyzer harness (mock server + ASTM bridge + virtual serial).
+# Use a subshell so we return to repo root afterward for the follow-up commands.
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d)
 
-# Wait for services to be ready (30-60 seconds)
-docker compose -f dev.docker-compose.yml logs -f oe.openelis.org | grep "Started"
+# Wait for services to be ready (30-60 seconds). The harness stack defines
+# `docker-compose.dev.yml` inside projects/analyzer-harness — reference it
+# there for the logs tail.
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml logs -f oe.openelis.org | grep "Started")
 ```
 
 **Expected Output:** OpenELIS service logs showing "Started" message

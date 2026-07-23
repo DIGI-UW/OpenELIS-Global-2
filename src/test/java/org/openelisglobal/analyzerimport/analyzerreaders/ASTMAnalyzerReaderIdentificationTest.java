@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -12,6 +13,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Integration tests for ASTMAnalyzerReader's tiered analyzer identification.
@@ -24,6 +26,9 @@ public class ASTMAnalyzerReaderIdentificationTest extends BaseWebContextSensitiv
     @Autowired
     private AnalyzerService analyzerService;
 
+    @Autowired
+    private DataSource dataSource;
+
     private ASTMAnalyzerReader reader;
     private Analyzer testAnalyzer;
 
@@ -35,6 +40,12 @@ public class ASTMAnalyzerReaderIdentificationTest extends BaseWebContextSensitiv
     public void setUp() throws Exception {
         super.setUp();
         reader = new ASTMAnalyzerReader();
+
+        // Resync analyzer_seq — other tests may leave rows via NOT_SUPPORTED
+        // propagation
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute(
+                "SELECT setval('clinlims.analyzer_seq', CAST(COALESCE((SELECT MAX(id) FROM clinlims.analyzer), 0) + 1 AS BIGINT), false)");
 
         // Create and save an analyzer with IP+port (no type required).
         // Use 192.0.2.x (RFC 5737 TEST-NET) to avoid fixture collisions in CI.

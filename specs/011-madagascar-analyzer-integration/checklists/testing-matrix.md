@@ -47,7 +47,7 @@ each protocol/transport combination.
 
 ```bash
 # Start OpenELIS + mock server
-docker compose -f dev.docker-compose.yml -f docker-compose.analyzer-test.yml up -d
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d)
 
 # Load Feature 011 fixtures
 ./src/test/resources/load-analyzer-test-data.sh --dataset-011
@@ -226,7 +226,7 @@ python server.py --generate-files /tmp/import --generate-files-analyzer genexper
 
 ```bash
 # 1. Start environment
-docker compose -f dev.docker-compose.yml -f docker-compose.analyzer-test.yml up -d
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d)
 
 # 2. Load Feature 011 fixtures
 ./src/test/resources/load-analyzer-test-data.sh --dataset-011
@@ -327,7 +327,9 @@ ORDER BY id;
 
 ## Related Documentation
 
-- **Supported Analyzers Contract:** `contracts/supported-analyzers.md`
+- **Supported Analyzers (retired 2026-04-18):**
+  `.specify/plan-archive/011-supported-analyzers.md` — current truth is
+  `projects/analyzer-harness/seed-analyzers.sh`
 - **Template-Fixture Mapping:** `contracts/template-fixture-mapping.md`
 - **Testing Roadmap:** `.specify/guides/testing-roadmap.md`
 - **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md`

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="1-add-sample-shipment-referral-type" author="pkomena">
+    <preConditions onFail="MARK_RAN">
+        <sqlCheck expectedResult="0">SELECT COUNT(*) FROM referral_type WHERE name = 'Sample Shipment'</sqlCheck>
+    </preConditions>
+    <comment>Add 'Sample Shipment' referral type for shipment module</comment>
+
+    <!-- Insert the new referral type -->
+    <insert tableName="referral_type">
+      <column name="id" valueSequenceNext="referral_type_seq"/>
+      <column name="name" value="Sample Shipment"/>
+      <column name="description" value="Sample sent for testing via shipment"/>
+      <column name="display_key" value="referral.type.sampleShipment"/>
+    </insert>
+
+    <!-- Add localization base row -->
+    <insert tableName="localization">
+      <column name="id" valueSequenceNext="localization_seq"/>
+      <column name="description" value="referral type - sample shipment"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+
+    <!-- Add English translation -->
+    <insert tableName="localization_value">
+      <column name="id" valueSequenceNext="localization_value_seq"/>
+      <column name="localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE description = 'referral type - sample shipment')"/>
+      <column name="locale" value="en"/>
+      <column name="value" value="Sample Shipment"/>
+      <column name="last_updated" valueDate="now()"/>
+    </insert>
+
+    <!-- Add French translation -->
+    <insert tableName="localization_value">
+      <column name="id" valueSequenceNext="localization_value_seq"/>
+      <column name="localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE description = 'referral type - sample shipment')"/>
+      <column name="locale" value="fr"/>
+      <column name="value" value="Envoi d'échantillon"/>
+      <column name="last_updated" valueDate="now()"/>
+    </insert>
+
+    <rollback>
+        <delete tableName="localization_value">
+            <where>localization_id IN (SELECT id FROM clinlims.localization WHERE description = 'referral type - sample shipment')</where>
+        </delete>
+        <delete tableName="localization">
+            <where>description = 'referral type - sample shipment'</where>
+        </delete>
+        <delete tableName="referral_type">
+            <where>name = 'Sample Shipment'</where>
+        </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

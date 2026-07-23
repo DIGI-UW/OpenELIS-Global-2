@@ -24,6 +24,7 @@ import org.openelisglobal.testconfiguration.action.SampleTypePanel;
 import org.openelisglobal.testconfiguration.form.PanelCreateForm;
 import org.openelisglobal.testconfiguration.service.PanelCreateService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class PanelCreateRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "panelEnglishName", "panelFrenchName",

@@ -86,7 +86,7 @@ cd ..
 # E2E (Playwright) — requires analyzer harness + DATABASE_CONTAINER
 # /restart-analyzer-harness --full-reset --build  # then:
 # TEST_USER=admin TEST_PASS=adminADMIN! DATABASE_CONTAINER=analyzer-harness-db-1 \
-#   npm run pw:test -- playwright/tests/file-import-ui.spec.ts playwright/tests/file-import-results.spec.ts
+#   npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts playwright/tests/demo/harness/file-import-results.spec.ts
 
 # Hot reload
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
@@ -132,8 +132,9 @@ cd ../../..
 
 Place QS5/QS7 .xls files in `src/test/resources/testdata/quantstudio/` before
 running integration tests. Current branch Playwright coverage uses
-`frontend/playwright/tests/demo-quantstudio-file-config.spec.ts` for visible UI
-defaults and `frontend/playwright/tests/file-import-results.spec.ts` for the
+`frontend/playwright/tests/demo/harness/demo-quantstudio-file-config.spec.ts`
+for visible UI defaults and
+`frontend/playwright/tests/demo/harness/file-import-results.spec.ts` for the
 bridge-watched import path.
 
 ## M4: Wondfo CSV Profile (OGC-344)
@@ -185,7 +186,7 @@ integration tests.
 - [ ] Frontend Jest:
       `npm test -- --watchAll=false --testPathPattern="FileImport"`
 - [ ] Playwright E2E:
-      `TEST_USER=admin TEST_PASS=adminADMIN! DATABASE_CONTAINER=analyzer-harness-db-1 npm run pw:test -- playwright/tests/file-import-ui.spec.ts playwright/tests/file-import-results.spec.ts`
+      `TEST_USER=admin TEST_PASS=adminADMIN! DATABASE_CONTAINER=analyzer-harness-db-1 npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts playwright/tests/demo/harness/file-import-results.spec.ts`
 - [ ] i18n: `fileImport.format.*` and `file.import.configuration.fileFormat*`
       present in `en.json` and `fr.json`
 

@@ -1,0 +1,335 @@
+/* ReportNonConformingEvent.css - NCE Form Styles */
+
+.nce-form-container {
+  padding: 2rem;
+}
+
+.nce-form-header {
+  margin-bottom: 0.5rem;
+}
+
+.nce-form-header h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #161616;
+  margin: 0;
+}
+
+.nce-form-subtitle {
+  color: #525252;
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+}
+
+/* Form Sections */
+.nce-form-section {
+  margin-bottom: 1.5rem;
+}
+
+.nce-form-section .cds--tile {
+  padding: 1.5rem;
+}
+
+.nce-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.nce-section-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background-color: #0f62fe;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 50%;
+}
+
+.nce-section-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #161616;
+  margin: 0;
+}
+
+/* Form Grid */
+.nce-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.nce-form-grid.three-columns {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.nce-form-row {
+  margin-bottom: 1rem;
+}
+
+.nce-form-row:last-child {
+  margin-bottom: 0;
+}
+
+/* Severity Section */
+.nce-severity-section {
+  margin-top: 1.5rem;
+}
+
+.nce-severity-section > label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #161616;
+  margin-bottom: 0.75rem;
+}
+
+.nce-severity-options {
+  display: flex;
+  gap: 1rem;
+}
+
+.nce-severity-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.25rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nce-severity-card:hover {
+  border-color: #a8a8a8;
+  background-color: #f4f4f4;
+}
+
+.nce-severity-card.selected {
+  border-color: #0f62fe;
+  background-color: #edf5ff;
+}
+
+.nce-severity-card.selected.critical {
+  border-color: #da1e28;
+  background-color: #fff1f1;
+}
+
+.nce-severity-card.selected.major {
+  border-color: #ff832b;
+  background-color: #fff3e0;
+}
+
+.nce-severity-card.selected.minor {
+  border-color: #24a148;
+  background-color: #defbe6;
+}
+
+.nce-severity-indicator {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-bottom: 0.75rem;
+}
+
+.nce-severity-indicator.critical {
+  background-color: #da1e28;
+}
+
+.nce-severity-indicator.major {
+  background-color: #ff832b;
+}
+
+.nce-severity-indicator.minor {
+  background-color: #24a148;
+}
+
+.nce-severity-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.nce-severity-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #161616;
+  margin-bottom: 0.25rem;
+}
+
+.nce-severity-description {
+  font-size: 0.75rem;
+  color: #525252;
+  line-height: 1.3;
+}
+
+.nce-field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #161616;
+  margin-bottom: 0.75rem;
+}
+
+.nce-readonly-field input {
+  background-color: #f4f4f4;
+}
+
+/* Helper Text */
+.nce-helper-text {
+  font-size: 0.75rem;
+  color: #525252;
+  margin-top: 0.25rem;
+}
+
+/* Error Text */
+.nce-error-text {
+  font-size: 0.75rem;
+  color: #da1e28;
+  margin-top: 0.25rem;
+}
+
+/* Form Actions */
+.nce-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.nce-form-actions .cds--btn {
+  min-width: 120px;
+}
+
+/* Attachments Section */
+.nce-attachments-dropzone {
+  border: 2px dashed #a8a8a8;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  background-color: #f4f4f4;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nce-attachments-dropzone:hover {
+  border-color: #0f62fe;
+  background-color: #edf5ff;
+}
+
+.nce-attachments-dropzone p {
+  margin: 0;
+  color: #525252;
+  font-size: 0.875rem;
+}
+
+.nce-attachments-dropzone p:first-child {
+  font-weight: 500;
+  color: #161616;
+  margin-bottom: 0.25rem;
+}
+
+.nce-attachment-list {
+  margin-top: 1rem;
+}
+
+.nce-attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.nce-attachment-item:last-child {
+  margin-bottom: 0;
+}
+
+.nce-attachment-item span {
+  font-size: 0.875rem;
+  color: #161616;
+}
+
+/* Linked Samples Section */
+.nce-linked-samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.nce-linked-sample-tag {
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Search Section */
+.nce-search-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+.nce-search-button-col {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.25rem;
+}
+
+.nce-search-results {
+  margin-top: 1rem;
+}
+
+.nce-search-results .cds--data-table {
+  margin-bottom: 0;
+}
+
+/* Loading State */
+.nce-form-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .nce-form-container {
+    padding: 1rem;
+  }
+
+  .nce-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nce-form-grid.three-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .nce-severity-options {
+    flex-direction: column;
+  }
+
+  .nce-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .nce-form-actions .cds--btn {
+    width: 100%;
+  }
+}

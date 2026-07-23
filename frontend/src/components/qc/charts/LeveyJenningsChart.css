@@ -1,0 +1,151 @@
+/**
+ * LeveyJenningsChart Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.lj-chart-container {
+  width: 100%;
+  padding: 1rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+}
+
+.lj-chart-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+}
+
+.lj-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.lj-chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.lj-chart-legend-line {
+  width: 24px;
+  height: 2px;
+}
+
+.lj-chart-legend-line--mean {
+  background: #161616;
+}
+
+.lj-chart-legend-line--sd1 {
+  background: transparent;
+  background-image: repeating-linear-gradient(
+    to right,
+    #a8a8a8 0px,
+    #a8a8a8 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
+.lj-chart-legend-line--sd2 {
+  background: transparent;
+  background-image: repeating-linear-gradient(
+    to right,
+    #f1c21b 0px,
+    #f1c21b 8px,
+    transparent 8px,
+    transparent 12px
+  );
+}
+
+.lj-chart-legend-line--sd3 {
+  background: #da1e28;
+}
+
+/* ===========================================
+   Threshold line style differentiation
+   Carbon Charts renders <line class="threshold-line">
+   with inline style="stroke: <fillColor>".
+   Target by color using attribute selectors.
+   =========================================== */
+
+/* Reset default Carbon Charts dash pattern for all threshold lines */
+.lj-chart-container .threshold-line {
+  stroke-dasharray: none !important;
+}
+
+/* Mean line (0σ): solid black, thicker */
+.lj-chart-container line.threshold-line[style*="stroke: #161616"],
+.lj-chart-container line.threshold-line[style*="stroke: rgb(22, 22, 22)"] {
+  stroke-dasharray: none !important;
+  stroke-width: 2 !important;
+}
+
+/* ±1σ lines: dotted gray */
+.lj-chart-container line.threshold-line[style*="stroke: #a8a8a8"],
+.lj-chart-container line.threshold-line[style*="stroke: rgb(168, 168, 168)"] {
+  stroke-dasharray: 2, 4 !important;
+  stroke-width: 1 !important;
+}
+
+/* ±2σ lines: dashed yellow */
+.lj-chart-container line.threshold-line[style*="stroke: #f1c21b"],
+.lj-chart-container line.threshold-line[style*="stroke: rgb(241, 194, 27)"] {
+  stroke-dasharray: 8, 4 !important;
+  stroke-width: 1.5 !important;
+}
+
+/* ±3σ lines: solid red, thicker */
+.lj-chart-container line.threshold-line[style*="stroke: #da1e28"],
+.lj-chart-container line.threshold-line[style*="stroke: rgb(218, 30, 40)"] {
+  stroke-dasharray: none !important;
+  stroke-width: 2 !important;
+}
+
+/* Custom tooltip styles */
+.lj-tooltip {
+  padding: 0.5rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+}
+
+.lj-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.lj-tooltip-row strong {
+  color: var(--cds-text-secondary, #525252);
+  margin-right: 0.5rem;
+}
+
+.lj-tooltip-violations {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.lj-tooltip-violation-tag {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  margin: 0.125rem;
+  font-size: 0.625rem;
+  background: var(--cds-support-error, #da1e28);
+  color: white;
+  border-radius: 2px;
+}

@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.hibernate.Hibernate;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -32,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,6 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/analyzer-types")
+@PreAuthorize("hasRole('ADMIN')")
 public class AnalyzerTypeRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyzerTypeRestController.class);
@@ -116,7 +117,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getAnalyzerType(@PathVariable String id) {
         try {
-            AnalyzerType type = analyzerTypeService.get(id);
+            AnalyzerType type = analyzerTypeService.getByIdWithInitializedInstances(id);
             if (type == null) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Analyzer type not found: " + id);
@@ -258,10 +259,11 @@ public class AnalyzerTypeRestController extends BaseRestController {
             type.setActive(true);
             type.setSysUserId(getSysUserId(httpRequest));
 
-            analyzerTypeService.insert(type);
+            String createdId = analyzerTypeService.insert(type);
 
-            // Return created type
-            AnalyzerType createdType = analyzerTypeService.getAnalyzerTypeByName(name);
+            // Re-fetch with the instances collection eagerly initialized so the
+            // response builder can read its size outside the service transaction.
+            AnalyzerType createdType = analyzerTypeService.getByIdWithInitializedInstances(createdId);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(analyzerTypeToMap(createdType, false, getLoadedPluginClassNames()));
         } catch (Exception e) {
@@ -279,7 +281,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateAnalyzerType(@PathVariable String id,
             @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
         try {
-            AnalyzerType type = analyzerTypeService.get(id);
+            AnalyzerType type = analyzerTypeService.getByIdWithInitializedInstances(id);
             if (type == null) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Analyzer type not found: " + id);
@@ -333,6 +335,14 @@ public class AnalyzerTypeRestController extends BaseRestController {
 
     /**
      * Convert AnalyzerType to Map for JSON response.
+     *
+     * <p>
+     * Caller must pass an AnalyzerType whose `instances` collection has already
+     * been initialized inside a service transaction (see
+     * {@link AnalyzerTypeService#getByIdWithInitializedInstances} and
+     * {@link AnalyzerTypeService#getAllWithInitializedInstances}). Initializing
+     * here would fail with LazyInitializationException because the service
+     * transaction is already closed.
      */
     private Map<String, Object> analyzerTypeToMap(AnalyzerType type, boolean includeInstances,
             Set<String> loadedPlugins) {
@@ -346,7 +356,6 @@ public class AnalyzerTypeRestController extends BaseRestController {
         map.put("isGenericPlugin", type.isGenericPlugin());
         map.put("isActive", type.isActive());
         map.put("pluginLoaded", type.getPluginClassName() != null && loadedPlugins.contains(type.getPluginClassName()));
-        Hibernate.initialize(type.getInstances());
         map.put("instanceCount", type.getInstances().size());
 
         if (includeInstances) {

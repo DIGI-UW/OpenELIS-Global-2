@@ -111,6 +111,20 @@
         parent_result_id="301" entry_date="2023-11-16 12:00:00"
         analysis_type="CONFIRM" lastupdated="2023-12-01 12:00:00" />
 
+    <referral_reason id="1" name="Test not performed"
+        description="Test was not performed"
+        display_key="referral.reason.testNotPerformed"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_reason id="2" name="Confirmation requested"
+        description="Confirmation requested"
+        display_key="referral.reason.confirmation"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_reason id="3"
+        name="Further testing required "
+        description="Further testing required "
+        display_key="referral.reason.moreTests"
+        lastupdated="2018-02-16 20:45:59" />
+
     <referral_type id="1" name="Confirmation"
         description="Sent out to confirm result"
         display_key="referral.type.confirmation"

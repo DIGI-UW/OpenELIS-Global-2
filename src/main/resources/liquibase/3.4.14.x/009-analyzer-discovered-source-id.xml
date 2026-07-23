@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="013-009-01" author="OGC-526">
+        <comment>Add discovered_source_id column for bridge-discovered analyzer stubs</comment>
+        <addColumn tableName="analyzer" schemaName="clinlims">
+            <column name="discovered_source_id" type="VARCHAR(500)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="013-009-02" author="OGC-526">
+        <comment>Add UNREGISTERED_SOURCE to analyzer_error.error_type CHECK constraint</comment>
+        <sql>
+            ALTER TABLE clinlims.analyzer_error DROP CONSTRAINT IF EXISTS chk_error_type;
+            ALTER TABLE clinlims.analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION', 'QC_MAPPING_INCOMPLETE', 'QC_SERVICE_UNAVAILABLE', 'UNREGISTERED_SOURCE'));
+        </sql>
+    </changeSet>
+
+    <changeSet id="013-009-03" author="OGC-526">
+        <comment>UNIQUE index on discovered_source_id for race-safe idempotency</comment>
+        <createIndex tableName="analyzer" schemaName="clinlims"
+                     indexName="idx_analyzer_discovered_source_id" unique="true">
+            <column name="discovered_source_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

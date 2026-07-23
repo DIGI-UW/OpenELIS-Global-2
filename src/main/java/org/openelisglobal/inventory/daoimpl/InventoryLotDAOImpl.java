@@ -51,9 +51,9 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
             query.setParameter("itemId", itemId);
-            query.setParameter("activeStatus", LotStatus.ACTIVE.name());
-            query.setParameter("inUseStatus", LotStatus.IN_USE.name());
-            query.setParameter("passedStatus", QCStatus.PASSED.name());
+            query.setParameter("activeStatus", LotStatus.ACTIVE);
+            query.setParameter("inUseStatus", LotStatus.IN_USE);
+            query.setParameter("passedStatus", QCStatus.PASSED);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting available lots by item (FEFO)", e);
@@ -73,8 +73,8 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
                     + "ORDER BY l.expirationDate ASC NULLS LAST";
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("activeStatus", LotStatus.ACTIVE.name());
-            query.setParameter("inUseStatus", LotStatus.IN_USE.name());
+            query.setParameter("activeStatus", LotStatus.ACTIVE);
+            query.setParameter("inUseStatus", LotStatus.IN_USE);
             query.setParameter("now", now);
             query.setParameter("futureDate", futureDate);
             return query.list();
@@ -94,7 +94,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
                     + "ORDER BY l.expirationDate";
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("activeStatus", LotStatus.ACTIVE.name());
+            query.setParameter("activeStatus", LotStatus.ACTIVE);
             query.setParameter("now", now);
             return query.list();
         } catch (Exception e) {
@@ -151,7 +151,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
         try {
             String hql = "FROM InventoryLot l WHERE l.qcStatus = :qcStatus ORDER BY l.expirationDate";
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("qcStatus", qcStatus.name());
+            query.setParameter("qcStatus", qcStatus);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting lots by QC status", e);
@@ -164,7 +164,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
         try {
             String hql = "FROM InventoryLot l WHERE l.status = :status ORDER BY l.expirationDate";
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("status", status.name());
+            query.setParameter("status", status);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting lots by status", e);

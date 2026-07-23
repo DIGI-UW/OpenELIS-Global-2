@@ -3,11 +3,14 @@
 
 set -euo pipefail
 
-COMPOSE_FILES=(-f docker-compose.dev.yml -f docker-compose.analyzer-test.yml)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$HARNESS_DIR/compose-stack.sh"
+COMPOSE_FILES=($(compose_args_local false))
 
 echo "Checking strict 013 analyzer fixtures in database..."
 
-strict_count="$(docker compose "${COMPOSE_FILES[@]}" exec -T db psql -U clinlims -d clinlims -t -A -c "
+strict_count="$(docker compose "${COMPOSE_FILES[@]}" exec -T db.openelis.org psql -U clinlims -d clinlims -t -A -c "
 SELECT COUNT(*) FROM analyzer
 WHERE (id, name) IN (
   (2007, 'Mindray BC-5380'),
@@ -18,7 +21,7 @@ WHERE (id, name) IN (
 );
 ")"
 
-linked_count="$(docker compose "${COMPOSE_FILES[@]}" exec -T db psql -U clinlims -d clinlims -t -A -c "
+linked_count="$(docker compose "${COMPOSE_FILES[@]}" exec -T db.openelis.org psql -U clinlims -d clinlims -t -A -c "
 SELECT COUNT(*)
 FROM analyzer a
 JOIN analyzer_type t ON t.id = a.analyzer_type_id

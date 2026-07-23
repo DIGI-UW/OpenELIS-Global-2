@@ -55,6 +55,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     private AnalyzerPluginConfigService analyzerPluginConfigService;
 
     @Autowired
+    private AnalyzerQcRuleService analyzerQcRuleService;
+
+    @Autowired
     PluginAnalyzerService pluginAnalyzerService;
 
     @Autowired
@@ -68,6 +71,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -333,6 +337,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.ERROR_PENDING;
         case DELETED:
             return newStatus == AnalyzerStatus.INACTIVE;
+        case PENDING_REGISTRATION:
+            return newStatus == AnalyzerStatus.SETUP || newStatus == AnalyzerStatus.INACTIVE;
         default:
             return false;
         }
@@ -376,6 +382,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                 "Called for analyzer " + analyzerId + ", config keys: " + config.keySet());
 
         analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
+
+        // FR-15: Auto-create QC rules from profile configDefaults
+        createQcRulesFromProfile(analyzerId, config.get("configDefaults"), sysUserId);
 
         Object mappingsObj = config.get("default_test_mappings");
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
@@ -462,6 +471,48 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private void createQcRulesFromProfile(String analyzerId, Object configDefaultsObj, String sysUserId) {
+        if (!(configDefaultsObj instanceof Map)) {
+            return;
+        }
+        Map<String, Object> configDefaults = (Map<String, Object>) configDefaultsObj;
+        Object qcRulesObj = configDefaults.get("qcRules");
+        if (!(qcRulesObj instanceof List)) {
+            return;
+        }
+        List<Map<String, Object>> qcRules = (List<Map<String, Object>>) qcRulesObj;
+        int created = 0;
+        for (Map<String, Object> ruleMap : qcRules) {
+            try {
+                String ruleType = (String) ruleMap.get("ruleType");
+                if (ruleType == null) {
+                    continue;
+                }
+                org.openelisglobal.analyzer.valueholder.AnalyzerQcRule rule = new org.openelisglobal.analyzer.valueholder.AnalyzerQcRule();
+                rule.setRuleType(org.openelisglobal.analyzer.valueholder.AnalyzerQcRule.RuleType.valueOf(ruleType));
+                rule.setTargetField((String) ruleMap.get("targetField"));
+                rule.setOperand((String) ruleMap.get("operand"));
+                rule.setActive(ruleMap.get("isActive") == null || Boolean.TRUE.equals(ruleMap.get("isActive")));
+                Object sortOrder = ruleMap.get("sortOrder");
+                rule.setDisplayOrder(sortOrder instanceof Number ? ((Number) sortOrder).intValue() : 0);
+                if (analyzerQcRuleService.ruleExists(analyzerId, rule.getRuleType(), rule.getTargetField(),
+                        rule.getOperand())) {
+                    continue;
+                }
+                analyzerQcRuleService.createRule(analyzerId, rule, sysUserId);
+                created++;
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "createQcRulesFromProfile",
+                        "Failed to create QC rule from profile for analyzer " + analyzerId + ": " + e.getMessage());
+            }
+        }
+        if (created > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "createQcRulesFromProfile",
+                    "Auto-created " + created + " QC rules from profile for analyzer " + analyzerId);
+        }
+    }
+
     @Override
     @Transactional
     public void deleteWithDependents(Analyzer analyzer) {
@@ -499,7 +550,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         // 3. CASCADE tier — DB ON DELETE CASCADE handles config tables:
         // analyzer_field, analyzer_field_mapping, serial_port_configuration,
-        // file_import_configuration, analyzer_plugin_config,
+        // analyzer_plugin_config,
         // analyzer_pending_code, analyzer_experiment
 
         // Delete the analyzer — DB cascades config tables automatically
@@ -507,5 +558,11 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
                 "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
+        return baseObjectDAO.findByDiscoveredSourceId(discoveredSourceId);
     }
 }

@@ -1,9 +1,7 @@
 package org.openelisglobal.qaevent.daoimpl;
 
-import java.util.ArrayList;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -14,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class NceActionLogDAOImpl extends BaseDAOImpl<NceActionLog, String> implements NceActionLogDAO {
+public class NceActionLogDAOImpl extends BaseDAOImpl<NceActionLog, Integer> implements NceActionLogDAO {
 
     public NceActionLogDAOImpl() {
         super(NceActionLog.class);
@@ -22,19 +20,15 @@ public class NceActionLogDAOImpl extends BaseDAOImpl<NceActionLog, String> imple
 
     @Override
     @Transactional(readOnly = true)
-    public List<NceActionLog> getNceActionLogByNceId(String nceId) throws LIMSRuntimeException {
-        List<NceActionLog> list = new ArrayList<>();
+    public List<NceActionLog> getNceActionLogByNceId(Integer nceId) throws LIMSRuntimeException {
         try {
-            String sqlString = "from NceActionLog nc where nc.ncEventId = :param";
-
-            Query<NceActionLog> query = entityManager.unwrap(Session.class).createQuery(sqlString, NceActionLog.class);
-            query.setParameter("param", Integer.parseInt(nceId));
-
-            list = query.list();
-            return list;
-        } catch (RuntimeException exception) {
-            LogEvent.logError(exception);
-            throw new LIMSRuntimeException("Error in NceActionLog getNceActionLogByNceId(String nceId)", exception);
+            String sql = "from NceActionLog nc where nc.ncEventId = :nceId";
+            TypedQuery<NceActionLog> query = entityManager.createQuery(sql, NceActionLog.class);
+            query.setParameter("nceId", nceId);
+            return query.getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in NceActionLog getNceActionLogByNceId(Integer nceId)", e);
         }
     }
 }

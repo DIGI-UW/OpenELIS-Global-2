@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,7 +82,7 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     @Test
     public void getAllMatchingOrdered_ShouldReturnMatchingOrderedEventActions_Using() {
         analysisQaEventActions = analysisQaEventActionService.getAllMatchingOrdered("createdDate",
-                Timestamp.valueOf("2025-06-23 14:15:00"), "createdDate", true);
+                Date.valueOf("2025-06-23"), "createdDate", true);
         assertNotNull(analysisQaEventActions);
         assertEquals(2, analysisQaEventActions.size());
         assertEquals("1", analysisQaEventActions.get(0).getId());
@@ -91,7 +92,7 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     public void getAllMatchingOrdered_ShouldReturnMatchingOrderedEventActions_UsingList() {
         orderProperties.add("createdDate");
         analysisQaEventActions = analysisQaEventActionService.getAllMatchingOrdered("createdDate",
-                Timestamp.valueOf("2025-06-23 14:15:00"), orderProperties, true);
+                Date.valueOf("2025-06-23"), orderProperties, true);
         assertNotNull(analysisQaEventActions);
         assertEquals(2, analysisQaEventActions.size());
         assertEquals("1", analysisQaEventActions.get(0).getId());
@@ -126,7 +127,7 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
 
     @Test
     public void getMatchingPage_ShouldReturnAPageOfResults_UsingMap() {
-        propertyValues.put("createdDate", Timestamp.valueOf("2025-06-22 11:30:00"));
+        propertyValues.put("createdDate", Date.valueOf("2025-06-22"));
         analysisQaEventActions = analysisQaEventActionService.getMatchingPage(propertyValues, 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
@@ -171,7 +172,7 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAPageOfResults_UsingMap() {
-        propertyValues.put("createdDate", Timestamp.valueOf("2025-06-22 11:30:00"));
+        propertyValues.put("createdDate", Date.valueOf("2025-06-22"));
         analysisQaEventActions = analysisQaEventActionService.getMatchingOrderedPage(propertyValues, "createdDate",
                 true, 1);
         NUMBER_OF_PAGES = Integer
@@ -181,7 +182,7 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAPageOfResults_UsingMapAndList() {
-        propertyValues.put("createdDate", Timestamp.valueOf("2025-06-22 11:30:00"));
+        propertyValues.put("createdDate", Date.valueOf("2025-06-22"));
         orderProperties.add("lastupdated");
         analysisQaEventActions = analysisQaEventActionService.getMatchingOrderedPage(propertyValues, orderProperties,
                 true, 1);
