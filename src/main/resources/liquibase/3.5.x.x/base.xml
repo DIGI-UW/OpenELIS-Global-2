@@ -159,4 +159,7 @@
   <!-- OGC-1142 / FR-46-55: specimen-variant grouping link -->
   <include relativeToChangelogFile="true" file="058-test-variant-link.xml"/>
 
+  <!-- OGC-1020 / R1: unified /Results worklist — lab-unit domain + route flag -->
+  <include relativeToChangelogFile="true" file="059-results-r1-unified-worklist.xml"/>
+
 </databaseChangeLog>
