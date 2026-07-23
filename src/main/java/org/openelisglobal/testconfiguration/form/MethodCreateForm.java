@@ -1,6 +1,7 @@
 package org.openelisglobal.testconfiguration.form;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
@@ -26,6 +27,10 @@ public class MethodCreateForm extends BaseForm {
     @NotBlank
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String methodFrenchName;
+
+    @Size(max = 20)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String methodCode;
 
     public MethodCreateForm() {
         setFormName("methodCreateForm");
@@ -77,5 +82,13 @@ public class MethodCreateForm extends BaseForm {
 
     public void setMethodFrenchName(String methodFrenchName) {
         this.methodFrenchName = methodFrenchName;
+    }
+
+    public String getMethodCode() {
+        return methodCode;
+    }
+
+    public void setMethodCode(String methodCode) {
+        this.methodCode = methodCode;
     }
 }

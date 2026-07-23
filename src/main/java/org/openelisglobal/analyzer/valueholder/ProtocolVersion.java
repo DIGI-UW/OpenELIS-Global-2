@@ -10,8 +10,8 @@ import java.util.Map;
  * This enum represents the <em>message format</em> an analyzer speaks (how to
  * parse/construct message content), NOT the transport mechanism (TCP, serial,
  * file). Transport is derived from configuration entities
- * ({@code FileImportConfiguration}, {@code SerialPortConfiguration}, or
- * {@code Analyzer.ipAddress}/{@code port}).
+ * ({@code SerialPortConfiguration}, {@code Analyzer.ipAddress}/{@code port}, or
+ * file import fields on the {@code Analyzer} entity).
  *
  * <p>
  * Stored in the database via {@code @Enumerated(EnumType.STRING)}.

@@ -1,10 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
-import * as path from "path";
+import * as dotenv from "dotenv";
 
 // Load .env from repo root — provides TEST_USER, TEST_PASS, BASE_URL, etc.
 // No manual `set -a && . .env` needed.
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
-
+dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
 /**
  * OpenELIS Global Playwright Configuration
  *
@@ -41,9 +40,14 @@ export default defineConfig({
 
   // Parallelization
   fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
-  // Shard tests in CI via CLI: --shard=current/total (see e.g. analyzer-e2e workflow)
-  // CI uses 1 worker to avoid OOM browser crashes on GH Actions runners (7GB RAM)
+  // Single worker EVERYWHERE, not just CI: all projects share one webapp + one
+  // database, so parallel workers interleave writes into shared state that CI
+  // (which has always run 1 worker per shard) can never reproduce — local
+  // multi-worker runs were a parity gap that produced local-only "mystery"
+  // failures. Parallelism comes from CI sharding (--shard=current/total), each
+  // shard owning its own full stack. CI also needs 1 worker to avoid OOM
+  // browser crashes on GH Actions runners (7GB RAM).
+  workers: 1,
 
   // CI safeguards
   forbidOnly: !!process.env.CI,

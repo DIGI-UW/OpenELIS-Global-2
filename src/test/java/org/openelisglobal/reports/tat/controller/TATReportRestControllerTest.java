@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Unit tests for TATReportRestController.
@@ -166,5 +169,42 @@ public class TATReportRestControllerTest {
                 null, false, "CSV", request, httpResponse);
 
         Assert.assertEquals(400, httpResponse.getStatus());
+    }
+
+    // --- @PreAuthorize regression guard ---
+    // Spring's hasAnyRole() auto-prepends "ROLE_", so passing 'ROLE_X' checks
+    // for 'ROLE_ROLE_X' (no user ever has that). This test catches the exact
+    // double-prefix bug that shipped in the original PR.
+
+    @Test
+    public void preAuthorize_mustExistOnController() {
+        PreAuthorize annotation = TATReportRestController.class.getAnnotation(PreAuthorize.class);
+        Assert.assertNotNull("Controller must have @PreAuthorize annotation", annotation);
+    }
+
+    @Test
+    public void preAuthorize_roleNames_mustNotContainROLE_prefix() {
+        PreAuthorize annotation = TATReportRestController.class.getAnnotation(PreAuthorize.class);
+        Assert.assertNotNull(annotation);
+        Assert.assertFalse(
+                "Role names in hasAnyRole() must not use ROLE_ prefix — Spring auto-prepends it, "
+                        + "causing a double-prefix (ROLE_ROLE_X). Found: " + annotation.value(),
+                annotation.value().contains("'ROLE_"));
+    }
+
+    @Test
+    public void preAuthorize_mustAllowReportsRole() {
+        PreAuthorize annotation = TATReportRestController.class.getAnnotation(PreAuthorize.class);
+        Assert.assertNotNull(annotation);
+        // Extract role names from hasAnyRole('X', 'Y', 'Z')
+        Matcher matcher = Pattern.compile("'([^']+)'").matcher(annotation.value());
+        boolean hasReports = false;
+        while (matcher.find()) {
+            if ("REPORTS".equals(matcher.group(1))) {
+                hasReports = true;
+            }
+        }
+        Assert.assertTrue("@PreAuthorize must include REPORTS role to align with frontend "
+                + "SecureRoute gate (Roles.REPORTS). Found: " + annotation.value(), hasReports);
     }
 }

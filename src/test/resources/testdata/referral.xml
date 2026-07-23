@@ -126,7 +126,7 @@
         mls_sentinel_lab_flag="N" short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthcorporations.com" clia_num="CLIA54321"
-        pws_d="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
+        pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
         code="HSL002" />
 
     <patient id="1" person_id="1" race="black" gender="M"
@@ -150,7 +150,7 @@
     <provider id="2" person_id="5" provider_type="D"
         lastupdated="2023-11-01 12:00:00" />
     <provider id="3" person_id="6" provider_type="C"
-        lastdupated="2023-11-01 12:00:00" />
+        lastupdated="2023-11-01 12:00:00" />
 
     <sample id="1" accession_number="12345" status_id="1"
         received_date="2024-06-03 00:00:00.0"
@@ -217,27 +217,27 @@
     <analyte id="2" name="Cholesterol"
         lastupdated="2023-12-01 12:00:00" />
 
-    <!-- Result without Analysis FK -->
-    <result id="1" analyte_id="1" is_reportable="Y" value="1"
-        lastupdated="2023-12-01 12:00:00" />
-    <result id="2" analyte_id="2" is_reportable="N" value="2"
-        lastupdated="2023-12-01 12:00:00" />
-
     <!-- Analysis -->
     <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
         revision="1" started_date="2023-11-15 12:00:00"
         completed_date="2023-11-15 14:00:00" status="1"
         released_date="2023-11-15 15:00:00" printed_date="2023-11-15 16:00:00"
         is_reportable="Y" status_id="1" parent_analysis_id="1"
-        parent_result_id="1" entry_date="2023-11-15 12:00:00"
-        analysis_type="ROUTINE" lastupdated="2023-12-01 12:00:00" />
+        entry_date="2023-11-15 12:00:00" analysis_type="ROUTINE"
+        lastupdated="2023-12-01 12:00:00" />
     <analysis id="2" sampitem_id="2" test_sect_id="2" test_id="2"
         revision="2" started_date="2023-11-16 12:00:00"
         completed_date="2023-11-16 14:00:00" status="2"
         released_date="2023-11-16 15:00:00" printed_date="2023-11-16 16:00:00"
         is_reportable="N" status_id="2" parent_analysis_id="2"
-        parent_result_id="2" entry_date="2023-11-16 12:00:00"
-        analysis_type="CONFIRM" lastupdated="2023-12-01 12:00:00" />
+        entry_date="2023-11-16 12:00:00" analysis_type="CONFIRM"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Result without Analysis FK -->
+    <result id="1" analyte_id="1" is_reportable="Y" value="1"
+        lastupdated="2023-12-01 12:00:00" />
+    <result id="2" analyte_id="2" is_reportable="N" value="2"
+        lastupdated="2023-12-01 12:00:00" />
 
     <!-- Result with Analysis FK -->
     <result id="3" analysis_id="1" lastupdated="2023-12-01 12:00:00" />

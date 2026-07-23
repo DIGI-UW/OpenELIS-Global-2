@@ -66,6 +66,12 @@
             type="java.lang.String" />
         <property name="collectionConditions"
             column="collection_conditions" type="java.lang.String" />
+        <property name="collectionMethod" column="collection_method"
+            type="java.lang.String" />
+        <property name="sampleTemperature"
+            column="sample_temperature" type="java.lang.String" />
+        <property name="specimenOrigin" column="specimen_origin"
+            type="java.lang.String" />
         <property name="receivedDate" column="received_date"
             type="java.sql.Timestamp" />
         <property name="fhirUuid" column="fhir_uuid"

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ==================================================================== -->
+    <!-- OGC-561: Order Attachments — file uploads attached to a Sample/Order -->
+    <!-- File contents are stored in-row (BYTEA), matching the existing       -->
+    <!-- patient_photo / patient_id_document pattern (no filesystem deps,     -->
+    <!-- avoids container volume permission issues).                          -->
+    <!-- ==================================================================== -->
+    <changeSet author="mozzy" id="order-attachment-001-create-table">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="order_attachment"/>
+            </not>
+        </preConditions>
+        <comment>Create order_attachment table for file attachments on orders (samples)</comment>
+
+        <createTable schemaName="clinlims" tableName="order_attachment">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="original_file_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_type" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="file_size_bytes" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="file_content" type="BYTEA">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uploaded_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="uploaded_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_deleted" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="order_attachment"
+            baseColumnNames="sample_id"
+            constraintName="fk_order_attachment_sample"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <createIndex schemaName="clinlims" tableName="order_attachment" indexName="idx_order_attachment_sample_id">
+            <column name="sample_id"/>
+        </createIndex>
+
+        <createSequence schemaName="clinlims" sequenceName="order_attachment_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+</databaseChangeLog>

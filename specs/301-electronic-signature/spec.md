@@ -1,10 +1,17 @@
 # Feature Specification: 21 CFR Part 11 Electronic Signatures
 
+> **Status:** SHIPPED — PR #3288 merged 2026-04-09. **Last reconciled:**
+> 2026-04-20 **Reality notes:** Core e-signature infrastructure (schema, backend
+> service/DAO/controller, frontend modal/button/hook, integration + E2E tests)
+> landed via PR #3288. plan.md captured the review/remediation cycle for that PR
+> and is now historical; see archive banner at the top of plan.md. No tasks.md
+> was ever drafted because work proceeded directly from the FRS and review plan.
+
 **Jira Epic**: [OGC-539](https://uwdigi.atlassian.net/browse/OGC-539) **Primary
 Ticket**: [OGC-301](https://uwdigi.atlassian.net/browse/OGC-301) **Feature
 Branch**: `feature/electronic-signature` **PR**:
-[#3288](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3288) **Status**: In
-Review **Madagascar Requirement**: DU-11-03
+[#3288](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3288) **Status**:
+Shipped (PR merged 2026-04-09) **Madagascar Requirement**: DU-11-03
 
 ## Authoritative Artifacts
 

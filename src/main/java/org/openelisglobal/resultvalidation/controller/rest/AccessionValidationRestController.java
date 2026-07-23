@@ -220,20 +220,38 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         addFlashMsgsToRequest(request);
 
         for (AnalysisItem analysisItem : filteredresultList) {
-            analysisItem.setPatientName(patientName);
+            Sample itemSample = sampleService.getSampleByAccessionNumber(analysisItem.getAccessionNumber());
+            if (itemSample == null) {
+                continue;
+            }
+            Patient itemPatient = sampleHumanService.getPatientForSample(itemSample);
+            if (itemPatient == null) {
+                continue;
+            }
+            analysisItem
+                    .setPatientName(
+                            itemPatient
+                                    .getPerson() == null
+                                            ? ""
+                                            : (StringUtils.trimToEmpty(itemPatient.getPerson().getLastName()) + " "
+                                                    + StringUtils.trimToEmpty(itemPatient.getPerson().getFirstName()))
+                                                    .trim());
+            analysisItem.setPatientInfo(StringUtils.trimToEmpty(itemPatient.getNationalId()) + ", "
+                    + StringUtils.trimToEmpty(itemPatient.getGender()) + ", "
+                    + StringUtils.trimToEmpty(itemPatient.getBirthDateForDisplay()));
         }
 
         return form;
     }
 
-    public List<Integer> getValidationStatus() {
-        List<Integer> validationStatus = new ArrayList<>();
-        validationStatus.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+    public List<String> getValidationStatus() {
+        List<String> validationStatus = new ArrayList<>();
+        validationStatus
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
         if (ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(ConfigurationProperties.Property.VALIDATE_REJECTED_TESTS, "true")) {
-            validationStatus.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            validationStatus
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
         }
 
         return validationStatus;

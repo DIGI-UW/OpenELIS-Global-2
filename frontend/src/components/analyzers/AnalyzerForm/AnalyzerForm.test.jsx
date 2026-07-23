@@ -11,13 +11,13 @@
 
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
-jest.mock("../../../services/analyzerService", () => ({
-  createAnalyzer: jest.fn(),
-  updateAnalyzer: jest.fn(),
-  testConnection: jest.fn(),
-  getAnalyzerTypes: jest.fn(),
-  getDefaultConfigs: jest.fn(),
-  getDefaultConfig: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  createAnalyzer: vi.fn(),
+  updateAnalyzer: vi.fn(),
+  testConnection: vi.fn(),
+  getAnalyzerTypes: vi.fn(),
+  getDefaultConfigs: vi.fn(),
+  getDefaultConfig: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -50,17 +50,17 @@ const renderWithIntl = (component) => {
 
 describe("AnalyzerForm", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("testSubmitForm_WithValidData_CallsAPI", async () => {
     // Arrange
-    const mockCallback = jest.fn();
+    const mockCallback = vi.fn();
     createAnalyzer.mockImplementation((data, callback) => {
       callback({ id: "1", ...data }, null);
     });
 
-    const onClose = jest.fn();
+    const onClose = vi.fn();
 
     // Act: Render form
     renderWithIntl(<AnalyzerForm open={true} onClose={onClose} />);
@@ -109,7 +109,7 @@ describe("AnalyzerForm", () => {
    */
   test("testAnalyzerTypeDropdown_DisplaysAllOptions", async () => {
     // Arrange
-    const onClose = jest.fn();
+    const onClose = vi.fn();
 
     // Act: Render form
     renderWithIntl(<AnalyzerForm open={true} onClose={onClose} />);
@@ -132,7 +132,7 @@ describe("AnalyzerForm", () => {
 
   test("testValidateIPAddress_WithInvalidFormat_ShowsError", async () => {
     // Arrange
-    const onClose = jest.fn();
+    const onClose = vi.fn();
 
     // Act: Render form
     renderWithIntl(<AnalyzerForm open={true} onClose={onClose} />);
@@ -157,7 +157,7 @@ describe("AnalyzerForm", () => {
 
   test("testTestConnection_ShowsModal", async () => {
     // Arrange
-    const onClose = jest.fn();
+    const onClose = vi.fn();
 
     // Act: Render form
     renderWithIntl(<AnalyzerForm open={true} onClose={onClose} />);

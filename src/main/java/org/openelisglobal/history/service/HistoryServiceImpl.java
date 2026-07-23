@@ -65,17 +65,18 @@ public class HistoryServiceImpl extends AuditableBaseObjectServiceImpl<History, 
     @Override
     @Transactional(readOnly = true)
     public List<History> getSystemEventHistory(Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search, int page, int pageSize)
+            List<String> referenceTableIds, String activity, String search, String referenceId, int page, int pageSize)
             throws LIMSRuntimeException {
         return baseObjectDAO.getSystemEventHistory(startDate, endDate, sysUserId, referenceTableIds, activity, search,
-                page, pageSize);
+                referenceId, page, pageSize);
     }
 
     @Override
     @Transactional(readOnly = true)
     public long getSystemEventHistoryCount(Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search) throws LIMSRuntimeException {
+            List<String> referenceTableIds, String activity, String search, String referenceId)
+            throws LIMSRuntimeException {
         return baseObjectDAO.getSystemEventHistoryCount(startDate, endDate, sysUserId, referenceTableIds, activity,
-                search);
+                search, referenceId);
     }
 }

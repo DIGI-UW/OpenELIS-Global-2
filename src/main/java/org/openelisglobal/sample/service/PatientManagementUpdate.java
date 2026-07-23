@@ -20,10 +20,13 @@ import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.patient.action.IPatientUpdate;
+import org.openelisglobal.patient.action.bean.PatientIdDocumentInfo;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientContactService;
+import org.openelisglobal.patient.service.PatientIdDocumentService;
 import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.util.PatientGpsCoordinates;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patient.valueholder.PatientContact;
@@ -66,6 +69,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     private PatientContactService patientContactService;
     @Autowired
     private PatientPhotoService patientPhotoService;
+    @Autowired
+    private PatientIdDocumentService patientIdDocumentService;
     protected PatientUpdateStatus patientUpdateStatus = PatientUpdateStatus.NO_ACTION;
 
     private String ADDRESS_PART_VILLAGE_ID;
@@ -106,10 +111,37 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         patientIdentities = identityService.getPatientIdentitiesForPatient(patient.getId());
     }
 
+    private static java.math.BigDecimal parseGpsCoordinate(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        try {
+            return new java.math.BigDecimal(trimmed);
+        } catch (NumberFormatException nfe) {
+            return null;
+        }
+    }
+
     private void copyFormBeanToValueHolders(PatientManagementInfo patientInfo)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        // GPS fields are String on the bean and BigDecimal on Person — copy
+        // would throw on type mismatch. Clear them so copy skips them, then
+        // restore + apply explicit String→BigDecimal conversion below.
+        String gpsLatitudeRaw = patientInfo.getGpsLatitude();
+        String gpsLongitudeRaw = patientInfo.getGpsLongitude();
+        patientInfo.setGpsLatitude(null);
+        patientInfo.setGpsLongitude(null);
+
         PropertyUtils.copyProperties(patient, patientInfo);
         PropertyUtils.copyProperties(person, patientInfo);
+
+        patientInfo.setGpsLatitude(gpsLatitudeRaw);
+        patientInfo.setGpsLongitude(gpsLongitudeRaw);
+        PatientGpsCoordinates.applyToPerson(gpsLatitudeRaw, gpsLongitudeRaw, person);
     }
 
     private void setSystemUserID(String currentUserId) {
@@ -148,6 +180,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistIdentityType(patientInfo.getAka(), "AKA");
         persistIdentityType(patientInfo.getInsuranceNumber(), "INSURANCE");
         persistIdentityType(patientInfo.getOccupation(), "OCCUPATION");
+        persistIdentityType(patientInfo.getCustomNotes(), "CUSTOM_NOTES");
+        persistIdentityType(patientInfo.getTargetDiseaseProgramme(), "DISEASE_PROGRAMME");
         persistIdentityType(patientInfo.getSubjectNumber(), "SUBJECT");
         persistIdentityType(patientInfo.getMothersInitial(), "MOTHERS_INITIAL");
         persistIdentityType(patientInfo.getEducation(), "EDUCATION");
@@ -175,7 +209,17 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         PersonAddress village = null;
         PersonAddress commune = null;
         PersonAddress dept = null;
+
+        // Skip if person ID is not yet assigned (newly created person not yet
+        // persisted)
+        if (person == null || person.getId() == null) {
+            return;
+        }
+
         List<PersonAddress> personAddressList = personAddressService.getAddressPartsByPersonId(person.getId());
+        if (personAddressList == null) {
+            return;
+        }
 
         for (PersonAddress address : personAddressList) {
             if (address.getAddressPartId().equals(ADDRESS_PART_COMMUNE_ID)) {
@@ -410,8 +454,16 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
 
         patientID = patient.getId();
         patientInfo.setPatientPK(patientID);
-        patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+        patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto(), currentUserId);
 
+        if (patientInfo.getIdDocuments() != null) {
+            for (PatientIdDocumentInfo docInfo : patientInfo.getIdDocuments()) {
+                if (docInfo.getId() == null && docInfo.getData() != null) {
+                    patientIdDocumentService.saveDocument(patient.getId(), docInfo.getData(), docInfo.getCategory(),
+                            docInfo.getDescription(), currentUserId);
+                }
+            }
+        }
     }
 
     @Override

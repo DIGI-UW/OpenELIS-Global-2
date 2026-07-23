@@ -2,6 +2,7 @@ package org.openelisglobal.workplan.controller.rest;
 
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -32,40 +33,35 @@ public class WorkplanRestController extends BaseRestController {
     @Autowired
     protected TestService testService;
 
-    protected static List<Integer> statusList;
+    protected static List<String> statusList;
     protected static boolean useReceptionTime = FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour);
     protected static List<String> nfsTestIdList;
 
     @PostConstruct
     private void initialize() {
-        if (statusList == null) {
-            statusList = new ArrayList<>();
-            statusList.add(Integer
-                    .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
-        }
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        List<String> statuses = new ArrayList<>();
+        statuses.add(statusService.getStatusID(AnalysisStatus.NotStarted));
+        statuses.add(statusService.getStatusID(AnalysisStatus.BiologistRejected));
+        statuses.add(statusService.getStatusID(AnalysisStatus.TechnicalRejected));
+        statuses.add(statusService.getStatusID(AnalysisStatus.NonConforming_depricated));
+        statusList = Collections.unmodifiableList(statuses);
 
-        if (nfsTestIdList == null) {
-            nfsTestIdList = new ArrayList<>();
-            nfsTestIdList.add(getTestId("GB"));
-            nfsTestIdList.add(getTestId("Neut %"));
-            nfsTestIdList.add(getTestId("Lymph %"));
-            nfsTestIdList.add(getTestId("Mono %"));
-            nfsTestIdList.add(getTestId("Eo %"));
-            nfsTestIdList.add(getTestId("Baso %"));
-            nfsTestIdList.add(getTestId("GR"));
-            nfsTestIdList.add(getTestId("Hb"));
-            nfsTestIdList.add(getTestId("HCT"));
-            nfsTestIdList.add(getTestId("VGM"));
-            nfsTestIdList.add(getTestId("TCMH"));
-            nfsTestIdList.add(getTestId("CCMH"));
-            nfsTestIdList.add(getTestId("PLQ"));
-        }
+        List<String> nfsTests = new ArrayList<>();
+        nfsTests.add(getTestId("GB"));
+        nfsTests.add(getTestId("Neut %"));
+        nfsTests.add(getTestId("Lymph %"));
+        nfsTests.add(getTestId("Mono %"));
+        nfsTests.add(getTestId("Eo %"));
+        nfsTests.add(getTestId("Baso %"));
+        nfsTests.add(getTestId("GR"));
+        nfsTests.add(getTestId("Hb"));
+        nfsTests.add(getTestId("HCT"));
+        nfsTests.add(getTestId("VGM"));
+        nfsTests.add(getTestId("TCMH"));
+        nfsTests.add(getTestId("CCMH"));
+        nfsTests.add(getTestId("PLQ"));
+        nfsTestIdList = Collections.unmodifiableList(nfsTests);
     }
 
     protected List<IdValuePair> adjustNFSTests(List<IdValuePair> allTestsList) {

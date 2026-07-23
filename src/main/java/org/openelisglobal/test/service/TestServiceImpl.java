@@ -801,7 +801,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     @Override
-    public List<Test> getTestsByTestSectionIds(List<Integer> ids) {
+    public List<Test> getTestsByTestSectionIds(List<String> ids) {
         return getBaseObjectDAO().getTestsByTestSectionIds(ids);
     }
 
@@ -824,5 +824,24 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     public List<Test> getTriggeringAntimicrobialResistanceTests() {
         return getAllMatching("antimicrobialResistance", Boolean.TRUE).stream()
                 .filter(e -> TestReflexUtil.isTriggeringReflexTestId(e.getId())).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, String> getNameLocalizationIds(String testId) {
+        Map<String, String> ids = new HashMap<>();
+        Test test = get(testId);
+        if (test == null) {
+            return ids;
+        }
+        Localization name = test.getLocalizedTestName();
+        if (name != null) {
+            ids.put("name", name.getId());
+        }
+        Localization reportingName = test.getLocalizedReportingName();
+        if (reportingName != null) {
+            ids.put("reportingName", reportingName.getId());
+        }
+        return ids;
     }
 }

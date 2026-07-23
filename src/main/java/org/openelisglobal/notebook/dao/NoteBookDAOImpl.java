@@ -3,7 +3,6 @@ package org.openelisglobal.notebook.dao;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -51,7 +50,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), NoteBook.class);
 
         if (statuses != null && !statuses.isEmpty()) {
-            query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+            query.setParameterList("statuses", statuses);
         }
 
         if (types != null && !types.isEmpty()) {
@@ -107,7 +106,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), NoteBook.class);
 
         if (statuses != null && !statuses.isEmpty()) {
-            query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+            query.setParameterList("statuses", statuses);
         }
 
         if (types != null && !types.isEmpty()) {
@@ -136,7 +135,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     public Long getCountWithStatus(List<NoteBookStatus> statuses) {
         String sql = "select count(*) from NoteBook nb where status in (:statuses) and nb.isTemplate = false";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         Long count = query.uniqueResult();
         return count;
     }
@@ -147,7 +146,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         String sql = "select count(*) from NoteBook nb where nb.status in (:statuses) and nb.lastupdated"
                 + " between :datefrom and :dateto and nb.isTemplate = false";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         query.setParameter("datefrom", from);
         query.setParameter("dateto", to);
         Long count = query.uniqueResult();
@@ -168,7 +167,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     public long countByAnalyzerId(String analyzerId) {
         String hql = "SELECT COUNT(n) FROM NoteBook n JOIN n.analysers a WHERE a.id = :analyzerId";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-        query.setParameter("analyzerId", Integer.parseInt(analyzerId));
+        query.setParameter("analyzerId", analyzerId);
         Long count = query.uniqueResult();
         return count != null ? count : 0L;
     }

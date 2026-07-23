@@ -5,27 +5,29 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import CalendarManagement from "../CalendarManagement";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 
-jest.mock("../../../../components/common/PageBreadCrumb", () => {
-  const mockReact = require("react");
-  return function MockBreadCrumb() {
-    return mockReact.createElement("div", { "data-testid": "breadcrumb" });
+vi.mock("../../../../components/common/PageBreadCrumb", () => {
+  return {
+    default: function MockBreadCrumb() {
+      return <div data-testid="breadcrumb" />;
+    },
   };
 });
 
-jest.mock("../../../layout/Layout", () => ({
-  NotificationContext: require("react").createContext({
-    setNotificationVisible: jest.fn(),
-    addNotification: jest.fn(),
+vi.mock("../../../layout/Layout", () => ({
+  NotificationContext: React.createContext({
+    setNotificationVisible: vi.fn(),
+    addNotification: vi.fn(),
   }),
 }));
 
-jest.mock("../../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
+vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
-const { getFromOpenElisServer } = require("../../../utils/Utils");
+// Replaced inline utils require
 
 const renderWithIntl = (component) => {
   return render(
@@ -70,7 +72,7 @@ const mockHolidays = {
 
 describe("CalendarManagement", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url.includes("/rest/calendar/holidays")) {
         callback(mockHolidays);
@@ -187,7 +189,7 @@ describe("CalendarManagement", () => {
 
   test("export button constructs URL with config.serverBaseUrl prefix", async () => {
     const originalOpen = window.open;
-    window.open = jest.fn();
+    window.open = vi.fn();
 
     renderWithIntl(<CalendarManagement />);
     await waitFor(() => {

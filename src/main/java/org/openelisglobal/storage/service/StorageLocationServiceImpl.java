@@ -1500,7 +1500,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             // Count distinct sample items from assignments where location matches
             // Use HQL to count distinct sample item IDs (not sample IDs)
-            String hql = "SELECT COUNT(DISTINCT ssa.sampleItem.id) FROM SampleStorageAssignment ssa "
+            // Use sampleItemId (the mapped column) not sampleItem (which is @Transient)
+            String hql = "SELECT COUNT(DISTINCT ssa.sampleItemId) FROM SampleStorageAssignment ssa "
                     + "WHERE ssa.locationId IN :locationIds";
             jakarta.persistence.Query query = entityManager.createQuery(hql);
             query.setParameter("locationIds", locationIds);
@@ -1671,7 +1672,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         try {
-            String hql = "SELECT COUNT(DISTINCT ssa.sampleItem.id) FROM SampleStorageAssignment ssa "
+            // Use sampleItemId (the mapped column) not sampleItem (which is @Transient)
+            String hql = "SELECT COUNT(DISTINCT ssa.sampleItemId) FROM SampleStorageAssignment ssa "
                     + "WHERE ssa.locationId IN :locationIds";
             jakarta.persistence.Query query = entityManager.createQuery(hql);
             query.setParameter("locationIds", locationIds);
@@ -1700,7 +1702,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         try {
-            String hql = "SELECT COUNT(DISTINCT ssa.sampleItem.id) FROM SampleStorageAssignment ssa "
+            // Use sampleItemId (the mapped column) not sampleItem (which is @Transient)
+            String hql = "SELECT COUNT(DISTINCT ssa.sampleItemId) FROM SampleStorageAssignment ssa "
                     + "WHERE ssa.locationId IN :locationIds";
             jakarta.persistence.Query query = entityManager.createQuery(hql);
             query.setParameter("locationIds", locationIds);
