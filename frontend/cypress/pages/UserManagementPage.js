@@ -259,8 +259,14 @@ class UserManagementPage {
     // Require the search bar to be stable/actionable before typing so cy.type()
     // can't race a concurrent re-render (Cypress "Cannot read properties of
     // undefined (reading 'KeyboardEvent')" flake when a filter refetch re-renders
-    // the page mid-keystroke).
-    cy.get(this.selectors.searchBar).should("be.visible").clear().type(value);
+    // the page mid-keystroke). The input is also briefly DISABLED while a filter
+    // refetch is in flight ("cy.type() failed because it targeted a disabled
+    // element"), so require enabled too.
+    cy.get(this.selectors.searchBar)
+      .should("be.visible")
+      .and("be.enabled")
+      .clear()
+      .type(value);
   }
 
   clearSearchBar() {

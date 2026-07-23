@@ -75,6 +75,11 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
+    // OGC-1129 — the result component this staged value belongs to
+    // (test_result_component.id). Null = the test's PRIMARY component.
+    @Column(name = "component_id", length = 36)
+    private String componentId;
+
     @Column(name = "test_result_type", length = 1)
     private String resultType = "N";
 
@@ -218,6 +223,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public String getTestId() {
         return testId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentId() {
+        return componentId;
     }
 
     public void setResultType(String resultType) {

@@ -3,7 +3,7 @@ import {
   Modal,
   Stack,
   TextInput,
-  NumberInput,
+  Dropdown,
   RadioButtonGroup,
   RadioButton,
   Checkbox,
@@ -12,6 +12,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
+  getFromOpenElisServer,
   postToOpenElisServer,
   putToOpenElisServer,
 } from "../../../utils/Utils";
@@ -55,6 +56,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
   const [form, setForm] = useState(blankRule());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [roles, setRoles] = useState([]);
 
   useEffect(() => {
     if (!open) {
@@ -62,7 +64,10 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
     }
     setError(null);
     setForm(rule && rule.id ? { ...blankRule(), ...rule } : blankRule());
-  }, [open, rule]);
+    getFromOpenElisServer(`/rest/test-catalog/${testId}/alerts/roles`, (data) =>
+      setRoles(Array.isArray(data) ? data : []),
+    );
+  }, [open, rule, testId]);
 
   const set = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -241,17 +246,22 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
             value={form.notifyCustomEmail || ""}
             onChange={(e) => set("notifyCustomEmail", e.target.value)}
           />
-          <NumberInput
+          <Dropdown
             id="recipient-role"
-            label={intl.formatMessage({
+            titleText={intl.formatMessage({
               id: "label.testCatalog.alerts.recipient.roleId",
             })}
-            value={form.notifyRoleId === "" ? "" : Number(form.notifyRoleId)}
-            min={0}
-            allowEmpty
-            hideSteppers
-            onChange={(e) =>
-              set("notifyRoleId", e.target.value === "" ? "" : e.target.value)
+            label={intl.formatMessage({
+              id: "label.testCatalog.alerts.recipient.rolePlaceholder",
+            })}
+            items={roles}
+            itemToString={(item) => (item ? item.value : "")}
+            selectedItem={
+              roles.find((r) => String(r.id) === String(form.notifyRoleId)) ||
+              null
+            }
+            onChange={({ selectedItem }) =>
+              set("notifyRoleId", selectedItem ? selectedItem.id : "")
             }
           />
         </fieldset>

@@ -49,6 +49,14 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
 
     ResultLimit getResultLimitForTestAndPatient(Test test, Patient patient);
 
+    /**
+     * OGC-1127/OGC-949 — the reference range for a specific result component,
+     * chosen for the patient's age/gender exactly as the test-level selection does
+     * but scoped to the component's own limits. Returns null when the component has
+     * no matching range.
+     */
+    ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient);
+
     List<IdValuePair> getPredefinedAgeRanges();
 
     List<ResultLimit> getResultLimits(String testId);
