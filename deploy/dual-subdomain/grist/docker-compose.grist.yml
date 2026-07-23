@@ -33,6 +33,9 @@ services:
       - GRIST_OIDC_IDP_CLIENT_ID=grist
       - GRIST_OIDC_IDP_CLIENT_SECRET=${DEX_GRIST_CLIENT_SECRET:-}
       - GRIST_OIDC_IDP_SCOPES=openid email profile
+      # Dex doesn't advertise an end_session_endpoint; Grist requires one unless
+      # told to skip it (logout just clears the local Grist session).
+      - GRIST_OIDC_IDP_SKIP_END_SESSION_ENDPOINT=true
       # Trust the umbrella router's forwarded proto so Grist builds https URLs.
       - GRIST_FORWARD_URL_HOST=1
     volumes:
