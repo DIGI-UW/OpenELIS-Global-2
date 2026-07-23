@@ -23,6 +23,7 @@ services:
   certs:
     container_name: analyzers-oe-certs
     image: certgen.analyzers
+    restart: "no"   # run-once keystore/truststore generator; base sets restart:always → loops
 
   db.openelis.org:
     container_name: analyzers-openelisglobal-database

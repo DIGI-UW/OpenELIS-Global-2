@@ -16,6 +16,7 @@ services:
   certs:
     container_name: amr-oe-certs
     image: certgen.amr
+    restart: "no"   # run-once keystore/truststore generator; base sets restart:always → loops
 
   db.openelis.org:
     container_name: amr-openelisglobal-database
