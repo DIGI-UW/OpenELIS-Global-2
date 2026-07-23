@@ -24,6 +24,7 @@ public class UserRoleServiceImpl extends AuditableBaseObjectServiceImpl<UserRole
 
     UserRoleServiceImpl() {
         super(UserRole.class);
+        this.auditTrailLog = true;
         defaultSortOrder = new ArrayList<>();
     }
 

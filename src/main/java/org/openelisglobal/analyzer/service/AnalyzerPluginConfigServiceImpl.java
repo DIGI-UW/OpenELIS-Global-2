@@ -3,7 +3,6 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.analyzer.dao.AnalyzerPluginConfigDAO;
@@ -87,24 +86,13 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         update(entity);
     }
 
+    @Autowired
+    private AnalyzerQcRuleService analyzerQcRuleService;
+
     @Override
     @Transactional(readOnly = true)
     public boolean hasAtLeastOneActiveQcRule(String analyzerId) {
-        Map<String, Object> config = getConfigAsMap(analyzerId);
-        Object qcRulesObj = config.get("qcRules");
-        if (!(qcRulesObj instanceof List<?>)) {
-            return false;
-        }
-        List<?> qcRules = (List<?>) qcRulesObj;
-        for (Object entry : qcRules) {
-            if (entry instanceof Map<?, ?> ruleMap) {
-                Object isActive = ruleMap.get("isActive");
-                if (Boolean.TRUE.equals(isActive)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return analyzerQcRuleService.hasAtLeastOneActiveRule(analyzerId);
     }
 
     private Map<String, Object> parseConfigMap(String json) {

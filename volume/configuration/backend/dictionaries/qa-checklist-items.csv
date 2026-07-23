@@ -1,0 +1,5 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr
+QAChecklistItem,patientInfoVerified,Patient information is correct,Y,1,,Patient information is correct,Les informations du patient sont correctes
+QAChecklistItem,samplesVerified,Sample types and tests are correct,Y,2,,Sample types and tests are correct,Les types d'echantillons et les tests sont corrects
+QAChecklistItem,labelsVerified,Labels have been printed and applied,Y,3,,Labels have been printed and applied,Les etiquettes ont ete imprimees et appliquees
+QAChecklistItem,storageVerified,Storage locations have been assigned,Y,4,,Storage locations have been assigned,Les emplacements de stockage ont ete attribues

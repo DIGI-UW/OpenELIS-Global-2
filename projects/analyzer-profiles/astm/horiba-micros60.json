@@ -3,16 +3,24 @@
   "profileMeta": {
     "id": "horiba-micros60",
     "version": "1.2.0",
-    "displayName": "Horiba ABX Micros 60"
+    "displayName": "Horiba ABX Micros 60",
+    "confidence": "MEDIUM"
   },
   "analyzer_name": "Horiba ABX Micros 60",
   "manufacturer": "Horiba ABX",
   "category": "HEMATOLOGY",
-  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
+  "protocol": {
+    "name": "ASTM",
+    "version": "LIS2-A2"
+  },
   "identifier_pattern": "ABX.*MICROS.*60|MICROS.*60",
-  "transport": ["RS-232"],
+  "transport": [
+    "RS-232"
+  ],
   "transport_config": {
-    "RS-232": { "default_baud_rate": 9600 }
+    "RS-232": {
+      "default_baud_rate": 9600
+    }
   },
   "default_test_mappings": [
     {
@@ -64,6 +72,16 @@
       "unit": "%"
     }
   ],
-  "configDefaults": {},
+  "configDefaults": {
+    "qcRules": [
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ]
+  },
   "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232-to-TCP conversion. 16 fields total (3-part differential)."
 }

@@ -27,9 +27,9 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
     public void getAll_shouldReturnAllEvents() {
         List<NceCategory> ncEvents = nceCategoryService.getAllNceCategories();
         assertEquals(3, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
-        assertEquals("2", ncEvents.get(1).getId());
-        assertEquals("3", ncEvents.get(2).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(2), ncEvents.get(1).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(2).getId());
 
     }
 
@@ -37,7 +37,7 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
     public void getMatching_shouldReturnAllMatching() {
         List<NceCategory> categories = nceCategoryService.getAllMatching("name", "Sample");
         assertEquals(1, categories.size());
-        assertEquals("3", categories.get(0).getId());
+        assertEquals(Integer.valueOf(3), categories.get(0).getId());
     }
 
     @Test
@@ -45,7 +45,7 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         Map<String, Object> map = Map.of("name", "Sample");
         List<NceCategory> categories = nceCategoryService.getAllMatching(map);
         assertEquals(1, categories.size());
-        assertEquals("3", categories.get(0).getId());
+        assertEquals(Integer.valueOf(3), categories.get(0).getId());
 
     }
 
@@ -53,9 +53,9 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
     public void getAllOrdered_shouldReturnAllOrdered() {
         List<NceCategory> ncEvents = nceCategoryService.getAllOrdered("id", false);
         assertEquals(3, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
-        assertEquals("2", ncEvents.get(1).getId());
-        assertEquals("3", ncEvents.get(2).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(2), ncEvents.get(1).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(2).getId());
 
     }
 
@@ -64,9 +64,9 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         List<String> orderBy = List.of("id");
         List<NceCategory> ncEvents = nceCategoryService.getAllOrdered(orderBy, false);
         assertEquals(3, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
-        assertEquals("2", ncEvents.get(1).getId());
-        assertEquals("3", ncEvents.get(2).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(2), ncEvents.get(1).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(2).getId());
 
     }
 
@@ -75,7 +75,7 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         List<String> orderBy = List.of("id");
         List<NceCategory> ncEvents = nceCategoryService.getAllMatchingOrdered("name", "Sample", orderBy, false);
         assertEquals(1, ncEvents.size());
-        assertEquals("3", ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(0).getId());
     }
 
     @Test
@@ -84,7 +84,7 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         List<String> orderBy = List.of("id");
         List<NceCategory> ncEvents = nceCategoryService.getAllMatchingOrdered(map, orderBy, false);
         assertEquals(1, ncEvents.size());
-        assertEquals("3", ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(0).getId());
     }
 
     @Test
@@ -92,7 +92,7 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         Map<String, Object> map = Map.of("name", "Sample");
         List<NceCategory> ncEvents = nceCategoryService.getAllMatchingOrdered(map, "id", false);
         assertEquals(1, ncEvents.size());
-        assertEquals("3", ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(0).getId());
 
     }
 
@@ -168,24 +168,24 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void deleteAll_shouldDeleteCategory() {
-        NceCategory nceCategory = nceCategoryService.get("1");
+        NceCategory nceCategory = nceCategoryService.get(1);
         nceCategoryService.delete(nceCategory);
         List<NceCategory> ncEvents = nceCategoryService.getAllNceCategories();
         assertEquals(2, ncEvents.size());
-        assertEquals("2", ncEvents.get(0).getId());
-        assertEquals("3", ncEvents.get(1).getId());
+        assertEquals(Integer.valueOf(2), ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(1).getId());
     }
 
     @Test
     public void getNext_shouldReturnNext() {
         NceCategory nceCategory = nceCategoryService.getNext("1");
-        assertEquals("2", nceCategory.getId());
+        assertEquals(Integer.valueOf(2), nceCategory.getId());
     }
 
     @Test
     public void getPrevious_shouldReturnPrevious() {
         NceCategory nceCategory = nceCategoryService.getPrevious("2");
-        assertEquals("1", nceCategory.getId());
+        assertEquals(Integer.valueOf(1), nceCategory.getId());
     }
 
     @Test
@@ -205,9 +205,9 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
     public void getAllNceCategories_shouldReturnAllNceCategories() {
         List<NceCategory> ncEvents = nceCategoryService.getAllNceCategories();
         assertEquals(3, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
-        assertEquals("2", ncEvents.get(1).getId());
-        assertEquals("3", ncEvents.get(2).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(2), ncEvents.get(1).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(2).getId());
     }
 
 }

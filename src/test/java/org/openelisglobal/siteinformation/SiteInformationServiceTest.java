@@ -94,6 +94,7 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
         newSiteInfo.setValue("Test Value");
         newSiteInfo.setEncrypted(false);
         newSiteInfo.setValueType("text");
+        newSiteInfo.setSysUserId("1");
 
         siteInformationService.persistData(newSiteInfo, true);
 
@@ -106,6 +107,7 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
     public void persistData_shouldUpdateExistingSiteInformation() {
         SiteInformation siteInfo = siteInformationService.getSiteInformationById("1");
         siteInfo.setValue("Updated Value");
+        siteInfo.setSysUserId("1");
 
         siteInformationService.persistData(siteInfo, false);
 
@@ -307,6 +309,7 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
         newSiteInfo.setValue("New Test Value");
         newSiteInfo.setEncrypted(false);
         newSiteInfo.setValueType("text");
+        newSiteInfo.setSysUserId("1");
 
         String id = siteInformationService.insert(newSiteInfo);
         assertNotNull(id);
@@ -322,11 +325,13 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
         site1.setName("TestSite1");
         site1.setValue("Test Value 1");
         site1.setValueType("text");
+        site1.setSysUserId("1");
 
         SiteInformation site2 = new SiteInformation();
         site2.setName("TestSite2");
         site2.setValue("Test Value 2");
         site2.setValueType("text");
+        site2.setSysUserId("1");
 
         List<SiteInformation> sitesToInsert = List.of(site1, site2);
         List<String> ids = siteInformationService.insertAll(sitesToInsert);
@@ -342,6 +347,7 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
         newSiteInfo.setName("SaveTestSite");
         newSiteInfo.setValue("Save Test Value");
         newSiteInfo.setValueType("text");
+        newSiteInfo.setSysUserId("1");
         assertEquals(2, siteInformationService.getAll().size());
 
         SiteInformation saved = siteInformationService.save(newSiteInfo);
@@ -355,6 +361,7 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
     public void save_shouldUpdateExistingSiteInformation() {
         SiteInformation siteInfo = siteInformationService.get("1");
         siteInfo.setValue("Updated via Save");
+        siteInfo.setSysUserId("1");
 
         SiteInformation saved = siteInformationService.save(siteInfo);
         assertEquals("1", saved.getId());
@@ -365,11 +372,13 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
     public void saveAll_shouldInsertAndUpdateMultipleSiteInformations() {
         SiteInformation existingSite = siteInformationService.get("1");
         existingSite.setValue("Batch Updated");
+        existingSite.setSysUserId("1");
 
         SiteInformation newSite = new SiteInformation();
         newSite.setName("BatchNewSite");
         newSite.setValue("Batch New Value");
         newSite.setValueType("text");
+        newSite.setSysUserId("1");
 
         List<SiteInformation> sitesToSave = List.of(existingSite, newSite);
         List<SiteInformation> savedSites = siteInformationService.saveAll(sitesToSave);
@@ -386,6 +395,7 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateExistingSiteInformation() {
         SiteInformation siteInfo = siteInformationService.get("2");
         siteInfo.setValue("https://updated-api.example.org/submit");
+        siteInfo.setSysUserId("1");
 
         SiteInformation updated = siteInformationService.update(siteInfo);
         assertEquals("2", updated.getId());
@@ -396,9 +406,11 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
     public void updateAll_shouldUpdateMultipleSiteInformations() {
         SiteInformation site1 = siteInformationService.get("1");
         site1.setValue("Mass Update 1");
+        site1.setSysUserId("1");
 
         SiteInformation site2 = siteInformationService.get("2");
         site2.setValue("Mass Update 2");
+        site2.setSysUserId("1");
 
         List<SiteInformation> sitesToUpdate = List.of(site1, site2);
         List<SiteInformation> updatedSites = siteInformationService.updateAll(sitesToUpdate);
@@ -430,6 +442,7 @@ public class SiteInformationServiceTest extends BaseWebContextSensitiveTest {
         encryptedSite.setValue("SecretValue1");
         encryptedSite.setEncrypted(true);
         encryptedSite.setValueType("text");
+        encryptedSite.setSysUserId("1");
         assertEquals(2, siteInformationService.getAll().size());
 
         // Insert it (which should encrypt the value)

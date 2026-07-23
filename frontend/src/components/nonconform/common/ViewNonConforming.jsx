@@ -16,6 +16,7 @@ import {
   TextInput,
   Table,
   RadioButton,
+  Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -27,6 +28,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { Download } from "@carbon/icons-react";
 
 export const initialReportFormValues = {
   type: undefined,
@@ -144,6 +146,18 @@ export const ViewNonConformingEvent = () => {
               setData(data);
               setNceTypes(data.nceTypes);
               setTData(null);
+              // Pre-fill the category/type form fields from the saved event so
+              // the user sees what was set during the original NCE report.
+              const event = data.nceEventsSearchResults[0];
+              setFormData((prev) => ({
+                ...prev,
+                nceCategory: event?.nceCategoryId
+                  ? String(event.nceCategoryId)
+                  : prev.nceCategory,
+                nceType: event?.nceTypeId
+                  ? String(event.nceTypeId)
+                  : prev.nceType,
+              }));
             } else {
               setTData(data);
               setData(null);
@@ -163,18 +177,17 @@ export const ViewNonConformingEvent = () => {
     }
   };
 
-  useEffect(() => {
-    if (data) {
-      setNceTypes(
-        data.nceTypes.filter((obj) => {
-          let bol = Number(obj.categoryId) === Number(formData.nceCategory);
-          return bol;
-        }),
-      );
-    }
-  }, [formData.nceCategory]);
+  const canSubmitNceForm =
+    !!formData.labComponent &&
+    !!formData.nceCategory &&
+    !!formData.nceType &&
+    !!formData.consequences &&
+    !!formData.recurrence;
 
   const handleNCEFormSubmit = () => {
+    if (!canSubmitNceForm) {
+      return;
+    }
     let body = {
       id: data.nceEventsSearchResults[0].id,
       laboratoryComponent: formData.labComponent,
@@ -243,6 +256,18 @@ export const ViewNonConformingEvent = () => {
               setData(data);
               setNceTypes(data.nceTypes);
               setTData(null);
+              // Pre-fill the category/type form fields from the saved event so
+              // the user sees what was set during the original NCE report.
+              const event = data.nceEventsSearchResults[0];
+              setFormData((prev) => ({
+                ...prev,
+                nceCategory: event?.nceCategoryId
+                  ? String(event.nceCategoryId)
+                  : prev.nceCategory,
+                nceType: event?.nceTypeId
+                  ? String(event.nceTypeId)
+                  : prev.nceType,
+              }));
             }
           },
         );
@@ -365,7 +390,6 @@ export const ViewNonConformingEvent = () => {
                           name="radio-group"
                           onClick={() => {
                             setSelected(row.nceNumber);
-                            console.log(row);
                           }}
                           labelText=""
                           id={row.id}
@@ -454,7 +478,7 @@ export const ViewNonConformingEvent = () => {
               </span>
             </div>
             <div style={{ marginBottom: "10px" }}>
-              {data.specimens[0].typeOfSample.description}
+              {data.specimens?.[0]?.typeOfSample?.description || "—"}
             </div>
           </Column>
           <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
@@ -511,6 +535,97 @@ export const ViewNonConformingEvent = () => {
             </div>
           </Column>
 
+          {/* Display saved severity */}
+          {data.severity && (
+            <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+                  <FormattedMessage
+                    id="nce.field.severity"
+                    defaultMessage="Severity"
+                  />
+                </span>
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <Tag
+                  type={
+                    data.severity === "CRITICAL"
+                      ? "red"
+                      : data.severity === "MAJOR"
+                        ? "magenta"
+                        : data.severity === "MINOR"
+                          ? "blue"
+                          : "green"
+                  }
+                >
+                  <FormattedMessage
+                    id={`nce.severity.${data.severity?.toLowerCase() || "low"}`}
+                    defaultMessage={data.severity || "Low"}
+                  />
+                </Tag>
+              </div>
+            </Column>
+          )}
+
+          {/* Display saved category */}
+          {data.nceCategory && (
+            <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+                  <FormattedMessage
+                    id="nce.field.category"
+                    defaultMessage="Category"
+                  />
+                </span>
+              </div>
+              <div style={{ marginBottom: "10px" }}>{data.nceCategory}</div>
+            </Column>
+          )}
+
+          {/* Display saved type */}
+          {data.nceType && (
+            <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+                  <FormattedMessage id="nce.field.type" defaultMessage="Type" />
+                </span>
+              </div>
+              <div style={{ marginBottom: "10px" }}>{data.nceType}</div>
+            </Column>
+          )}
+
+          {/* Display attachments */}
+          {data.attachments && data.attachments.length > 0 && (
+            <Column lg={16} md={8} sm={4} style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+                  <FormattedMessage
+                    id="nce.field.attachments"
+                    defaultMessage="Attachments"
+                  />
+                </span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                {data.attachments.map((attachment) => (
+                  <Button
+                    key={attachment.id}
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={Download}
+                    onClick={() =>
+                      window.open(
+                        `/api/OpenELIS-Global/rest/nce/attachments/${attachment.id}/download`,
+                        "_blank",
+                      )
+                    }
+                  >
+                    {attachment.fileName}
+                  </Button>
+                ))}
+              </div>
+            </Column>
+          )}
+
           <Column lg={3} md={3} sm={1} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
@@ -551,7 +666,7 @@ export const ViewNonConformingEvent = () => {
                 <SelectItem
                   key={option.id}
                   value={option.id}
-                  text={option.name}
+                  text={option.value}
                 />
               ))}
             </Select>
@@ -573,7 +688,7 @@ export const ViewNonConformingEvent = () => {
                 <SelectItem
                   key={option.id}
                   value={option.id}
-                  text={option.name}
+                  text={option.value}
                 />
               ))}
             </Select>
@@ -717,14 +832,18 @@ export const ViewNonConformingEvent = () => {
           </Column>
 
           <Column lg={16} md={8} sm={4}>
-            {false && (
+            {!canSubmitNceForm && (
               <div style={{ color: "#c62828", margin: 4 }}>
-                {formData.error}
+                <FormattedMessage
+                  id="nonconform.view.requiredFields"
+                  defaultMessage="Lab component, NCE category, NCE type, severity consequence and recurrence are all required."
+                />
               </div>
             )}
             <Button
               type="button"
               data-testid="nce-submit-button"
+              disabled={!canSubmitNceForm}
               onClick={() => handleNCEFormSubmit()}
             >
               <FormattedMessage id="label.button.submit" />

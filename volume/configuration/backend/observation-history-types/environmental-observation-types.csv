@@ -1,0 +1,17 @@
+typeName,description,localization:en,localization:fr
+envWorkflowType,Workflow type: clinical or environmental,Workflow Type,Type de flux de travail
+envCollectionSiteDescription,Description of the environmental sample collection site,Collection Site Description,Description du site de collecte
+envRequesterReference,External reference from requester (e.g. EPA Method number),Requester Reference,Reference du demandeur
+envEnvironmentalConditions,Environmental conditions at time of collection (temperature weather),Environmental Conditions,Conditions environnementales
+envLocationRegionId,Address hierarchy region ID for collection location,Region,Region
+envLocationDistrictId,Address hierarchy district ID for collection location,District,District
+envLocationVillageId,Address hierarchy village/town ID for collection location,Village/Town,Village/Ville
+envSamplingSiteId,Organization ID of the sampling site,Sampling Site ID,ID du site d'echantillonnage
+envSamplingSiteName,Name of the sampling site,Sampling Site Name,Nom du site d'echantillonnage
+envSiteType,Type of sampling site,Site Type,Type de site
+envSiteSubtype,Subtype of sampling site,Site Subtype,Sous-type de site
+envEnvironmentalZone,Environmental zone classification,Environmental Zone,Zone environnementale
+envRegulatoryReference,Regulatory reference for the collection,Regulatory Reference,Reference reglementaire
+envCollectionMethod,Method used for sample collection,Collection Method,Methode de collecte
+envContactPerson,Contact person at sampling site,Contact Person,Personne de contact
+envContactPhone,Contact phone for sampling site,Contact Phone,Telephone de contact

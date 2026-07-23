@@ -17,6 +17,7 @@ public class QaEventServiceImpl extends AuditableBaseObjectServiceImpl<QaEvent, 
 
     QaEventServiceImpl() {
         super(QaEvent.class);
+        this.auditTrailLog = true;
     }
 
     @Override

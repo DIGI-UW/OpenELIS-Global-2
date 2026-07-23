@@ -3,19 +3,19 @@
 	url = https://github.com/DIGI-UW/openelisglobal-plugins.git
 [submodule "tools/Liquibase-Outdated"]
 	path = tools/Liquibase-Outdated
-	url = https://github.com/I-TECH-UW/Liquibase-Outdated.git
+	url = https://github.com/DIGI-UW/Liquibase-Outdated.git
 [submodule "tools/Password-Migrator"]
 	path = tools/Password-Migrator
-	url = https://github.com/I-TECH-UW/Password-Migrator.git
+	url = https://github.com/DIGI-UW/Password-Migrator.git
 [submodule "Consolidated-Server"]
 	path = Consolidated-Server
-	url = git@github.com:I-TECH-UW/Consolidated-Server.git
+	url = git@github.com:DIGI-UW/Consolidated-Server.git
 [submodule "hapi-fhir-jpaserver-starter"]
 	path = hapi-fhir-jpaserver-starter
-	url = https://github.com/I-TECH-UW/hapi-fhir-jpaserver-starter.git
+	url = https://github.com/DIGI-UW/hapi-fhir-jpaserver-starter.git
 [submodule "dataexport"]
 	path = dataexport
-	url = https://github.com/I-TECH-UW/dataexport.git
+	url = https://github.com/DIGI-UW/dataexport.git
 [submodule "tools/openelis-analyzer-bridge"]
 	path = tools/openelis-analyzer-bridge
 	url = https://github.com/DIGI-UW/openelis-analyzer-bridge.git
@@ -23,3 +23,7 @@
 [submodule "tools/analyzer-mock-server"]
 	path = tools/analyzer-mock-server
 	url = https://github.com/DIGI-UW/analyzer-mock-server.git
+[submodule "projects/catalyst"]
+	path = projects/catalyst
+	url = https://github.com/DIGI-UW/openelis-catalyst.git
+	branch = main

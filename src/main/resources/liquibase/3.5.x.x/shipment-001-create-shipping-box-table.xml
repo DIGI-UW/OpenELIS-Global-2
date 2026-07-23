@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="shipment-001-create-sequence" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="shipping_box_seq"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="shipping_box_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="shipment-001-create-shipping-box-table" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="shipping_box"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="shipping_box">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="box_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="destination_facility_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="state" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="temperature_requirement" type="VARCHAR(50)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="INT"/>
+            <column name="sent_date" type="TIMESTAMP"/>
+            <column name="received_date" type="TIMESTAMP"/>
+            <column name="reconciled_date" type="TIMESTAMP"/>
+            <column name="archived" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="archived_date" type="TIMESTAMP"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="shipping_box"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

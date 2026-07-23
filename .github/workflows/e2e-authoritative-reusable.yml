@@ -1,0 +1,145 @@
+# Thin orchestrator for E2E test execution. Calls the unified Playwright
+# reusable workflow twice (core + harness) and the deprecated Cypress workflow.
+# All Playwright suites follow the same pattern: test-shards → merge → gate.
+name: E2E / Authoritative Executor (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      checkout_ref:
+        description: "Ref to checkout for test execution"
+        required: false
+        type: string
+        default: ""
+      status_sha:
+        description: "Commit SHA used for checkpoint status reporting in wrappers"
+        required: false
+        type: string
+        default: ""
+      build_run_id:
+        description: "Build workflow run id for cross-run artifact downloads"
+        required: false
+        type: string
+        default: ""
+      artifact_source_mode:
+        description: "Artifact source mode: cross_run or same_run"
+        required: false
+        type: string
+        default: "cross_run"
+      artifact_map_kind:
+        description: "Image map selection: base or full"
+        required: false
+        type: string
+        default: "base"
+      include_plugin_jars:
+        description: "Whether harness should consume plugin jars"
+        required: false
+        type: string
+        default: "true"
+      is_fork:
+        description: "Whether execution context is fork-native"
+        required: false
+        type: string
+        default: "false"
+      pr_number:
+        description: "PR number for evidence updates where applicable"
+        required: false
+        type: string
+        default: ""
+      checkpoint_context:
+        description: "Checkpoint context label used by wrapper status jobs"
+        required: false
+        type: string
+        default: "03 Checkpoint - E2E"
+      test_user:
+        description: "CI login user for E2E execution"
+        required: false
+        type: string
+        default: ""
+      test_pass:
+        description: "CI login password for E2E execution"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  # ─── Playwright Core ────────────────────────────────────────────────────────
+  # Runs core-app (foundational) and core-demo projects on the build stack.
+  playwright-core:
+    name: Playwright Core
+    uses: ./.github/workflows/e2e-playwright-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    with:
+      projects: "core-app,core-demo"
+      artifact_prefix: "core"
+      compose_files: "build.docker-compose.yml"
+      fixture_mode: "core"
+      setup_analyzer_harness: false
+      build_run_id: ${{ inputs.build_run_id }}
+      artifact_source_mode: ${{ inputs.artifact_source_mode }}
+      checkout_ref: ${{ inputs.checkout_ref }}
+      test_user: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+      test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+
+  # ─── Playwright Harness ─────────────────────────────────────────────────────
+  # Runs harness-foundational and harness-demo projects on the analyzer harness.
+  playwright-harness:
+    name: Playwright Harness
+    if: inputs.include_plugin_jars == 'true'
+    uses: ./.github/workflows/e2e-playwright-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    with:
+      projects: "harness-foundational,harness-demo"
+      artifact_prefix: "harness"
+      compose_files: "build.docker-compose.yml,projects/analyzer-harness/docker-compose.base.yml,.github/ci/ci.analyzer-harness.yml"
+      fixture_mode: "harness"
+      setup_analyzer_harness: true
+      build_run_id: ${{ inputs.build_run_id }}
+      artifact_source_mode: ${{ inputs.artifact_source_mode }}
+      checkout_ref: ${{ inputs.checkout_ref }}
+      test_user: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+      test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+
+  # ─── Cypress (Deprecated) ──────────────────────────────────────────────────
+  cypress:
+    name: Cypress
+    uses: ./.github/workflows/e2e-cypress-deprecated.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    with:
+      build_run_id: ${{ inputs.artifact_source_mode == 'cross_run' && inputs.build_run_id || '' }}
+      is_fork: ${{ inputs.is_fork }}
+      head_sha: ${{ inputs.checkout_ref }}
+      test_user: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+      test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+
+  # ─── Suite Gate ─────────────────────────────────────────────────────────────
+  e2e-suite-gate:
+    name: E2E Suite Gate
+    if: always()
+    needs: [playwright-core, playwright-harness, cypress]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce suite outcomes
+        run: |
+          if [[ "${{ needs.playwright-core.result }}" != "success" ]]; then
+            echo "Playwright Core failed: ${{ needs.playwright-core.result }}"
+            exit 1
+          fi
+          if [[ "${{ needs.playwright-harness.result }}" != "success" && "${{ needs.playwright-harness.result }}" != "skipped" ]]; then
+            echo "Playwright Harness failed: ${{ needs.playwright-harness.result }}"
+            exit 1
+          fi
+          if [[ "${{ needs.cypress.result }}" != "success" ]]; then
+            echo "Cypress failed: ${{ needs.cypress.result }}"
+            exit 1
+          fi
+          echo "Authoritative E2E suite gate passed."

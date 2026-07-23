@@ -83,5 +83,8 @@
             column="normal_dictionary_id" />
         <property name="alwaysValidate" type="boolean"
             column="always_validate" />
+        <property name="componentId" type="java.lang.String">
+            <column name="component_id" length="36" />
+        </property>
     </class>
 </hibernate-mapping>

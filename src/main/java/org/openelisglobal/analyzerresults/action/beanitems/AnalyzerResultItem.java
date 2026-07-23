@@ -35,7 +35,7 @@ public class AnalyzerResultItem implements Serializable {
     // TODO move all accession number to the same format so they can be validated
     // properly
     // @ValidAccessionNumber(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
-    @Pattern(regexp = "^[0-9a-zA-Z -:]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    @Pattern(regexp = "^[0-9a-zA-Z_ -:]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String accessionNumber;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
@@ -61,6 +61,10 @@ public class AnalyzerResultItem implements Serializable {
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String testId;
+
+    // OGC-1129 — the resolved result component (test_result_component.id); null =
+    // PRIMARY. Carried from the staged AnalyzerResults row through to accept.
+    private String componentId;
 
     @ValidDate(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String completeDate;
@@ -224,6 +228,14 @@ public class AnalyzerResultItem implements Serializable {
 
     public String getTestId() {
         return testId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentId() {
+        return componentId;
     }
 
     public void setCompleteDate(String completeDate) {

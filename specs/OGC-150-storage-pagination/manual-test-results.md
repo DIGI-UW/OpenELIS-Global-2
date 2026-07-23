@@ -33,7 +33,7 @@
 
 **Steps**:
 
-1. Navigate to `/Storage/samples` tab
+1. Navigate to `/Storage/sample-items`
 2. Open Chrome DevTools → Network tab
 3. Reload page
 4. Record total page load time
@@ -54,7 +54,7 @@
 
 **Steps**:
 
-1. Navigate to `/Storage/samples` tab
+1. Navigate to `/Storage/sample-items`
 2. Verify pagination component visible below samples table
 
 **Expected Result**:
@@ -78,7 +78,7 @@
 
 **Steps**:
 
-1. Navigate to `/Storage/samples` tab
+1. Navigate to `/Storage/sample-items`
 2. Click "Next" button → Verify items 26-50 displayed, page number updates to
    "Page 2"
 3. Click "Previous" button → Verify items 1-25 displayed, page number updates to
@@ -106,7 +106,7 @@
 
 **Steps**:
 
-1. Navigate to `/Storage/samples` tab
+1. Navigate to `/Storage/sample-items`
 2. Select "50 items" from page size dropdown
 3. Verify 50 items displayed
 4. Verify page resets to "Page 1"
@@ -132,7 +132,7 @@
 
 **Steps**:
 
-1. Navigate to `/Storage/samples` tab
+1. Navigate to `/Storage/sample-items`
 2. Navigate to page 2
 3. Switch to "Rooms" tab
 4. Switch back to "Samples" tab
@@ -155,7 +155,7 @@
 **Steps**:
 
 1. Open Chrome DevTools → Memory tab
-2. Navigate to `/Storage/samples` tab
+2. Navigate to `/Storage/sample-items`
 3. Record heap snapshot at page load
 4. Navigate through 10 pages (Next button)
 5. Record heap snapshot after navigation
@@ -178,7 +178,7 @@
 
 1. Navigate to NoteBook module (reference implementation)
 2. Observe pagination controls (layout, buttons, labels)
-3. Navigate to `/Storage/samples` tab
+3. Navigate to `/Storage/sample-items`
 4. Compare pagination controls
 
 **Expected Result**: Visual consistency between modules

@@ -1,0 +1,287 @@
+import {
+  DataTable,
+  Loading,
+  Modal,
+  Search,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSelectRow,
+  Tag,
+} from "@carbon/react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
+import { NotificationContext } from "../layout/Layout";
+import { getFromOpenElisServerV2 } from "../utils/Utils";
+import "./SampleAssignmentModal.css";
+
+const SampleAssignmentModal = ({
+  open,
+  onClose,
+  onAddSample,
+  destinationFacilityId,
+}) => {
+  const intl = useIntl();
+  const { addNotification } = useContext(NotificationContext);
+
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [unassignedSamples, setUnassignedSamples] = useState([]);
+  const [selectedSamples, setSelectedSamples] = useState([]);
+  const pendingSelectionRef = useRef(null);
+
+  // Sync selection state from DataTable render callback via ref to avoid
+  // setState-in-render. The render callback writes to the ref, and this
+  // effect picks it up on the next tick. Only poll while the modal is open.
+  useEffect(() => {
+    if (!open) return;
+    const interval = setInterval(() => {
+      if (pendingSelectionRef.current !== null) {
+        const pending = pendingSelectionRef.current;
+        pendingSelectionRef.current = null;
+        setSelectedSamples(pending);
+      }
+    }, 50);
+    return () => clearInterval(interval);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      fetchUnassignedSamples();
+    }
+  }, [open, destinationFacilityId]);
+
+  const fetchUnassignedSamples = async () => {
+    setLoading(true);
+    try {
+      // Use new SampleItem-based endpoint
+      const url = "/rest/unassigned-sample/items";
+
+      const response = await getFromOpenElisServerV2(url);
+      if (response) {
+        setUnassignedSamples(response);
+      }
+    } catch (error) {
+      console.error("Error fetching unassigned samples:", error);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "error.fetch.unassignedSamples" }),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterSamples = () => {
+    if (!searchTerm) {
+      return unassignedSamples;
+    }
+
+    const lowerSearch = searchTerm.toLowerCase();
+    return unassignedSamples.filter(
+      (sample) =>
+        sample.accessionNumber?.toLowerCase().includes(lowerSearch) ||
+        sample.typeOfSample?.toLowerCase().includes(lowerSearch) ||
+        sample.referralTests?.some((t) =>
+          t.testName?.toLowerCase().includes(lowerSearch),
+        ),
+    );
+  };
+
+  const headers = [
+    {
+      key: "accessionNumber",
+      header: intl.formatMessage({ id: "sample.label.accessionNumber" }),
+    },
+    {
+      key: "typeOfSample",
+      header: intl.formatMessage({ id: "sample.label.typeOfSample" }),
+    },
+    {
+      key: "referralTests",
+      header: intl.formatMessage({ id: "shipment.label.tests" }),
+    },
+    {
+      key: "collectionDate",
+      header: intl.formatMessage({ id: "sample.label.collectionDate" }),
+    },
+  ];
+
+  const renderRows = () => {
+    const filtered = filterSamples();
+
+    // SampleItemDTO already groups by SampleItem — no need to re-group
+    return filtered.map((sample) => ({
+      id: sample.sampleItemId || sample.id?.toString(),
+      accessionNumber: sample.accessionNumber,
+      typeOfSample: sample.typeOfSample || "-",
+      referralTests:
+        sample.referralTests && sample.referralTests.length > 0 ? (
+          <div className="test-tags">
+            {sample.referralTests.map((test, index) => (
+              <Tag
+                key={`${sample.sampleItemId}-test-${index}`}
+                type="blue"
+                size="sm"
+              >
+                {test.testName}
+              </Tag>
+            ))}
+          </div>
+        ) : (
+          "-"
+        ),
+      collectionDate: sample.collectionDate
+        ? new Date(sample.collectionDate).toLocaleDateString()
+        : "-",
+    }));
+  };
+
+  const handleSubmit = () => {
+    if (selectedSamples.length === 0) {
+      addNotification({
+        kind: "warning",
+        title: intl.formatMessage({ id: "notification.warning" }),
+        message: intl.formatMessage({ id: "shipment.error.noSampleSelected" }),
+      });
+      return;
+    }
+
+    // Add sample items one by one (selectedSamples contains sampleItemIds)
+    selectedSamples.forEach((sampleItemId) => {
+      onAddSample(sampleItemId);
+    });
+
+    // Close modal after adding samples
+    onClose();
+  };
+
+  const handleClose = () => {
+    setSelectedSamples([]);
+    setSearchTerm("");
+    onClose();
+  };
+
+  return (
+    <Modal
+      open={open}
+      modalHeading={intl.formatMessage({ id: "shipment.box.addSample" })}
+      primaryButtonText={intl.formatMessage({ id: "label.add" })}
+      secondaryButtonText={intl.formatMessage({ id: "label.cancel" })}
+      onRequestSubmit={handleSubmit}
+      onRequestClose={handleClose}
+      size="lg"
+      primaryButtonDisabled={selectedSamples.length === 0}
+    >
+      <div className="sample-assignment-modal">
+        <p className="modal-description">
+          <FormattedMessage id="shipment.box.addSampleDescription" />
+        </p>
+
+        <Search
+          size="lg"
+          placeholder={intl.formatMessage({ id: "search.placeholder" })}
+          labelText={intl.formatMessage({ id: "search.label" })}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          value={searchTerm}
+          className="sample-search"
+        />
+
+        {loading ? (
+          <div className="loading-container">
+            <Loading />
+          </div>
+        ) : (
+          <div className="sample-table-container">
+            {renderRows().length === 0 ? (
+              <div className="empty-state">
+                <p>
+                  <FormattedMessage id="shipment.box.noUnassignedSamples" />
+                </p>
+              </div>
+            ) : (
+              <DataTable
+                rows={renderRows()}
+                headers={headers}
+                radio={false}
+                render={({
+                  rows,
+                  headers,
+                  getHeaderProps,
+                  getRowProps,
+                  getSelectionProps,
+                  getTableProps,
+                  selectedRows,
+                }) => {
+                  // Sync selection from DataTable render callback via ref
+                  // (avoids setState during render)
+                  if (selectedRows.length > 0) {
+                    const currentSelectedIds = selectedRows.map(
+                      (row) => row.id,
+                    );
+                    if (
+                      JSON.stringify(currentSelectedIds) !==
+                      JSON.stringify(selectedSamples)
+                    ) {
+                      pendingSelectionRef.current = currentSelectedIds;
+                    }
+                  } else if (selectedSamples.length > 0) {
+                    pendingSelectionRef.current = [];
+                  }
+
+                  return (
+                    <TableContainer>
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            <th scope="col" />
+                            {headers.map((header) => (
+                              <TableHeader
+                                {...getHeaderProps({ header })}
+                                key={header.key}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow {...getRowProps({ row })} key={row.id}>
+                              <TableSelectRow {...getSelectionProps({ row })} />
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  );
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        {selectedSamples.length > 0 && (
+          <div className="selection-summary">
+            <FormattedMessage
+              id="shipment.box.samplesSelected"
+              values={{ count: selectedSamples.length }}
+            />
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};
+
+export default SampleAssignmentModal;

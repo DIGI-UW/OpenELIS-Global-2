@@ -102,30 +102,6 @@ Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
 });
 
 /**
- * Load storage test fixtures (only if not already loaded)
- * Usage: cy.loadStorageFixtures()
- */
-Cypress.Commands.add("loadStorageFixtures", () => {
-  cy.task("loadStorageTestData");
-});
-
-/**
- * Check if storage test fixtures already exist
- * Usage: cy.checkStorageFixturesExist()
- */
-Cypress.Commands.add("checkStorageFixturesExist", () => {
-  return cy.task("checkStorageFixturesExist");
-});
-
-/**
- * Clean storage test fixtures
- * Usage: cy.cleanStorageFixtures()
- */
-Cypress.Commands.add("cleanStorageFixtures", () => {
-  cy.task("cleanStorageTestData");
-});
-
-/**
  * Ensure user is logged out via API (proper auth check, not DOM-based)
  * Checks /session endpoint and calls /Logout if authenticated
  * Usage: cy.ensureLoggedOut()

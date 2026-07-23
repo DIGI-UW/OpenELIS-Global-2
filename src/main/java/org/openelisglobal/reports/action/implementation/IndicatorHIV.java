@@ -13,7 +13,7 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -336,9 +336,9 @@ public class IndicatorHIV extends IndicatorReport implements IReportCreator, IRe
 
     private class PatientTestDate {
         public Patient patient;
-        public Date testDate;
+        public Timestamp testDate;
 
-        public PatientTestDate(Patient patient, Date testDate) {
+        public PatientTestDate(Patient patient, Timestamp testDate) {
             this.patient = patient;
             this.testDate = testDate;
         }

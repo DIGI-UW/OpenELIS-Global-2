@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="shipment-002-create-sequence" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="shipment_seq"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="shipment_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="shipment-002-create-shipment-table" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="shipment"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="shipment">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="shipping_box_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="courier" type="VARCHAR(100)"/>
+            <column name="tracking_number" type="VARCHAR(100)"/>
+            <column name="shipped_date" type="TIMESTAMP"/>
+            <column name="estimated_delivery_date" type="TIMESTAMP"/>
+            <column name="actual_delivery_date" type="TIMESTAMP"/>
+            <column name="sender_notes" type="TEXT"/>
+            <column name="receiver_notes" type="TEXT"/>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="shipment"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

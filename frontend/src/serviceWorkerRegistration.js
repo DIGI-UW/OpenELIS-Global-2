@@ -1,5 +1,13 @@
 // Function to register the service worker
 export function registerServiceWorker() {
+  // Only register service worker in production
+  if (import.meta.env.MODE !== "production") {
+    console.log(
+      "Service Worker registration skipped in development environment",
+    );
+    return;
+  }
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       const swUrl = `./service-worker.js`;
@@ -9,7 +17,7 @@ export function registerServiceWorker() {
         .then((registration) => {
           console.log(
             "Service Worker registered with scope:",
-            registration.scope,
+            registration?.scope,
           );
         })
         .catch((error) => {

@@ -16,7 +16,9 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.jasypt.util.text.TextEncryptor;
@@ -27,6 +29,7 @@ import org.openelisglobal.security.login.BasicAuthFilter;
 import org.openelisglobal.security.login.CustomAuthenticationFailureHandler;
 import org.openelisglobal.security.login.CustomFormAuthenticationSuccessHandler;
 import org.openelisglobal.security.login.CustomSSOAuthenticationSuccessHandler;
+import org.openelisglobal.security.login.CustomUserDetailsService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.opensaml.core.xml.XMLObject;
 import org.opensaml.core.xml.schema.XSString;
@@ -179,7 +182,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
                         .permitAll().anyRequest().permitAll())
-                // disable csrf as it is not needed for open pages
+                // CSRF disabled — open pages allow unauthenticated access (no session to
+                // protect)
                 .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();
@@ -396,6 +400,7 @@ public class SecurityConfig {
         http.securityMatcher(new CertificateAuthRequestedMatcher())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                 .x509(x509 -> x509.subjectPrincipalRegex("CN=(.*?)(?:,|$)"))
+                // CSRF disabled — certificate auth is not cookie-based, not CSRF-vulnerable
                 .userDetailsService(SpringContext.getBean(UserDetailsService.class)).csrf().disable();
         return http.build();
     }
@@ -429,8 +434,22 @@ public class SecurityConfig {
                         .invalidateHttpSession(true))
                 .sessionManagement(sessionManagement -> sessionManagement.invalidSessionUrl("/LoginPage")
                         .sessionFixation().migrateSession())
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin", "/rest/**",
-                        "/api/OpenELIS-Global/rest/**"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin"))
+                .exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) -> {
+                    String path = request.getRequestURI().substring(request.getContextPath().length());
+                    if (path.startsWith("/rest") || path.startsWith("/Provider")
+                            || path.startsWith("/api/OpenELIS-Global/rest")) {
+                        response.setStatus(403);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        String message = (accessDeniedException instanceof org.springframework.security.web.csrf.CsrfException)
+                                ? "CSRF token missing or invalid"
+                                : "Access denied";
+                        response.getWriter().write("{ \"status\": 403, \"message\": \"" + message + "\" }");
+                    } else {
+                        response.sendRedirect(request.getContextPath() + "/Home?access=denied");
+                    }
+                }))
                 // add security headers
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();
@@ -539,23 +558,47 @@ public class SecurityConfig {
 
     private static class KeycloakAuthoritiesExtractor {
 
-        // TODO should we use authority AND Role? (Spring Concepts)
+        private static final String OEG_PREFIX = "oeg-";
+
+        /*
+         * Reads the `Role` SAML attribute (saml-role-list-mapper in Keycloak) and emits
+         * two parallel authority shapes for each role value:
+         *
+         * 1) The original Keycloak string (e.g. "oeg-Results-AllLabUnits"). This is
+         * what LoginPageController.setLabunitRolesForExistingUserFromGrantedAuthorities
+         * splits on `-` to recover (role, labUnit) pairs for the /session response.
+         *
+         * 2) A normalized "ROLE_*" string (e.g. "ROLE_RESULTS") derived from the role
+         * name component only — the lab-unit suffix is dropped so SSO matches what form
+         * login produces (CustomUserDetailsService.addAuthoritiesForRole). This makes
+         * method-level checks like @PreAuthorize("hasRole('ADMIN')") work for SSO
+         * users.
+         */
         public Collection<GrantedAuthority> convert(Assertion assertion) {
-            Collection<GrantedAuthority> authorties = new ArrayList<>();
+            Set<String> authorityNames = new LinkedHashSet<>();
             for (AttributeStatement statement : assertion.getAttributeStatements()) {
                 for (Attribute attr : statement.getAttributes()) {
-                    if ("Role".equals(attr.getName())) {
-                        for (XMLObject attributeValue : attr.getAttributeValues()) {
-                            String value = ((XSString) attributeValue).getValue();
-                            if (value != null && value.startsWith("oeg-")) {
-                                authorties.add(new SimpleGrantedAuthority(value));
-                            }
-
+                    if (!"Role".equals(attr.getName())) {
+                        continue;
+                    }
+                    for (XMLObject attributeValue : attr.getAttributeValues()) {
+                        String value = ((XSString) attributeValue).getValue();
+                        if (value == null || !value.startsWith(OEG_PREFIX)) {
+                            continue;
                         }
+                        authorityNames.add(value);
+                        String stripped = value.substring(OEG_PREFIX.length()).trim();
+                        int dash = stripped.indexOf('-');
+                        String roleName = (dash >= 0) ? stripped.substring(0, dash).trim() : stripped;
+                        CustomUserDetailsService.addAuthoritiesForRole(roleName, authorityNames);
                     }
                 }
             }
-            return authorties;
+            List<GrantedAuthority> authorities = new ArrayList<>(authorityNames.size());
+            for (String name : authorityNames) {
+                authorities.add(new SimpleGrantedAuthority(name));
+            }
+            return authorities;
         }
     }
 }

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,7 +36,7 @@ public class AnalysisQaEventServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/analysis-qa-event.xml");
 
         propertyValues = new HashMap<>();
-        propertyValues.put("completedDate", Timestamp.valueOf("2025-06-23 15:30:00"));
+        propertyValues.put("completedDate", Date.valueOf("2025-06-23"));
 
         orderProperties = new ArrayList<>();
         orderProperties.add("completedDate");
@@ -51,8 +52,7 @@ public class AnalysisQaEventServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllMatching_ShouldReturnMatchingAnalysisQaEvents_UsingPropertyName() {
-        analysisQaEventList = analysisQaEventService.getAllMatching("completedDate",
-                Timestamp.valueOf("2025-06-23 15:30:00"));
+        analysisQaEventList = analysisQaEventService.getAllMatching("completedDate", Date.valueOf("2025-06-23"));
         assertNotNull(analysisQaEventList);
         assertEquals(2, analysisQaEventList.size());
         assertEquals("2", analysisQaEventList.get(0).getId());
@@ -84,8 +84,8 @@ public class AnalysisQaEventServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedAnalysisQaEvents_UsingPropertyName() {
-        analysisQaEventList = analysisQaEventService.getAllMatchingOrdered("completedDate",
-                Timestamp.valueOf("2025-06-23 15:30:00"), "completedDate", false);
+        analysisQaEventList = analysisQaEventService.getAllMatchingOrdered("completedDate", Date.valueOf("2025-06-23"),
+                "completedDate", false);
         assertNotNull(analysisQaEventList);
         assertEquals(2, analysisQaEventList.size());
         assertEquals("2", analysisQaEventList.get(0).getId());
@@ -93,8 +93,8 @@ public class AnalysisQaEventServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedAnalysisQaEvents_UsingList() {
-        analysisQaEventList = analysisQaEventService.getAllMatchingOrdered("completedDate",
-                Timestamp.valueOf("2025-06-23 15:30:00"), orderProperties, false);
+        analysisQaEventList = analysisQaEventService.getAllMatchingOrdered("completedDate", Date.valueOf("2025-06-23"),
+                orderProperties, false);
         assertNotNull(analysisQaEventList);
         assertEquals(2, analysisQaEventList.size());
         assertEquals("2", analysisQaEventList.get(0).getId());
@@ -128,8 +128,7 @@ public class AnalysisQaEventServiceTest extends BaseWebContextSensitiveTest {
     public void getMatchingPage_ShouldReturnAPageOfResults_UsingPropertyNameAndValue() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        analysisQaEventList = analysisQaEventService.getMatchingPage("completedDate",
-                Timestamp.valueOf("2025-06-23 15:30:00"), 1);
+        analysisQaEventList = analysisQaEventService.getMatchingPage("completedDate", Date.valueOf("2025-06-23"), 1);
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventList.size());
     }
 
@@ -161,8 +160,8 @@ public class AnalysisQaEventServiceTest extends BaseWebContextSensitiveTest {
     public void getOrderedPage_ShouldReturnAPageOfResults_UsingPropertyNameAndValue() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        analysisQaEventList = analysisQaEventService.getMatchingOrderedPage("completedDate",
-                Timestamp.valueOf("2025-06-23 15:30:00"), "completedDate", true, 1);
+        analysisQaEventList = analysisQaEventService.getMatchingOrderedPage("completedDate", Date.valueOf("2025-06-23"),
+                "completedDate", true, 1);
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventList.size());
     }
 
@@ -170,8 +169,8 @@ public class AnalysisQaEventServiceTest extends BaseWebContextSensitiveTest {
     public void getMatchingOrderedPage_ShouldReturnAPageOfResults_UsingList() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        analysisQaEventList = analysisQaEventService.getMatchingOrderedPage("completedDate",
-                Timestamp.valueOf("2025-06-23 15:30:00"), orderProperties, false, 1);
+        analysisQaEventList = analysisQaEventService.getMatchingOrderedPage("completedDate", Date.valueOf("2025-06-23"),
+                orderProperties, false, 1);
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventList.size());
     }
 

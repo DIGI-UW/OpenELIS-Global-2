@@ -372,7 +372,9 @@ ORDER BY id;
 
 ## Related Documentation
 
-- **Supported Analyzers Contract:** `supported-analyzers.md`
+- **Supported Analyzers (retired 2026-04-18):**
+  `.specify/plan-archive/011-supported-analyzers.md` — current truth is
+  `projects/analyzer-harness/seed-analyzers.sh`
 - **Mock Server Templates:** `tools/analyzer-mock-server/templates/`
 - **Template Schema:** `tools/analyzer-mock-server/templates/schema.json`
 - **Template README:** `tools/analyzer-mock-server/templates/README.md`

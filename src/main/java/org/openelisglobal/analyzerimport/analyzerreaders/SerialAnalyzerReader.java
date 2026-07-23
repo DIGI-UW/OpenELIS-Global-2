@@ -11,8 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.service.MappingApplicationService;
-import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
@@ -263,8 +261,8 @@ public class SerialAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active
-     * mappings
+     * Identify the analyzer and inject context ID for result stamping. QC
+     * processing is handled by the FHIR import pipeline.
      */
     private AnalyzerLineInserter wrapInserterIfMappingsExist(AnalyzerLineInserter originalInserter) {
         try {
@@ -278,21 +276,14 @@ public class SerialAnalyzerReader extends AnalyzerReader {
             }
 
             Analyzer analyzer = analyzerService.get(analyzerId.toString());
-            if (analyzer == null) {
-                return originalInserter;
-            }
-
-            MappingApplicationService mappingApplicationService = SpringContext
-                    .getBean(MappingApplicationService.class);
-            if (mappingApplicationService != null && mappingApplicationService.hasActiveMappings(analyzer.getId())) {
-                return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer);
+            if (analyzer != null) {
+                originalInserter.setContextAnalyzerId(analyzer.getId());
             }
 
             return originalInserter;
 
         } catch (Exception e) {
-            // Error checking mappings - use original inserter
-            LogEvent.logError("Error checking mappings, using original inserter: " + e.getMessage(), e);
+            LogEvent.logError("Error identifying analyzer: " + e.getMessage(), e);
             return originalInserter;
         }
     }
