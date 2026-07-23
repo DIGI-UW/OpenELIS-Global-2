@@ -193,9 +193,11 @@ http {
             proxy_set_header Connection $connection_upgrade;
             proxy_set_header Host $host;
             # Strip the basic-auth Authorization header after the gate: Grist only
-            # accepts a 'Bearer' scheme and 401s on 'Basic'. Without it, Grist runs
-            # its normal session-cookie flow for the browser UI.
+            # accepts a 'Bearer' scheme and 401s on 'Basic'.
             proxy_set_header Authorization "";
+            # Trusted-proxy auth: hand Grist the authenticated basic-auth username
+            # (an email) so it logs the reviewer straight into the doc UI.
+            proxy_set_header X-Remote-User $remote_user;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;

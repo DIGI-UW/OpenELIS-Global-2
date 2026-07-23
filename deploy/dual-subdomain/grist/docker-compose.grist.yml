@@ -26,6 +26,10 @@ services:
       - GRIST_SANDBOX_FLAVOR=unsandboxed
       - GRIST_SINGLE_ORG=openelis
       - GRIST_DEFAULT_EMAIL=admin@openelis-global.org
+      # Trusted-proxy auth: Grist logs the user in from this header, which the
+      # router sets to the basic-auth username ($remote_user). So the htpasswd
+      # username must be an email Grist knows (admin@openelis-global.org).
+      - GRIST_FORWARD_AUTH_HEADER=X-Remote-User
       # Trust the umbrella router's forwarded proto so Grist builds https URLs.
       - GRIST_FORWARD_URL_HOST=1
     volumes:
