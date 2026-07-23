@@ -56,14 +56,12 @@ services:
       - DEX_REVIEWER_PASSWORD_HASH=${DEX_REVIEWER_PASSWORD_HASH:-}
     volumes:
       - ./dex/config.yaml:/etc/dex/config.yaml:ro
-      - dex-data:/data
     networks:
       edge:
         aliases: [dex]
 
 volumes:
   grist-data:
-  dex-data:
 
 networks:
   edge:

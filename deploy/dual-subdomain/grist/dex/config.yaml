@@ -4,10 +4,11 @@
 
 issuer: https://grist.openelis-global.org/dex
 
+# In-memory storage: static users live in this config; only short-lived tokens
+# are in storage, so persistence isn't needed (a dex restart just means re-login).
+# Avoids the volume-permission dance for a light IdP.
 storage:
-  type: sqlite3
-  config:
-    file: /data/dex.db
+  type: memory
 
 web:
   http: 0.0.0.0:5556
