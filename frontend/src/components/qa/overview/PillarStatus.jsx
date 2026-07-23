@@ -10,6 +10,7 @@ import {
   fetchNceList,
 } from "./nceOverview";
 import { fetchOverviewSummary, fetchTatRollup } from "./overviewData";
+import useQiEnabled from "../qi/useQiEnabled";
 
 export const STATUS_ICON = { green: "✓", amber: "⚠", red: "✗" };
 
@@ -110,6 +111,11 @@ const PillarStatus = () => {
   const [summary, setSummary] = useState();
   const [nceList, setNceList] = useState();
   const [tat, setTat] = useState();
+  // OGC-711: the QI pillar is sourced from the TAT indicator, so disabling TAT
+  // must stop it lighting the chip. (QC/EQA/QMS are other pillars — not gated on
+  // a QI indicator's toggle.)
+  const { isEnabled } = useQiEnabled(["TAT"]);
+  const tatEnabled = isEnabled("TAT");
 
   useEffect(() => {
     let mounted = true;
@@ -122,7 +128,12 @@ const PillarStatus = () => {
   }, []);
 
   const qc = qcPillar(intl, summary);
-  const qi = qiPillar(intl, tat);
+  const qi = tatEnabled
+    ? qiPillar(intl, tat)
+    : {
+        status: null,
+        text: intl.formatMessage({ id: "qa.overview.pillar.qi.disabled" }),
+      };
   const qms = qmsPillar(intl, nceList);
 
   return (
@@ -141,7 +152,7 @@ const PillarStatus = () => {
         <ComingSoon titleKey="banner.menu.eqa" ticket="OGC-721" />
         <PillarChip
           titleKey="sideNav.label.qa.qi"
-          loading={tat === undefined}
+          loading={tatEnabled && tat === undefined}
           status={qi.status}
           text={qi.text}
           onClick={() => history.push("/qa/qi/dashboard")}

@@ -26,7 +26,11 @@ import {
   pulseColor,
 } from "../overview/nceOverview";
 import QITile from "./QITile";
+import useQiEnabled from "./useQiEnabled";
 import "./QIDashboard.css";
+
+// REJECTION is a data-less "coming soon" tile — gate it when OGC-697 lights up.
+const GATED_INDICATORS = ["TAT", "AMENDMENT", "NCE"];
 
 const WINDOW_STORAGE_KEY = "qa.qi.dashboard.window";
 const REFRESH_COOLDOWN_MS = 30000;
@@ -77,9 +81,8 @@ const QIDashboard = () => {
   const [tat, setTat] = useState({ loading: true });
   const [amendment, setAmendment] = useState({ loading: true });
   const [nce, setNce] = useState({ loading: true });
-  // OGC-711 disable cascade: per-indicator enabled flag from qi_config.
-  // Fail-open — an indicator absent from the map renders (config fetch failed).
-  const [enabledMap, setEnabledMap] = useState({});
+  // OGC-711 disable cascade: shared hook resolves each indicator's enabled flag.
+  const { isEnabled, refetch: refetchConfig } = useQiEnabled(GATED_INDICATORS);
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [refreshDisabled, setRefreshDisabled] = useState(false);
   const [, setTick] = useState(0); // re-render so "last refreshed" stays fresh
@@ -147,31 +150,10 @@ const QIDashboard = () => {
     });
   }, []);
 
-  // OGC-711: resolve each indicator's enabled flag (default config, no override).
-  // REJECTION is a data-less "coming soon" tile — gate it when OGC-697 lights up.
-  const fetchConfig = useCallback(() => {
-    ["TAT", "AMENDMENT", "NCE"].forEach((key) =>
-      getFromOpenElisServer(
-        `/rest/qi-config/resolve?indicator=${key}`,
-        (res) => {
-          if (res && typeof res.enabled === "boolean") {
-            setEnabledMap((m) => ({ ...m, [key]: res.enabled }));
-          }
-        },
-      ),
-    );
-  }, []);
-
-  const isEnabled = (key) => enabledMap[key] !== false; // fail-open
-
   useEffect(() => {
     fetchTat();
     fetchAmendment();
   }, [fetchTat, fetchAmendment]);
-
-  useEffect(() => {
-    fetchConfig();
-  }, [fetchConfig]);
 
   useEffect(() => {
     fetchNce();
@@ -194,7 +176,7 @@ const QIDashboard = () => {
     fetchTat();
     fetchAmendment();
     fetchNce();
-    fetchConfig();
+    refetchConfig();
     setRefreshDisabled(true);
     cooldownRef.current = setTimeout(
       () => setRefreshDisabled(false),
