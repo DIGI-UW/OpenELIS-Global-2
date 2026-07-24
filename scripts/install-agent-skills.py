@@ -7,8 +7,9 @@ This script is the generic installer entrypoint and supports two sources:
 1) Legacy SpecKit/OpenELIS command sources:
    - .specify/core/commands/
    - .specify/oe/commands/
-2) Packaged skills:
-   - .ai/skills/<skill-name>/
+2) Packaged skills (scanned in this precedence order; later wins on collision):
+   - .ai/skills/<skill-name>/             (upstream/vanilla packaged skills)
+   - .specify/oe/skills/<skill-name>/     (OpenELIS-specific packaged skills)
 
 Outputs are generated into agent runtime folders:
   - .cursor/commands/
@@ -198,7 +199,10 @@ def main() -> None:
     repo_root = get_repo_root()
     core_dir = repo_root / ".specify" / "core" / "commands"
     oe_dir = repo_root / ".specify" / "oe" / "commands"
-    packaged_skills_root = repo_root / ".ai" / "skills"
+    packaged_skills_roots = [
+        repo_root / ".ai" / "skills",
+        repo_root / ".specify" / "oe" / "skills",
+    ]
     targets = build_targets(repo_root, args.target)
 
     if not core_dir.exists():
@@ -229,12 +233,14 @@ def main() -> None:
         packaged_skills: set[str] = set()
 
         if not args.legacy_only:
-            packaged_commands, _ = install_packaged_skill_commands(
-                target.commands_dir, packaged_skills_root, installed_names
-            )
-            packaged_skills = install_packaged_skill_sources(
-                target.skills_dir, packaged_skills_root
-            )
+            for skills_root in packaged_skills_roots:
+                cmds, _ = install_packaged_skill_commands(
+                    target.commands_dir, skills_root, installed_names
+                )
+                packaged_commands.update(cmds)
+                packaged_skills.update(
+                    install_packaged_skill_sources(target.skills_dir, skills_root)
+                )
 
         print(
             f"   [OK] Commands: {len(installed_names)} "

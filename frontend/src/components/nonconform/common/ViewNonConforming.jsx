@@ -177,7 +177,17 @@ export const ViewNonConformingEvent = () => {
     }
   };
 
+  const canSubmitNceForm =
+    !!formData.labComponent &&
+    !!formData.nceCategory &&
+    !!formData.nceType &&
+    !!formData.consequences &&
+    !!formData.recurrence;
+
   const handleNCEFormSubmit = () => {
+    if (!canSubmitNceForm) {
+      return;
+    }
     let body = {
       id: data.nceEventsSearchResults[0].id,
       laboratoryComponent: formData.labComponent,
@@ -822,14 +832,18 @@ export const ViewNonConformingEvent = () => {
           </Column>
 
           <Column lg={16} md={8} sm={4}>
-            {false && (
+            {!canSubmitNceForm && (
               <div style={{ color: "#c62828", margin: 4 }}>
-                {formData.error}
+                <FormattedMessage
+                  id="nonconform.view.requiredFields"
+                  defaultMessage="Lab component, NCE category, NCE type, severity consequence and recurrence are all required."
+                />
               </div>
             )}
             <Button
               type="button"
               data-testid="nce-submit-button"
+              disabled={!canSubmitNceForm}
               onClick={() => handleNCEFormSubmit()}
             >
               <FormattedMessage id="label.button.submit" />

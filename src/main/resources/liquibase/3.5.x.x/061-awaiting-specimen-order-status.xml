@@ -1,0 +1,31 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <!-- OGC-1145 P1b (FR-8): electronic-order hold status for machine intake that
+         carries no specimen while the coded test runs on several sample types.
+         The order stays queued (never first-matched); the accessioner resolves
+         the specimen via the order-entry chooser, which realizes the order. -->
+    <changeSet author="OGC" id="OGC-1145-awaiting-specimen-order-status">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.status_of_sample WHERE status_type = 'EXTERNAL_ORDER' AND name = 'AwaitingSpecimen'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="status_of_sample">
+            <column name="id" valueSequenceNext="status_of_sample_seq" />
+            <column name="description" value="This order is awaiting specimen clarification" />
+            <column name="code" value="1" />
+            <column name="status_type" value="EXTERNAL_ORDER" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="name" value="AwaitingSpecimen" />
+            <column name="display_key" value="status.order.awaitingSpecimen" />
+            <column name="is_active" value="Y" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="status_of_sample">
+                <where>status_type = 'EXTERNAL_ORDER' AND name = 'AwaitingSpecimen'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

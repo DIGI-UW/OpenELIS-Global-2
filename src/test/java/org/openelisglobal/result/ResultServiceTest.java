@@ -519,6 +519,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
+        results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
         resultService.deleteAll(results1);
         List<Result> results2 = resultService.getAll();
         assertEquals(0, results2.size());
@@ -531,7 +532,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
 
-        List<String> resultIds = List.of("3", "4");
+        List<String> resultIds = List.of("4", "3");
         resultService.deleteAll(resultIds, "");
         List<Result> results = resultService.getAll();
         assertEquals(0, results.size());
@@ -541,7 +542,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void delete_shouldDeleteAResult() {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
-        Result result = resultService.get("3");
+        Result result = resultService.get("4");
         assertNotNull(result);
         resultService.delete(result);
         List<Result> results = resultService.getAll();
@@ -560,6 +561,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
+        results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
         resultService.deleteAll(results1);
         Result result = new Result();
         result.setValue("90.0");
@@ -579,6 +581,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
+        results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
         resultService.deleteAll(results1);
         Result result = new Result();
         result.setValue("90.0");

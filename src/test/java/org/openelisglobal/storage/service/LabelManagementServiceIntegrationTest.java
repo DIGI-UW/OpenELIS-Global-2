@@ -39,6 +39,9 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        // storage-location.xml stamps sample rows with sys_user_id=1; ensure that
+        // seed survives a sibling test's TRUNCATE system_user CASCADE before load.
+        ensureAuditSystemUser();
         // Load test data from XML dataset
         executeDataSetWithStateManagement("testdata/storage-location.xml");
     }

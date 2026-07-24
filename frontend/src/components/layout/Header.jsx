@@ -139,7 +139,9 @@ function OEHeader({
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
-    return userSessionDetails.authenticated ? "User" : "Lang";
+    return userSessionDetails.authenticated
+      ? intl.formatMessage({ id: "header.icon.user" })
+      : intl.formatMessage({ id: "header.icon.lang" });
   };
 
   const handleMenuItems = (tag, res) => {
@@ -384,6 +386,29 @@ function OEHeader({
   ) => {
     // Skip inactive menu items
     if (!menuItem.menu.isActive) {
+      return (
+        <React.Fragment key={menuItem.menu.elementId || path}></React.Fragment>
+      );
+    }
+
+    // OGC-1020 (R1): the unified /Results worklist consolidates the legacy
+    // result-entry pages behind the results.entry.unifiedRoute site flag —
+    // show exactly one of the two menu shapes, never both.
+    const unifiedResultsOn =
+      configurationProperties?.RESULTS_ENTRY_UNIFIED_ROUTE === "true";
+    const legacyResultEntryItems = [
+      "menu_results_logbook",
+      "menu_results_patient",
+      "menu_results_accession",
+      "menu_results_range",
+      "menu_results_status",
+    ];
+    if (
+      (menuItem.menu.elementId === "menu_results_unified" &&
+        !unifiedResultsOn) ||
+      (legacyResultEntryItems.includes(menuItem.menu.elementId) &&
+        unifiedResultsOn)
+    ) {
       return (
         <React.Fragment key={menuItem.menu.elementId || path}></React.Fragment>
       );
@@ -654,21 +679,23 @@ function OEHeader({
                 id="sidenav-menu-button"
                 data-cy="menuButton"
                 className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
-                aria-label={
-                  mode === SIDENAV_MODES.CLOSE
-                    ? "Open menu"
-                    : mode === SIDENAV_MODES.SHOW
-                      ? "Pin menu"
-                      : "Close menu"
-                }
+                aria-label={intl.formatMessage({
+                  id:
+                    mode === SIDENAV_MODES.CLOSE
+                      ? "header.icon.menu.open"
+                      : mode === SIDENAV_MODES.SHOW
+                        ? "header.icon.menu.pin"
+                        : "header.icon.menu.close",
+                })}
                 onClick={toggleSideNav}
-                title={
-                  mode === SIDENAV_MODES.CLOSE
-                    ? "Open menu"
-                    : mode === SIDENAV_MODES.SHOW
-                      ? "Pin menu"
-                      : "Close menu"
-                }
+                title={intl.formatMessage({
+                  id:
+                    mode === SIDENAV_MODES.CLOSE
+                      ? "header.icon.menu.open"
+                      : mode === SIDENAV_MODES.SHOW
+                        ? "header.icon.menu.pin"
+                        : "header.icon.menu.close",
+                })}
                 type="button"
               >
                 {mode === SIDENAV_MODES.CLOSE && <Menu size={20} />}
@@ -697,14 +724,18 @@ function OEHeader({
                   {searchBar && <SearchBar />}
                   <HeaderGlobalAction
                     id="search-Icon"
-                    aria-label="Search"
+                    aria-label={intl.formatMessage({
+                      id: "header.icon.search",
+                    })}
                     onClick={() => handlePanelToggle(searchBar ? "" : "search")}
                   >
                     {!searchBar ? <Search size={20} /> : <Close size={20} />}
                   </HeaderGlobalAction>
                   <HeaderGlobalAction
                     id="notification-Icon"
-                    aria-label="Notifications"
+                    aria-label={intl.formatMessage({
+                      id: "header.icon.notifications",
+                    })}
                     onClick={() =>
                       handlePanelToggle(
                         notificationsOpen ? "" : "notifications",

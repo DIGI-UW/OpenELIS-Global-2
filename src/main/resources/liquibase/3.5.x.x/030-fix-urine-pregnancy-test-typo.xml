@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Fix legacy typo "Urine prenancy test" → "Urine pregnancy test" on the
+      test row and on its name + report-name localization rows. Each
+      changeset is independent and idempotent (fires only when the stale
+      value is still present).
+    -->
+
+    <changeSet author="openelis" id="fix-urine-pregnancy-test-name">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.test WHERE name = 'Urine prenancy test-Urine'</sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="test">
+            <column name="name" value="Urine pregnancy test-Urine" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'Urine prenancy test-Urine'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="openelis" id="fix-urine-pregnancy-test-description">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.test WHERE description = 'Urine prenancy test'</sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="test">
+            <column name="description" value="Urine pregnancy test" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>description = 'Urine prenancy test'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="openelis" id="fix-urine-pregnancy-localization-value">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="localization_value"/>
+                <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.localization_value WHERE locale = 'en' AND value = 'Urine prenancy test'</sqlCheck>
+            </and>
+        </preConditions>
+        <update schemaName="clinlims" tableName="localization_value">
+            <column name="value" value="Urine pregnancy test" />
+            <column name="last_updated" valueComputed="${now}" />
+            <where>locale = 'en' AND value = 'Urine prenancy test'</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

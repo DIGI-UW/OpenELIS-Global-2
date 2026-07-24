@@ -53,9 +53,13 @@ const AcceptUnconditionallyGuard = ({
     return (
       <Button
         data-testid={`accept-uncond-${rowId}-trigger`}
-        kind="danger--ghost"
         size="sm"
         renderIcon={Warning}
+        style={{
+          backgroundColor: "var(--cds-support-success, #24a148)",
+          borderColor: "var(--cds-support-success, #24a148)",
+          color: "#ffffff",
+        }}
         onClick={() => {
           setArmed(true);
           setReason("");
