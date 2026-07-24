@@ -60,7 +60,12 @@ chmod -R 770 "$OE_LOGS" || true
 chmod -R 770 "$TOMCAT_LOGS" || true
 chmod -R 770 "$LUCENE" || true
 chmod -R 770 "$BRANDING" || true
-chmod -R 770 "$PLUGINS" || true
+chmod 770 "$PLUGINS" || true
+find "$PLUGINS" -mindepth 1 -type d -exec chmod 770 {} + || true
+find "$PLUGINS" -mindepth 1 -type f ! -name ".gitignore" -exec chmod 660 {} + || true
+if [ -f "$PLUGINS/.gitignore" ]; then
+  chmod 644 "$PLUGINS/.gitignore" || true
+fi
 
 echo "Volume permissions ready."
 
