@@ -31,8 +31,24 @@ public class CreateAdminUserTaskTest {
     }
 
     @Test
+    public void processPassword_withAdminPrefixAndCR_stripsMarkerAndConvertsPrefix() {
+        String input = "admin:$2a$12$G.ie.iZuxFu7DKVtIkvpyu/jg9dulZIsgfu6EfY5E05OWJnvOhC6W\r";
+        String expected = "$2a$12$G.ie.iZuxFu7DKVtIkvpyu/jg9dulZIsgfu6EfY5E05OWJnvOhC6W";
+        String actual = task.processPassword(input);
+        assertEquals(expected, actual);
+    }
+
+    @Test
     public void processPassword_withoutAdminPrefix_convertsBcryptPrefixAndTrims() {
         String input = "$2y$12$G.ie.iZuxFu7DKVtIkvpyu/jg9dulZIsgfu6EfY5E05OWJnvOhC6W\r\n";
+        String expected = "$2a$12$G.ie.iZuxFu7DKVtIkvpyu/jg9dulZIsgfu6EfY5E05OWJnvOhC6W";
+        String actual = task.processPassword(input);
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void processPassword_noTrailingLineEnding_isUnchanged() {
+        String input = "$2a$12$G.ie.iZuxFu7DKVtIkvpyu/jg9dulZIsgfu6EfY5E05OWJnvOhC6W";
         String expected = "$2a$12$G.ie.iZuxFu7DKVtIkvpyu/jg9dulZIsgfu6EfY5E05OWJnvOhC6W";
         String actual = task.processPassword(input);
         assertEquals(expected, actual);
