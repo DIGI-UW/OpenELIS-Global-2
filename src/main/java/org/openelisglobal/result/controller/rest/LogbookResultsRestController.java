@@ -219,7 +219,29 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             resultsLoadUtility.addExcludedAnalysisStatus(AnalysisStatus.SampleRejected);
             new StatusRules().setAllowableStatusForLoadingResults(resultsLoadUtility);
 
-            if (!GenericValidator.isBlankOrNull(form.getTestSectionId())) {
+            // OGC-1020: the unified worklist combines the Lab Unit selector
+            // with date/status filters; when any of those are present the
+            // status-results search runs (section passed as a constraint)
+            // instead of the unit branch, which ignores them. Legacy pages
+            // never send both, so their behavior is unchanged.
+            boolean hasStatusSearchFilters = statusResultsForm != null
+                    && (!GenericValidator.isBlankOrNull(statusResultsForm.getCollectionDate())
+                            || !GenericValidator.isBlankOrNull(statusResultsForm.getRecievedDate())
+                            || !GenericValidator.isBlankOrNull(statusResultsForm.getSelectedTest())
+                            || !GenericValidator.isBlankOrNull(statusResultsForm.getSelectedAnalysisStatus())
+                            || !GenericValidator.isBlankOrNull(statusResultsForm.getSelectedSampleStatus()));
+
+            if (!GenericValidator.isBlankOrNull(form.getTestSectionId()) && hasStatusSearchFilters) {
+                tests.clear();
+                LogbookStatusResults sectionStatusResults = new LogbookStatusResults(analysisService, sampleService,
+                        sampleItemService);
+                tests = sectionStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility,
+                        form.getTestSectionId());
+                filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
+                        Constants.ROLE_RESULTS);
+                request.setAttribute("pageSize", filteredTests.size());
+                form.setSearchFinished(true);
+            } else if (!GenericValidator.isBlankOrNull(form.getTestSectionId())) {
                 tests = resultsLoadUtility.getUnfinishedTestResultItemsInTestSection(form.getTestSectionId());
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
