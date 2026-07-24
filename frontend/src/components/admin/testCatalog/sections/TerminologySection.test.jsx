@@ -47,6 +47,45 @@ beforeEach(() => {
 });
 
 describe("TerminologySection", () => {
+  it("offers the per-specimen override picker only for multi-specimen tests (OGC-1145 FR-13)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({
+        testId: "42",
+        mappings: [
+          {
+            id: "a",
+            source: "LOINC",
+            code: "2345-7",
+            relationship: "SAME_AS",
+            sampleTypeId: null,
+          },
+        ],
+        sampleTypes: [
+          { id: "2", name: "Serum" },
+          { id: "9", name: "CSF" },
+        ],
+      }),
+    );
+    const { container } = renderSection();
+    await screen.findByTestId("mapping-row-a");
+    // The Specimen column renders with the shared default on the row.
+    expect(
+      screen.getAllByText(messages["label.testCatalog.override.shared"]).length,
+    ).toBeGreaterThan(0);
+
+    // Scope the mapping to CSF and save — the payload carries the scope.
+    fireEvent.click(screen.getByTestId("edit-mapping-0"));
+    fireEvent.change(container.querySelector("#mapping-sample-type-0"), {
+      target: { value: "9" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["label.button.save"] }),
+    );
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    const payload = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    expect(payload.mappings[0].sampleTypeId).toBe("9");
+  });
+
   it("loads existing mappings read-only, editable only after clicking Edit", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
       cb({
@@ -109,6 +148,7 @@ describe("TerminologySection", () => {
         relationship: "SAME_AS",
         displayName: null,
         componentId: null,
+        sampleTypeId: null,
       },
     ]);
   });
@@ -139,6 +179,7 @@ describe("TerminologySection", () => {
         relationship: "SAME_AS",
         displayName: null,
         componentId: null,
+        sampleTypeId: null,
       },
     ]);
   });
@@ -170,6 +211,7 @@ describe("TerminologySection", () => {
         relationship: "SAME_AS",
         displayName: null,
         componentId: null,
+        sampleTypeId: null,
       },
     ]);
   });
