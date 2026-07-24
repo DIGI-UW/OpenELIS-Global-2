@@ -10,7 +10,8 @@ package org.openelisglobal.qaevent.qiconfig.valueholder;
  */
 public enum QiIndicator {
     TAT(Direction.HIGHER_BETTER, true), REJECTION(Direction.LOWER_BETTER, true),
-    AMENDMENT(Direction.LOWER_BETTER, true), NCE(Direction.LOWER_BETTER, false);
+    AMENDMENT(Direction.LOWER_BETTER, true), NCE(Direction.LOWER_BETTER, false),
+    CALLBACK(Direction.HIGHER_BETTER, false);
 
     /**
      * Whether a higher metric value is better (e.g. TAT % on-time) or worse (e.g.
