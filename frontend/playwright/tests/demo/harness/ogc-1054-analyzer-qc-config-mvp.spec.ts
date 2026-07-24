@@ -308,7 +308,6 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
         completed.list.getQcReadinessBadge(analyzerId),
       ).toContainText("Setup verified");
       await demo.evidence("an-qc-008-completed-configuration");
-      await demo.pause(2_000);
     });
   });
 });
