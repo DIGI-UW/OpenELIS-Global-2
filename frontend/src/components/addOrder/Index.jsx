@@ -552,6 +552,11 @@ const Index = () => {
         }
       } else if (tag == "test") {
         objList[j] = newTest(id, name);
+      } else if (tag == "crosssampletype") {
+        let testtag = nodes[j].testid;
+        if (testtag) {
+          objList[j] = newCrossSampleType(id, name, testtag);
+        } else objList[j] = newCrossSampleType(id, name);
       }
     }
 
@@ -934,7 +939,7 @@ const Index = () => {
                 </div>
               )}
 
-            {!isLoadingReferral && page === patientInfoPageNumber && (
+            {!isLoadingReferral && (
               <>
                 {!isOnSuccess && (
                   <ProgressIndicator
