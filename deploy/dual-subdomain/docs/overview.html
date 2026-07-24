@@ -1,0 +1,282 @@
+<title>OpenELIS UAT Review Harness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --paper:#f5f7f8; --surface:#ffffff; --surface-2:#eef3f5;
+    --ink:#16202a; --muted:#566571; --faint:#8497a3;
+    --line:#d9e2e7; --line-strong:#c3d0d7;
+    --accent:#0c8f86; --accent-ink:#ffffff; --accent-soft:#e2f1ef;
+    --pass:#1f9d57; --fail:#d6453d; --na:#8494a0;
+    --shadow:0 1px 2px rgba(22,32,42,.05), 0 6px 22px rgba(22,32,42,.06);
+    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#0c1319; --surface:#111c24; --surface-2:#16232c;
+      --ink:#e8eef2; --muted:#93a6b2; --faint:#6d818e;
+      --line:#22323c; --line-strong:#31454f;
+      --accent:#2fb7a9; --accent-ink:#04201d; --accent-soft:#123029;
+      --pass:#37c07d; --fail:#f0685f; --na:#7d919d;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 26px rgba(0,0,0,.34);
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#f5f7f8; --surface:#ffffff; --surface-2:#eef3f5;
+    --ink:#16202a; --muted:#566571; --faint:#8497a3;
+    --line:#d9e2e7; --line-strong:#c3d0d7;
+    --accent:#0c8f86; --accent-ink:#ffffff; --accent-soft:#e2f1ef;
+    --pass:#1f9d57; --fail:#d6453d; --na:#8494a0;
+    --shadow:0 1px 2px rgba(22,32,42,.05), 0 6px 22px rgba(22,32,42,.06);
+  }
+  :root[data-theme="dark"]{
+    --paper:#0c1319; --surface:#111c24; --surface-2:#16232c;
+    --ink:#e8eef2; --muted:#93a6b2; --faint:#6d818e;
+    --line:#22323c; --line-strong:#31454f;
+    --accent:#2fb7a9; --accent-ink:#04201d; --accent-soft:#123029;
+    --pass:#37c07d; --fail:#f0685f; --na:#7d919d;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 26px rgba(0,0,0,.34);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    line-height:1.55;-webkit-font-smoothing:antialiased;font-size:16px}
+  .wrap{max-width:960px;margin:0 auto;padding:clamp(20px,4vw,56px) clamp(16px,4vw,32px)}
+  .mono{font-family:var(--mono)}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);font-weight:600}
+  h1{font-size:clamp(28px,5vw,42px);line-height:1.05;letter-spacing:-.02em;margin:.35em 0 .1em;
+    text-wrap:balance;font-weight:680}
+  h2{font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;margin:0 0 16px;display:flex;align-items:center;gap:10px}
+  h2::before{content:"";width:22px;height:2px;background:var(--accent);border-radius:2px;flex:none}
+  h3{font-size:16px;margin:0 0 6px;letter-spacing:-.01em}
+  p{margin:0 0 12px;color:var(--ink)}
+  .lede{font-size:clamp(17px,2.4vw,20px);color:var(--muted);max-width:60ch;text-wrap:pretty}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+  header{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:34px}
+  .brandrow{display:flex;align-items:center;gap:10px;color:var(--muted)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;
+    box-shadow:0 0 0 4px var(--accent-soft)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .chip{font-family:var(--mono);font-size:12.5px;padding:6px 11px;border:1px solid var(--line-strong);
+    border-radius:999px;background:var(--surface);color:var(--ink);display:inline-flex;gap:7px;align-items:center;
+    box-shadow:var(--shadow)}
+  .chip b{color:var(--faint);font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:10.5px}
+
+  section{margin:38px 0}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:clamp(16px,2.6vw,24px);box-shadow:var(--shadow)}
+
+  /* ---- flow ---- */
+  .flow{display:flex;flex-direction:column;gap:14px}
+  .track{border:1px solid var(--line);border-radius:14px;background:var(--surface);
+    box-shadow:var(--shadow);overflow:hidden}
+  .track-hd{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    background:var(--surface-2)}
+  .track-hd .k{color:var(--accent);font-weight:700}
+  .stage{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;padding:16px}
+  .node{flex:1 1 130px;min-width:0;border:1px solid var(--line-strong);border-radius:11px;
+    padding:11px 13px;background:var(--paper);display:flex;flex-direction:column;gap:3px}
+  .node.key{border-color:var(--accent);background:var(--accent-soft)}
+  .node .role{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .node .name{font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+  .node .sub{font-family:var(--mono);font-size:11.5px;color:var(--muted);word-break:break-word}
+  .arrow{align-self:center;color:var(--line-strong);flex:none;font-family:var(--mono);font-weight:700;font-size:18px;
+    display:flex;align-items:center}
+  .stack{flex:1 1 130px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .stack .node{flex:1}
+  @media (max-width:600px){
+    .stage{flex-direction:column}
+    .arrow{transform:rotate(90deg);align-self:center}
+    .stack{flex-direction:row}
+  }
+
+  /* ---- two-up how-to ---- */
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  ol.steps{margin:0;padding:0;list-style:none;counter-reset:s}
+  ol.steps li{position:relative;padding:0 0 12px 34px;counter-increment:s}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:23px;height:23px;
+    border-radius:7px;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);
+    font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  ol.steps li:last-child{padding-bottom:0}
+  ol.steps b{font-weight:640}
+  code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);border:1px solid var(--line);
+    padding:1.5px 5px;border-radius:5px;color:var(--ink)}
+  pre{margin:12px 0 0;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.5;color:var(--ink)}
+  pre .cm{color:var(--faint)}
+
+  /* ---- reference ---- */
+  .ref{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;
+    background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .ref>div{background:var(--surface);padding:14px 16px}
+  .ref .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+  .ref .val{font-size:14px}
+  .ref .val code{font-size:12.5px}
+
+  /* ---- checklist sample ---- */
+  .cl{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .cl-row{display:flex;gap:11px;align-items:flex-start}
+  .mk{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:3px 7px;border-radius:6px;
+    flex:none;margin-top:1px;min-width:44px;text-align:center}
+  .mk.pass{color:var(--pass);background:color-mix(in srgb,var(--pass) 14%,transparent)}
+  .mk.fail{color:var(--fail);background:color-mix(in srgb,var(--fail) 15%,transparent)}
+  .mk.todo{color:var(--na);background:color-mix(in srgb,var(--na) 16%,transparent)}
+  .cl-row .t{font-size:14px}
+  .cl-row .t small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+  .sec-tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);
+    margin:14px 0 2px}
+  .sec-tag:first-child{margin-top:0}
+
+  .note{border-left:2px solid var(--accent);padding:2px 0 2px 15px;color:var(--muted);margin:0}
+  .foot{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);
+    font-family:var(--mono);font-size:12px;display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between}
+  @media (prefers-reduced-motion:no-preference){
+    .reveal{opacity:0;transform:translateY(8px);animation:rise .5s ease forwards}
+    @keyframes rise{to{opacity:1;transform:none}}
+  }
+</style>
+
+<div class="wrap">
+  <header class="reveal">
+    <div class="brandrow mono"><span class="dot"></span>OpenELIS&nbsp;·&nbsp;UAT Review Harness</div>
+    <h1>Author once. Review anywhere. Triage in Claude.</h1>
+    <p class="lede">A self-hosted loop for reviewing in-progress OpenELIS features. Checklists are
+      authored once in Grist — by people or by agents — served live into a review overlay on each demo
+      site, and returned as reports that Claude turns into Jira issues.</p>
+    <div class="chips">
+      <span class="chip"><b>review</b> amr.openelis-global.org</span>
+      <span class="chip"><b>review</b> analyzers.openelis-global.org</span>
+      <span class="chip"><b>author</b> grist.openelis-global.org</span>
+    </div>
+  </header>
+
+  <section class="reveal">
+    <h2>How the loop works</h2>
+    <div class="flow">
+      <div class="track">
+        <div class="track-hd"><span class="k">Authoring →</span> one source of truth, two kinds of author</div>
+        <div class="stage">
+          <div class="stack">
+            <div class="node"><span class="role">Human</span><span class="name">Grist UI</span><span class="sub">edit in a spreadsheet</span></div>
+            <div class="node"><span class="role">Agent</span><span class="name">Native MCP</span><span class="sub">/api/mcp</span></div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="node key"><span class="role">Source of truth</span><span class="name">Grist · UAT Checklists</span><span class="sub">UAT_Meta · UAT_Steps</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><span class="role">Router</span><span class="name">Live read</span><span class="sub">/__review/uat-*.json</span></div>
+          <div class="arrow">→</div>
+          <div class="node key"><span class="role">Demo site</span><span class="name">Review overlay</span><span class="sub">reads checklist live</span></div>
+        </div>
+      </div>
+
+      <div class="track">
+        <div class="track-hd"><span class="k">← Feedback</span> what the reviewer produces flows back to the work</div>
+        <div class="stage">
+          <div class="node key"><span class="role">Demo site</span><span class="name">Review overlay</span><span class="sub">mark pass / fail / n-a + notes</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><span class="role">Download</span><span class="name">Report</span><span class="sub">.md + .json</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><span class="role">Paste in</span><span class="name">Claude</span><span class="sub">triage</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><span class="role">Output</span><span class="name">Jira / GitHub</span><span class="sub">ranked, actionable</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:14px">The review overlay is the hinge: it turns authored checklist steps into
+      captured feedback. An edit in Grist (by anyone) shows up in the overlay within ~30 seconds — no publish step.</p>
+  </section>
+
+  <section class="reveal">
+    <h2>Do it yourself</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>Author or edit a checklist</h3>
+        <p style="color:var(--muted);font-size:14.5px">Pick the surface that fits you — both write to the same Grist doc.</p>
+        <ol class="steps">
+          <li><b>As a person:</b> sign in at <span class="mono">grist.openelis-global.org</span> and edit the
+            <code>UAT_Steps</code> table like a spreadsheet — one row per step.</li>
+          <li><b>As an agent (Claude Code):</b> connect the native Grist MCP once, then ask in plain language
+            (“add a step to the amr checklist covering X”).</li>
+        </ol>
+<pre><span class="cm"># connect the authoring MCP (CLI)</span>
+claude mcp add --transport http grist \
+  https://grist.openelis-global.org/api/mcp \
+  --header "Authorization: Bearer &lt;grist-api-key&gt;"</pre>
+      </div>
+
+      <div class="card">
+        <h3>Review &amp; give feedback</h3>
+        <p style="color:var(--muted);font-size:14.5px">No account needed — the overlay rides on the demo site.</p>
+        <ol class="steps">
+          <li>Open a demo site (<span class="mono">amr</span> or <span class="mono">analyzers</span>) and click
+            <b>Review</b> in the corner.</li>
+          <li>Work the checklist — mark each step <b>pass / fail / n-a</b> and leave notes where something’s off.</li>
+          <li>Hit <b>Download review report</b> — you get a Markdown + JSON pair.</li>
+          <li>Paste the Markdown into <b>Claude</b>; it triages your findings into Jira/GitHub items.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal">
+    <h2>A checklist &amp; its report</h2>
+    <div class="grid2">
+      <div class="card">
+        <div class="sec-tag">amr · Microbiology MVP · OGC-782</div>
+        <div class="cl">
+          <div class="sec-tag">Open the microbiology worklist</div>
+          <div class="cl-row"><span class="mk todo">····</span><span class="t">Sign in, open the Microbiology Worklist directly<small>expected: worklist loads with the seeded case(s)</small></span></div>
+          <div class="sec-tag">Drive the workflow</div>
+          <div class="cl-row"><span class="mk todo">····</span><span class="t">Record an isolate on the received specimen</span></div>
+          <div class="cl-row"><span class="mk todo">····</span><span class="t">Enter an AST result using the seeded breakpoints</span></div>
+          <div class="cl-row"><span class="mk todo">····</span><span class="t">Check the S/I/R interpretation reaches the patient report<small>authored via MCP — flags the highest-value gap</small></span></div>
+          <div class="sec-tag">Shared-specimen TB case · Overall impression</div>
+          <div class="cl-row"><span class="mk todo">····</span><span class="t">Find the sibling TB case on the same specimen; reflect on gaps</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sec-tag">The reviewer’s report → Claude</div>
+        <div class="cl">
+          <div class="cl-row"><span class="mk pass">PASS</span><span class="t">Worklist &amp; case pages work<small>note: no sidenav entry — had to paste the URL</small></span></div>
+          <div class="cl-row"><span class="mk pass">PASS</span><span class="t">AST entry with seeded breakpoints</span></div>
+          <div class="cl-row"><span class="mk fail">FAIL</span><span class="t">S/I/R never reaches a patient report<small>dead-ends at data entry — highest-value gap</small></span></div>
+        </div>
+        <p class="note" style="margin-top:16px">Claude reads this and drafts: <b>①</b> a story to carry AST interpretation
+          through to the report, <b>②</b> a task to add the worklist to the sidenav — and confirms the 7 steps that passed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal">
+    <h2>What’s running</h2>
+    <div class="ref">
+      <div><div class="lbl">Host</div><div class="val">One EC2 box · <code>us-west-2</code> · daily EBS snapshots</div></div>
+      <div><div class="lbl">Umbrella router</div><div class="val">nginx, Host-based dispatch, Let’s Encrypt per subdomain</div></div>
+      <div><div class="lbl">amr</div><div class="val">Microbiology MVP stack + review overlay</div></div>
+      <div><div class="lbl">analyzers</div><div class="val">Analyzer Types &amp; Mapping + harness + overlay</div></div>
+      <div><div class="lbl">grist</div><div class="val">Grist full edition · native MCP at <code>/api/mcp</code></div></div>
+      <div><div class="lbl">Live read</div><div class="val">Slim service reshapes Grist rows → widget JSON (30s cache)</div></div>
+      <div><div class="lbl">Author auth</div><div class="val">Grist API key (CLI) · web SSO is a planned follow-up</div></div>
+      <div><div class="lbl">Human login</div><div class="val">Dex today → Google OIDC planned</div></div>
+    </div>
+  </section>
+
+  <section class="reveal">
+    <h2>Where this lives</h2>
+    <div class="card">
+      <p style="margin:0">The harness is a self-contained ~two-dozen-file unit (router · Grist + MCP · review overlay ·
+        deploy scripts). It <b>orchestrates</b> OpenELIS builds at deploy time but is not application code — the plan is
+        to lift it into its own repository so it can iterate independently of the OpenELIS-Global-2 codebase and its CI.</p>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>OpenELIS · UAT Review Harness</span>
+    <span>Snapshot · July 2026 · static overview (not auto-refreshing)</span>
+  </div>
+</div>
