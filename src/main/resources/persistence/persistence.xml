@@ -117,6 +117,9 @@
         <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>
         <class>org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory</class>
 
+        <!-- DocumentType entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.reports.valueholder.DocumentType</class>
+
         <!-- UOM type mapping (OGC-356 environmental workflow) -->
         <class>org.openelisglobal.unitofmeasure.valueholder.UomTypeMap</class>
 
