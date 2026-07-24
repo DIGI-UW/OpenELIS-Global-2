@@ -449,6 +449,9 @@ public class ResultsValidationUtility {
         List<ResultValidationItem> selectedTestList = new ArrayList<>();
         Dictionary dictionary;
 
+        // Cache patient info per sample to avoid repeated DB lookups (N+1 prevention)
+        Map<String, String[]> samplePatientInfoCache = new HashMap<>();
+
         for (Analysis analysis : filteredAnalysisList) {
             // Use AnalysisAnchorService — same pattern as ResultsLoadUtility — so both
             // sampleItem-anchored and vectorPoolId-anchored analyses resolve correctly.
@@ -484,12 +487,56 @@ public class ResultsValidationUtility {
                     validationItem.setAnalysis(analysis);
                     validationItem.setNonconforming(QAService.isAnalysisParentNonConforming(analysis) || StatusService
                             .getInstance().matches(analysis.getStatusId(), AnalysisStatus.TechnicalRejected));
+
+                    populatePatientInfo(validationItem, analysis, samplePatientInfoCache);
+
                     selectedTestList.add(validationItem);
                 }
             }
         }
 
         return selectedTestList;
+    }
+
+    /**
+     * Populates patientName and patientInfo on the given validation item, using a
+     * per-sample cache to avoid N+1 DB lookups. Respects the depersonalize flag.
+     *
+     * <p>Uses {@link StringUtil#joinNonBlank} so a missing sex or birth date does
+     * not leave empty "{@code , ,}" segments in the displayed string.
+     */
+    private void populatePatientInfo(ResultValidationItem validationItem, Analysis analysis,
+            Map<String, String[]> samplePatientInfoCache) {
+        org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+        if (anchor == null || anchor.getSample() == null) {
+            return;
+        }
+        Sample sample = anchor.getSample();
+        String sampleId = sample.getId();
+
+        String[] cached = samplePatientInfoCache.get(sampleId);
+        if (cached == null) {
+            Patient patient = sampleHumanService.getPatientForSample(sample);
+            String patientName = "";
+            String patientInfo = "";
+            if (patient != null) {
+                if (depersonalize) {
+                    String nationalId = patientService.getNationalId(patient);
+                    patientInfo = GenericValidator.isBlankOrNull(nationalId)
+                            ? patientService.getExternalId(patient)
+                            : nationalId;
+                } else {
+                    patientName = patientService.getLastFirstName(patient);
+                    patientInfo = StringUtil.joinNonBlank(", ", patientService.getNationalId(patient),
+                            patientService.getGender(patient), patientService.getBirthdayForDisplay(patient));
+                }
+            }
+            cached = new String[] { patientName, patientInfo };
+            samplePatientInfoCache.put(sampleId, cached);
+        }
+
+        validationItem.setPatientName(cached[0]);
+        validationItem.setPatientInfo(cached[1]);
     }
 
     public final int getCountGroupedTestsForAnalysisList(Collection<Analysis> filteredAnalysisList,
@@ -876,6 +923,7 @@ public class ResultsValidationUtility {
                 condensedItem.setHasQualifiedResult(true);
                 condensedItem.setNormalRange(testResultItem.getNormalRange());
                 condensedItem.setPatientName(testResultItem.getPatientName());
+                condensedItem.setPatientInfo(testResultItem.getPatientInfo());
             }
         }
 
@@ -1168,6 +1216,7 @@ public class ResultsValidationUtility {
         analysisResultItem.setResultFlag(testResultItem.getResultFlag());
         analysisResultItem.setNormalRange(testResultItem.getNormalRange());
         analysisResultItem.setPatientName(testResultItem.getPatientName());
+        analysisResultItem.setPatientInfo(testResultItem.getPatientInfo());
         analysisResultItem.setTestName(testName);
         analysisResultItem.setUnits(testUnits);
         analysisResultItem.setAnalysisId(testResultItem.getAnalysis().getId());

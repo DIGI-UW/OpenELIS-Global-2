@@ -286,26 +286,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
         addFlashMsgsToRequest(request);
 
-        for (AnalysisItem analysisItem : filteredresultList) {
-            Sample itemSample = sampleService.getSampleByAccessionNumber(analysisItem.getAccessionNumber());
-            if (itemSample == null) {
-                continue;
-            }
-            Patient itemPatient = sampleHumanService.getPatientForSample(itemSample);
-            if (itemPatient == null) {
-                continue;
-            }
-            analysisItem
-                    .setPatientName(
-                            itemPatient
-                                    .getPerson() == null
-                                            ? ""
-                                            : (StringUtils.trimToEmpty(itemPatient.getPerson().getLastName()) + " "
-                                                    + StringUtils.trimToEmpty(itemPatient.getPerson().getFirstName()))
-                                                    .trim());
-            analysisItem.setPatientInfo(StringUtil.joinNonBlank(", ", itemPatient.getNationalId(),
-                    itemPatient.getGender(), itemPatient.getBirthDateForDisplay()));
-        }
+        // Patient info (name, nationalId, gender, DOB) is now populated in
+        // ResultsValidationUtility.populatePatientInfo() with a per-sample cache,
+        // avoiding the N+1 lookups the old per-row loop had here.
 
         // Surface failed QC samples for the batch so the frontend can render the
         // S-08 FR-04 acknowledgment panel.
