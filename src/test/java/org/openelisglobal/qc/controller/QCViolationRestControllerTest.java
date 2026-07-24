@@ -76,7 +76,7 @@ public class QCViolationRestControllerTest {
 
     @Test
     public void getViolations_byInstrument_callsFindByInstrument() throws Exception {
-        when(violationService.findByInstrument(23)).thenReturn(Collections.<QCRuleViolation>emptyList());
+        when(violationService.findByInstrument("23")).thenReturn(Collections.<QCRuleViolation>emptyList());
 
         mockMvc.perform(get("/rest/qc/violations").param("instrumentId", "23")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
@@ -84,7 +84,7 @@ public class QCViolationRestControllerTest {
 
     @Test
     public void getViolations_byInstrumentAndUnresolved_callsFindUnresolvedByInstrument() throws Exception {
-        when(violationService.findUnresolvedByInstrument(23))
+        when(violationService.findUnresolvedByInstrument("23"))
                 .thenReturn(Arrays.asList(violation("v-1", "2_2S", "REJECTION")));
 
         mockMvc.perform(get("/rest/qc/violations").param("instrumentId", "23").param("unresolved", "true"))

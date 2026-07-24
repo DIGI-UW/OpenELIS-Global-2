@@ -26,7 +26,7 @@ public class PatientContactDAOImpl extends BaseDAOImpl<PatientContact, String> i
         try {
             String sql = "From PatientContact p where p.patientId = :patientId";
             Query<PatientContact> query = entityManager.unwrap(Session.class).createQuery(sql, PatientContact.class);
-            query.setParameter("patientId", Integer.parseInt(patientId));
+            query.setParameter("patientId", patientId);
             patients = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);

@@ -38,8 +38,7 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
         try {
             String hql = "FROM BoxSampleItem bsi WHERE bsi.sampleItem.id = :sampleItemId";
             Query<BoxSampleItem> query = entityManager.unwrap(Session.class).createQuery(hql, BoxSampleItem.class);
-            // Convert String to Integer for comparison with numeric database column
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
             query.setMaxResults(1);
             List<BoxSampleItem> results = query.list();
             return results.isEmpty() ? null : results.get(0);
@@ -55,8 +54,7 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
             String hql = "FROM BoxSampleItem bsi WHERE bsi.shippingBox.id = :shippingBoxId AND bsi.sampleItem.id = :sampleItemId";
             Query<BoxSampleItem> query = entityManager.unwrap(Session.class).createQuery(hql, BoxSampleItem.class);
             query.setParameter("shippingBoxId", shippingBoxId);
-            // Convert String to Integer for comparison with numeric database column
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
             query.setMaxResults(1);
             List<BoxSampleItem> results = query.list();
             return results.isEmpty() ? null : results.get(0);
@@ -100,8 +98,7 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
         try {
             String hql = "SELECT COUNT(*) FROM BoxSampleItem bsi WHERE bsi.sampleItem.id = :sampleItemId";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-            // Convert String to Integer for comparison with numeric database column
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
             Long count = query.uniqueResult();
             return count != null && count > 0;
         } catch (Exception e) {

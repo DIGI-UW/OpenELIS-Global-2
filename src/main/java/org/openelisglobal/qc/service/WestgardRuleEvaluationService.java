@@ -28,8 +28,8 @@ public interface WestgardRuleEvaluationService {
      * @param instrumentId      Instrument ID for rule configuration lookup
      * @return List of evaluation results
      */
-    List<RuleEvaluationResult> evaluateAllRules(QCResult currentResult, List<QCResult> historicalResults,
-            Integer testId, Integer instrumentId);
+    List<RuleEvaluationResult> evaluateAllRules(QCResult currentResult, List<QCResult> historicalResults, String testId,
+            String instrumentId);
 
     /**
      * Get only the violations from an evaluation.

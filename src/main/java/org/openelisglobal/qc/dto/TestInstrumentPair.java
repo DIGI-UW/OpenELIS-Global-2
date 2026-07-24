@@ -8,19 +8,19 @@ import java.util.Objects;
  */
 public class TestInstrumentPair {
 
-    private final Integer testId;
-    private final Integer instrumentId;
+    private final String testId;
+    private final String instrumentId;
 
-    public TestInstrumentPair(Integer testId, Integer instrumentId) {
+    public TestInstrumentPair(String testId, String instrumentId) {
         this.testId = testId;
         this.instrumentId = instrumentId;
     }
 
-    public Integer getTestId() {
+    public String getTestId() {
         return testId;
     }
 
-    public Integer getInstrumentId() {
+    public String getInstrumentId() {
         return instrumentId;
     }
 

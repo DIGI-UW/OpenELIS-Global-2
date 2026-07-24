@@ -85,8 +85,8 @@ public class AnalyzerFieldDAOTest {
         // Arrange: Mock HQL query (single query with JOIN to legacy Analyzer)
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.createQuery(anyString(), eq(AnalyzerField.class))).thenReturn(query);
-        when(query.setParameter(eq("analyzerId"), eq(1))).thenReturn(query);
-        
+        when(query.setParameter(eq("analyzerId"), eq("1"))).thenReturn(query);
+
         List<AnalyzerField> expectedResults = new ArrayList<>();
         expectedResults.add(testField1);
         expectedResults.add(testField2);
@@ -110,7 +110,7 @@ public class AnalyzerFieldDAOTest {
         // Arrange: Mock HQL query to return empty list
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.createQuery(anyString(), eq(AnalyzerField.class))).thenReturn(query);
-        when(query.setParameter(eq("analyzerId"), eq(999))).thenReturn(query);
+        when(query.setParameter(eq("analyzerId"), eq("999"))).thenReturn(query);
         when(query.list()).thenReturn(new ArrayList<>());
 
         // Act: When no fields are found, method should return empty list

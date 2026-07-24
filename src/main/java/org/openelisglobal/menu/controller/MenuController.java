@@ -31,6 +31,11 @@ public class MenuController {
         return findMenuItem(elementId, MenuUtil.getMenuTree());
     }
 
+    @GetMapping(value = "/rest/admin/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Optional<MenuItem> getEditableMenuItem(@PathVariable String elementId) {
+        return findMenuItem(elementId, MenuUtil.getUnfilteredMenuTree());
+    }
+
     @PostMapping("/rest/menu")
     public List<MenuItem> postMenuTree(@RequestBody List<MenuItem> menuItems) {
         return menuService.save(menuItems);

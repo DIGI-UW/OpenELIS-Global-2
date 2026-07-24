@@ -2,10 +2,11 @@ import { test, expect } from "../../../helpers/test-base";
 import { Sidenav } from "../../../fixtures/sidenav";
 
 test.describe("Sidenav", () => {
-  test("home page has collapsed nav", async ({ page }) => {
+  test("desktop renders persistent nav with no hamburger", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const sidenav = new Sidenav(page);
-    await sidenav.expectCollapsed();
+    await sidenav.expectExpanded();
+    await expect(sidenav.menuButton).toHaveCount(0);
   });
 
   test("storage page has expanded nav", async ({ page }) => {
@@ -14,57 +15,49 @@ test.describe("Sidenav", () => {
     await sidenav.expectExpanded();
   });
 
-  test("can toggle sidenav on storage page", async ({ page }) => {
+  test("small viewport collapses nav into a hamburger drawer", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 800, height: 900 });
     const sidenav = new Sidenav(page);
     await sidenav.gotoStorage("sample-items");
 
-    await sidenav.expectExpanded();
-    await sidenav.toggle();
     await sidenav.expectCollapsed();
-    await sidenav.toggle();
-    await sidenav.expectExpanded();
-  });
-
-  /**
-   * FR-002: Preference persistence across browser refresh
-   * @see spec.md User Story 2: Persist User Preference Across Sessions
-   */
-  test("preference persists after page refresh", async ({ page }) => {
-    const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("sample-items");
-
-    // Storage defaults to expanded - collapse it
-    await sidenav.expectExpanded();
-    await sidenav.toggle();
-    await sidenav.expectCollapsed();
-
-    await page.goto("/Storage/sample-items", { waitUntil: "load" });
     await expect(sidenav.menuButton).toBeVisible();
 
-    // Should still be collapsed (preference persisted)
+    await sidenav.toggle();
+    await sidenav.expectExpanded();
+    await sidenav.toggle();
     await sidenav.expectCollapsed();
   });
 
-  /**
-   * FR-007: Content push verification in LOCK mode
-   * @see spec.md FR-007: Content shifts right when sidenav locked
-   */
-  test("content area has locked class when nav expanded", async ({ page }) => {
+  test("nav collapses below the desktop breakpoint and returns above it", async ({
+    page,
+  }) => {
     const sidenav = new Sidenav(page);
     await sidenav.gotoStorage("sample-items");
-
-    // Storage defaults to LOCK mode (expanded + content pushed)
     await sidenav.expectExpanded();
 
-    // Verify content has the locked class
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await sidenav.expectCollapsed();
+    await expect(sidenav.menuButton).toBeVisible();
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await sidenav.expectExpanded();
+    await expect(sidenav.menuButton).toHaveCount(0);
+  });
+
+  test("content is pushed on desktop and full-width below the breakpoint", async ({
+    page,
+  }) => {
+    const sidenav = new Sidenav(page);
+    await sidenav.gotoStorage("sample-items");
+    await sidenav.expectExpanded();
+
     const content = page.locator('[data-testid="content-wrapper"]');
     await expect(content).toHaveClass(/content-nav-locked/);
 
-    // Collapse nav
-    await sidenav.toggle();
-    await sidenav.expectCollapsed();
-
-    // Content should NOT have locked class
+    await page.setViewportSize({ width: 1000, height: 800 });
     await expect(content).not.toHaveClass(/content-nav-locked/);
   });
 
@@ -129,12 +122,7 @@ test.describe("Sidenav", () => {
   test("no grey background when switching between top-level menus", async ({
     page,
   }) => {
-    // Use Dashboard with locked sidenav so the main menu is visible
-    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
-    await page.evaluate(() => {
-      localStorage.setItem("mainSideNavMode", "lock");
-    });
-    // Use goto instead of reload to avoid Playwright "response not bound" bug
+    // Desktop renders the main menu expanded by default
     await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
 
     const sidenav = new Sidenav(page);
@@ -169,14 +157,6 @@ test.describe("Sidenav", () => {
   // TODO: stabilize or narrow scope—visiting every link is flaky (click/expandAllMenus timeouts).
   test.skip("all visible sidenav links navigate (smoke)", async ({ page }) => {
     const sidenav = new Sidenav(page);
-
-    // Force a stable expanded experience across layout contexts.
-    // Layout uses storageKeyPrefix "main" vs "storage".
-    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
-    await page.evaluate(() => {
-      localStorage.setItem("mainSideNavMode", "lock");
-      localStorage.setItem("storageSideNavMode", "lock");
-    });
 
     // Start from Storage so the nav is definitely present and expanded
     await sidenav.gotoStorage("sample-items");

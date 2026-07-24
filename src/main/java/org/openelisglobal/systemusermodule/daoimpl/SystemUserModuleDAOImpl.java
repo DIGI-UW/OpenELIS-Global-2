@@ -88,7 +88,7 @@ public class SystemUserModuleDAOImpl extends BaseDAOImpl<SystemUserModule, Strin
             String sql = "from SystemUserModule s where s.systemUser.id = :param";
             Query<SystemUserModule> query = entityManager.unwrap(Session.class).createQuery(sql,
                     SystemUserModule.class);
-            query.setParameter("param", systemUserId);
+            query.setParameter("param", String.valueOf(systemUserId));
             list = query.list();
         } catch (RuntimeException e) {
             // bugzilla 2154

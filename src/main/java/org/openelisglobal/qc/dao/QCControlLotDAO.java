@@ -14,12 +14,19 @@ public interface QCControlLotDAO extends BaseDAO<QCControlLot, String> {
     /**
      * Get all control lots for a specific test and instrument.
      */
-    List<QCControlLot> getByTestAndInstrument(Integer testId, Integer instrumentId) throws LIMSRuntimeException;
+    List<QCControlLot> getByTestAndInstrument(String testId, String instrumentId) throws LIMSRuntimeException;
 
     /**
      * Get active control lots for a test and instrument.
      */
-    List<QCControlLot> getActiveByTestAndInstrument(Integer testId, Integer instrumentId) throws LIMSRuntimeException;
+    List<QCControlLot> getActiveByTestAndInstrument(String testId, String instrumentId) throws LIMSRuntimeException;
+
+    /**
+     * Get all ACTIVE control lots for an instrument across every test it's mapped
+     * to. Used by bridge registration so the bridge can disambiguate lots embedded
+     * in inbound sample names (FILE) or cross-check Q-segment lots (ASTM).
+     */
+    List<QCControlLot> getActiveByInstrument(String instrumentId) throws LIMSRuntimeException;
 
     /**
      * Get control lot by lot number.
@@ -29,12 +36,12 @@ public interface QCControlLotDAO extends BaseDAO<QCControlLot, String> {
     /**
      * Count active control lots for a specific instrument.
      */
-    long countActiveByInstrument(Integer instrumentId) throws LIMSRuntimeException;
+    long countActiveByInstrument(String instrumentId) throws LIMSRuntimeException;
 
     /**
      * Count active control lots for a specific test and instrument.
      */
-    long countActiveByTestAndInstrument(Integer testId, Integer instrumentId) throws LIMSRuntimeException;
+    long countActiveByTestAndInstrument(String testId, String instrumentId) throws LIMSRuntimeException;
 
     /**
      * Get all distinct (testId, instrumentId) pairs from control lots.

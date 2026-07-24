@@ -17,15 +17,15 @@
     <menu id="3" element_id="testElement3" is_active="1"
         presentation_order="3" />
 
-    <!-- New menus for testing active/inactive, messageKey, and order -->
+    <!-- New menus for testing active/inactive and order -->
     <menu id="4" element_id="testElement4" is_active="1"
-        presentation_order="4" messageKey="zMenu" />
+        presentation_order="4" />
     <menu id="5" element_id="testElement5" is_active="1"
-        presentation_order="5" messageKey="aMenu" />
+        presentation_order="5" />
     <menu id="6" element_id="testElement6" is_active="0"
-        presentation_order="6" messageKey="xMenu" />
+        presentation_order="6" />
     <menu id="7" element_id="testElement7" is_active="1"
-        presentation_order="7" messageKey="mMenu" />
+        presentation_order="7" />
     <menu id="8" element_id="testElement8" is_active="1"
-        presentation_order="8" messageKey="fMenu" />
+        presentation_order="8" />
 </dataset>

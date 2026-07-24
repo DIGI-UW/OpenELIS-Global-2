@@ -109,7 +109,7 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     public Optional<Analyzer> findByIdWithType(String id) {
         String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.analyzerType WHERE a.id = :id";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
-        query.setParameter("id", Integer.valueOf(id));
+        query.setParameter("id", id);
         Analyzer result = query.uniqueResult();
         return Optional.ofNullable(result);
     }

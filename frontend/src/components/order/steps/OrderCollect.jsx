@@ -94,6 +94,8 @@ const OrderCollect = () => {
   }, [
     orderData?.sampleOrderItems?.consentGiven,
     orderData?.sampleOrderItems?.consentFormReference,
+    orderData?.sampleOrderItems?.consentRecordedAt,
+    orderData?.sampleOrderItems?.consentRecordedBy,
   ]);
 
   // Fetch sample types and UOMs on mount
@@ -246,7 +248,8 @@ const OrderCollect = () => {
         ...orderData.sampleOrderItems,
         consentGiven: updatedConsent.consentGiven,
         consentFormReference: updatedConsent.consentFormReference,
-        // Note: consentRecordedAt and consentRecordedBy are auto-populated by backend
+        consentRecordedAt: updatedConsent.consentRecordedAt,
+        consentRecordedBy: updatedConsent.consentRecordedBy,
       },
     });
   };

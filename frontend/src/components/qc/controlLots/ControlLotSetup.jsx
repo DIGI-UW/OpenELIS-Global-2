@@ -141,7 +141,7 @@ const ControlLotSetup = () => {
 
   // Load all tests on mount
   useEffect(() => {
-    getFromOpenElisServer("/rest/tests", (response) => {
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (response) => {
       if (Array.isArray(response)) {
         setTests(response);
       }

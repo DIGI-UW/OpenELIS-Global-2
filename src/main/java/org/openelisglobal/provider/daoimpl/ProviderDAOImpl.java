@@ -119,7 +119,7 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
         try {
             String sql = "from Provider p where p.person.id = :personId";
             Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
-            query.setParameter("personId", Integer.parseInt(person.getId()));
+            query.setParameter("personId", person.getId());
 
             list = query.list();
         } catch (RuntimeException e) {

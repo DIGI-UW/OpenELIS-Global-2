@@ -18,13 +18,13 @@ public interface ResultService extends BaseObjectService<Result, String> {
 
     List<Result> getResultsByAnalysis(Analysis analysis);
 
-    List<Result> getResultsForAnalysisIdList(List<Integer> analysisIdList);
+    List<Result> getResultsForAnalysisIdList(List<String> analysisIdList);
 
     List<Result> getResultsForPanelInDateRange(String panelId, Date lowDate, Date highDate);
 
     List<Result> getResultsForSample(Sample sample);
 
-    Result getResultForAnalyteInAnalysisSet(String analyteId, List<Integer> analysisIDList);
+    Result getResultForAnalyteInAnalysisSet(String analyteId, List<String> analysisIDList);
 
     List<Result> getResultsForTestInDateRange(String testId, Date startDate, Date endDate);
 

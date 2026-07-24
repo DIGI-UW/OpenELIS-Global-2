@@ -110,6 +110,20 @@ public class PatientSearchPopulateRestController {
         PatientInfoBean patientInfo = new PatientInfoBean();
         patientInfo.setPatientPK(patient.getId());
         patientInfo.setNationalId(patient.getNationalId());
+        if (Boolean.TRUE.equals(patient.getIsMerged())) {
+            patientInfo.setIsMerged(true);
+            String primaryId = patient.getMergedIntoPatientId();
+            patientInfo.setMergedIntoPatientId(primaryId);
+            if (!GenericValidator.isBlankOrNull(primaryId)) {
+                Patient primary = patientService.get(primaryId);
+                if (primary != null) {
+                    patientInfo.setMergedIntoNationalId(primary.getNationalId());
+                }
+            }
+            if (patient.getMergeDate() != null) {
+                patientInfo.setMergeDate(patient.getMergeDate().toString());
+            }
+        }
         patientInfo.setSTnumber(identityMap.getIdentityValue(identityList, "ST"));
         patientInfo.setSubjectNumber(identityMap.getIdentityValue(identityList, "SUBJECT"));
         patientInfo.setLastName(getLastNameForResponse(person));
@@ -120,10 +134,22 @@ public class PatientSearchPopulateRestController {
         patientInfo.setCity(city);
         patientInfo.setPrimaryPhone(person.getPrimaryPhone());
         patientInfo.setEmail(person.getEmail());
+        // GPS coordinates round-trip Person.gpsLatitude/Longitude (BigDecimal)
+        // as plain strings so the edit form's initialValues can pre-fill them
+        // (LO-01-01: previously the response omitted them entirely so the GPS
+        // inputs re-opened blank for a patient whose GPS was already saved).
+        if (person.getGpsLatitude() != null) {
+            patientInfo.setGpsLatitude(person.getGpsLatitude().toPlainString());
+        }
+        if (person.getGpsLongitude() != null) {
+            patientInfo.setGpsLongitude(person.getGpsLongitude().toPlainString());
+        }
         patientInfo.setGender(patient.getGender());
         patientInfo.setPatientType(getPatientType(patient));
         patientInfo.setInsuranceNumber(identityMap.getIdentityValue(identityList, "INSURANCE"));
         patientInfo.setOccupation(identityMap.getIdentityValue(identityList, "OCCUPATION"));
+        patientInfo.setCustomNotes(identityMap.getIdentityValue(identityList, "CUSTOM_NOTES"));
+        patientInfo.setTargetDiseaseProgramme(identityMap.getIdentityValue(identityList, "DISEASE_PROGRAMME"));
         String format1 = "dd/MM/yyyy";
         String format2 = "MM/dd/yyyy";
         patientInfo.setBirthDateForDisplay(

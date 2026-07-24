@@ -67,7 +67,10 @@ public class StatusService implements IStatusService {
     }
 
     public enum ExternalOrderStatus {
-        Entered, Cancelled, Realized, NonConforming
+        // AwaitingSpecimen (OGC-1145 FR-8): queued like Entered, but flags that
+        // the coded test runs on several sample types and the message carried no
+        // specimen — the accessioner resolves it via the order-entry chooser.
+        Entered, Cancelled, Realized, NonConforming, AwaitingSpecimen
     }
 
     private Map<String, OrderStatus> idToOrderStatusMap = null;
@@ -432,6 +435,8 @@ public class StatusService implements IStatusService {
             externalOrderStatusToObjectMap.put(ExternalOrderStatus.Realized, status);
         } else if (name.equals("NonConforming")) {
             externalOrderStatusToObjectMap.put(ExternalOrderStatus.NonConforming, status);
+        } else if (name.equals("AwaitingSpecimen")) {
+            externalOrderStatusToObjectMap.put(ExternalOrderStatus.AwaitingSpecimen, status);
         }
     }
 

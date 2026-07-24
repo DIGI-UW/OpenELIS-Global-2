@@ -135,8 +135,8 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         QCResult result = new QCResult();
         result.setId(UUID.randomUUID().toString());
         result.setControlLotId(controlLotId);
-        result.setTestId(Integer.valueOf(testId));
-        result.setInstrumentId(Integer.valueOf(analyzerId));
+        result.setTestId(testId);
+        result.setInstrumentId(analyzerId);
         result.setResultValue(resultValue);
         result.setUnitOfMeasure(resolveUnit(unit, testId));
         result.setZScore(zScore);

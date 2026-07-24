@@ -26,7 +26,7 @@ function TestSelectForm(props) {
     mounted.current = true;
     let testId = new URLSearchParams(window.location.search).get("testId");
     testId = testId ? testId : "";
-    getFromOpenElisServer("/rest/tests", (fetchedTests) => {
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (fetchedTests) => {
       let test = fetchedTests.find((test) => test.id === testId);
       let testLabel = test
         ? test.value
