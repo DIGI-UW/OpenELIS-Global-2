@@ -57,7 +57,11 @@ public class ViewNonConformEventsRestController extends BaseRestController {
             @RequestParam(required = false) String nceNumber, @RequestParam(required = false) String status,
             HttpServletRequest request) {
         Map<String, Object> searchParameters = new HashMap<>();
-        searchParameters.put("status", status);
+        // blank status = any status, matching the other params' guards below —
+        // deep links (?nceNumber=...) must resolve NCEs that moved past Pending
+        if (status != null && !status.isBlank()) {
+            searchParameters.put("status", status);
+        }
         List<NcEvent> searchResults = new ArrayList<>();
         if (!"".equalsIgnoreCase(labNumber)) {
             searchParameters.put("labOrderNumber", labNumber);

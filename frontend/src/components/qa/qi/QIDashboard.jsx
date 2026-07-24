@@ -15,7 +15,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Dropdown } from "@carbon/react";
 import { Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { AlertDialog } from "../../common/CustomNotification";
 import { formatTat, tatDelta } from "../../reports/tat/tatUtils";
@@ -43,10 +43,6 @@ const WINDOWS = [
   { id: "ytd", labelKey: "qa.qi.dashboard.window.ytd" },
 ];
 
-function formatDate(d) {
-  return d.toISOString().split("T")[0];
-}
-
 function windowDates(windowId) {
   const to = new Date();
   const from = new Date();
@@ -59,10 +55,10 @@ function windowDates(windowId) {
   const priorTo = new Date(from.getTime() - DAY_MS);
   const priorFrom = new Date(from.getTime() - DAY_MS - (to - from));
   return {
-    fromDate: formatDate(from),
-    toDate: formatDate(to),
-    priorFromDate: formatDate(priorFrom),
-    priorToDate: formatDate(priorTo),
+    fromDate: toLocalIsoDate(from),
+    toDate: toLocalIsoDate(to),
+    priorFromDate: toLocalIsoDate(priorFrom),
+    priorToDate: toLocalIsoDate(priorTo),
   };
 }
 
@@ -354,7 +350,7 @@ const QIDashboard = () => {
     : null;
 
   return (
-    <div className="adminPageContent qi-dashboard" data-testid="qi-dashboard">
+    <div className="pageContent qi-dashboard" data-testid="qi-dashboard">
       <AlertDialog />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>

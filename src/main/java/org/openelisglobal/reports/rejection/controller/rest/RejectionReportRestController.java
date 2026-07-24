@@ -8,6 +8,7 @@ import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.reports.rejection.bean.RejectionBreakdownResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionDetailResponse;
+import org.openelisglobal.reports.rejection.bean.RejectionHeatmapResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionSummaryResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionTrendResponse;
 import org.openelisglobal.reports.rejection.service.RejectionReportService;
@@ -157,6 +158,34 @@ public class RejectionReportRestController extends BaseRestController {
 
         logger.info("Rejection breakdown by user {} | range {}-{} | {} reasons, {} tests", getSysUserId(request),
                 fromDate, toDate, response.getReasons().size(), response.getTests().size());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/heatmap")
+    public ResponseEntity<?> getHeatmap(@RequestParam String fromDate, @RequestParam String toDate,
+            HttpServletRequest request) {
+
+        requireAuthenticatedUser(request);
+
+        LocalDate from;
+        LocalDate to;
+        try {
+            from = LocalDate.parse(fromDate);
+            to = LocalDate.parse(toDate);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid parameter: " + e.getMessage()));
+        }
+
+        ResponseEntity<?> rangeError = validateRange(from, to);
+        if (rangeError != null) {
+            return rangeError;
+        }
+
+        RejectionHeatmapResponse response = rejectionReportService.getHeatmap(from, to);
+
+        logger.info("Rejection heatmap by user {} | range {}-{} | {} cells", getSysUserId(request), fromDate, toDate,
+                response.getCells().size());
 
         return ResponseEntity.ok(response);
     }

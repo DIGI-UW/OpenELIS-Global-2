@@ -9,6 +9,10 @@ import QIDashboard from "../QIDashboard";
 import { NotificationContext } from "../../../layout/Layout";
 
 vi.mock("../../../utils/Utils", () => ({
+  toLocalIsoDate: (d) =>
+    d instanceof Date
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      : d || "",
   getFromOpenElisServer: vi.fn(),
 }));
 
@@ -273,7 +277,10 @@ describe("QIDashboard", () => {
 
     const from = new Date();
     from.setDate(from.getDate() - 7);
-    const expectedFrom = from.toISOString().split("T")[0];
+    // local date components, matching toLocalIsoDate (not UTC toISOString)
+    const expectedFrom = `${from.getFullYear()}-${String(
+      from.getMonth() + 1,
+    ).padStart(2, "0")}-${String(from.getDate()).padStart(2, "0")}`;
     expect(getFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining(`fromDate=${expectedFrom}`),
       expect.any(Function),

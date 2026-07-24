@@ -28,9 +28,15 @@ import org.springframework.stereotype.Service;
  * through the config's direction so a future flip is config-driven.
  *
  * <p>
- * Window and dedup key are the current calendar month, so a breach fires at
- * most one NCE per indicator per month; a re-breach next month re-fires under a
- * new period key (the trigger-source unique constraint is all-time).
+ * Each run evaluates two windows: the current month-to-date AND the just-closed
+ * month. The second matters because the computes attribute events to the month
+ * the work arrived (cohort semantics — e.g. a rejection noted July 1 on an
+ * analysis started June 30 belongs to June), so late-landing events would
+ * otherwise fall into a month that is never looked at again. The dedup key
+ * embeds the month, so a breach fires at most one NCE per indicator per month
+ * and the prior-month pass is a no-op once its NCE exists. (Events landing two
+ * or more months after intake are still missed — widen to N months if that ever
+ * matters.)
  */
 @Service
 public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
@@ -60,9 +66,19 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
     @Override
     @Scheduled(initialDelay = 10 * 1000, fixedRateString = "${org.openelisglobal.qi.breach.poll.frequency:120000}")
     public void evaluateBreaches() {
-        evaluateSafely("AMENDMENT", this::evaluateAmendment);
-        evaluateSafely("REJECTION", this::evaluateRejection);
-        evaluateSafely("TAT", this::evaluateTat);
+        LocalDate today = LocalDate.now();
+        evaluateWindow(today.withDayOfMonth(1), today);
+        // just-closed month: catches events that land after the month ends but
+        // belong to its cohort (see class javadoc)
+        LocalDate prevFirst = today.withDayOfMonth(1).minusMonths(1);
+        evaluateWindow(prevFirst, today.withDayOfMonth(1).minusDays(1));
+    }
+
+    private void evaluateWindow(LocalDate from, LocalDate to) {
+        String periodKey = from.format(PERIOD_KEY);
+        evaluateSafely("AMENDMENT", () -> evaluateAmendment(from, to, periodKey));
+        evaluateSafely("REJECTION", () -> evaluateRejection(from, to, periodKey));
+        evaluateSafely("TAT", () -> evaluateTat(from, to, periodKey));
     }
 
     private void evaluateSafely(String indicator, Runnable evaluation) {
@@ -74,47 +90,43 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
         }
     }
 
-    private void evaluateAmendment() {
+    private void evaluateAmendment(LocalDate from, LocalDate to, String periodKey) {
         ResolvedConfig config = resolveActionable(QiIndicator.AMENDMENT);
         if (config == null) {
             return;
         }
-        LocalDate today = LocalDate.now();
-        AmendmentSummaryResponse summary = amendmentReportService.getSummary(today.withDayOfMonth(1), today);
+        AmendmentSummaryResponse summary = amendmentReportService.getSummary(from, to);
         if (summary.getRatePercent() == null) {
             return; // nothing released this period
         }
-        checkAndFire(QiIndicator.AMENDMENT, BigDecimal.valueOf(summary.getRatePercent()), config, "%");
+        checkAndFire(QiIndicator.AMENDMENT, BigDecimal.valueOf(summary.getRatePercent()), config, "%", periodKey);
     }
 
-    private void evaluateRejection() {
+    private void evaluateRejection(LocalDate from, LocalDate to, String periodKey) {
         ResolvedConfig config = resolveActionable(QiIndicator.REJECTION);
         if (config == null) {
             return;
         }
-        LocalDate today = LocalDate.now();
-        RejectionSummaryResponse summary = rejectionReportService.getSummary(today.withDayOfMonth(1), today);
+        RejectionSummaryResponse summary = rejectionReportService.getSummary(from, to);
         if (summary.getRatePercent() == null) {
             return; // nothing started this period
         }
-        checkAndFire(QiIndicator.REJECTION, BigDecimal.valueOf(summary.getRatePercent()), config, "%");
+        checkAndFire(QiIndicator.REJECTION, BigDecimal.valueOf(summary.getRatePercent()), config, "%", periodKey);
     }
 
-    private void evaluateTat() {
+    private void evaluateTat(LocalDate from, LocalDate to, String periodKey) {
         ResolvedConfig config = resolveActionable(QiIndicator.TAT);
         if (config == null) {
             return;
         }
-        LocalDate today = LocalDate.now();
         // Same segment/mode as the QI dashboard tile, so the auto-NCE and the
         // tile a lab manager checks against it agree.
-        TATSummaryResponse summary = tatReportService.getSummary(today.withDayOfMonth(1), today,
-                TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR, null, null, null, null, null, null,
-                false, null);
+        TATSummaryResponse summary = tatReportService.getSummary(from, to, TATSegment.RECEIPT_TO_VALIDATION,
+                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, null);
         if (summary == null || summary.getMean() == null) {
             return; // nothing validated this period
         }
-        checkAndFire(QiIndicator.TAT, summary.getMean(), config, "h");
+        checkAndFire(QiIndicator.TAT, summary.getMean(), config, "h", periodKey);
     }
 
     /** Resolved config, or null when disabled / no action threshold set. */
@@ -126,13 +138,13 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
         return config;
     }
 
-    private void checkAndFire(QiIndicator indicator, BigDecimal actual, ResolvedConfig config, String unit) {
+    private void checkAndFire(QiIndicator indicator, BigDecimal actual, ResolvedConfig config, String unit,
+            String periodKey) {
         if (breaches(actual, config.getAction(), config.getDirection())) {
-            LocalDate today = LocalDate.now();
-            qiBreachNceService.createBreachNce(indicator.name(), today.format(PERIOD_KEY), actual, config.getAction(),
+            qiBreachNceService.createBreachNce(indicator.name(), periodKey, actual, config.getAction(),
                     config.getDirection(), unit);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "checkAndFire",
-                    indicator.name() + " breach: " + actual + unit + " vs action " + config.getAction() + unit);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "checkAndFire", indicator.name() + " breach (" + periodKey
+                    + "): " + actual + unit + " vs action " + config.getAction() + unit);
         }
     }
 

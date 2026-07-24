@@ -107,7 +107,7 @@ const QIConfigList = () => {
   }));
 
   return (
-    <div className="adminPageContent qi-dashboard" data-testid="qi-config">
+    <div className="pageContent qi-dashboard" data-testid="qi-config">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
         <FormattedMessage id="qa.qiConfig.title" />

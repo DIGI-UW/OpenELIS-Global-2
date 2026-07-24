@@ -7,12 +7,25 @@ import messages from "../../../../languages/en.json";
 import RejectionReport from "../RejectionReport";
 
 vi.mock("../../../utils/Utils", () => ({
+  toLocalIsoDate: (d) =>
+    d instanceof Date
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      : d || "",
+  toLocalIsoDateTime: (value) => {
+    if (!value) return "\u2014";
+    const d = new Date(value);
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${hh}:${mm}`;
+  },
   getFromOpenElisServer: vi.fn(),
 }));
 
 // jsdom can't render @carbon/charts (SVG/resize observers) — stub it
 vi.mock("@carbon/charts-react", () => ({
   LineChart: () => <div data-testid="rejection-trend-chart" />,
+  DonutChart: () => <div data-testid="rejection-reason-donut" />,
+  SimpleBarChart: () => <div data-testid="rejection-test-bars" />,
 }));
 
 import { getFromOpenElisServer } from "../../../utils/Utils";
@@ -29,6 +42,8 @@ const DETAIL = {
       reason: "Hemolyzed specimen",
       rejectedBy: "John Doe",
       rejectedAt: "2026-07-08T10:15:00Z",
+      location: "Inpatient Ward",
+      nceNumber: "NCE-2026-00042",
     },
     {
       analysisId: "2",
@@ -37,6 +52,27 @@ const DETAIL = {
       reason: null,
       rejectedBy: null,
       rejectedAt: "2026-07-08T11:00:00Z",
+      location: null,
+      nceNumber: null,
+    },
+  ],
+};
+
+const HEATMAP = {
+  cells: [
+    {
+      location: "Inpatient Ward",
+      section: "Chemistry",
+      totalCount: 40,
+      rejectedCount: 1,
+      ratePercent: 2.5,
+    },
+    {
+      location: null,
+      section: "Hematology",
+      totalCount: 10,
+      rejectedCount: 0,
+      ratePercent: 0,
     },
   ],
 };
@@ -173,6 +209,8 @@ describe("RejectionReport", () => {
         callback(TREND);
       } else if (url.includes("/rest/reports/rejection/breakdown")) {
         callback(BREAKDOWN);
+      } else if (url.includes("/rest/reports/rejection/heatmap")) {
+        callback(HEATMAP);
       } else if (url.includes("/rest/qi-config/resolve")) {
         callback(CONFIG);
       }
@@ -202,5 +240,36 @@ describe("RejectionReport", () => {
     // by-test breakdown
     expect(screen.getByText("By test")).toBeInTheDocument();
     expect(screen.getByText("40")).toBeInTheDocument();
+
+    // donut + bar visuals rendered (stubbed)
+    expect(screen.getByTestId("rejection-reason-donut")).toBeInTheDocument();
+    expect(screen.getByTestId("rejection-test-bars")).toBeInTheDocument();
+
+    // Pareto insight sentence: cumulative crosses 80% at the second reason
+    expect(
+      screen.getByText(/Top 2 of 2 reasons account for 100%/),
+    ).toBeInTheDocument();
+
+    // heatmap: location columns (unknown bucket labeled), config-toned cells,
+    // config-quoting legend
+    expect(
+      screen.getByText("Heatmap: ordering location × test section"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unknown location")).toBeInTheDocument();
+    expect(screen.getByText("2.5%")).toHaveClass("qi-heatmap__cell--amber");
+    expect(screen.getByText("0.0%")).toHaveClass("qi-heatmap__cell--green");
+    expect(screen.getByText(/Cells colored by rate/)).toBeInTheDocument();
+
+    // list heading + location column + per-rejection NCE link ("Inpatient
+    // Ward" shows in the heatmap header and the list row)
+    expect(screen.getByText("Individual rejections")).toBeInTheDocument();
+    expect(screen.getAllByText("Inpatient Ward").length).toBeGreaterThanOrEqual(
+      2,
+    );
+    const nceLink = screen.getByRole("link", { name: "NCE-2026-00042" });
+    expect(nceLink).toHaveAttribute(
+      "href",
+      "/ViewNonConformingEvent?nceNumber=NCE-2026-00042",
+    );
   });
 });

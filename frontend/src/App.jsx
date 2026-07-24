@@ -203,7 +203,7 @@ import {
 // Labels are i18n keys resolved by PageBreadCrumb.
 const qaTatBreadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "sideNav.label.qa", link: "" },
+  { label: "sideNav.label.qa", link: "/qa/overview" },
   { label: "sideNav.label.qa.qi.dashboard", link: "/qa/qi/dashboard" },
   { label: "reports.tat.title", link: "" },
 ];

@@ -52,4 +52,7 @@
 
   <!-- QA Phase C.3 — OGC-710: TAT thresholds become duration (hours) -->
   <include file="liquibase/qa/009-tat-duration-thresholds.xml" />
+
+  <!-- QA Phase C.3 — OGC-710: index for the rejection cohort queries -->
+  <include file="liquibase/qa/010-analysis-started-date-index.xml" />
 </databaseChangeLog>

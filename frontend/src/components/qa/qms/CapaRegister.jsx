@@ -184,7 +184,7 @@ const CapaRegister = () => {
   const statusItems = ["all", "open", "overdue", "completed"];
 
   return (
-    <div className="adminPageContent qi-dashboard">
+    <div className="pageContent qi-dashboard">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
         <FormattedMessage id="qa.qms.capaRegister.title" />

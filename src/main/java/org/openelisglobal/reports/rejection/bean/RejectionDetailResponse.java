@@ -51,6 +51,8 @@ public class RejectionDetailResponse {
         private String testName;
         private String reason;
         private String rejectedBy;
+        private String location;
+        private String nceNumber;
 
         public String getAnalysisId() {
             return analysisId;
@@ -98,6 +100,22 @@ public class RejectionDetailResponse {
 
         public void setRejectedBy(String rejectedBy) {
             this.rejectedBy = rejectedBy;
+        }
+
+        public String getLocation() {
+            return location;
+        }
+
+        public void setLocation(String location) {
+            this.location = location;
+        }
+
+        public String getNceNumber() {
+            return nceNumber;
+        }
+
+        public void setNceNumber(String nceNumber) {
+            this.nceNumber = nceNumber;
         }
     }
 }

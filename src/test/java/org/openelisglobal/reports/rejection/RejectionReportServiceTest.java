@@ -1,10 +1,13 @@
 package org.openelisglobal.reports.rejection;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,11 +17,17 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.reports.rejection.bean.RejectionBreakdownResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionDetailResponse;
+import org.openelisglobal.reports.rejection.bean.RejectionHeatmapResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionSummaryResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionTrendResponse;
 import org.openelisglobal.reports.rejection.service.RejectionReportService;
+import org.openelisglobal.requester.service.RequesterTypeService;
+import org.openelisglobal.requester.service.SampleRequesterService;
+import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -31,7 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
 
     private static final LocalDate WINDOW_FROM = LocalDate.of(2025, 7, 1);
-    private static final LocalDate STARTS_ONLY_TO = LocalDate.of(2025, 7, 31);
+    private static final LocalDate START_MONTH_TO = LocalDate.of(2025, 7, 31);
 
     @Autowired
     private RejectionReportService rejectionReportService;
@@ -41,6 +50,18 @@ public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private NoteService noteService;
+
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Autowired
+    private SampleRequesterService sampleRequesterService;
+
+    @Autowired
+    private RequesterTypeService requesterTypeService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Before
     public void setUp() throws Exception {
@@ -86,14 +107,30 @@ public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void noteOutsideWindow_isNotCounted_andDenominatorTracksStarts() {
+    public void windowSelectsByAnalysisStart_noteDateIsIrrelevant() {
         writeRejectionNote("2", "Hemolyzed specimen");
 
-        // Window covers the started analyses but ends before the note was written
-        RejectionSummaryResponse summary = rejectionReportService.getSummary(WINDOW_FROM, STARTS_ONLY_TO);
-        assertEquals(0, summary.getRejectedCount());
+        // Window covers the starts (2025-07-07) but ends before the note was
+        // written (now): the rejection still counts — cohort semantics key on
+        // when the analysis started, so rejected ⊆ started and rates can never
+        // exceed 100%.
+        RejectionSummaryResponse summary = rejectionReportService.getSummary(WINDOW_FROM, START_MONTH_TO);
+        assertEquals(1, summary.getRejectedCount());
         assertEquals(2, summary.getTotalCount());
-        assertEquals(0.0, summary.getRatePercent(), 0.001);
+        assertEquals(50.0, summary.getRatePercent(), 0.001);
+
+        // The reverse direction: a window covering the note date but not the
+        // start date sees nothing — the analysis isn't in the cohort.
+        LocalDate now = LocalDate.now();
+        RejectionSummaryResponse noteWindow = rejectionReportService.getSummary(now.minusDays(3), now);
+        assertEquals(0, noteWindow.getRejectedCount());
+        assertEquals(0, noteWindow.getTotalCount());
+        assertNull(noteWindow.getRatePercent());
+
+        // Detail follows the same window: the row appears in the start window
+        // (with its out-of-window rejection timestamp), not the note window.
+        assertEquals(1, rejectionReportService.getDetail(WINDOW_FROM, START_MONTH_TO, 0, 25).getTotalCount());
+        assertEquals(0, rejectionReportService.getDetail(now.minusDays(3), now, 0, 25).getTotalCount());
     }
 
     @Test
@@ -110,25 +147,26 @@ public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void trend_bucketsRejectionsAndStartsByPeriod() {
-        // Rejection note lands "now", starts are 2025-07-07 — two buckets
+    public void trend_bucketsByAnalysisStart_rejectedNeverExceedsStarted() {
+        // Rejection note lands "now", starts are 2025-07-07 — under cohort
+        // semantics both counts land in the single start-month bucket.
         writeRejectionNote("2", "Hemolyzed specimen");
 
         RejectionTrendResponse trend = rejectionReportService.getTrend(WINDOW_FROM, LocalDate.now(), "MONTHLY");
 
         RejectionTrendResponse.TrendPoint startMonth = pointFor(trend, "2025-07");
         assertNotNull(startMonth);
-        assertEquals(0, startMonth.getRejectedCount());
+        assertEquals(1, startMonth.getRejectedCount());
         assertEquals(2, startMonth.getTotalCount());
-        assertEquals(0.0, startMonth.getRatePercent(), 0.001);
+        assertEquals(50.0, startMonth.getRatePercent(), 0.001);
 
+        // No phantom bucket in the note's month, and no bucket anywhere can
+        // have more rejections than starts (the old note-dated numerator
+        // rendered a 200% point).
         LocalDate now = LocalDate.now();
-        RejectionTrendResponse.TrendPoint noteMonth = pointFor(trend,
-                now.getYear() + "-" + String.format("%02d", now.getMonthValue()));
-        assertNotNull("rejection must appear in a bucket even with no starts there", noteMonth);
-        assertEquals(1, noteMonth.getRejectedCount());
-        assertEquals(0, noteMonth.getTotalCount());
-        assertNull(noteMonth.getRatePercent());
+        assertNull(pointFor(trend, now.getYear() + "-" + String.format("%02d", now.getMonthValue())));
+        trend.getPoints().forEach(p -> assertTrue("rejected must be ⊆ started in every bucket",
+                p.getRejectedCount() <= p.getTotalCount()));
     }
 
     @Test
@@ -161,6 +199,58 @@ public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, urinalysis.getRejectedCount());
         assertEquals(1, urinalysis.getTotalCount());
         assertEquals(100.0, urinalysis.getRatePercent(), 0.001);
+    }
+
+    @Test
+    public void heatmap_groupsByRequesterOrgAndSection_nullLocationWhenNoRequester() {
+        writeRejectionNote("2", "Hemolyzed specimen");
+
+        // No requesting site captured: every cell sits in the null-location
+        // bucket (the UI labels it, not the backend).
+        RejectionHeatmapResponse before = rejectionReportService.getHeatmap(WINDOW_FROM, START_MONTH_TO);
+        assertFalse(before.getCells().isEmpty());
+        assertTrue(before.getCells().stream().allMatch(cell -> cell.getLocation() == null));
+
+        // Fixture rows carry explicit ids the sequence doesn't know about —
+        // advance it past them so the insert doesn't collide.
+        entityManager.createNativeQuery("SELECT setval('organization_seq',"
+                + " COALESCE((SELECT CAST(MAX(id) AS bigint) FROM organization), 1) + 100)").getSingleResult();
+
+        // Attach an ordering organization to the rejected analysis's sample
+        // (fixture: analysis 2 -> sample_item 602 -> sample 2).
+        Organization org = new Organization();
+        org.setOrganizationName("Inpatient Ward");
+        org.setIsActive("Y");
+        org.setMlsSentinelLabFlag("N");
+        org.setSysUserId("1");
+        String orgId = organizationService.insert(org);
+
+        SampleRequester requester = new SampleRequester();
+        requester.setSampleId(2L);
+        requester.setRequesterId(Long.parseLong(orgId));
+        requester.setRequesterTypeId(
+                Long.parseLong(requesterTypeService.getRequesterTypeByName("organization").getId()));
+        requester.setSysUserId("1");
+        sampleRequesterService.insert(requester);
+
+        RejectionHeatmapResponse after = rejectionReportService.getHeatmap(WINDOW_FROM, START_MONTH_TO);
+        RejectionHeatmapResponse.Cell cell = after.getCells().stream()
+                .filter(c -> "Inpatient Ward".equals(c.getLocation())).findFirst().orElse(null);
+        assertNotNull(cell);
+        assertEquals(1, cell.getRejectedCount());
+        assertEquals(1, cell.getTotalCount());
+        assertEquals(100.0, cell.getRatePercent(), 0.001);
+
+        // The other fixture analysis (different sample, no requester) stays in
+        // the null-location bucket, unrejected.
+        RejectionHeatmapResponse.Cell unknown = after.getCells().stream().filter(c -> c.getLocation() == null)
+                .findFirst().orElse(null);
+        assertNotNull(unknown);
+        assertEquals(0, unknown.getRejectedCount());
+
+        // The same join labels the detail rows.
+        RejectionDetailResponse detail = rejectionReportService.getDetail(WINDOW_FROM, START_MONTH_TO, 0, 25);
+        assertEquals("Inpatient Ward", detail.getItems().get(0).getLocation());
     }
 
     @Test

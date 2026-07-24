@@ -8,14 +8,12 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import org.hibernate.Session;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.reports.rejection.bean.RejectionBreakdownResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionDetailResponse;
+import org.openelisglobal.reports.rejection.bean.RejectionHeatmapResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionSummaryResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionTrendResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,21 +23,54 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Rejection Rate compute (OGC-710, closing C.3 gap #4). A "rejection" is a
  * REJECTION_REASON ('R') note on an analysis — the durable marker the
- * results-entry and validation flows write when a tech/biologist rejects a
- * test, with the note text snapshotting the REJECTION_REASONS dictionary value
- * (LogbookResultsController / ResultUtil). Rate = rejected analyses / analyses
- * started in the window: rejection removes an analysis from the released
- * population, so releases can't be the denominator the way they are for the
- * amendment rate; started_date is the stable per-analysis intake stamp.
+ * results-entry flow writes when a tech rejects a test, with the note text
+ * snapshotting the REJECTION_REASONS dictionary value (LogbookResultsController
+ * / ResultUtil).
  *
  * <p>
- * Structure deliberately mirrors AmendmentReportServiceImpl — same window
- * predicates, bucketing, and rate rounding — so the two QI computes stay
- * reviewable side by side.
+ * Every rate is cohort-consistent: the window selects analyses by
+ * {@code started_date}, and the numerator is the subset of those analyses that
+ * carry an 'R' note (whenever the note was written). Numerator ⊆ denominator,
+ * so a rate can never exceed 100% — bucketing the numerator by note date
+ * instead used to render a 200% daily point whenever an analysis started in one
+ * bucket was rejected in another. Consequence worth knowing: a detail row may
+ * show a "rejected at" timestamp outside the selected window; the window is
+ * about when the work arrived, not when it was rejected.
+ *
+ * <p>
+ * Structure deliberately mirrors AmendmentReportServiceImpl — same rate
+ * rounding and period keys — so the two QI computes stay reviewable side by
+ * side.
  */
 @Service
 @Transactional(readOnly = true)
 public class RejectionReportServiceImpl implements RejectionReportService {
+
+    /**
+     * Started analyses LEFT JOINed to their rejection notes; the CASE inside
+     * COUNT(DISTINCT ...) counts an analysis once no matter how many 'R' notes it
+     * carries (one rejection can record two reasons).
+     */
+    private static final String COHORT_FROM = " FROM analysis a LEFT JOIN note n ON n.reference_id = a.id"
+            + " AND n.reference_table = :analysisRef AND n.note_type = 'R'"
+            + " WHERE a.started_date >= :fromTs AND a.started_date < :toTs";
+
+    private static final String REJECTED_COUNT = "COUNT(DISTINCT CASE WHEN n.id IS NOT NULL THEN a.id END)";
+    // explicit aliases — Hibernate's native-query auto-discovery rejects two
+    // columns that both auto-alias to "count"
+    private static final String COUNT_COLUMNS = "COUNT(DISTINCT a.id) AS started_count, " + REJECTED_COUNT
+            + " AS rejected_count";
+
+    /**
+     * Requesting-organization ("ordering location") of the analysis's sample.
+     * ponytail: a sample with two organization requesters fans out — one detail row
+     * per requester (inflating that list's totalCount) and one heatmap cell per
+     * location. Not observed in practice; dedup to a single requester if it ever
+     * is.
+     */
+    private static final String REQUESTER_ORG_JOIN = " LEFT JOIN sample_requester sr ON sr.sample_id = s.id"
+            + " AND sr.requester_type_id = (SELECT rt.id FROM requester_type rt WHERE rt.requester_type ="
+            + " 'organization') LEFT JOIN organization o ON o.id = sr.requester_id";
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -53,22 +84,17 @@ public class RejectionReportServiceImpl implements RejectionReportService {
         Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
         Session session = entityManager.unwrap(Session.class);
 
-        Number rejected = (Number) session
-                .createNativeQuery("SELECT COUNT(DISTINCT n.reference_id) FROM note n"
-                        + " WHERE n.reference_table = :analysisRef AND n.note_type = 'R'"
-                        + " AND n.lastupdated >= :fromTs AND n.lastupdated < :toTs")
+        Object[] row = (Object[]) session.createNativeQuery("SELECT " + COUNT_COLUMNS + COHORT_FROM)
                 .setParameter("analysisRef", analysisRefTableId()).setParameter("fromTs", fromTs)
                 .setParameter("toTs", toTs).uniqueResult();
 
-        Number total = (Number) session
-                .createNativeQuery("SELECT COUNT(*) FROM analysis a WHERE a.started_date >= :fromTs"
-                        + " AND a.started_date < :toTs")
-                .setParameter("fromTs", fromTs).setParameter("toTs", toTs).uniqueResult();
+        long total = ((Number) row[0]).longValue();
+        long rejected = ((Number) row[1]).longValue();
 
         RejectionSummaryResponse response = new RejectionSummaryResponse();
-        response.setRejectedCount(rejected.longValue());
-        response.setTotalCount(total.longValue());
-        response.setRatePercent(ratePercent(rejected.longValue(), total.longValue()));
+        response.setRejectedCount(rejected);
+        response.setTotalCount(total);
+        response.setRatePercent(ratePercent(rejected, total));
         return response;
     }
 
@@ -83,12 +109,15 @@ public class RejectionReportServiceImpl implements RejectionReportService {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = session
                 .createNativeQuery("SELECT CAST(a.id AS varchar), n.lastupdated,"
-                        + " s.accession_number, t.name, n.text, TRIM(CONCAT(su.first_name, ' ', su.last_name))"
+                        + " s.accession_number, t.name AS test_name, n.text,"
+                        + " TRIM(CONCAT(su.first_name, ' ', su.last_name))," + " o.name AS org_name, ne.nce_number"
                         + " FROM note n JOIN analysis a ON a.id = n.reference_id"
                         + " JOIN sample_item si ON si.id = a.sampitem_id JOIN sample s ON s.id = si.samp_id"
                         + " JOIN test t ON t.id = a.test_id LEFT JOIN system_user su ON su.id = n.sys_user_id"
+                        + REQUESTER_ORG_JOIN + " LEFT JOIN nc_event ne ON ne.trigger_source_type = 'TEST_REJECTION'"
+                        + " AND ne.trigger_source_id = CAST(a.id AS varchar)"
                         + " WHERE n.reference_table = :analysisRef AND n.note_type = 'R'"
-                        + " AND n.lastupdated >= :fromTs AND n.lastupdated < :toTs ORDER BY n.lastupdated DESC")
+                        + " AND a.started_date >= :fromTs AND a.started_date < :toTs ORDER BY n.lastupdated DESC")
                 .setParameter("analysisRef", analysisRefTableId()).setParameter("fromTs", fromTs)
                 .setParameter("toTs", toTs).list();
 
@@ -101,6 +130,8 @@ public class RejectionReportServiceImpl implements RejectionReportService {
             event.setTestName((String) row[3]);
             event.setReason((String) row[4]);
             event.setRejectedBy((String) row[5]);
+            event.setLocation((String) row[6]);
+            event.setNceNumber((String) row[7]);
             all.add(event);
         }
 
@@ -123,35 +154,21 @@ public class RejectionReportServiceImpl implements RejectionReportService {
         String unit = truncUnit(interval);
 
         @SuppressWarnings("unchecked")
-        List<Object[]> rejectedBuckets = session
-                .createNativeQuery("SELECT date_trunc(:unit, n.lastupdated), COUNT(DISTINCT n.reference_id)"
-                        + " FROM note n WHERE n.reference_table = :analysisRef AND n.note_type = 'R'"
-                        + " AND n.lastupdated >= :fromTs AND n.lastupdated < :toTs GROUP BY 1")
+        List<Object[]> buckets = session
+                .createNativeQuery("SELECT date_trunc(:unit, a.started_date) AS bucket, " + COUNT_COLUMNS + COHORT_FROM
+                        + " GROUP BY 1 ORDER BY 1")
                 .setParameter("unit", unit).setParameter("analysisRef", analysisRefTableId())
                 .setParameter("fromTs", fromTs).setParameter("toTs", toTs).list();
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> totalBuckets = session
-                .createNativeQuery("SELECT date_trunc(:unit, a.started_date), COUNT(*) FROM analysis a"
-                        + " WHERE a.started_date >= :fromTs AND a.started_date < :toTs GROUP BY 1")
-                .setParameter("unit", unit).setParameter("fromTs", fromTs).setParameter("toTs", toTs).list();
-
-        // union of period keys — a rejection can land in a bucket with no starts
-        Map<String, long[]> byPeriod = new TreeMap<>();
-        for (Object[] row : rejectedBuckets) {
-            byPeriod.computeIfAbsent(periodKey(row[0], interval), k -> new long[2])[0] = ((Number) row[1]).longValue();
-        }
-        for (Object[] row : totalBuckets) {
-            byPeriod.computeIfAbsent(periodKey(row[0], interval), k -> new long[2])[1] = ((Number) row[1]).longValue();
-        }
-
         List<RejectionTrendResponse.TrendPoint> points = new ArrayList<>();
-        for (Map.Entry<String, long[]> entry : byPeriod.entrySet()) {
+        for (Object[] row : buckets) {
+            long total = ((Number) row[1]).longValue();
+            long rejected = ((Number) row[2]).longValue();
             RejectionTrendResponse.TrendPoint point = new RejectionTrendResponse.TrendPoint();
-            point.setPeriod(entry.getKey());
-            point.setRejectedCount(entry.getValue()[0]);
-            point.setTotalCount(entry.getValue()[1]);
-            point.setRatePercent(ratePercent(entry.getValue()[0], entry.getValue()[1]));
+            point.setPeriod(periodKey(row[0], interval));
+            point.setRejectedCount(rejected);
+            point.setTotalCount(total);
+            point.setRatePercent(ratePercent(rejected, total));
             points.add(point);
         }
 
@@ -169,12 +186,13 @@ public class RejectionReportServiceImpl implements RejectionReportService {
         RejectionBreakdownResponse response = new RejectionBreakdownResponse();
 
         // Reason Pareto: counts note-events (not distinct analyses) because one
-        // analysis rejected for two reasons genuinely contributes two reasons.
+        // analysis rejected for two reasons genuinely contributes two reasons;
+        // the window still selects by the analysis's start.
         @SuppressWarnings("unchecked")
         List<Object[]> reasonRows = session
-                .createNativeQuery("SELECT n.text, COUNT(*) FROM note n"
+                .createNativeQuery("SELECT n.text, COUNT(*) FROM note n JOIN analysis a ON a.id = n.reference_id"
                         + " WHERE n.reference_table = :analysisRef AND n.note_type = 'R'"
-                        + " AND n.lastupdated >= :fromTs AND n.lastupdated < :toTs GROUP BY n.text"
+                        + " AND a.started_date >= :fromTs AND a.started_date < :toTs GROUP BY n.text"
                         + " ORDER BY COUNT(*) DESC, n.text")
                 .setParameter("analysisRef", analysisRefTableId()).setParameter("fromTs", fromTs)
                 .setParameter("toTs", toTs).list();
@@ -197,42 +215,67 @@ public class RejectionReportServiceImpl implements RejectionReportService {
             response.getReasons().add(reasonRow);
         }
 
+        // only rejected tests appear — a full every-test list is noise here
         @SuppressWarnings("unchecked")
-        List<Object[]> rejectedByTest = session
-                .createNativeQuery("SELECT CAST(t.id AS varchar), t.name, COUNT(DISTINCT n.reference_id)"
-                        + " FROM note n JOIN analysis a ON a.id = n.reference_id JOIN test t ON t.id = a.test_id"
-                        + " WHERE n.reference_table = :analysisRef AND n.note_type = 'R'"
-                        + " AND n.lastupdated >= :fromTs AND n.lastupdated < :toTs GROUP BY t.id, t.name")
+        List<Object[]> testRows = session
+                .createNativeQuery("SELECT CAST(t.id AS varchar), t.name, " + COUNT_COLUMNS
+                        + " FROM analysis a JOIN test t ON t.id = a.test_id LEFT JOIN note n ON n.reference_id = a.id"
+                        + " AND n.reference_table = :analysisRef AND n.note_type = 'R'"
+                        + " WHERE a.started_date >= :fromTs AND a.started_date < :toTs GROUP BY t.id, t.name"
+                        + " HAVING " + REJECTED_COUNT + " > 0")
                 .setParameter("analysisRef", analysisRefTableId()).setParameter("fromTs", fromTs)
                 .setParameter("toTs", toTs).list();
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> totalByTest = session
-                .createNativeQuery(
-                        "SELECT CAST(t.id AS varchar), COUNT(*) FROM analysis a JOIN test t ON t.id = a.test_id"
-                                + " WHERE a.started_date >= :fromTs AND a.started_date < :toTs GROUP BY t.id")
-                .setParameter("fromTs", fromTs).setParameter("toTs", toTs).list();
-
-        Map<String, Long> totalCounts = new HashMap<>();
-        for (Object[] row : totalByTest) {
-            totalCounts.put((String) row[0], ((Number) row[1]).longValue());
-        }
-
-        // only rejected tests appear — a full every-test list is noise here
-        List<RejectionBreakdownResponse.TestRow> testRows = new ArrayList<>();
-        for (Object[] row : rejectedByTest) {
+        List<RejectionBreakdownResponse.TestRow> tests = new ArrayList<>();
+        for (Object[] row : testRows) {
             RejectionBreakdownResponse.TestRow testRow = new RejectionBreakdownResponse.TestRow();
             testRow.setTestName((String) row[1]);
-            testRow.setRejectedCount(((Number) row[2]).longValue());
-            testRow.setTotalCount(totalCounts.getOrDefault((String) row[0], 0L));
+            testRow.setTotalCount(((Number) row[2]).longValue());
+            testRow.setRejectedCount(((Number) row[3]).longValue());
             testRow.setRatePercent(ratePercent(testRow.getRejectedCount(), testRow.getTotalCount()));
-            testRows.add(testRow);
+            tests.add(testRow);
         }
-        testRows.sort((a, b) -> a.getRejectedCount() != b.getRejectedCount()
+        tests.sort((a, b) -> a.getRejectedCount() != b.getRejectedCount()
                 ? Long.compare(b.getRejectedCount(), a.getRejectedCount())
                 : a.getTestName().compareTo(b.getTestName()));
-        response.setTests(testRows);
+        response.setTests(tests);
 
+        return response;
+    }
+
+    @Override
+    public RejectionHeatmapResponse getHeatmap(LocalDate fromDate, LocalDate toDate) {
+        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
+        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Session session = entityManager.unwrap(Session.class);
+
+        // Section falls back to the test's home section — dev/legacy analyses
+        // often carry no analysis-level test_sect_id, and an INNER JOIN there
+        // silently dropped them from the grid (rejected ⊆ started still holds
+        // per cell either way).
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = session
+                .createNativeQuery("SELECT o.name AS org_name, ts.name AS section_name, " + COUNT_COLUMNS
+                        + " FROM analysis a JOIN sample_item si ON si.id = a.sampitem_id"
+                        + " JOIN sample s ON s.id = si.samp_id JOIN test t ON t.id = a.test_id"
+                        + " LEFT JOIN test_section ts ON ts.id = COALESCE(a.test_sect_id, t.test_section_id)"
+                        + REQUESTER_ORG_JOIN + " LEFT JOIN note n ON n.reference_id = a.id"
+                        + " AND n.reference_table = :analysisRef AND n.note_type = 'R'"
+                        + " WHERE a.started_date >= :fromTs AND a.started_date < :toTs"
+                        + " GROUP BY o.name, ts.name ORDER BY ts.name, o.name")
+                .setParameter("analysisRef", analysisRefTableId()).setParameter("fromTs", fromTs)
+                .setParameter("toTs", toTs).list();
+
+        RejectionHeatmapResponse response = new RejectionHeatmapResponse();
+        for (Object[] row : rows) {
+            RejectionHeatmapResponse.Cell cell = new RejectionHeatmapResponse.Cell();
+            cell.setLocation((String) row[0]);
+            cell.setSection((String) row[1]);
+            cell.setTotalCount(((Number) row[2]).longValue());
+            cell.setRejectedCount(((Number) row[3]).longValue());
+            cell.setRatePercent(ratePercent(cell.getRejectedCount(), cell.getTotalCount()));
+            response.getCells().add(cell);
+        }
         return response;
     }
 
@@ -248,10 +291,7 @@ public class RejectionReportServiceImpl implements RejectionReportService {
     }
 
     private static String periodKey(Object truncatedBucket, String interval) {
-        return getPeriodKey(((Timestamp) truncatedBucket).toLocalDateTime().toLocalDate(), interval);
-    }
-
-    private static String getPeriodKey(LocalDate date, String interval) {
+        LocalDate date = ((Timestamp) truncatedBucket).toLocalDateTime().toLocalDate();
         if (interval == null)
             interval = "DAILY";
         return switch (interval.toUpperCase()) {

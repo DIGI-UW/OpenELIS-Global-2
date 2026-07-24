@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -16,6 +17,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.qaevent.service.TestRejectionNceService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -47,6 +49,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     @Autowired
     private NoteService noteService;
     @Autowired
+    private TestRejectionNceService testRejectionNceService;
+    @Autowired
     private SampleService sampleService;
     @Autowired
     private ReferralService referralService;
@@ -61,6 +65,19 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             String sysUserId) {
         for (Note note : actionDataSet.getNoteList()) {
             noteService.insert(note);
+            // Every rejection opens its NCE (trigger: TEST_REJECTION). All
+            // rejection paths funnel through this persist, so the hook lives
+            // here, not in each controller. A failed NCE must never block a
+            // tech saving results — log and move on.
+            if (Note.REJECT_REASON.equals(note.getNoteType())) {
+                try {
+                    testRejectionNceService.createForRejection(note);
+                } catch (RuntimeException e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "persistDataSet",
+                            "NCE creation for rejected analysis " + note.getReferenceId() + " failed: "
+                                    + e.getMessage());
+                }
+            }
         }
 
         for (ResultSet resultSet : actionDataSet.getNewResults()) {

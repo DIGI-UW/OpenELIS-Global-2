@@ -39,6 +39,21 @@ export function unitFor(indicatorKey) {
 }
 
 /**
+ * Carbon-charts threshold lines (green target / red action) for a detail
+ * page's trend chart, or undefined when the config carries no usable
+ * thresholds. Labels come in pre-formatted so this stays intl-free.
+ */
+export function chartThresholds(config, targetLabel, actionLabel) {
+  if (!config?.enabled || config.target == null || config.action == null) {
+    return undefined;
+  }
+  return [
+    { value: config.target, label: targetLabel, fillColor: "#198038" },
+    { value: config.action, label: actionLabel, fillColor: "#da1e28" },
+  ];
+}
+
+/**
  * Threshold display parts for a tile, e.g. {target: "≤ 0.5%", action: "≥ 2%"}
  * (LOWER_BETTER). Null when the config carries no usable thresholds.
  */

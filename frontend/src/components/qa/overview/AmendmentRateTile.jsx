@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ClickableTile, SkeletonText } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import { useHistory } from "react-router-dom";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 
 /**
  * Amendment Rate overview tile (OGC-698): rolling-30-day share of released
@@ -19,8 +19,7 @@ function windowDates() {
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - 30);
-  const fmt = (d) => d.toISOString().split("T")[0];
-  return { fromDate: fmt(from), toDate: fmt(to) };
+  return { fromDate: toLocalIsoDate(from), toDate: toLocalIsoDate(to) };
 }
 
 const AmendmentRateTile = () => {
