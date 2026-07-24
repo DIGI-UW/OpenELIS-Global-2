@@ -29,6 +29,7 @@ import TestMappingModal from "./TestMappingModal";
 import ValidationDashboard from "./ValidationDashboard";
 import PendingCodesPanel from "./PendingCodesPanel";
 import ResultValueMappingsPanel from "./ResultValueMappingsPanel";
+import SetupVerificationPanel from "./SetupVerificationPanel";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./FieldMapping.css";
 
@@ -600,6 +601,14 @@ const FieldMapping = () => {
               pendingValues={pendingResultValues}
               onUpdated={refreshResultValues}
             />
+          </Tile>
+        </Column>
+      </Grid>
+
+      <Grid className="field-mapping-setup-verification">
+        <Column lg={16} md={8} sm={4}>
+          <Tile>
+            <SetupVerificationPanel analyzerId={analyzerId} />
           </Tile>
         </Column>
       </Grid>

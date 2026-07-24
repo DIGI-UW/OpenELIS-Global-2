@@ -14,6 +14,7 @@ vi.mock("../../../../services/analyzerService", () => ({
   getDefaultConfigs: vi.fn(),
   getDefaultConfig: vi.fn(),
   getAnalyzerTypes: vi.fn(),
+  getAnalyzerLabUnits: vi.fn(),
   createAnalyzer: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -33,7 +34,7 @@ const renderAtRoute = (entry) => {
     <MemoryRouter initialEntries={[entry]}>
       <IntlProvider locale="en" messages={messages}>
         <Route path="/analyzers">
-          <AnalyzerForm />
+          <AnalyzerForm inline />
         </Route>
       </IntlProvider>
     </MemoryRouter>,
@@ -219,6 +220,12 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
         },
       ]);
     });
+    analyzerService.getAnalyzerLabUnits.mockImplementation((callback) => {
+      callback([
+        { id: "12", value: "Molecular Biology" },
+        { id: "13", value: "Hematology" },
+      ]);
+    });
 
     // Mock other service methods
     analyzerService.createAnalyzer.mockImplementation((data, callback) => {
@@ -337,9 +344,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
         screen.getByTestId("analyzer-form-default-config-dropdown"),
       ).toHaveTextContent(/GeneXpert/i);
     });
-    expect(
-      screen.getByTestId("analyzer-form-identifier-pattern-input"),
-    ).toHaveValue("GENEXPERT|CEPHEID.*GX");
+    const labUnitSelector = await screen.findByRole("combobox", {
+      name: "Lab units",
+    });
+    await userEvent.click(labUnitSelector);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Molecular Biology" }),
+    );
 
     await userEvent.type(
       screen.getByTestId("analyzer-form-name-input"),
@@ -357,6 +368,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     expect(submitPayload.pluginTypeId).toBe("1");
     expect(submitPayload.analyzerType).toBe("MOLECULAR");
     expect(submitPayload.identifierPattern).toBe("GENEXPERT|CEPHEID.*GX");
+    expect(submitPayload.testUnitIds).toEqual(["12"]);
     expect(submitPayload.fileFormat).toBeNull();
     expect(submitPayload.importDirectory).toBeNull();
   });

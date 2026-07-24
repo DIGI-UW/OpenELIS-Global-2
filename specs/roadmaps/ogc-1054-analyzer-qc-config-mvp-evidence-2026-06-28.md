@@ -1,5 +1,14 @@
 # OGC-1054 Analyzer QC/Config MVP Evidence - 2026-06-28
 
+> **Historical evidence only.** This bundle predates the catalog-bound result
+> option, stale-aware setup verification, live Grist acceptance contract, and
+> current remote demo requirements adopted on 2026-07-24. It does not constitute
+> final acceptance for PR
+> [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792). Final
+> acceptance requires a new `harness-demo` and `harness-demo-video` run against
+> the exact deployed application/harness SHAs with all required `AN-QC-001`
+> through `AN-QC-008` steps passing.
+
 ## Scope
 
 This note captures the code-qa validation pass for
@@ -39,14 +48,14 @@ direct REST calls, or API setup shortcuts.
 
 ## Code-QA Gate Results
 
-| Gate | Result |
-| --- | --- |
-| `spec-code-alignment` | Roadmap and evidence notes match the implemented MVP boundary. No OpenELIS FILE poller, `QcRun`, persisted `AnalyzerProfile` table, or bridge-side implementation scope is described as part of the PR. |
+| Gate                       | Result                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spec-code-alignment`      | Roadmap and evidence notes match the implemented MVP boundary. No OpenELIS FILE poller, `QcRun`, persisted `AnalyzerProfile` table, or bridge-side implementation scope is described as part of the PR.                                                                                                                                    |
 | `meaningful-test-coverage` | Backend guards cover profile-default persistence, derived result-value mappings, exact-once profile application, pending-code analyzer id binding, manual `ACTIVE` readiness rejection, and QC/bridge behavior. Frontend component tests cover inline setup and mapping review. Playwright covers the assembled user story through the UI. |
-| `simplicity-review` | The branch extends existing analyzer, plugin-config JSON, QC rule, control lot, and bridge-registration paths. It adds no new table, no OpenELIS runtime poller, no bridge repo change, and no API-shortcut Playwright story. |
-| `cross-repo-companion-pr` | No companion bridge PR is required for the MVP. Bridge work should be opened only from concrete OpenELIS contract-test evidence of missing bridge behavior. |
-| `evidence-bundle` | The code-qa evidence bundler produced a folder and zip with one MP4, seven current screenshots, and four `openelis-work` reference mock screenshots. Media artifacts are kept out of git. |
-| `commit-pr-hygiene` | Formatter, lint, Playwright guard, and targeted backend/frontend tests were run before staging. |
+| `simplicity-review`        | The branch extends existing analyzer, plugin-config JSON, QC rule, control lot, and bridge-registration paths. It adds no new table, no OpenELIS runtime poller, no bridge repo change, and no API-shortcut Playwright story.                                                                                                              |
+| `cross-repo-companion-pr`  | No companion bridge PR is required for the MVP. Bridge work should be opened only from concrete OpenELIS contract-test evidence of missing bridge behavior.                                                                                                                                                                                |
+| `evidence-bundle`          | The code-qa evidence bundler produced a folder and zip with one MP4, seven current screenshots, and four `openelis-work` reference mock screenshots. Media artifacts are kept out of git.                                                                                                                                                  |
+| `commit-pr-hygiene`        | Formatter, lint, Playwright guard, and targeted backend/frontend tests were run before staging.                                                                                                                                                                                                                                            |
 
 ## OpenELIS-Work Visual Comparison
 

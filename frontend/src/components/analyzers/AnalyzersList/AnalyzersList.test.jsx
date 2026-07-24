@@ -15,6 +15,7 @@
 vi.mock("../../../services/analyzerService", () => ({
   getAnalyzers: vi.fn(),
   getAnalyzerTypes: vi.fn(),
+  getAnalyzerLabUnits: vi.fn(),
   getDefaultConfigs: vi.fn(),
   getDefaultConfig: vi.fn(),
   createAnalyzer: vi.fn(),
@@ -407,7 +408,7 @@ describe("AnalyzersList", () => {
 
     expect(
       await screen.findByTestId("analyzer-qc-readiness-1"),
-    ).toHaveTextContent(messages["analyzer.qcReadiness.required"]);
+    ).toHaveTextContent(messages["analyzer.setupReadiness.required"]);
 
     await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
     await userEvent.click(
@@ -417,6 +418,37 @@ describe("AnalyzersList", () => {
     expect(mockHistory.push).toHaveBeenCalledWith(
       "/analyzers/qc/control-lots/new?analyzerId=1",
     );
+  });
+
+  test("testAnalyzerSetupReadiness_UsesCurrentVerificationState", async () => {
+    getAnalyzers.mockImplementation((filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "1",
+              name: "Verified Analyzer",
+              status: "ACTIVE",
+              qcRules: [],
+              controlLots: [],
+              setupVerification: {
+                verificationState: "CURRENT",
+                readyForActivation: true,
+                currentlyVerified: true,
+              },
+            }),
+          ],
+        });
+      });
+    });
+
+    act(() => {
+      renderWithIntl(<AnalyzersList />);
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-qc-readiness-1"),
+    ).toHaveTextContent(messages["analyzer.setupReadiness.ready"]);
   });
 
   /**

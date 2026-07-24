@@ -1,7 +1,92 @@
-import React, { useState } from "react";
-import { Button, InlineNotification, Tag, TextInput } from "@carbon/react";
+import React, { useEffect, useState } from "react";
+import {
+  Button,
+  ComboBox,
+  InlineLoading,
+  InlineNotification,
+  Link,
+  Tag,
+} from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
+
+const ResultOptionSelector = ({
+  analyzerId,
+  resultValue,
+  selectorId,
+  selectedOption,
+  onChange,
+}) => {
+  const intl = useIntl();
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    setLoadError(false);
+    analyzerService.getResultValueOptions(
+      analyzerId,
+      resultValue.testCode,
+      (response) => {
+        if (response?.error || response?.statusCode >= 400) {
+          setOptions([]);
+          setLoadError(true);
+        } else {
+          setOptions(Array.isArray(response) ? response : []);
+        }
+        setLoading(false);
+      },
+    );
+  }, [analyzerId, resultValue.testCode]);
+
+  if (loading) {
+    return (
+      <InlineLoading
+        description={intl.formatMessage({
+          id: "analyzer.fieldMapping.resultValues.options.loading",
+        })}
+      />
+    );
+  }
+
+  if (loadError) {
+    return (
+      <span>
+        <FormattedMessage id="analyzer.fieldMapping.resultValues.options.error" />
+      </span>
+    );
+  }
+
+  if (options.length === 0) {
+    return (
+      <div>
+        <span>
+          <FormattedMessage id="analyzer.fieldMapping.resultValues.options.empty" />
+        </span>{" "}
+        <Link href="/MasterListsPage/TestCatalogList">
+          <FormattedMessage id="analyzer.fieldMapping.resultValues.options.catalogLink" />
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <ComboBox
+      id={`result-value-openelis-${selectorId}`}
+      aria-label={intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.option",
+      })}
+      items={options}
+      selectedItem={selectedOption || null}
+      onChange={({ selectedItem }) => onChange(selectedItem || null)}
+      itemToString={(item) => (item ? item.label || item.value : "")}
+      placeholder={intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.option.placeholder",
+      })}
+    />
+  );
+};
 
 const ResultValueMappingsPanel = ({
   analyzerId,
@@ -11,12 +96,66 @@ const ResultValueMappingsPanel = ({
 }) => {
   const intl = useIntl();
   const [resolveValues, setResolveValues] = useState({});
+  const [mappingValues, setMappingValues] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
 
+  const mappingKey = (mapping) =>
+    `${mapping.testCode || ""}:${mapping.analyzerValue || ""}`;
+  const activeMappings = mappings.filter((mapping) => mapping.active !== false);
+  const hasUnboundMappings = activeMappings.some(
+    (mapping) => mapping.bindingStatus !== "BOUND",
+  );
+  const canSaveMappings =
+    hasUnboundMappings &&
+    activeMappings.every(
+      (mapping) =>
+        mapping.openelisResultOptionId ||
+        mappingValues[mappingKey(mapping)]?.id,
+    );
+
+  const handleSaveMappings = () => {
+    const payload = mappings.map((mapping) => {
+      const selectedOption = mappingValues[mappingKey(mapping)];
+      const updated = {
+        analyzerValue: mapping.analyzerValue,
+        testCode: mapping.testCode,
+        active: mapping.active !== false,
+      };
+      const optionId =
+        selectedOption?.id || mapping.openelisResultOptionId || null;
+      if (optionId) {
+        updated.openelisResultOptionId = optionId;
+      }
+      return updated;
+    });
+
+    setBusyId("mappings");
+    setError(null);
+    analyzerService.updateResultValueMappings(
+      analyzerId,
+      payload,
+      (response) => {
+        setBusyId(null);
+        if (response?.error || response?.statusCode >= 400) {
+          setError(
+            response?.error ||
+              response?.message ||
+              intl.formatMessage({
+                id: "analyzer.fieldMapping.resultValues.error.save",
+              }),
+          );
+          return;
+        }
+        setMappingValues({});
+        onUpdated && onUpdated();
+      },
+    );
+  };
+
   const handleResolve = (pendingValue) => {
-    const openelisValue = (resolveValues[pendingValue.id] || "").trim();
-    if (!openelisValue) {
+    const selectedOption = resolveValues[pendingValue.id];
+    if (!selectedOption?.id) {
       setError(
         intl.formatMessage({
           id: "analyzer.fieldMapping.resultValues.error.required",
@@ -30,7 +169,7 @@ const ResultValueMappingsPanel = ({
     analyzerService.resolvePendingResultValue(
       analyzerId,
       pendingValue.id,
-      { openelisValue },
+      { openelisResultOptionId: selectedOption.id },
       (response) => {
         setBusyId(null);
         if (response?.error || response?.statusCode >= 400) {
@@ -45,7 +184,7 @@ const ResultValueMappingsPanel = ({
         }
         setResolveValues((current) => ({
           ...current,
-          [pendingValue.id]: "",
+          [pendingValue.id]: null,
         }));
         onUpdated && onUpdated();
       },
@@ -134,17 +273,47 @@ const ResultValueMappingsPanel = ({
                 }`}
               >
                 <td>{mapping.analyzerValue}</td>
-                <td>{mapping.openelisValue}</td>
+                <td>
+                  {mapping.active !== false &&
+                  mapping.bindingStatus !== "BOUND" ? (
+                    <ResultOptionSelector
+                      analyzerId={analyzerId}
+                      resultValue={mapping}
+                      selectorId={`mapping-${index}`}
+                      selectedOption={mappingValues[mappingKey(mapping)]}
+                      onChange={(option) =>
+                        setMappingValues((current) => ({
+                          ...current,
+                          [mappingKey(mapping)]: option,
+                        }))
+                      }
+                    />
+                  ) : (
+                    mapping.openelisLabel || mapping.openelisValue
+                  )}
+                </td>
                 <td>{mapping.testCode || "-"}</td>
                 <td>
                   {renderStatusTag(
-                    mapping.active === false ? "INACTIVE" : "ACTIVE",
+                    mapping.bindingStatus ||
+                      (mapping.active === false ? "INACTIVE" : "ACTIVE"),
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+      {hasUnboundMappings && (
+        <Button
+          kind="primary"
+          size="sm"
+          disabled={!canSaveMappings || busyId === "mappings"}
+          onClick={handleSaveMappings}
+          data-testid="result-value-mappings-save"
+        >
+          <FormattedMessage id="analyzer.fieldMapping.resultValues.save" />
+        </Button>
       )}
 
       <h5 className="result-value-pending-heading">
@@ -188,18 +357,15 @@ const ResultValueMappingsPanel = ({
                 <td>{pendingValue.testCode || "-"}</td>
                 <td>{renderStatusTag(pendingValue.status)}</td>
                 <td>
-                  <TextInput
-                    id={`result-value-openelis-${pendingValue.id}`}
-                    data-testid={`result-value-openelis-${pendingValue.id}`}
-                    labelText={intl.formatMessage({
-                      id: "analyzer.fieldMapping.resultValues.openelisValue",
-                    })}
-                    hideLabel
-                    value={resolveValues[pendingValue.id] || ""}
-                    onChange={(event) =>
+                  <ResultOptionSelector
+                    analyzerId={analyzerId}
+                    resultValue={pendingValue}
+                    selectorId={`pending-${pendingValue.id}`}
+                    selectedOption={resolveValues[pendingValue.id]}
+                    onChange={(option) =>
                       setResolveValues((current) => ({
                         ...current,
-                        [pendingValue.id]: event.target.value,
+                        [pendingValue.id]: option,
                       }))
                     }
                   />

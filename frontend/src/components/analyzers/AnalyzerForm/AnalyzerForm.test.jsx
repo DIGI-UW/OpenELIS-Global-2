@@ -16,6 +16,7 @@ vi.mock("../../../services/analyzerService", () => ({
   updateAnalyzer: vi.fn(),
   testConnection: vi.fn(),
   getAnalyzerTypes: vi.fn(),
+  getAnalyzerLabUnits: vi.fn(),
   getDefaultConfigs: vi.fn(),
   getDefaultConfig: vi.fn(),
 }));
@@ -155,7 +156,7 @@ describe("AnalyzerForm", () => {
     });
   });
 
-  test("testTestConnection_ShowsModal", async () => {
+  test("testConnection_IsDeferredUntilAnalyzerHasBeenSaved", async () => {
     // Arrange
     const onClose = vi.fn();
 
@@ -165,20 +166,11 @@ describe("AnalyzerForm", () => {
     // Wait for form to render
     await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
 
-    // Fill in IP and port
-    const ipInput = screen.getByTestId("analyzer-form-ip-input");
-    await userEvent.type(ipInput, "192.168.1.100", { delay: 0 });
-
-    const portInput = screen.getByTestId("analyzer-form-port-input");
-    await userEvent.type(portInput, "5000", { delay: 0 });
-
-    // Click test connection button
-    const testButton = screen.getByTestId(
-      "analyzer-form-test-connection-button",
-    );
-    await userEvent.click(testButton);
-
-    // Assert: Verify test connection modal opens
-    await screen.findByTestId("test-connection-modal", {}, { timeout: 2000 });
+    expect(
+      screen.queryByTestId("analyzer-form-test-connection-button"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("test-connection-modal"),
+    ).not.toBeInTheDocument();
   });
 });

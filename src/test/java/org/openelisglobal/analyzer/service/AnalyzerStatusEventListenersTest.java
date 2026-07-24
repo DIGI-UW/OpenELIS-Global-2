@@ -106,6 +106,28 @@ public class AnalyzerStatusEventListenersTest {
     // === onUnacknowledgedErrorCreated Tests ===
 
     @Test
+    public void testOnSetupVerified_WhenInSetup_TransitionsThroughValidationToActive() {
+        testAnalyzer.setStatus(AnalyzerStatus.SETUP);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
+
+        eventListeners.onAnalyzerSetupVerified(new AnalyzerSetupVerifiedEvent(this, "1"));
+
+        verify(transitionService).transitionToValidation("1");
+        verify(transitionService).transitionToActive("1");
+    }
+
+    @Test
+    public void testOnSetupVerified_WhenInValidation_TransitionsToActive() {
+        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
+
+        eventListeners.onAnalyzerSetupVerified(new AnalyzerSetupVerifiedEvent(this, "1"));
+
+        verify(transitionService, never()).transitionToValidation(anyString());
+        verify(transitionService).transitionToActive("1");
+    }
+
+    @Test
     public void testOnUnacknowledgedErrorCreated_WhenActive_TriggersErrorPendingTransition() {
         testAnalyzer.setStatus(AnalyzerStatus.ACTIVE);
         when(analyzerService.get("1")).thenReturn(testAnalyzer);

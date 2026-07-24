@@ -274,7 +274,7 @@ public class BridgeRegistrationService {
      * payload can clear stale bridge mappings.
      */
     void attachTestCodeLoinc(java.util.Map<String, Object> payload, String oeAnalyzerId) {
-        java.util.Map<String, String> codeToLoinc = new java.util.LinkedHashMap<>();
+        java.util.Map<String, String> sortedCodeToLoinc = new java.util.TreeMap<>();
         if (analyzerTestMappingService != null && testService != null) {
             for (org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping m : analyzerTestMappingService
                     .getAllForAnalyzer(oeAnalyzerId)) {
@@ -287,7 +287,7 @@ public class BridgeRegistrationService {
                     org.openelisglobal.test.valueholder.Test test = testService.get(testId);
                     String loinc = test != null ? test.getLoinc() : null;
                     if (loinc != null && !loinc.isBlank()) {
-                        codeToLoinc.put(code, loinc);
+                        sortedCodeToLoinc.put(code, loinc);
                     }
                 } catch (Exception e) {
                     LogEvent.logWarn(CLASS_NAME, "attachTestCodeLoinc",
@@ -295,7 +295,7 @@ public class BridgeRegistrationService {
                 }
             }
         }
-        payload.put("testCodeLoinc", codeToLoinc);
+        payload.put("testCodeLoinc", new java.util.LinkedHashMap<>(sortedCodeToLoinc));
     }
 
     void attachQcRules(java.util.Map<String, Object> payload, String oeAnalyzerId) {
@@ -317,6 +317,10 @@ public class BridgeRegistrationService {
                 }
             }
         }
+        qcRulesPayload.sort(java.util.Comparator
+                .comparing((java.util.Map<String, Object> rule) -> String.valueOf(rule.get("ruleType")))
+                .thenComparing(rule -> String.valueOf(rule.getOrDefault("targetField", "")))
+                .thenComparing(rule -> String.valueOf(rule.get("operand"))));
         payload.put("qcRules", qcRulesPayload);
     }
 
@@ -357,6 +361,10 @@ public class BridgeRegistrationService {
                 }
             }
         }
+        lotsPayload.sort(java.util.Comparator
+                .comparing((java.util.Map<String, Object> lot) -> String.valueOf(lot.get("lotNumber")))
+                .thenComparing(lot -> String.valueOf(lot.getOrDefault("testId", "")))
+                .thenComparing(lot -> String.valueOf(lot.getOrDefault("controlLevel", ""))));
         payload.put("controlLots", lotsPayload);
     }
 

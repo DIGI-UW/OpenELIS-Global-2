@@ -170,6 +170,7 @@
   <include relativeToChangelogFile="true" file="061-awaiting-specimen-order-status.xml"/>
   <include relativeToChangelogFile="true" file="062-result-limits-sample-type-scope.xml"/>
   <include relativeToChangelogFile="true" file="063-collapse-variant-groups.xml"/>
+  <include relativeToChangelogFile="true" file="064-register-analyzer-plugin-config-audit.xml"/>
 
   <!-- OGC-296 Sample Type Management: WHONET code on TypeOfSample + per-sample-type terminology mappings -->
   <include relativeToChangelogFile="true" file="064-add-whonet-code-to-type-of-sample.xml"/>

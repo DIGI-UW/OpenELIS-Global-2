@@ -32,8 +32,11 @@ vi.mock("../../../services/analyzerService", () => ({
   getPendingCodes: vi.fn(),
   getPluginConfig: vi.fn(),
   getResultValueMappings: vi.fn(),
+  getResultValueOptions: vi.fn(),
   getPendingResultValues: vi.fn(),
   resolvePendingResultValue: vi.fn(),
+  getSetupVerification: vi.fn(),
+  verifyAnalyzerSetup: vi.fn(),
 }));
 
 // Mock react-router-dom
@@ -113,11 +116,29 @@ describe("FieldMapping", () => {
         callback([]);
       },
     );
+    analyzerService.getResultValueOptions.mockImplementation(
+      (id, testCode, callback) => {
+        callback([]);
+      },
+    );
     analyzerService.getPendingResultValues.mockImplementation(
       (id, callback) => {
         callback([]);
       },
     );
+    analyzerService.getSetupVerification.mockImplementation((id, callback) => {
+      callback({
+        verificationState: "INCOMPLETE",
+        mappingReady: false,
+        qcApplicable: true,
+        qcReady: false,
+        currentlyVerified: false,
+        readyForActivation: false,
+        mappingIds: [],
+        qcIds: [],
+        blockers: ["NO_TEST_MAPPINGS"],
+      });
+    });
   });
 
   /**

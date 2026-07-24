@@ -304,6 +304,9 @@ const AnalyzersList = () => {
   const isQcReady = (analyzer) =>
     hasActiveQcRules(analyzer) && hasActiveControlLots(analyzer);
 
+  const isSetupReady = (analyzer) =>
+    analyzer?.setupVerification?.readyForActivation ?? isQcReady(analyzer);
+
   return (
     <div className="analyzers-list" data-testid="analyzers-list">
       <div
@@ -598,7 +601,7 @@ const AnalyzersList = () => {
                                 unifiedStatus === "ERROR_PENDING"
                                   ? "analyzer.status.error_pending"
                                   : `analyzer.status.${unifiedStatus.toLowerCase()}`;
-                              const qcReady = isQcReady(analyzer);
+                              const setupReady = isSetupReady(analyzer);
                               cellContent = (
                                 <div className="analyzer-status-tags">
                                   <Tag
@@ -610,14 +613,14 @@ const AnalyzersList = () => {
                                     })}
                                   </Tag>
                                   <Tag
-                                    type={qcReady ? "green" : "warm-gray"}
+                                    type={setupReady ? "green" : "warm-gray"}
                                     size="sm"
                                     data-testid={`analyzer-qc-readiness-${row.id}`}
                                   >
                                     {intl.formatMessage({
-                                      id: qcReady
-                                        ? "analyzer.qcReadiness.ready"
-                                        : "analyzer.qcReadiness.required",
+                                      id: setupReady
+                                        ? "analyzer.setupReadiness.ready"
+                                        : "analyzer.setupReadiness.required",
                                     })}
                                   </Tag>
                                 </div>

@@ -1,0 +1,3 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en
+Analyzer Qualitative Results,Detected,DETECTED,Y,1,,Detected
+Analyzer Qualitative Results,Not Detected,NOT-DETECTED,Y,2,,Not Detected

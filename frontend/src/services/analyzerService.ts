@@ -11,6 +11,7 @@ import {
   getAcceptLanguageHeader,
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
+  Roles,
 } from "../components/utils/Utils";
 import type {
   Analyzer,
@@ -66,6 +67,13 @@ export interface AnalyzerTypeFilters {
   genericOnly?: boolean;
   search?: string;
 }
+
+export const getAnalyzerLabUnits = (callback) => {
+  getFromOpenElisServer(
+    `/rest/user-test-sections/${encodeURIComponent(Roles.RESULTS)}`,
+    callback,
+  );
+};
 
 /**
  * Preview mapping for analyzer
@@ -939,6 +947,19 @@ export const getResultValueMappings = (analyzerId, callback) => {
 };
 
 /**
+ * Get active OpenELIS result options for the test mapped to an analyzer code.
+ * @param {String} analyzerId
+ * @param {String} testCode
+ * @param {Function} callback - Callback function (data) => void
+ */
+export const getResultValueOptions = (analyzerId, testCode, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/result-value-options?testCode=${encodeURIComponent(
+    testCode,
+  )}`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
+/**
  * Replace analyzer result-value mappings stored in plugin config JSON.
  * @param {String} analyzerId
  * @param {Array<Object>} mappings
@@ -1020,6 +1041,26 @@ export const resolvePendingResultValue = (
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-result-values/${pendingResultValueId}/resolve`;
   const payload = JSON.stringify(body || {});
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+};
+
+export const getSetupVerification = (analyzerId, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/setup-verification`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
+export const verifyAnalyzerSetup = (
+  analyzerId,
+  verification,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/setup-verification`;
+  postToOpenElisServerJsonResponse(
+    endpoint,
+    JSON.stringify(verification || {}),
+    callback,
+    extraParams,
+  );
 };
 
 /**

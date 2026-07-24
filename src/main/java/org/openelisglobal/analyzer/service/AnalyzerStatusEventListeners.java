@@ -75,6 +75,25 @@ public class AnalyzerStatusEventListeners {
         }
     }
 
+    @EventListener
+    public void onAnalyzerSetupVerified(AnalyzerSetupVerifiedEvent event) {
+        String analyzerId = event.getAnalyzerId();
+        try {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer == null) {
+                return;
+            }
+            if (analyzer.getStatus() == AnalyzerStatus.SETUP) {
+                transitionService.transitionToValidation(analyzerId);
+                transitionService.transitionToActive(analyzerId);
+            } else if (analyzer.getStatus() == AnalyzerStatus.VALIDATION) {
+                transitionService.transitionToActive(analyzerId);
+            }
+        } catch (Exception e) {
+            LogEvent.logError("Failed to activate verified analyzer " + analyzerId + ": " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Listener: Unacknowledged error was created for an analyzer Triggers: ACTIVE →
      * ERROR_PENDING transition

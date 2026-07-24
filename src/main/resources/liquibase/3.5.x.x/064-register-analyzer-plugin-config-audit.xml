@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet author="ogc-1054" id="064-register-analyzer-plugin-config-audit">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables
+         WHERE LOWER(name) = 'analyzer_plugin_config'
+      </sqlCheck>
+    </preConditions>
+    <comment>Register analyzer plugin configuration for durable setup-verification audit history</comment>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="analyzer_plugin_config"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="reference_tables">
+        <where>LOWER(name) = 'analyzer_plugin_config'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

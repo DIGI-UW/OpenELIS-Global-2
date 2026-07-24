@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.analyzer.dao.AnalyzerPluginConfigDAO;
+import org.openelisglobal.analyzer.form.AnalyzerResultValueOption;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
@@ -33,6 +34,9 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
 
     @Autowired
     private AnalyzerService analyzerService;
+
+    @Autowired
+    private AnalyzerResultValueOptionService analyzerResultValueOptionService;
 
     public AnalyzerPluginConfigServiceImpl() {
         super(AnalyzerPluginConfig.class);
@@ -106,15 +110,26 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
             resultMappings = deriveResultValueMappings(testMappings);
         }
         if (!resultMappings.isEmpty()) {
+            bindUnambiguousProfileResultMappings(analyzerId, resultMappings);
             defaults.put(RESULT_VALUE_MAPPINGS, resultMappings);
         }
 
         if (profileConfig.get("analyzer_name") != null || profileConfig.get("protocol") != null
-                || profileConfig.get("category") != null) {
+                || profileConfig.get("category") != null || profileConfig.get("profileMeta") instanceof Map<?, ?>) {
             Map<String, Object> profile = new LinkedHashMap<>();
             copyIfPresent(profileConfig, profile, "analyzer_name", "analyzerName");
             copyIfPresent(profileConfig, profile, "protocol", "protocol");
             copyIfPresent(profileConfig, profile, "category", "category");
+            if (profileConfig.get("profileMeta") instanceof Map<?, ?> profileMeta) {
+                copyIfPresentMap(profileMeta, profile, "id");
+                copyIfPresentMap(profileMeta, profile, "version");
+                copyIfPresentMap(profileMeta, profile, "displayName");
+            }
+            Object qcApplicable = profileConfig.get("qcApplicable");
+            if (qcApplicable == null && profileConfig.get("profileMeta") instanceof Map<?, ?> profileMeta) {
+                qcApplicable = profileMeta.get("qcApplicable");
+            }
+            profile.put("qcApplicable", !Boolean.FALSE.equals(qcApplicable));
             if (!profile.isEmpty()) {
                 defaults.put("profile", profile);
             }
@@ -139,7 +154,11 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getResultValueMappings(String analyzerId) {
-        return mapList(getConfigAsMap(analyzerId).get(RESULT_VALUE_MAPPINGS));
+        List<Map<String, Object>> mappings = mapList(getConfigAsMap(analyzerId).get(RESULT_VALUE_MAPPINGS));
+        for (Map<String, Object> mapping : mappings) {
+            decorateResultValueMapping(analyzerId, mapping);
+        }
+        return mappings;
     }
 
     @Override
@@ -148,6 +167,25 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         AnalyzerPluginConfig entity = getOrCreate(analyzerId, sysUserId);
         Map<String, Object> config = parseConfigMap(entity.getConfig());
         List<Map<String, Object>> normalized = mapList(mappings);
+        for (Map<String, Object> mapping : normalized) {
+            String analyzerValue = trimmedString(mapping.get("analyzerValue"));
+            String testCode = trimmedString(mapping.get("testCode"));
+            String optionId = trimmedString(mapping.get("openelisResultOptionId"));
+            if (analyzerValue == null || testCode == null) {
+                throw new IllegalArgumentException("analyzerValue and testCode are required");
+            }
+            if (Boolean.FALSE.equals(mapping.get("active"))) {
+                mapping.put("bindingStatus", optionId == null ? "LEGACY_UNBOUND" : mapping.get("bindingStatus"));
+                continue;
+            }
+            if (optionId == null) {
+                throw new IllegalArgumentException(
+                        "openelisResultOptionId is required; free-text OpenELIS result targets are not supported");
+            }
+            AnalyzerResultValueOption option = analyzerResultValueOptionService.requireValidOption(analyzerId, testCode,
+                    optionId);
+            bindMappingToOption(mapping, option);
+        }
         config.put(RESULT_VALUE_MAPPINGS, normalized);
         entity.setConfig(toJson(config));
         entity.setSysUserId(sysUserId);
@@ -177,23 +215,25 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
                         () -> new IllegalArgumentException("Pending result value not found: " + pendingResultValueId));
 
         String requestedStatus = normalizedString(request != null ? request.get("status") : null);
-        String openelisValue = request != null && request.get("openelisValue") != null
-                ? String.valueOf(request.get("openelisValue"))
-                : null;
-        String status = requestedStatus != null ? requestedStatus : (openelisValue != null ? "MAPPED" : "IGNORED");
-        if ("MAPPED".equals(status) && (openelisValue == null || openelisValue.isBlank())) {
-            throw new IllegalArgumentException("openelisValue is required when resolving a pending value as MAPPED");
-        }
+        String optionId = trimmedString(request != null ? request.get("openelisResultOptionId") : null);
+        String status = requestedStatus != null ? requestedStatus : (optionId != null ? "MAPPED" : "IGNORED");
         if (!"MAPPED".equals(status) && !"IGNORED".equals(status)) {
             throw new IllegalArgumentException("status must be MAPPED or IGNORED");
         }
 
         pending.put("status", status);
-        if (openelisValue != null) {
-            pending.put("openelisValue", openelisValue);
-        }
         if ("MAPPED".equals(status)) {
-            upsertResultValueMapping(resultMappings, pending, openelisValue);
+            String testCode = trimmedString(pending.get("testCode"));
+            if (testCode == null) {
+                throw new IllegalArgumentException("Pending result value does not identify an analyzer test code");
+            }
+            AnalyzerResultValueOption option = analyzerResultValueOptionService.requireValidOption(analyzerId, testCode,
+                    optionId);
+            pending.put("openelisResultOptionId", option.getId());
+            pending.put("openelisValue", option.getValue());
+            pending.put("openelisLabel", option.getLabel());
+            pending.put("bindingStatus", "BOUND");
+            upsertResultValueMapping(resultMappings, pending, option);
         }
 
         config.put(PENDING_RESULT_VALUES, pendingValues);
@@ -233,6 +273,13 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         }
     }
 
+    private void copyIfPresentMap(Map<?, ?> source, Map<String, Object> target, String key) {
+        Object value = source.get(key);
+        if (value != null) {
+            target.put(key, value);
+        }
+    }
+
     private List<Map<String, Object>> normalizeResultValueMappings(Object value) {
         List<Map<String, Object>> rows = mapList(value);
         List<Map<String, Object>> normalized = new ArrayList<>();
@@ -245,11 +292,20 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
             Map<String, Object> mapping = new LinkedHashMap<>();
             mapping.put("analyzerValue", analyzerValue);
             mapping.put("openelisValue", openelisValue);
+            Object optionId = firstPresent(row, "openelisResultOptionId", "openelis_result_option_id");
+            if (optionId != null) {
+                mapping.put("openelisResultOptionId", optionId);
+            }
+            Object openelisLabel = firstPresent(row, "openelisLabel", "openelis_label");
+            if (openelisLabel != null) {
+                mapping.put("openelisLabel", openelisLabel);
+            }
             Object testCode = firstPresent(row, "testCode", "test_code", "analyzer_code");
             if (testCode != null) {
                 mapping.put("testCode", testCode);
             }
             mapping.put("active", row.get("active") instanceof Boolean ? row.get("active") : true);
+            mapping.put("bindingStatus", optionId == null ? "LEGACY_UNBOUND" : "BOUND");
             normalized.add(mapping);
         }
         return normalized;
@@ -270,6 +326,7 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
                 Map<String, Object> mapping = new LinkedHashMap<>();
                 mapping.put("analyzerValue", String.valueOf(value));
                 mapping.put("openelisValue", String.valueOf(value));
+                mapping.put("bindingStatus", "LEGACY_UNBOUND");
                 if (testCode != null) {
                     mapping.put("testCode", testCode);
                 }
@@ -278,6 +335,31 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
             }
         }
         return derived;
+    }
+
+    private void bindUnambiguousProfileResultMappings(String analyzerId, List<Map<String, Object>> mappings) {
+        for (Map<String, Object> mapping : mappings) {
+            if (trimmedString(mapping.get("openelisResultOptionId")) != null) {
+                continue;
+            }
+            String analyzerValue = normalizedString(mapping.get("analyzerValue"));
+            String testCode = trimmedString(mapping.get("testCode"));
+            if (analyzerValue == null || testCode == null) {
+                continue;
+            }
+            try {
+                List<AnalyzerResultValueOption> matches = analyzerResultValueOptionService
+                        .getOptions(analyzerId, testCode).stream()
+                        .filter(option -> analyzerValue.equals(normalizedString(option.getLabel()))
+                                || analyzerValue.equals(normalizedString(option.getValue())))
+                        .toList();
+                if (matches.size() == 1) {
+                    bindMappingToOption(mapping, matches.get(0));
+                }
+            } catch (IllegalArgumentException e) {
+                mapping.put("bindingStatus", "LEGACY_UNBOUND");
+            }
+        }
     }
 
     private Map<String, Object> parseConfigMap(String json) {
@@ -309,7 +391,7 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
     }
 
     private void upsertResultValueMapping(List<Map<String, Object>> resultMappings, Map<String, Object> pending,
-            String openelisValue) {
+            AnalyzerResultValueOption option) {
         String analyzerValue = String.valueOf(pending.get("analyzerValue"));
         String testCode = pending.get("testCode") != null ? String.valueOf(pending.get("testCode")) : null;
         for (Map<String, Object> mapping : resultMappings) {
@@ -318,7 +400,7 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
             boolean sameTestCode = testCode == null ? mappingTestCode == null
                     : testCode.equals(String.valueOf(mappingTestCode));
             if (sameAnalyzerValue && sameTestCode) {
-                mapping.put("openelisValue", openelisValue);
+                bindMappingToOption(mapping, option);
                 mapping.put("active", true);
                 return;
             }
@@ -329,9 +411,32 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         if (testCode != null) {
             mapping.put("testCode", testCode);
         }
-        mapping.put("openelisValue", openelisValue);
+        bindMappingToOption(mapping, option);
         mapping.put("active", true);
         resultMappings.add(mapping);
+    }
+
+    private void decorateResultValueMapping(String analyzerId, Map<String, Object> mapping) {
+        String optionId = trimmedString(mapping.get("openelisResultOptionId"));
+        String testCode = trimmedString(mapping.get("testCode"));
+        if (optionId == null) {
+            mapping.put("bindingStatus", "LEGACY_UNBOUND");
+            return;
+        }
+        try {
+            AnalyzerResultValueOption option = analyzerResultValueOptionService.requireValidOption(analyzerId, testCode,
+                    optionId);
+            bindMappingToOption(mapping, option);
+        } catch (IllegalArgumentException e) {
+            mapping.put("bindingStatus", "INVALID_BOUND");
+        }
+    }
+
+    private void bindMappingToOption(Map<String, Object> mapping, AnalyzerResultValueOption option) {
+        mapping.put("openelisResultOptionId", option.getId());
+        mapping.put("openelisValue", option.getValue());
+        mapping.put("openelisLabel", option.getLabel());
+        mapping.put("bindingStatus", "BOUND");
     }
 
     private String toJson(Map<String, Object> data) {
@@ -437,6 +542,11 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
     }
 
     private String normalizedString(Object value) {
+        String normalized = trimmedString(value);
+        return normalized != null ? normalized.toUpperCase() : null;
+    }
+
+    private String trimmedString(Object value) {
         if (value == null) {
             return null;
         }
@@ -444,7 +554,7 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         if (normalized.isEmpty()) {
             return null;
         }
-        return normalized.toUpperCase();
+        return normalized;
     }
 
     private Integer toPositiveInteger(Object value, boolean required, String requiredMessage) {

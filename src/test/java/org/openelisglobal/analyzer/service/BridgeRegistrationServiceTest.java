@@ -176,4 +176,34 @@ public class BridgeRegistrationServiceTest {
         assertEquals("L1", controlLots.get(0).get("controlLevel"));
         assertEquals("42", controlLots.get(0).get("testId"));
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void bridgeCollectionsAreOrderedDeterministically() {
+        AnalyzerTestMapping zCode = mapping("Z-CODE", "42");
+        AnalyzerTestMapping aCode = mapping("A-CODE", "43");
+        when(mappingService.getAllForAnalyzer("AN-9")).thenReturn(List.of(zCode, aCode));
+        stubTestLoinc("42", "9999-9");
+        stubTestLoinc("43", "1111-1");
+        when(analyzerQcRuleService.getActiveRuleDtosForAnalyzer("AN-9")).thenReturn(
+                List.of(new QcRuleDto("SPECIMEN_ID_PREFIX", null, "Z"), new QcRuleDto("FIELD_EQUALS", "Q.3", "A")));
+
+        QCControlLot zLot = new QCControlLot();
+        zLot.setLotNumber("Z-LOT");
+        zLot.setTestId("42");
+        QCControlLot aLot = new QCControlLot();
+        aLot.setLotNumber("A-LOT");
+        aLot.setTestId("43");
+        when(qcControlLotService.getActiveControlLotsByInstrument("AN-9")).thenReturn(List.of(zLot, aLot));
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        svc.attachTestCodeLoinc(payload, "AN-9");
+        svc.attachQcRules(payload, "AN-9");
+        svc.attachControlLots(payload, "AN-9");
+
+        assertEquals(List.of("A-CODE", "Z-CODE"),
+                new java.util.ArrayList<>(((Map<String, String>) payload.get("testCodeLoinc")).keySet()));
+        assertEquals("FIELD_EQUALS", ((List<Map<String, Object>>) payload.get("qcRules")).get(0).get("ruleType"));
+        assertEquals("A-LOT", ((List<Map<String, Object>>) payload.get("controlLots")).get(0).get("lotNumber"));
+    }
 }

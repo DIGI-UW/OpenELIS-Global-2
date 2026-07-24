@@ -390,6 +390,35 @@ create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"defaultConfigId\": \"astm/genexpert-astm\"
 }"
 
+# Seed one unresolved instrument value as a harness precondition. The acceptance
+# story must resolve it through the visible mapping UI; Playwright does not
+# create runtime state through application APIs.
+psql_query "
+  UPDATE clinlims.analyzer_plugin_config
+     SET config = jsonb_set(
+       config,
+       '{pendingResultValues}',
+       '[{
+         \"id\": \"uat-mtb-trace\",
+         \"analyzerValue\": \"MTB TRACE DETECTED\",
+         \"testCode\": \"MTB\",
+         \"status\": \"PENDING\",
+         \"seenCount\": 1
+       }]'::jsonb,
+       true
+     ),
+         sys_user_id = '1',
+         last_updated = NOW()
+   WHERE analyzer_id = (
+     SELECT id
+       FROM clinlims.analyzer
+      WHERE name = 'Cepheid GeneXpert (ASTM Mode)'
+      ORDER BY id DESC
+      LIMIT 1
+   );
+" >/dev/null
+echo "  UAT fixture: pending GeneXpert qualitative value"
+
 # 2. Mindray BC-5380 (HL7/MLLP — hematology) — dynamic IP
 create_analyzer "Mindray BC-5380" "{
   \"name\": \"Mindray BC-5380\",

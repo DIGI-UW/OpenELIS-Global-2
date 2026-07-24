@@ -38,7 +38,7 @@ public class AnalyzerStatusTransitionServiceTest {
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
-    private AnalyzerPluginConfigService analyzerPluginConfigService;
+    private AnalyzerSetupVerificationService analyzerSetupVerificationService;
 
     @InjectMocks
     private AnalyzerStatusTransitionServiceImpl transitionService;
@@ -51,6 +51,7 @@ public class AnalyzerStatusTransitionServiceTest {
         testAnalyzer.setId("1");
         testAnalyzer.setName("Test Analyzer");
         testAnalyzer.setStatus(AnalyzerStatus.SETUP);
+        when(analyzerSetupVerificationService.isCurrentlyVerifiedAndReady("1")).thenReturn(true);
     }
 
     // === transitionToValidation Tests ===
@@ -97,11 +98,11 @@ public class AnalyzerStatusTransitionServiceTest {
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testTransitionToActive_GenericPluginWithoutActiveQcRule_ThrowsException() {
+    public void testTransitionToActive_WithStaleOrIncompleteVerification_ThrowsException() {
         testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
         testAnalyzer.setAnalyzerType(genericAnalyzerType());
         when(analyzerService.get("1")).thenReturn(testAnalyzer);
-        when(analyzerPluginConfigService.hasAtLeastOneActiveQcRule("1")).thenReturn(false);
+        when(analyzerSetupVerificationService.isCurrentlyVerifiedAndReady("1")).thenReturn(false);
 
         try {
             transitionService.transitionToActive("1");
@@ -192,11 +193,11 @@ public class AnalyzerStatusTransitionServiceTest {
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testTransitionToActiveFromError_GenericPluginWithoutActiveQcRule_ThrowsException() {
+    public void testTransitionToActiveFromError_WithStaleOrIncompleteVerification_ThrowsException() {
         testAnalyzer.setStatus(AnalyzerStatus.ERROR_PENDING);
         testAnalyzer.setAnalyzerType(genericAnalyzerType());
         when(analyzerService.get("1")).thenReturn(testAnalyzer);
-        when(analyzerPluginConfigService.hasAtLeastOneActiveQcRule("1")).thenReturn(false);
+        when(analyzerSetupVerificationService.isCurrentlyVerifiedAndReady("1")).thenReturn(false);
 
         try {
             transitionService.transitionToActiveFromError("1");
@@ -227,11 +228,11 @@ public class AnalyzerStatusTransitionServiceTest {
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testTransitionToActiveFromOffline_GenericPluginWithoutActiveQcRule_ThrowsException() {
+    public void testTransitionToActiveFromOffline_WithStaleOrIncompleteVerification_ThrowsException() {
         testAnalyzer.setStatus(AnalyzerStatus.OFFLINE);
         testAnalyzer.setAnalyzerType(genericAnalyzerType());
         when(analyzerService.get("1")).thenReturn(testAnalyzer);
-        when(analyzerPluginConfigService.hasAtLeastOneActiveQcRule("1")).thenReturn(false);
+        when(analyzerSetupVerificationService.isCurrentlyVerifiedAndReady("1")).thenReturn(false);
 
         try {
             transitionService.transitionToActiveFromOffline("1");

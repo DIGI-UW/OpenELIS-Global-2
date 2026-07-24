@@ -15,6 +15,7 @@ import {
   InlineNotification,
   FormGroup,
   Loading,
+  MultiSelect,
   Tag,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
@@ -26,6 +27,7 @@ import {
   getDefaultConfigs,
   getDefaultConfig,
   getAnalyzerTypes,
+  getAnalyzerLabUnits,
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
@@ -111,6 +113,7 @@ const AnalyzerForm = ({ inline = false }) => {
 
   const [pluginTypes, setPluginTypes] = useState([]);
   const [loadingPluginTypes, setLoadingPluginTypes] = useState(true);
+  const [labUnits, setLabUnits] = useState([]);
 
   // Analyzer type options (must match DB analyzer_type column values)
   const analyzerTypeOptions = [
@@ -219,6 +222,12 @@ const AnalyzerForm = ({ inline = false }) => {
       } else {
         setPluginTypes([]);
       }
+    });
+  }, []);
+
+  useEffect(() => {
+    getAnalyzerLabUnits((data) => {
+      setLabUnits(Array.isArray(data) ? data : []);
     });
   }, []);
 
@@ -756,6 +765,27 @@ const AnalyzerForm = ({ inline = false }) => {
               invalidText={errors.name}
               required
             />
+            <MultiSelect
+              id="analyzer-lab-units"
+              data-testid="analyzer-form-lab-units"
+              titleText={intl.formatMessage({
+                id: "analyzer.form.labUnits",
+              })}
+              label={intl.formatMessage({
+                id: "analyzer.form.labUnits.placeholder",
+              })}
+              items={labUnits}
+              itemToString={(item) => (item ? item.value : "")}
+              selectedItems={labUnits.filter((unit) =>
+                formData.testUnitIds.includes(unit.id),
+              )}
+              onChange={({ selectedItems }) =>
+                handleFieldChange(
+                  "testUnitIds",
+                  selectedItems.map((unit) => unit.id),
+                )
+              }
+            />
 
             {!labFacingSetup && (
               <Dropdown
@@ -1053,13 +1083,17 @@ const AnalyzerForm = ({ inline = false }) => {
                   invalidText={errors.port}
                 />
 
-                <Button
-                  kind="tertiary"
-                  onClick={() => setTestConnectionModalOpen(true)}
-                  data-testid="analyzer-form-test-connection-button"
-                >
-                  {intl.formatMessage({ id: "analyzer.form.testConnection" })}
-                </Button>
+                {isEditMode && (
+                  <Button
+                    kind="tertiary"
+                    onClick={() => setTestConnectionModalOpen(true)}
+                    data-testid="analyzer-form-test-connection-button"
+                  >
+                    {intl.formatMessage({
+                      id: "analyzer.form.testConnection",
+                    })}
+                  </Button>
+                )}
               </div>
             </FormGroup>
           )}
@@ -1203,19 +1237,22 @@ const AnalyzerForm = ({ inline = false }) => {
           </Button>
         </ButtonSet>
       </div>
-      <TestConnectionModal
-        analyzer={
-          formData.ipAddress && formData.port
-            ? {
-                id: analyzer?.id || "test",
-                ipAddress: formData.ipAddress,
-                port: parseInt(formData.port, 10),
-              }
-            : null
-        }
-        open={testConnectionModalOpen}
-        onClose={() => setTestConnectionModalOpen(false)}
-      />
+      {isEditMode && (
+        <TestConnectionModal
+          analyzer={
+            formData.ipAddress && formData.port
+              ? {
+                  id: analyzer?.id,
+                  name: formData.name,
+                  ipAddress: formData.ipAddress,
+                  port: parseInt(formData.port, 10),
+                }
+              : null
+          }
+          open={testConnectionModalOpen}
+          onClose={() => setTestConnectionModalOpen(false)}
+        />
+      )}
     </>
   );
 };

@@ -379,8 +379,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
                 "Called for analyzer " + analyzerId + ", config keys: " + config.keySet());
 
-        analyzerPluginConfigService.applyProfileDefaults(analyzerId, config, sysUserId);
-
         // FR-15: Auto-create QC rules from profile configDefaults
         createQcRulesFromProfile(analyzerId, config.get("configDefaults"), sysUserId);
 
@@ -391,6 +389,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         if (!(mappingsObj instanceof List)) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
                     "No default_test_mappings list found in config — skipping");
+            analyzerPluginConfigService.applyProfileDefaults(analyzerId, config, sysUserId);
             return;
         }
 
@@ -467,6 +466,10 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
                     "Auto-created " + created + " test mappings for analyzer " + analyzerId);
         }
+
+        // Apply plugin defaults after test mappings exist so profile result values can
+        // bind to unambiguous catalog options by durable option ID.
+        analyzerPluginConfigService.applyProfileDefaults(analyzerId, config, sysUserId);
     }
 
     @SuppressWarnings("unchecked")

@@ -24,6 +24,17 @@ export interface Analyzer {
   lastModified?: string;
   pluginLoaded?: boolean;
   protocol?: AnalyzerProtocol;
+  setupVerification?: {
+    mappingReady?: boolean;
+    qcApplicable?: boolean;
+    qcReady?: boolean;
+    currentlyVerified?: boolean;
+    readyForActivation?: boolean;
+    verificationState?: string;
+    blockers?: string[];
+    verifiedBy?: string;
+    verifiedAt?: string;
+  };
 }
 
 export interface AnalyzerApiError {

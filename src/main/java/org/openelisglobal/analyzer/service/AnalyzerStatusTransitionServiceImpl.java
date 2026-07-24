@@ -27,7 +27,7 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
     private ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    private AnalyzerPluginConfigService analyzerPluginConfigService;
+    private AnalyzerSetupVerificationService analyzerSetupVerificationService;
 
     @Override
     public Analyzer transitionToValidation(String analyzerId) {
@@ -51,7 +51,7 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
             throw new IllegalStateException("Cannot transition to ACTIVE: analyzer " + analyzerId + " is in "
                     + currentStatus + " status (expected VALIDATION)");
         }
-        requireActiveQcReadiness(analyzer, analyzerId);
+        requireVerifiedReadiness(analyzerId);
 
         analyzer.setLastActivatedDate(new Date());
 
@@ -93,7 +93,7 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
             throw new IllegalStateException("Cannot transition to ACTIVE from ERROR_PENDING: analyzer " + analyzerId
                     + " is in " + currentStatus + " status (expected ERROR_PENDING)");
         }
-        requireActiveQcReadiness(analyzer, analyzerId);
+        requireVerifiedReadiness(analyzerId);
 
         return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "All errors acknowledged");
     }
@@ -107,15 +107,15 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
             throw new IllegalStateException("Cannot transition to ACTIVE from OFFLINE: analyzer " + analyzerId
                     + " is in " + currentStatus + " status (expected OFFLINE)");
         }
-        requireActiveQcReadiness(analyzer, analyzerId);
+        requireVerifiedReadiness(analyzerId);
 
         return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "Connection restored");
     }
 
-    private void requireActiveQcReadiness(Analyzer analyzer, String analyzerId) {
-        if (analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin()
-                && !analyzerPluginConfigService.hasAtLeastOneActiveQcRule(analyzerId)) {
-            throw new IllegalStateException("Cannot transition to ACTIVE: at least one active QC rule is required");
+    private void requireVerifiedReadiness(String analyzerId) {
+        if (!analyzerSetupVerificationService.isCurrentlyVerifiedAndReady(analyzerId)) {
+            throw new IllegalStateException(
+                    "Cannot transition to ACTIVE: analyzer mappings and applicable QC setup must be currently verified");
         }
     }
 

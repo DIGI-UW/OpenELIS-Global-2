@@ -97,6 +97,9 @@ public class AnalyzerRestController extends BaseRestController {
     @Autowired
     private AnalyzerQcRuleService analyzerQcRuleService;
 
+    @Autowired
+    private org.openelisglobal.analyzer.service.AnalyzerSetupVerificationService analyzerSetupVerificationService;
+
     // Optional — null in older deployments before control-lot support.
     @Autowired(required = false)
     private org.openelisglobal.qc.service.QCControlLotService qcControlLotService;
@@ -792,6 +795,7 @@ public class AnalyzerRestController extends BaseRestController {
             }
         }
         map.put("controlLots", lotsPayload);
+        map.put("setupVerification", analyzerSetupVerificationService.getVerificationStatus(analyzer.getId()));
 
         return map;
     }

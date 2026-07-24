@@ -5,8 +5,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.analyzer.form.AnalyzerResultValueOption;
 import org.openelisglobal.analyzer.service.AnalyzerPendingCodeService;
 import org.openelisglobal.analyzer.service.AnalyzerPluginConfigService;
+import org.openelisglobal.analyzer.service.AnalyzerResultValueOptionService;
+import org.openelisglobal.analyzer.service.AnalyzerSetupVerificationService;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -30,6 +34,12 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerPendingCodeService analyzerPendingCodeService;
+
+    @Autowired
+    private AnalyzerResultValueOptionService analyzerResultValueOptionService;
+
+    @Autowired
+    private AnalyzerSetupVerificationService analyzerSetupVerificationService;
 
     @GetMapping("/analyzers/{analyzerId}/plugin-config")
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
@@ -106,6 +116,13 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
         return ResponseEntity.ok(analyzerPluginConfigService.getResultValueMappings(analyzerId));
     }
 
+    @GetMapping("/analyzers/{analyzerId}/result-value-options")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<List<AnalyzerResultValueOption>> getResultValueOptions(@PathVariable String analyzerId,
+            @RequestParam String testCode) {
+        return ResponseEntity.ok(analyzerResultValueOptionService.getOptions(analyzerId, testCode));
+    }
+
     @PutMapping("/analyzers/{analyzerId}/result-value-mappings")
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<Map<String, Object>> updateResultValueMappings(@PathVariable String analyzerId,
@@ -142,6 +159,29 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     AnalyzerControllerHelper.wrapError("Failed to resolve pending result value: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/analyzers/{analyzerId}/setup-verification")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<Map<String, Object>> getSetupVerification(@PathVariable String analyzerId) {
+        try {
+            return ResponseEntity.ok(analyzerSetupVerificationService.getVerificationStatus(analyzerId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/analyzers/{analyzerId}/setup-verification")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<Map<String, Object>> verifySetup(@PathVariable String analyzerId,
+            @RequestBody Map<String, Object> body, HttpServletRequest request) {
+        try {
+            return ResponseEntity
+                    .ok(analyzerSetupVerificationService.verifySetup(analyzerId, body, getSysUserId(request)));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 }

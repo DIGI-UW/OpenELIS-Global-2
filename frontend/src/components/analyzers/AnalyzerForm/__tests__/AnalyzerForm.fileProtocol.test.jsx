@@ -13,6 +13,7 @@ vi.mock("../../../../services/analyzerService", () => ({
   getDefaultConfigs: vi.fn(),
   getDefaultConfig: vi.fn(),
   getAnalyzerTypes: vi.fn(),
+  getAnalyzerLabUnits: vi.fn(),
   createAnalyzer: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
