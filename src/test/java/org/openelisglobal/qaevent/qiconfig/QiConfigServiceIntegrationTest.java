@@ -116,11 +116,12 @@ public class QiConfigServiceIntegrationTest extends BaseWebContextSensitiveTest 
     // ---- getAllConfigs shape ----
 
     @Test
-    public void getAllConfigs_returnsAllFour_withOverrideNamePopulated() {
+    public void getAllConfigs_returnsAllFive_withOverrideNamePopulated() {
         qiConfigService.saveIndicator("AMENDMENT", view(true, bd("0.5"), bd("2"), ov(SECTION_A, bd("0.2"), bd("1"))),
                 USER);
         List<QiConfigView> all = qiConfigService.getAllConfigs();
-        assertEquals(4, all.size());
+        // one view per QiIndicator constant — CALLBACK joined in OGC-714
+        assertEquals(5, all.size());
         QiConfigView amendment = all.stream().filter(v -> v.getIndicatorKey().equals("AMENDMENT")).findFirst()
                 .orElseThrow();
         assertEquals(1, amendment.getOverrides().size());
