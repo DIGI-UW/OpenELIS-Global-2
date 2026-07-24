@@ -14,7 +14,13 @@ set -euo pipefail
 TOKENS_FILE="${TOKENS_FILE:-/home/ubuntu/oe-grist/mcp-tokens.json}"
 MCP_URL="${MCP_URL:-https://grist.openelis-global.org/mcp}"
 
-ensure() { [ -f "$TOKENS_FILE" ] || echo "[]" > "$TOKENS_FILE"; chmod 600 "$TOKENS_FILE"; }
+ensure() {
+  [ -f "$TOKENS_FILE" ] || echo "[]" > "$TOKENS_FILE"
+  chmod 600 "$TOKENS_FILE"
+  # The MCP container runs as uid 1000 and mounts this file read-only, so it must
+  # be owned by 1000 to be readable even when this script runs as root (over SSM).
+  chown 1000:1000 "$TOKENS_FILE" 2>/dev/null || true
+}
 
 case "${1:-}" in
   generate)
