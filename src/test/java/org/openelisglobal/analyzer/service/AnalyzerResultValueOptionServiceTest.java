@@ -114,4 +114,9 @@ public class AnalyzerResultValueOptionServiceTest {
     public void getOptions_RejectsUnknownAnalyzerTestCode() {
         assertThrows(IllegalArgumentException.class, () -> service.getOptions("101", "UNKNOWN"));
     }
+
+    @Test
+    public void findOptions_ReturnsEmptyWhenAnalyzerTestCodeIsNotMapped() {
+        assertEquals(List.of(), service.findOptions("101", "UNKNOWN"));
+    }
 }

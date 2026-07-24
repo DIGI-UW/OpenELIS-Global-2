@@ -347,17 +347,12 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
             if (analyzerValue == null || testCode == null) {
                 continue;
             }
-            try {
-                List<AnalyzerResultValueOption> matches = analyzerResultValueOptionService
-                        .getOptions(analyzerId, testCode).stream()
-                        .filter(option -> analyzerValue.equals(normalizedString(option.getLabel()))
-                                || analyzerValue.equals(normalizedString(option.getValue())))
-                        .toList();
-                if (matches.size() == 1) {
-                    bindMappingToOption(mapping, matches.get(0));
-                }
-            } catch (IllegalArgumentException e) {
-                mapping.put("bindingStatus", "LEGACY_UNBOUND");
+            List<AnalyzerResultValueOption> matches = analyzerResultValueOptionService.findOptions(analyzerId, testCode)
+                    .stream().filter(option -> analyzerValue.equals(normalizedString(option.getLabel()))
+                            || analyzerValue.equals(normalizedString(option.getValue())))
+                    .toList();
+            if (matches.size() == 1) {
+                bindMappingToOption(mapping, matches.get(0));
             }
         }
     }

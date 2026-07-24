@@ -46,6 +46,15 @@ public class AnalyzerResultValueOptionServiceImpl implements AnalyzerResultValue
     }
 
     @Override
+    public List<AnalyzerResultValueOption> findOptions(String analyzerId, String analyzerTestCode) {
+        try {
+            return getOptions(analyzerId, analyzerTestCode);
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+    }
+
+    @Override
     public AnalyzerResultValueOption requireValidOption(String analyzerId, String analyzerTestCode, String optionId) {
         if (optionId == null || optionId.isBlank()) {
             throw new IllegalArgumentException("openelisResultOptionId is required");

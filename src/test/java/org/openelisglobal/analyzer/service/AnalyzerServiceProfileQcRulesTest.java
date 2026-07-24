@@ -18,6 +18,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerQcRule;
 import org.openelisglobal.analyzer.valueholder.AnalyzerQcRule.RuleType;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 
 /**
  * Tests that autoCreateTestMappings() extracts qcRules from profile
@@ -37,6 +38,9 @@ public class AnalyzerServiceProfileQcRulesTest {
 
     @Mock
     private AnalyzerTestMappingService analyzerMappingService;
+
+    @Mock
+    private org.openelisglobal.test.service.TestService testService;
 
     @InjectMocks
     private AnalyzerServiceImpl analyzerService;
@@ -131,5 +135,37 @@ public class AnalyzerServiceProfileQcRulesTest {
         analyzerService.autoCreateTestMappings("1", config, "1");
 
         verify(analyzerQcRuleService, never()).createRule(anyString(), any(), anyString());
+    }
+
+    @Test
+    public void testAutoCreateTestMappings_QcRulePersistenceFailureIsNotSwallowed() {
+        Map<String, Object> rule = Map.of("ruleType", "FIELD_EQUALS", "targetField", "O.12", "operand", "Q");
+        Map<String, Object> config = Map.of("configDefaults", Map.of("qcRules", List.of(rule)));
+        doThrow(new IllegalStateException("qc persistence failed")).when(analyzerQcRuleService).createRule(eq("1"),
+                any(AnalyzerQcRule.class), eq("1"));
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> analyzerService.autoCreateTestMappings("1", config, "1"));
+
+        assertEquals("qc persistence failed", error.getMessage());
+        verify(analyzerPluginConfigService, never()).applyProfileDefaults(anyString(), anyMap(), anyString());
+    }
+
+    @Test
+    public void testAutoCreateTestMappings_TestMappingPersistenceFailureIsNotSwallowed() {
+        Map<String, Object> config = Map.of("default_test_mappings",
+                List.of(Map.of("test_code", "MTB", "loinc", "85362-2")));
+        org.openelisglobal.test.valueholder.Test catalogTest = new org.openelisglobal.test.valueholder.Test();
+        catalogTest.setId("501");
+        when(testService.getActiveTestsByLoinc("85362-2")).thenReturn(List.of(catalogTest));
+        when(analyzerMappingService.getAll()).thenReturn(List.of());
+        doThrow(new IllegalStateException("mapping persistence failed")).when(analyzerMappingService)
+                .insert(any(AnalyzerTestMapping.class));
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> analyzerService.autoCreateTestMappings("1", config, "1"));
+
+        assertEquals("mapping persistence failed", error.getMessage());
+        verify(analyzerPluginConfigService, never()).applyProfileDefaults(anyString(), anyMap(), anyString());
     }
 }

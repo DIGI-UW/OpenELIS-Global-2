@@ -7,5 +7,7 @@ public interface AnalyzerResultValueOptionService {
 
     List<AnalyzerResultValueOption> getOptions(String analyzerId, String analyzerTestCode);
 
+    List<AnalyzerResultValueOption> findOptions(String analyzerId, String analyzerTestCode);
+
     AnalyzerResultValueOption requireValidOption(String analyzerId, String analyzerTestCode, String optionId);
 }

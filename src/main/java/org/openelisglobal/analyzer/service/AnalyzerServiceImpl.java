@@ -395,7 +395,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         List<Map<String, Object>> mappings = (List<Map<String, Object>>) mappingsObj;
         int created = 0;
-        Analyzer analyzer = get(analyzerId);
         List<AnalyzerTestMapping> dbTestMappings = analyzerMappingService.getAll();
         for (Map<String, Object> mapping : mappings) {
             String analyzerCode = (String) mapping.get("test_code");
@@ -422,31 +421,25 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             atm.setTestId(test.getId());
             atm.setSysUserId(sysUserId);
 
-            try {
-                if (newMapping(atm, dbTestMappings)) {
-                    analyzerMappingService.insert(atm);
-                    dbTestMappings.add(atm);
-                    created++;
-                } else {
-                    // Update existing mapping if test_id changed (e.g., profile updated)
-                    for (AnalyzerTestMapping existing : dbTestMappings) {
-                        if (Objects.equals(existing.getAnalyzerId(), atm.getAnalyzerId())
-                                && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())
-                                && !Objects.equals(existing.getTestId(), atm.getTestId())) {
-                            existing.setTestId(atm.getTestId());
-                            existing.setSysUserId(sysUserId);
-                            analyzerMappingService.update(existing);
-                            created++;
-                            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                                    "Updated stale test mapping for '" + analyzerCode + "' → test " + test.getId());
-                            break;
-                        }
+            if (newMapping(atm, dbTestMappings)) {
+                analyzerMappingService.insert(atm);
+                dbTestMappings.add(atm);
+                created++;
+            } else {
+                // Update existing mapping if test_id changed (e.g., profile updated)
+                for (AnalyzerTestMapping existing : dbTestMappings) {
+                    if (Objects.equals(existing.getAnalyzerId(), atm.getAnalyzerId())
+                            && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())
+                            && !Objects.equals(existing.getTestId(), atm.getTestId())) {
+                        existing.setTestId(atm.getTestId());
+                        existing.setSysUserId(sysUserId);
+                        analyzerMappingService.update(existing);
+                        created++;
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                                "Updated stale test mapping for '" + analyzerCode + "' → test " + test.getId());
+                        break;
                     }
                 }
-
-            } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                        "Failed to create test mapping for analyzer_code '" + analyzerCode + "': " + e.getMessage());
             }
         }
         // Invalidate cache AFTER the transaction commits — not during.
@@ -485,28 +478,23 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         List<Map<String, Object>> qcRules = (List<Map<String, Object>>) qcRulesObj;
         int created = 0;
         for (Map<String, Object> ruleMap : qcRules) {
-            try {
-                String ruleType = (String) ruleMap.get("ruleType");
-                if (ruleType == null) {
-                    continue;
-                }
-                org.openelisglobal.analyzer.valueholder.AnalyzerQcRule rule = new org.openelisglobal.analyzer.valueholder.AnalyzerQcRule();
-                rule.setRuleType(org.openelisglobal.analyzer.valueholder.AnalyzerQcRule.RuleType.valueOf(ruleType));
-                rule.setTargetField((String) ruleMap.get("targetField"));
-                rule.setOperand((String) ruleMap.get("operand"));
-                rule.setActive(ruleMap.get("isActive") == null || Boolean.TRUE.equals(ruleMap.get("isActive")));
-                Object sortOrder = ruleMap.get("sortOrder");
-                rule.setDisplayOrder(sortOrder instanceof Number ? ((Number) sortOrder).intValue() : 0);
-                if (analyzerQcRuleService.ruleExists(analyzerId, rule.getRuleType(), rule.getTargetField(),
-                        rule.getOperand())) {
-                    continue;
-                }
-                analyzerQcRuleService.createRule(analyzerId, rule, sysUserId);
-                created++;
-            } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "createQcRulesFromProfile",
-                        "Failed to create QC rule from profile for analyzer " + analyzerId + ": " + e.getMessage());
+            String ruleType = (String) ruleMap.get("ruleType");
+            if (ruleType == null) {
+                continue;
             }
+            org.openelisglobal.analyzer.valueholder.AnalyzerQcRule rule = new org.openelisglobal.analyzer.valueholder.AnalyzerQcRule();
+            rule.setRuleType(org.openelisglobal.analyzer.valueholder.AnalyzerQcRule.RuleType.valueOf(ruleType));
+            rule.setTargetField((String) ruleMap.get("targetField"));
+            rule.setOperand((String) ruleMap.get("operand"));
+            rule.setActive(ruleMap.get("isActive") == null || Boolean.TRUE.equals(ruleMap.get("isActive")));
+            Object sortOrder = ruleMap.get("sortOrder");
+            rule.setDisplayOrder(sortOrder instanceof Number ? ((Number) sortOrder).intValue() : 0);
+            if (analyzerQcRuleService.ruleExists(analyzerId, rule.getRuleType(), rule.getTargetField(),
+                    rule.getOperand())) {
+                continue;
+            }
+            analyzerQcRuleService.createRule(analyzerId, rule, sysUserId);
+            created++;
         }
         if (created > 0) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "createQcRulesFromProfile",

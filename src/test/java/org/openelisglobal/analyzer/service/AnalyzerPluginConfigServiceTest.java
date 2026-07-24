@@ -250,7 +250,7 @@ public class AnalyzerPluginConfigServiceTest {
         existing.setAnalyzerId("101");
         existing.setConfig("{}");
         when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
-        when(analyzerResultValueOptionService.getOptions("101", "MTB"))
+        when(analyzerResultValueOptionService.findOptions("101", "MTB"))
                 .thenReturn(List.of(resultOption("result-option-detected", "9001", "Detected"),
                         resultOption("result-option-not-detected", "9002", "Not Detected")));
 
@@ -283,7 +283,7 @@ public class AnalyzerPluginConfigServiceTest {
         existing.setAnalyzerId("101");
         existing.setConfig("{}");
         when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
-        when(analyzerResultValueOptionService.getOptions("101", "MTB"))
+        when(analyzerResultValueOptionService.findOptions("101", "MTB"))
                 .thenReturn(List.of(resultOption("result-option-1", "9001", "Detected"),
                         resultOption("result-option-2", "DETECTED", "Detected")));
 
