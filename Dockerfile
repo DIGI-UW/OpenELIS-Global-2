@@ -57,15 +57,16 @@ ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     [ -d /root/.m2/repository/org/itech ] || { mkdir -p /root/.m2/repository/org && cp -r /build/dataexport-m2/org/itech /root/.m2/repository/org/; } \
-    && mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
+    && mvn clean install -DskipTests -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
 
 ##
 # Build the shipped generic analyzer plugins
 #
 # The plugin submodule still declares the historical 3.2.1.3 dependency
-# coordinate. Install the exact classes and test artifacts produced above at
-# that coordinate inside the build cache, then compile only the three generic
-# protocol handlers used by profile-driven analyzer setup.
+# coordinate. Compile (but do not run) the main tests above so Maven emits the
+# shared test artifact declared by the plugin POMs, install both artifacts at
+# that coordinate, then compile only the three generic protocol handlers used
+# by profile-driven analyzer setup.
 COPY ./plugins /build/plugins
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn install:install-file \
