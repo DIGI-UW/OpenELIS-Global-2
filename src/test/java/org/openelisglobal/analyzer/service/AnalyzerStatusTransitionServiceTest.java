@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Timestamp;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -66,6 +67,18 @@ public class AnalyzerStatusTransitionServiceTest {
         assertEquals(AnalyzerStatus.VALIDATION, result.getStatus());
         verify(analyzerService).update(any(Analyzer.class));
         verify(eventPublisher).publishEvent(any(AnalyzerStatusChangeEvent.class));
+    }
+
+    @Test
+    public void testTransitionToValidation_PreservesLoadedOptimisticLockVersion() {
+        Timestamp loadedVersion = Timestamp.valueOf("2026-07-24 12:00:00");
+        testAnalyzer.setLastupdated(loadedVersion);
+        testAnalyzer.setStatus(AnalyzerStatus.SETUP);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
+
+        transitionService.transitionToValidation("1");
+
+        assertEquals(loadedVersion, testAnalyzer.getLastupdated());
     }
 
     @Test(expected = IllegalStateException.class)

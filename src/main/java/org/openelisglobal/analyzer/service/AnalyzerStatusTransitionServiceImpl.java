@@ -139,7 +139,6 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
 
         analyzer.setStatus(newStatus);
         analyzer.setSysUserId("SYSTEM"); // System-triggered transition
-        analyzer.setLastupdatedFields();
 
         analyzerService.update(analyzer);
 
