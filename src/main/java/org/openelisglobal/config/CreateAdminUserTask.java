@@ -76,13 +76,15 @@ public class CreateAdminUserTask {
         return login;
     }
 
-    private String processPassword(String password) {
-        // strip password marker at beginning of line and newline character at end
-        if (password.startsWith(PASSWORD_MARKER)) {
-            password = password.substring(PASSWORD_MARKER.length());
+    String processPassword(String password) {
+        if (password == null) {
+            return "";
         }
-        if (password.endsWith("\n")) {
-            password = password.substring(0, password.length() - 1);
+        password = password.trim();
+        // strip password marker at beginning of line and newline/carriage return
+        // characters
+        if (password.startsWith(PASSWORD_MARKER)) {
+            password = password.substring(PASSWORD_MARKER.length()).trim();
         }
         if (password.startsWith("$2y")) {
             password = password.replace("$2y", "$2a");
