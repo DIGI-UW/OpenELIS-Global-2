@@ -60,11 +60,44 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     && mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
 
 ##
+# Build the shipped generic analyzer plugins
+#
+# The plugin submodule still declares the historical 3.2.1.3 dependency
+# coordinate. Install the exact classes and test artifacts produced above at
+# that coordinate inside the build cache, then compile only the three generic
+# protocol handlers used by profile-driven analyzer setup.
+COPY ./plugins /build/plugins
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn install:install-file \
+        -Dfile=/build/target/OpenELIS-Global-classes.jar \
+        -DgroupId=org.openelisglobal \
+        -DartifactId=openelisglobal \
+        -Dversion=3.2.1.3 \
+        -Dpackaging=jar \
+        -Dclassifier=classes \
+    && mvn install:install-file \
+        -Dfile=/build/target/OpenELIS-Global-tests.jar \
+        -DgroupId=org.openelisglobal \
+        -DartifactId=openelisglobal \
+        -Dversion=3.2.1.3 \
+        -Dpackaging=jar \
+        -Dclassifier=tests \
+    && mvn -f /build/plugins/pom.xml \
+        -pl analyzers/GenericASTM,analyzers/GenericFile,analyzers/GenericHL7 \
+        -am package -DskipTests -Dmaven.test.skip=true \
+    && mkdir -p /build/generic-analyzer-plugins \
+    && cp /build/plugins/analyzers/GenericASTM/target/GenericASTM-1.0.jar \
+        /build/plugins/analyzers/GenericFile/target/GenericFile-1.0.jar \
+        /build/plugins/analyzers/GenericHL7/target/GenericHL7-1.0.jar \
+        /build/generic-analyzer-plugins/
+
+##
 # Run Stage
 #
 FROM tomcat:10-jre21
 
 COPY install/createDefaultPassword.sh ./
+COPY --from=build /build/generic-analyzer-plugins /opt/openelis-global/generic-analyzer-plugins
 
 
 #Clean out unneccessary files from tomcat (especially pre-existing applications) 

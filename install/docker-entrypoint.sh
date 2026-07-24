@@ -27,25 +27,40 @@ OE_LOGS="/var/lib/openelis-global/logs"
 TOMCAT_LOGS="/usr/local/tomcat/logs"
 LUCENE="/var/lib/lucene_index"
 BRANDING="/var/lib/openelis-global/branding"
+PLUGINS="/var/lib/openelis-global/plugins"
+SHIPPED_ANALYZER_PLUGINS="/opt/openelis-global/generic-analyzer-plugins"
 
 # Create dirs if missing (safe even if mounted)
 mkdir -p \
   "$OE_LOGS" \
   "$TOMCAT_LOGS" \
   "$LUCENE" \
-  "$BRANDING"
+  "$BRANDING" \
+  "$PLUGINS"
+
+# Shipped profiles use only the generic ASTM, FILE, and HL7 handlers. Copy
+# immutable image artifacts into the mounted runtime volume before plugin
+# discovery starts; custom plugin JARs already present in the volume are left
+# untouched.
+for plugin in "$SHIPPED_ANALYZER_PLUGINS"/Generic*.jar; do
+  if [ -f "$plugin" ]; then
+    cp "$plugin" "$PLUGINS/"
+  fi
+done
 
 # Fix ownership → UID 8443 (tomcat_admin)
 chown -R 8443:tomcat "$OE_LOGS" || true
 chown -R 8443:tomcat "$TOMCAT_LOGS" || true
 chown -R 8443:tomcat "$LUCENE" || true
 chown -R 8443:tomcat "$BRANDING" || true
+chown -R 8443:tomcat "$PLUGINS" || true
 
 # Fix permissions
 chmod -R 770 "$OE_LOGS" || true
 chmod -R 770 "$TOMCAT_LOGS" || true
 chmod -R 770 "$LUCENE" || true
 chmod -R 770 "$BRANDING" || true
+chmod -R 770 "$PLUGINS" || true
 
 echo "Volume permissions ready."
 
