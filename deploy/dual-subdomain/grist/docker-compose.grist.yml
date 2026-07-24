@@ -38,6 +38,10 @@ services:
       - GRIST_OIDC_IDP_SKIP_END_SESSION_ENDPOINT=true
       # Trust the umbrella router's forwarded proto so Grist builds https URLs.
       - GRIST_FORWARD_URL_HOST=1
+      # Native MCP server at /api/mcp (full edition). Authenticates with a Grist
+      # API key or session; the OAuth-bearer path additionally needs the OIDC
+      # server + Redis (see Phase B). No effect until the full edition is active.
+      - GRIST_MCP_ENABLED=true
     volumes:
       - grist-data:/persist
     networks:
