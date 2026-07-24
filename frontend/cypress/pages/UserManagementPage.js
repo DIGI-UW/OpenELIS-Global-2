@@ -114,7 +114,7 @@ class UserManagementPage {
       .clear({ force: true })
       .type(value, { force: true });
     // Close datepicker if open
-    cy.get("body").click(0, 0);
+    cy.get("body").type("{esc}"); // close datepicker without clicking (0,0) — that pixel is the logo link on desktop
   }
 
   enterUserTimeout(value) {
