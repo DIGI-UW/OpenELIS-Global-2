@@ -344,6 +344,23 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
+     * Resync a Postgres sequence to {@code MAX(id)+1} of its table. DBUnit fixture
+     * loads insert rows with explicit ids without advancing the sequence, so a
+     * later sequence-backed insert can collide with a seeded id depending on test
+     * order (e.g. {@code person_pk id=2 already exists}). Call this before
+     * sequence-backed inserts into a fixture-seeded table.
+     */
+    protected void resyncSequence(String sequence, String table) {
+        try (Connection conn = dataSource.getConnection(); Statement st = conn.createStatement()) {
+            // id columns are numeric(10); setval needs a bigint.
+            st.execute("SELECT setval('" + sequence + "', (SELECT COALESCE(MAX(id), 0) + 1 FROM " + table
+                    + ")::bigint, false)");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
+        }
+    }
+
+    /**
      * Idempotently ensure the audit user {@code system_user.id=1} ("admin") exists,
      * inserting it via raw JDBC (no audit emission) if absent. Audit-emitting
      * service calls stamp history with {@code sys_user_id=1}

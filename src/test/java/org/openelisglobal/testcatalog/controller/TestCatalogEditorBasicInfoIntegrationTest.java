@@ -260,17 +260,17 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         }
 
         TestCatalogEditorRestController.TestListPage vector = controller.listTests("VECTOR", "all", null, null,
-                "ListIT-", 1, 25);
+                "ListIT-", false, 1, 25);
         assertEquals(1, vector.total);
         assertEquals("VECTOR", vector.rows.get(0).domain);
 
-        TestCatalogEditorRestController.TestListPage all = controller.listTests(null, "all", null, null, "ListIT-", 1,
-                2);
+        TestCatalogEditorRestController.TestListPage all = controller.listTests(null, "all", null, null, "ListIT-",
+                false, 1, 2);
         assertEquals(3, all.total);
         assertEquals(2, all.rows.size()); // page size 2 of 3 total
 
-        TestCatalogEditorRestController.TestListPage page2 = controller.listTests(null, "all", null, null, "ListIT-", 2,
-                2);
+        TestCatalogEditorRestController.TestListPage page2 = controller.listTests(null, "all", null, null, "ListIT-",
+                false, 2, 2);
         assertEquals(1, page2.rows.size());
     }
 
@@ -280,9 +280,9 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         seedTest(95021L, "StatusIT-active2", "CLINICAL", true, false);
         seedTest(95022L, "StatusIT-inactive", "CLINICAL", false, false);
 
-        assertEquals(3, controller.listTests(null, "all", null, null, "StatusIT-", 1, 25).total);
-        assertEquals(2, controller.listTests(null, "active", null, null, "StatusIT-", 1, 25).total);
-        assertEquals(1, controller.listTests(null, "inactive", null, null, "StatusIT-", 1, 25).total);
+        assertEquals(3, controller.listTests(null, "all", null, null, "StatusIT-", false, 1, 25).total);
+        assertEquals(2, controller.listTests(null, "active", null, null, "StatusIT-", false, 1, 25).total);
+        assertEquals(1, controller.listTests(null, "inactive", null, null, "StatusIT-", false, 1, 25).total);
     }
 
     @org.junit.Test
@@ -291,9 +291,9 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         seedTest(95024L, "AmrIT-no1", "CLINICAL", true, false);
         seedTest(95025L, "AmrIT-no2", "CLINICAL", true, false);
 
-        assertEquals(3, controller.listTests(null, "all", null, null, "AmrIT-", 1, 25).total);
-        assertEquals(1, controller.listTests(null, "all", true, null, "AmrIT-", 1, 25).total);
-        assertEquals(2, controller.listTests(null, "all", false, null, "AmrIT-", 1, 25).total);
+        assertEquals(3, controller.listTests(null, "all", null, null, "AmrIT-", false, 1, 25).total);
+        assertEquals(1, controller.listTests(null, "all", true, null, "AmrIT-", false, 1, 25).total);
+        assertEquals(2, controller.listTests(null, "all", false, null, "AmrIT-", false, 1, 25).total);
     }
 
     @org.junit.Test
@@ -302,9 +302,9 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         seedTest(95027L, "alphaSrchIT", "CLINICAL", true, false);
 
         // a lowercase query matches both mixed-case names (case-insensitive)
-        assertEquals(2, controller.listTests(null, "all", null, null, "srchit", 1, 25).total);
+        assertEquals(2, controller.listTests(null, "all", null, null, "srchit", false, 1, 25).total);
         // a distinct fragment narrows to one
-        assertEquals(1, controller.listTests(null, "all", null, null, "ZEBRA", 1, 25).total);
+        assertEquals(1, controller.listTests(null, "all", null, null, "ZEBRA", false, 1, 25).total);
     }
 
     @org.junit.Test
@@ -314,7 +314,7 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         seedTest(95030L, "cherry SortIT", "CLINICAL", true, false);
 
         java.util.List<TestCatalogEditorRestController.TestListRow> rows = controller.listTests(null, "all", null, null,
-                "SortIT", 1, 25).rows;
+                "SortIT", false, 1, 25).rows;
         assertEquals(3, rows.size());
         assertEquals("Apple SortIT", rows.get(0).name);
         assertEquals("banana SortIT", rows.get(1).name);

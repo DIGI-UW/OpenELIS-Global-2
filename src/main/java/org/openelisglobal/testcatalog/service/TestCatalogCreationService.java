@@ -14,6 +14,8 @@ public interface TestCatalogCreationService {
         public String code;
         public String labUnitId;
         public String sampleTypeId;
+        // OGC-1145 FR-2: all sample types to link; wins over the scalar when set.
+        public java.util.List<String> sampleTypeIds;
         public String domain;
         public Boolean amr;
         public Boolean orderable;

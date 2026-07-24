@@ -20,11 +20,12 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { TrashCan } from "@carbon/icons-react";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   putToOpenElisServer,
 } from "../../../utils/Utils";
+import OrderEntryPreview from "../../testManagement/labelsTab/OrderEntryPreview";
 
 /**
  * OGC-949 M14 / OGC-988 + OGC-989 (epic OGC-761) — Labels section.
@@ -62,9 +63,15 @@ const LabelsSection = ({ testId }) => {
       setAllowOverride(res.allowOrderEntryOverride !== false);
       setLinks(res.links || []);
     });
-    // Fixed system presets feed the "Add Label Type" picker.
+    // Every active per-sample preset feeds the "Add Label Type" picker — both
+    // system and custom presets (FR-66). Only order-only presets (printsPerSample
+    // === false) are excluded, since they never print per specimen.
     getFromOpenElisServer("/api/labelPresets?status=ACTIVE", (res) => {
-      setPresets((Array.isArray(res) ? res : []).filter((p) => p.isSystem));
+      setPresets(
+        (Array.isArray(res) ? res : []).filter(
+          (p) => p.printsPerSample !== false,
+        ),
+      );
     });
   }, [testId]);
 
@@ -386,6 +393,9 @@ const LabelsSection = ({ testId }) => {
         </DataTable>
       )}
 
+      <h5 style={{ marginTop: "1rem" }}>
+        <FormattedMessage id="label.testCatalog.labels.generationSettings" />
+      </h5>
       <Toggle
         id="allow-order-entry-override"
         labelText={intl.formatMessage({
@@ -396,6 +406,9 @@ const LabelsSection = ({ testId }) => {
         toggled={allowOverride}
         onToggle={toggleOverride}
       />
+
+      {/* FR-67: show how Order Entry will pre-populate labels for this test. */}
+      <OrderEntryPreview links={links} masterOverride={allowOverride} />
 
       <Modal
         open={!!removeTarget}

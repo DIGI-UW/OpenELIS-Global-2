@@ -353,6 +353,7 @@ public class PatientDashBoardProvider {
                 List<String> estausIds = new ArrayList<>();
                 estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
                 estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
+                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
                 metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
                 break;
             case AVERAGE_TURN_AROUND_TIME:
@@ -449,6 +450,7 @@ public class PatientDashBoardProvider {
             List<String> estausIds = new ArrayList<>();
             estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
             estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
+            estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
             List<ElectronicOrder> eOrders = electronicOrderService.getAllElectronicOrdersByStatusList(estausIds,
                     ElectronicOrder.SortOrder.STATUS_ID);
             return convertElectronicToOrderBean(eOrders);

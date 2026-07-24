@@ -54,12 +54,18 @@ const TerminologySection = ({ testId }) => {
   // The test's result components (id, code, label), so a mapping can be scoped
   // to a single component ("Applies to") instead of the whole test.
   const [components, setComponents] = useState([]);
+  // OGC-1145 FR-13: the test's associated sample types — a mapping may
+  // override for one specimen (null = shared across all of them).
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [loincIntegrity, setLoincIntegrity] = useState(null);
   const [draft, setDraft] = useState({
     source: "",
     code: "",
-    relationship: "",
+    // Relationship is required (FR-70); default to SAME_AS, no "none" option.
+    relationship: "SAME_AS",
+    displayName: "",
     componentId: "",
+    sampleTypeId: "",
   });
 
   const componentLabel = (id) => {
@@ -69,6 +75,13 @@ const TerminologySection = ({ testId }) => {
     }
     return c.label || c.code || "";
   };
+
+  const sampleTypeLabel = (id) => {
+    const t = sampleTypes.find((x) => x.id === id);
+    return t ? t.name : "";
+  };
+  // The override picker only matters once the test runs on several specimens.
+  const showSampleTypeColumn = sampleTypes.length > 1;
   // Row indices currently in edit mode; a row's fields are editable only after
   // its Edit button is clicked.
   const [editingRows, setEditingRows] = useState(() => new Set());
@@ -102,6 +115,7 @@ const TerminologySection = ({ testId }) => {
         }
         setMappings(res.mappings || []);
         setComponents(res.components || []);
+        setSampleTypes(res.sampleTypes || []);
       },
     );
   };
@@ -123,8 +137,34 @@ const TerminologySection = ({ testId }) => {
       prev.map((m, i) => (i === index ? { ...m, ...patch } : m)),
     );
 
+  // A mapping's identity is (source, code, scope). Warn specifically on a
+  // duplicate — the backend rejects it with a bodyless 422, which used to
+  // surface as nothing more than a generic failure.
+  const mappingKey = (m) =>
+    `${m.source}|${(m.code || "").trim()}|${m.componentId || ""}|${
+      m.sampleTypeId || ""
+    }`;
+
+  const notifyDuplicate = (m) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind: "error",
+      title: intl.formatMessage({
+        id: "label.testCatalog.section.terminology",
+      }),
+      message: intl.formatMessage(
+        { id: "error.testCatalog.terminology.duplicate" },
+        { source: m.source, code: (m.code || "").trim() },
+      ),
+    });
+  };
+
   const addMapping = () => {
     if (!draft.source || !draft.code) {
+      return;
+    }
+    if (mappings.some((m) => mappingKey(m) === mappingKey(draft))) {
+      notifyDuplicate(draft);
       return;
     }
     setMappings((prev) => [
@@ -133,11 +173,20 @@ const TerminologySection = ({ testId }) => {
         id: null,
         source: draft.source,
         code: draft.code,
-        relationship: draft.relationship || null,
+        relationship: draft.relationship || "SAME_AS",
+        displayName: draft.displayName || null,
         componentId: draft.componentId || null,
+        sampleTypeId: draft.sampleTypeId || null,
       },
     ]);
-    setDraft({ source: "", code: "", relationship: "", componentId: "" });
+    setDraft({
+      source: "",
+      code: "",
+      relationship: "SAME_AS",
+      displayName: "",
+      componentId: "",
+      sampleTypeId: "",
+    });
   };
 
   const removeMapping = (index) => {
@@ -156,12 +205,26 @@ const TerminologySection = ({ testId }) => {
         id: null,
         source: draft.source,
         code: draft.code,
-        relationship: draft.relationship || null,
+        relationship: draft.relationship || "SAME_AS",
+        displayName: draft.displayName || null,
         componentId: draft.componentId || null,
+        sampleTypeId: draft.sampleTypeId || null,
       });
     }
     // Persist only complete rows (source + code); drop blank/partial ones.
     const complete = all.filter((m) => m.source && m.code);
+
+    // Duplicate (source, code, scope) — catch it here with a specific message
+    // (in-place edits can collide too, not just the add form).
+    const seen = new Set();
+    for (const m of complete) {
+      const key = mappingKey(m);
+      if (seen.has(key)) {
+        notifyDuplicate(m);
+        return;
+      }
+      seen.add(key);
+    }
 
     setSaving(true);
     const payload = {
@@ -170,8 +233,10 @@ const TerminologySection = ({ testId }) => {
         id: m.id || null,
         source: m.source,
         code: m.code,
-        relationship: m.relationship || null,
+        relationship: m.relationship || "SAME_AS",
+        displayName: m.displayName || null,
         componentId: m.componentId || null,
+        sampleTypeId: m.sampleTypeId || null,
       })),
     };
     putToOpenElisServer(
@@ -192,10 +257,28 @@ const TerminologySection = ({ testId }) => {
           });
           // Refresh with server-assigned ids + recomputed LOINC integrity so the
           // next edit updates in place rather than inserting duplicates.
-          setDraft({ source: "", code: "", relationship: "", componentId: "" });
+          setDraft({
+            source: "",
+            code: "",
+            relationship: "SAME_AS",
+            displayName: "",
+            componentId: "",
+          });
           setEditingRows(new Set());
           loadMappings();
           loadLoincIntegrity();
+        } else if (status === 422) {
+          // Server-side validation (duplicate mapping, unknown source/relationship,
+          // stale component scope) — name the cause instead of a generic failure.
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.terminology",
+            }),
+            message: intl.formatMessage({
+              id: "error.testCatalog.terminology.invalid",
+            }),
+          });
         } else {
           addNotification({
             kind: "error",
@@ -284,11 +367,19 @@ const TerminologySection = ({ testId }) => {
                 <FormattedMessage id="label.testCatalog.terminology.col.code" />
               </TableHeader>
               <TableHeader>
+                <FormattedMessage id="label.testCatalog.terminology.col.displayName" />
+              </TableHeader>
+              <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.relationship" />
               </TableHeader>
               <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.appliesTo" />
               </TableHeader>
+              {showSampleTypeColumn && (
+                <TableHeader>
+                  <FormattedMessage id="label.testCatalog.override.col.sampleType" />
+                </TableHeader>
+              )}
               <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.actions" />
               </TableHeader>
@@ -339,22 +430,33 @@ const TerminologySection = ({ testId }) => {
                   </TableCell>
                   <TableCell>
                     {editing ? (
+                      <TextInput
+                        id={`mapping-display-${i}`}
+                        labelText=""
+                        value={m.displayName || ""}
+                        placeholder={intl.formatMessage({
+                          id: "label.testCatalog.terminology.displayName.placeholder",
+                        })}
+                        onChange={(e) =>
+                          updateMapping(i, { displayName: e.target.value })
+                        }
+                      />
+                    ) : (
+                      m.displayName || ""
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editing ? (
                       <Select
                         id={`mapping-rel-${i}`}
                         labelText=""
-                        value={m.relationship || ""}
+                        value={m.relationship || "SAME_AS"}
                         onChange={(e) =>
                           updateMapping(i, {
-                            relationship: e.target.value || null,
+                            relationship: e.target.value,
                           })
                         }
                       >
-                        <SelectItem
-                          value=""
-                          text={intl.formatMessage({
-                            id: "label.testCatalog.terminology.rel.none",
-                          })}
-                        />
                         {RELATIONSHIPS.map((r) => (
                           <SelectItem
                             key={r}
@@ -405,6 +507,36 @@ const TerminologySection = ({ testId }) => {
                       <FormattedMessage id="label.testCatalog.terminology.appliesTo.test" />
                     )}
                   </TableCell>
+                  {showSampleTypeColumn && (
+                    <TableCell>
+                      {editing ? (
+                        <Select
+                          id={`mapping-sample-type-${i}`}
+                          labelText=""
+                          value={m.sampleTypeId || ""}
+                          onChange={(e) =>
+                            updateMapping(i, {
+                              sampleTypeId: e.target.value || null,
+                            })
+                          }
+                        >
+                          <SelectItem
+                            value=""
+                            text={intl.formatMessage({
+                              id: "label.testCatalog.override.shared",
+                            })}
+                          />
+                          {sampleTypes.map((t) => (
+                            <SelectItem key={t.id} value={t.id} text={t.name} />
+                          ))}
+                        </Select>
+                      ) : m.sampleTypeId ? (
+                        <Tag type="blue">{sampleTypeLabel(m.sampleTypeId)}</Tag>
+                      ) : (
+                        <FormattedMessage id="label.testCatalog.override.shared" />
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Button
                       kind="ghost"
@@ -459,6 +591,14 @@ const TerminologySection = ({ testId }) => {
           value={draft.code}
           onChange={(e) => setDraft({ ...draft, code: e.target.value })}
         />
+        <TextInput
+          id="terminology-display-name"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.terminology.col.displayName",
+          })}
+          value={draft.displayName}
+          onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
+        />
         <Select
           id="terminology-relationship"
           labelText={intl.formatMessage({
@@ -467,12 +607,6 @@ const TerminologySection = ({ testId }) => {
           value={draft.relationship}
           onChange={(e) => setDraft({ ...draft, relationship: e.target.value })}
         >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "label.testCatalog.terminology.rel.none",
-            })}
-          />
           {RELATIONSHIPS.map((r) => (
             <SelectItem
               key={r}
@@ -501,6 +635,28 @@ const TerminologySection = ({ testId }) => {
             <SelectItem key={c.id} value={c.id} text={c.label || c.code} />
           ))}
         </Select>
+        {showSampleTypeColumn && (
+          <Select
+            id="terminology-sample-type"
+            labelText={intl.formatMessage({
+              id: "label.testCatalog.override.col.sampleType",
+            })}
+            value={draft.sampleTypeId}
+            onChange={(e) =>
+              setDraft({ ...draft, sampleTypeId: e.target.value })
+            }
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "label.testCatalog.override.shared",
+              })}
+            />
+            {sampleTypes.map((t) => (
+              <SelectItem key={t.id} value={t.id} text={t.name} />
+            ))}
+          </Select>
+        )}
         <Button kind="tertiary" renderIcon={Add} onClick={addMapping}>
           <FormattedMessage id="label.testCatalog.terminology.addMapping" />
         </Button>

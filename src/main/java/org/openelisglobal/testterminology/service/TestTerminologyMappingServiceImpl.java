@@ -60,15 +60,16 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
         List<TestTerminologyMapping> all = getAllMatching("testId", testId);
         Map<String, TestTerminologyMapping> byKey = new HashMap<>();
         for (TestTerminologyMapping m : all) {
-            byKey.put(key(m.getComponentId(), m.getSource(), m.getCode()), m);
+            byKey.put(key(m.getComponentId(), m.getSampleTypeId(), m.getSource(), m.getCode()), m);
         }
         Set<String> desiredKeys = new HashSet<>();
         for (TestTerminologyMapping d : desired) {
-            String k = key(d.getComponentId(), d.getSource(), d.getCode());
+            String k = key(d.getComponentId(), d.getSampleTypeId(), d.getSource(), d.getCode());
             desiredKeys.add(k);
             TestTerminologyMapping target = byKey.get(k);
             if (target != null) {
                 target.setRelationship(d.getRelationship());
+                target.setDisplayName(d.getDisplayName());
                 target.setIsActive("Y");
                 target.setSysUserId(sysUserId);
                 update(target);
@@ -76,17 +77,19 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
                 TestTerminologyMapping fresh = new TestTerminologyMapping();
                 fresh.setTestId(testId);
                 fresh.setComponentId(d.getComponentId());
+                fresh.setSampleTypeId(d.getSampleTypeId());
                 fresh.setSource(d.getSource());
                 fresh.setCode(d.getCode());
                 fresh.setRelationship(d.getRelationship());
+                fresh.setDisplayName(d.getDisplayName());
                 fresh.setIsActive("Y");
                 fresh.setSysUserId(sysUserId);
                 insert(fresh);
             }
         }
         for (TestTerminologyMapping m : all) {
-            if ("Y".equals(m.getIsActive())
-                    && !desiredKeys.contains(key(m.getComponentId(), m.getSource(), m.getCode()))) {
+            if ("Y".equals(m.getIsActive()) && !desiredKeys
+                    .contains(key(m.getComponentId(), m.getSampleTypeId(), m.getSource(), m.getCode()))) {
                 m.setIsActive("N");
                 m.setSysUserId(sysUserId);
                 update(m);
@@ -95,14 +98,39 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
         applyLoincToLegacyTest(testId, sysUserId);
     }
 
+    /**
+     * OGC-1145 (FR-14) — active mappings for a code, honoring specimen scope: a
+     * mapping whose {@code sampleTypeId} matches wins over shared (null) rows.
+     * Returns specimen-scoped matches when any exist, else the shared matches.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<TestTerminologyMapping> getActiveMappingsForCode(String source, String code, String sampleTypeId) {
+        List<TestTerminologyMapping> scoped = new ArrayList<>();
+        List<TestTerminologyMapping> shared = new ArrayList<>();
+        for (TestTerminologyMapping m : getAllMatching("code", code)) {
+            if (!"Y".equals(m.getIsActive()) || !Objects.equals(source, m.getSource())) {
+                continue;
+            }
+            if (m.getSampleTypeId() == null) {
+                shared.add(m);
+            } else if (sampleTypeId != null && sampleTypeId.equals(m.getSampleTypeId())) {
+                scoped.add(m);
+            }
+        }
+        return scoped.isEmpty() ? shared : scoped;
+    }
+
     @Override
     @Transactional
     public void syncLegacyLoinc(String testId, String loinc, String sysUserId) {
         String code = isBlank(loinc) ? null : loinc.trim();
         List<TestTerminologyMapping> all = getAllMatching("testId", testId);
         for (TestTerminologyMapping m : all) {
-            if (m.getComponentId() == null && LOINC.equals(m.getSource()) && "Y".equals(m.getIsActive())
-                    && !Objects.equals(m.getCode(), code)) {
+            // shared (specimen-unscoped) test-level LOINC only — a Phase 2
+            // per-specimen override is not the legacy code's concern (OGC-1145)
+            if (m.getComponentId() == null && m.getSampleTypeId() == null && LOINC.equals(m.getSource())
+                    && "Y".equals(m.getIsActive()) && !Objects.equals(m.getCode(), code)) {
                 m.setIsActive("N");
                 m.setSysUserId(sysUserId);
                 update(m);
@@ -113,7 +141,8 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
         }
         TestTerminologyMapping existing = null;
         for (TestTerminologyMapping m : all) {
-            if (m.getComponentId() == null && LOINC.equals(m.getSource()) && code.equals(m.getCode())) {
+            if (m.getComponentId() == null && m.getSampleTypeId() == null && LOINC.equals(m.getSource())
+                    && code.equals(m.getCode())) {
                 existing = m;
                 break;
             }
@@ -151,9 +180,10 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
     private static String pickLegacyLoinc(List<TestTerminologyMapping> active) {
         String firstLoinc = null;
         for (TestTerminologyMapping m : active) {
-            // Only test-level (component-unscoped) LOINC feeds the legacy test.loinc
-            // column.
-            if (m.getComponentId() == null && LOINC.equals(m.getSource())) {
+            // Only test-level (component-unscoped), SHARED (specimen-unscoped)
+            // LOINC feeds the legacy test.loinc column — a specimen-specific
+            // override (OGC-1145 Phase 2) never overwrites the shared code.
+            if (m.getComponentId() == null && m.getSampleTypeId() == null && LOINC.equals(m.getSource())) {
                 if (SAME_AS.equals(m.getRelationship())) {
                     return m.getCode();
                 }
@@ -169,8 +199,8 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
         return s == null || s.trim().isEmpty();
     }
 
-    private static String key(String componentId, String source, String code) {
-        return (componentId == null ? "" : componentId) + " " + (source == null ? "" : source) + " "
-                + (code == null ? "" : code);
+    private static String key(String componentId, String sampleTypeId, String source, String code) {
+        return (componentId == null ? "" : componentId) + " " + (sampleTypeId == null ? "" : sampleTypeId) + " "
+                + (source == null ? "" : source) + " " + (code == null ? "" : code);
     }
 }
