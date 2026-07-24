@@ -313,6 +313,11 @@ public class TestCatalogEditorRestController {
             Test test = testService.getTestById(row.testId);
             row.name = TestServiceImpl.getLocalizedTestNameWithType(test);
             for (TypeOfSample typeOfRow : testService.getTypeOfSamples(test)) {
+                // A test's link list can carry a null/unresolved sample type
+                // (OGC-1145 m:n); skip it rather than NPE while augmenting the name.
+                if (typeOfRow == null) {
+                    continue;
+                }
                 row.sampleTypes.add(typeOfRow.getLocalizedName());
             }
             row.sampleType = row.sampleTypes.isEmpty() ? null : row.sampleTypes.get(0);
