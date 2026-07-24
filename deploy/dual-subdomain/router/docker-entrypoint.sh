@@ -54,5 +54,7 @@ echo "[router] GRIST_DOMAIN=$GRIST_DOMAIN cert=$GRIST_CERT"
 envsubst '${AMR_DOMAIN} ${ANALYZERS_DOMAIN} ${GRIST_DOMAIN} ${AMR_CERT} ${AMR_KEY} ${ANALYZERS_CERT} ${ANALYZERS_KEY} ${GRIST_CERT} ${GRIST_KEY}' \
   < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
+mkdir -p /var/cache/nginx/uat
+
 nginx -t
 exec nginx -g "daemon off;"

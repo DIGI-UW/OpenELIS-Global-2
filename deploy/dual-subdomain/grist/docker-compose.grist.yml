@@ -63,6 +63,33 @@ services:
       edge:
         aliases: [dex]
 
+  # Authoring + read bridge for the UAT checklists. Two surfaces on one process:
+  #   POST /mcp        MCP tools (bearer-gated) — the LLM authoring interface
+  #   GET  /uat/:file  public read — what the router points the reviewer widget at
+  # Holds the Grist API key server-side (mounted read-only from the box state dir);
+  # callers never see it. Bearer tokens live in that same dir (mcp-tokens.json).
+  mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    image: oe-edge-grist-mcp
+    container_name: oe-edge-grist-mcp
+    restart: unless-stopped
+    environment:
+      - GRIST_URL=http://grist:8484
+      - GRIST_ORG=openelis
+      - GRIST_DOC_NAME=UAT Checklists
+      - GRIST_KEY_FILE=/run/grist-state/.api-key
+      - TOKEN_FILE=/run/grist-state/mcp-tokens.json
+      - PORT=8585
+    volumes:
+      - ${GRIST_STATE_DIR:-/home/ubuntu/oe-grist}:/run/grist-state:ro
+    networks:
+      edge:
+        aliases: [mcp]
+    depends_on:
+      - grist
+
 volumes:
   grist-data:
 

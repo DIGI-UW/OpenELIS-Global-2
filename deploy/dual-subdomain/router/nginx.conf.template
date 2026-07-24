@@ -32,6 +32,11 @@ http {
         ""      close;
     }
 
+    # Server-side cache for the live UAT checklist reads (GET /uat via the MCP
+    # bridge). Lets a brief Grist/MCP hiccup serve the last good checklist to the
+    # reviewer overlay instead of failing it.
+    proxy_cache_path /var/cache/nginx/uat levels=1:2 keys_zone=uat_cache:1m max_size=16m inactive=30m;
+
     # -------------------------------------------------------------------------
     # HTTP :80 — ACME HTTP-01 challenge for all domains, then redirect to HTTPS.
     # certbot writes tokens under /var/www/certbot for whichever domain is being
@@ -79,6 +84,20 @@ http {
             types { application/javascript js; application/json json; }
             default_type application/octet-stream;
             add_header Cache-Control "no-store";
+        }
+
+        # Live UAT checklist: the widget requests /__review/uat-<inst>.json; serve
+        # it from Grist (via the MCP bridge) instead of the static file, so edits
+        # in Grist/MCP appear immediately. Regex wins over the prefix above.
+        location ~ ^/__review/uat-(?<uat_instance>[a-z0-9_-]+)\.json$ {
+            set $uat_up "mcp";
+            proxy_pass http://$uat_up:8585/uat/$uat_instance.json;
+            proxy_ignore_headers Cache-Control Expires;
+            proxy_cache uat_cache;
+            proxy_cache_valid 200 30s;
+            proxy_cache_use_stale error timeout updating http_502 http_503 http_504;
+            add_header Cache-Control "no-store";
+            add_header X-UAT-Source "grist-live" always;
         }
 
         # Frontend. Host is rewritten to "localhost" so a Vite dev server (if the
@@ -138,6 +157,18 @@ http {
             add_header Cache-Control "no-store";
         }
 
+        # Live UAT checklist (see the amr vhost for the rationale).
+        location ~ ^/__review/uat-(?<uat_instance>[a-z0-9_-]+)\.json$ {
+            set $uat_up "mcp";
+            proxy_pass http://$uat_up:8585/uat/$uat_instance.json;
+            proxy_ignore_headers Cache-Control Expires;
+            proxy_cache uat_cache;
+            proxy_cache_valid 200 30s;
+            proxy_cache_use_stale error timeout updating http_502 http_503 http_504;
+            add_header Cache-Control "no-store";
+            add_header X-UAT-Source "grist-live" always;
+        }
+
         location / {
             set $an_frontend "analyzers-frontend";
             proxy_pass http://$an_frontend;
@@ -191,6 +222,20 @@ http {
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Public MCP endpoint. The MCP service does its own bearer check, so no
+        # gate here; the Authorization header passes through untouched and the
+        # POST body is proxied as-is. More specific than "location /" below.
+        location /mcp {
+            set $mcp_up "mcp";
+            proxy_pass http://$mcp_up:8585$request_uri;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 60s;
         }
 
         # Grist. Login is Grist's own OIDC flow against Dex — no basic-auth gate;
