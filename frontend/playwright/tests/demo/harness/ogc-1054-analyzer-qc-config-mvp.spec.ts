@@ -8,21 +8,16 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 const GENEXPERT_HL7_PROFILE = "hl7-genexpert-hl7";
 const SEEDED_PENDING_ANALYZER = "Cepheid GeneXpert (ASTM Mode)";
 
-async function selectCarbonItem(trigger: Locator, name: string): Promise<void> {
+async function selectCarbonItem(
+  trigger: Locator,
+  name: string | RegExp,
+): Promise<void> {
   await expect(trigger).toBeEnabled({ timeout: UI_TIMEOUT });
   await trigger.click();
   const option = trigger
     .page()
-    .getByRole("option", { name, exact: true })
+    .getByRole("option", { name, exact: typeof name === "string" })
     .first();
-  await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
-  await option.click();
-}
-
-async function selectFirstCarbonItem(trigger: Locator): Promise<void> {
-  await expect(trigger).toBeEnabled({ timeout: UI_TIMEOUT });
-  await trigger.click();
-  const option = trigger.page().getByRole("option").first();
   await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
   await option.click();
 }
@@ -183,7 +178,7 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
         pendingRow.getByRole("combobox", {
           name: "OpenELIS Result Option",
         }),
-        "Detected",
+        /^Detected$/i,
       );
       await pendingRow
         .getByTestId("result-value-resolve-uat-mtb-trace")
@@ -191,7 +186,7 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       await expect(pendingRow).toContainText("MAPPED", {
         timeout: LONG_TIMEOUT,
       });
-      await expect(pendingRow).toContainText("Detected");
+      await expect(pendingRow).toContainText(/Detected/i);
 
       await page.reload({ waitUntil: "domcontentloaded" });
       const persistedRow = page
@@ -200,7 +195,7 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       await expect(persistedRow).toContainText("MAPPED", {
         timeout: LONG_TIMEOUT,
       });
-      await expect(persistedRow).toContainText("Detected");
+      await expect(persistedRow).toContainText(/Detected/i);
       await demo.evidence("an-qc-005-pending-result-resolved");
     });
 
@@ -251,7 +246,10 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       const expiration = page.getByTestId("control-lot-expiration-input");
       await expiration.fill("12/31/2027");
       await expiration.press("Escape");
-      await selectFirstCarbonItem(page.getByRole("combobox", { name: "Test" }));
+      await selectCarbonItem(
+        page.getByRole("combobox", { name: "Test" }),
+        "Xpert MTB/RIF(Sputum)",
+      );
 
       await page.getByTestId("control-lot-statistics-config-button").click();
       await expect(page.getByTestId("statistics-config-modal")).toBeVisible();

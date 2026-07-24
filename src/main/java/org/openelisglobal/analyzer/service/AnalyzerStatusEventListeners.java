@@ -6,6 +6,8 @@ import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Event listeners for automatic analyzer status transitions
@@ -75,7 +77,7 @@ public class AnalyzerStatusEventListeners {
         }
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAnalyzerSetupVerified(AnalyzerSetupVerifiedEvent event) {
         String analyzerId = event.getAnalyzerId();
         try {

@@ -1,10 +1,13 @@
 package org.openelisglobal.analyzer.service;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,6 +22,8 @@ import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.MappingC
 import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.UnacknowledgedErrorCreatedEvent;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Unit tests for AnalyzerStatusEventListeners
@@ -125,6 +130,17 @@ public class AnalyzerStatusEventListenersTest {
 
         verify(transitionService, never()).transitionToValidation(anyString());
         verify(transitionService).transitionToActive("1");
+    }
+
+    @Test
+    public void testOnSetupVerified_IsHandledAfterVerificationTransactionCommits() throws Exception {
+        Method listenerMethod = AnalyzerStatusEventListeners.class.getMethod("onAnalyzerSetupVerified",
+                AnalyzerSetupVerifiedEvent.class);
+
+        TransactionalEventListener listener = listenerMethod.getAnnotation(TransactionalEventListener.class);
+
+        assertNotNull(listener);
+        assertEquals(TransactionPhase.AFTER_COMMIT, listener.phase());
     }
 
     @Test
