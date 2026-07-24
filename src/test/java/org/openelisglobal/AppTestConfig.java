@@ -90,7 +90,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testactivation.service", "org.openelisglobal.testactivation.daoimpl",
         "org.openelisglobal.testsamplehandling.service", "org.openelisglobal.testsamplehandling.daoimpl",
         "org.openelisglobal.testterminology.service", "org.openelisglobal.testterminology.daoimpl",
-        "org.openelisglobal.testvariant.service", "org.openelisglobal.testvariant.daoimpl",
         "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
         "org.openelisglobal.testalertrule.service", "org.openelisglobal.testalertrule.daoimpl",
         "org.openelisglobal.testcatalog.service", "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer",
@@ -359,6 +358,11 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     public AccessionResultsRestController accessionResultsRestController(RoleService roleService) {
         return new AccessionResultsRestController(roleService);
+    }
+
+    @Bean
+    public org.openelisglobal.result.controller.rest.ResultEntryRestController resultEntryRestController() {
+        return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
     }
 
     @Bean

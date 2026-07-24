@@ -41,6 +41,7 @@
 
         <property name="isActive" column="is_active"
             type="java.lang.String" />
+
         <many-to-one name="localization"
             class="org.openelisglobal.localization.valueholder.Localization"
             fetch="select" lazy="false">
