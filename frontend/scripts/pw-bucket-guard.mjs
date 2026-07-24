@@ -4,6 +4,7 @@ import path from "path";
 const projectRoot = process.cwd();
 const configPath = path.resolve(projectRoot, "playwright.config.ts");
 const testsRoot = path.resolve(projectRoot, "playwright/tests");
+const harnessUiAuthPath = path.resolve(testsRoot, "harness-ui-auth.setup.ts");
 
 const BUCKETS = [
   "CORE_DEMO_TESTS",
@@ -73,6 +74,49 @@ for (const specPath of allSpecs) {
   } else if (matchingBuckets.length > 1) {
     violations.push(
       `${specPath} -> ambiguous (matches multiple buckets: ${matchingBuckets.join(", ")})`,
+    );
+  }
+}
+
+const harnessUiAuth = fs.existsSync(harnessUiAuthPath)
+  ? fs.readFileSync(harnessUiAuthPath, "utf8")
+  : "";
+const harnessUiDependencyCount = (
+  configContent.match(/dependencies: \["harness-ui-setup"\]/g) || []
+).length;
+const harnessUiStorageCount = (
+  configContent.match(
+    /storageState: "playwright\/\.auth\/harness-ui-user\.json"/g,
+  ) || []
+).length;
+
+if (!configContent.includes('name: "harness-ui-setup"')) {
+  violations.push(
+    "harness demo projects require a visible-login setup project",
+  );
+}
+if (harnessUiDependencyCount < 2 || harnessUiStorageCount < 2) {
+  violations.push(
+    "harness-demo and harness-demo-video must use the visible-login storage state",
+  );
+}
+if (!harnessUiAuth) {
+  violations.push("playwright/tests/harness-ui-auth.setup.ts is missing");
+} else {
+  if (
+    /\brequest\b|page\.request|waitForResponse|expect\.poll/.test(harnessUiAuth)
+  ) {
+    violations.push(
+      "harness UI authentication must not use request fixtures, response polling, or API probes",
+    );
+  }
+  if (
+    !harnessUiAuth.includes('page.goto("/login"') ||
+    !harnessUiAuth.includes('page.locator("#loginName")') ||
+    !harnessUiAuth.includes('page.locator("#password")')
+  ) {
+    violations.push(
+      "harness UI authentication must drive the visible OpenELIS login form",
     );
   }
 }

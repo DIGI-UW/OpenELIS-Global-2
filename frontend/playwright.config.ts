@@ -90,7 +90,16 @@ export default defineConfig({
     // Auth setup — runs once, saves session state
     {
       name: "setup",
-      testMatch: /.*\.setup\.ts/,
+      testMatch: /(^|[/\\])auth\.setup\.ts$/,
+    },
+
+    // UI-only authentication for recorded harness user stories.
+    {
+      name: "harness-ui-setup",
+      testMatch: /(^|[/\\])harness-ui-auth\.setup\.ts$/,
+      use: {
+        ...devices["Desktop Chrome"],
+      },
     },
 
     // Core foundational verification — runs on CI build stack.
@@ -136,22 +145,22 @@ export default defineConfig({
       testMatch: HARNESS_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
+        storageState: "playwright/.auth/harness-ui-user.json",
       },
-      dependencies: ["setup"],
+      dependencies: ["harness-ui-setup"],
     },
     {
       name: "harness-demo-video",
       testMatch: HARNESS_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
+        storageState: "playwright/.auth/harness-ui-user.json",
         video: "on",
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
       },
-      dependencies: ["setup"],
+      dependencies: ["harness-ui-setup"],
     },
 
     // Analyzer-stack foundational verification (non-demo, ci-safe).
