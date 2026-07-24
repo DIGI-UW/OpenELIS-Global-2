@@ -1,5 +1,6 @@
 package org.openelisglobal.qaevent.criticalcallback.daoimpl;
 
+import java.util.Collection;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -23,6 +24,18 @@ public class CriticalCallbackDAOImpl extends BaseDAOImpl<CriticalCallback, Strin
         String hql = "from CriticalCallback c where c.analysisId = :analysisId order by c.loggedAt desc";
         Query<CriticalCallback> query = entityManager.unwrap(Session.class).createQuery(hql, CriticalCallback.class);
         query.setParameter("analysisId", analysisId);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getLoggedResultIds(Collection<String> resultIds) {
+        if (resultIds == null || resultIds.isEmpty()) {
+            return List.of();
+        }
+        String hql = "select distinct c.resultId from CriticalCallback c where c.resultId in (:resultIds)";
+        Query<String> query = entityManager.unwrap(Session.class).createQuery(hql, String.class);
+        query.setParameterList("resultIds", resultIds);
         return query.list();
     }
 }

@@ -859,9 +859,9 @@ export function SearchResults(props) {
   const [storageModalRow, setStorageModalRow] = useState(null);
   // Which row's critical-callback modal is open (one at a time; OGC-714).
   const [callbackModalRow, setCallbackModalRow] = useState(null);
-  // Rows whose callback was logged THIS session (keyed by row.id). Drives the
-  // needs-callback banner; ponytail: session-scope only — the durable
-  // "never called" list is the compliance detail page (OGC-714 read side).
+  // Rows with a callback logged (keyed by row.id). Drives the needs-callback
+  // banner: seeded from the durable record (/rest/critical-callback/
+  // logged-results) when results load, updated in place on a new log.
   const [loggedCallbackRows, setLoggedCallbackRows] = useState({});
 
   const componentMounted = useRef(false);
@@ -930,6 +930,37 @@ export function SearchResults(props) {
       });
       setValidationState(newValidationState);
     }
+  }, [props.results]);
+
+  // Seed the needs-callback banner from the durable record: saved results on
+  // this page that already have a callback logged (any session, any user) —
+  // a page reload must not resurrect the banner for already-called criticals.
+  useEffect(() => {
+    const rows = (props.results?.testResult || []).filter(
+      (row) => row.resultId,
+    );
+    if (rows.length === 0) {
+      return;
+    }
+    const ids = rows.map((row) => row.resultId).join(",");
+    getFromOpenElisServer(
+      `/rest/critical-callback/logged-results?resultIds=${ids}`,
+      (logged) => {
+        if (!componentMounted.current || !Array.isArray(logged)) {
+          return;
+        }
+        const loggedSet = new Set(logged.map(String));
+        const seeded = {};
+        rows.forEach((row) => {
+          if (loggedSet.has(String(row.resultId))) {
+            seeded[row.id] = true;
+          }
+        });
+        if (Object.keys(seeded).length > 0) {
+          setLoggedCallbackRows((prev) => ({ ...prev, ...seeded }));
+        }
+      },
+    );
   }, [props.results]);
 
   const loadReferalOrganizations = (values) => {
@@ -2267,6 +2298,11 @@ export function SearchResults(props) {
               lowContrast
               inline
               hideCloseButton
+              // status, not the alertdialog default: Carbon's alertdialog
+              // grabs focus back to the banner on every render, making the
+              // callback modal (and the results grid) untypeable while the
+              // banner is visible.
+              role="status"
               data-testid="callback-banner"
               style={{ maxWidth: "none", marginBottom: "0.5rem" }}
               title={intl.formatMessage({

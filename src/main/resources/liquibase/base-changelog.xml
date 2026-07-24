@@ -49,4 +49,5 @@
 
   <!-- QA Phase C.4 — Critical Callback -->
   <include file="liquibase/qa/008-create-critical-callback-table.xml" />
+  <include file="liquibase/qa/009-add-callback-qi-indicator.xml" />
 </databaseChangeLog>

@@ -3,22 +3,32 @@ package org.openelisglobal.qaevent.criticalcallback.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.qaevent.criticalcallback.bean.CallbackDetailResponse;
+import org.openelisglobal.qaevent.criticalcallback.bean.CallbackSummaryResponse;
 import org.openelisglobal.qaevent.criticalcallback.service.CriticalCallbackService;
 import org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -27,8 +37,8 @@ import org.springframework.web.server.ResponseStatusException;
  * / CLSI GP47 read-back documentation).
  *
  * <p>
- * Write-only in this PR; the compliance read endpoints (summary/detail) grow on
- * this controller in the follow-up. Gated on {@code qa.view.qi} — the QI pillar
+ * One stack, write + read: the capture POST plus the compliance read endpoints
+ * (summary/detail/logged-results). Gated on {@code qa.view.qi} — the QI pillar
  * permission held by exactly the roles that make callbacks (Reception/
  * Results/Validation, plus QA Officer and Global Admin); a dedicated
  * manage-callback scope would be over-engineering for a manual documentation
@@ -50,9 +60,15 @@ import org.springframework.web.server.ResponseStatusException;
 @PreAuthorize("hasAuthority('qa.view.qi') or hasRole('GLOBAL_ADMIN')")
 public class CriticalCallbackRestController extends BaseRestController {
 
+    private static final Logger logger = LoggerFactory.getLogger(CriticalCallbackRestController.class);
+
     private static final Set<String> STATUSES = Set.of("CONFIRMED", "REACHED_NO_READBACK", "UNABLE_TO_REACH");
 
     private static final int RECIPIENT_NAME_MAX = 255;
+
+    private static final int MAX_PAGE_SIZE = 200;
+
+    private static final long MAX_DATE_RANGE_DAYS = 366;
 
     private final CriticalCallbackService callbackService;
 
@@ -89,6 +105,70 @@ public class CriticalCallbackRestController extends BaseRestController {
         callback.setSysUserId(ControllerUtills.getSysUserId(request));
         callbackService.insert(callback);
         return ResponseEntity.status(HttpStatus.CREATED).body(callback);
+    }
+
+    @GetMapping("/summary")
+    public CallbackSummaryResponse getSummary(@RequestParam String fromDate, @RequestParam String toDate,
+            HttpServletRequest request) {
+        Range range = parseRange(fromDate, toDate);
+
+        CallbackSummaryResponse response = callbackService.getSummary(range.from(), range.to());
+
+        logger.info("Callback summary by user {} | range {}-{} | {} confirmed of {} critical", getSysUserId(request),
+                fromDate, toDate, response.getConfirmedCount(), response.getCriticalCount());
+
+        return response;
+    }
+
+    @GetMapping("/detail")
+    public CallbackDetailResponse getDetail(@RequestParam String fromDate, @RequestParam String toDate,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int pageSize,
+            HttpServletRequest request) {
+        Range range = parseRange(fromDate, toDate);
+        page = Math.max(page, 0);
+        pageSize = pageSize < 1 ? 25 : Math.min(pageSize, MAX_PAGE_SIZE);
+
+        CallbackDetailResponse response = callbackService.getDetail(range.from(), range.to(), page, pageSize);
+
+        logger.info("Callback detail by user {} | range {}-{} | page {} size {} | {} total", getSysUserId(request),
+                fromDate, toDate, page, pageSize, response.getTotalCount());
+
+        return response;
+    }
+
+    private record Range(LocalDate from, LocalDate to) {
+    }
+
+    /**
+     * Shared range guard: ISO dates, from ≤ to, capped at 366 days; bad input →
+     * 400.
+     */
+    private static Range parseRange(String fromDate, String toDate) {
+        LocalDate from;
+        LocalDate to;
+        try {
+            from = LocalDate.parse(fromDate);
+            to = LocalDate.parse(toDate);
+        } catch (DateTimeParseException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid parameter: " + e.getMessage());
+        }
+        if (from.isAfter(to)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fromDate must not be after toDate");
+        }
+        if (ChronoUnit.DAYS.between(from, to) > MAX_DATE_RANGE_DAYS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date range must not exceed 1 year");
+        }
+        return new Range(from, to);
+    }
+
+    /**
+     * Which of the given result ids already have a callback logged — backs the
+     * Results-Entry "needs callback" banner across page reloads (the session-local
+     * map alone forgot logged calls on reload).
+     */
+    @GetMapping("/logged-results")
+    public ResponseEntity<List<String>> getLoggedResults(@RequestParam List<String> resultIds) {
+        return ResponseEntity.ok(callbackService.getLoggedResultIds(resultIds));
     }
 
     private Result validate(CallbackRequest body) {
