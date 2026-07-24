@@ -10,6 +10,8 @@ import java.util.Map;
 import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerPendingCodeService;
 import org.openelisglobal.analyzer.service.AnalyzerPluginConfigService;
+import org.openelisglobal.analyzer.service.AnalyzerResultValueOptionService;
+import org.openelisglobal.analyzer.service.AnalyzerSetupVerificationService;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -81,12 +83,28 @@ public class AnalyzerPluginConfigRestControllerSecurityTest extends SecuritySlic
         }
 
         @Bean
+        AnalyzerResultValueOptionService analyzerResultValueOptionService() {
+            return mock(AnalyzerResultValueOptionService.class);
+        }
+
+        @Bean
+        AnalyzerSetupVerificationService analyzerSetupVerificationService() {
+            return mock(AnalyzerSetupVerificationService.class);
+        }
+
+        @Bean
         AnalyzerPluginConfigRestController analyzerPluginConfigRestController(
                 AnalyzerPluginConfigService analyzerPluginConfigService,
-                AnalyzerPendingCodeService analyzerPendingCodeService) {
+                AnalyzerPendingCodeService analyzerPendingCodeService,
+                AnalyzerResultValueOptionService analyzerResultValueOptionService,
+                AnalyzerSetupVerificationService analyzerSetupVerificationService) {
             AnalyzerPluginConfigRestController controller = new AnalyzerPluginConfigRestController();
             ReflectionTestUtils.setField(controller, "analyzerPluginConfigService", analyzerPluginConfigService);
             ReflectionTestUtils.setField(controller, "analyzerPendingCodeService", analyzerPendingCodeService);
+            ReflectionTestUtils.setField(controller, "analyzerResultValueOptionService",
+                    analyzerResultValueOptionService);
+            ReflectionTestUtils.setField(controller, "analyzerSetupVerificationService",
+                    analyzerSetupVerificationService);
             return controller;
         }
     }
