@@ -60,6 +60,26 @@ psql_query() {
   docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -t -A -F $'\t' -c "$1"
 }
 
+verify_generic_plugin_registry() {
+  local protocols
+  protocols="$(psql_query "
+    SELECT DISTINCT protocol
+      FROM clinlims.analyzer_type
+     WHERE is_active IS TRUE
+       AND is_generic_plugin IS TRUE
+     ORDER BY protocol;
+  ")"
+
+  for expected in ASTM FILE HL7; do
+    if ! printf '%s\n' "$protocols" | grep -qx "$expected"; then
+      echo "ERROR: Active Generic ${expected} analyzer plugin is not registered." >&2
+      echo "       The demo runtime must load exactly the shipped Generic ASTM, FILE, and HL7 plugins before seeding." >&2
+      return 1
+    fi
+  done
+  echo "  Verified: Generic ASTM, FILE, and HL7 runtime plugins are active"
+}
+
 profile_path_for_default_config() {
   local default_config_id="$1"
   local profile_type="${default_config_id%%/*}"
@@ -126,6 +146,17 @@ verify_realized_analyzer_mappings() {
   analyzer_id="$(psql_query "SELECT id FROM clinlims.analyzer WHERE name = '$(sql_escape "$analyzer_name")' ORDER BY id DESC LIMIT 1;")"
   if [ -z "$analyzer_id" ]; then
     echo "ERROR: Could not resolve analyzer id for '${analyzer_name}' during mapping verification." >&2
+    return 1
+  fi
+  if [ -z "$(psql_query "
+    SELECT at.id
+      FROM clinlims.analyzer a
+      JOIN clinlims.analyzer_type at ON at.id = a.analyzer_type_id
+     WHERE a.id = ${analyzer_id}
+       AND at.is_active IS TRUE
+       AND at.is_generic_plugin IS TRUE;
+  ")" ]; then
+    echo "ERROR: Analyzer '${analyzer_name}' is not linked to an active generic analyzer type." >&2
     return 1
   fi
 
@@ -334,6 +365,8 @@ resolve_db_container() {
 }
 
 DB_CONTAINER="$(resolve_db_container)"
+
+verify_generic_plugin_registry
 
 if [ "$CLEAN" = true ]; then
   echo "Cleaning stale analyzer data..."
