@@ -1,0 +1,67 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <!-- OGC-1145 Phase 3 — collapse variant-linked duplicate tests onto the m:n
+         model (D-035 supersedes D-028) and retire the variant subsystem.
+
+         For every variant group (tests explicitly declared "one assay on N
+         specimens" by OGC-1142's link feature): one survivor keeps the group's
+         work — active tests preferred, then the lowest id — and every sibling's
+         sample-type links are merged onto it, so the survivor now runs on all
+         the group's specimens. Siblings are DEACTIVATED, never deleted (D-002):
+         their rows, results, and history stay intact and queryable.
+
+         Duplicates that were never variant-linked (shared LOINC across
+         specimens, name-stem siblings) are NOT auto-collapsed — guessing there
+         risks merging genuinely different tests; catalog health keeps flagging
+         shared LOINCs for a manager's judgement, and the editor's multi-select
+         makes the manual merge trivial. -->
+    <changeSet author="OGC" id="OGC-1145-collapse-variant-groups">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="test_variant_link"/>
+        </preConditions>
+        <sql>
+            CREATE TEMPORARY TABLE variant_survivor AS
+            SELECT l.group_id,
+                   (ARRAY_AGG(l.test_id ORDER BY (CASE WHEN t.is_active = 'Y' THEN 0 ELSE 1 END), l.test_id))[1]
+                       AS survivor_id
+            FROM clinlims.test_variant_link l
+            JOIN clinlims.test t ON t.id = l.test_id
+            GROUP BY l.group_id;
+
+            INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id, is_panel)
+            SELECT nextval('clinlims.sample_type_test_seq'), d.sample_type_id, d.survivor_id, 'false'
+            FROM (
+                SELECT DISTINCT st.sample_type_id, s.survivor_id
+                FROM clinlims.test_variant_link l
+                JOIN variant_survivor s ON s.group_id = l.group_id
+                JOIN clinlims.sampletype_test st ON st.test_id = l.test_id
+                WHERE l.test_id &lt;&gt; s.survivor_id
+                  AND NOT EXISTS (SELECT 1 FROM clinlims.sampletype_test x
+                                  WHERE x.test_id = s.survivor_id
+                                    AND x.sample_type_id = st.sample_type_id)
+            ) d;
+
+            UPDATE clinlims.test
+            SET is_active = 'N', orderable = false, lastupdated = NOW()
+            WHERE id IN (
+                SELECT l.test_id
+                FROM clinlims.test_variant_link l
+                JOIN variant_survivor s ON s.group_id = l.group_id
+                WHERE l.test_id &lt;&gt; s.survivor_id
+            );
+
+            DROP TABLE variant_survivor;
+        </sql>
+    </changeSet>
+
+    <changeSet author="OGC" id="OGC-1145-drop-test-variant-link">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="test_variant_link"/>
+        </preConditions>
+        <dropTable schemaName="clinlims" tableName="test_variant_link"/>
+    </changeSet>
+
+</databaseChangeLog>

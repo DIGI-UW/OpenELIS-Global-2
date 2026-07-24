@@ -162,4 +162,10 @@
   <!-- OGC-1020 / R1: unified /Results worklist — lab-unit domain + route flag -->
   <include relativeToChangelogFile="true" file="059-results-r1-unified-worklist.xml"/>
 
+  <!-- OGC-1145 / FR-11: terminology mappings keyable by sample type (null = shared) -->
+  <include relativeToChangelogFile="true" file="060-terminology-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="061-awaiting-specimen-order-status.xml"/>
+  <include relativeToChangelogFile="true" file="062-result-limits-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="063-collapse-variant-groups.xml"/>
+
 </databaseChangeLog>

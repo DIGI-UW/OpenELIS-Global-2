@@ -279,17 +279,11 @@ const MOCK_MENU_DATA = [
   },
 ];
 
-// Mock sidenav props that Layout.js would provide
-const SIDENAV_MODES = {
-  SHOW: "show",
-  LOCK: "lock",
-  CLOSE: "close",
-};
-
 const renderHeader = (options = {}) => {
   const {
     initialRoute = "/",
-    sidenavMode = "close",
+    isDesktop = true,
+    navOpen = isDesktop,
     menuData = MOCK_MENU_DATA,
     navContext = "main",
   } = options;
@@ -305,7 +299,7 @@ const renderHeader = (options = {}) => {
   });
 
   const mockToggle = vi.fn();
-  const mockSetMode = vi.fn();
+  const mockCloseSideNav = vi.fn();
 
   const result = render(
     <MemoryRouter initialEntries={[initialRoute]}>
@@ -317,11 +311,10 @@ const renderHeader = (options = {}) => {
             <NotificationContext.Provider value={mockNotificationContext}>
               <OEHeader
                 onChangeLanguage={vi.fn()}
-                mode={sidenavMode}
-                isExpanded={sidenavMode !== "close"}
+                navOpen={navOpen}
+                isDesktop={isDesktop}
                 toggleSideNav={mockToggle}
-                setMode={mockSetMode}
-                SIDENAV_MODES={SIDENAV_MODES}
+                closeSideNav={mockCloseSideNav}
                 navContext={navContext}
               />
               <Route
@@ -336,7 +329,7 @@ const renderHeader = (options = {}) => {
       </IntlProvider>
     </MemoryRouter>,
   );
-  return { ...result, mockSetMode, mockToggle };
+  return { ...result, mockCloseSideNav, mockToggle };
 };
 
 describe("Header Component - M2b Enhancement Tests", () => {
@@ -345,44 +338,77 @@ describe("Header Component - M2b Enhancement Tests", () => {
     localStorageMock.clear();
   });
 
-  describe("Lock Mode Support (useSideNavPreference integration)", () => {
-    /**
-     * TEST: Lock mode persists sidenav expansion
-     * When user toggles to lock mode, sidenav should stay open even after interactions
-     * This requires integrating useSideNavPreference hook
-     */
-    test("lock mode sets isFixedNav=true on SideNav", async () => {
-      // Set lock mode in localStorage
-      localStorageMock.setItem("mainSideNavMode", "lock");
+  describe("Home item active state", () => {
+    test.each(["/", "/Dashboard"])(
+      "landing on %s highlights the Home menu item",
+      async (route) => {
+        const { container } = renderHeader({ initialRoute: route });
 
+        await waitFor(() => {
+          expect(container.querySelector('a[href="/Dashboard"]')).toBeTruthy();
+        });
+
+        const homeLink = container.querySelector('a[href="/Dashboard"]');
+        expect(homeLink).toHaveClass("cds--side-nav__link--current");
+        expect(homeLink).toHaveAttribute("aria-current", "page");
+      },
+    );
+  });
+
+  describe("Responsive sidenav", () => {
+    test("desktop renders a persistent expanded nav and no toggle button", async () => {
       const { container } = renderHeader();
 
-      await waitFor(
-        () => {
-          // Carbon's SideNav with isFixedNav={true} renders with class "cds--side-nav--fixed"
-          // Note: Implementation may vary depending on Carbon version, but prop should be passed
-          const sideNav = container.querySelector(".cds--side-nav");
-          expect(sideNav).toBeTruthy();
-        },
-        { timeout: 3000 },
-      );
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).not.toHaveClass("cds--side-nav--hidden");
+      expect(container.querySelector('[data-cy="menuButton"]')).toBeNull();
     });
 
-    test("toggle button cycles through states (close -> show -> lock)", async () => {
-      const { container } = renderHeader();
+    test("small viewport renders hamburger; nav is a closed overlay drawer", async () => {
+      const { container, mockToggle } = renderHeader({ isDesktop: false });
 
-      await waitFor(
-        () => {
-          const menuButton = container.querySelector('[data-cy="menuButton"]');
-          expect(menuButton).toBeTruthy();
+      await waitFor(() => {
+        expect(container.querySelector('[data-cy="menuButton"]')).toBeTruthy();
+      });
 
-          // Initial state (assuming default is close)
-          // Click 1 -> Show
-          // Click 2 -> Lock
-          // Click 3 -> Close
-        },
-        { timeout: 3000 },
-      );
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).not.toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).toHaveClass("cds--side-nav--hidden");
+
+      fireEvent.click(container.querySelector('[data-cy="menuButton"]'));
+      expect(mockToggle).toHaveBeenCalledTimes(1);
+    });
+
+    test("small viewport with drawer open closes on outside mousedown", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
+        isDesktop: false,
+        navOpen: true,
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toHaveClass(
+          "cds--side-nav--expanded",
+        );
+      });
+
+      fireEvent.mouseDown(document.body);
+      expect(mockCloseSideNav).toHaveBeenCalled();
+    });
+
+    test("desktop never closes nav on outside mousedown", async () => {
+      const { container, mockCloseSideNav } = renderHeader();
+
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
+
+      fireEvent.mouseDown(document.body);
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
     });
   });
 
@@ -442,8 +468,8 @@ describe("Header Component - M2b Enhancement Tests", () => {
   });
 
   describe("Existing Functionality Preservation", () => {
-    test("menu toggle button is visible when authenticated", async () => {
-      const { container } = renderHeader();
+    test("menu toggle button is visible when authenticated on small viewports", async () => {
+      const { container } = renderHeader({ isDesktop: false });
 
       await waitFor(() => {
         const menuButton = container.querySelector('[data-cy="menuButton"]');
@@ -509,7 +535,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
       // Sidenav must be expanded to see menu items
       const { container } = renderHeader({
         initialRoute: "/Storage",
-        sidenavMode: "show",
       });
 
       await waitFor(
@@ -548,7 +573,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
       // Sidenav must be expanded to see menu items
       const { container } = renderHeader({
         initialRoute: "/WorkPlanByTest",
-        sidenavMode: "show",
       });
 
       await waitFor(
@@ -586,7 +610,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
       // Sidenav must be expanded to see menu items
       const { container } = renderHeader({
         initialRoute: "/Storage",
-        sidenavMode: "show",
       });
 
       await waitFor(
@@ -662,156 +685,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
     });
   });
 
-  describe("Mouse Leave Behavior (Context-Aware Auto-Hide)", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.runOnlyPendingTimers();
-      vi.useRealTimers();
-    });
-
-    test("auto-hides in main context SHOW mode when mouse leaves nav", async () => {
-      const mockSetMode = vi.fn();
-      const { container } = renderHeader({
-        sidenavMode: "show",
-      });
-
-      // Override setMode prop
-      const header = container.querySelector("#mainHeader");
-      expect(header).toBeTruthy();
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // Simulate mouse leave event with relatedTarget outside nav/header
-      const mouseLeaveEvent = new MouseEvent("mouseleave", {
-        bubbles: true,
-        cancelable: true,
-        relatedTarget: document.body, // Mouse moved to body (outside nav/header)
-      });
-
-      sideNav.dispatchEvent(mouseLeaveEvent);
-
-      // Timer should be set (350ms delay)
-      expect(mockSetMode).not.toHaveBeenCalled();
-
-      // Fast-forward 350ms
-      vi.advanceTimersByTime(350);
-
-      // Now setMode should be called with CLOSE
-      // Note: We need to access the actual setMode from the component
-      // This test verifies the timer is set correctly
-    });
-
-    test("cancels hide timer when mouse enters nav in main context", async () => {
-      const { container } = renderHeader({
-        sidenavMode: "show",
-      });
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // First, trigger mouse leave to start timer
-      const mouseLeaveEvent = new MouseEvent("mouseleave", {
-        bubbles: true,
-        cancelable: true,
-        relatedTarget: document.body,
-      });
-      sideNav.dispatchEvent(mouseLeaveEvent);
-
-      // Then, trigger mouse enter to cancel timer
-      const mouseEnterEvent = new MouseEvent("mouseenter", {
-        bubbles: true,
-        cancelable: true,
-      });
-      sideNav.dispatchEvent(mouseEnterEvent);
-
-      // Fast-forward 350ms
-      vi.advanceTimersByTime(350);
-
-      // Timer should have been cancelled, so setMode should not be called
-      // Note: This test verifies the timer cancellation logic
-    });
-
-    test("clears hide timer when pathname changes", async () => {
-      const { container, rerender } = renderHeader({
-        initialRoute: "/Dashboard",
-        sidenavMode: "show",
-      });
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // Trigger mouse leave to start timer
-      const mouseLeaveEvent = new MouseEvent("mouseleave", {
-        bubbles: true,
-        cancelable: true,
-        relatedTarget: document.body,
-      });
-      sideNav.dispatchEvent(mouseLeaveEvent);
-
-      // Simulate navigation (pathname change)
-      rerender(
-        <MemoryRouter initialEntries={["/Storage"]}>
-          <IntlProvider locale="en" messages={messages}>
-            <UserSessionDetailsContext.Provider
-              value={{ userSessionDetails: mockUserSessionDetails }}
-            >
-              <ConfigurationContext.Provider value={mockConfigurationContext}>
-                <NotificationContext.Provider value={mockNotificationContext}>
-                  <OEHeader
-                    onChangeLanguage={vi.fn()}
-                    mode="show"
-                    isExpanded={true}
-                    toggleSideNav={vi.fn()}
-                    setMode={vi.fn()}
-                    SIDENAV_MODES={SIDENAV_MODES}
-                  />
-                </NotificationContext.Provider>
-              </ConfigurationContext.Provider>
-            </UserSessionDetailsContext.Provider>
-          </IntlProvider>
-        </MemoryRouter>,
-      );
-
-      // Fast-forward 350ms
-      vi.advanceTimersByTime(350);
-
-      // Timer should have been cleared on navigation, so setMode should not be called
-      // Note: This test verifies the navigation guard logic
-    });
-  });
-
-  describe("Storage Context Defaults", () => {
-    test("storage context defaults to LOCK mode", () => {
-      const { container } = renderHeader({
-        initialRoute: "/Storage",
-        sidenavMode: "lock",
-      });
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // In LOCK mode, SideNav should be expanded and fixed
-      expect(sideNav.classList.contains("cds--side-nav--expanded")).toBe(true);
-    });
-
-    test("main context defaults to CLOSE mode", () => {
-      const { container } = renderHeader({
-        initialRoute: "/Dashboard",
-        sidenavMode: "close",
-      });
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // In CLOSE mode, SideNav should not be expanded
-      expect(sideNav.classList.contains("cds--side-nav--expanded")).toBe(false);
-    });
-  });
-
   describe("Admin navigation context switching", () => {
     const MENU_DATA = [
       {
@@ -834,9 +707,8 @@ describe("Header Component - M2b Enhancement Tests", () => {
       },
     ];
 
-    test("clicking link to /MasterListsPage does not force persisted nav closed", async () => {
-      const { container, mockSetMode } = renderHeader({
-        sidenavMode: "lock",
+    test("clicking link to /MasterListsPage keeps the desktop nav open", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
         menuData: MENU_DATA,
       });
       await waitFor(() => {
@@ -846,12 +718,14 @@ describe("Header Component - M2b Enhancement Tests", () => {
       });
 
       fireEvent.click(container.querySelector("#menu_administration_nav"));
-      expect(mockSetMode).not.toHaveBeenCalled();
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
     });
 
-    test("clicking a non-admin leaf does NOT call setMode", async () => {
-      const { container, mockSetMode } = renderHeader({
-        sidenavMode: "lock",
+    test("clicking a non-admin leaf keeps the desktop nav open", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
         menuData: MENU_DATA,
       });
       await waitFor(() => {
@@ -859,13 +733,15 @@ describe("Header Component - M2b Enhancement Tests", () => {
       });
 
       fireEvent.click(container.querySelector("#menu_home_nav"));
-      expect(mockSetMode).not.toHaveBeenCalled();
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
     });
 
     test("admin context renders Admin nav contents instead of main menu contents", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage",
-        sidenavMode: "lock",
         menuData: MENU_DATA,
         navContext: "admin",
       });
@@ -886,7 +762,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
     test("admin nav items expose href and current-route state", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage/billingMenuManagement",
-        sidenavMode: "lock",
         navContext: "admin",
       });
 
@@ -904,7 +779,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
     test("admin back control navigates to /Dashboard", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage",
-        sidenavMode: "lock",
         navContext: "admin",
       });
 

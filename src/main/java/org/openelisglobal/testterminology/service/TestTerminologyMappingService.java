@@ -29,4 +29,12 @@ public interface TestTerminologyMappingService extends BaseObjectService<TestTer
      * mappings. Non-LOINC mappings (SNOMED/CIEL/OCL) are left untouched.
      */
     void syncLegacyLoinc(String testId, String loinc, String sysUserId);
+
+    /**
+     * OGC-1145 (FR-14) — active mappings for a standard-terminology code, honoring
+     * specimen scope: mappings scoped to {@code sampleTypeId} win over shared
+     * ({@code sample_type_id} null) mappings; the shared set is returned when no
+     * specimen-scoped mapping exists (or no specimen is given).
+     */
+    List<TestTerminologyMapping> getActiveMappingsForCode(String source, String code, String sampleTypeId);
 }
