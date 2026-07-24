@@ -138,7 +138,7 @@ public class LabOrderSearchProviderTest extends BaseWebContextSensitiveTest {
      * FAILS until addToTestOrPanel uses the display as a fallback.
      */
     @Test
-    public void unknownAbbreviation_fallsBackToDisplayMatch() {
+    public void unknownAbbreviation_multiTypeTest_routesToSpecimenChooser() {
         String orderNumber = "ORD-MULTI-SAMPLE";
         List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(orderNumber);
         assertFalse("eOrders should not be empty", eOrders.isEmpty());
@@ -149,7 +149,10 @@ public class LabOrderSearchProviderTest extends BaseWebContextSensitiveTest {
         serviceRequest.setCode(
                 new CodeableConcept().addCoding(new Coding().setSystem("http://loinc.org").setCode(LOINC_MERCURY)));
 
-        // "AIMI" doesn't exist locally — but display "Drinking Water" matches DW9
+        // "AIMI" doesn't exist locally. OGC-1145: because the Mercury test has
+        // several candidate sample types, the specimen can't be bound to one
+        // deterministically, so it is routed to the accessioner's sample-type
+        // chooser (crosstests) rather than auto-resolved by display-name match.
         Specimen specimen = new Specimen();
         specimen.setId(UUID.randomUUID().toString());
         specimen.setType(new CodeableConcept().addCoding(
@@ -174,9 +177,13 @@ public class LabOrderSearchProviderTest extends BaseWebContextSensitiveTest {
 
         String xmlStr = xml.toString();
         assertTrue("Result should be valid, was: " + result, "valid".equalsIgnoreCase(result));
-        assertTrue("XML should contain populated sampleTypes. XML was: " + xmlStr,
-                xmlStr.contains("<sampleType>") && xmlStr.contains("<sampleTypes>"));
-        assertTrue("XML should contain Drinking Water (matched by display, not abbreviation). XML was: " + xmlStr,
+        // The multi-type test is not bound to a single specimen, so sampleTypes
+        // stays empty and the candidate pairs are offered under crosstests.
+        assertTrue("sampleTypes must be empty (routed to chooser). XML was: " + xmlStr,
+                xmlStr.contains("<sampleTypes></sampleTypes>"));
+        assertTrue("XML should offer the specimen via the crosstest chooser. XML was: " + xmlStr,
+                xmlStr.contains("<crosstest>"));
+        assertTrue("Drinking Water must be among the chooser options. XML was: " + xmlStr,
                 xmlStr.contains("Drinking Water"));
     }
 
