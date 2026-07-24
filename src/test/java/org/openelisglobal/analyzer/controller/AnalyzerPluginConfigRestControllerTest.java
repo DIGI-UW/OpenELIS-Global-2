@@ -136,12 +136,23 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         option.setLabel("Detected");
         option.setTestId("501");
         option.setComponentId("component-primary");
-        when(analyzerResultValueOptionService.getOptions("101", "MTB")).thenReturn(List.of(option));
+        when(analyzerResultValueOptionService.findOptions("101", "MTB")).thenReturn(List.of(option));
 
         mockMvc.perform(get("/rest/analyzer/analyzers/101/result-value-options").param("testCode", "MTB")
                 .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value("result-option-1"))
                 .andExpect(jsonPath("$[0].label").value("Detected")).andExpect(jsonPath("$[0].testId").value("501"));
+    }
+
+    @Test
+    public void testGetResultValueOptions_UnmappedLegacyCodeReturnsEmptyList() throws Exception {
+        when(analyzerResultValueOptionService.getOptions("101", "LEGACY"))
+                .thenThrow(new IllegalArgumentException("No test mapping exists"));
+        when(analyzerResultValueOptionService.findOptions("101", "LEGACY")).thenReturn(List.of());
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/101/result-value-options").param("testCode", "LEGACY")
+                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
     }
 
     @Test

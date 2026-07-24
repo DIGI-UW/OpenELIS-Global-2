@@ -120,7 +120,7 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<List<AnalyzerResultValueOption>> getResultValueOptions(@PathVariable String analyzerId,
             @RequestParam String testCode) {
-        return ResponseEntity.ok(analyzerResultValueOptionService.getOptions(analyzerId, testCode));
+        return ResponseEntity.ok(analyzerResultValueOptionService.findOptions(analyzerId, testCode));
     }
 
     @PutMapping("/analyzers/{analyzerId}/result-value-mappings")

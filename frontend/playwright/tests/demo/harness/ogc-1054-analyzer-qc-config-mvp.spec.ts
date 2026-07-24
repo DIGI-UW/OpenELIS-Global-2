@@ -8,28 +8,21 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 const GENEXPERT_HL7_PROFILE = "hl7-genexpert-hl7";
 const SEEDED_PENDING_ANALYZER = "Cepheid GeneXpert (ASTM Mode)";
 
-async function selectCarbonItem(scope: Locator, name: string): Promise<void> {
-  const trigger = scope
-    .locator(
-      'input[role="combobox"], button[role="combobox"], .cds--list-box__field',
-    )
-    .first();
+async function selectCarbonItem(trigger: Locator, name: string): Promise<void> {
   await expect(trigger).toBeEnabled({ timeout: UI_TIMEOUT });
   await trigger.click();
-  const option = scope.getByRole("option", { name, exact: true }).first();
+  const option = trigger
+    .page()
+    .getByRole("option", { name, exact: true })
+    .first();
   await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
   await option.click();
 }
 
-async function selectFirstCarbonItem(scope: Locator): Promise<void> {
-  const trigger = scope
-    .locator(
-      'input[role="combobox"], button[role="combobox"], .cds--list-box__field',
-    )
-    .first();
+async function selectFirstCarbonItem(trigger: Locator): Promise<void> {
   await expect(trigger).toBeEnabled({ timeout: UI_TIMEOUT });
   await trigger.click();
-  const option = scope.getByRole("option").first();
+  const option = trigger.page().getByRole("option").first();
   await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
   await option.click();
 }
@@ -102,7 +95,7 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
 
       await form.fillName(analyzerName);
       await selectCarbonItem(
-        page.getByTestId("analyzer-form-lab-units"),
+        page.getByRole("combobox", { name: "Lab units" }),
         "Molecular Biology",
       );
       await form.fillIpAddress("172.21.1.100");
@@ -186,7 +179,12 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
         hasText: "MTB TRACE DETECTED",
       });
       await expect(pendingRow).toContainText("PENDING");
-      await selectCarbonItem(pendingRow, "Detected");
+      await selectCarbonItem(
+        pendingRow.getByRole("combobox", {
+          name: "OpenELIS Result Option",
+        }),
+        "Detected",
+      );
       await pendingRow
         .getByTestId("result-value-resolve-uat-mtb-trace")
         .click();
@@ -217,7 +215,7 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       });
       await page.getByTestId("qc-rule-add-btn").click();
       await selectCarbonItem(
-        page.locator("#qc-rule-type-0"),
+        page.getByRole("combobox", { name: "Rule Type" }),
         "Specimen ID Prefix",
       );
       await page.getByTestId("qc-rule-operand-0").fill("QC");
@@ -247,15 +245,13 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
         .getByTestId("control-lot-material-input")
         .fill("GeneXpert positive control");
       await selectCarbonItem(
-        page.getByTestId("control-lot-level-dropdown"),
+        page.getByRole("combobox", { name: "Control Level" }),
         "Low",
       );
       const expiration = page.getByTestId("control-lot-expiration-input");
       await expiration.fill("12/31/2027");
       await expiration.press("Escape");
-      await selectFirstCarbonItem(
-        page.getByTestId("control-lot-test-dropdown"),
-      );
+      await selectFirstCarbonItem(page.getByRole("combobox", { name: "Test" }));
 
       await page.getByTestId("control-lot-statistics-config-button").click();
       await expect(page.getByTestId("statistics-config-modal")).toBeVisible();
