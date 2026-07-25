@@ -20,7 +20,13 @@ const STAGE_OPTIONS = [
   { value: "REJECTED", labelId: "microbiology.case.action.rejectCase" },
 ];
 
-const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
+const CaseTimelinePanel = ({
+  activities = [],
+  onRecordActivity,
+  saving,
+  setupSectionId,
+  timelineSectionId,
+}) => {
   const intl = useIntl();
   const [nextStage, setNextStage] = useState("SETUP_RECORDED");
   const [note, setNote] = useState("");
@@ -36,6 +42,7 @@ const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
   return (
     <>
       <section
+        id={setupSectionId}
         className="microbiology-card microbiology-card--current"
         data-testid="microbiology-setup-card"
         aria-labelledby="microbiology-setup-heading"
@@ -87,6 +94,7 @@ const CaseTimelinePanel = ({ activities = [], onRecordActivity, saving }) => {
       </section>
 
       <section
+        id={timelineSectionId}
         className="microbiology-card"
         data-testid="microbiology-timeline-card"
         aria-labelledby="microbiology-timeline-heading"

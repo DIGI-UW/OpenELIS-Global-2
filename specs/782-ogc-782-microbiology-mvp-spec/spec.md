@@ -277,8 +277,9 @@ or missing mapping for export.
 - **FR-012**: The system MUST provide a shared microbiology worklist organized
   by case state, due action, urgency, and review need rather than per-case
   ownership.
-- **FR-013**: The worklist MUST allow users to filter, sort, and open cases or
-  AST work that needs action.
+- **FR-013**: The worklist MUST be discoverable from configured primary
+  navigation and allow users to filter, sort, and open cases or AST work that
+  needs action.
 - **FR-014**: The system MUST make sibling workflows on the same specimen
   visible in the worklist and case view while keeping their lifecycles and
   reports separate.
@@ -313,6 +314,9 @@ or missing mapping for export.
 - **FR-022**: Product specs and Jira tickets for this feature MUST describe
   workflow behavior and acceptance outcomes, not required table names, service
   names, route names, or storage layout.
+- **FR-023**: Worklist and case destinations MUST preserve bookmarkable,
+  refresh-stable filter, sort, and active-section context, including when a
+  user opens a case and returns to the worklist.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -385,6 +389,9 @@ shape during planning.
   keys and can be rendered in English.
 - **SC-009**: Engineering planning can produce implementation tasks without
   needing Casey artifacts to decide schema, API, route, or service ownership.
+- **SC-010**: A user can reach the worklist from primary navigation, bookmark a
+  filtered view, open a case, refresh either page, and return without losing
+  the relevant worklist or case-section context.
 
 ## Planning Notes
 

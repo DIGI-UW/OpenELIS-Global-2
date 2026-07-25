@@ -3,7 +3,7 @@
 ## M4 Case Workbench
 
 - Flow: `microbiology-case-workbench`
-- Route: `/MicrobiologyCaseView/:caseId`
+- Route: `/Microbiology/cases/:caseId`
 - Setup: seed one bacteriology `micro_case` with a `sample_item` and initial
   `CASE_CREATED` activity through test-only Postgres setup.
 - User actions:
@@ -27,7 +27,7 @@
 ## M5 Manual AST
 
 - Flow: `ogc-782-microbiology-mvp`
-- Route: `/MicrobiologyCaseView/:caseId`
+- Route: `/Microbiology/cases/:caseId`
 - Setup: seed one bacteriology `micro_case` with a `sample_item`, AST panel,
   antibiotic, CLSI 2026 standard, and one MIC breakpoint rule through
   test-only Postgres setup.
@@ -65,7 +65,7 @@
 ## M6 Worklist + Critical Communication
 
 - Flow: `microbiology-worklist-critical`
-- Routes: `/MicrobiologyCaseView/:caseId`, `/MicrobiologyWorklist`
+- Routes: `/Microbiology/cases/:caseId`, `/Microbiology/worklist`
 - Setup: seed one bacteriology case with a sibling TB workflow on the same
   sample item and AST reference prerequisites through test-only Postgres setup.
 - User actions:
@@ -93,7 +93,7 @@
 ## M7 Release + Surveillance Readiness
 
 - Flow: `ogc-782-microbiology-mvp`
-- Route: `/MicrobiologyCaseView/:caseId`
+- Route: `/Microbiology/cases/:caseId`
 - Setup: reuse the M5/M6 seeded bacteriology case, AST panel, antibiotic, CLSI
   2026 standard, and MIC breakpoint rule. M7 adds no new schema fixture because
   release uses existing `micro_case` release state and case activity history.
@@ -131,3 +131,36 @@
   `frontend/test-results/demo-core-ogc-782-microbio-3f6cc-ual-AST-override-and-review-core-demo-video/video.webm`
 - Code-qa evidence bundle:
   `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`
+
+## Navigation, Stable URLs, And Deployed UAT
+
+- Flow: `microbiology-worklist-critical`
+- Routes:
+  - `/Microbiology/worklist`
+  - `/Microbiology/cases/:caseId`
+- Automated actions:
+  - open the configured main navigation and choose Microbiology worklist,
+  - verify the navigation remains usable beside the worklist,
+  - set workflow and sort filters and assert canonical query composition,
+  - open a seeded case and assert worklist context is retained,
+  - select the Isolates case section and assert refresh-stable section state,
+  - return to the worklist and assert prior filters are restored.
+- Project: `core-app`
+- Evidence command:
+  `cd frontend && BASE_URL=https://localhost:48443 DB_CONTAINER=ogc-782-microbiology-db npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app`
+- Evidence result: 2 passed in 9.4 seconds on 2026-07-24, including
+  authentication setup and the configured-navigation/canonical-state flow.
+- Deployed UAT:
+  - Grist checklist instance: `amr`
+  - Jira: `OGC-782`
+  - Live feed:
+    `https://amr.openelis-global.org/__review/uat-amr.json`
+  - Review surface: `https://amr.openelis-global.org` -> `Review`
+  - The Grist checklist is the source of truth; do not treat
+    `deploy/dual-subdomain/review/uat-amr.json` as the live authoring surface.
+- Verification result: on 2026-07-24, Playwright opened the rendered review
+  panel and confirmed the title, `0/10` progress, configured-navigation step,
+  canonical worklist state, AST-to-report check, and shared-specimen check.
+- Deployment caveat: the checklist is live now, but AMR must be redeployed from
+  the feature branch before the new navigation and canonical-route steps can
+  pass.

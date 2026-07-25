@@ -9,9 +9,17 @@ test.describe("Microbiology case workbench", () => {
   test("records setup activity and creates an isolate", async ({ page }) => {
     const seeded = seedMicrobiologyCase();
     try {
-      await page.goto(`/MicrobiologyCaseView/${seeded.caseId}`, {
-        waitUntil: "domcontentloaded",
-      });
+      await page.goto(
+        `/MicrobiologyCaseView/${seeded.caseId}?workflow=BACTERIOLOGY&sort=newest`,
+        {
+          waitUntil: "commit",
+        },
+      );
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/Microbiology/cases/${seeded.caseId}\\?workflow=BACTERIOLOGY&sort=newest$`,
+        ),
+      );
 
       await expect(
         page.getByRole("heading", { name: "Microbiology case" }),

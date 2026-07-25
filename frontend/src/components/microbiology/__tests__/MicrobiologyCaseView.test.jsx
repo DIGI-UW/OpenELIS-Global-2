@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route } from "react-router-dom";
 import MicrobiologyCaseView from "../MicrobiologyCaseView";
 import messages from "../../../languages/en.json";
 
@@ -17,11 +17,19 @@ const caseDetail = {
   isolates: [],
 };
 
-const renderCase = (service) =>
+const renderCase = (service, initialEntry = "/Microbiology/cases/case-1") =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <IntlProvider locale="en" messages={messages}>
         <MicrobiologyCaseView caseId="case-1" service={service} />
+        <Route
+          render={({ location }) => (
+            <output data-testid="microbiology-current-url">
+              {location.pathname}
+              {location.search}
+            </output>
+          )}
+        />
       </IntlProvider>
     </MemoryRouter>,
   );
@@ -140,5 +148,37 @@ describe("MicrobiologyCaseView", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/Isolate Created/)).toBeInTheDocument();
+  });
+
+  it("keeps worklist context while selecting a case section and returning", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+    );
+
+    await screen.findByText("Microbiology case");
+    fireEvent.click(screen.getByRole("button", { name: "Isolates" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest&section=isolates",
+      ),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Back to microbiology worklist" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/worklist?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+      ),
+    );
   });
 });

@@ -362,6 +362,19 @@ remediation) behaves as specified before merging the held #3789.
 - [x] T155 [MVP] Apply the `simplicity-review` workflow from `DIGI-UW/code-qa` against the MVP diff and remove or explicitly justify speculative abstractions, duplicate exporters, duplicate alert surfaces, or unused configuration.
 - [x] T156 [MVP] Run the `evidence-bundle` workflow from `DIGI-UW/code-qa` after the final `core-demo-video` Playwright run and record the generated text report plus manually shared media links for the M7 PR and parent PR #3782.
 
+## Phase 9: Navigation, Stable URLs, And UAT Readiness
+
+**Goal**: Make Microbiology discoverable through configured navigation,
+preserve deterministic page state, and publish the matching deployed-review
+checklist through the Grist-backed UAT harness.
+
+- [x] T178 [MVP] Define primary-navigation discovery and bookmarkable worklist/case state in `spec.md`.
+- [x] T179 [MVP] Register the Microbiology menu through `volume/menu/menu_config.json` and add canonical worklist/case routes with legacy redirects.
+- [x] T180 [P] [MVP] Add focused React tests for route composition, filter persistence, case-section state, and worklist return context.
+- [x] T181 [MVP] Extend `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` to prove configured navigation and canonical URL behavior in the registered `core-app` project.
+- [x] T182 [MVP] Update the OGC-782 `amr` checklist in Grist with ten product-focused steps covering navigation, stable page state, case work, isolate/AST workflow, report propagation, and the shared-specimen case.
+- [x] T183 [MVP] Verify `https://amr.openelis-global.org/__review/uat-amr.json` and the rendered AMR `Review` overlay with Playwright; record the deployment caveat in `evidence/uat-review-harness-2026-07-24.md`.
+
 ## Dependencies & Execution Order
 
 - M1 blocks all later milestones.

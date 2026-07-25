@@ -350,6 +350,21 @@ describe("Layout", () => {
       // Note: defaultMode is "lock" for /analyzers
     });
 
+    test("testLayout_MicrobiologyRoute_UsesLockedNavigation", async () => {
+      renderWithProviders(
+        <Layout>
+          <div>Microbiology Content</div>
+        </Layout>,
+        { route: "/Microbiology/worklist" },
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId("content-wrapper")).toHaveClass(
+          "content-nav-locked",
+        ),
+      );
+    });
+
     test.each([
       "/admin",
       "/MasterListsPage",

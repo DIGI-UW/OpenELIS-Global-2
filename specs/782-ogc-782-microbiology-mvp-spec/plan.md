@@ -230,6 +230,22 @@ inside product requirements.
 - E2E setup uses API/fixture setup rather than UI setup and does not stub the
   mutation endpoint under test.
 
+### Navigation And Review Contract
+
+- Register Microbiology through the existing configuration-driven menu,
+  targeting `/Microbiology/worklist`.
+- Use `/Microbiology/cases/:caseId` for case destinations and preserve legacy
+  route redirects without creating a second workflow implementation.
+- Compose worklist state with `workflow`, `urgency`, `due`, and `sort` query
+  parameters; compose case progress with `section` while carrying worklist
+  context through case navigation and back-navigation.
+- Cover the navigation and URL behavior in the registered `core-app`
+  Playwright project, not only through an interactive browser walkthrough.
+- Use the external OpenELIS UAT Review Harness for deployed human review.
+  Grist is the authoring source of truth for the `amr` checklist, the AMR
+  overlay reads `/__review/uat-amr.json` live, and no static checklist publish
+  step is required.
+
 ### Checkpoint Validations
 
 - **After M1**: Liquibase update/rollback path, ORM validation, reference lookup

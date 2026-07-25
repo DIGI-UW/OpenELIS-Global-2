@@ -81,6 +81,26 @@
   line-height: 1.25;
 }
 
+.microbiology-progress__link {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 0.625rem;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.microbiology-progress__link:focus-visible {
+  outline: 2px solid #0f62fe;
+  outline-offset: 2px;
+}
+
 .microbiology-progress__marker {
   align-items: center;
   background: #e0e0e0;
@@ -111,6 +131,10 @@
 
 .microbiology-workbench__content {
   min-width: 0;
+}
+
+.microbiology-workbench__content > [id] {
+  scroll-margin-top: 5.5rem;
 }
 
 .microbiology-next-step {

@@ -1,25 +1,51 @@
 import React, { useEffect, useState } from "react";
-import { InlineNotification, Loading, Stack, Tag } from "@carbon/react";
+import { ArrowLeft } from "@carbon/icons-react";
+import { Button, InlineNotification, Loading, Stack, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import AstEntryPanel from "./AstEntryPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import {
+  getMicrobiologyCaseUrl,
+  getMicrobiologyWorklistUrl,
+  parseMicrobiologyCaseSearch,
+} from "./MicrobiologyRoutes";
 import MicrobiologyService from "./MicrobiologyService";
 import OrderDetailPanel from "./OrderDetailPanel";
 import ReportReadinessPanel from "./ReportReadinessPanel";
 import "./MicrobiologyCaseView.css";
 
 const progressItems = [
-  { id: "case-info", labelId: "microbiology.progress.caseInfo" },
-  { id: "setup", labelId: "microbiology.progress.inoculation" },
-  { id: "timeline", labelId: "microbiology.progress.timeline" },
-  { id: "isolates", labelId: "microbiology.progress.isolates" },
-  { id: "ast", labelId: "microbiology.progress.ast" },
-  { id: "review", labelId: "microbiology.progress.review" },
-  { id: "reports", labelId: "microbiology.progress.reports" },
+  {
+    id: "case-info",
+    section: "case-info",
+    labelId: "microbiology.progress.caseInfo",
+  },
+  {
+    id: "setup",
+    section: "setup",
+    labelId: "microbiology.progress.inoculation",
+  },
+  {
+    id: "timeline",
+    section: "timeline",
+    labelId: "microbiology.progress.timeline",
+  },
+  {
+    id: "isolates",
+    section: "isolates",
+    labelId: "microbiology.progress.isolates",
+  },
+  { id: "ast", section: "ast", labelId: "microbiology.progress.ast" },
+  { id: "review", section: "ast", labelId: "microbiology.progress.review" },
+  {
+    id: "reports",
+    section: "reports",
+    labelId: "microbiology.progress.reports",
+  },
 ];
 
 const hasActivity = (caseDetail, activityType) =>
@@ -68,8 +94,11 @@ const MicrobiologyCaseView = ({
   service = MicrobiologyService,
 }) => {
   const intl = useIntl();
+  const history = useHistory();
+  const location = useLocation();
   const params = useParams();
   const caseId = caseIdProp || params.caseId;
+  const routeState = parseMicrobiologyCaseSearch(location.search);
   const [caseDetail, setCaseDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -95,9 +124,38 @@ const MicrobiologyCaseView = ({
   };
 
   useEffect(() => {
-    loadCase();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caseId]);
+    let active = true;
+
+    service.getCaseDetail(caseId).then((detail) => {
+      if (!active) {
+        return;
+      }
+      if (!detail || detail.status) {
+        setError(intl.formatMessage({ id: "microbiology.case.loadError" }));
+        setCaseDetail(null);
+      } else {
+        setError("");
+        setCaseDetail(detail);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [caseId, intl, service]);
+
+  useEffect(() => {
+    if (!caseDetail || !routeState.section) {
+      return;
+    }
+    const section = document.getElementById(
+      `microbiology-${routeState.section}`,
+    );
+    if (section && typeof section.scrollIntoView === "function") {
+      section.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }, [caseDetail, routeState.section]);
 
   const recordActivity = (payload) => {
     setSaving(true);
@@ -115,6 +173,10 @@ const MicrobiologyCaseView = ({
         setSaving(false);
       });
     });
+  };
+
+  const selectSection = (section) => {
+    history.push(getMicrobiologyCaseUrl(caseId, { ...routeState, section }));
   };
 
   if (loading) {
@@ -139,6 +201,16 @@ const MicrobiologyCaseView = ({
     >
       <header className="microbiology-workbench__hero">
         <div>
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={ArrowLeft}
+            onClick={() => history.push(getMicrobiologyWorklistUrl(routeState))}
+          >
+            {intl.formatMessage({
+              id: "microbiology.navigation.backToWorklist",
+            })}
+          </Button>
           <p className="microbiology-workbench__eyebrow">
             {intl.formatMessage({ id: "microbiology.case.eyebrow" })}
           </p>
@@ -174,10 +246,22 @@ const MicrobiologyCaseView = ({
                   key={item.id}
                   className={`microbiology-progress__item microbiology-progress__item--${status}`}
                 >
-                  <span className="microbiology-progress__marker">
-                    {status === "done" ? "\u2713" : index + 1}
-                  </span>
-                  <span>{intl.formatMessage({ id: item.labelId })}</span>
+                  <button
+                    type="button"
+                    className="microbiology-progress__link"
+                    onClick={() => selectSection(item.section)}
+                    aria-label={intl.formatMessage({ id: item.labelId })}
+                    aria-current={
+                      routeState.section === item.section
+                        ? "location"
+                        : undefined
+                    }
+                  >
+                    <span className="microbiology-progress__marker">
+                      {status === "done" ? "\u2713" : index + 1}
+                    </span>
+                    <span>{intl.formatMessage({ id: item.labelId })}</span>
+                  </button>
                 </li>
               );
             })}
@@ -196,6 +280,7 @@ const MicrobiologyCaseView = ({
             </div>
           </section>
           <section
+            id="microbiology-case-info"
             className="microbiology-case-summary"
             data-testid="microbiology-case-summary"
             aria-label={intl.formatMessage({
@@ -215,44 +300,56 @@ const MicrobiologyCaseView = ({
             </span>
           </section>
           <Stack gap={5}>
-            <OrderDetailPanel
-              caseId={caseDetail.id}
-              orderDetail={caseDetail.orderDetail}
-              service={service}
-              onSaved={() => loadCase({ showLoading: false })}
-            />
+            <div id="microbiology-order-detail">
+              <OrderDetailPanel
+                caseId={caseDetail.id}
+                orderDetail={caseDetail.orderDetail}
+                service={service}
+                onSaved={() => loadCase({ showLoading: false })}
+              />
+            </div>
             <CaseTimelinePanel
               activities={caseDetail.activities}
               onRecordActivity={recordActivity}
               saving={saving}
+              setupSectionId="microbiology-setup"
+              timelineSectionId="microbiology-timeline"
             />
-            <IsolatePanel
-              caseId={caseDetail.id}
-              isolates={caseDetail.isolates}
-              onCreateIsolate={createIsolate}
-              saving={saving}
-            />
-            <AstEntryPanel
-              caseId={caseDetail.id}
-              workflowType={caseDetail.workflowType}
-              isolates={caseDetail.isolates}
-              service={service}
-              saving={saving}
-              onAstUpdated={() =>
-                setReadinessRefreshToken((currentValue) => currentValue + 1)
-              }
-            />
-            <CriticalCommunicationPanel
-              caseId={caseDetail.id}
-              service={service}
-            />
-            <ReportReadinessPanel
-              caseId={caseDetail.id}
-              service={service}
-              finalReleaseState={caseDetail.stage}
-              onReleased={() => loadCase({ showLoading: false })}
-              refreshToken={readinessRefreshToken}
-            />
+            <div id="microbiology-isolates">
+              <IsolatePanel
+                caseId={caseDetail.id}
+                isolates={caseDetail.isolates}
+                onCreateIsolate={createIsolate}
+                saving={saving}
+              />
+            </div>
+            <div id="microbiology-ast">
+              <AstEntryPanel
+                caseId={caseDetail.id}
+                workflowType={caseDetail.workflowType}
+                isolates={caseDetail.isolates}
+                service={service}
+                saving={saving}
+                onAstUpdated={() =>
+                  setReadinessRefreshToken((currentValue) => currentValue + 1)
+                }
+              />
+            </div>
+            <div id="microbiology-critical-communication">
+              <CriticalCommunicationPanel
+                caseId={caseDetail.id}
+                service={service}
+              />
+            </div>
+            <div id="microbiology-reports">
+              <ReportReadinessPanel
+                caseId={caseDetail.id}
+                service={service}
+                finalReleaseState={caseDetail.stage}
+                onReleased={() => loadCase({ showLoading: false })}
+                refreshToken={readinessRefreshToken}
+              />
+            </div>
           </Stack>
         </div>
       </div>
