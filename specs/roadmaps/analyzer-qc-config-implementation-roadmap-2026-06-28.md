@@ -1,8 +1,8 @@
 # Analyzer QC + Configuration Implementation Roadmap
 
 - **Date:** 2026-06-28
-- **Status:** Acceptance closure in progress; implementation foundation is not
-  yet merge-accepted
+- **Status:** MVP acceptance gates complete on the recorded build; PR review
+  approval remains
 - **Primary epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
 - **Related epics:** [OGC-1016](https://uwdigi.atlassian.net/browse/OGC-1016),
   [OGC-811](https://uwdigi.atlassian.net/browse/OGC-811),
@@ -32,14 +32,36 @@ are historical signals only. Neither can satisfy the July acceptance gates.
 
 ### Milestone Classification
 
-| Milestone                       | Classification         | Acceptance position                                                                                                                                                                    |
-| ------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0 - stabilization              | Implemented foundation | Routed QC loading, string-safe control-lot IDs, deterministic empty arrays, and FILE ownership are covered by focused tests.                                                           |
-| M1 - profile verification       | Partially accepted     | The lab-facing shipped-profile view and setup action are implemented; current desktop/mobile comparison and remote `AN-QC-001` remain required.                                        |
-| M2 - guided setup               | Partially accepted     | Inline creation, lab-unit selection, exact-once profile application, and the old-route redirect are implemented; remote creation and real visible connection evidence remain required. |
-| M3 - mappings and result values | Partially accepted     | Catalog-bound value resolution and stale-aware setup verification are implemented with service/component tests; remote persistence and pending-value resolution remain required.       |
-| M4 - analyzer QC                | Partially accepted     | Existing QC entities, readiness gates, bridge sync, and deterministic payloads are implemented; the assembled remote QC/readiness story remains required.                              |
-| C4 - remote UAT and evidence    | Not accepted           | No earlier local MP4 or route/API proof substitutes for a current required-step report against the exact deployed build.                                                               |
+| Milestone                       | Classification      | Acceptance position                                                                                                                                                                |
+| ------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 - stabilization              | Accepted foundation | Routed QC loading, string-safe control-lot IDs, deterministic empty arrays, FILE ownership, and clean-start harness catalogs are covered by focused tests and CI.                  |
+| M1 - profile verification       | Accepted            | The lab-facing shipped-profile view and setup action pass current desktop/mobile comparison and remote `AN-QC-001`.                                                                |
+| M2 - guided setup               | Accepted            | Inline creation, lab-unit selection, exact-once profile application, old-route redirect, and visible connection evidence pass automated and remote acceptance.                     |
+| M3 - mappings and result values | Accepted            | Catalog-bound value resolution, reload persistence, durable verification, and stale fingerprints pass service/component tests and remote `AN-QC-003`/`AN-QC-005`.                  |
+| M4 - analyzer QC                | Accepted            | Existing QC entities, readiness gates, bridge sync, deterministic payloads, and the assembled QC/readiness workflow pass automated and remote acceptance.                          |
+| C4 - remote UAT and evidence    | Accepted            | The exact deployed PR build has an 8/8 required-step schema-v2 report, UI-only non-video and video passes, current screenshots, MP4, and build/checklist provenance in the bundle. |
+
+### Acceptance Result - 2026-07-24
+
+- The application commit containing this amendment is the reviewed artifact.
+  Its exact SHA, the exact review-tooling SHA, deployment ID, and deployment time
+  are recorded in `/__review/build.json` and the downloaded Markdown/JSON UAT
+  report.
+- `AN-QC-001` through `AN-QC-008` passed with no failed, stale, untested, or
+  open required steps.
+- The non-video and paced video projects both executed the story through visible
+  UI controls. Fixture loading was limited to the documented precondition.
+- The MP4, nine desktop screenshots, mobile screenshot, test outputs, live build
+  manifest, checklist revision, and UAT reports are packaged outside git under
+  `/Users/pmanko/.codex/evidence/ogc-1054-final`.
+- Review-tooling contract and widget tests pass in
+  [DIGI-UW/openelis-review-tooling#2](https://github.com/DIGI-UW/openelis-review-tooling/pull/2).
+- The newest pinned `openelis-work` mock has richer analyzer-list attention
+  presentation: separate `In setup` and `Needs attention` totals, a global
+  unresolved-result alert, and explicit Lab Unit/Analyzer Type columns. The MVP
+  exposes the underlying per-analyzer setup/attention states and passes the
+  required workflow, but those list-level presentation refinements remain a
+  ranked UI follow-up rather than a hidden acceptance claim.
 
 ### Requirement Traceability Matrix
 
@@ -658,21 +680,20 @@ Recommended grooming:
 
 ## Deterministic Next Steps
 
-1. Finish the code-qa remediation commit on the existing non-draft PR and require
-   backend, frontend, E2E, formatting, and review-tooling CI to pass.
-2. Deploy the exact repaired application SHA with the exact review-tooling SHA
-   to `analyzers.openelis-global.org`, publish build metadata, and seed only the
-   declared harness preconditions.
-3. Run the UI-only non-video story, inspect console/trace/runtime output and
-   desktop/mobile screenshots against the pinned `openelis-work` designs, then
-   run the paced video project.
-4. Complete `AN-QC-001` through `AN-QC-008` in the live Review overlay and
-   download the build-bound Markdown/JSON report.
-5. Package the MP4, screenshots, test results, build/checklist metadata, and UAT
-   report with `digi-uw/code-qa`; then update milestone classifications and the
-   PR review context.
-6. File bridge work only if contract evidence demonstrates missing behavior, and
-   keep result import/multi-component/v4 work in the next milestone.
+1. Merge
+   [DIGI-UW/openelis-review-tooling#2](https://github.com/DIGI-UW/openelis-review-tooling/pull/2)
+   independently; its schema-v2 report contract remains backward-compatible with
+   the application.
+2. Complete reviewer approval and merge non-draft OpenELIS PR
+   [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792) after its
+   required checks confirm the recorded head.
+3. Groom the analyzer-list attention-summary differences from the pinned design
+   as a presentation follow-up without reopening the accepted configuration/QC
+   contracts.
+4. Start a separate milestone PR for production analyzer result import,
+   multi-component target identity, and Results/Validation v4 integration.
+5. File bridge work only if cross-repository contract evidence demonstrates
+   missing bridge behavior; do not add an OpenELIS FILE poller.
 
 ## Follow-Up Decisions
 

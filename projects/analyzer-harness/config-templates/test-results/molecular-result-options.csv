@@ -1,0 +1,3 @@
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+Xpert MTB/RIF,D,Detected,Analyzer Qualitative Results,1,N,Y,N,,
+Xpert MTB/RIF,D,Not Detected,Analyzer Qualitative Results,2,N,Y,Y,,

@@ -91,6 +91,9 @@ projects/*/volume/
 **/playwright/.cache/
 **/playwright/.auth/
 **/test-results/
+# Analyzer harness startup catalogs are source, not generated test output.
+!projects/analyzer-harness/config-templates/test-results/
+!projects/analyzer-harness/config-templates/test-results/*.csv
 # Note: frontend/playwright/ test sources are tracked (not ignored)
 *.pyc
 __pycache__/
