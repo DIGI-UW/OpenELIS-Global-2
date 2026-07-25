@@ -50,11 +50,11 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void caseIdentityIsUniquePerSampleItemAndWorkflowWithSiblingSupport() {
         MicroCase first = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         MicroCase duplicate = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         MicroCase sibling = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.MYCOBACTERIOLOGY_TB, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
 
         assertEquals(first.getId(), duplicate.getId());
         assertEquals(sampleItemId, sibling.getSampleItemId());
@@ -64,12 +64,12 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void compiledCaseDetailIncludesTimelineAndIsolatesWithoutControllerTraversal() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
-        stateService.advanceStage(microCase.getId(), MicroCaseStage.SETUP_RECORDED,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID, "setup complete");
+                fixtures.defaultUserId());
+        stateService.advanceStage(microCase.getId(), MicroCaseStage.SETUP_RECORDED, fixtures.defaultUserId(),
+                "setup complete");
         isolateService.createIsolate(microCase.getId(), "ISO-1", referenceData.organism().getId(),
                 referenceData.organism().getDisplayName(), MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
 
         MicroCaseDetailForm detail = caseService.getCaseDetail(microCase.getId());
 

@@ -81,12 +81,10 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     @Test
     public void uatScenariosReuseReferenceConfigurationAndGeneratedCaseIdentity() {
         MicrobiologyUatScenarioRequestForm firstRequest = scenarioRequest("MVP");
-        MicrobiologyUatScenarioForm first = uatScenarioService.provision(firstRequest,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
-        MicrobiologyUatScenarioForm retry = uatScenarioService.provision(firstRequest,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        MicrobiologyUatScenarioForm first = uatScenarioService.provision(firstRequest, fixtures.defaultUserId());
+        MicrobiologyUatScenarioForm retry = uatScenarioService.provision(firstRequest, fixtures.defaultUserId());
         MicrobiologyUatScenarioForm second = uatScenarioService.provision(scenarioRequest("CASE"),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
 
         assertEquals(first.caseId, retry.caseId);
         assertNotEquals(first.caseId, second.caseId);

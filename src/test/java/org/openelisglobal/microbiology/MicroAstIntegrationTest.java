@@ -57,21 +57,20 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     public void astRunInterpretsAgainstItsSnapshottedBreakpointStandard() {
         AlternativeBreakpointData alternative = fixtures.createAlternativeBreakpoint(referenceData);
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
                 referenceData.organism().getId(), referenceData.organism().getDisplayName(),
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, fixtures.defaultUserId());
 
         MicroAstRun defaultRun = astService.startRun(isolate.getId(), referenceData.panel().getId(),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         MicroAstReading defaultReading = astService.recordReading(defaultRun.getId(),
-                referenceData.antibiotic().getId(), MicroAstMethod.MIC, new BigDecimal("4"),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                referenceData.antibiotic().getId(), MicroAstMethod.MIC, new BigDecimal("4"), fixtures.defaultUserId());
 
         MicroAstRun altRun = astService.startRun(isolate.getId(), referenceData.panel().getId(),
-                alternative.standard().getId(), MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                alternative.standard().getId(), fixtures.defaultUserId());
         MicroAstReading altReading = astService.recordReading(altRun.getId(), referenceData.antibiotic().getId(),
-                MicroAstMethod.MIC, new BigDecimal("4"), MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                MicroAstMethod.MIC, new BigDecimal("4"), fixtures.defaultUserId());
 
         assertEquals(alternative.standard().getId(), altRun.getBreakpointStandardId());
         assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), defaultReading.getInterpretation());
@@ -81,18 +80,17 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void astRunStoresReadingsInterpretationOverrideAndReview() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
                 referenceData.organism().getId(), referenceData.organism().getDisplayName(),
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, fixtures.defaultUserId());
 
-        MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(), fixtures.defaultUserId());
         MicroAstReading reading = astService.recordReading(run.getId(), referenceData.antibiotic().getId(),
-                MicroAstMethod.MIC, new BigDecimal("4"), MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                MicroAstMethod.MIC, new BigDecimal("4"), fixtures.defaultUserId());
         MicroAstReading overridden = astService.overrideReading(reading.getId(), MicroAstInterpretation.RESISTANT,
-                "mixed growth confirmed on repeat", MicrobiologyTestFixtures.DEFAULT_USER_ID);
-        MicroAstRun reviewed = astService.reviewRun(run.getId(), MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                "mixed growth confirmed on repeat", fixtures.defaultUserId());
+        MicroAstRun reviewed = astService.reviewRun(run.getId(), fixtures.defaultUserId());
 
         assertNotNull(reading.getBreakpointRuleId());
         assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), reading.getInterpretation());

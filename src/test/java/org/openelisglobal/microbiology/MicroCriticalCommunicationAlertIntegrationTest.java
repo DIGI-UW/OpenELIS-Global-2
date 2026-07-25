@@ -58,10 +58,10 @@ public class MicroCriticalCommunicationAlertIntegrationTest extends BaseWebConte
     @Test
     public void loggingACriticalCommunicationSurfacesAnOpenAlertsDashboardRow() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
 
         MicroCriticalCommunication communication = communicationService.logCommunication(microCase.getId(),
-                "Provider on call", "Positive blood culture called", true, MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                "Provider on call", "Positive blood culture called", true, fixtures.defaultUserId());
 
         List<Alert> alerts = alertService.getAlertsByEntityRef(ALERT_ENTITY_TYPE, communication.getId());
         assertEquals(1, alerts.size());
@@ -75,11 +75,11 @@ public class MicroCriticalCommunicationAlertIntegrationTest extends BaseWebConte
     @Test
     public void acknowledgingTheCommunicationAcknowledgesTheDashboardRow() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         MicroCriticalCommunication communication = communicationService.logCommunication(microCase.getId(),
-                "Provider on call", "Positive blood culture called", true, MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                "Provider on call", "Positive blood culture called", true, fixtures.defaultUserId());
 
-        communicationService.acknowledge(communication.getId(), MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        communicationService.acknowledge(communication.getId(), fixtures.defaultUserId());
 
         List<Alert> alerts = alertService.getAlertsByEntityRef(ALERT_ENTITY_TYPE, communication.getId());
         assertEquals(1, alerts.size());

@@ -45,9 +45,9 @@ public class MicroOrderRoutingIdempotencyTest extends BaseWebContextSensitiveTes
         Analysis bacteriology = analysis(MicroWorkflowType.BACTERIOLOGY.name(), methodId);
 
         routingService.routeAnalysesForSampleItem(sampleItem(sampleItemId), List.of(bacteriology),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         routingService.routeAnalysesForSampleItem(sampleItem(sampleItemId), List.of(bacteriology),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
 
         assertEquals(1, caseService.getSiblingCases(sampleItemId).size());
     }

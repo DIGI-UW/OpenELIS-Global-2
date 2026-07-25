@@ -23,6 +23,7 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.stereotype.Component;
 
@@ -33,24 +34,31 @@ import org.springframework.stereotype.Component;
 @Component
 public class MicrobiologyTestFixtures {
 
-    public static final String DEFAULT_USER_ID = "1";
+    private static final String DEFAULT_USER_LOGIN = "admin";
 
     private final MethodService methodService;
     private final SampleService sampleService;
     private final SampleItemService sampleItemService;
     private final TestService testService;
     private final IStatusService statusService;
+    private final SystemUserService systemUserService;
     private final MicrobiologyConfigurationService configurationService;
 
     public MicrobiologyTestFixtures(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, TestService testService, IStatusService statusService,
-            MicrobiologyConfigurationService configurationService) {
+            SystemUserService systemUserService, MicrobiologyConfigurationService configurationService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
         this.testService = testService;
         this.statusService = statusService;
+        this.systemUserService = systemUserService;
         this.configurationService = configurationService;
+    }
+
+    public String defaultUserId() {
+        return systemUserService.getMatch("loginName", DEFAULT_USER_LOGIN)
+                .orElseThrow(() -> new IllegalStateException("No active admin user is available for tests")).getId();
     }
 
     public String firstMethodId() {
@@ -66,14 +74,14 @@ public class MicrobiologyTestFixtures {
         sample.setEnteredDate(today);
         sample.setReceivedTimestamp(Timestamp.from(Instant.now()));
         sample.setStatusId(statusService.getStatusID(OrderStatus.Entered));
-        sample.setSysUserId(DEFAULT_USER_ID);
+        sample.setSysUserId(defaultUserId());
         sampleService.insert(sample);
 
         SampleItem sampleItem = new SampleItem();
         sampleItem.setSample(sample);
         sampleItem.setSortOrder("1");
         sampleItem.setStatusId(statusService.getStatusID(OrderStatus.Entered));
-        sampleItem.setSysUserId(DEFAULT_USER_ID);
+        sampleItem.setSysUserId(defaultUserId());
         sampleItemService.insert(sampleItem);
         return sampleItem;
     }
@@ -155,7 +163,7 @@ public class MicrobiologyTestFixtures {
         test.setDomain("CLINICAL");
         test.setAntimicrobialResistance(true);
         test.setOrderable(true);
-        test.setSysUserId(DEFAULT_USER_ID);
+        test.setSysUserId(defaultUserId());
         testService.insert(test);
         return test;
     }

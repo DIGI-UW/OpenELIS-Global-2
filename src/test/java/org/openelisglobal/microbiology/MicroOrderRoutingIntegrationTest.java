@@ -44,13 +44,14 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     @Test
     public void routesNonMicroBacteriologyAndSiblingWorkflowCases() {
         routingService.routeAnalysesForSampleItem(sampleItem(sampleItemId), List.of(analysis(null, methodId)),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         assertEquals(0, caseService.getSiblingCases(sampleItemId).size());
 
-        routingService.routeAnalysesForSampleItem(sampleItem(sampleItemId),
-                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), methodId),
-                        analysis(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), methodId)),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        routingService
+                .routeAnalysesForSampleItem(sampleItem(sampleItemId),
+                        List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), methodId),
+                                analysis(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), methodId)),
+                        fixtures.defaultUserId());
 
         assertEquals(2, caseService.getSiblingCases(sampleItemId).size());
     }
