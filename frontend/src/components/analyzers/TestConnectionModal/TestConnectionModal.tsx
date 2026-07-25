@@ -124,6 +124,7 @@ const TestConnectionModal = ({
     <ComposedModal
       open={open}
       onClose={onClose}
+      preventCloseOnClickOutside
       data-testid="test-connection-modal"
     >
       <ModalHeader

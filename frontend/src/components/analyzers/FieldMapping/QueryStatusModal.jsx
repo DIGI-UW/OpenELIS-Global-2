@@ -89,7 +89,7 @@ export default function QueryStatusModal({
       onClose={handleClose}
       aria-label="Query Status"
       data-testid="query-status-modal"
-      preventCloseOnClickOutside={false}
+      preventCloseOnClickOutside
     >
       <ModalHeader
         title={<FormattedMessage id="analyzer.query.modal.title" />}

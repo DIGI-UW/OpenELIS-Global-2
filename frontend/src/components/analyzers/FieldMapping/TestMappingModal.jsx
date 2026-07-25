@@ -178,7 +178,7 @@ const TestMappingModal = ({
       onClose={handleClose}
       aria-label={intl.formatMessage({ id: "analyzer.testMapping.title" })}
       data-testid="test-mapping-modal"
-      preventCloseOnClickOutside={false}
+      preventCloseOnClickOutside
       size="md"
     >
       <ModalHeader

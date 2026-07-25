@@ -92,6 +92,7 @@ const StatisticsConfigModal = ({ open, config, onClose, onSave }) => {
     <ComposedModal
       open={open}
       onClose={onClose}
+      preventCloseOnClickOutside
       size="md"
       data-testid="statistics-config-modal"
     >
