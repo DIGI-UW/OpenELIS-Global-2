@@ -250,4 +250,79 @@ describe("ResultValueMappingsPanel", () => {
       expect(onUpdated).toHaveBeenCalled();
     });
   });
+
+  test("preserves readable fields for inactive legacy mappings when saving", async () => {
+    analyzerService.getResultValueOptions.mockImplementation(
+      (analyzerId, testCode, callback) =>
+        callback([
+          {
+            id: "result-option-detected",
+            value: "9001",
+            label: "Detected",
+            testId: "501",
+          },
+        ]),
+    );
+    analyzerService.updateResultValueMappings.mockImplementation(
+      (analyzerId, mappings, callback) => {
+        callback({ resultValueMappings: mappings });
+      },
+    );
+
+    renderWithIntl(
+      <ResultValueMappingsPanel
+        analyzerId="2013"
+        mappings={[
+          {
+            analyzerValue: "DETECTED",
+            openelisValue: "POSITIVE",
+            bindingStatus: "LEGACY_UNBOUND",
+            testCode: "MTB",
+            active: true,
+          },
+          {
+            analyzerValue: "OBSOLETE",
+            openelisValue: "OLD",
+            openelisLabel: "Obsolete result",
+            bindingStatus: "LEGACY_UNBOUND",
+            testCode: "MTB",
+            active: false,
+          },
+        ]}
+      />,
+    );
+
+    const selector = await screen.findByRole("combobox", {
+      name: "OpenELIS Result Option",
+    });
+    await userEvent.click(selector);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Detected" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save result mappings" }),
+    );
+
+    await waitFor(() =>
+      expect(analyzerService.updateResultValueMappings).toHaveBeenCalledWith(
+        "2013",
+        [
+          {
+            analyzerValue: "DETECTED",
+            testCode: "MTB",
+            active: true,
+            openelisResultOptionId: "result-option-detected",
+          },
+          {
+            analyzerValue: "OBSOLETE",
+            testCode: "MTB",
+            active: false,
+            openelisValue: "OLD",
+            openelisLabel: "Obsolete result",
+          },
+        ],
+        expect.any(Function),
+      ),
+    );
+  });
 });

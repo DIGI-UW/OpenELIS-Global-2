@@ -60,12 +60,12 @@ if [ $? -eq 0 ]; then
     head -n 10 "$OUTPUT_FILE"
     echo "----------------------------------------------------------------"
     echo
-    echo "✓ Test file placed in watch directory"
-    echo "  The FileImportWatchService will detect and process it"
-    echo "  within ~60 seconds (polling interval)"
+    echo "✓ Test file placed in the Bridge watch directory"
+    echo "  The Bridge file watcher will transport it to OpenELIS"
+    echo "  on its configured polling interval"
     echo
     echo "To monitor processing:"
-    echo "  tail -f /var/log/openelis/openelis.log | grep -i fluorocycler"
+    echo "  docker compose logs -f bridge oe.openelis.org | grep -i fluorocycler"
     echo
 else
     echo "✗ Failed to generate test file" >&2

@@ -203,67 +203,7 @@ verify_seed_contract() {
   echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
 }
 
-seed_uat_mtb_result_option() {
-  psql_query "
-    WITH existing_dictionary AS (
-      SELECT id
-        FROM clinlims.dictionary
-       WHERE LOWER(dict_entry) = LOWER('Detected')
-         AND is_active = 'Y'
-       ORDER BY id
-       LIMIT 1
-    ),
-    inserted_dictionary AS (
-      INSERT INTO clinlims.dictionary (
-        id, is_active, dict_entry, lastupdated, sort_order
-      )
-      SELECT nextval('clinlims.dictionary_seq'), 'Y', 'Detected', NOW(), 1
-       WHERE NOT EXISTS (SELECT 1 FROM existing_dictionary)
-      RETURNING id
-    ),
-    chosen_dictionary AS (
-      SELECT id FROM existing_dictionary
-      UNION ALL
-      SELECT id FROM inserted_dictionary
-      LIMIT 1
-    ),
-    mtb_target AS (
-      SELECT mapping.test_id,
-             COALESCE(NULLIF(mapping.component_id, ''), component.id) AS component_id
-        FROM clinlims.analyzer_test_map mapping
-        LEFT JOIN clinlims.test_result_component component
-          ON component.test_id = mapping.test_id
-         AND component.is_primary IS TRUE
-         AND component.is_active = 'Y'
-       WHERE mapping.analyzer_id = (
-         SELECT id
-           FROM clinlims.analyzer
-          WHERE name = 'Cepheid GeneXpert (ASTM Mode)'
-          ORDER BY id DESC
-          LIMIT 1
-       )
-         AND mapping.analyzer_test_name = 'MTB'
-       LIMIT 1
-    )
-    INSERT INTO clinlims.test_result (
-      id, test_id, tst_rslt_type, value, sort_order, lastupdated,
-      is_quantifiable, is_active, is_normal, component_id
-    )
-    SELECT nextval('clinlims.test_result_seq'), target.test_id, 'D',
-           dictionary.id::text, 1, NOW(), false, true, false,
-           target.component_id
-      FROM mtb_target target
-      CROSS JOIN chosen_dictionary dictionary
-     WHERE target.component_id IS NOT NULL
-       AND NOT EXISTS (
-         SELECT 1
-           FROM clinlims.test_result existing
-          WHERE existing.component_id = target.component_id
-            AND existing.value = dictionary.id::text
-            AND existing.is_active IS TRUE
-       );
-  " >/dev/null
-
+verify_uat_mtb_result_option() {
   local option_count
   option_count="$(psql_query "
     SELECT COUNT(*)
@@ -294,10 +234,10 @@ seed_uat_mtb_result_option() {
   ")"
 
   if [ "$option_count" -lt 1 ]; then
-    echo "ERROR: UAT fixture could not create a catalog-backed Detected option for the GeneXpert MTB mapping." >&2
+    echo "ERROR: imported harness catalogs did not provide a Detected option for the GeneXpert MTB mapping." >&2
     return 1
   fi
-  echo "  UAT fixture: catalog-backed GeneXpert MTB result option"
+  echo "  Verified: catalog-backed GeneXpert MTB result option"
 }
 
 create_analyzer() {
@@ -520,7 +460,7 @@ create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"defaultConfigId\": \"astm/genexpert-astm\"
 }"
 
-seed_uat_mtb_result_option
+verify_uat_mtb_result_option
 
 # Seed one unresolved instrument value as a harness precondition. The acceptance
 # story must resolve it through the visible mapping UI; Playwright does not

@@ -871,59 +871,6 @@ export const getPluginConfig = (
 };
 
 /**
- * Update plugin-config JSON payload for an analyzer.
- * @param {String} analyzerId
- * @param {Object} pluginConfig
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams
- */
-export const updatePluginConfig = (
-  analyzerId: string,
-  pluginConfig: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
-  const payload = JSON.stringify(pluginConfig);
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        callback(
-          {
-            ...json,
-            status: response.status,
-            statusCode: response.status,
-            statusText: response.statusText,
-            error:
-              json.error || `HTTP ${response.status}: ${response.statusText}`,
-          },
-          extraParams,
-        );
-        return;
-      }
-      callback(json, extraParams);
-    })
-    .catch((error: Error) => {
-      callback(
-        {
-          error: error.message || "Network error",
-          status: 0,
-        },
-        extraParams,
-      );
-    });
-};
-
-/**
  * Get pending unmapped codes for an analyzer.
  * @param {String} analyzerId
  * @param {Function} callback - Callback function (data) => void

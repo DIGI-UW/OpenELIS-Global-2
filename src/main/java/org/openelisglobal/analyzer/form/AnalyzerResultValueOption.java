@@ -9,8 +9,6 @@ public class AnalyzerResultValueOption {
     private Integer sortOrder;
     private Boolean normal;
     private String testId;
-    private String componentId;
-    private String componentCode;
 
     public String getId() {
         return id;
@@ -68,19 +66,4 @@ public class AnalyzerResultValueOption {
         this.testId = testId;
     }
 
-    public String getComponentId() {
-        return componentId;
-    }
-
-    public void setComponentId(String componentId) {
-        this.componentId = componentId;
-    }
-
-    public String getComponentCode() {
-        return componentCode;
-    }
-
-    public void setComponentCode(String componentCode) {
-        this.componentCode = componentCode;
-    }
 }

@@ -385,6 +385,21 @@ public class AnalyzerPluginConfigServiceTest {
     }
 
     @Test
+    public void testResolvePendingResultValue_WithoutCatalogOption_IsRejected() {
+        AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
+        existing.setId("cfg-pending");
+        existing.setAnalyzerId("101");
+        existing.setConfig(
+                "{\"pendingResultValues\":[{\"id\":\"rv-1\",\"analyzerValue\":\"Trace\",\"testCode\":\"MTB\",\"status\":\"PENDING\"}],\"resultValueMappings\":[]}");
+        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(existing));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.resolvePendingResultValue("101", "rv-1", Map.of(), "1"));
+
+        assertEquals("openelisResultOptionId is required", error.getMessage());
+    }
+
+    @Test
     public void testGetResultValueMappings_MarksLegacyStringMappingUnbound() {
         AnalyzerPluginConfig existing = new AnalyzerPluginConfig();
         existing.setId("cfg-legacy");
@@ -418,7 +433,6 @@ public class AnalyzerPluginConfigServiceTest {
         option.setValue(value);
         option.setLabel(label);
         option.setTestId("501");
-        option.setComponentId("component-primary");
         return option;
     }
 }

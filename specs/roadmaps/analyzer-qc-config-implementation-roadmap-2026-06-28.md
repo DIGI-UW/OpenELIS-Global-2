@@ -148,6 +148,13 @@ explicit action.
 - The shipped profile files remain the MVP source of truth. The current
   `openelis-work` full-scope design also describes shared/forkable persisted
   profiles; that is deferred and must not be inferred from this PR.
+- M3 is a catalog-bound configuration and resolver milestone. The harness may
+  seed an unresolved value as a test precondition, but production capture from
+  analyzer result traffic belongs to the result-import follow-on. This PR does
+  not claim a production learn-from-traffic ingestion path.
+- Analyzer QC is applicable by default. A profile may opt out only by explicitly
+  setting `qcApplicable: false`; a missing field does not silently waive QC
+  readiness.
 - Multi-component target-to-component mapping, analyzer result import, and
   Results/Validation v4 are the next milestone. They use stable component codes
   and preserve the primary-component default.
@@ -222,7 +229,8 @@ Casey's June 2026 handoff points at `OGC-1054` as the refreshed final analyzer
 phase and explicitly frames the old analyzer stories as things that should be
 closed or superseded. The practical read is: stop sizing per-analyzer
 implementation tickets first; implement the reusable profile verification,
-mapping, QC, and learn-from-traffic path.
+mapping, and QC configuration path. Runtime capture from analyzer traffic stays
+with the result-import follow-on.
 
 **`digi-uw/openelis-work` signal**
 
@@ -267,29 +275,30 @@ Use these skills as required gates for implementation:
 | `spec-code-alignment`      | Code anchors are listed before the milestone plan, and drift is called out explicitly where Jira/design text lags current code (`QcRun`, developer-facing Analyzer Types, FILE ownership).     |
 | `meaningful-test-coverage` | Every milestone starts with tests at the layer where the bug would actually fail. Load-bearing guards name the old behavior they must catch.                                                   |
 | `simplicity-review`        | Milestones extend existing analyzer, plugin-config, bridge-registration, and QC services instead of inventing parallel subsystems. Legacy removal is an acceptance gate, not a follow-up wish. |
-| `cross-repo-companion-pr`  | Bridge work is isolated in M6 with merge-order safety and degradation requirements for paired PRs.                                                                                             |
+| `cross-repo-companion-pr`  | Bridge work is isolated in the follow-on Bridge Contract Lane with merge-order safety and degradation requirements for paired PRs.                                                             |
 | `evidence-bundle`          | Browser-visible flows require Playwright/demo evidence packaging before review-ready status.                                                                                                   |
 
-## Code Baseline
+## Historical Code Baseline
 
-The implementation already has the bones we should extend:
+This table records the June 28 starting point and the July acceptance-closure
+result. Rows marked resolved must not be read as current implementation gaps.
 
 | Area                       | Current code anchor                                                                                                                                                                        | Roadmap implication                                                                                                                                                           |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Profile catalog APIs       | `AnalyzerRestController` exposes read-only `/rest/analyzer/profiles` and profile detail endpoints; create accepts `defaultConfigId`                                                        | Keep built-in profiles read-only. Add explicit analyzer-type/profile management over the current model instead of reintroducing developer-only type editing as the main path. |
 | Profile apply              | `AnalyzerServiceImpl.autoCreateTestMappings` applies `configDefaults`, `qcRules`, and `default_test_mappings`                                                                              | Build deterministic verification around this path. Tests must lock down profile defaults, QC-rule creation, LOINC mapping, and missing-catalog behavior.                      |
 | Analyzer status            | `AnalyzerStatusTransitionServiceImpl` blocks generic analyzers from `VALIDATION -> ACTIVE` without active QC rules                                                                         | Preserve and expose this as a setup readiness gate. If the UI says Ready/Active, it must mean mappings + QC readiness are true.                                               |
-| Plugin config              | `AnalyzerPluginConfigRestController` and `AnalyzerPluginConfigServiceImpl` own JSON config and pending codes                                                                               | Extend this to cover pending result values and learn-from-traffic; do not create a second pending queue.                                                                      |
+| Plugin config              | `AnalyzerPluginConfigRestController` and `AnalyzerPluginConfigServiceImpl` own JSON config and pending codes                                                                               | Resolved for MVP: explicit result-mapping, option, pending-value-resolution, and verification endpoints own protected config keys; no generic write endpoint remains.         |
 | QC rules                   | `AnalyzerQcRuleRestController` writes analyzer QC rules and syncs bridge registration                                                                                                      | Keep QC-rule edits authoritative in OpenELIS and sync to bridge. Add tests proving bridge payloads clear stale `qcRules`/`controlLots` with empty arrays.                     |
 | Bridge registration        | `BridgeRegistrationService` registers TCP/FILE analyzers and attaches `qcRules`, `controlLots`, and test-code/LOINC data                                                                   | This is the OE-owned bridge contract. Bridge work should consume this contract; OpenELIS should not own watcher/poller runtime.                                               |
 | FILE setup                 | `FileImportServiceImpl` persists FILE profile config and registers the bridge watch directory                                                                                              | Keep FILE setup/config here, but leave directory watching and file movement to bridge.                                                                                        |
 | QC processing              | `QCResultProcessingServiceImpl` sends QC observations to `QCResultService.createQCResult`                                                                                                  | This is the analyzer QC ingestion path. Manual QC should converge here where possible, not create a `QcRun` island.                                                           |
 | QC persistence/evaluation  | `QCResultServiceImpl` persists z-score, stats bootstrap, and publishes `QCResultCreatedEvent`; `QCRestController`, `QCChartDataRestController`, `QCViolationRestController` expose QC APIs | Westgard/QC dashboards already exist. Analyzer roadmap should fill gaps and integrate with v4 Results/Validation.                                                             |
-| Current Analyzer Types UI  | `/analyzers/types` routes to `AnalyzerTypeManagement`, a developer-facing plugin registry                                                                                                  | Replace or demote this as the primary route for lab admins. Keep plugin registry only as Advanced/implementer UI if still needed.                                             |
-| Current Add Analyzer route | `/analyzers/new` routes to a standalone analyzer form                                                                                                                                      | The current design says setup is inline from `/analyzers`; once the guided flow lands, redirect or retire the old route so there is one setup authority.                      |
-| Mapping UI                 | `/analyzers/:id/mappings` routes to `FieldMapping`                                                                                                                                         | Rework into the verification/mapping editor rather than adding another mapping surface.                                                                                       |
-| QC rule UI                 | `/analyzers/:id/qc-rules` routes to `QcRuleBuilderModal`                                                                                                                                   | Stabilization needed: current routed component references an undefined `open` variable.                                                                                       |
-| Control lot UI             | `ControlLotSetup.jsx` parses analyzer/test IDs as integers                                                                                                                                 | IDs should remain strings; fix before depending on this screen for analyzer QC setup.                                                                                         |
+| Current Analyzer Types UI  | `/analyzers/types` routed to a developer-facing plugin registry                                                                                                                            | Resolved: the route is a lab-facing shipped-profile verification and setup view; the duplicate registry editor is not retained.                                               |
+| Current Add Analyzer route | `/analyzers/new` routed to a standalone analyzer form                                                                                                                                      | Resolved: the old route redirects to the one inline `/analyzers?add=1` setup flow.                                                                                            |
+| Mapping UI                 | `/analyzers/:id/mappings` routed to a mixed legacy `FieldMapping` editor                                                                                                                   | Resolved: one deterministic review/verification surface owns profile mappings, pending codes, result values, and setup confirmation; raw and duplicate editors are removed.   |
+| QC rule UI                 | `/analyzers/:id/qc-rules` routed to `QcRuleBuilderModal` with broken standalone lifecycle                                                                                                  | Resolved: the routed QC workflow loads and saves without the obsolete modal-only `open` dependency.                                                                           |
+| Control lot UI             | `ControlLotSetup.jsx` parsed analyzer/test IDs as integers                                                                                                                                 | Resolved: analyzer and test IDs remain strings throughout the setup payload.                                                                                                  |
 
 ## Non-Negotiable Legacy Removal
 
@@ -435,30 +444,32 @@ the exception.
 - `meaningful-test-coverage`: prove the LOINC/QC readiness guard fails against
   a reverted/missing mapping path.
 
-### M3. Result Value Mapping + Learn-From-Traffic
+### M3. Catalog-Bound Result Value Mapping + Resolution
 
 **Goal:** complete the hard part of qualitative analyzers: analyzer result values
-map to a selected test's own result options and unmapped values never disappear.
+map only to the selected test's active catalog options, and an unresolved value
+can be reviewed and resolved without free-text targets.
 
 **Tests first**
 
-- Backend tests for pending code + pending result value creation, resolution, and
-  profile update.
-- Tests proving unmapped values are accepted/held and surfaced for review, not
-  written as silent raw patient results.
+- Backend tests for result mapping read/write, catalog validation, pending value
+  resolution, and verification blockers.
+- Tests proving a pending value cannot be ignored or resolved without an active
+  option belonging to its mapped test.
 - Frontend tests for value-map editor:
   - target options come from the matched catalog test;
   - empty result-option state points to Test Catalog;
-  - completeness `X/Y` updates after resolution.
-- Analyzer Results review test showing unmapped code/value flags are visible.
+  - bound and legacy-unbound records remain readable after save/reload.
 
 **Implementation**
 
-- Extend existing pending-code/config services to also cover pending result
-  values, unless code review proves a migration is needed.
-- Add result-value mapping model/API over the profile/plugin config path.
-- Update `FieldMapping` into the shared verification/mapping editor for analyzer
-  instances and profile context.
+- Keep result-value mappings and the resolver queue in existing analyzer plugin
+  config JSON, behind explicit owned endpoints.
+- Derive stored value and label server-side from `openelisResultOptionId`.
+- Use `FieldMapping` as the one analyzer-instance review and verification
+  surface.
+- Keep runtime capture from analyzer traffic out of this PR; result import owns
+  that production path in the next milestone.
 
 **Legacy gate**
 
@@ -468,9 +479,10 @@ map to a selected test's own result options and unmapped values never disappear.
 
 **Validation**
 
-- Backend tests at service/integration level for unresolved-item persistence.
+- Backend tests at service/integration level for resolver persistence and
+  catalog ownership.
 - Frontend component tests for editor flows.
-- Playwright case that sends/loads an unmapped value and resolves it.
+- UI-only Playwright case that resolves a fixture-provided pending value.
 - `simplicity-review`: make sure the mapping model is the smallest shape that
   supports current profile needs and not a speculative profile marketplace.
 
@@ -631,7 +643,8 @@ Recommended grooming:
 
 1. Keep `OGC-1054` as the parent for Analyzer Types/Profile + Mapping work.
 2. Create child stories matching M1-M3 if they do not already exist in Jira:
-   Analyzer Type/Profile list, guided setup, result-value mapping/learn-from-traffic.
+   Analyzer Type/Profile list, guided setup, and catalog-bound result-value
+   mapping/resolution.
 3. Align analyzer QC work under `OGC-426` but rewrite `OGC-428` away from
    `QcRun`; either make it a `QCResult`/control persistence story or explicitly
    mark it superseded by the analyzer QC lane.
@@ -645,22 +658,24 @@ Recommended grooming:
 
 ## Deterministic Next Steps
 
-1. Open the ready-for-review PR for `codex/ogc-1054-analyzer-qc-mvp` against
-   `develop`.
-2. Run backend, frontend, formatting, and code-qa validation gates before opening
-   the PR and include the validation/evidence summary in the PR body.
-3. Attach or link the generated Playwright/evidence-bundle proof for review.
-4. File bridge companion work only from concrete OpenELIS contract-test evidence;
-   do not add an OE-side FILE poller as a workaround.
-5. Groom Jira text so `OGC-1054` child stories and analyzer QC scope stop
-   pointing engineers at stale `QcRun`/per-adapter pathways.
+1. Finish the code-qa remediation commit on the existing non-draft PR and require
+   backend, frontend, E2E, formatting, and review-tooling CI to pass.
+2. Deploy the exact repaired application SHA with the exact review-tooling SHA
+   to `analyzers.openelis-global.org`, publish build metadata, and seed only the
+   declared harness preconditions.
+3. Run the UI-only non-video story, inspect console/trace/runtime output and
+   desktop/mobile screenshots against the pinned `openelis-work` designs, then
+   run the paced video project.
+4. Complete `AN-QC-001` through `AN-QC-008` in the live Review overlay and
+   download the build-bound Markdown/JSON report.
+5. Package the MP4, screenshots, test results, build/checklist metadata, and UAT
+   report with `digi-uw/code-qa`; then update milestone classifications and the
+   PR review context.
+6. File bridge work only if contract evidence demonstrates missing behavior, and
+   keep result import/multi-component/v4 work in the next milestone.
 
-## Review Questions
+## Follow-Up Decisions
 
-- Should the plugin registry remain reachable as an Advanced page, or should it
-  be fully removed from the UI once Analyzer Types/Profile management lands?
-- Should pending unmapped values resolve from both Analyzer Results review and the
-  mapping editor, or only one canonical place with links from the other?
 - For manual/RDT control persistence, do we represent it directly as `QCResult`
   plus typed metadata, or introduce a small shared control-result entity that
   still feeds `QCResult`/Westgard and v4 QC-fail signals?

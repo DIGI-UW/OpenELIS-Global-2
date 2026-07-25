@@ -172,6 +172,42 @@ public class AnalyzerSetupVerificationServiceTest {
     }
 
     @Test
+    public void getVerificationStatus_AfterQcChange_MarksVerificationStale() {
+        Map<String, Object> before = service.getVerificationStatus("2013");
+        pluginConfig.put("setupVerification",
+                Map.of("mappingFingerprint", before.get("mappingFingerprint"), "qcFingerprint",
+                        before.get("qcFingerprint"), "mappingIds", before.get("mappingIds"), "qcIds",
+                        before.get("qcIds"), "verifiedBy", "77", "verifiedAt", "2026-07-24T12:00:00Z"));
+
+        AnalyzerQcRule changedRule = new AnalyzerQcRule();
+        changedRule.setId("rule-1");
+        changedRule.setAnalyzerId("2013");
+        changedRule.setRuleType(AnalyzerQcRule.RuleType.FIELD_EQUALS);
+        changedRule.setTargetField("Q.3");
+        changedRule.setOperand("CALIBRATION");
+        changedRule.setActive(true);
+        when(analyzerQcRuleService.getActiveRulesForAnalyzer("2013")).thenReturn(List.of(changedRule));
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertFalse((Boolean) status.get("currentlyVerified"));
+        assertFalse((Boolean) status.get("readyForActivation"));
+        assertEquals("STALE", status.get("verificationState"));
+        assertTrue(list(status.get("blockers")).contains("QC_CHANGED"));
+    }
+
+    @Test
+    public void verifySetup_WithIgnoredPendingResultValue_IsRejected() {
+        when(analyzerPluginConfigService.getPendingResultValues("2013"))
+                .thenReturn(List.of(Map.of("id", "rv-ignored", "status", "IGNORED", "testCode", "MTB")));
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertFalse((Boolean) status.get("mappingReady"));
+        assertTrue(list(status.get("blockers")).contains("PENDING_RESULT_VALUES"));
+    }
+
+    @Test
     public void verifySetup_WithLegacyUnboundResultMapping_IsRejected() {
         when(analyzerPluginConfigService.getResultValueMappings("2013"))
                 .thenReturn(List.of(Map.of("analyzerValue", "DETECTED", "testCode", "MTB", "openelisValue",

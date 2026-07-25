@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -94,13 +95,26 @@ public class AnalyzerPendingCodeServiceTest {
     public void testUpdateStatus_ValidTransition_Succeeds() {
         AnalyzerPendingCode existing = new AnalyzerPendingCode();
         existing.setId("pc-2");
+        existing.setAnalyzerId("101");
         existing.setStatus(AnalyzerPendingCode.Status.PENDING);
         when(analyzerPendingCodeDAO.get("pc-2")).thenReturn(Optional.of(existing));
 
-        AnalyzerPendingCode updated = service.updateStatus("pc-2", AnalyzerPendingCode.Status.MAPPED, "1");
+        AnalyzerPendingCode updated = service.updateStatus("101", "pc-2", AnalyzerPendingCode.Status.MAPPED, "1");
 
         assertEquals(AnalyzerPendingCode.Status.MAPPED, updated.getStatus());
         assertNotNull(updated.getLastSeenAt());
         verify(analyzerPendingCodeDAO).update(existing);
+    }
+
+    @Test
+    public void testUpdateStatus_ForDifferentAnalyzer_IsRejected() {
+        AnalyzerPendingCode existing = new AnalyzerPendingCode();
+        existing.setId("pc-2");
+        existing.setAnalyzerId("202");
+        existing.setStatus(AnalyzerPendingCode.Status.PENDING);
+        when(analyzerPendingCodeDAO.get("pc-2")).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateStatus("101", "pc-2", AnalyzerPendingCode.Status.MAPPED, "1"));
     }
 }

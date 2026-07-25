@@ -451,6 +451,32 @@ describe("AnalyzersList", () => {
     ).toHaveTextContent(messages["analyzer.setupReadiness.ready"]);
   });
 
+  test("testAnalyzerSetupReadiness_DoesNotInferReadinessFromQcCollections", async () => {
+    getAnalyzers.mockImplementation((filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "1",
+              name: "Unverified Analyzer",
+              status: "VALIDATION",
+              qcRules: [{ id: "rule-1", isActive: true }],
+              controlLots: [{ id: "lot-1", status: "ACTIVE" }],
+            }),
+          ],
+        });
+      });
+    });
+
+    act(() => {
+      renderWithIntl(<AnalyzersList />);
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-qc-readiness-1"),
+    ).toHaveTextContent(messages["analyzer.setupReadiness.required"]);
+  });
+
   /**
    * Test: Lifecycle stage filter filters analyzers correctly
    *

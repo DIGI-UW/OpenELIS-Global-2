@@ -180,7 +180,7 @@ public class AnalyzerSetupVerificationServiceImpl implements AnalyzerSetupVerifi
         if (pendingCodes.stream().anyMatch(code -> code.getStatus() == AnalyzerPendingCode.Status.PENDING)) {
             blockers.add("PENDING_ANALYZER_CODES");
         }
-        if (pendingResultValues.stream().anyMatch(value -> "PENDING".equals(value(value.get("status"))))) {
+        if (pendingResultValues.stream().anyMatch(value -> !"MAPPED".equals(value(value.get("status"))))) {
             blockers.add("PENDING_RESULT_VALUES");
         }
         if (resultMappings.stream().filter(mapping -> !Boolean.FALSE.equals(mapping.get("active")))

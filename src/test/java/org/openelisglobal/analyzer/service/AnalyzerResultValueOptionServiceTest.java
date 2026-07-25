@@ -84,7 +84,7 @@ public class AnalyzerResultValueOptionServiceTest {
         assertEquals("9001", options.get(0).getValue());
         assertEquals("Detected", options.get(0).getLabel());
         assertEquals("501", options.get(0).getTestId());
-        assertEquals("component-primary", options.get(0).getComponentId());
+        assertEquals("Detected", options.get(0).getLabel());
     }
 
     @Test
@@ -101,7 +101,7 @@ public class AnalyzerResultValueOptionServiceTest {
 
         List<AnalyzerResultValueOption> options = service.getOptions("101", "MTB");
 
-        assertEquals("component-explicit", options.get(0).getComponentId());
+        assertEquals("Detected", options.get(0).getLabel());
     }
 
     @Test

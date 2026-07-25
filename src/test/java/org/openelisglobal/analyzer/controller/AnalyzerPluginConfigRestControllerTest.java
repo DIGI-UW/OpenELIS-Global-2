@@ -107,8 +107,8 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         updated.setId("pc-1");
         updated.setAnalyzerId("101");
         updated.setStatus(AnalyzerPendingCode.Status.MAPPED);
-        when(analyzerPendingCodeService.updateStatus(eq("pc-1"), eq(AnalyzerPendingCode.Status.MAPPED), any()))
-                .thenReturn(updated);
+        when(analyzerPendingCodeService.updateStatus(eq("101"), eq("pc-1"), eq(AnalyzerPendingCode.Status.MAPPED),
+                any())).thenReturn(updated);
 
         mockMvc.perform(
                 put("/rest/analyzer/analyzers/101/pending-codes/pc-1/status").with(user("admin").roles("GLOBAL_ADMIN"))
@@ -135,7 +135,6 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         option.setValue("9001");
         option.setLabel("Detected");
         option.setTestId("501");
-        option.setComponentId("component-primary");
         when(analyzerResultValueOptionService.findOptions("101", "MTB")).thenReturn(List.of(option));
 
         mockMvc.perform(get("/rest/analyzer/analyzers/101/result-value-options").param("testCode", "MTB")
@@ -157,16 +156,27 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
 
     @Test
     public void testUpdateResultValueMappings_Returns200() throws Exception {
-        Map<String, Object> response = Map.of("resultValueMappings",
-                List.of(Map.of("analyzerValue", "Detected", "openelisValue", "POSITIVE")));
+        Map<String, Object> response = Map.of("resultValueMappings", List.of(Map.of("analyzerValue", "Detected",
+                "testCode", "MTB", "openelisResultOptionId", "result-option-1", "openelisValue", "9001")));
         when(analyzerPluginConfigService.updateResultValueMappings(eq("101"), any(List.class), any()))
                 .thenReturn(response);
 
         mockMvc.perform(put("/rest/analyzer/analyzers/101/result-value-mappings")
+                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON).content(
+                        "[{\"analyzerValue\":\"Detected\",\"testCode\":\"MTB\",\"openelisResultOptionId\":\"result-option-1\"}]"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultValueMappings[0].openelisValue").value("9001"));
+    }
+
+    @Test
+    public void testUpdateResultValueMappings_FreeTextTargetReturns400() throws Exception {
+        when(analyzerPluginConfigService.updateResultValueMappings(eq("101"), any(List.class), any()))
+                .thenThrow(new IllegalArgumentException("openelisResultOptionId is required"));
+
+        mockMvc.perform(put("/rest/analyzer/analyzers/101/result-value-mappings")
                 .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON)
-                .content("[{\"analyzerValue\":\"Detected\",\"openelisValue\":\"POSITIVE\"}]"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.resultValueMappings[0].openelisValue").value("POSITIVE"));
+                .content("[{\"analyzerValue\":\"Detected\",\"testCode\":\"MTB\",\"openelisValue\":\"POSITIVE\"}]"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("openelisResultOptionId is required"));
     }
 
     @Test

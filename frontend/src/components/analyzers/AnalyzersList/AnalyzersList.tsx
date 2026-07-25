@@ -293,19 +293,8 @@ const AnalyzersList = () => {
   const setupParams = new URLSearchParams(location.search || "");
   const isSetupFlow = setupParams.get("add") === "1";
 
-  const hasActiveQcRules = (analyzer) =>
-    Array.isArray(analyzer?.qcRules) &&
-    analyzer.qcRules.some((rule) => rule?.isActive !== false);
-
-  const hasActiveControlLots = (analyzer) =>
-    Array.isArray(analyzer?.controlLots) &&
-    analyzer.controlLots.some((lot) => (lot?.status || "ACTIVE") === "ACTIVE");
-
-  const isQcReady = (analyzer) =>
-    hasActiveQcRules(analyzer) && hasActiveControlLots(analyzer);
-
   const isSetupReady = (analyzer) =>
-    analyzer?.setupVerification?.readyForActivation ?? isQcReady(analyzer);
+    analyzer?.setupVerification?.readyForActivation === true;
 
   return (
     <div className="analyzers-list" data-testid="analyzers-list">

@@ -68,7 +68,7 @@ public class QCRestController extends BaseRestController {
     @Autowired
     private QCDashboardService dashboardService;
 
-    @Autowired(required = false)
+    @Autowired
     private AnalyzerBridgeSyncService analyzerBridgeSyncService;
 
     @InitBinder
@@ -534,8 +534,7 @@ public class QCRestController extends BaseRestController {
     }
 
     private void pushAnalyzerBridgeSync(QCControlLot controlLot) {
-        if (analyzerBridgeSyncService == null || controlLot == null || controlLot.getInstrumentId() == null
-                || controlLot.getInstrumentId().isBlank()) {
+        if (controlLot == null || controlLot.getInstrumentId() == null || controlLot.getInstrumentId().isBlank()) {
             return;
         }
         analyzerBridgeSyncService.pushAnalyzer(controlLot.getInstrumentId());

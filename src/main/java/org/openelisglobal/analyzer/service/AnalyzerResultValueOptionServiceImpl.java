@@ -86,8 +86,6 @@ public class AnalyzerResultValueOptionServiceImpl implements AnalyzerResultValue
         dto.setSortOrder(parseInteger(option.getSortOrder()));
         dto.setNormal(option.getIsNormal());
         dto.setTestId(mapping.getTestId());
-        dto.setComponentId(component.getId());
-        dto.setComponentCode(component.getCode());
         return dto;
     }
 

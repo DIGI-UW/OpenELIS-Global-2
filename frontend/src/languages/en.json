@@ -463,7 +463,7 @@
   "analyzer.setupVerification.blocker.noTestMappings": "At least one analyzer test mapping is required.",
   "analyzer.setupVerification.blocker.notVerified": "The current setup has not been verified.",
   "analyzer.setupVerification.blocker.pendingAnalyzerCodes": "Resolve or ignore pending analyzer test codes.",
-  "analyzer.setupVerification.blocker.pendingResultValues": "Resolve or ignore pending analyzer result values.",
+  "analyzer.setupVerification.blocker.pendingResultValues": "Resolve pending analyzer result values to catalog options.",
   "analyzer.setupVerification.blocker.qcChanged": "QC setup changed",
   "analyzer.setupVerification.blocker.unboundResultValues": "Legacy or invalid result mappings must be bound to Test Catalog options.",
   "analyzer.setupVerification.blocker.unknown": "The setup has an unresolved readiness issue.",

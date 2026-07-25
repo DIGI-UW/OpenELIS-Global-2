@@ -54,19 +54,6 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
         }
     }
 
-    @PutMapping("/analyzers/{analyzerId}/plugin-config")
-    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
-    public ResponseEntity<Map<String, Object>> updatePluginConfig(@PathVariable String analyzerId,
-            @RequestBody Map<String, Object> body, HttpServletRequest request) {
-        try {
-            analyzerPluginConfigService.upsert(analyzerId, body, getSysUserId(request));
-            return ResponseEntity.ok(analyzerPluginConfigService.getConfigAsMap(analyzerId));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(AnalyzerControllerHelper.wrapError("Failed to update plugin config: " + e.getMessage()));
-        }
-    }
-
     @GetMapping("/analyzers/{analyzerId}/pending-codes")
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getPendingCodes(@PathVariable String analyzerId) {
@@ -93,7 +80,7 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
         try {
             String requested = String.valueOf(body.get("status"));
             AnalyzerPendingCode.Status status = AnalyzerPendingCode.Status.valueOf(requested);
-            AnalyzerPendingCode updated = analyzerPendingCodeService.updateStatus(pendingCodeId, status,
+            AnalyzerPendingCode updated = analyzerPendingCodeService.updateStatus(analyzerId, pendingCodeId, status,
                     getSysUserId(request));
 
             Map<String, Object> response = new LinkedHashMap<>();

@@ -130,6 +130,14 @@ const ResultValueMappingsPanel = ({
       if (optionId) {
         updated.openelisResultOptionId = optionId;
       }
+      if (mapping.active === false) {
+        if (mapping.openelisValue) {
+          updated.openelisValue = mapping.openelisValue;
+        }
+        if (mapping.openelisLabel) {
+          updated.openelisLabel = mapping.openelisLabel;
+        }
+      }
       return updated;
     });
 

@@ -125,7 +125,7 @@ async function verifyResults(
   await presentation.pause(2_000);
 }
 
-test.describe("GeneXpert ASTM demo story", () => {
+test.describe("GeneXpert ASTM harness integration", () => {
   test.setTimeout(180_000);
 
   test("review and accept staged ASTM results", async ({ page }, testInfo) => {
@@ -159,7 +159,7 @@ test.describe("GeneXpert ASTM demo story", () => {
 
     await presentation.title(
       "Story Complete",
-      "The GeneXpert workflow stayed UI-only in both demo modes.",
+      "The GeneXpert message reached the visible results workflow.",
     );
   });
 });

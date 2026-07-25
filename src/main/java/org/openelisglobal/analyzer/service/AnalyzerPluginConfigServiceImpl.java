@@ -214,27 +214,23 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
                 .filter(value -> pendingResultValueId.equals(String.valueOf(value.get("id")))).findFirst().orElseThrow(
                         () -> new IllegalArgumentException("Pending result value not found: " + pendingResultValueId));
 
-        String requestedStatus = normalizedString(request != null ? request.get("status") : null);
         String optionId = trimmedString(request != null ? request.get("openelisResultOptionId") : null);
-        String status = requestedStatus != null ? requestedStatus : (optionId != null ? "MAPPED" : "IGNORED");
-        if (!"MAPPED".equals(status) && !"IGNORED".equals(status)) {
-            throw new IllegalArgumentException("status must be MAPPED or IGNORED");
+        if (optionId == null) {
+            throw new IllegalArgumentException("openelisResultOptionId is required");
         }
 
-        pending.put("status", status);
-        if ("MAPPED".equals(status)) {
-            String testCode = trimmedString(pending.get("testCode"));
-            if (testCode == null) {
-                throw new IllegalArgumentException("Pending result value does not identify an analyzer test code");
-            }
-            AnalyzerResultValueOption option = analyzerResultValueOptionService.requireValidOption(analyzerId, testCode,
-                    optionId);
-            pending.put("openelisResultOptionId", option.getId());
-            pending.put("openelisValue", option.getValue());
-            pending.put("openelisLabel", option.getLabel());
-            pending.put("bindingStatus", "BOUND");
-            upsertResultValueMapping(resultMappings, pending, option);
+        String testCode = trimmedString(pending.get("testCode"));
+        if (testCode == null) {
+            throw new IllegalArgumentException("Pending result value does not identify an analyzer test code");
         }
+        AnalyzerResultValueOption option = analyzerResultValueOptionService.requireValidOption(analyzerId, testCode,
+                optionId);
+        pending.put("status", "MAPPED");
+        pending.put("openelisResultOptionId", option.getId());
+        pending.put("openelisValue", option.getValue());
+        pending.put("openelisLabel", option.getLabel());
+        pending.put("bindingStatus", "BOUND");
+        upsertResultValueMapping(resultMappings, pending, option);
 
         config.put(PENDING_RESULT_VALUES, pendingValues);
         config.put(RESULT_VALUE_MAPPINGS, resultMappings);

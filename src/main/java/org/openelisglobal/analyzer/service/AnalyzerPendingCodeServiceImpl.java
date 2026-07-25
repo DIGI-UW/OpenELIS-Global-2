@@ -74,8 +74,12 @@ public class AnalyzerPendingCodeServiceImpl extends BaseObjectServiceImpl<Analyz
     }
 
     @Override
-    public AnalyzerPendingCode updateStatus(String pendingCodeId, AnalyzerPendingCode.Status status, String sysUserId) {
+    public AnalyzerPendingCode updateStatus(String analyzerId, String pendingCodeId, AnalyzerPendingCode.Status status,
+            String sysUserId) {
         AnalyzerPendingCode code = get(pendingCodeId);
+        if (code == null || !analyzerId.equals(code.getAnalyzerId())) {
+            throw new IllegalArgumentException("Pending analyzer code does not belong to analyzer " + analyzerId);
+        }
         code.setStatus(status);
         code.setLastSeenAt(new Timestamp(System.currentTimeMillis()));
         code.setSysUserId(sysUserId);

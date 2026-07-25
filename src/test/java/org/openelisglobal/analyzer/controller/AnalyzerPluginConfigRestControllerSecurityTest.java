@@ -4,6 +4,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Map;
@@ -55,6 +56,13 @@ public class AnalyzerPluginConfigRestControllerSecurityTest extends SecuritySlic
         mockMvc.perform(get("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, userSessionData)
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+    }
+
+    @Test
+    public void testUpdatePluginConfig_GenericWriteRouteIsNotAvailable() throws Exception {
+        mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"resultValueMappings\":[]}"))
+                .andExpect(status().isMethodNotAllowed());
     }
 
     @Configuration

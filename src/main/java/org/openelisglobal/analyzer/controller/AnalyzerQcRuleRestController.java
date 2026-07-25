@@ -32,7 +32,7 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
     @Autowired
     private AnalyzerQcRuleService analyzerQcRuleService;
 
-    @Autowired(required = false)
+    @Autowired
     private AnalyzerBridgeSyncService analyzerBridgeSyncService;
 
     @GetMapping("/analyzers/{analyzerId}/qc-rules")
@@ -101,9 +101,7 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
     }
 
     private void pushToBridge(String analyzerId) {
-        if (analyzerBridgeSyncService != null) {
-            analyzerBridgeSyncService.pushAnalyzer(analyzerId);
-        }
+        analyzerBridgeSyncService.pushAnalyzer(analyzerId);
     }
 
     private Map<String, Object> ruleToMap(AnalyzerQcRule rule) {
