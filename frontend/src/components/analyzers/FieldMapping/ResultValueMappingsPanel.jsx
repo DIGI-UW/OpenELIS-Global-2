@@ -103,6 +103,9 @@ const ResultValueMappingsPanel = ({
   const mappingKey = (mapping) =>
     `${mapping.testCode || ""}:${mapping.analyzerValue || ""}`;
   const activeMappings = mappings.filter((mapping) => mapping.active !== false);
+  const unresolvedPendingValues = pendingValues.filter(
+    (pendingValue) => !pendingValue.status || pendingValue.status === "PENDING",
+  );
   const hasUnboundMappings = activeMappings.some(
     (mapping) => mapping.bindingStatus !== "BOUND",
   );
@@ -319,7 +322,7 @@ const ResultValueMappingsPanel = ({
       <h5 className="result-value-pending-heading">
         <FormattedMessage id="analyzer.fieldMapping.resultValues.pendingTitle" />
       </h5>
-      {pendingValues.length === 0 ? (
+      {unresolvedPendingValues.length === 0 ? (
         <p data-testid="pending-result-values-empty">
           <FormattedMessage id="analyzer.fieldMapping.resultValues.pendingEmpty" />
         </p>
@@ -351,7 +354,7 @@ const ResultValueMappingsPanel = ({
             </tr>
           </thead>
           <tbody>
-            {pendingValues.map((pendingValue) => (
+            {unresolvedPendingValues.map((pendingValue) => (
               <tr key={pendingValue.id}>
                 <td>{pendingValue.analyzerValue}</td>
                 <td>{pendingValue.testCode || "-"}</td>

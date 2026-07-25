@@ -132,6 +132,34 @@ describe("ResultValueMappingsPanel", () => {
     ).toHaveAttribute("href", "/MasterListsPage/TestCatalogList");
   });
 
+  test("does not leave resolved values in the pending queue", () => {
+    renderWithIntl(
+      <ResultValueMappingsPanel
+        analyzerId="2013"
+        pendingValues={[
+          {
+            id: "rv-1",
+            analyzerValue: "Trace",
+            testCode: "MTB",
+            status: "MAPPED",
+            openelisResultOptionId: "result-option-detected",
+            openelisLabel: "Detected",
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByTestId("pending-result-values-empty"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("pending-result-values-table"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("result-value-resolve-rv-1"),
+    ).not.toBeInTheDocument();
+  });
+
   test("binds legacy profile mappings to catalog options before verification", async () => {
     const onUpdated = vi.fn();
     analyzerService.getResultValueOptions.mockImplementation(

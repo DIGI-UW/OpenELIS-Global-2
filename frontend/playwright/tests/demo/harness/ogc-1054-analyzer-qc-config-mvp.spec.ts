@@ -187,19 +187,28 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       await pendingRow
         .getByTestId("result-value-resolve-uat-mtb-trace")
         .click();
-      await expect(pendingRow).toContainText("MAPPED", {
-        timeout: LONG_TIMEOUT,
-      });
-      await expect(pendingRow).toContainText(/Detected/i);
+      await expect(page.getByTestId("pending-result-values-empty")).toBeVisible(
+        {
+          timeout: LONG_TIMEOUT,
+        },
+      );
+      const configuredRow = page
+        .getByTestId("result-value-mappings-table")
+        .locator("tbody tr", { hasText: "MTB TRACE DETECTED" });
+      await expect(configuredRow).toContainText(/Detected/i);
+      await expect(configuredRow).toContainText("BOUND");
 
       await page.reload({ waitUntil: "domcontentloaded" });
       const persistedRow = page
-        .getByTestId("pending-result-values-table")
+        .getByTestId("result-value-mappings-table")
         .locator("tbody tr", { hasText: "MTB TRACE DETECTED" });
-      await expect(persistedRow).toContainText("MAPPED", {
+      await expect(persistedRow).toContainText("BOUND", {
         timeout: LONG_TIMEOUT,
       });
       await expect(persistedRow).toContainText(/Detected/i);
+      await expect(
+        page.getByTestId("pending-result-values-empty"),
+      ).toBeVisible();
       await demo.evidence("an-qc-005-pending-result-resolved");
     });
 

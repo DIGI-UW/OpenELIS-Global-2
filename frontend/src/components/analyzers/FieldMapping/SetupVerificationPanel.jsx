@@ -4,6 +4,7 @@ import {
   InlineLoading,
   InlineNotification,
   Link,
+  Stack,
   Tag,
 } from "@carbon/react";
 import { CheckmarkFilled } from "@carbon/icons-react";
@@ -159,7 +160,11 @@ const SetupVerificationPanel = ({ analyzerId }) => {
         </p>
       )}
 
-      <div className="setup-verification-actions">
+      <Stack
+        className="setup-verification-actions"
+        orientation="horizontal"
+        gap={4}
+      >
         <Button
           size="sm"
           kind="primary"
@@ -175,7 +180,7 @@ const SetupVerificationPanel = ({ analyzerId }) => {
         <Link href={`/analyzers/qc/control-lots/new?analyzerId=${analyzerId}`}>
           <FormattedMessage id="analyzer.setupVerification.manageLots" />
         </Link>
-      </div>
+      </Stack>
     </div>
   );
 };

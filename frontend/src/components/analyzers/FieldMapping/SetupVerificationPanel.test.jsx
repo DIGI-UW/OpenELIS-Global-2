@@ -102,6 +102,10 @@ describe("SetupVerificationPanel", () => {
     expect(
       screen.getByRole("link", { name: "Add or select control lot" }),
     ).toHaveAttribute("href", "/analyzers/qc/control-lots/new?analyzerId=2013");
+    expect(document.querySelector(".setup-verification-actions")).toHaveClass(
+      "cds--stack-horizontal",
+      "cds--stack-scale-4",
+    );
     expect(
       screen.getByRole("button", { name: "Verify current setup" }),
     ).toBeDisabled();
