@@ -129,6 +129,10 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       await expect(
         page.getByTestId("pending-result-values-empty"),
       ).toBeVisible();
+      await expect(page.getByTestId("field-mapping-warning")).toHaveCount(0);
+      await expect(page.getByTestId("field-mapping-stats")).toHaveCount(0);
+      await expect(page.getByTestId("field-mapping-actions")).toHaveCount(0);
+      await expect(page.getByTestId("field-mapping-panel")).toHaveCount(0);
 
       const verification = page.getByTestId("setup-verification-panel");
       await expect(verification).toContainText("Setup incomplete");
@@ -208,6 +212,10 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       await expect(page.getByTestId("qc-rule-page")).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
+      await expect(page.getByTestId("page-title")).toContainText(analyzerName);
+      await expect(page.getByTestId("page-title")).not.toContainText(
+        "{analyzerName}",
+      );
       await page.getByTestId("qc-rule-add-btn").click();
       await selectCarbonItem(
         page.getByRole("combobox", { name: "Rule Type" }),

@@ -565,7 +565,7 @@ describe("FieldMapping", () => {
     expect(screen.getByText("Trace")).toBeInTheDocument();
   });
 
-  test("testProfileAppliedMappingsReview_DisplaysLabFacingReviewWithoutRawConfig", async () => {
+  test("testProfileAppliedMappingsReview_UsesOnlyLabFacingProfileWorkflow", async () => {
     analyzerService.getAnalyzer.mockImplementation((id, callback) => {
       callback({
         id: "1",
@@ -598,7 +598,11 @@ describe("FieldMapping", () => {
     });
     analyzerService.getPluginConfig.mockImplementation((id, callback) => {
       callback({
-        analyzer_name: "Cepheid GeneXpert (ASTM Mode)",
+        profile: {
+          id: "hl7/genexpert-hl7",
+          analyzerName: "Cepheid GeneXpert (HL7 Mode)",
+          protocol: "HL7",
+        },
         default_test_mappings: [
           {
             analyzer_code: "MTB",
@@ -620,6 +624,14 @@ describe("FieldMapping", () => {
     expect(
       screen.queryByTestId("plugin-config-snapshot"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("field-mapping-warning"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("field-mapping-stats")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("field-mapping-actions"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("field-mapping-panel")).not.toBeInTheDocument();
   });
 
   /**

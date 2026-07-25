@@ -178,7 +178,10 @@ const QcRulePage = () => {
             link: `/analyzers/${analyzerId}/edit`,
           },
           {
-            label: intl.formatMessage({ id: "analyzer.qcRules.modal.title" }),
+            label: intl.formatMessage(
+              { id: "analyzer.qcRules.modal.title" },
+              { analyzerName: analyzer?.name || "..." },
+            ),
           },
         ]}
       />

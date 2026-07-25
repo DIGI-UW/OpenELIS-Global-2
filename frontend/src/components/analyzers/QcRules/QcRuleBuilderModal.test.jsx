@@ -59,6 +59,10 @@ describe("QcRulePage", () => {
     renderWithIntl(<QcRulePage />);
 
     await screen.findByTestId("qc-rule-page");
+    expect(
+      await screen.findByText("QC Sample Identification Rules — Analyzer One"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\\{analyzerName\\}/)).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(getQcRules).toHaveBeenCalledWith("AN-STR-1", expect.any(Function));

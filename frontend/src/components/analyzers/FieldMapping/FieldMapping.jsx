@@ -64,6 +64,15 @@ const testIdPart = (value) =>
     .replace(/[^a-zA-Z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "") || "unknown";
 
+const isProfileDrivenConfig = (pluginConfig) => {
+  const config = pluginConfig?.config || pluginConfig || {};
+  return Boolean(
+    config.profile &&
+    typeof config.profile === "object" &&
+    Object.keys(config.profile).length > 0,
+  );
+};
+
 const extractProfileAppliedMappings = (pluginConfig, mappings, fields) => {
   const config = pluginConfig?.config || pluginConfig || {};
   const configuredMappings = asArray(
@@ -319,6 +328,7 @@ const FieldMapping = () => {
     mappings,
     fields,
   );
+  const isProfileDriven = isProfileDrivenConfig(pluginConfig);
   const showAdvancedConfig =
     new URLSearchParams(location.search || "").get("advanced") === "1";
 
@@ -398,7 +408,7 @@ const FieldMapping = () => {
         </Grid>
       )}
 
-      {hasUnmappedRequired && (
+      {!isProfileDriven && hasUnmappedRequired && (
         <Grid>
           <Column lg={16} md={8} sm={4}>
             <InlineNotification
@@ -437,48 +447,52 @@ const FieldMapping = () => {
         </Column>
       </Grid>
 
-      <Grid className="field-mapping-stats" data-testid="field-mapping-stats">
-        <Column lg={5} md={4} sm={4}>
-          <Tile data-testid="stat-total-mappings">
-            <div className="stat-label">
-              {intl.formatMessage({ id: "analyzer.fieldMapping.stats.total" })}
-            </div>
-            <div className="stat-value">{mappings.length}</div>
-          </Tile>
-        </Column>
-        <Column lg={6} md={4} sm={4}>
-          <Tile data-testid="stat-required-mappings">
-            <div className="stat-label">
-              {intl.formatMessage({
-                id: "analyzer.fieldMapping.stats.required",
-              })}
-            </div>
-            <div className="stat-value">{requiredMappings}</div>
-          </Tile>
-        </Column>
-        <Column lg={5} md={4} sm={4}>
-          <Tile data-testid="stat-unmapped-fields">
-            <div className="stat-label">
-              {intl.formatMessage({
-                id: "analyzer.fieldMapping.stats.unmapped",
-              })}
-            </div>
-            <div className="stat-value">{unmappedFieldsCount}</div>
-          </Tile>
-        </Column>
-        <Column lg={16} md={8} sm={4}>
-          <Tile data-testid="stat-pending-codes">
-            <div className="stat-label">
-              {intl.formatMessage({
-                id: "analyzer.fieldMapping.stats.pendingCodes",
-              })}
-            </div>
-            <div className="stat-value stat-value-small">
-              {activePendingCodes}
-            </div>
-          </Tile>
-        </Column>
-      </Grid>
+      {!isProfileDriven && (
+        <Grid className="field-mapping-stats" data-testid="field-mapping-stats">
+          <Column lg={5} md={4} sm={4}>
+            <Tile data-testid="stat-total-mappings">
+              <div className="stat-label">
+                {intl.formatMessage({
+                  id: "analyzer.fieldMapping.stats.total",
+                })}
+              </div>
+              <div className="stat-value">{mappings.length}</div>
+            </Tile>
+          </Column>
+          <Column lg={6} md={4} sm={4}>
+            <Tile data-testid="stat-required-mappings">
+              <div className="stat-label">
+                {intl.formatMessage({
+                  id: "analyzer.fieldMapping.stats.required",
+                })}
+              </div>
+              <div className="stat-value">{requiredMappings}</div>
+            </Tile>
+          </Column>
+          <Column lg={5} md={4} sm={4}>
+            <Tile data-testid="stat-unmapped-fields">
+              <div className="stat-label">
+                {intl.formatMessage({
+                  id: "analyzer.fieldMapping.stats.unmapped",
+                })}
+              </div>
+              <div className="stat-value">{unmappedFieldsCount}</div>
+            </Tile>
+          </Column>
+          <Column lg={16} md={8} sm={4}>
+            <Tile data-testid="stat-pending-codes">
+              <div className="stat-label">
+                {intl.formatMessage({
+                  id: "analyzer.fieldMapping.stats.pendingCodes",
+                })}
+              </div>
+              <div className="stat-value stat-value-small">
+                {activePendingCodes}
+              </div>
+            </Tile>
+          </Column>
+        </Grid>
+      )}
 
       <Grid className="field-mapping-profile-review">
         <Column lg={16} md={8} sm={4}>
@@ -618,205 +632,207 @@ const FieldMapping = () => {
         <ValidationDashboard analyzerId={analyzerId} status={analyzer.status} />
       )}
 
-      <div
-        className="field-mapping-actions"
-        data-testid="field-mapping-actions"
-      >
-        <Button
-          kind="tertiary"
-          data-testid="field-mapping-query-button"
-          onClick={() => {
-            analyzerService.queryAnalyzer(analyzerId, (resp, error) => {
-              if (error) {
-                setQueryModalOpen(true);
-                return;
-              }
+      {!isProfileDriven && (
+        <>
+          <div
+            className="field-mapping-actions"
+            data-testid="field-mapping-actions"
+          >
+            <Button
+              kind="tertiary"
+              data-testid="field-mapping-query-button"
+              onClick={() => {
+                analyzerService.queryAnalyzer(analyzerId, (resp, error) => {
+                  if (error) {
+                    setQueryModalOpen(true);
+                    return;
+                  }
 
-              if (resp && resp.jobId) {
-                setQueryJobId(resp.jobId);
-                setQueryModalOpen(true);
-              } else if (
-                resp &&
-                Array.isArray(resp.fields) &&
-                resp.fields.length > 0
-              ) {
-                setFields(resp.fields);
-                setQueryModalOpen(true);
-              } else {
-                setQueryModalOpen(true);
-              }
-            });
-          }}
-        >
-          <FormattedMessage id="analyzer.fieldMapping.queryAnalyzer" />
-        </Button>
-        <Button
-          kind="ghost"
-          data-testid="field-mapping-test-button"
-          onClick={() => setTestMappingModalOpen(true)}
-        >
-          <FormattedMessage id="analyzer.fieldMapping.testMapping" />
-        </Button>
-        <Button kind="primary" data-testid="field-mapping-save-button">
-          <FormattedMessage id="analyzer.fieldMapping.save" />
-        </Button>
-      </div>
-
-      <Grid className="field-mapping-grid">
-        <Column lg={8} md={8} sm={4}>
-          <FieldMappingPanel
-            fields={filteredFields}
-            selectedField={selectedField}
-            onFieldSelect={handleFieldSelect}
-            searchTerm={searchTerm}
-            onSearchChange={(value) => {
-              setSearchTerm(value);
-
-              const params = new URLSearchParams(location.search);
-              if (value) {
-                params.set("search", value);
-              } else {
-                params.delete("search");
-              }
-              history.replace({
-                pathname: location.pathname,
-                search: params.toString(),
-              });
-            }}
-            mappings={mappings}
-          />
-        </Column>
-
-        <Column lg={8} md={8} sm={4}>
-          {selectedField ? (
-            <MappingPanel
-              field={selectedField}
-              mapping={selectedFieldMapping}
-              onCreateMapping={handleCreateMapping}
-              onUpdateMapping={(mappingId, mappingData) => {
-                analyzerService.updateMapping(
-                  analyzerId,
-                  mappingId,
-                  mappingData,
-                  (response, error) => {
-                    if (!error && !response?.error) {
-                      analyzerService.getMappings(
-                        analyzerId,
-                        (mappingsData) => {
-                          const mappings = extractMappings(mappingsData);
-                          setMappings(mappings);
-                        },
-                      );
-                    }
-                  },
-                );
+                  if (resp && resp.jobId) {
+                    setQueryJobId(resp.jobId);
+                    setQueryModalOpen(true);
+                  } else if (
+                    resp &&
+                    Array.isArray(resp.fields) &&
+                    resp.fields.length > 0
+                  ) {
+                    setFields(resp.fields);
+                    setQueryModalOpen(true);
+                  } else {
+                    setQueryModalOpen(true);
+                  }
+                });
               }}
-              analyzerName={analyzer?.name || ""}
-              analyzerIsActive={analyzer?.active || false}
-            />
-          ) : (
-            <div
-              className="mapping-panel-placeholder"
-              data-testid="mapping-panel-placeholder"
             >
-              <p>
-                <FormattedMessage id="analyzer.fieldMapping.panel.target.summary" />
-              </p>
-              <p>
-                <FormattedMessage id="analyzer.fieldMapping.panel.target.selectField" />
-              </p>
-            </div>
-          )}
-        </Column>
-      </Grid>
-      <QueryStatusModal
-        open={queryModalOpen}
-        onClose={() => {
-          setQueryModalOpen(false);
-          setErrorNotification(null);
-        }}
-        analyzerId={analyzerId}
-        jobId={queryJobId}
-        onCompleted={(data) => {
-          if (data && data.state === "completed") {
-            if (data.error) {
-              setErrorNotification({
-                kind: "error",
-                title: "Query Failed",
-                subtitle:
-                  data.error ||
-                  "Failed to query analyzer fields. Please try again.",
-              });
-            } else {
-              if (
-                data.fields &&
-                Array.isArray(data.fields) &&
-                data.fields.length > 0
-              ) {
-                // Check if fields have IDs (from database) or are just parsed (no IDs)
-                const hasIds = data.fields.every((f) => f.id != null);
+              <FormattedMessage id="analyzer.fieldMapping.queryAnalyzer" />
+            </Button>
+            <Button
+              kind="ghost"
+              data-testid="field-mapping-test-button"
+              onClick={() => setTestMappingModalOpen(true)}
+            >
+              <FormattedMessage id="analyzer.fieldMapping.testMapping" />
+            </Button>
+            <Button kind="primary" data-testid="field-mapping-save-button">
+              <FormattedMessage id="analyzer.fieldMapping.save" />
+            </Button>
+          </div>
 
-                if (hasIds) {
-                  setFields(data.fields);
-                  setErrorNotification(null);
+          <Grid className="field-mapping-grid">
+            <Column lg={8} md={8} sm={4}>
+              <FieldMappingPanel
+                fields={filteredFields}
+                selectedField={selectedField}
+                onFieldSelect={handleFieldSelect}
+                searchTerm={searchTerm}
+                onSearchChange={(value) => {
+                  setSearchTerm(value);
+
+                  const params = new URLSearchParams(location.search);
+                  if (value) {
+                    params.set("search", value);
+                  } else {
+                    params.delete("search");
+                  }
+                  history.replace({
+                    pathname: location.pathname,
+                    search: params.toString(),
+                  });
+                }}
+                mappings={mappings}
+              />
+            </Column>
+
+            <Column lg={8} md={8} sm={4}>
+              {selectedField ? (
+                <MappingPanel
+                  field={selectedField}
+                  mapping={selectedFieldMapping}
+                  onCreateMapping={handleCreateMapping}
+                  onUpdateMapping={(mappingId, mappingData) => {
+                    analyzerService.updateMapping(
+                      analyzerId,
+                      mappingId,
+                      mappingData,
+                      (response, error) => {
+                        if (!error && !response?.error) {
+                          analyzerService.getMappings(
+                            analyzerId,
+                            (mappingsData) => {
+                              const mappings = extractMappings(mappingsData);
+                              setMappings(mappings);
+                            },
+                          );
+                        }
+                      },
+                    );
+                  }}
+                  analyzerName={analyzer?.name || ""}
+                  analyzerIsActive={analyzer?.active || false}
+                />
+              ) : (
+                <div
+                  className="mapping-panel-placeholder"
+                  data-testid="mapping-panel-placeholder"
+                >
+                  <p>
+                    <FormattedMessage id="analyzer.fieldMapping.panel.target.summary" />
+                  </p>
+                  <p>
+                    <FormattedMessage id="analyzer.fieldMapping.panel.target.selectField" />
+                  </p>
+                </div>
+              )}
+            </Column>
+          </Grid>
+          <QueryStatusModal
+            open={queryModalOpen}
+            onClose={() => {
+              setQueryModalOpen(false);
+              setErrorNotification(null);
+            }}
+            analyzerId={analyzerId}
+            jobId={queryJobId}
+            onCompleted={(data) => {
+              if (data && data.state === "completed") {
+                if (data.error) {
+                  setErrorNotification({
+                    kind: "error",
+                    title: "Query Failed",
+                    subtitle:
+                      data.error ||
+                      "Failed to query analyzer fields. Please try again.",
+                  });
+                } else if (
+                  data.fields &&
+                  Array.isArray(data.fields) &&
+                  data.fields.length > 0
+                ) {
+                  // Check if fields have IDs (from database) or are just parsed (no IDs)
+                  const hasIds = data.fields.every((f) => f.id != null);
+
+                  if (hasIds) {
+                    setFields(data.fields);
+                    setErrorNotification(null);
+                  } else {
+                    analyzerService.getFields(analyzerId, (fieldsData) => {
+                      if (fieldsData && Array.isArray(fieldsData)) {
+                        setFields(fieldsData);
+                        setErrorNotification(null);
+                      } else {
+                        setErrorNotification({
+                          kind: "error",
+                          title: "Failed to Load Fields",
+                          subtitle:
+                            "Query completed but could not reload fields from database.",
+                        });
+                      }
+                    });
+                  }
                 } else {
                   analyzerService.getFields(analyzerId, (fieldsData) => {
                     if (fieldsData && Array.isArray(fieldsData)) {
-                      setFields(fieldsData);
-                      setErrorNotification(null);
+                      if (fieldsData.length === 0) {
+                        setErrorNotification({
+                          kind: "warning",
+                          title: "No Fields Retrieved",
+                          subtitle:
+                            "The query completed but no fields were saved. Check backend logs for errors.",
+                        });
+                      } else {
+                        setFields(fieldsData);
+                        setErrorNotification(null);
+                      }
                     } else {
                       setErrorNotification({
                         kind: "error",
                         title: "Failed to Load Fields",
-                        subtitle:
-                          "Query completed but could not reload fields from database.",
+                        subtitle: "Query completed but could not load fields.",
                       });
                     }
                   });
                 }
-              } else {
-                analyzerService.getFields(analyzerId, (fieldsData) => {
-                  if (fieldsData && Array.isArray(fieldsData)) {
-                    if (fieldsData.length === 0) {
-                      setErrorNotification({
-                        kind: "warning",
-                        title: "No Fields Retrieved",
-                        subtitle:
-                          "The query completed but no fields were saved. Check backend logs for errors.",
-                      });
-                    } else {
-                      setFields(fieldsData);
-                      setErrorNotification(null);
-                    }
-                  } else {
-                    setErrorNotification({
-                      kind: "error",
-                      title: "Failed to Load Fields",
-                      subtitle: "Query completed but could not load fields.",
-                    });
-                  }
+              } else if (data && data.state === "failed") {
+                setErrorNotification({
+                  kind: "error",
+                  title: "Query Failed",
+                  subtitle:
+                    data.error ||
+                    "Failed to query analyzer. Please check the analyzer connection and try again.",
                 });
               }
-            }
-          } else if (data && data.state === "failed") {
-            setErrorNotification({
-              kind: "error",
-              title: "Query Failed",
-              subtitle:
-                data.error ||
-                "Failed to query analyzer. Please check the analyzer connection and try again.",
-            });
-          }
-        }}
-      />
-      <TestMappingModal
-        open={testMappingModalOpen}
-        onClose={() => setTestMappingModalOpen(false)}
-        analyzerId={analyzerId}
-        analyzerName={analyzer?.name}
-        analyzerType={analyzer?.analyzerType}
-        activeMappingsCount={mappings.filter((m) => m.isActive).length}
-      />
+            }}
+          />
+          <TestMappingModal
+            open={testMappingModalOpen}
+            onClose={() => setTestMappingModalOpen(false)}
+            analyzerId={analyzerId}
+            analyzerName={analyzer?.name}
+            analyzerType={analyzer?.analyzerType}
+            activeMappingsCount={mappings.filter((m) => m.isActive).length}
+          />
+        </>
+      )}
     </div>
   );
 };
