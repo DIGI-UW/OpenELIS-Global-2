@@ -5,6 +5,10 @@ const projectRoot = process.cwd();
 const configPath = path.resolve(projectRoot, "playwright.config.ts");
 const testsRoot = path.resolve(projectRoot, "playwright/tests");
 const harnessUiAuthPath = path.resolve(testsRoot, "harness-ui-auth.setup.ts");
+const demoPresentationPath = path.resolve(
+  projectRoot,
+  "playwright/helpers/demo-presentation.ts",
+);
 
 const BUCKETS = [
   "CORE_DEMO_TESTS",
@@ -81,6 +85,9 @@ for (const specPath of allSpecs) {
 const harnessUiAuth = fs.existsSync(harnessUiAuthPath)
   ? fs.readFileSync(harnessUiAuthPath, "utf8")
   : "";
+const demoPresentation = fs.existsSync(demoPresentationPath)
+  ? fs.readFileSync(demoPresentationPath, "utf8")
+  : "";
 const harnessUiDependencyCount = (
   configContent.match(/dependencies: \["harness-ui-setup"\]/g) || []
 ).length;
@@ -119,6 +126,13 @@ if (!harnessUiAuth) {
       "harness UI authentication must drive the visible OpenELIS login form",
     );
   }
+}
+if (!demoPresentation) {
+  violations.push("playwright/helpers/demo-presentation.ts is missing");
+} else if (/fullPage:\s*true/.test(demoPresentation)) {
+  violations.push(
+    "demo evidence must use viewport screenshots; full-page capture duplicates fixed application chrome",
+  );
 }
 
 if (violations.length > 0) {

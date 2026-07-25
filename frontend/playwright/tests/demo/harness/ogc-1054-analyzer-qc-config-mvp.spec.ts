@@ -222,6 +222,7 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       await expect(
         page.getByTestId("pending-result-values-empty"),
       ).toBeVisible();
+      await persistedRow.scrollIntoViewIfNeeded();
       await demo.evidence("an-qc-005-pending-result-resolved");
     });
 

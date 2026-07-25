@@ -40,7 +40,10 @@ export function createDemoPresentation(
     pause: (ms) => videoPause(page, ms, testInfo),
     evidence: async (name: string) => {
       if (!isVideo) return;
-      const screenshot = await page.screenshot({ fullPage: true });
+      const screenshot = await page.screenshot({
+        animations: "disabled",
+        caret: "hide",
+      });
       // Attach to HTML report
       await testInfo.attach(name, {
         body: screenshot,
