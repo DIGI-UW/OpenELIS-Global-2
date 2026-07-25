@@ -22,6 +22,8 @@ import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.MappingC
 import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.UnacknowledgedErrorCreatedEvent;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -138,9 +140,12 @@ public class AnalyzerStatusEventListenersTest {
                 AnalyzerSetupVerifiedEvent.class);
 
         TransactionalEventListener listener = listenerMethod.getAnnotation(TransactionalEventListener.class);
+        Transactional transaction = listenerMethod.getAnnotation(Transactional.class);
 
         assertNotNull(listener);
         assertEquals(TransactionPhase.AFTER_COMMIT, listener.phase());
+        assertNotNull(transaction);
+        assertEquals(Propagation.REQUIRES_NEW, transaction.propagation());
     }
 
     @Test
