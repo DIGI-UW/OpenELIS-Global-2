@@ -3,7 +3,6 @@ package org.openelisglobal.microbiology;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -15,12 +14,13 @@ import org.openelisglobal.microbiology.service.MicroOrderRoutingService;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class MicroOrderRoutingIdempotencyTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-    private javax.sql.DataSource dataSource;
+    private MicrobiologyTestFixtures fixtures;
 
     @Autowired
     private MicroOrderRoutingService routingService;
@@ -28,7 +28,6 @@ public class MicroOrderRoutingIdempotencyTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroCaseService caseService;
 
-    private MicrobiologyTestFixtures fixtures;
     private String sampleItemId;
     private String methodId;
 
@@ -36,19 +35,9 @@ public class MicroOrderRoutingIdempotencyTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        fixtures = new MicrobiologyTestFixtures(new JdbcTemplate(dataSource));
         methodId = fixtures.firstMethodId();
-        sampleItemId = fixtures.insertSampleWithSampleItem("OGC782-M3I");
-        fixtures.insertReferenceData(methodId);
-    }
-
-    @After
-    public void tearDown() {
-        if (fixtures != null && sampleItemId != null) {
-            fixtures.deleteCaseDataForSampleItem(sampleItemId);
-            fixtures.deleteSampleItemAndSample(sampleItemId);
-            fixtures.deleteReferenceData();
-        }
+        sampleItemId = fixtures.createSampleWithSampleItem("OGC782M3I").getId();
+        fixtures.createReferenceData(methodId);
     }
 
     @Test

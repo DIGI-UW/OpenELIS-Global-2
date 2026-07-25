@@ -1,159 +1,200 @@
 package org.openelisglobal.microbiology.fixture;
 
+import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
+import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.service.TestService;
+import org.springframework.stereotype.Component;
 
 /**
- * Test-only rows for microbiology integration tests; do not move this data into
- * Liquibase migrations.
+ * Service-backed microbiology integration fixtures. Test code never owns
+ * primary keys and never writes around application persistence behavior.
  */
+@Component
 public class MicrobiologyTestFixtures {
 
-    public static final long CATALOG_TEST_ID = 78201L;
-    public static final String ORGANISM_ID = "ogc782-org";
-    public static final String ANTIBIOTIC_ID = "ogc782-abx";
-    public static final String STANDARD_ID = "ogc782-std";
-    public static final String RULE_ID = "ogc782-rule";
-    public static final String ALT_STANDARD_ID = "ogc782-alt-std";
-    public static final String ALT_RULE_ID = "ogc782-alt-rule";
-    public static final String PANEL_ID = "ogc782-panel";
-    public static final String SETUP_ID = "ogc782-setup";
-    public static final String TB_SETUP_ID = "ogc782-tb-setup";
     public static final String DEFAULT_USER_ID = "1";
 
-    private final JdbcTemplate jdbc;
+    private final MethodService methodService;
+    private final SampleService sampleService;
+    private final SampleItemService sampleItemService;
+    private final TestService testService;
+    private final IStatusService statusService;
+    private final MicrobiologyConfigurationService configurationService;
 
-    public MicrobiologyTestFixtures(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public MicrobiologyTestFixtures(MethodService methodService, SampleService sampleService,
+            SampleItemService sampleItemService, TestService testService, IStatusService statusService,
+            MicrobiologyConfigurationService configurationService) {
+        this.methodService = methodService;
+        this.sampleService = sampleService;
+        this.sampleItemService = sampleItemService;
+        this.testService = testService;
+        this.statusService = statusService;
+        this.configurationService = configurationService;
     }
 
     public String firstMethodId() {
-        return jdbc.queryForObject("SELECT id FROM clinlims.method ORDER BY id LIMIT 1", String.class);
+        return first(methodService.getAllActiveMethods(), "No active method is available for microbiology tests")
+                .getId();
     }
 
-    public String firstSampleItemId() {
-        return jdbc.queryForObject("SELECT id FROM clinlims.sample_item ORDER BY id LIMIT 1", String.class);
+    public SampleItem createSampleWithSampleItem(String accessionPrefix) {
+        String accessionNumber = uniqueValue(accessionPrefix, 20);
+        Date today = new Date(System.currentTimeMillis());
+        Sample sample = new Sample();
+        sample.setAccessionNumber(accessionNumber);
+        sample.setEnteredDate(today);
+        sample.setReceivedTimestamp(Timestamp.from(Instant.now()));
+        sample.setStatusId(statusService.getStatusID(OrderStatus.Entered));
+        sample.setSysUserId(DEFAULT_USER_ID);
+        sampleService.insert(sample);
+
+        SampleItem sampleItem = new SampleItem();
+        sampleItem.setSample(sample);
+        sampleItem.setSortOrder("1");
+        sampleItem.setStatusId(statusService.getStatusID(OrderStatus.Entered));
+        sampleItem.setSysUserId(DEFAULT_USER_ID);
+        sampleItemService.insert(sampleItem);
+        return sampleItem;
     }
 
-    public String insertSampleWithSampleItem(String accessionNumber) {
-        String sampleId = String.valueOf(jdbc.queryForObject("SELECT nextval('clinlims.sample_seq')", Long.class));
-        jdbc.update(
-                "INSERT INTO clinlims.sample"
-                        + " (id, accession_number, entered_date, received_date, lastupdated, sys_user_id)"
-                        + " VALUES (?, ?, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)",
-                Long.valueOf(sampleId), accessionNumber);
-        String sampleItemId = String
-                .valueOf(jdbc.queryForObject("SELECT nextval('clinlims.sample_item_seq')", Long.class));
-        jdbc.update(
-                "INSERT INTO clinlims.sample_item (id, samp_id, sort_order, status_id, lastupdated)"
-                        + " VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                Long.valueOf(sampleItemId), Long.valueOf(sampleId), 1, 1);
-        return sampleItemId;
+    public ReferenceData createReferenceData(String methodId) {
+        String suffix = uniqueSuffix();
+
+        MicroOrganism organism = new MicroOrganism();
+        organism.setDisplayName("Escherichia coli " + suffix);
+        organism.setWhonetCode("ECO" + suffix);
+        organism.setOrganismGroup("Enterobacterales");
+        configurationService.createOrganism(organism);
+
+        MicroAntibiotic antibiotic = new MicroAntibiotic();
+        antibiotic.setDisplayName("Ampicillin " + suffix);
+        antibiotic.setWhonetCode("AMP" + suffix);
+        antibiotic.setAntibioticClass("Penicillins");
+        configurationService.createAntibiotic(antibiotic);
+
+        MicroAstPanel panel = new MicroAstPanel();
+        panel.setName("Enterobacterales panel " + suffix);
+        panel.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
+        panel.setOrganismGroup("Enterobacterales");
+        configurationService.createAstPanel(panel);
+
+        MicroAstPanelAntibiotic panelAntibiotic = new MicroAstPanelAntibiotic();
+        panelAntibiotic.setPanelId(panel.getId());
+        panelAntibiotic.setAntibioticId(antibiotic.getId());
+        panelAntibiotic.setDisplayOrder(1);
+        configurationService.addAntibioticToPanel(panelAntibiotic);
+
+        MicroBreakpointStandard standard = configurationService.getOrCreateBreakpointStandard("CLSI", "2026",
+                new Date(System.currentTimeMillis()));
+
+        MicroBreakpointRule rule = breakpointRule(standard.getId(), organism.getId(), antibiotic.getId(),
+                new BigDecimal("8.0000"), new BigDecimal("32.0000"));
+        configurationService.createBreakpointRule(rule);
+
+        MicroCultureSetup setup = new MicroCultureSetup();
+        setup.setMethodId(methodId);
+        setup.setName("Urine culture " + suffix);
+        setup.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
+        setup.setMediaDefaults("Blood agar");
+        setup.setIncubationDefaults("18-24h");
+        setup.setAtmosphereDefaults("Ambient");
+        configurationService.createCultureSetup(setup);
+
+        return new ReferenceData(organism, antibiotic, panel, panelAntibiotic, standard, rule, setup);
     }
 
-    public void insertCatalogTest() {
-        jdbc.update("INSERT INTO clinlims.test"
-                + " (id, name, description, is_active, guid, domain, antimicrobial_resistance, orderable,"
-                + " culture_workflow_type, lastupdated)"
-                + " VALUES (?, 'MicroCatalogIT', 'MicroCatalogIT desc', 'Y', ?, 'CLINICAL', true, true, null, NOW())",
-                CATALOG_TEST_ID, UUID.randomUUID().toString());
+    public AlternativeBreakpointData createAlternativeBreakpoint(ReferenceData referenceData) {
+        String suffix = uniqueSuffix();
+        MicroBreakpointStandard standard = configurationService.getOrCreateBreakpointStandard("EUCAST",
+                "2026-" + suffix, new Date(System.currentTimeMillis()));
+        MicroBreakpointRule rule = breakpointRule(standard.getId(), referenceData.organism().getId(),
+                referenceData.antibiotic().getId(), new BigDecimal("2.0000"), new BigDecimal("8.0000"));
+        configurationService.createBreakpointRule(rule);
+        return new AlternativeBreakpointData(standard, rule);
     }
 
-    public void deleteCatalogTest() {
-        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", CATALOG_TEST_ID);
+    public MicroCultureSetup createTbCultureSetup(String methodId) {
+        MicroCultureSetup setup = new MicroCultureSetup();
+        setup.setMethodId(methodId);
+        setup.setName("TB culture " + uniqueSuffix());
+        setup.setWorkflowType(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name());
+        setup.setMediaDefaults("MGIT");
+        setup.setIncubationDefaults("up to 42 days");
+        setup.setAtmosphereDefaults("Ambient");
+        return configurationService.createCultureSetup(setup);
     }
 
-    public void insertReferenceData(String methodId) {
-        jdbc.update("INSERT INTO clinlims.micro_organism"
-                + " (id, display_name, whonet_code, organism_group, is_active, lastupdated)"
-                + " VALUES (?, 'Escherichia coli', 'eco', 'Enterobacterales', 'Y', NOW())", ORGANISM_ID);
-        jdbc.update("INSERT INTO clinlims.micro_antibiotic"
-                + " (id, display_name, whonet_code, antibiotic_class, is_active, lastupdated)"
-                + " VALUES (?, 'Ampicillin', 'AMP', 'Penicillins', 'Y', NOW())", ANTIBIOTIC_ID);
-        jdbc.update(
-                "INSERT INTO clinlims.micro_ast_panel"
-                        + " (id, name, workflow_type, organism_group, is_active, lastupdated)"
-                        + " VALUES (?, 'Enterobacterales panel', 'BACTERIOLOGY', 'Enterobacterales', 'Y', NOW())",
-                PANEL_ID);
-        jdbc.update(
-                "INSERT INTO clinlims.micro_breakpoint_standard"
-                        + " (id, authority, version, is_active, lastupdated) VALUES (?, 'CLSI', '2026', 'Y', NOW())",
-                STANDARD_ID);
-        jdbc.update(
-                "INSERT INTO clinlims.micro_breakpoint_rule"
-                        + " (id, standard_id, organism_id, organism_group, antibiotic_id, method, breakpoint_type,"
-                        + " susceptible_value, resistant_value, is_active, lastupdated)"
-                        + " VALUES (?, ?, ?, 'Enterobacterales', ?, 'MIC', 'MIC', 8.0000, 32.0000, 'Y', NOW())",
-                RULE_ID, STANDARD_ID, ORGANISM_ID, ANTIBIOTIC_ID);
-        jdbc.update("INSERT INTO clinlims.micro_culture_setup"
-                + " (id, method_id, name, workflow_type, media_defaults, incubation_defaults, atmosphere_defaults,"
-                + " is_active, lastupdated) VALUES (?, ?, 'Urine culture', 'BACTERIOLOGY', 'Blood agar',"
-                + " '18-24h', 'Ambient', 'Y', NOW())", SETUP_ID, Long.valueOf(methodId));
+    public org.openelisglobal.test.valueholder.Test createCatalogTest() {
+        String suffix = uniqueSuffix();
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        test.setName("MicroCatalogIT " + suffix);
+        test.setDescription("MicroCatalogIT " + suffix);
+        test.setIsActive(IActionConstants.YES);
+        test.setGuid(UUID.randomUUID().toString());
+        test.setDomain("CLINICAL");
+        test.setAntimicrobialResistance(true);
+        test.setOrderable(true);
+        test.setSysUserId(DEFAULT_USER_ID);
+        testService.insert(test);
+        return test;
     }
 
-    /**
-     * A second, stricter breakpoint standard (M-05: per-run standard selection).
-     * Its MIC thresholds (susceptible &lt;=2, resistant &gt;=8) differ from the
-     * default CLSI 2026 rule (susceptible &lt;=8, resistant &gt;=32) so a run
-     * started against this standard interprets the same raw value differently,
-     * proving the run's snapshotted choice is actually honored end-to-end.
-     */
-    public void insertAltBreakpointStandard() {
-        jdbc.update(
-                "INSERT INTO clinlims.micro_breakpoint_standard"
-                        + " (id, authority, version, is_active, lastupdated) VALUES (?, 'EUCAST', '2026', 'Y', NOW())",
-                ALT_STANDARD_ID);
-        jdbc.update(
-                "INSERT INTO clinlims.micro_breakpoint_rule"
-                        + " (id, standard_id, organism_id, organism_group, antibiotic_id, method, breakpoint_type,"
-                        + " susceptible_value, resistant_value, is_active, lastupdated)"
-                        + " VALUES (?, ?, ?, 'Enterobacterales', ?, 'MIC', 'MIC', 2.0000, 8.0000, 'Y', NOW())",
-                ALT_RULE_ID, ALT_STANDARD_ID, ORGANISM_ID, ANTIBIOTIC_ID);
+    private MicroBreakpointRule breakpointRule(String standardId, String organismId, String antibioticId,
+            BigDecimal susceptibleValue, BigDecimal resistantValue) {
+        MicroBreakpointRule rule = new MicroBreakpointRule();
+        rule.setStandardId(standardId);
+        rule.setOrganismId(organismId);
+        rule.setOrganismGroup("Enterobacterales");
+        rule.setAntibioticId(antibioticId);
+        rule.setMethod("MIC");
+        rule.setBreakpointType("MIC");
+        rule.setSusceptibleValue(susceptibleValue);
+        rule.setResistantValue(resistantValue);
+        return rule;
     }
 
-    public void deleteAltBreakpointStandard() {
-        jdbc.update("DELETE FROM clinlims.micro_breakpoint_rule WHERE id = ?", ALT_RULE_ID);
-        jdbc.update("DELETE FROM clinlims.micro_breakpoint_standard WHERE id = ?", ALT_STANDARD_ID);
+    private String uniqueValue(String prefix, int maxLength) {
+        String value = prefix + uniqueSuffix();
+        return value.substring(0, Math.min(value.length(), maxLength));
     }
 
-    public void insertTbCultureSetup(String methodId) {
-        jdbc.update("INSERT INTO clinlims.micro_culture_setup"
-                + " (id, method_id, name, workflow_type, media_defaults, incubation_defaults, atmosphere_defaults,"
-                + " is_active, lastupdated) VALUES (?, ?, 'TB culture', 'MYCOBACTERIOLOGY_TB', 'MGIT',"
-                + " 'up to 42 days', 'Ambient', 'Y', NOW())", TB_SETUP_ID, Long.valueOf(methodId));
+    private String uniqueSuffix() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
-    public void deleteReferenceData() {
-        jdbc.update("DELETE FROM clinlims.micro_culture_setup WHERE id = ?", TB_SETUP_ID);
-        jdbc.update("DELETE FROM clinlims.micro_culture_setup WHERE id = ?", SETUP_ID);
-        jdbc.update("DELETE FROM clinlims.micro_breakpoint_rule WHERE id = ?", RULE_ID);
-        jdbc.update("DELETE FROM clinlims.micro_breakpoint_standard WHERE id = ?", STANDARD_ID);
-        jdbc.update("DELETE FROM clinlims.micro_ast_panel WHERE id = ?", PANEL_ID);
-        jdbc.update("DELETE FROM clinlims.micro_antibiotic WHERE id = ?", ANTIBIOTIC_ID);
-        jdbc.update("DELETE FROM clinlims.micro_organism WHERE id = ?", ORGANISM_ID);
+    private <T> T first(List<T> values, String message) {
+        if (values == null || values.isEmpty()) {
+            throw new IllegalStateException(message);
+        }
+        return values.get(0);
     }
 
-    public void deleteCaseDataForSampleItem(String sampleItemId) {
-        jdbc.update("DELETE FROM clinlims.micro_critical_communication WHERE case_id IN"
-                + " (SELECT id FROM clinlims.micro_case WHERE sample_item_id = ?)", Long.valueOf(sampleItemId));
-        jdbc.update("DELETE FROM clinlims.micro_ast_reading WHERE ast_run_id IN"
-                + " (SELECT r.id FROM clinlims.micro_ast_run r JOIN clinlims.micro_isolate i"
-                + " ON r.isolate_id = i.id JOIN clinlims.micro_case c ON i.case_id = c.id"
-                + " WHERE c.sample_item_id = ?)", Long.valueOf(sampleItemId));
-        jdbc.update("DELETE FROM clinlims.micro_ast_run WHERE isolate_id IN"
-                + " (SELECT i.id FROM clinlims.micro_isolate i JOIN clinlims.micro_case c"
-                + " ON i.case_id = c.id WHERE c.sample_item_id = ?)", Long.valueOf(sampleItemId));
-        jdbc.update("DELETE FROM clinlims.micro_isolate WHERE case_id IN"
-                + " (SELECT id FROM clinlims.micro_case WHERE sample_item_id = ?)", Long.valueOf(sampleItemId));
-        jdbc.update("DELETE FROM clinlims.micro_case_activity WHERE case_id IN"
-                + " (SELECT id FROM clinlims.micro_case WHERE sample_item_id = ?)", Long.valueOf(sampleItemId));
-        jdbc.update("DELETE FROM clinlims.micro_case WHERE sample_item_id = ?", Long.valueOf(sampleItemId));
+    public record ReferenceData(MicroOrganism organism, MicroAntibiotic antibiotic, MicroAstPanel panel,
+            MicroAstPanelAntibiotic panelAntibiotic, MicroBreakpointStandard standard, MicroBreakpointRule rule,
+            MicroCultureSetup cultureSetup) {
     }
 
-    public void deleteSampleItemAndSample(String sampleItemId) {
-        String sampleId = jdbc.queryForObject("SELECT samp_id FROM clinlims.sample_item WHERE id = ?", String.class,
-                Long.valueOf(sampleItemId));
-        jdbc.update("DELETE FROM clinlims.sample_item WHERE id = ?", Long.valueOf(sampleItemId));
-        jdbc.update("DELETE FROM clinlims.sample WHERE id = ?", Long.valueOf(sampleId));
+    public record AlternativeBreakpointData(MicroBreakpointStandard standard, MicroBreakpointRule rule) {
     }
 }

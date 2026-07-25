@@ -4,11 +4,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.AlternativeBreakpointData;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
@@ -22,12 +23,13 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-    private javax.sql.DataSource dataSource;
+    private MicrobiologyTestFixtures fixtures;
 
     @Autowired
     private MicroCaseService caseService;
@@ -38,58 +40,42 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroAstService astService;
 
-    private MicrobiologyTestFixtures fixtures;
     private String sampleItemId;
     private String methodId;
+    private ReferenceData referenceData;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        fixtures = new MicrobiologyTestFixtures(new JdbcTemplate(dataSource));
         methodId = fixtures.firstMethodId();
-        sampleItemId = fixtures.insertSampleWithSampleItem("OGC782-M5-" + System.nanoTime());
-        fixtures.insertReferenceData(methodId);
-    }
-
-    @After
-    public void tearDown() {
-        if (fixtures != null && sampleItemId != null) {
-            fixtures.deleteCaseDataForSampleItem(sampleItemId);
-            fixtures.deleteSampleItemAndSample(sampleItemId);
-            fixtures.deleteReferenceData();
-        }
+        sampleItemId = fixtures.createSampleWithSampleItem("OGC782M5").getId();
+        referenceData = fixtures.createReferenceData(methodId);
     }
 
     @Test
     public void astRunInterpretsAgainstItsSnapshottedBreakpointStandard() {
-        fixtures.insertAltBreakpointStandard();
-        try {
-            MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                    MicrobiologyTestFixtures.DEFAULT_USER_ID);
-            MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
-                    MicrobiologyTestFixtures.ORGANISM_ID, "Escherichia coli",
-                    MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        AlternativeBreakpointData alternative = fixtures.createAlternativeBreakpoint(referenceData);
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
+                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
+                referenceData.organism().getId(), referenceData.organism().getDisplayName(),
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicrobiologyTestFixtures.DEFAULT_USER_ID);
 
-            MicroAstRun defaultRun = astService.startRun(isolate.getId(), MicrobiologyTestFixtures.PANEL_ID,
-                    MicrobiologyTestFixtures.DEFAULT_USER_ID);
-            MicroAstReading defaultReading = astService.recordReading(defaultRun.getId(),
-                    MicrobiologyTestFixtures.ANTIBIOTIC_ID, MicroAstMethod.MIC, new BigDecimal("4"),
-                    MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        MicroAstRun defaultRun = astService.startRun(isolate.getId(), referenceData.panel().getId(),
+                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        MicroAstReading defaultReading = astService.recordReading(defaultRun.getId(),
+                referenceData.antibiotic().getId(), MicroAstMethod.MIC, new BigDecimal("4"),
+                MicrobiologyTestFixtures.DEFAULT_USER_ID);
 
-            MicroAstRun altRun = astService.startRun(isolate.getId(), MicrobiologyTestFixtures.PANEL_ID,
-                    MicrobiologyTestFixtures.ALT_STANDARD_ID, MicrobiologyTestFixtures.DEFAULT_USER_ID);
-            MicroAstReading altReading = astService.recordReading(altRun.getId(),
-                    MicrobiologyTestFixtures.ANTIBIOTIC_ID, MicroAstMethod.MIC, new BigDecimal("4"),
-                    MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        MicroAstRun altRun = astService.startRun(isolate.getId(), referenceData.panel().getId(),
+                alternative.standard().getId(), MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        MicroAstReading altReading = astService.recordReading(altRun.getId(), referenceData.antibiotic().getId(),
+                MicroAstMethod.MIC, new BigDecimal("4"), MicrobiologyTestFixtures.DEFAULT_USER_ID);
 
-            assertEquals(MicrobiologyTestFixtures.ALT_STANDARD_ID, altRun.getBreakpointStandardId());
-            assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), defaultReading.getInterpretation());
-            assertEquals(MicroAstInterpretation.INTERMEDIATE.name(), altReading.getInterpretation());
-        } finally {
-            fixtures.deleteCaseDataForSampleItem(sampleItemId);
-            fixtures.deleteAltBreakpointStandard();
-        }
+        assertEquals(alternative.standard().getId(), altRun.getBreakpointStandardId());
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), defaultReading.getInterpretation());
+        assertEquals(MicroAstInterpretation.INTERMEDIATE.name(), altReading.getInterpretation());
     }
 
     @Test
@@ -97,12 +83,12 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
                 MicrobiologyTestFixtures.DEFAULT_USER_ID);
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
-                MicrobiologyTestFixtures.ORGANISM_ID, "Escherichia coli",
+                referenceData.organism().getId(), referenceData.organism().getDisplayName(),
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicrobiologyTestFixtures.DEFAULT_USER_ID);
 
-        MicroAstRun run = astService.startRun(isolate.getId(), MicrobiologyTestFixtures.PANEL_ID,
+        MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
                 MicrobiologyTestFixtures.DEFAULT_USER_ID);
-        MicroAstReading reading = astService.recordReading(run.getId(), MicrobiologyTestFixtures.ANTIBIOTIC_ID,
+        MicroAstReading reading = astService.recordReading(run.getId(), referenceData.antibiotic().getId(),
                 MicroAstMethod.MIC, new BigDecimal("4"), MicrobiologyTestFixtures.DEFAULT_USER_ID);
         MicroAstReading overridden = astService.overrideReading(reading.getId(), MicroAstInterpretation.RESISTANT,
                 "mixed growth confirmed on repeat", MicrobiologyTestFixtures.DEFAULT_USER_ID);
