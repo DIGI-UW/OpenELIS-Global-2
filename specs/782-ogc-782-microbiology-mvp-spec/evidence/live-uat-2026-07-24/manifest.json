@@ -1,0 +1,39 @@
+{
+  "capturedAt": "2026-07-25T00:43:38Z",
+  "target": "https://amr.openelis-global.org",
+  "deployment": {
+    "id": "20260725T003108Z-c44c3ad0ce35",
+    "appSha": "c44c3ad0ce35d1502d9ed217f3e26aa88e309dc1",
+    "harnessSha": "2cf9dd4e5794e2ce46a568c295d8093ae51bf33e",
+    "scope": "app",
+    "schemaAffecting": false,
+    "health": "passed",
+    "smoke": "passed"
+  },
+  "checklist": {
+    "instance": "amr",
+    "jira": "OGC-782",
+    "revision": "364c75677839c0aed225ecfa75e5c0912c07840a1925a14c9dd30bf2ed2d7d95",
+    "stepCount": 10,
+    "stepKeys": [
+      "AMR-1",
+      "AMR-2",
+      "AMR-3",
+      "AMR-4",
+      "AMR-5",
+      "AMR-16",
+      "AMR-6",
+      "AMR-7",
+      "AMR-20",
+      "AMR-21"
+    ]
+  },
+  "playwright": {
+    "project": "core-live-uat",
+    "spec": "frontend/playwright/tests/manual-only/core/ogc-782-live-uat.spec.ts",
+    "result": "passed",
+    "duration": "4.0s",
+    "video": "videos/ogc-782-live-uat.mp4",
+    "report": "playwright-report/index.html"
+  }
+}

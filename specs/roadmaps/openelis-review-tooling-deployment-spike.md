@@ -1,7 +1,8 @@
 # OpenELIS Review Tooling Deployment Spike
 
-> Status: accepted; review identity contract implemented in
-> `DIGI-UW/openelis-review-tooling#2`, targeted AMR deployment in progress
+> Status: accepted and exercised; review identity, targeted AMR application
+> deployment, widget-only deployment, and live Playwright UAT implemented in
+> `DIGI-UW/openelis-review-tooling#2` and `DIGI-UW/OpenELIS-Global-2#3789`
 > Date: 2026-07-24
 > Scope: `DIGI-UW/openelis-review-tooling`, the AMR/analyzers demo stacks,
 > Grist-authored UAT, and branch-based OpenELIS preview deployment
@@ -74,9 +75,11 @@ The EC2 host is running:
 - live checklist delivery with `X-UAT-Source: grist-live`;
 - native Grist MCP OAuth metadata at `/api/mcp`.
 
-The AMR checklist is already live in the overlay. The AMR application still
-needs the current Microbiology navigation/canonical-route branch deployed
-before those checklist steps can pass.
+The AMR checklist is live in the overlay. OpenELIS commit
+`c44c3ad0ce35d1502d9ed217f3e26aa88e309dc1` is deployed with `scope=app`,
+`schemaAffecting=false`, and passed health, route smoke, and live Playwright
+UAT. The widget is deployed independently at review-tooling commit
+`2cf9dd4e5794e2ce46a568c295d8093ae51bf33e`.
 
 ## Confirmed Gaps
 

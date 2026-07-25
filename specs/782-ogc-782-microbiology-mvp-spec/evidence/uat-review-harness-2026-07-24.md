@@ -37,6 +37,22 @@ On 2026-07-24:
   checks;
 - all seven targeted overlay assertions passed.
 
+The deployed feature was then verified with the committed
+`core-live-uat` Playwright project:
+
+```bash
+cd frontend
+BASE_URL=https://amr.openelis-global.org \
+EXPECTED_APP_SHA=c44c3ad0ce35d1502d9ed217f3e26aa88e309dc1 \
+PLAYWRIGHT_VIDEO=on \
+npx playwright test \
+  playwright/tests/manual-only/core/ogc-782-live-uat.spec.ts \
+  --project=core-live-uat --no-deps --reporter=html
+```
+
+Result: `1 passed (4.0s)`. The complete authentication plus feature run passed
+both tests in `6.6s`.
+
 The registered product E2E flow also passed locally:
 
 ```bash
@@ -53,10 +69,29 @@ test both passed in 9.4 seconds. The isolated Vite proxy logged its known HMR
 WebSocket connection warning and a missing development-only resource; neither
 affected the production behavior under test.
 
-## Deployment Caveat
+## Live Deployment
 
-The Grist checklist and overlay are live. The AMR site was still serving the
-older application build during verification and did not yet contain the new
-Microbiology menu or canonical routes. Redeploy the feature branch before
-expecting those UAT steps to pass; until then, their failure is a deployment
-signal rather than a checklist defect.
+- Deployment: `20260725T003108Z-c44c3ad0ce35`
+- OpenELIS SHA: `c44c3ad0ce35d1502d9ed217f3e26aa88e309dc1`
+- Review-tooling SHA: `2cf9dd4e5794e2ce46a568c295d8093ae51bf33e`
+- Scope: `app`
+- Schema-affecting: `false`
+- Verification: health and route smoke passed
+- Checklist revision:
+  `364c75677839c0aed225ecfa75e5c0912c07840a1925a14c9dd30bf2ed2d7d95`
+
+The application now contains the configured Microbiology navigation and
+canonical routes. The production review widget uses an inspectable open shadow
+root and preserves panel state when an initial checklist refresh finishes after
+the reviewer opens it.
+
+Evidence is packaged under
+`evidence/live-uat-2026-07-24/`, including three inspected screenshots, WebM
+and MP4 video, the Playwright HTML report, and a machine-readable manifest.
+
+Two follow-up signals remain:
+
+- all ten Grist rows currently have `required=false`, so they display as
+  optional;
+- nested routes emit route-relative service-worker 404/MIME console noise,
+  although the tested workflow passes.
