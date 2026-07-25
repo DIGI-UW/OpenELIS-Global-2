@@ -69,7 +69,8 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 # by profile-driven analyzer setup.
 COPY ./plugins /build/plugins
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn install:install-file \
+    [ -d /root/.m2/repository/org/itech ] || { mkdir -p /root/.m2/repository/org && cp -r /build/dataexport-m2/org/itech /root/.m2/repository/org/; } \
+    && mvn install:install-file \
         -Dfile=/build/target/OpenELIS-Global-classes.jar \
         -DgroupId=org.openelisglobal \
         -DartifactId=openelisglobal \
