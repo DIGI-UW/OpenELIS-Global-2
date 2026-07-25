@@ -15,10 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.AllErrorsAcknowledgedEvent;
-import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.AllMappingsActivatedEvent;
 import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.ConnectionTestFailedEvent;
 import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.ConnectionTestSucceededEvent;
-import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.MappingCreatedEvent;
 import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.UnacknowledgedErrorCreatedEvent;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
@@ -53,64 +51,6 @@ public class AnalyzerStatusEventListenersTest {
         testAnalyzer.setId("1");
         testAnalyzer.setName("Test Analyzer");
     }
-
-    // === onMappingCreated Tests ===
-
-    @Test
-    public void testOnMappingCreated_WhenInSetup_TriggersValidationTransition() {
-        testAnalyzer.setStatus(AnalyzerStatus.SETUP);
-        when(analyzerService.get("1")).thenReturn(testAnalyzer);
-
-        MappingCreatedEvent event = new MappingCreatedEvent(this, "1");
-        eventListeners.onMappingCreated(event);
-
-        verify(transitionService).transitionToValidation("1");
-    }
-
-    @Test
-    public void testOnMappingCreated_WhenNotInSetup_DoesNotTransition() {
-        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
-        when(analyzerService.get("1")).thenReturn(testAnalyzer);
-
-        MappingCreatedEvent event = new MappingCreatedEvent(this, "1");
-        eventListeners.onMappingCreated(event);
-
-        verify(transitionService, never()).transitionToValidation(anyString());
-    }
-
-    @Test
-    public void testOnMappingCreated_WhenAnalyzerNotFound_DoesNotThrow() {
-        when(analyzerService.get("999")).thenReturn(null);
-
-        MappingCreatedEvent event = new MappingCreatedEvent(this, "999");
-        eventListeners.onMappingCreated(event); // Should not throw
-    }
-
-    // === onAllMappingsActivated Tests ===
-
-    @Test
-    public void testOnAllMappingsActivated_WhenInValidation_TriggersActiveTransition() {
-        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
-        when(analyzerService.get("1")).thenReturn(testAnalyzer);
-
-        AllMappingsActivatedEvent event = new AllMappingsActivatedEvent(this, "1");
-        eventListeners.onAllMappingsActivated(event);
-
-        verify(transitionService).transitionToActive("1");
-    }
-
-    @Test
-    public void testOnAllMappingsActivated_WhenNotInValidation_DoesNotTransition() {
-        testAnalyzer.setStatus(AnalyzerStatus.SETUP);
-        when(analyzerService.get("1")).thenReturn(testAnalyzer);
-
-        AllMappingsActivatedEvent event = new AllMappingsActivatedEvent(this, "1");
-        eventListeners.onAllMappingsActivated(event);
-
-        verify(transitionService, never()).transitionToActive(anyString());
-    }
-
-    // === onUnacknowledgedErrorCreated Tests ===
 
     @Test
     public void testOnSetupVerified_WhenInSetup_TransitionsThroughValidationToActive() {
@@ -253,25 +193,7 @@ public class AnalyzerStatusEventListenersTest {
         verify(transitionService, never()).transitionToActiveFromOffline(anyString());
     }
 
-    // === Error Handling Tests ===
-
-    @Test
-    public void testOnMappingCreated_WhenTransitionFails_DoesNotThrow() {
-        testAnalyzer.setStatus(AnalyzerStatus.SETUP);
-        when(analyzerService.get("1")).thenReturn(testAnalyzer);
-        when(transitionService.transitionToValidation("1")).thenThrow(new RuntimeException("Transition failed"));
-
-        MappingCreatedEvent event = new MappingCreatedEvent(this, "1");
-        eventListeners.onMappingCreated(event); // Should not throw, error is logged
-    }
-
     // === Event Data Tests ===
-
-    @Test
-    public void testMappingCreatedEvent_ContainsAnalyzerId() {
-        MappingCreatedEvent event = new MappingCreatedEvent(this, "1");
-        org.junit.Assert.assertEquals("1", event.getAnalyzerId());
-    }
 
     @Test
     public void testUnacknowledgedErrorCreatedEvent_ContainsErrorId() {

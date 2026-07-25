@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useContext,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -27,9 +33,7 @@ import {
   type AnalyzerFilters,
   type AnalyzersResponse,
 } from "../../../services/analyzerService";
-// /analyzers/new redirects to /analyzers?add=1 (see App.jsx) — this list
-// page renders AnalyzerForm inline for that case; only :id/edit is a true
-// separate route (AnalyzerFormPage).
+// Analyzer creation stays inline with the list; editing an existing analyzer is routed.
 import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
@@ -37,6 +41,8 @@ import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 
 import PageTitle from "../../common/PageTitle/PageTitle";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../../utils/Utils";
 import type { Analyzer, AnalyzerStatus } from "../types";
 import "./AnalyzersList.css";
 
@@ -74,6 +80,8 @@ const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canConfigure = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [, setAnalyzers] = useState<Analyzer[]>([]);
@@ -291,7 +299,7 @@ const AnalyzersList = () => {
   });
 
   const setupParams = new URLSearchParams(location.search || "");
-  const isSetupFlow = setupParams.get("add") === "1";
+  const isSetupFlow = canConfigure && setupParams.get("add") === "1";
 
   const isSetupReady = (analyzer) =>
     analyzer?.setupVerification?.readyForActivation === true;
@@ -319,14 +327,16 @@ const AnalyzersList = () => {
             subtitle={intl.formatMessage({ id: "analyzer.list.subtitle" })}
           />
         </div>
-        <Button
-          kind="primary"
-          renderIcon={Add}
-          data-testid="add-analyzer-button"
-          onClick={() => history.push("/analyzers?add=1")}
-        >
-          {intl.formatMessage({ id: "analyzer.action.add" })}
-        </Button>
+        {canConfigure && (
+          <Button
+            kind="primary"
+            renderIcon={Add}
+            data-testid="add-analyzer-button"
+            onClick={() => history.push("/analyzers?add=1")}
+          >
+            {intl.formatMessage({ id: "analyzer.action.add" })}
+          </Button>
+        )}
       </div>
 
       {isSetupFlow && (
@@ -618,98 +628,99 @@ const AnalyzersList = () => {
                               testId = `analyzer-last-modified-${row.id}`;
                             } else if (headerKey === "actions") {
                               testId = `analyzer-actions-${row.id}`;
-                              cellContent = analyzer ? (
-                                <OverflowMenu
-                                  ariaLabel={intl.formatMessage({
-                                    id: "analyzer.table.actions",
-                                  })}
-                                  data-testid={`analyzer-row-overflow-${row.id}`}
-                                >
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.fieldMappings",
+                              cellContent =
+                                analyzer && canConfigure ? (
+                                  <OverflowMenu
+                                    ariaLabel={intl.formatMessage({
+                                      id: "analyzer.table.actions",
                                     })}
-                                    onClick={() => {
-                                      if (analyzer?.id) {
+                                    data-testid={`analyzer-row-overflow-${row.id}`}
+                                  >
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.fieldMappings",
+                                      })}
+                                      onClick={() => {
+                                        if (analyzer?.id) {
+                                          history.push(
+                                            `/analyzers/${analyzer.id}/mappings`,
+                                          );
+                                        }
+                                      }}
+                                      data-testid={`analyzer-action-mappings-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.testConnection",
+                                      })}
+                                      onClick={() => {
+                                        setTestConnectionModal({
+                                          open: true,
+                                          analyzer: analyzer,
+                                        });
+                                      }}
+                                      data-testid={`analyzer-action-test-connection-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.copyMappings",
+                                      })}
+                                      onClick={() => {
+                                        setCopyMappingsModal({
+                                          open: true,
+                                          analyzer: analyzer,
+                                        });
+                                      }}
+                                      data-testid={`analyzer-action-copy-mappings-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.edit",
+                                      })}
+                                      onClick={() =>
                                         history.push(
-                                          `/analyzers/${analyzer.id}/mappings`,
-                                        );
+                                          `/analyzers/${analyzer.id}/edit`,
+                                        )
                                       }
-                                    }}
-                                    data-testid={`analyzer-action-mappings-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.testConnection",
-                                    })}
-                                    onClick={() => {
-                                      setTestConnectionModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-test-connection-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.copyMappings",
-                                    })}
-                                    onClick={() => {
-                                      setCopyMappingsModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-copy-mappings-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.edit",
-                                    })}
-                                    onClick={() =>
-                                      history.push(
-                                        `/analyzers/${analyzer.id}/edit`,
-                                      )
-                                    }
-                                    data-testid={`analyzer-action-edit-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.qcRules",
-                                    })}
-                                    onClick={() =>
-                                      history.push(
-                                        `/analyzers/${analyzer.id}/qc-rules`,
-                                      )
-                                    }
-                                    data-testid={`analyzer-action-qc-rules-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.controlLots",
-                                    })}
-                                    onClick={() =>
-                                      history.push(
-                                        `/analyzers/qc/control-lots/new?analyzerId=${analyzer.id}`,
-                                      )
-                                    }
-                                    data-testid={`analyzer-action-control-lots-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.delete",
-                                    })}
-                                    isDelete
-                                    onClick={() => {
-                                      setDeleteModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-delete-${row.id}`}
-                                  />
-                                </OverflowMenu>
-                              ) : null;
+                                      data-testid={`analyzer-action-edit-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.qcRules",
+                                      })}
+                                      onClick={() =>
+                                        history.push(
+                                          `/analyzers/${analyzer.id}/qc-rules`,
+                                        )
+                                      }
+                                      data-testid={`analyzer-action-qc-rules-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.controlLots",
+                                      })}
+                                      onClick={() =>
+                                        history.push(
+                                          `/analyzers/qc/control-lots/new?analyzerId=${analyzer.id}`,
+                                        )
+                                      }
+                                      data-testid={`analyzer-action-control-lots-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.delete",
+                                      })}
+                                      isDelete
+                                      onClick={() => {
+                                        setDeleteModal({
+                                          open: true,
+                                          analyzer: analyzer,
+                                        });
+                                      }}
+                                      data-testid={`analyzer-action-delete-${row.id}`}
+                                    />
+                                  </OverflowMenu>
+                                ) : null;
                             }
 
                             return (

@@ -1,7 +1,10 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -12,6 +15,7 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -106,5 +110,59 @@ public class AnalyzerBridgeStartupRegistrarTest {
                 any(), any(), any(), any(), any());
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerTcp(any(), any(), any(), any(),
                 any(), any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void fullStateSyncIncludesAllBridgeCollectionsForTcpAndFileAnalyzers() {
+        Analyzer tcpAnalyzer = new Analyzer();
+        tcpAnalyzer.setId("tcp-1");
+        tcpAnalyzer.setName("GeneXpert");
+        tcpAnalyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        tcpAnalyzer.setIpAddress("10.0.0.10");
+        tcpAnalyzer.setPort(5380);
+        tcpAnalyzer.setIdentifierPattern("GENEXPERT|CEPHEID.*GX");
+
+        Analyzer fileAnalyzer = new Analyzer();
+        fileAnalyzer.setId("file-1");
+        fileAnalyzer.setName("QuantStudio");
+        fileAnalyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        fileAnalyzer.setImportDirectory("/data/analyzer-imports/quantstudio");
+        fileAnalyzer.setFilePattern("*.csv");
+
+        when(analyzerService.getAllWithTypes()).thenReturn(List.of(tcpAnalyzer, fileAnalyzer));
+        when(bridgeRegistrationService.registerTcp(any(), any(), any(), any(), any(), any())).thenReturn(true);
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
+        when(bridgeRegistrationService.syncAll(any())).thenReturn(true);
+
+        doAnswer(invocation -> {
+            ((Map<String, Object>) invocation.getArgument(0)).put("qcRules", List.of());
+            return null;
+        }).when(bridgeRegistrationService).attachQcRules(anyMap(), anyString());
+        doAnswer(invocation -> {
+            ((Map<String, Object>) invocation.getArgument(0)).put("controlLots", List.of());
+            return null;
+        }).when(bridgeRegistrationService).attachControlLots(anyMap(), anyString());
+        doAnswer(invocation -> {
+            ((Map<String, Object>) invocation.getArgument(0)).put("testCodeLoinc", Map.of());
+            return null;
+        }).when(bridgeRegistrationService).attachTestCodeLoinc(anyMap(), anyString());
+
+        registrar.onStartup(rootContextRefreshedEvent());
+
+        ArgumentCaptor<List<Map<String, Object>>> payloadCaptor = ArgumentCaptor.forClass(List.class);
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).syncAll(payloadCaptor.capture());
+        List<Map<String, Object>> payloads = payloadCaptor.getValue();
+
+        org.junit.Assert.assertEquals(2, payloads.size());
+        for (Map<String, Object> payload : payloads) {
+            org.junit.Assert.assertTrue(payload.containsKey("qcRules"));
+            org.junit.Assert.assertTrue(payload.containsKey("controlLots"));
+            org.junit.Assert.assertTrue(payload.containsKey("testCodeLoinc"));
+        }
+        Map<String, Object> tcpPayload = payloads.stream()
+                .filter(payload -> "tcp-1".equals(payload.get("oeAnalyzerId"))).findFirst().orElseThrow();
+        org.junit.Assert.assertEquals("GENEXPERT|CEPHEID.*GX", tcpPayload.get("identifierPattern"));
     }
 }

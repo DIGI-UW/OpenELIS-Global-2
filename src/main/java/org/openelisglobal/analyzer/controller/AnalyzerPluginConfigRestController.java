@@ -58,6 +58,7 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getPendingCodes(@PathVariable String analyzerId) {
         List<Map<String, Object>> result = new ArrayList<>();
+        Map<String, String> mappedTestIds = analyzerPendingCodeService.getMappedTestIds(analyzerId);
         for (AnalyzerPendingCode code : analyzerPendingCodeService.findByAnalyzerId(analyzerId)) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", code.getId());
@@ -68,9 +69,16 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
             row.put("seenCount", code.getSeenCount());
             row.put("samplePayload", code.getSamplePayload());
             row.put("status", code.getStatus().name());
+            row.put("openelisTestId", mappedTestIds.get(code.getAnalyzerTestName()));
             result.add(row);
         }
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/analyzers/{analyzerId}/test-mapping-options")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<List<Map<String, Object>>> getTestMappingOptions(@PathVariable String analyzerId) {
+        return ResponseEntity.ok(analyzerPendingCodeService.getMappingOptions());
     }
 
     @PutMapping("/analyzers/{analyzerId}/pending-codes/{pendingCodeId}/status")
@@ -94,6 +102,33 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError("Failed to update pending code: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/analyzers/{analyzerId}/pending-codes/{pendingCodeId}/resolve")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<Map<String, Object>> resolvePendingCode(@PathVariable String analyzerId,
+            @PathVariable String pendingCodeId, @RequestBody Map<String, Object> body, HttpServletRequest request) {
+        try {
+            String openelisTestId = body.get("openelisTestId") == null ? null
+                    : String.valueOf(body.get("openelisTestId"));
+            if (openelisTestId == null || openelisTestId.isBlank()) {
+                throw new IllegalArgumentException("openelisTestId is required");
+            }
+            AnalyzerPendingCode updated = analyzerPendingCodeService.resolve(analyzerId, pendingCodeId, openelisTestId,
+                    getSysUserId(request));
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("id", updated.getId());
+            response.put("analyzerId", updated.getAnalyzerId());
+            response.put("status", updated.getStatus().name());
+            response.put("openelisTestId", openelisTestId);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError("Failed to resolve pending code: " + e.getMessage()));
         }
     }
 

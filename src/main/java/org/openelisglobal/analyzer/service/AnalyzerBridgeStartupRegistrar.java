@@ -154,10 +154,14 @@ public class AnalyzerBridgeStartupRegistrar {
                         p.put("name", a.getName());
                         p.put("protocol",
                                 a.getProtocolVersion() != null && a.getProtocolVersion().isHl7() ? "HL7" : "ASTM");
+                        if (a.getIdentifierPattern() != null && !a.getIdentifierPattern().isBlank()) {
+                            p.put("identifierPattern", a.getIdentifierPattern());
+                        }
                         // Without these the bridge's /sync endpoint resets the entry's
                         // qcRules + controlLots to empty lists on every webapp restart.
                         bridgeRegistrationService.attachQcRules(p, a.getId());
                         bridgeRegistrationService.attachControlLots(p, a.getId());
+                        bridgeRegistrationService.attachTestCodeLoinc(p, a.getId());
                         syncPayloads.add(p);
                     }
                     if (a.getImportDirectory() != null && !a.getImportDirectory().isBlank()) {
@@ -186,6 +190,7 @@ public class AnalyzerBridgeStartupRegistrar {
                         }
                         bridgeRegistrationService.attachQcRules(p, a.getId());
                         bridgeRegistrationService.attachControlLots(p, a.getId());
+                        bridgeRegistrationService.attachTestCodeLoinc(p, a.getId());
                         syncPayloads.add(p);
                     }
                 }

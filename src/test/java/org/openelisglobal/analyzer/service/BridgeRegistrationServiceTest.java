@@ -3,15 +3,22 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.qc.service.QCControlLotService;
@@ -31,6 +38,8 @@ public class BridgeRegistrationServiceTest {
     private TestService testService;
     private AnalyzerQcRuleService analyzerQcRuleService;
     private QCControlLotService qcControlLotService;
+    private BridgeHttpClient bridgeHttpClient;
+    private ObjectMapper objectMapper;
 
     @Before
     public void setUp() throws Exception {
@@ -39,10 +48,14 @@ public class BridgeRegistrationServiceTest {
         testService = mock(TestService.class);
         analyzerQcRuleService = mock(AnalyzerQcRuleService.class);
         qcControlLotService = mock(QCControlLotService.class);
+        bridgeHttpClient = mock(BridgeHttpClient.class);
+        objectMapper = new ObjectMapper();
         inject("analyzerTestMappingService", mappingService);
         inject("testService", testService);
         inject("analyzerQcRuleService", analyzerQcRuleService);
         inject("qcControlLotService", qcControlLotService);
+        inject("bridgeHttpClient", bridgeHttpClient);
+        inject("bridgeBaseUrl", "https://bridge.test");
     }
 
     private void inject(String field, Object value) throws Exception {
@@ -205,5 +218,32 @@ public class BridgeRegistrationServiceTest {
                 new java.util.ArrayList<>(((Map<String, String>) payload.get("testCodeLoinc")).keySet()));
         assertEquals("FIELD_EQUALS", ((List<Map<String, Object>>) payload.get("qcRules")).get(0).get("ruleType"));
         assertEquals("A-LOT", ((List<Map<String, Object>>) payload.get("controlLots")).get(0).get("lotNumber"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void registerTcpSendsCompleteDeterministicBridgeContract() throws Exception {
+        AnalyzerTestMapping zCode = mapping("Z-CODE", "42");
+        AnalyzerTestMapping aCode = mapping("A-CODE", "43");
+        when(mappingService.getAllForAnalyzer("AN-10")).thenReturn(List.of(zCode, aCode));
+        stubTestLoinc("42", "9999-9");
+        stubTestLoinc("43", "1111-1");
+        when(analyzerQcRuleService.getActiveRuleDtosForAnalyzer("AN-10")).thenReturn(List.of());
+        when(qcControlLotService.getActiveControlLotsByInstrument("AN-10")).thenReturn(List.of());
+        when(bridgeHttpClient.post(anyString(), anyString(), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{}"));
+
+        assertTrue(svc.registerTcp("AN-10", "Analyzer 10", "10.0.0.10", 5380, "HL7", null));
+
+        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(bridgeHttpClient).post(anyString(), bodyCaptor.capture(), any(Duration.class));
+        Map<String, Object> payload = objectMapper.readValue(bodyCaptor.getValue(),
+                new TypeReference<Map<String, Object>>() {
+                });
+
+        assertEquals(List.of(), payload.get("qcRules"));
+        assertEquals(List.of(), payload.get("controlLots"));
+        assertEquals(List.of("A-CODE", "Z-CODE"),
+                new java.util.ArrayList<>(((Map<String, String>) payload.get("testCodeLoinc")).keySet()));
     }
 }

@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.controller;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -181,20 +182,27 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
                 new TypeReference<List<Map<String, Object>>>() {
                 });
 
-        Map<String, Object> quantstudio = profiles.stream()
-                .filter(profile -> "file/quantstudio".equals(profile.get("id"))).findFirst()
-                .orElseThrow(() -> new AssertionError("Expected file/quantstudio profile"));
+        assertProfileSummary(profiles, "astm/genexpert-astm", "genexpert-astm", "Cepheid GeneXpert (ASTM Mode)", "ASTM",
+                "MOLECULAR", "RS-232", 28, 1, 44, "READY");
+        assertProfileSummary(profiles, "hl7/genexpert-hl7", "genexpert-hl7", "Cepheid GeneXpert (HL7 Mode)", "HL7",
+                "MOLECULAR", "HTTP", 4, 0, 0, "READY");
+        assertProfileSummary(profiles, "file/quantstudio", "quantstudio", "QuantStudio QS5/QS7", "FILE", "MOLECULAR",
+                "FILE", 17, 8, 0, "READY");
+    }
 
-        assertTrue("Profile id should remain available", quantstudio.containsKey("profileId"));
-        assertTrue("Display name should be lab-facing", quantstudio.containsKey("displayName"));
-        assertTrue("Supported connection mode should be present", quantstudio.containsKey("supportedConnectionMode"));
-        assertTrue("Test mapping count should be present", quantstudio.containsKey("testMappingCount"));
-        assertTrue("QC rule count should be present", quantstudio.containsKey("qcRuleCount"));
-        assertTrue("Result value mapping count should be present", quantstudio.containsKey("resultValueMappingCount"));
-        assertTrue("Readiness status should be present", quantstudio.containsKey("readinessStatus"));
-
-        assertTrue("Profile should include test mappings",
-                ((Number) quantstudio.get("testMappingCount")).intValue() > 0);
-        assertTrue("Profile should include QC rule defaults", ((Number) quantstudio.get("qcRuleCount")).intValue() > 0);
+    private void assertProfileSummary(List<Map<String, Object>> profiles, String id, String profileId,
+            String displayName, String protocol, String category, String connectionMode, int testMappings, int qcRules,
+            int resultMappings, String readiness) {
+        Map<String, Object> profile = profiles.stream().filter(candidate -> id.equals(candidate.get("id"))).findFirst()
+                .orElseThrow(() -> new AssertionError("Expected profile " + id));
+        assertEquals(profileId, profile.get("profileId"));
+        assertEquals(displayName, profile.get("displayName"));
+        assertEquals(protocol, profile.get("protocol"));
+        assertEquals(category, profile.get("category"));
+        assertEquals(connectionMode, profile.get("supportedConnectionMode"));
+        assertEquals(testMappings, ((Number) profile.get("testMappingCount")).intValue());
+        assertEquals(qcRules, ((Number) profile.get("qcRuleCount")).intValue());
+        assertEquals(resultMappings, ((Number) profile.get("resultValueMappingCount")).intValue());
+        assertEquals(readiness, profile.get("readinessStatus"));
     }
 }

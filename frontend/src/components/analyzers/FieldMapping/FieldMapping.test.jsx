@@ -13,6 +13,8 @@ vi.mock("../../../services/analyzerService", () => ({
   getFields: vi.fn(),
   getMappings: vi.fn(),
   getPendingCodes: vi.fn(),
+  getTestMappingOptions: vi.fn(),
+  resolvePendingCode: vi.fn(),
   updatePendingCodeStatus: vi.fn(),
   getPluginConfig: vi.fn(),
   getResultValueMappings: vi.fn(),
@@ -64,6 +66,9 @@ describe("FieldMapping", () => {
       callback([]);
     });
     analyzerService.getPendingCodes.mockImplementation((id, callback) => {
+      callback([]);
+    });
+    analyzerService.getTestMappingOptions.mockImplementation((id, callback) => {
       callback([]);
     });
     analyzerService.getPluginConfig.mockImplementation((id, callback) => {

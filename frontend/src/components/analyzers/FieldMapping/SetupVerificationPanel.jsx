@@ -34,8 +34,7 @@ const SetupVerificationPanel = ({ analyzerId }) => {
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
 
-  const loadVerification = useCallback(() => {
-    setLoading(true);
+  const requestVerification = useCallback(() => {
     analyzerService.getSetupVerification(analyzerId, (response) => {
       if (response?.error || response?.statusCode >= 400) {
         setError(
@@ -53,8 +52,8 @@ const SetupVerificationPanel = ({ analyzerId }) => {
   }, [analyzerId, intl]);
 
   useEffect(() => {
-    loadVerification();
-  }, [loadVerification]);
+    requestVerification();
+  }, [requestVerification]);
 
   const verifyCurrentSetup = () => {
     setVerifying(true);
@@ -64,6 +63,8 @@ const SetupVerificationPanel = ({ analyzerId }) => {
       {
         mappingIds: verification?.mappingIds || [],
         qcIds: verification?.qcIds || [],
+        mappingFingerprint: verification?.mappingFingerprint || "",
+        qcFingerprint: verification?.qcFingerprint || "",
       },
       (response) => {
         setVerifying(false);

@@ -20,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
 import org.openelisglobal.analyzer.valueholder.AnalyzerQcRule;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
@@ -123,10 +124,40 @@ public class AnalyzerSetupVerificationServiceTest {
     }
 
     @Test
+    public void getVerificationStatus_WithoutQcApplicabilityMetadata_RequiresQcByDefault() {
+        pluginConfig.clear();
+        when(analyzerQcRuleService.getActiveRulesForAnalyzer("2013")).thenReturn(List.of());
+        when(qcControlLotService.getActiveControlLotsByInstrument("2013")).thenReturn(List.of());
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertTrue((Boolean) status.get("qcApplicable"));
+        assertFalse((Boolean) status.get("qcReady"));
+        assertFalse((Boolean) status.get("readyForActivation"));
+        assertTrue(list(status.get("blockers")).contains("NO_ACTIVE_QC_RULE"));
+        assertTrue(list(status.get("blockers")).contains("NO_ACTIVE_CONTROL_LOT"));
+    }
+
+    @Test
+    public void getVerificationStatus_WithExplicitQcOptOut_DoesNotRequireRulesOrLots() {
+        pluginConfig.put("profile", Map.of("id", "no-qc-profile", "qcApplicable", false));
+        when(analyzerQcRuleService.getActiveRulesForAnalyzer("2013")).thenReturn(List.of());
+        when(qcControlLotService.getActiveControlLotsByInstrument("2013")).thenReturn(List.of());
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertFalse((Boolean) status.get("qcApplicable"));
+        assertTrue((Boolean) status.get("qcReady"));
+        assertFalse(list(status.get("blockers")).contains("NO_ACTIVE_QC_RULE"));
+        assertFalse(list(status.get("blockers")).contains("NO_ACTIVE_CONTROL_LOT"));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void verifySetup_RecordsFingerprintsActorAndDurableConfigAudit() {
         Map<String, Object> before = service.getVerificationStatus("2013");
-        Map<String, Object> request = Map.of("mappingIds", before.get("mappingIds"), "qcIds", before.get("qcIds"));
+        Map<String, Object> request = Map.of("mappingIds", before.get("mappingIds"), "qcIds", before.get("qcIds"),
+                "mappingFingerprint", before.get("mappingFingerprint"), "qcFingerprint", before.get("qcFingerprint"));
         when(analyzerPluginConfigService.upsert(eq("2013"), any(), eq("77"))).thenAnswer(invocation -> {
             pluginConfig = invocation.getArgument(1);
             return null;
@@ -197,6 +228,76 @@ public class AnalyzerSetupVerificationServiceTest {
     }
 
     @Test
+    public void getVerificationStatus_AfterResultValueMappingChange_MarksVerificationStale() {
+        saveCurrentVerification();
+        when(analyzerPluginConfigService.getResultValueMappings("2013"))
+                .thenReturn(List.of(Map.of("analyzerValue", "DETECTED", "testCode", "MTB", "openelisResultOptionId",
+                        "9002", "bindingStatus", "BOUND", "active", true)));
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertFalse((Boolean) status.get("currentlyVerified"));
+        assertFalse((Boolean) status.get("readyForActivation"));
+        assertEquals("STALE", status.get("verificationState"));
+        assertTrue(list(status.get("blockers")).contains("MAPPINGS_CHANGED"));
+    }
+
+    @Test
+    public void getVerificationStatus_AfterFieldMappingChange_MarksVerificationStale() {
+        saveCurrentVerification();
+        when(analyzerFieldMappingService.getMappingsForAnalyzer("2013", true)).thenReturn(List.of(Map.of("id",
+                "field-1", "analyzerFieldId", "Q.3", "openelisField", "qualityControl", "isActive", true)));
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertFalse((Boolean) status.get("currentlyVerified"));
+        assertFalse((Boolean) status.get("readyForActivation"));
+        assertEquals("STALE", status.get("verificationState"));
+        assertTrue(list(status.get("blockers")).contains("MAPPINGS_CHANGED"));
+    }
+
+    @Test
+    public void getVerificationStatus_AfterControlLotChange_MarksVerificationStale() {
+        saveCurrentVerification();
+        QCControlLot changedLot = new QCControlLot();
+        changedLot.setId("lot-1");
+        changedLot.setInstrumentId("2013");
+        changedLot.setTestId("501");
+        changedLot.setLotNumber("LOT-2026-02");
+        changedLot.setStatus("ACTIVE");
+        when(qcControlLotService.getActiveControlLotsByInstrument("2013")).thenReturn(List.of(changedLot));
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertFalse((Boolean) status.get("currentlyVerified"));
+        assertFalse((Boolean) status.get("readyForActivation"));
+        assertEquals("STALE", status.get("verificationState"));
+        assertTrue(list(status.get("blockers")).contains("QC_CHANGED"));
+    }
+
+    @Test
+    public void getVerificationStatus_AfterControlLotStatisticsChange_MarksVerificationStale() {
+        saveCurrentVerification();
+        QCControlLot changedLot = new QCControlLot();
+        changedLot.setId("lot-1");
+        changedLot.setInstrumentId("2013");
+        changedLot.setTestId("501");
+        changedLot.setLotNumber("LOT-2026-01");
+        changedLot.setCalculationMethod("MANUFACTURER");
+        changedLot.setManufacturerMean(12.5);
+        changedLot.setManufacturerStdDev(0.75);
+        changedLot.setStatus("ACTIVE");
+        when(qcControlLotService.getActiveControlLotsByInstrument("2013")).thenReturn(List.of(changedLot));
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertFalse((Boolean) status.get("currentlyVerified"));
+        assertFalse((Boolean) status.get("readyForActivation"));
+        assertEquals("STALE", status.get("verificationState"));
+        assertTrue(list(status.get("blockers")).contains("QC_CHANGED"));
+    }
+
+    @Test
     public void verifySetup_WithIgnoredPendingResultValue_IsRejected() {
         when(analyzerPluginConfigService.getPendingResultValues("2013"))
                 .thenReturn(List.of(Map.of("id", "rv-ignored", "status", "IGNORED", "testCode", "MTB")));
@@ -205,6 +306,22 @@ public class AnalyzerSetupVerificationServiceTest {
 
         assertFalse((Boolean) status.get("mappingReady"));
         assertTrue(list(status.get("blockers")).contains("PENDING_RESULT_VALUES"));
+    }
+
+    @Test
+    public void getVerificationStatus_WithLegacyFalseMappedAnalyzerCode_IsBlocked() {
+        AnalyzerPendingCode falseMapped = new AnalyzerPendingCode();
+        falseMapped.setId("pending-legacy");
+        falseMapped.setAnalyzerId("2013");
+        falseMapped.setAnalyzerTestName("UNMAPPED-CODE");
+        falseMapped.setStatus(AnalyzerPendingCode.Status.MAPPED);
+        when(analyzerPendingCodeService.findByAnalyzerId("2013")).thenReturn(List.of(falseMapped));
+
+        Map<String, Object> status = service.getVerificationStatus("2013");
+
+        assertFalse((Boolean) status.get("mappingReady"));
+        assertFalse((Boolean) status.get("readyForActivation"));
+        assertTrue(list(status.get("blockers")).contains("PENDING_ANALYZER_CODES"));
     }
 
     @Test
@@ -228,6 +345,30 @@ public class AnalyzerSetupVerificationServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.verifySetup("2013",
                 Map.of("mappingIds", List.of("TEST:OTHER"), "qcIds", status.get("qcIds")), "77"));
+    }
+
+    @Test
+    public void verifySetup_WhenMappingChangesUnderSameId_IsRejected() {
+        Map<String, Object> displayed = service.getVerificationStatus("2013");
+        AnalyzerTestMapping changed = new AnalyzerTestMapping();
+        changed.setAnalyzerId("2013");
+        changed.setAnalyzerTestName("MTB");
+        changed.setTestId("999");
+        when(analyzerTestMappingService.getAllForAnalyzer("2013")).thenReturn(List.of(changed));
+
+        Map<String, Object> request = Map.of("mappingIds", displayed.get("mappingIds"), "qcIds", displayed.get("qcIds"),
+                "mappingFingerprint", displayed.get("mappingFingerprint"), "qcFingerprint",
+                displayed.get("qcFingerprint"));
+
+        assertThrows(IllegalArgumentException.class, () -> service.verifySetup("2013", request, "77"));
+    }
+
+    private void saveCurrentVerification() {
+        Map<String, Object> before = service.getVerificationStatus("2013");
+        pluginConfig.put("setupVerification",
+                Map.of("mappingFingerprint", before.get("mappingFingerprint"), "qcFingerprint",
+                        before.get("qcFingerprint"), "mappingIds", before.get("mappingIds"), "qcIds",
+                        before.get("qcIds"), "verifiedBy", "77", "verifiedAt", "2026-07-24T12:00:00Z"));
     }
 
     @SuppressWarnings("unchecked")

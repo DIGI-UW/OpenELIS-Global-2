@@ -55,6 +55,16 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       "A complete lab-facing setup and verification story",
     );
 
+    await test.step("legacy creation route redirects to inline setup", async () => {
+      await page.goto("/analyzers/new", { waitUntil: "domcontentloaded" });
+      await expect(page).toHaveURL(/\/analyzers\?add=1$/, {
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(page.getByTestId("analyzer-inline-setup")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+    });
+
     await test.step("AN-QC-001 inspect a shipped profile", async () => {
       await demo.step(1, "Inspect a shipped analyzer profile");
       await page.goto("/analyzers/types", { waitUntil: "domcontentloaded" });
@@ -167,7 +177,10 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
     });
 
     await test.step("AN-QC-005 resolve a pending qualitative result from the catalog", async () => {
-      await demo.step(5, "Resolve an instrument value with a catalog option");
+      await demo.step(
+        5,
+        "Resolve a seeded observed value with a catalog option",
+      );
       const pendingAnalyzer = await openAnalyzer(page, SEEDED_PENDING_ANALYZER);
       await pendingAnalyzer.list.openOverflowMenu(pendingAnalyzer.id);
       await pendingAnalyzer.list.clickAction(pendingAnalyzer.id, "mappings");

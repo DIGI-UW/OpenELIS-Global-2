@@ -4,6 +4,7 @@ import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import SetupVerificationPanel from "./SetupVerificationPanel";
 import messages from "../../../languages/en.json";
 import * as analyzerService from "../../../services/analyzerService";
@@ -35,6 +36,8 @@ describe("SetupVerificationPanel", () => {
       readyForActivation: false,
       mappingIds: ["RESULT:MTB:DETECTED", "TEST:MTB"],
       qcIds: ["LOT:lot-1", "RULE:rule-1"],
+      mappingFingerprint: "mapping-fingerprint-1",
+      qcFingerprint: "qc-fingerprint-1",
       blockers: ["SETUP_NOT_VERIFIED"],
     };
     analyzerService.getSetupVerification.mockImplementation(
@@ -64,6 +67,8 @@ describe("SetupVerificationPanel", () => {
         {
           mappingIds: ["RESULT:MTB:DETECTED", "TEST:MTB"],
           qcIds: ["LOT:lot-1", "RULE:rule-1"],
+          mappingFingerprint: "mapping-fingerprint-1",
+          qcFingerprint: "qc-fingerprint-1",
         },
         expect.any(Function),
       );

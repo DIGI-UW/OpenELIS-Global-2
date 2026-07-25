@@ -883,6 +883,14 @@ export const getPendingCodes = (
   getFromOpenElisServer(endpoint, callback);
 };
 
+export const getTestMappingOptions = (
+  analyzerId: string,
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/test-mapping-options`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
 /**
  * Get analyzer result-value mappings stored in plugin config JSON.
  * @param {String} analyzerId
@@ -1162,4 +1170,20 @@ export const updatePendingCodeStatus = (
         extraParams,
       );
     });
+};
+
+export const resolvePendingCode = (
+  analyzerId: string,
+  pendingCodeId: string,
+  openelisTestId: string,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes/${pendingCodeId}/resolve`;
+  postToOpenElisServerJsonResponse(
+    endpoint,
+    JSON.stringify({ openelisTestId }),
+    callback,
+    extraParams,
+  );
 };

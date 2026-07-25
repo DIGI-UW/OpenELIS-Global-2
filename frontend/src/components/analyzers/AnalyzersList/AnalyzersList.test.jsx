@@ -52,6 +52,7 @@ import userEvent from "@testing-library/user-event";
 
 // 5. IntlProvider (if component uses i18n)
 import { IntlProvider } from "react-intl";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // 6. Router (if component uses routing)
 import { BrowserRouter } from "react-router-dom";
@@ -70,16 +71,21 @@ import {
 
 // 9. Messages/translations
 import messages from "../../../languages/en.json";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 
 // ========== TEST SETUP ==========
 
 // Standard render helper with IntlProvider
-const renderWithIntl = (component) => {
+const renderWithIntl = (component, roles = ["Global Administrator"]) => {
   return render(
     <BrowserRouter>
-      <IntlProvider locale="en" messages={messages}>
-        {component}
-      </IntlProvider>
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: { roles } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          {component}
+        </IntlProvider>
+      </UserSessionDetailsContext.Provider>
     </BrowserRouter>,
   );
 };
@@ -277,6 +283,24 @@ describe("AnalyzersList", () => {
 
     // Assert: navigation occurred to the inline setup flow
     expect(mockHistory.push).toHaveBeenCalledWith("/analyzers?add=1");
+  });
+
+  test("testAnalyzerImportRole_SeesReadOnlyListWithoutConfigurationActions", async () => {
+    getAnalyzers.mockImplementation((filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    act(() => {
+      renderWithIntl(<AnalyzersList />, ["Analyser Import"]);
+    });
+
+    expect(await screen.findByTestId("analyzer-name-1")).toBeInTheDocument();
+    expect(screen.queryByTestId("add-analyzer-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-row-overflow-1"),
+    ).not.toBeInTheDocument();
   });
 
   test("testInlineAnalyzerSetup_UsesLabFacingFlowAndKeepsListVisible", async () => {

@@ -13,6 +13,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.service.AnalyzerPluginConfigService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.common.action.IActionConstants;
@@ -51,11 +52,16 @@ import org.springframework.test.web.servlet.MvcResult;
 @WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
 public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
+    private static final long PROFILE_MAPPING_TEST_ID = 995301L;
+
     @Autowired
     private DataSource dataSource;
 
     @Autowired
     private AnalyzerService analyzerService;
+
+    @Autowired
+    private AnalyzerPluginConfigService analyzerPluginConfigService;
 
     @Autowired
     private HistoryService historyService;
@@ -79,6 +85,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @After
     public void tearDown() {
         AnalyzerTestCleanup.clean(jdbcTemplate);
+        jdbcTemplate.update("DELETE FROM clinlims.test WHERE id = ?", PROFILE_MAPPING_TEST_ID);
     }
 
     /**
@@ -133,6 +140,90 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.name").value(uniqueName));
+    }
+
+    @Test
+    public void testProfileCreate_AppliesDefaultsOnceAndUpdatePreservesAnalyzerOverrides() throws Exception {
+        jdbcTemplate.update("DELETE FROM clinlims.test WHERE id = ?", PROFILE_MAPPING_TEST_ID);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.test" + " (id, name, description, loinc, is_active, guid, lastupdated)"
+                        + " VALUES (?, 'Analyzer Profile Mapping Guard', 'Analyzer Profile Mapping Guard',"
+                        + " '94500-6', 'Y', ?, NOW())",
+                PROFILE_MAPPING_TEST_ID, "99530100-0000-0000-0000-000000000001");
+        String uniqueName = "TEST-Profile-Once-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"MOLECULAR\",\"defaultConfigId\":\"astm/genexpert-astm\","
+                + "\"testUnitIds\":[\"1\",\"2\"]}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isCreated()).andReturn();
+        Map<String, Object> response = objectMapper.readValue(createResult.getResponse().getContentAsString(),
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(response.get("id"));
+        assertEquals("Profile setup should persist the selected lab units", "1,2", jdbcTemplate.queryForObject(
+                "SELECT test_unit_ids FROM clinlims.analyzer WHERE id = ?", String.class, Integer.valueOf(analyzerId)));
+        Integer initialRuleCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.analyzer_qc_rule WHERE analyzer_id = ?", Integer.class,
+                Integer.valueOf(analyzerId));
+        Integer initialMappingCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.analyzer_test_map WHERE analyzer_id = ?", Integer.class,
+                Integer.valueOf(analyzerId));
+        assertTrue("The shipped profile should create QC defaults", initialRuleCount > 0);
+        assertTrue("The shipped profile should create catalog-backed test mappings", initialMappingCount > 0);
+        assertEquals("Profile creation should persist plugin defaults", Integer.valueOf(1),
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM clinlims.analyzer_plugin_config WHERE analyzer_id = ?", Integer.class,
+                        Integer.valueOf(analyzerId)));
+
+        assertEquals(1,
+                jdbcTemplate.update("UPDATE clinlims.analyzer_plugin_config"
+                        + " SET config = jsonb_set(config, '{labOverride}', '\"keep-me\"'::jsonb)"
+                        + " WHERE analyzer_id = ?", Integer.valueOf(analyzerId)));
+
+        mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"" + uniqueName + " Updated\",\"defaultConfigId\":\"astm/genexpert-astm\"}"))
+                .andExpect(status().isOk());
+
+        assertEquals("Analyzer update must preserve its plugin config row", Integer.valueOf(1),
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM clinlims.analyzer_plugin_config WHERE analyzer_id = ?", Integer.class,
+                        Integer.valueOf(analyzerId)));
+        assertEquals(initialRuleCount,
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer_qc_rule WHERE analyzer_id = ?",
+                        Integer.class, Integer.valueOf(analyzerId)));
+        assertEquals(initialMappingCount,
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer_test_map WHERE analyzer_id = ?",
+                        Integer.class, Integer.valueOf(analyzerId)));
+        assertEquals("keep-me", jdbcTemplate.queryForObject(
+                "SELECT config::jsonb ->> 'labOverride' FROM clinlims.analyzer_plugin_config WHERE analyzer_id = ?",
+                String.class, Integer.valueOf(analyzerId)));
+    }
+
+    @Test
+    public void testPluginConfigService_PersistsDefaultsForExistingAnalyzer() throws Exception {
+        String uniqueName = "TEST-Plugin-Config-" + System.currentTimeMillis();
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(
+                        "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\"," + "\"testUnitIds\":[]}"))
+                .andExpect(status().isCreated()).andReturn();
+        Map<String, Object> response = objectMapper.readValue(createResult.getResponse().getContentAsString(),
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(response.get("id"));
+
+        analyzerPluginConfigService.applyConfigDefaults(analyzerId, Map.of("connectionRole", "SERVER"),
+                TEST_SYS_USER_ID);
+
+        assertEquals("SERVER", analyzerPluginConfigService.getConfigAsMap(analyzerId).get("connectionRole"));
+        assertEquals(Integer.valueOf(1),
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM clinlims.analyzer_plugin_config WHERE analyzer_id = ?", Integer.class,
+                        Integer.valueOf(analyzerId)));
+        assertEquals("SERVER", jdbcTemplate.queryForObject(
+                "SELECT config::jsonb ->> 'connectionRole' FROM clinlims.analyzer_plugin_config WHERE analyzer_id = ?",
+                String.class, Integer.valueOf(analyzerId)));
     }
 
     @Test

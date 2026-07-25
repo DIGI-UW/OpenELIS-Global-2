@@ -15,12 +15,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * Event listeners for automatic analyzer status transitions
  * 
  * 
- * Listens for domain events and triggers appropriate status transitions: -
- * MappingCreatedEvent → SETUP → VALIDATION - AllMappingsActivatedEvent →
- * VALIDATION → ACTIVE - UnacknowledgedErrorCreatedEvent → ACTIVE →
- * ERROR_PENDING - ConnectionTestFailedEvent → ACTIVE/ERROR_PENDING → OFFLINE -
- * AllErrorsAcknowledgedEvent → ERROR_PENDING → ACTIVE -
- * ConnectionTestSucceededEvent → OFFLINE → ACTIVE
+ * Setup verification is the sole mapping/QC activation trigger. Operational
+ * events continue to manage error and connectivity states after activation.
  */
 @Component
 public class AnalyzerStatusEventListeners {
@@ -30,54 +26,6 @@ public class AnalyzerStatusEventListeners {
 
     @Autowired
     private AnalyzerService analyzerService;
-
-    /**
-     * Listener: First field mapping created for an analyzer Triggers: SETUP →
-     * VALIDATION transition
-     */
-    @EventListener
-    public void onMappingCreated(MappingCreatedEvent event) {
-        String analyzerId = event.getAnalyzerId();
-        LogEvent.logInfo(this.getClass().getSimpleName(), "onMappingCreated",
-                "Received MappingCreatedEvent for analyzer " + analyzerId);
-
-        try {
-            // Only transition if analyzer is in SETUP status
-            Analyzer analyzer = analyzerService.get(analyzerId);
-            if (analyzer != null && analyzer.getStatus() == AnalyzerStatus.SETUP) {
-                transitionService.transitionToValidation(analyzerId);
-                LogEvent.logInfo(this.getClass().getSimpleName(), "onMappingCreated",
-                        "Triggered SETUP → VALIDATION transition for analyzer " + analyzerId);
-            }
-        } catch (Exception e) {
-            LogEvent.logError("Failed to transition analyzer " + analyzerId + " to VALIDATION on mapping created: "
-                    + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Listener: All required mappings have been activated Triggers: VALIDATION →
-     * ACTIVE transition
-     */
-    @EventListener
-    public void onAllMappingsActivated(AllMappingsActivatedEvent event) {
-        String analyzerId = event.getAnalyzerId();
-        LogEvent.logInfo(this.getClass().getSimpleName(), "onAllMappingsActivated",
-                "Received AllMappingsActivatedEvent for analyzer " + analyzerId);
-
-        try {
-            // Only transition if analyzer is in VALIDATION status
-            Analyzer analyzer = analyzerService.get(analyzerId);
-            if (analyzer != null && analyzer.getStatus() == AnalyzerStatus.VALIDATION) {
-                transitionService.transitionToActive(analyzerId);
-                LogEvent.logInfo(this.getClass().getSimpleName(), "onAllMappingsActivated",
-                        "Triggered VALIDATION → ACTIVE transition for analyzer " + analyzerId);
-            }
-        } catch (Exception e) {
-            LogEvent.logError("Failed to transition analyzer " + analyzerId + " to ACTIVE on all mappings activated: "
-                    + e.getMessage(), e);
-        }
-    }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -199,40 +147,6 @@ public class AnalyzerStatusEventListeners {
     }
 
     // === Event Classes ===
-
-    /**
-     * Event: First field mapping created for an analyzer
-     */
-    public static class MappingCreatedEvent extends org.springframework.context.ApplicationEvent {
-        private static final long serialVersionUID = 1L;
-        private final String analyzerId;
-
-        public MappingCreatedEvent(Object source, String analyzerId) {
-            super(source);
-            this.analyzerId = analyzerId;
-        }
-
-        public String getAnalyzerId() {
-            return analyzerId;
-        }
-    }
-
-    /**
-     * Event: All required mappings have been activated
-     */
-    public static class AllMappingsActivatedEvent extends org.springframework.context.ApplicationEvent {
-        private static final long serialVersionUID = 1L;
-        private final String analyzerId;
-
-        public AllMappingsActivatedEvent(Object source, String analyzerId) {
-            super(source);
-            this.analyzerId = analyzerId;
-        }
-
-        public String getAnalyzerId() {
-            return analyzerId;
-        }
-    }
 
     /**
      * Event: Unacknowledged error was created

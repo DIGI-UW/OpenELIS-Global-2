@@ -46,7 +46,7 @@ public class AnalyzerServiceProfileQcRulesTest {
     private AnalyzerServiceImpl analyzerService;
 
     @Test
-    public void testAutoCreateTestMappings_WithQcRulesInProfile_CreatesDbRows() {
+    public void testAutoCreateTestMappings_WithQcRulesInProfile_DelegatesRuleCreation() {
         // Simulate profile config with 2 QC rules
         Map<String, Object> rule1 = Map.of("ruleType", "FIELD_EQUALS", "targetField", "O.12", "operand", "Q",
                 "isActive", true, "sortOrder", 1);
@@ -88,7 +88,7 @@ public class AnalyzerServiceProfileQcRulesTest {
     }
 
     @Test
-    public void testAutoCreateTestMappings_WithEmptyQcRules_CreatesNoRows() {
+    public void testAutoCreateTestMappings_WithEmptyQcRules_DoesNotCreateRules() {
         Map<String, Object> configDefaults = new HashMap<>();
         configDefaults.put("qcRules", List.of());
         Map<String, Object> config = new HashMap<>();

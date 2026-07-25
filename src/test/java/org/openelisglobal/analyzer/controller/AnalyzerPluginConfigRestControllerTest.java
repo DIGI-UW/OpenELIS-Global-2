@@ -95,26 +95,56 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         pendingCode.setAnalyzerTestName("ABC");
         pendingCode.setStatus(AnalyzerPendingCode.Status.PENDING);
         when(analyzerPendingCodeService.findByAnalyzerId("101")).thenReturn(List.of(pendingCode));
+        when(analyzerPendingCodeService.getMappedTestIds("101")).thenReturn(Map.of("ABC", "501"));
 
         mockMvc.perform(get("/rest/analyzer/analyzers/101/pending-codes").with(user("admin").roles("GLOBAL_ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value("pc-1")).andExpect(jsonPath("$[0].status").value("PENDING"));
+                .andExpect(jsonPath("$[0].id").value("pc-1")).andExpect(jsonPath("$[0].status").value("PENDING"))
+                .andExpect(jsonPath("$[0].openelisTestId").value("501"));
     }
 
     @Test
-    public void testUpdatePendingCodeStatus_Returns200() throws Exception {
-        AnalyzerPendingCode updated = new AnalyzerPendingCode();
-        updated.setId("pc-1");
-        updated.setAnalyzerId("101");
-        updated.setStatus(AnalyzerPendingCode.Status.MAPPED);
+    public void testUpdatePendingCodeStatus_MappedWithoutResolutionReturns400() throws Exception {
         when(analyzerPendingCodeService.updateStatus(eq("101"), eq("pc-1"), eq(AnalyzerPendingCode.Status.MAPPED),
-                any())).thenReturn(updated);
+                any())).thenThrow(new IllegalArgumentException("Mapped status requires an OpenELIS test resolution"));
 
         mockMvc.perform(
                 put("/rest/analyzer/analyzers/101/pending-codes/pc-1/status").with(user("admin").roles("GLOBAL_ADMIN"))
                         .with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"MAPPED\"}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value("pc-1"))
-                .andExpect(jsonPath("$.status").value("MAPPED"));
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testGetPendingCodeMappingOptions_ReturnsCatalogTests() throws Exception {
+        when(analyzerPendingCodeService.getMappingOptions())
+                .thenReturn(List.of(Map.of("id", "501", "name", "Xpert MTB/RIF", "loinc", "38379-4")));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/101/test-mapping-options")
+                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value("501"))
+                .andExpect(jsonPath("$[0].name").value("Xpert MTB/RIF"));
+    }
+
+    @Test
+    public void testResolvePendingCode_CreatesMappingAndReturnsMapped() throws Exception {
+        AnalyzerPendingCode updated = new AnalyzerPendingCode();
+        updated.setId("pc-1");
+        updated.setAnalyzerId("101");
+        updated.setStatus(AnalyzerPendingCode.Status.MAPPED);
+        when(analyzerPendingCodeService.resolve(eq("101"), eq("pc-1"), eq("501"), any())).thenReturn(updated);
+
+        mockMvc.perform(post("/rest/analyzer/analyzers/101/pending-codes/pc-1/resolve")
+                .with(user("admin").roles("GLOBAL_ADMIN")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"openelisTestId\":\"501\"}")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("pc-1")).andExpect(jsonPath("$.status").value("MAPPED"));
+    }
+
+    @Test
+    public void testResolvePendingCode_WithoutCatalogTestReturns400() throws Exception {
+        mockMvc.perform(post("/rest/analyzer/analyzers/101/pending-codes/pc-1/resolve")
+                .with(user("admin").roles("GLOBAL_ADMIN")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{}")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("openelisTestId is required"));
     }
 
     @Test

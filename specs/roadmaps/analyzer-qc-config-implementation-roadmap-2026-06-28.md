@@ -1,8 +1,8 @@
 # Analyzer QC + Configuration Implementation Roadmap
 
 - **Date:** 2026-06-28
-- **Status:** MVP acceptance gates complete on the recorded build; PR review
-  approval remains
+- **Status:** Acceptance closure in progress; the existing remote report and
+  video are historical until rerun against the final PR SHA
 - **Primary epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
 - **Related epics:** [OGC-1016](https://uwdigi.atlassian.net/browse/OGC-1016),
   [OGC-811](https://uwdigi.atlassian.net/browse/OGC-811),
@@ -32,51 +32,47 @@ are historical signals only. Neither can satisfy the July acceptance gates.
 
 ### Milestone Classification
 
-| Milestone                       | Classification      | Acceptance position                                                                                                                                                                |
-| ------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0 - stabilization              | Accepted foundation | Routed QC loading, string-safe control-lot IDs, deterministic empty arrays, FILE ownership, and clean-start harness catalogs are covered by focused tests and CI.                  |
-| M1 - profile verification       | Accepted            | The lab-facing shipped-profile view and setup action pass current desktop/mobile comparison and remote `AN-QC-001`.                                                                |
-| M2 - guided setup               | Accepted            | Inline creation, lab-unit selection, exact-once profile application, old-route redirect, and visible connection evidence pass automated and remote acceptance.                     |
-| M3 - mappings and result values | Accepted            | Catalog-bound value resolution, reload persistence, durable verification, and stale fingerprints pass service/component tests and remote `AN-QC-003`/`AN-QC-005`.                  |
-| M4 - analyzer QC                | Accepted            | Existing QC entities, readiness gates, bridge sync, deterministic payloads, and the assembled QC/readiness workflow pass automated and remote acceptance.                          |
-| C4 - remote UAT and evidence    | Accepted            | The exact deployed PR build has an 8/8 required-step schema-v2 report, UI-only non-video and video passes, current screenshots, MP4, and build/checklist provenance in the bundle. |
+| Milestone                       | Classification         | Acceptance position                                                                                                                                                                                           |
+| ------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 - stabilization              | Implemented foundation | Routed QC loading, string-safe control-lot IDs, deterministic empty bridge collections, and bridge-owned FILE runtime are implemented and covered by focused tests.                                           |
+| M1 - profile verification       | Partially accepted     | The shipped-profile catalog and setup action are implemented. Richer design-gallery filters, used-by/source metadata, and list-level attention presentation are deferred and are not claimed by this MVP.     |
+| M2 - guided setup               | Partially accepted     | Inline creation, lab-unit selection, old-route redirect, profile application, and saved-analyzer connection testing are implemented. The MVP uses create-then-review routes, not a single progressive wizard. |
+| M3 - mappings and result values | Partially accepted     | Catalog-bound values, real pending-code resolution, and stale-aware verification pass focused and real-DB guards. Final acceptance still requires the final-SHA remote story.                                 |
+| M4 - analyzer QC                | Partially accepted     | Existing QC entities, readiness gates, startup payload assembly, and all fingerprint-input guards pass locally. Final acceptance still requires the final-SHA remote story.                                   |
+| C4 - remote UAT and evidence    | Not accepted           | The `fb17b576` report and MP4 are historical. A fresh UI-only non-video/video run, screenshot review, and 8/8 required report must identify the final application and harness SHAs.                           |
 
-### Acceptance Result - 2026-07-24
+### Historical Evidence Position - 2026-07-24
 
-- The application commit containing this amendment is the reviewed artifact.
-  Its exact SHA, the exact review-tooling SHA, deployment ID, and deployment time
-  are recorded in `/__review/build.json` and the downloaded Markdown/JSON UAT
-  report.
-- `AN-QC-001` through `AN-QC-008` passed with no failed, stale, untested, or
-  open required steps.
-- The non-video and paced video projects both executed the story through visible
-  UI controls. Fixture loading was limited to the documented precondition.
-- The MP4, nine desktop screenshots, mobile screenshot, test outputs, live build
-  manifest, checklist revision, and UAT reports are packaged outside git under
-  `/Users/pmanko/.codex/evidence/ogc-1054-final`.
+- The prior remote run demonstrated `AN-QC-001` through `AN-QC-008` against
+  application commit `fb17b57681966a31693afaedd9f9017a99a9f980` and review
+  tooling commit `4d33505400ebda43d878018c7c1e0fc8f99d777c`.
+- That run remains useful regression evidence but cannot accept later code or
+  documentation changes.
+- Its non-video run, MP4, screenshots, build manifest, checklist revision, and
+  report remain packaged under `/Users/pmanko/.codex/evidence/ogc-1054-final`
+  until replaced by a bundle for the final SHA.
 - Review-tooling contract and widget tests pass in
-  [DIGI-UW/openelis-review-tooling#2](https://github.com/DIGI-UW/openelis-review-tooling/pull/2).
-- The newest pinned `openelis-work` mock has richer analyzer-list attention
+  [DIGI-UW/openelis-review-tooling#2](https://github.com/DIGI-UW/openelis-review-tooling/pull/2);
+  merging that companion PR remains independent of application acceptance.
+- The pinned `openelis-work` mock has richer analyzer-list attention
   presentation: separate `In setup` and `Needs attention` totals, a global
-  unresolved-result alert, and explicit Lab Unit/Analyzer Type columns. The MVP
-  exposes the underlying per-analyzer setup/attention states and passes the
-  required workflow, but those list-level presentation refinements remain a
-  ranked UI follow-up rather than a hidden acceptance claim.
+  unresolved-result alert, and explicit Lab Unit/Analyzer Type columns. Those
+  refinements are follow-on design scope, not hidden MVP completion claims.
 
 ### Requirement Traceability Matrix
 
-| Requirement                                                            | Code anchor                                                                                           | Automated guard                                                              | Current design                                                                                                                                                                   | Remote UAT                                                               | Acceptance evidence                                                                                          |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Shipped profiles are a lab-facing setup catalog                        | `AnalyzerRestController`, `AnalyzerTypeManagement`                                                    | profile DTO/controller and route component tests                             | [`analyzer-profile-mapping.md`](https://github.com/DIGI-UW/openelis-work/blob/2b590bb1d6ccf8a1c8217aecc8eb5662a05e72a7/designs/analyzer-integration/analyzer-profile-mapping.md) | `AN-QC-001`                                                              | Current desktop/mobile screenshots plus report                                                               |
-| One inline profile-driven creation path                                | `AnalyzersList`, `AnalyzerForm`, analyzer routes                                                      | inline setup, redirect, lab-unit, and exact-once profile tests               | same profile-mapping design                                                                                                                                                      | `AN-QC-002`                                                              | UI-only trace, screenshot, and MP4 chapter                                                                   |
-| Deterministic mapping review records who verified what                 | `FieldMapping`, `SetupVerificationPanel`, `AnalyzerSetupVerificationServiceImpl`                      | fingerprint, actor/time, audit, and stale-verification tests                 | same profile-mapping design and gap analysis                                                                                                                                     | `AN-QC-003`                                                              | UAT mark plus build-bound report                                                                             |
-| Connection testing is visible evidence, not an activation prerequisite | saved-analyzer connection-test flow                                                                   | form/component state tests and UI assertion                                  | same profile-mapping design                                                                                                                                                      | `AN-QC-004`                                                              | Visible success or failure state in MP4                                                                      |
-| Qualitative targets come from the mapped test's active catalog options | `AnalyzerResultValueOptionServiceImpl`, `AnalyzerPluginConfigServiceImpl`, `ResultValueMappingsPanel` | wrong-test, inactive, ambiguous, legacy, read/write, and resolution tests    | [`result-options.md`](https://github.com/DIGI-UW/openelis-work/blob/2b590bb1d6ccf8a1c8217aecc8eb5662a05e72a7/designs/admin-config/result-options.md)                             | `AN-QC-005`                                                              | Reloaded UI state and downloaded report                                                                      |
-| QC uses the existing rule, lot, result, and Westgard path              | `AnalyzerQcRule`, `QCControlLot`, `QCResult`, readiness and event services                            | create/update/delete sync, lot sync, and status-transition tests             | [`westgard-rules.md`](https://github.com/DIGI-UW/openelis-work/blob/2b590bb1d6ccf8a1c8217aecc8eb5662a05e72a7/designs/quality/westgard-rules.md)                                  | `AN-QC-006`, `AN-QC-007`                                                 | Before/after blocker screenshots and MP4                                                                     |
-| Bridge registration is deterministic                                   | `BridgeRegistrationService`                                                                           | sorted `qcRules`, `controlLots`, and `testCodeLoinc`, including empty arrays | analyzer integration contract                                                                                                                                                    | `AN-QC-007` for user-visible readiness; contract tests own payload proof | JUnit output, no human payload inspection                                                                    |
-| Completed setup is coherent for a lab administrator                    | `/analyzers`, `/analyzers/types`, shared mapping/QC flow                                              | focused component suite and Playwright guard                                 | profile-mapping design                                                                                                                                                           | `AN-QC-008`                                                              | Required-step report and final screenshot                                                                    |
-| Review evidence identifies exactly what was reviewed                   | `openelis-review-tooling` schema-v2 transformer, widget, router, and build manifest                   | transformer/browser/Compose/deploy checks                                    | UAT review harness contract                                                                                                                                                      | all steps                                                                | app SHA, harness SHA, deployment time, checklist revision, route, actual URL, actor, time, status, and notes |
-| FILE runtime remains bridge-owned                                      | `AGENTS.md`, bridge registration and direct ingestion code                                            | OpenELIS contract/harness tests only                                         | analyzer integration ownership                                                                                                                                                   | not a human UAT step                                                     | Contract evidence; no OE2 poller                                                                             |
+| Requirement                                                            | Code anchor                                                                                           | Automated guard                                                                              | Current design                                                                                                                                                                   | Remote UAT                                                               | Acceptance evidence                                                                                          |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Shipped profiles are a lab-facing setup catalog                        | `AnalyzerRestController`, `AnalyzerTypeManagement`                                                    | profile DTO/controller and route component tests                                             | [`analyzer-profile-mapping.md`](https://github.com/DIGI-UW/openelis-work/blob/2b590bb1d6ccf8a1c8217aecc8eb5662a05e72a7/designs/analyzer-integration/analyzer-profile-mapping.md) | `AN-QC-001`                                                              | Final-SHA desktop/mobile screenshots and report pending                                                      |
+| One inline profile-driven creation path                                | `AnalyzersList`, `AnalyzerForm`, analyzer routes                                                      | inline setup, redirect, lab-unit, and endpoint/state exact-once tests                        | same profile-mapping design; progressive wizard presentation deferred                                                                                                            | `AN-QC-002`                                                              | Final-SHA UI-only trace, screenshot, and MP4 pending                                                         |
+| Deterministic mapping review records who verified what                 | `FieldMapping`, `PendingCodesPanel`, `SetupVerificationPanel`, setup/pending-code services            | real-DB pending-code mapping plus fingerprint, actor/time, audit, and all-input stale guards | same profile-mapping design and gap analysis                                                                                                                                     | `AN-QC-003`                                                              | Final-SHA UAT mark plus build-bound report pending                                                           |
+| Connection testing is visible evidence, not an activation prerequisite | saved-analyzer connection-test flow                                                                   | form/component state tests and UI assertion                                                  | same profile-mapping design                                                                                                                                                      | `AN-QC-004`                                                              | Visible success or failure state in MP4                                                                      |
+| Qualitative targets come from the mapped test's active catalog options | `AnalyzerResultValueOptionServiceImpl`, `AnalyzerPluginConfigServiceImpl`, `ResultValueMappingsPanel` | real-DB inactive/wrong-test inversion guard plus service/component tests                     | [`result-options.md`](https://github.com/DIGI-UW/openelis-work/blob/2b590bb1d6ccf8a1c8217aecc8eb5662a05e72a7/designs/admin-config/result-options.md)                             | `AN-QC-005`                                                              | Final-SHA reloaded UI state and downloaded report pending                                                    |
+| QC uses the existing rule, lot, result, and Westgard path              | `AnalyzerQcRule`, `QCControlLot`, `QCResult`, verification and readiness services                     | create/update/delete sync, lot sync, and status-transition tests                             | [`westgard-rules.md`](https://github.com/DIGI-UW/openelis-work/blob/2b590bb1d6ccf8a1c8217aecc8eb5662a05e72a7/designs/quality/westgard-rules.md)                                  | `AN-QC-006`, `AN-QC-007`                                                 | Before/after blocker screenshots and MP4                                                                     |
+| Bridge registration is deterministic                                   | `BridgeRegistrationService`                                                                           | sorted `qcRules` and `controlLots` arrays plus a sorted `testCodeLoinc` map, including empty collections | analyzer integration contract                                                                                                                                                    | `AN-QC-007` for user-visible readiness; contract tests own payload proof | JUnit output, no human payload inspection                                                                    |
+| Completed setup is coherent for a lab administrator                    | `/analyzers`, `/analyzers/types`, shared mapping/QC flow                                              | focused component suite and Playwright guard                                                 | profile-mapping design                                                                                                                                                           | `AN-QC-008`                                                              | Required-step report and final screenshot                                                                    |
+| Review evidence identifies exactly what was reviewed                   | `openelis-review-tooling` schema-v2 transformer, widget, router, and build manifest                   | transformer/browser/Compose/deploy checks                                                    | UAT review harness contract                                                                                                                                                      | all steps                                                                | app SHA, harness SHA, deployment time, checklist revision, route, actual URL, actor, time, status, and notes |
+| FILE runtime remains bridge-owned                                      | `AGENTS.md`, bridge registration and direct ingestion code                                            | OpenELIS contract/harness tests only                                                         | analyzer integration ownership                                                                                                                                                   | not a human UAT step                                                     | Contract evidence; no OE2 poller                                                                             |
 
 ### Acceptance Checkpoints
 
@@ -136,7 +132,8 @@ audit, and stale verification; `AN-QC-001` through `AN-QC-005` pass remotely.
 - Keep `AnalyzerQcRule`, `QCControlLot`, `QCResult`, and Westgard as the only
   analyzer-QC path.
 - Recompute readiness and resync registration after rule/lot changes.
-- Emit deterministic `qcRules`, `controlLots`, and `testCodeLoinc` arrays.
+- Emit deterministic `qcRules` and `controlLots` arrays plus a deterministic
+  `testCodeLoinc` map, including empty collections.
 - Block `ACTIVE` until mappings are currently verified and profile-applicable QC
   is ready.
 - Keep connection testing visible but non-blocking.
@@ -177,6 +174,13 @@ explicit action.
 - Analyzer QC is applicable by default. A profile may opt out only by explicitly
   setting `qcApplicable: false`; a missing field does not silently waive QC
   readiness.
+- Profile-catalog `readinessStatus` means the shipped file has enough profile
+  metadata to start setup. It is not analyzer activation readiness, which is
+  computed from persisted mappings, pending values, QC rules/lots, and current
+  setup verification.
+- `AnalyzerSetupVerifiedEvent` is the sole mapping/QC activation trigger. The
+  dormant mapping-created/all-mappings-activated event path is removed; it
+  cannot advance an analyzer around setup verification.
 - Multi-component target-to-component mapping, analyzer result import, and
   Results/Validation v4 are the next milestone. They use stable component codes
   and preserve the primary-component default.
@@ -201,7 +205,7 @@ not an API-driven browser test. The historical recorded story verifies
 an analyzer from the shipped GeneXpert ASTM profile, reviews mappings, creates a
 QC rule, creates a control lot, and returns to `/analyzers` with QC readiness
 satisfied. The media bundle is generated outside the source tree at
-`/Users/pmanko/.codex/evidence/ogc-1054-analyzer-qc-config-mvp`; the MP4/PNG/zip
+`/Users/pmanko/.codex/evidence/ogc-1054-final`; the MP4/PNG/zip
 artifacts are intentionally not committed. This historical bundle does not
 satisfy C4.
 
@@ -370,7 +374,8 @@ Every checkpoint follows red/green/refactor and includes the code-qa gates.
 - Frontend test proving `ControlLotSetup` submits analyzer/test IDs as strings.
 - Backend test around `BridgeRegistrationService` proving an analyzer with no
   active QC rules/control lots still emits empty `qcRules` and `controlLots`
-  arrays during registration/sync.
+  collections during registration/sync (`qcRules`/`controlLots` arrays and a
+  `testCodeLoinc` map).
 
 **Implementation**
 
@@ -396,22 +401,24 @@ Every checkpoint follows red/green/refactor and includes the code-qa gates.
 **Goal:** replace the lab-facing role of `/analyzers/types` with profile
 verification status rather than plugin registry maintenance.
 
-**Tests first**
+**MVP tests**
 
 - Backend tests for profile listing shape, read-only profile endpoints, and
-  completeness calculation from `default_test_mappings`, result mappings, and QC
-  rules.
-- Frontend tests for searchable/filterable Analyzer Types list, deactivated
-  filter state, mapped-count rendering, and no Java/plugin-class fields in the
-  primary lab UI.
+  readiness calculation from test mappings, result mappings, and QC rules.
+- Frontend tests for lab-facing profile rows, readiness/mapping counts, and setup
+  actions without Java/plugin-class fields in the primary UI.
 - Route-level test that plugin registry is not the default lab admin experience.
 
 **Implementation**
 
-- Add/extend DTOs so profile list can report tests mapped, results mapped, QC
-  readiness, used-by count, and source (shipped/site-created when available).
-- Rework `AnalyzerTypeManagement` into lab-facing profile management.
+- Add/extend DTOs so shipped profiles report protocol, connection mode, mapping
+  counts, QC defaults, and readiness.
+- Rework `AnalyzerTypeManagement` into a lab-facing shipped-profile catalog.
 - Keep plugin registry as Advanced/implementer UI only if still required.
+
+Full design-gallery filtering, used-by/source metadata, and shared/forkable
+profile management remain follow-on work. They are not required to accept the
+shipped-profile MVP.
 
 **Legacy gate**
 
@@ -427,8 +434,8 @@ verification status rather than plugin registry maintenance.
 
 ### M2. Guided Analyzer Setup + Deterministic Profile Apply
 
-**Goal:** instrument-first setup where verify is the normal path and hand-edit is
-the exception.
+**Goal:** one profile-driven analyzer creation path followed by deterministic
+mapping, QC, and connection review; hand-edit remains the exception.
 
 **Tests first**
 
@@ -438,9 +445,13 @@ the exception.
   - maps tests by deterministic active-test LOINC match;
   - records missing/unmatched tests without silently activating them;
   - keeps `ACTIVE` blocked until mapping/QC readiness is satisfied.
-- Frontend tests for the Instrument -> Verify -> Connect flow, including "not in
-  catalog" rows, confirm-all, per-row resolve, and connection test result states.
-- Contract test for `defaultConfigId` create semantics.
+- Frontend tests for inline profile selection/creation, lab-unit selection,
+  old-route redirect, mapping/QC actions, and visible saved-analyzer connection
+  result states.
+- Endpoint/state integration test for `defaultConfigId` create semantics,
+  exact-once defaults, and preservation of analyzer-specific overrides.
+- Service/component tests proving pending analyzer codes cannot become `MAPPED`
+  without a persisted catalog-backed `AnalyzerTestMapping`.
 
 **Implementation**
 
@@ -448,6 +459,9 @@ the exception.
   possible.
 - Move the user-facing Add Analyzer entry into the `/analyzers` inline flow and
   redirect/deprecate `/analyzers/new` after parity is proven.
+- Continue setup through the analyzer's mapping, QC, and connection actions.
+  The design-gallery's single-page `Instrument -> Verify -> Connect` wizard is
+  not implemented or claimed by this MVP.
 - Add missing readiness/status DTOs rather than duplicating business logic in the
   frontend.
 - Wire bridge test/connectivity through existing bridge endpoints; do not open
@@ -684,15 +698,18 @@ Recommended grooming:
    [DIGI-UW/openelis-review-tooling#2](https://github.com/DIGI-UW/openelis-review-tooling/pull/2)
    independently; its schema-v2 report contract remains backward-compatible with
    the application.
-2. Complete reviewer approval and merge non-draft OpenELIS PR
+2. Deploy the final PR SHA with review-tooling commit `4d335054`, run the
+   non-video UI story, inspect screenshots/trace/runtime state, then record the
+   video run and download the 8/8 build-bound UAT report.
+3. Complete reviewer approval and merge non-draft OpenELIS PR
    [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792) after its
-   required checks confirm the recorded head.
-3. Groom the analyzer-list attention-summary differences from the pinned design
+   required checks and final remote evidence confirm the recorded head.
+4. Groom the analyzer-list attention-summary differences from the pinned design
    as a presentation follow-up without reopening the accepted configuration/QC
    contracts.
-4. Start a separate milestone PR for production analyzer result import,
+5. Start a separate milestone PR for production analyzer result import,
    multi-component target identity, and Results/Validation v4 integration.
-5. File bridge work only if cross-repository contract evidence demonstrates
+6. File bridge work only if cross-repository contract evidence demonstrates
    missing bridge behavior; do not add an OpenELIS FILE poller.
 
 ## Follow-Up Decisions

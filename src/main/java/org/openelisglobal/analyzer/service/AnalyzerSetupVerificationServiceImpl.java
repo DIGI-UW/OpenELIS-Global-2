@@ -11,7 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
@@ -79,7 +81,11 @@ public class AnalyzerSetupVerificationServiceImpl implements AnalyzerSetupVerifi
 
         List<String> requestedMappingIds = stringList(request != null ? request.get("mappingIds") : null);
         List<String> requestedQcIds = stringList(request != null ? request.get("qcIds") : null);
-        if (!snapshot.mappingIds.equals(requestedMappingIds) || !snapshot.qcIds.equals(requestedQcIds)) {
+        String requestedMappingFingerprint = value(request != null ? request.get("mappingFingerprint") : null);
+        String requestedQcFingerprint = value(request != null ? request.get("qcFingerprint") : null);
+        if (!snapshot.mappingIds.equals(requestedMappingIds) || !snapshot.qcIds.equals(requestedQcIds)
+                || !snapshot.mappingFingerprint.equals(requestedMappingFingerprint)
+                || !snapshot.qcFingerprint.equals(requestedQcFingerprint)) {
             throw new IllegalArgumentException(
                     "Confirmed mapping or QC records changed; reload setup before verifying");
         }
@@ -162,13 +168,18 @@ public class AnalyzerSetupVerificationServiceImpl implements AnalyzerSetupVerifi
         for (AnalyzerQcRule rule : rules) {
             qcIds.add("RULE:" + nullSafe(rule.getId()));
             qcRecords.add("RULE|" + nullSafe(rule.getId()) + "|" + value(rule.getRuleType()) + "|"
-                    + nullSafe(rule.getTargetField()) + "|" + nullSafe(rule.getOperand()) + "|" + rule.isActive());
+                    + nullSafe(rule.getTargetField()) + "|" + nullSafe(rule.getOperand()) + "|" + rule.isActive() + "|"
+                    + rule.getDisplayOrder() + "|" + nullSafe(rule.getDescription()));
         }
         for (QCControlLot lot : lots) {
             qcIds.add("LOT:" + nullSafe(lot.getId()));
-            qcRecords.add("LOT|" + nullSafe(lot.getId()) + "|" + nullSafe(lot.getTestId()) + "|"
-                    + nullSafe(lot.getLotNumber()) + "|" + nullSafe(lot.getControlLevel()) + "|"
-                    + nullSafe(lot.getStatus()));
+            qcRecords.add("LOT|" + nullSafe(lot.getId()) + "|" + nullSafe(lot.getProductName()) + "|"
+                    + nullSafe(lot.getLotNumber()) + "|" + nullSafe(lot.getManufacturer()) + "|"
+                    + nullSafe(lot.getControlLevel()) + "|" + nullSafe(lot.getTestId()) + "|"
+                    + nullSafe(lot.getInstrumentId()) + "|" + nullSafe(lot.getCalculationMethod()) + "|"
+                    + value(lot.getInitialRunsCount()) + "|" + value(lot.getManufacturerMean()) + "|"
+                    + value(lot.getManufacturerStdDev()) + "|" + value(lot.getActivationDate()) + "|"
+                    + value(lot.getExpirationDate()) + "|" + nullSafe(lot.getStatus()));
         }
         qcIds.sort(String::compareTo);
         qcRecords.sort(String::compareTo);
@@ -177,7 +188,12 @@ public class AnalyzerSetupVerificationServiceImpl implements AnalyzerSetupVerifi
         if (testMappings.isEmpty()) {
             blockers.add("NO_TEST_MAPPINGS");
         }
-        if (pendingCodes.stream().anyMatch(code -> code.getStatus() == AnalyzerPendingCode.Status.PENDING)) {
+        Set<String> mappedAnalyzerCodes = testMappings.stream().map(AnalyzerTestMapping::getAnalyzerTestName)
+                .collect(Collectors.toSet());
+        if (pendingCodes.stream()
+                .anyMatch(code -> code.getStatus() == AnalyzerPendingCode.Status.PENDING
+                        || (code.getStatus() == AnalyzerPendingCode.Status.MAPPED
+                                && !mappedAnalyzerCodes.contains(code.getAnalyzerTestName())))) {
             blockers.add("PENDING_ANALYZER_CODES");
         }
         if (pendingResultValues.stream().anyMatch(value -> !"MAPPED".equals(value(value.get("status"))))) {
@@ -232,15 +248,14 @@ public class AnalyzerSetupVerificationServiceImpl implements AnalyzerSetupVerifi
         if (profile.get("qcApplicable") instanceof Boolean applicable) {
             return applicable;
         }
-        Object configuredRules = config.get("qcRules");
-        return configuredRules instanceof List<?> rules && !rules.isEmpty();
+        return true;
     }
 
     private String canonicalMap(Map<String, Object> source) {
         TreeMap<String, String> canonical = new TreeMap<>();
         source.forEach((key, value) -> canonical.put(key, value(value)));
         return canonical.entrySet().stream().map(entry -> entry.getKey() + "=" + entry.getValue())
-                .collect(java.util.stream.Collectors.joining("|"));
+                .collect(Collectors.joining("|"));
     }
 
     private String fingerprint(List<String> records) {

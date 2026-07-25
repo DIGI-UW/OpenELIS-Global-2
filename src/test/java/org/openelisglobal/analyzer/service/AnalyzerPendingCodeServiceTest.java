@@ -5,11 +5,15 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Timestamp;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,12 +23,23 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerPendingCodeDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode;
+import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerPendingCodeServiceTest {
 
     @Mock
     private AnalyzerPendingCodeDAO analyzerPendingCodeDAO;
+
+    @Mock
+    private AnalyzerTestMappingService analyzerTestMappingService;
+
+    @Mock
+    private org.openelisglobal.test.service.TestService testService;
+
+    @Mock
+    private AnalyzerBridgeSyncService analyzerBridgeSyncService;
 
     @InjectMocks
     private AnalyzerPendingCodeServiceImpl service;
@@ -92,18 +107,126 @@ public class AnalyzerPendingCodeServiceTest {
     }
 
     @Test
-    public void testUpdateStatus_ValidTransition_Succeeds() {
+    public void testUpdateStatus_MappedWithoutTestResolution_IsRejected() {
         AnalyzerPendingCode existing = new AnalyzerPendingCode();
         existing.setId("pc-2");
         existing.setAnalyzerId("101");
         existing.setStatus(AnalyzerPendingCode.Status.PENDING);
         when(analyzerPendingCodeDAO.get("pc-2")).thenReturn(Optional.of(existing));
 
-        AnalyzerPendingCode updated = service.updateStatus("101", "pc-2", AnalyzerPendingCode.Status.MAPPED, "1");
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateStatus("101", "pc-2", AnalyzerPendingCode.Status.MAPPED, "1"));
 
-        assertEquals(AnalyzerPendingCode.Status.MAPPED, updated.getStatus());
-        assertNotNull(updated.getLastSeenAt());
+        verify(analyzerPendingCodeDAO, never()).update(existing);
+        verify(analyzerTestMappingService, never()).insert(any(AnalyzerTestMapping.class));
+    }
+
+    @Test
+    public void testResolve_CreatesRealTestMappingBeforeMarkingMapped() {
+        AnalyzerPendingCode existing = new AnalyzerPendingCode();
+        existing.setId("pc-2");
+        existing.setAnalyzerId("101");
+        existing.setAnalyzerTestName("MTB-RIF");
+        existing.setStatus(AnalyzerPendingCode.Status.PENDING);
+        when(analyzerPendingCodeDAO.get("pc-2")).thenReturn(Optional.of(existing));
+
+        org.openelisglobal.test.valueholder.Test catalogTest = new org.openelisglobal.test.valueholder.Test();
+        catalogTest.setId("501");
+        catalogTest.setDescription("Xpert MTB/RIF");
+        catalogTest.setLoinc("38379-4");
+        when(testService.getAllActiveTests(true)).thenReturn(List.of(catalogTest));
+        when(analyzerTestMappingService.getAllForAnalyzer("101")).thenReturn(List.of());
+
+        AnalyzerPendingCode resolved = service.resolve("101", "pc-2", "501", "1");
+
+        assertEquals(AnalyzerPendingCode.Status.MAPPED, resolved.getStatus());
+        org.mockito.ArgumentCaptor<AnalyzerTestMapping> mapping = org.mockito.ArgumentCaptor
+                .forClass(AnalyzerTestMapping.class);
+        verify(analyzerTestMappingService).insert(mapping.capture());
+        assertEquals("101", mapping.getValue().getAnalyzerId());
+        assertEquals("MTB-RIF", mapping.getValue().getAnalyzerTestName());
+        assertEquals("501", mapping.getValue().getTestId());
         verify(analyzerPendingCodeDAO).update(existing);
+        verify(analyzerBridgeSyncService).pushAnalyzer("101");
+    }
+
+    @Test
+    public void testResolve_ToDifferentTest_ClearsStaleComponentBinding() {
+        AnalyzerPendingCode existing = new AnalyzerPendingCode();
+        existing.setId("pc-2");
+        existing.setAnalyzerId("101");
+        existing.setAnalyzerTestName("MTB-RIF");
+        existing.setStatus(AnalyzerPendingCode.Status.PENDING);
+        when(analyzerPendingCodeDAO.get("pc-2")).thenReturn(Optional.of(existing));
+
+        org.openelisglobal.test.valueholder.Test catalogTest = new org.openelisglobal.test.valueholder.Test();
+        catalogTest.setId("502");
+        catalogTest.setDescription("Replacement test");
+        when(testService.getAllActiveTests(true)).thenReturn(List.of(catalogTest));
+
+        AnalyzerTestMapping currentMapping = new AnalyzerTestMapping();
+        currentMapping.setAnalyzerId("101");
+        currentMapping.setAnalyzerTestName("MTB-RIF");
+        currentMapping.setTestId("501");
+        currentMapping.setComponentId("component-from-test-501");
+        when(analyzerTestMappingService.getAllForAnalyzer("101")).thenReturn(List.of(currentMapping));
+
+        service.resolve("101", "pc-2", "502", "1");
+
+        assertEquals("502", currentMapping.getTestId());
+        assertNull(currentMapping.getComponentId());
+        verify(analyzerTestMappingService).update(currentMapping);
+    }
+
+    @Test
+    public void testResolve_InactiveOrIncompleteTest_IsRejected() {
+        AnalyzerPendingCode existing = new AnalyzerPendingCode();
+        existing.setId("pc-2");
+        existing.setAnalyzerId("101");
+        existing.setAnalyzerTestName("MTB-RIF");
+        existing.setStatus(AnalyzerPendingCode.Status.PENDING);
+        when(analyzerPendingCodeDAO.get("pc-2")).thenReturn(Optional.of(existing));
+        when(testService.getAllActiveTests(true)).thenReturn(List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> service.resolve("101", "pc-2", "999", "1"));
+
+        verify(analyzerTestMappingService, never()).insert(any(AnalyzerTestMapping.class));
+        verify(analyzerPendingCodeDAO, never()).update(existing);
+    }
+
+    @Test
+    public void testResolve_MissingCatalogTestId_IsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> service.resolve("101", "pc-2", " ", "1"));
+
+        verify(analyzerPendingCodeDAO, never()).get(anyString());
+        verify(analyzerTestMappingService, never()).insert(any(AnalyzerTestMapping.class));
+    }
+
+    @Test
+    public void testGetMappingOptions_ReturnsOnlyActiveFullyConfiguredCatalogTests() {
+        org.openelisglobal.test.valueholder.Test catalogTest = new org.openelisglobal.test.valueholder.Test();
+        catalogTest.setId("501");
+        catalogTest.setDescription("Xpert MTB/RIF");
+        catalogTest.setLoinc("38379-4");
+        when(testService.getAllActiveTests(true)).thenReturn(List.of(catalogTest));
+
+        List<Map<String, Object>> options = service.getMappingOptions();
+
+        assertEquals(1, options.size());
+        assertEquals("501", options.get(0).get("id"));
+        assertEquals("Xpert MTB/RIF", options.get(0).get("name"));
+        assertEquals("38379-4", options.get(0).get("loinc"));
+    }
+
+    @Test
+    public void testGetMappedTestIds_UsesPersistedAnalyzerTestMappings() {
+        AnalyzerTestMapping mapping = new AnalyzerTestMapping();
+        mapping.setAnalyzerId("101");
+        mapping.setAnalyzerTestName("MTB-RIF");
+        mapping.setTestId("501");
+        when(analyzerTestMappingService.getAllForAnalyzer("101")).thenReturn(List.of(mapping));
+
+        assertEquals(Map.of("MTB-RIF", "501"), service.getMappedTestIds("101"));
     }
 
     @Test
