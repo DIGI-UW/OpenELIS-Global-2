@@ -147,9 +147,7 @@ function SecureRoute(props) {
         <FormattedMessage id="stillThere.message" />
       </Modal>
       {loading && <Loading />}
-      {!loading &&
-        !userSessionDetails.authenticated &&
-        intl.formatMessage({ id: "notAuthenticated" })}
+      {!loading && !userSessionDetails.authenticated && <Loading />}
       {!loading && userSessionDetails.authenticated && permissionGranted && (
         <>{!stillThereOpen && <Route {...props} />}</>
       )}
