@@ -18,6 +18,7 @@ import { useContext, useEffect, useState } from "react";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import NoNotificationSVG from "./NoNotificationSVG";
+import { getServiceWorkerUrl } from "../../serviceWorkerRegistration";
 
 export default function SlideOverNotifications(props) {
   const intl = useIntl();
@@ -101,7 +102,7 @@ export default function SlideOverNotifications(props) {
 
       // Register the service worker if not already registered
       const registration = await navigator.serviceWorker
-        .register("/service-worker.js")
+        .register(getServiceWorkerUrl())
         .catch((error) => {
           throw new Error(
             "Service worker registration failed: " + error.message,
