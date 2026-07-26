@@ -578,8 +578,12 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             }
 
             if (!GenericValidator.isBlankOrNull(testRequest.getSampleType())) {
+                // Request.sampleType is populated from getLocalizedName() in
+                // addToTestOrPanel, which only equals the description on
+                // unlocalized installs — match on both.
                 List<TestSampleType> matchingPairs = candidatePairs.stream()
-                        .filter(pair -> testRequest.getSampleType().equals(pair.getSampleType().getDescription()))
+                        .filter(pair -> testRequest.getSampleType().equals(pair.getSampleType().getDescription())
+                                || testRequest.getSampleType().equals(pair.getSampleType().getLocalizedName()))
                         .collect(Collectors.toList());
                 if (!matchingPairs.isEmpty()) {
                     candidatePairs = matchingPairs;

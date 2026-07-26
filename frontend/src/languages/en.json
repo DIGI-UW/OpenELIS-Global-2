@@ -4696,7 +4696,7 @@
   "server.error.msg": "Oops, Server error please contact administrator",
   "show.aliquoting": "Show Aliquoting",
   "showing": "Showing",
-  "sidenav.label.addorder": "Add Generic Order",
+  "sidenav.label.addorder": "Add Order",
   "breadcrumb.label.addOrder": "Add Order",
   "sidenav.label.admin": "Admin",
   "sidenav.label.admin.analyzerTest": "Analyzer Test Name",
