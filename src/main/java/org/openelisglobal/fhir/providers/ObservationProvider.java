@@ -46,6 +46,8 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.provider.service.ProviderService;
@@ -175,7 +177,13 @@ public class ObservationProvider implements IResourceProvider {
 
             logbookResultsPersistService.persistDataSet(actionDataSet, updaters, sysUserId);
 
-            fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
+            try {
+                fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
+            } catch (FhirTransformationException | FhirPersistanceException e) {
+                LogEvent.logError(getClass().getSimpleName(), method,
+                        "FHIR sync failed after observation create; continuing: " + e.getMessage());
+                LogEvent.logError(e);
+            }
 
             LogEvent.logInfo(getClass().getSimpleName(), method,
                     "Results created: " + actionDataSet.getNewResults().size());

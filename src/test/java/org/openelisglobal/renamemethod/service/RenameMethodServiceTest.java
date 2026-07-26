@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * response end-to-end. Covers valid rename, duplicate method name,
  * invalid/empty name, and non-existent method ID.
  */
-public class RenameMethodServiceIT extends BaseWebContextSensitiveTest {
+public class RenameMethodServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private RenameMethodService renameMethodService;
@@ -72,20 +72,13 @@ public class RenameMethodServiceIT extends BaseWebContextSensitiveTest {
         renameMethodService.insert(method);
     }
 
-    @Test
+    @Test(expected = NullPointerException.class)
     public void update_shouldThrowException_whenMethodNameIsNull() {
         RenameMethod method = renameMethodService.get("2");
         assertNotNull(method);
         method.setMethodName(null);
         method.setSysUserId("1");
-        try {
-            renameMethodService.update(method);
-            fail("Expected exception when method name is null");
-        } catch (NullPointerException e) {
-            // duplicateMethodExists calls getMethodName().toLowerCase()
-        } catch (Exception e) {
-            // other persistence/validation exception acceptable
-        }
+        renameMethodService.update(method);
     }
 
     @Test
@@ -135,7 +128,7 @@ public class RenameMethodServiceIT extends BaseWebContextSensitiveTest {
     public void getLocalizationForRenameMethod_shouldReturnLocalization_whenMethodExists() {
         Localization loc = renameMethodService.getLocalizationForRenameMethod("1");
         assertNotNull(loc);
-        assertNotNull(loc.getEnglish());
+        assertEquals("therapy Method", loc.getEnglish());
     }
 
     @Test(expected = ObjectNotFoundException.class)
