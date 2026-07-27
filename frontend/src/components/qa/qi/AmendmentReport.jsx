@@ -18,9 +18,14 @@ import {
 import { LineChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  toLocalIsoDate,
+  toLocalIsoDateTime,
+} from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import QAEmptyState from "../common/QAEmptyState";
+import { chartThresholds, rateTone } from "./qiThresholds";
 import "./QIDashboard.css";
 
 /**
@@ -33,7 +38,7 @@ import "./QIDashboard.css";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "sideNav.label.qa", link: "" },
+  { label: "sideNav.label.qa", link: "/qa/overview" },
   { label: "sideNav.label.qa.qi.dashboard", link: "/qa/qi/dashboard" },
   { label: "qa.qi.dashboard.tile.amendment.label", link: "" },
 ];
@@ -65,35 +70,11 @@ const INTERVALS = [
   { id: "MONTHLY", labelKey: "reports.tat.monthly" },
 ];
 
-/** Tag tone against qi_config thresholds (AMENDMENT is LOWER_BETTER). */
-function rateTone(rate, config) {
-  if (
-    rate == null ||
-    !config?.enabled ||
-    config.target == null ||
-    config.action == null
-  ) {
-    return "gray";
-  }
-  if (rate <= config.target) {
-    return "green";
-  }
-  return rate >= config.action ? "red" : "amber";
-}
-
-function formatDate(d) {
-  return d.toISOString().split("T")[0];
-}
-
 function defaultRange() {
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - 30);
-  return { fromDate: formatDate(from), toDate: formatDate(to) };
-}
-
-function formatTimestamp(value) {
-  return value ? new Date(value).toLocaleString() : "—";
+  return { fromDate: toLocalIsoDate(from), toDate: toLocalIsoDate(to) };
 }
 
 function formatMinutes(minutes) {
@@ -165,8 +146,8 @@ const AmendmentReport = () => {
     if (dates.length === 2) {
       setPage(0);
       setRange({
-        fromDate: formatDate(dates[0]),
-        toDate: formatDate(dates[1]),
+        fromDate: toLocalIsoDate(dates[0]),
+        toDate: toLocalIsoDate(dates[1]),
       });
     }
   };
@@ -191,25 +172,11 @@ const AmendmentReport = () => {
       group: intl.formatMessage({ id: "qa.qi.amendment.trend.series" }),
     }));
 
-  const thresholds =
-    config?.enabled && config.target != null && config.action != null
-      ? [
-          {
-            value: config.target,
-            label: intl.formatMessage({
-              id: "qa.qi.amendment.threshold.target",
-            }),
-            fillColor: "#198038",
-          },
-          {
-            value: config.action,
-            label: intl.formatMessage({
-              id: "qa.qi.amendment.threshold.action",
-            }),
-            fillColor: "#da1e28",
-          },
-        ]
-      : undefined;
+  const thresholds = chartThresholds(
+    config,
+    intl.formatMessage({ id: "qa.qi.amendment.threshold.target" }),
+    intl.formatMessage({ id: "qa.qi.amendment.threshold.action" }),
+  );
 
   const chartOptions = {
     title: "",
@@ -240,18 +207,18 @@ const AmendmentReport = () => {
 
   const rows = (detail?.items || []).map((item, index) => ({
     id: `${item.analysisId}-${index}`,
-    amendedAt: formatTimestamp(item.amendedAt),
+    amendedAt: toLocalIsoDateTime(item.amendedAt),
     labNumber: item.labNumber || "—",
     testName: item.testName || "—",
     priorValue: item.priorValue ?? "—",
     currentValue: item.currentValue ?? "—",
     amendedBy: item.amendedBy || "—",
-    releasedAt: formatTimestamp(item.releasedAt),
+    releasedAt: toLocalIsoDateTime(item.releasedAt),
     timeToAmend: formatMinutes(item.minutesToAmend),
   }));
 
   return (
-    <div className="adminPageContent qi-dashboard">
+    <div className="pageContent qi-dashboard">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
         <FormattedMessage id="qa.qi.amendment.title" />
@@ -393,6 +360,9 @@ const AmendmentReport = () => {
         />
       ) : (
         <>
+          <h4 className="amendment-section__title">
+            <FormattedMessage id="qa.qi.amendment.list.title" />
+          </h4>
           <DataTable
             rows={rows}
             headers={HEADERS.map((h) => ({

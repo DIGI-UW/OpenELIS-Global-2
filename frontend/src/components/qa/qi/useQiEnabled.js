@@ -2,18 +2,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
 /**
- * Resolves the enabled flag for one or more QI indicators from qi_config
+ * Resolves qi_config for one or more QI indicators
  * (GET /rest/qi-config/resolve, gated qa.view.qi). Returns:
  *   - isEnabled(key): predicate, fail-open — an indicator reads as enabled
  *     unless resolve explicitly returns enabled === false (a failed/absent
  *     config fetch never hides a surface).
+ *   - getConfig(key): the resolved {enabled, target, action, direction} or
+ *     undefined while loading / on fetch failure (consumers fall back to
+ *     their unthemed rendering, mirroring the fail-open enabled contract).
  *   - refetch(): re-resolve on demand (e.g. a dashboard Refresh button).
  *
- * Single source of truth for the OGC-711 disable cascade across the QI
- * Dashboard and the QA Overview, so the surfaces can't drift apart.
+ * Single source of truth for the OGC-711 disable cascade and the OGC-710
+ * threshold consumption across the QI Dashboard and the QA Overview, so the
+ * surfaces can't drift apart.
  */
 export default function useQiEnabled(indicators) {
-  const [enabledMap, setEnabledMap] = useState({});
+  const [configMap, setConfigMap] = useState({});
   // Capture the indicator list once. Call sites pass a stable set (a module
   // const or a fixed literal), so refetch can read it from the ref without
   // making the mount effect depend on the array's identity (which would re-run
@@ -27,7 +31,7 @@ export default function useQiEnabled(indicators) {
         `/rest/qi-config/resolve?indicator=${key}`,
         (res) => {
           if (mountedRef.current && res && typeof res.enabled === "boolean") {
-            setEnabledMap((m) => ({ ...m, [key]: res.enabled }));
+            setConfigMap((m) => ({ ...m, [key]: res }));
           }
         },
       ),
@@ -42,6 +46,7 @@ export default function useQiEnabled(indicators) {
     };
   }, [refetch]);
 
-  const isEnabled = (key) => enabledMap[key] !== false;
-  return { isEnabled, refetch };
+  const isEnabled = (key) => configMap[key]?.enabled !== false;
+  const getConfig = (key) => configMap[key];
+  return { isEnabled, getConfig, refetch };
 }

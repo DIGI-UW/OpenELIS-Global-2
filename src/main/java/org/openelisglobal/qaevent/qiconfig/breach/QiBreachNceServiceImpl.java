@@ -37,7 +37,7 @@ public class QiBreachNceServiceImpl implements QiBreachNceService {
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public NcEvent createBreachNce(String indicatorKey, String periodKey, BigDecimal actualValue,
-            BigDecimal actionThreshold, String direction) {
+            BigDecimal actionThreshold, String direction, String unit) {
         String triggerSourceId = indicatorKey + ":" + periodKey;
         NcEvent existing = ncEventService.findByTriggerSource(TRIGGER_SOURCE_QI_BREACH, triggerSourceId);
         if (existing != null) {
@@ -46,7 +46,7 @@ public class QiBreachNceServiceImpl implements QiBreachNceService {
 
         String comparator = "LOWER_BETTER".equals(direction) ? "exceeded" : "fell below";
         String summary = indicatorKey + " " + comparator + " its action threshold in " + periodKey + " (" + actualValue
-                + "% vs action " + actionThreshold + "%)";
+                + unit + " vs action " + actionThreshold + unit + ")";
 
         NcEvent nce = new NcEvent();
         nce.setSysUserId(SYS_USER_ID);

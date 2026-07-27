@@ -39,6 +39,7 @@ import QIDashboard from "./components/qa/qi/QIDashboard";
 import QIConfigList from "./components/qa/qi/QIConfigList";
 import QIEnabledRoute from "./components/qa/qi/QIEnabledRoute";
 import AmendmentReport from "./components/qa/qi/AmendmentReport";
+import RejectionReport from "./components/qa/qi/RejectionReport";
 import CallbackReport from "./components/qa/qi/CallbackReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
@@ -205,7 +206,7 @@ import {
 // Labels are i18n keys resolved by PageBreadCrumb.
 const qaTatBreadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "sideNav.label.qa", link: "" },
+  { label: "sideNav.label.qa", link: "/qa/overview" },
   { label: "sideNav.label.qa.qi.dashboard", link: "/qa/qi/dashboard" },
   { label: "reports.tat.title", link: "" },
 ];
@@ -841,6 +842,16 @@ export default function App() {
                   component={() => (
                     <QIEnabledRoute indicator="TAT">
                       <TATReport breadcrumbs={qaTatBreadcrumbs} />
+                    </QIEnabledRoute>
+                  )}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
+                />
+                <SecureRoute
+                  path="/qa/qi/rejection"
+                  exact
+                  component={() => (
+                    <QIEnabledRoute indicator="REJECTION">
+                      <RejectionReport />
                     </QIEnabledRoute>
                   )}
                   role={[Roles.RESULTS, Roles.REPORTS]}

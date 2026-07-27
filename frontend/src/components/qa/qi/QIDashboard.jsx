@@ -1,22 +1,22 @@
 /**
  * QIDashboard Component
  *
- * Quality Indicators dashboard MVP (OGC-695) at /qa/qi/dashboard.
- * Five tiles in fixed order: Average TAT (live, OGC-696), Rejection Rate
- * (OGC-697), Amendment Rate (OGC-698), NCE Pulse (OGC-699), Critical
- * Callback Compliance (opt-in, OGC-715). Coming-soon tiles are replaced by
- * their own workstreams — deleted, never reworked.
- *
- * The TAT tile wraps the existing /rest/reports/tat/summary API: one call
- * for the selected window, one for the equal-length prior window (delta).
- * No dedicated tile endpoint — thresholds/compliance arrive in v8 (OGC-709).
+ * Quality Indicators dashboard (OGC-695, thresholds OGC-710) at
+ * /qa/qi/dashboard. Five tiles in fixed order: Average TAT (OGC-696),
+ * Rejection Rate (OGC-697/710), Amendment Rate (OGC-698), NCE Pulse
+ * (OGC-699), Critical Callback Compliance (opt-in, OGC-715). Each metric
+ * tile wraps its report summary API: one call for the selected window, one
+ * for the equal-length prior window (delta). TAT, Rejection, and Amendment
+ * color against their resolved qi_config target/action bands (blue when
+ * unjudgeable); NCE Pulse keeps its count-based pulse color — it ships
+ * without numeric thresholds by design.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Dropdown } from "@carbon/react";
 import { Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { AlertDialog } from "../../common/CustomNotification";
 import { formatTat, tatDelta } from "../../reports/tat/tatUtils";
@@ -28,11 +28,11 @@ import {
 } from "../overview/nceOverview";
 import QITile from "./QITile";
 import useQiEnabled from "./useQiEnabled";
+import { rateTone, thresholdParts } from "./qiThresholds";
 import "./QIDashboard.css";
 
-// REJECTION is a data-less "coming soon" tile — gate it when OGC-697 lights up.
 // CALLBACK ships disabled (opt-in) — hidden until enabled in QI Configuration.
-const GATED_INDICATORS = ["TAT", "AMENDMENT", "NCE", "CALLBACK"];
+const GATED_INDICATORS = ["TAT", "REJECTION", "AMENDMENT", "NCE", "CALLBACK"];
 
 const WINDOW_STORAGE_KEY = "qa.qi.dashboard.window";
 const REFRESH_COOLDOWN_MS = 30000;
@@ -44,10 +44,6 @@ const WINDOWS = [
   { id: "90d", days: 90, labelKey: "qa.qi.dashboard.window.90d" },
   { id: "ytd", labelKey: "qa.qi.dashboard.window.ytd" },
 ];
-
-function formatDate(d) {
-  return d.toISOString().split("T")[0];
-}
 
 function windowDates(windowId) {
   const to = new Date();
@@ -61,10 +57,10 @@ function windowDates(windowId) {
   const priorTo = new Date(from.getTime() - DAY_MS);
   const priorFrom = new Date(from.getTime() - DAY_MS - (to - from));
   return {
-    fromDate: formatDate(from),
-    toDate: formatDate(to),
-    priorFromDate: formatDate(priorFrom),
-    priorToDate: formatDate(priorTo),
+    fromDate: toLocalIsoDate(from),
+    toDate: toLocalIsoDate(to),
+    priorFromDate: toLocalIsoDate(priorFrom),
+    priorToDate: toLocalIsoDate(priorTo),
   };
 }
 
@@ -119,11 +115,17 @@ const QIDashboard = () => {
     () => localStorage.getItem(WINDOW_STORAGE_KEY) || "30d",
   );
   const [tat, setTat] = useState({ loading: true });
+  const [rejection, setRejection] = useState({ loading: true });
   const [amendment, setAmendment] = useState({ loading: true });
   const [nce, setNce] = useState({ loading: true });
   const [callback, setCallback] = useState({ loading: true });
-  // OGC-711 disable cascade: shared hook resolves each indicator's enabled flag.
-  const { isEnabled, refetch: refetchConfig } = useQiEnabled(GATED_INDICATORS);
+  // OGC-711 disable cascade + OGC-710 thresholds: shared hook resolves each
+  // indicator's enabled flag and target/action bands.
+  const {
+    isEnabled,
+    getConfig,
+    refetch: refetchConfig,
+  } = useQiEnabled(GATED_INDICATORS);
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [refreshDisabled, setRefreshDisabled] = useState(false);
   const [, setTick] = useState(0); // re-render so "last refreshed" stays fresh
@@ -178,6 +180,31 @@ const QIDashboard = () => {
     [windowId],
   );
 
+  const fetchRejection = useCallback(() => {
+    setRejection({ loading: true });
+    const dates = windowDates(windowId);
+    const query = (from, to) =>
+      `/rest/reports/rejection/summary?fromDate=${from}&toDate=${to}`;
+    let current;
+    let prior;
+    let pending = 2;
+    const finish = () => {
+      if (--pending > 0) return;
+      setRejection({ loading: false, data: current, prior });
+    };
+    getFromOpenElisServer(query(dates.fromDate, dates.toDate), (res) => {
+      current = res;
+      finish();
+    });
+    getFromOpenElisServer(
+      query(dates.priorFromDate, dates.priorToDate),
+      (res) => {
+        prior = res;
+        finish();
+      },
+    );
+  }, [windowId]);
+
   // NCE Pulse is a current-state count, not a windowed trend — fetched once
   // on mount (and on refresh), independent of the reporting window.
   const fetchNce = useCallback(() => {
@@ -191,8 +218,9 @@ const QIDashboard = () => {
   useEffect(() => {
     fetchTat();
     fetchAmendment();
+    fetchRejection();
     fetchCallback();
-  }, [fetchTat, fetchAmendment, fetchCallback]);
+  }, [fetchTat, fetchAmendment, fetchRejection, fetchCallback]);
 
   useEffect(() => {
     fetchNce();
@@ -214,6 +242,7 @@ const QIDashboard = () => {
   const handleRefresh = () => {
     fetchTat();
     fetchAmendment();
+    fetchRejection();
     fetchCallback();
     fetchNce();
     refetchConfig();
@@ -283,6 +312,45 @@ const QIDashboard = () => {
     );
   }
 
+  // ---- Rejection tile derivations ----
+  const rejectionData = rejection.data;
+  let rejectionMessage = null;
+  if (!rejection.loading && !rejectionData) {
+    rejectionMessage = intl.formatMessage({
+      id: "qa.qi.dashboard.tile.rejection.error",
+    });
+  } else if (!rejection.loading && rejectionData.totalCount === 0) {
+    rejectionMessage = intl.formatMessage({
+      id: "qa.qi.dashboard.tile.rejection.empty",
+    });
+  }
+
+  let rejectionDelta = null;
+  if (
+    rejectionData?.ratePercent != null &&
+    rejection.prior?.ratePercent != null
+  ) {
+    const diff = rejectionData.ratePercent - rejection.prior.ratePercent;
+    const flat = Math.abs(diff) < 0.005;
+    rejectionDelta = {
+      arrow: flat ? "—" : diff < 0 ? "↓" : "↑",
+      text: flat ? "" : `${Math.abs(diff).toFixed(2)}%`,
+      // fewer rejections = better
+      tone: flat ? "flat" : diff < 0 ? "good" : "bad",
+    };
+  }
+
+  let rejectionSecondary = null;
+  if (rejectionData?.totalCount > 0) {
+    rejectionSecondary = intl.formatMessage(
+      { id: "qa.qi.dashboard.tile.rejection.secondary" },
+      {
+        rejected: rejectionData.rejectedCount,
+        total: rejectionData.totalCount,
+      },
+    );
+  }
+
   // ---- Callback tile derivations ----
   const callbackData = callback.data;
   let callbackMessage = null;
@@ -319,6 +387,23 @@ const QIDashboard = () => {
     );
   }
 
+  // ---- OGC-710 config-driven accents + threshold captions ----
+  // rateTone falls back to "gray" when unjudgeable; tiles keep their blue
+  // identity in that case rather than going washed-out.
+  const accentFor = (value, key) => {
+    const tone = rateTone(value, getConfig(key));
+    return tone === "gray" ? "blue" : tone;
+  };
+  const thresholdLineFor = (key) => {
+    const parts = thresholdParts(getConfig(key), key);
+    return parts
+      ? intl.formatMessage(
+          { id: "qa.qi.dashboard.tile.thresholds" },
+          { target: parts.target, action: parts.action },
+        )
+      : null;
+  };
+
   // ---- NCE Pulse tile derivations (current-state count, not a trend) ----
   const nceCount = nce.list ? countCriticalPending(nce.list) : null;
   const nceMessage =
@@ -333,7 +418,7 @@ const QIDashboard = () => {
     : null;
 
   return (
-    <div className="adminPageContent qi-dashboard" data-testid="qi-dashboard">
+    <div className="pageContent qi-dashboard" data-testid="qi-dashboard">
       <AlertDialog />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
@@ -395,7 +480,7 @@ const QIDashboard = () => {
             testId="qi-tile-tat"
             titleKey="qa.qi.dashboard.tile.tat.label"
             tooltipKey="qa.qi.dashboard.tile.tat.tooltip"
-            accent="blue"
+            accent={accentFor(tatData?.mean, "TAT")}
             loading={tat.loading}
             primary={formatTat(tatData?.mean)}
             delta={delta}
@@ -409,22 +494,47 @@ const QIDashboard = () => {
                     { days: win.days },
                   )
             }
+            thresholdLine={thresholdLineFor("TAT")}
             secondary={tatSecondary}
             message={tatMessage}
             detailPath="/qa/qi/tat"
           />
         )}
-        <QITile
-          testId="qi-tile-rejection"
-          titleKey="qa.qi.dashboard.tile.rejection.label"
-          comingSoonTicket="OGC-697"
-        />
+        {isEnabled("REJECTION") && (
+          <QITile
+            testId="qi-tile-rejection"
+            titleKey="qa.qi.dashboard.tile.rejection.label"
+            tooltipKey="qa.qi.dashboard.tile.rejection.tooltip"
+            accent={accentFor(rejectionData?.ratePercent, "REJECTION")}
+            loading={rejection.loading}
+            primary={
+              rejectionData?.ratePercent != null
+                ? `${rejectionData.ratePercent.toFixed(2)}%`
+                : ""
+            }
+            delta={rejectionDelta}
+            targetLine={
+              windowId === "ytd"
+                ? intl.formatMessage({
+                    id: "qa.qi.dashboard.tile.rejection.vsPriorPeriod",
+                  })
+                : intl.formatMessage(
+                    { id: "qa.qi.dashboard.tile.rejection.vsPriorDays" },
+                    { days: win.days },
+                  )
+            }
+            thresholdLine={thresholdLineFor("REJECTION")}
+            secondary={rejectionSecondary}
+            message={rejectionMessage}
+            detailPath="/qa/qi/rejection"
+          />
+        )}
         {isEnabled("AMENDMENT") && (
           <QITile
             testId="qi-tile-amendment"
             titleKey="qa.qi.dashboard.tile.amendment.label"
             tooltipKey="qa.qi.dashboard.tile.amendment.tooltip"
-            accent="blue"
+            accent={accentFor(amendmentData?.ratePercent, "AMENDMENT")}
             loading={amendment.loading}
             primary={
               amendmentData?.ratePercent != null
@@ -442,6 +552,7 @@ const QIDashboard = () => {
                     { days: win.days },
                   )
             }
+            thresholdLine={thresholdLineFor("AMENDMENT")}
             secondary={amendmentSecondary}
             message={amendmentMessage}
             detailPath="/qa/qi/amendment"

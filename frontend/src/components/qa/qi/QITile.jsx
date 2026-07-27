@@ -27,6 +27,7 @@ const QITile = ({
   primary,
   delta,
   targetLine,
+  thresholdLine,
   secondary,
   message,
   detailPath,
@@ -95,6 +96,9 @@ const QITile = ({
             )}
           </div>
           {targetLine && <p className="qi-tile__target">{targetLine}</p>}
+          {thresholdLine && (
+            <p className="qi-tile__threshold">{thresholdLine}</p>
+          )}
           {secondary && <p className="qi-tile__secondary">{secondary}</p>}
         </>
       )}
