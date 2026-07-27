@@ -27,24 +27,4 @@
     </insert>
   </changeSet>
 
-  <!-- Store the daemon user ID in site_information for runtime lookup -->
-  <changeSet id="20260331-002-store-daemon-user-id" author="openelis">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT count(*) FROM clinlims.site_information WHERE name = 'daemon_system_user_id'
-      </sqlCheck>
-    </preConditions>
-
-    <insert schemaName="clinlims" tableName="site_information">
-      <column name="id" valueSequenceNext="site_information_seq"/>
-      <column name="name" value="daemon_system_user_id"/>
-      <column name="lastupdated" valueComputed="${now}"/>
-      <column name="description" value="System user ID for daemon/background operations"/>
-      <column name="value" valueComputed="(SELECT CAST(id AS VARCHAR) FROM clinlims.system_user WHERE login_name = 'daemon')"/>
-      <column name="encrypted" value="false"/>
-      <column name="value_type" value="text"/>
-      <column name="group" value="0"/>
-    </insert>
-  </changeSet>
-
 </databaseChangeLog>

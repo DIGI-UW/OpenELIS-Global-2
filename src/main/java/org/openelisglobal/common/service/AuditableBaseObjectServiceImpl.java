@@ -77,7 +77,18 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
         return update(baseObject, IActionConstants.AUDIT_TRAIL_UPDATE);
     }
 
-    private void fillSysUserIdIfMissing(T baseObject) {
+    /**
+     * Single enforcement point for audit attribution. Every audited mutation
+     * (insert/update/delete and their bulk/save variants all route here) stamps
+     * {@code sysUserId} from the current {@link UserContextHolder} when the caller
+     * did not set one, and fails loudly if no user context can be resolved — no
+     * silent fallback to the admin user.
+     *
+     * <p>
+     * {@code protected} so subclasses that bypass {@code super} for their own DAO
+     * writes (e.g. {@code HistoryServiceImpl}) can reuse the same guarantee.
+     */
+    protected void fillSysUserIdIfMissing(T baseObject) {
         if (baseObject.getSysUserId() == null || baseObject.getSysUserId().isEmpty()) {
             String userId = userContextHolder.getCurrentSysUserId();
             if (userId != null) {

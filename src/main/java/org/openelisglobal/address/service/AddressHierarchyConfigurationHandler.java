@@ -324,7 +324,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
         if (siteInfo != null) {
             siteInfo.setValue(value);
-            siteInfo.setSysUserId("1");
             siteInformationService.update(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateOptionalMetadata",
                     "Updated " + siteInfoName + " to: " + value);
@@ -336,7 +335,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         siteInfo.setValue(value);
         siteInfo.setDescription(description);
         siteInfo.setValueType("text");
-        siteInfo.setSysUserId("1");
         siteInformationService.insert(siteInfo);
         LogEvent.logInfo(this.getClass().getSimpleName(), "updateOptionalMetadata",
                 "Created " + siteInfoName + ": " + value);
@@ -356,7 +354,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
         if (siteInfo != null) {
             siteInfo.setValue(normalized);
-            siteInfo.setSysUserId("1");
             siteInformationService.update(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateInputType",
                     "Updated inputType for level " + level + " to: " + normalized
@@ -367,7 +364,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             siteInfo.setValue(normalized);
             siteInfo.setDescription("Address hierarchy input control type for level " + level);
             siteInfo.setValueType("text");
-            siteInfo.setSysUserId("1");
             siteInformationService.insert(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateInputType",
                     "Created inputType for level " + level + ": " + normalized

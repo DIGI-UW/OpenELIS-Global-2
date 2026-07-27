@@ -68,7 +68,8 @@ public class NceHistoryServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(history);
         assertNotNull(history.getId());
         assertEquals("ACKNOWLEDGED", history.getActivity());
-        // sysUserId is auto-stamped from SecurityContext by AuditContextAdvice
+        // sysUserId is auto-stamped from the SecurityContext by
+        // AuditableBaseObjectServiceImpl.fillSysUserIdIfMissing() on insert
         assertNotNull(history.getSysUserId());
     }
 

@@ -6,9 +6,11 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Authentication token representing the daemon/system user. This token is
- * always considered authenticated and carries the daemon system user ID as its
- * principal. It is placed into the SecurityContext for scheduled tasks, async
- * operations, and system-initiated actions where no human user is present.
+ * always considered authenticated. Its principal is the constant
+ * {@code "daemon"}; the daemon's system user ID is carried separately and
+ * exposed via {@link #getDaemonSysUserId()}. It is placed into the
+ * SecurityContext for scheduled tasks, async operations, and system-initiated
+ * actions where no human user is present.
  */
 public class DaemonAuthenticationToken extends AbstractAuthenticationToken {
 

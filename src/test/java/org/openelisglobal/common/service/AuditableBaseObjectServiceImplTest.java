@@ -1,15 +1,19 @@
 package org.openelisglobal.common.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.security.DaemonAuthenticationToken;
 import org.openelisglobal.security.WithDaemonUser;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,6 +22,10 @@ public class AuditableBaseObjectServiceImplTest extends BaseWebContextSensitiveT
 
     @Autowired
     private SiteInformationService siteInformationService;
+
+    @Autowired
+    @Qualifier("daemonSysUserId")
+    private String daemonSysUserId;
 
     @After
     public void clearContext() {
@@ -48,6 +56,30 @@ public class AuditableBaseObjectServiceImplTest extends BaseWebContextSensitiveT
         si.setSysUserId("1");
         String id = siteInformationService.insert(si);
         assertNotNull(id);
+    }
+
+    @Test
+    public void insert_missingSysUserId_isStampedFromContext() {
+        // Set a known daemon context in-body: BaseWebContextSensitiveTest's @Before
+        // overwrites the SecurityContext (after @WithSecurityContext listeners), so
+        // this guarantees a deterministic stamped id to assert against.
+        SecurityContextHolder.getContext().setAuthentication(new DaemonAuthenticationToken(daemonSysUserId));
+        SiteInformation si = createTestSiteInfo();
+        si.setSysUserId(null);
+        siteInformationService.insert(si);
+        assertEquals(daemonSysUserId, si.getSysUserId());
+    }
+
+    @Test
+    public void insertAll_stampsEachItemFromContext() {
+        SecurityContextHolder.getContext().setAuthentication(new DaemonAuthenticationToken(daemonSysUserId));
+        SiteInformation si1 = createTestSiteInfo();
+        si1.setSysUserId(null);
+        SiteInformation si2 = createTestSiteInfo();
+        si2.setSysUserId(null);
+        siteInformationService.insertAll(List.of(si1, si2));
+        assertEquals(daemonSysUserId, si1.getSysUserId());
+        assertEquals(daemonSysUserId, si2.getSysUserId());
     }
 
     private SiteInformation createTestSiteInfo() {

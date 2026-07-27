@@ -21,7 +21,7 @@ public class ControllerUtills {
         }
 
         // Strategy 2: UserContextHolder (handles SecurityContext, daemon, and all other
-        // contexts — with cached DB lookups)
+        // contexts)
         try {
             UserContextHolder holder = SpringContext.getBean(UserContextHolder.class);
             return holder.getCurrentSysUserId();

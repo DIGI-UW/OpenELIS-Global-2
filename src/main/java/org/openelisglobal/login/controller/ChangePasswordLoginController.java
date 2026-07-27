@@ -89,8 +89,9 @@ public class ChangePasswordLoginController extends BaseController {
                 // The change-password-before-login flow has no SecurityContext
                 // (user has no session yet), but we've just validated their
                 // credentials. Set a transient SecurityContext to the user
-                // themselves so AuditContextAdvice attributes the audit row to
-                // the user changing their own password rather than throwing.
+                // themselves so the audit row is attributed to the user changing
+                // their own password rather than the update failing for lack of
+                // a user context.
                 SecurityContext previous = SecurityContextHolder.getContext();
                 try {
                     SecurityContext authCtx = SecurityContextHolder.createEmptyContext();
