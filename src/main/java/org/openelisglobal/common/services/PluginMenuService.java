@@ -40,6 +40,9 @@ public class PluginMenuService {
 
     private static final Logger logger = LoggerFactory.getLogger(PluginMenuService.class);
 
+    @Autowired
+    private org.openelisglobal.security.DaemonContextExecutor daemonContextExecutor;
+
     static PluginMenuService INSTANCE;
 
     private final Map<String, Menu> elementToMenuMap = new HashMap<>();
@@ -73,7 +76,10 @@ public class PluginMenuService {
 
     @EventListener(ContextRefreshedEvent.class)
     private void onApplicationReady() {
-        initializeAnalyzerMenus();
+        // Menu/permission registration inserts through auditable services
+        // (role, system_module, role_module) on the context-refresh thread,
+        // which has no SecurityContext — run as the daemon user.
+        daemonContextExecutor.executeAsDaemon(this::initializeAnalyzerMenus);
     }
 
     public static PluginMenuService getInstance() {

@@ -151,7 +151,10 @@ public class SchedulerConfig implements SchedulingConfigurer {
 
             if (cronHour < currentHour || (cronHour == currentHour && cronMinutes < currentMin)) {
                 IImmediateJobRunner runner = SpringContext.getBean(IImmediateJobRunner.class);
-                runner.runNow(reloadableScheduler, jobName);
+                // runNow is @Async and this runs on the unauthenticated bootstrap
+                // thread — the async task decorator rejects submissions without an
+                // authenticated context, so establish the daemon context first.
+                daemonContextExecutor.executeAsDaemon(() -> runner.runNow(reloadableScheduler, jobName));
             }
         } catch (NumberFormatException e) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "addOrRunSchedule",
