@@ -28,6 +28,18 @@ const isAdminNavRoute = (pathname) =>
 // Must match the .content-nav-locked media query in Style.css
 const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
 
+// User preference: whether the desktop sidenav is pinned open (pushing
+// content) or collapsed into an on-demand overlay drawer.
+const NAV_PINNED_STORAGE_KEY = "sideNavPinned";
+
+const readNavPinnedPreference = () => {
+  try {
+    return localStorage.getItem(NAV_PINNED_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+};
+
 /**
  * True when the viewport is desktop-sized.
  * On desktop the sidenav is always rendered; below it collapses into a
@@ -79,21 +91,40 @@ export default function Layout(props) {
         ? "analyzer"
         : "main";
 
-  // Nav is always rendered on desktop; below the breakpoint it's an
-  // ephemeral hamburger-opened drawer, closed on navigation.
+  // Nav on desktop: pinned (default) renders it persistently and pushes
+  // content; unpinned turns it into the same hamburger-opened overlay drawer
+  // used below the breakpoint, closed on navigation.
   const isDesktop = useIsDesktop();
+  const [navPinned, setNavPinned] = useState(readNavPinnedPreference);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const navOpen = isDesktop || drawerOpen;
+  const navPersistent = isDesktop && navPinned;
+  const navOpen = navPersistent || drawerOpen;
 
   const closeSideNav = useCallback(() => setDrawerOpen(false), []);
+
+  const toggleNavPinned = useCallback(() => {
+    setNavPinned((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(NAV_PINNED_STORAGE_KEY, String(next));
+      } catch {
+        // preference simply won't survive a reload
+      }
+      return next;
+    });
+    // Unpinning keeps the nav visible as a drawer (instead of vanishing
+    // mid-interaction); pinning hands visibility back to the persistent nav.
+    setDrawerOpen(navPinned);
+  }, [navPinned]);
 
   useEffect(() => {
     closeSideNav();
   }, [location.pathname, closeSideNav]);
 
-  // Only push content when sidenav is actually present (authenticated UX).
-  // Unauthenticated pages like /login have no sidenav to make room for.
-  const isLocked = userSessionDetails.authenticated && isDesktop;
+  // Only push content when the persistent sidenav is actually present
+  // (authenticated desktop UX with the nav pinned). Unauthenticated pages
+  // like /login have no sidenav to make room for.
+  const isLocked = userSessionDetails.authenticated && navPersistent;
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
@@ -180,6 +211,9 @@ export default function Layout(props) {
             onChangeLanguage={props.onChangeLanguage}
             navOpen={navOpen}
             isDesktop={isDesktop}
+            navPinned={navPinned}
+            navPersistent={navPersistent}
+            toggleNavPinned={toggleNavPinned}
             toggleSideNav={() => setDrawerOpen((open) => !open)}
             closeSideNav={closeSideNav}
             storageKeyPrefix={storageKeyPrefix}

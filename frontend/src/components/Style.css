@@ -585,6 +585,13 @@ button {
   }
 }
 
+/* Pin/unpin control at the top of the sidenav (desktop only) */
+.sidenav-pin-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.25rem 0.5rem 0;
+}
+
 /* Allow sidenav to scroll long menus (e.g. Admin) while hiding scrollbar */
 .cds--side-nav {
   overflow-y: auto !important;
