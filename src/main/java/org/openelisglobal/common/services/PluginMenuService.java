@@ -75,7 +75,7 @@ public class PluginMenuService {
     }
 
     @EventListener(ContextRefreshedEvent.class)
-    private void onApplicationReady() {
+    void onApplicationReady() {
         // Menu/permission registration inserts through auditable services
         // (role, system_module, role_module) on the context-refresh thread,
         // which has no SecurityContext — run as the daemon user.

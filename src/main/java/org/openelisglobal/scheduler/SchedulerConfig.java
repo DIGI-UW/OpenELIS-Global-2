@@ -118,7 +118,7 @@ public class SchedulerConfig implements SchedulingConfigurer {
         }
     }
 
-    private synchronized void addOrRunSchedule(Scheduler reloadableScheduler, CronScheduler cronScheduler)
+    synchronized void addOrRunSchedule(Scheduler reloadableScheduler, CronScheduler cronScheduler)
             throws SchedulerException, ParseException {
         int currentHour = DateUtil.getCurrentHour();
         int currentMin = DateUtil.getCurrentMinute();

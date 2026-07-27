@@ -73,17 +73,19 @@ public class PluginLoader {
     }
 
     @PostConstruct
-    private void load() {
+    void load() {
         // Legacy plugin connect() persists Analyzer rows, test mappings, and
         // menu/permission bindings through auditable services; @PostConstruct
         // runs on the unauthenticated bootstrap thread, so run as the daemon.
-        daemonContextExecutor.executeAsDaemon(() -> {
-            File pluginDir = new File(PLUGIN_ANALYZER);
+        daemonContextExecutor.executeAsDaemon(this::doLoad);
+    }
 
-            loadDirectory(pluginDir);
+    void doLoad() {
+        File pluginDir = new File(PLUGIN_ANALYZER);
 
-            LogEvent.logInfo(PluginLoader.class.getName(), "load", "Plugins loaded");
-        });
+        loadDirectory(pluginDir);
+
+        LogEvent.logInfo(PluginLoader.class.getName(), "load", "Plugins loaded");
     }
 
     private void loadDirectory(File pluginDir) {
