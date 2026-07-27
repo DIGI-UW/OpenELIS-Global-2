@@ -126,6 +126,15 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const editorSampleTypeName =
     editorSampleType.id === editorSampleTypeId ? editorSampleType.name : null;
 
+  // Any Test Catalog Management surface (list or editor, either entity). The
+  // menu stays mounted (same key) and expanded across every in-area
+  // navigation, so clicking "All Sample Types"/"All Tests" from an editor
+  // doesn't collapse it.
+  const inTestCatalogArea =
+    !!editorTestId ||
+    !!editorSampleTypeId ||
+    /\/(TestCatalogList|SampleTypeManagement)(\/|$)/.test(location.pathname);
+
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
     history.push(targetPath);
@@ -166,22 +175,19 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
-      {/* key flips with editor context to force a remount — Carbon SideNavMenu
-          reads defaultExpanded only at mount. */}
+      {/* key flips on entering/leaving the Test Catalog area to force a
+          remount — Carbon SideNavMenu reads defaultExpanded only at mount.
+          Within the area the key is stable, so navigating between the lists
+          and either editor never collapses the menu. */}
       <SideNavMenu
-        key={
-          editorTestId
-            ? "testcatalog-editor"
-            : editorSampleTypeId
-              ? "sampletype-editor"
-              : "testcatalog"
-        }
+        key={inTestCatalogArea ? "testcatalog-area" : "testcatalog"}
         data-cy="testCatalogManagement"
         renderIcon={Catalog}
-        isActive={!!editorTestId || !!editorSampleTypeId}
-        defaultExpanded={!!editorTestId || !!editorSampleTypeId}
+        isActive={inTestCatalogArea}
+        defaultExpanded={inTestCatalogArea}
         title={intl.formatMessage({ id: "sidenav.label.admin.testCatalog" })}
       >
+        {/* Entity links always come first, in both editor contexts. */}
         <SideNavMenuItem
           data-cy="sampleTypeManagement"
           {...navProps(`${path}/SampleTypeManagement`)}
@@ -194,7 +200,19 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
             }
           />
         </SideNavMenuItem>
-        {editorSampleTypeId && (
+        <SideNavMenuItem
+          data-cy="testCatalogList"
+          {...navProps(`${path}/TestCatalogList`)}
+        >
+          <FormattedMessage
+            id={
+              editorTestId
+                ? "sidenav.label.admin.testCatalog.backToList"
+                : "sidenav.label.admin.testmgt.testCatalogEditor"
+            }
+          />
+        </SideNavMenuItem>
+        {editorSampleTypeId ? (
           <>
             <li
               id="sampleTypeSectionsHelp"
@@ -232,71 +250,64 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
               </SideNavMenuItem>
             ))}
           </>
-        )}
-        <SideNavMenuItem
-          data-cy="testCatalogList"
-          {...navProps(`${path}/TestCatalogList`)}
-        >
-          <FormattedMessage
-            id={
-              editorTestId
-                ? "sidenav.label.admin.testCatalog.backToList"
-                : "sidenav.label.admin.testmgt.testCatalogEditor"
-            }
-          />
-        </SideNavMenuItem>
-        <li
-          id="testCatalogSectionsHelp"
-          data-cy="testCatalogSectionsContext"
-          className="adminSideNav__sectionsContext"
-          style={{
-            padding: "0.25rem 1rem 0.5rem",
-            fontSize: "0.75rem",
-            lineHeight: 1.3,
-            color: "var(--cds-text-secondary, #6f6f6f)",
-          }}
-        >
-          {editorTestId ? (
-            editorTestName ? (
-              <FormattedMessage
-                id="sidenav.label.admin.testCatalog.editing"
-                values={{ name: editorTestName }}
-              />
-            ) : (
-              <FormattedMessage id="sidenav.label.admin.testCatalog.editingGeneric" />
-            )
-          ) : (
-            <FormattedMessage id="sidenav.label.admin.testCatalog.sectionsHelper" />
-          )}
-        </li>
-        {V1_SECTIONS.map((sectionKey) => {
-          const label = (
-            <FormattedMessage id={`label.testCatalog.section.${sectionKey}`} />
-          );
-          return editorTestId ? (
-            <SideNavMenuItem
-              key={sectionKey}
-              data-cy={`section-${sectionKey}`}
-              {...navProps(
-                `${path}/TestCatalogEditor/${editorTestId}/${sectionKey}`,
+        ) : (
+          <>
+            <li
+              id="testCatalogSectionsHelp"
+              data-cy="testCatalogSectionsContext"
+              className="adminSideNav__sectionsContext"
+              style={{
+                padding: "0.25rem 1rem 0.5rem",
+                fontSize: "0.75rem",
+                lineHeight: 1.3,
+                color: "var(--cds-text-secondary, #6f6f6f)",
+              }}
+            >
+              {editorTestId ? (
+                editorTestName ? (
+                  <FormattedMessage
+                    id="sidenav.label.admin.testCatalog.editing"
+                    values={{ name: editorTestName }}
+                  />
+                ) : (
+                  <FormattedMessage id="sidenav.label.admin.testCatalog.editingGeneric" />
+                )
+              ) : (
+                <FormattedMessage id="sidenav.label.admin.testCatalog.sectionsHelper" />
               )}
-            >
-              {label}
-            </SideNavMenuItem>
-          ) : (
-            <SideNavMenuItem
-              key={sectionKey}
-              data-cy={`section-${sectionKey}`}
-              aria-disabled="true"
-              aria-describedby="testCatalogSectionsHelp"
-              tabIndex={-1}
-              onClick={(e) => e.preventDefault()}
-              style={{ opacity: 0.5, cursor: "not-allowed" }}
-            >
-              {label}
-            </SideNavMenuItem>
-          );
-        })}
+            </li>
+            {V1_SECTIONS.map((sectionKey) => {
+              const label = (
+                <FormattedMessage
+                  id={`label.testCatalog.section.${sectionKey}`}
+                />
+              );
+              return editorTestId ? (
+                <SideNavMenuItem
+                  key={sectionKey}
+                  data-cy={`section-${sectionKey}`}
+                  {...navProps(
+                    `${path}/TestCatalogEditor/${editorTestId}/${sectionKey}`,
+                  )}
+                >
+                  {label}
+                </SideNavMenuItem>
+              ) : (
+                <SideNavMenuItem
+                  key={sectionKey}
+                  data-cy={`section-${sectionKey}`}
+                  aria-disabled="true"
+                  aria-describedby="testCatalogSectionsHelp"
+                  tabIndex={-1}
+                  onClick={(e) => e.preventDefault()}
+                  style={{ opacity: 0.5, cursor: "not-allowed" }}
+                >
+                  {label}
+                </SideNavMenuItem>
+              );
+            })}
+          </>
+        )}
       </SideNavMenu>
       <SideNavLink
         renderIcon={ListDropdown}
