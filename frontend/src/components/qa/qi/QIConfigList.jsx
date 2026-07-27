@@ -17,6 +17,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import QIConfigEditor from "./QIConfigEditor";
+import { unitFor } from "./qiThresholds";
 import "./QIDashboard.css";
 
 /**
@@ -43,13 +44,15 @@ const HEADERS = [
   { key: "actions", labelKey: "qa.qiConfig.column.actions" },
 ];
 
-// higher-is-better shows "≥ target", lower-is-better shows "≤ target".
-function thresholdText(value, direction) {
+// Target shows the good side ("≤ 2%" when lower is better), action the breach
+// side ("≥ 5%") — same ops as the dashboard tiles' threshold caption. TAT
+// thresholds are hours, rates are % (unitFor).
+function thresholdText(value, direction, unit, isAction) {
   if (value === null || value === undefined) {
     return "—";
   }
-  const op = direction === "HIGHER_BETTER" ? "≥" : "≤";
-  return `${op} ${value}`;
+  const op = (direction === "HIGHER_BETTER") !== isAction ? "≥" : "≤";
+  return `${op} ${value}${unit}`;
 }
 
 const QIConfigList = () => {
@@ -77,8 +80,18 @@ const QIConfigList = () => {
         <FormattedMessage id={cfg.enabled ? "label.yes" : "label.no"} />
       </Tag>
     ),
-    target: thresholdText(cfg.target, cfg.direction),
-    action: thresholdText(cfg.action, cfg.direction),
+    target: thresholdText(
+      cfg.target,
+      cfg.direction,
+      unitFor(cfg.indicatorKey),
+      false,
+    ),
+    action: thresholdText(
+      cfg.action,
+      cfg.direction,
+      unitFor(cfg.indicatorKey),
+      true,
+    ),
     overrides: cfg.overrides ? cfg.overrides.length : 0,
     actions: (
       <Button
@@ -94,7 +107,7 @@ const QIConfigList = () => {
   }));
 
   return (
-    <div className="adminPageContent qi-dashboard" data-testid="qi-config">
+    <div className="pageContent qi-dashboard" data-testid="qi-config">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
         <FormattedMessage id="qa.qiConfig.title" />

@@ -190,7 +190,7 @@ const ESignatureLog = () => {
   }));
 
   return (
-    <div className="adminPageContent esig-log">
+    <div className="pageContent esig-log">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
         <FormattedMessage id="qa.qms.esigLog.title" />

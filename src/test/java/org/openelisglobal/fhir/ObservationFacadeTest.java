@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -23,6 +24,7 @@ import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
@@ -49,7 +51,7 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     private AnalysisService analysisService;
 
     @Autowired
-    private javax.sql.DataSource dataSource;
+    private DataSource dataSource;
 
     private MockServletContext servletContext;
 
@@ -57,6 +59,13 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
 
         executeDataSetWithStateManagement("testdata/result-facade.xml");
+        // The fixture inserts explicit result ids (3, 4), but result_seq is a
+        // standalone Hibernate sequence that TRUNCATE ... RESTART IDENTITY does
+        // not reset. A low result_seq left by earlier tests collides with the
+        // fixture's own ids when this test persists a new result. Advance the
+        // sequence past the fixture max so the generated id is always free.
+        new JdbcTemplate(dataSource)
+                .execute("SELECT setval('result_seq', COALESCE((SELECT MAX(id) FROM result), 1)::bigint)");
 
         // The fixture inserts result rows with explicit ids (3, 4) without
         // advancing result_seq, so whether createObservation's sequence-driven

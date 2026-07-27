@@ -7,6 +7,17 @@ import messages from "../../../../languages/en.json";
 import AmendmentReport from "../AmendmentReport";
 
 vi.mock("../../../utils/Utils", () => ({
+  toLocalIsoDate: (d) =>
+    d instanceof Date
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      : d || "",
+  toLocalIsoDateTime: (value) => {
+    if (!value) return "\u2014";
+    const d = new Date(value);
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${hh}:${mm}`;
+  },
   getFromOpenElisServer: vi.fn(),
 }));
 

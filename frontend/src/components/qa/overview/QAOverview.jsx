@@ -28,7 +28,7 @@ const breadcrumbs = [
 const QAOverview = () => {
   const intl = useIntl();
   return (
-    <div className="adminPageContent">
+    <div className="pageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>

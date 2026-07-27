@@ -6,11 +6,10 @@ import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import { rateTone } from "../qi/qiThresholds";
 
 /**
- * Amendment Rate overview tile (OGC-698): rolling-30-day share of released
- * results corrected after their patient report, from the same
- * /rest/reports/amendment endpoint the QI Dashboard tile uses so the two
- * views stay in sync. Tone comes from the resolved qi_config thresholds
- * (passed down by TodayTiles — the v1 hard-coded bands retired with OGC-710).
+ * Rejection Rate overview tile (OGC-697/710): rolling-30-day share of started
+ * analyses rejected at results entry, from the same /rest/reports/rejection
+ * endpoint the QI Dashboard tile uses so the two views stay in sync. Tone
+ * comes from the resolved qi_config thresholds (passed down by TodayTiles).
  * Click drills into the detail report.
  */
 
@@ -21,7 +20,7 @@ function windowDates() {
   return { fromDate: toLocalIsoDate(from), toDate: toLocalIsoDate(to) };
 }
 
-const AmendmentRateTile = ({ config }) => {
+const RejectionRateTile = ({ config }) => {
   const history = useHistory();
   // undefined = loading, null = fetch yielded no data
   const [summary, setSummary] = useState();
@@ -30,7 +29,7 @@ const AmendmentRateTile = ({ config }) => {
     let mounted = true;
     const { fromDate, toDate } = windowDates();
     getFromOpenElisServer(
-      `/rest/reports/amendment/summary?fromDate=${fromDate}&toDate=${toDate}`,
+      `/rest/reports/rejection/summary?fromDate=${fromDate}&toDate=${toDate}`,
       (res) => {
         if (mounted) {
           setSummary(res ?? null);
@@ -48,10 +47,10 @@ const AmendmentRateTile = ({ config }) => {
   return (
     <ClickableTile
       className="qa-live-tile"
-      onClick={() => history.push("/qa/qi/amendment")}
+      onClick={() => history.push("/qa/qi/rejection")}
     >
       <div className="qa-cs-title">
-        <FormattedMessage id="qa.overview.tile.amendmentRate" />
+        <FormattedMessage id="qa.overview.tile.rejectionRate" />
       </div>
       {summary === undefined ? (
         <SkeletonText heading width="40%" />
@@ -65,15 +64,15 @@ const AmendmentRateTile = ({ config }) => {
             {rate != null ? `${rate.toFixed(2)}%` : "—"}
           </div>
           <div className="qa-live-caption">
-            <FormattedMessage id="qa.overview.amendment.caption" />
+            <FormattedMessage id="qa.overview.rejection.caption" />
           </div>
-          {summary && summary.releasedCount > 0 && (
+          {summary && summary.totalCount > 0 && (
             <div className="qa-live-caption">
               <FormattedMessage
-                id="qa.overview.amendment.ofReleased"
+                id="qa.overview.rejection.ofStarted"
                 values={{
-                  amended: summary.amendedCount,
-                  released: summary.releasedCount,
+                  rejected: summary.rejectedCount,
+                  total: summary.totalCount,
                 }}
               />
             </div>
@@ -84,4 +83,4 @@ const AmendmentRateTile = ({ config }) => {
   );
 };
 
-export default AmendmentRateTile;
+export default RejectionRateTile;
