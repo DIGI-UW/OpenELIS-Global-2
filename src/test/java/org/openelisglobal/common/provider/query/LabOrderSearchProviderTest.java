@@ -39,6 +39,7 @@ public class LabOrderSearchProviderTest extends BaseWebContextSensitiveTest {
 
     private static final String LOINC_MERCURY = "5685-3";
     private static final String LOINC_LEAD = "7439-92";
+    private static final String LOINC_ARSENIC = "7440-38";
     private static final String OE_FHIR_SYSTEM = "http://openelis-global.org";
 
     @Before
@@ -138,7 +139,7 @@ public class LabOrderSearchProviderTest extends BaseWebContextSensitiveTest {
      * FAILS until addToTestOrPanel uses the display as a fallback.
      */
     @Test
-    public void unknownAbbreviation_fallsBackToDisplayMatch() {
+    public void unknownAbbreviation_multiTypeTest_routesToSpecimenChooser() {
         String orderNumber = "ORD-MULTI-SAMPLE";
         List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(orderNumber);
         assertFalse("eOrders should not be empty", eOrders.isEmpty());
@@ -149,7 +150,10 @@ public class LabOrderSearchProviderTest extends BaseWebContextSensitiveTest {
         serviceRequest.setCode(
                 new CodeableConcept().addCoding(new Coding().setSystem("http://loinc.org").setCode(LOINC_MERCURY)));
 
-        // "AIMI" doesn't exist locally — but display "Drinking Water" matches DW9
+        // "AIMI" doesn't exist locally. OGC-1145: because the Mercury test has
+        // several candidate sample types, the specimen can't be bound to one
+        // deterministically, so it is routed to the accessioner's sample-type
+        // chooser (crosstests) rather than auto-resolved by display-name match.
         Specimen specimen = new Specimen();
         specimen.setId(UUID.randomUUID().toString());
         specimen.setType(new CodeableConcept().addCoding(
@@ -174,10 +178,68 @@ public class LabOrderSearchProviderTest extends BaseWebContextSensitiveTest {
 
         String xmlStr = xml.toString();
         assertTrue("Result should be valid, was: " + result, "valid".equalsIgnoreCase(result));
-        assertTrue("XML should contain populated sampleTypes. XML was: " + xmlStr,
-                xmlStr.contains("<sampleType>") && xmlStr.contains("<sampleTypes>"));
-        assertTrue("XML should contain Drinking Water (matched by display, not abbreviation). XML was: " + xmlStr,
+        // The multi-type test is not bound to a single specimen, so sampleTypes
+        // stays empty and the candidate pairs are offered under crosstests.
+        assertTrue("sampleTypes must be empty (routed to chooser). XML was: " + xmlStr,
+                xmlStr.contains("<sampleTypes></sampleTypes>"));
+        assertTrue("XML should offer the specimen via the crosstest chooser. XML was: " + xmlStr,
+                xmlStr.contains("<crosstest>"));
+        assertTrue("Drinking Water must be among the chooser options. XML was: " + xmlStr,
                 xmlStr.contains("Drinking Water"));
+    }
+
+    /**
+     * The specimen abbreviation ("RW9") deterministically identifies the Rain Water
+     * sample type, whose localized name ("Precipitation Water") differs from its
+     * description ("Rain Water"). addToTestOrPanel hands the localized name to
+     * createMapsForTests, so the candidate filter there must match on localized
+     * name as well as description — otherwise the already-resolved order is wrongly
+     * routed to the sample-type chooser.
+     */
+    @Test
+    public void knownAbbreviation_localizedNameDiffersFromDescription_resolvesWithoutChooser() {
+        String orderNumber = "ORD-LOCALIZED-SAMPLE";
+        List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(orderNumber);
+        assertFalse("eOrders should not be empty", eOrders.isEmpty());
+        ElectronicOrder eOrder = eOrders.get(eOrders.size() - 1);
+
+        ServiceRequest serviceRequest = new ServiceRequest();
+        serviceRequest.setId(UUID.randomUUID().toString());
+        serviceRequest.setCode(
+                new CodeableConcept().addCoding(new Coding().setSystem("http://loinc.org").setCode(LOINC_ARSENIC)));
+
+        Specimen specimen = new Specimen();
+        specimen.setId(UUID.randomUUID().toString());
+        specimen.setType(
+                new CodeableConcept().addCoding(new Coding().setSystem(OE_FHIR_SYSTEM + "/sampleType").setCode("RW9")));
+
+        Patient patient = new Patient();
+        patient.setId(UUID.randomUUID().toString());
+        patient.addIdentifier(new Identifier().setSystem(OE_FHIR_SYSTEM + "/pat_guid").setValue("test-guid-9001"));
+
+        Task task = buildMinimalTask();
+
+        ReflectionTestUtils.setField(provider, "serviceRequest", serviceRequest);
+        ReflectionTestUtils.setField(provider, "specimen", specimen);
+        ReflectionTestUtils.setField(provider, "eOrders", eOrders);
+        ReflectionTestUtils.setField(provider, "eOrder", eOrder);
+        ReflectionTestUtils.setField(provider, "eOrderStatus", ExternalOrderStatus.Entered);
+        ReflectionTestUtils.setField(provider, "patient", patient);
+        ReflectionTestUtils.setField(provider, "task", task);
+
+        StringBuilder xml = new StringBuilder();
+        String result = ReflectionTestUtils.invokeMethod(provider, "createSearchResultXML", orderNumber, xml);
+
+        String xmlStr = xml.toString();
+        assertTrue("Result should be valid, was: " + result, "valid".equalsIgnoreCase(result));
+        assertTrue(
+                "Deterministic specimen must resolve to its sample type even when the localized name"
+                        + " differs from the description. XML was: " + xmlStr,
+                xmlStr.contains("Precipitation Water") || xmlStr.contains("9005"));
+        assertFalse("Resolved order must not be routed to the sample-type chooser. XML was: " + xmlStr,
+                xmlStr.contains("<crosstest>"));
+        assertFalse("sampleTypes must not be empty for a resolved order. XML was: " + xmlStr,
+                xmlStr.contains("<sampleTypes></sampleTypes>"));
     }
 
     private Task buildMinimalTask() {

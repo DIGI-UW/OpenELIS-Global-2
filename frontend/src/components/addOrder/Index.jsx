@@ -1,8 +1,11 @@
 import React, { useContext, useEffect, useState } from "react";
 import {
   Button,
+  InlineNotification,
   ProgressIndicator,
   ProgressStep,
+  Select,
+  SelectItem,
   SkeletonText,
   Stack,
 } from "@carbon/react";
@@ -29,7 +32,7 @@ import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "sidenav.label.addorder", link: "/SamplePatientEntry" },
+  { label: "breadcrumb.label.addOrder", link: "/SamplePatientEntry" },
 ];
 
 // Step identifiers — decoupled from physical tab position
@@ -79,6 +82,11 @@ const Index = () => {
     contactPhone: { body: "", status: true },
   });
   const [stagedAttachments, setStagedAttachments] = useState([]);
+  // OGC-1145 FR-8 — e-order tests/panels whose sample type couldn't be resolved
+  // from the message (multi-specimen test, no specimen coding): the accessioner
+  // picks the specimen here, which files the orderable under that sample type.
+  const [crossTests, setCrossTests] = useState([]);
+  const [crossPanels, setCrossPanels] = useState([]);
 
   // Derived step values
   const domain = orderFormValues?.sampleOrderItems?.domain;
@@ -282,13 +290,21 @@ const Index = () => {
         },
       };
       setOrderFormValues(newOrderFormValues);
-      setSamples(SampleTypes);
+      // A pure awaiting-specimen order carries no pre-bound sample types; keep
+      // the blank sample entry so the Add Sample step stays usable while the
+      // chooser below resolves the specimens.
+      setSamples(SampleTypes.length > 0 ? SampleTypes : [sampleObject]);
 
       // Set initial step based on resolved domain
       const resolvedDomain = order.domain;
       if (resolvedDomain === "E" || resolvedDomain === "V") {
         setCurrentStep(STEP_PROGRAM);
       }
+      // OGC-1145 FR-8 — orderables the provider couldn't bind to one specimen
+      // (<crosstest>/<crosspanel> in the provider XML) go to the chooser instead
+      // of being first-matched; resolving one files it under the chosen type.
+      setCrossTests(order.crosstest ? parseCrossList(order.crosstest) : []);
+      setCrossPanels(order.crosspanel ? parseCrossList(order.crosspanel) : []);
     } else {
       alert(message);
     }
@@ -415,6 +431,77 @@ const Index = () => {
     return index;
   };
 
+  // <crosstest>/<crosspanel> nodes → { id?, name, options: [{id, name, testId}] }.
+  // Options are the candidate sample types the orderable may run under.
+  const parseCrossList = (crossNodes) => {
+    const nodes = crossNodes instanceof Array ? crossNodes : [crossNodes];
+    return nodes.filter(Boolean).map((node) => ({
+      id: node.id ? "" + node.id : null,
+      name: node.name,
+      options: getNodeNamesByTagName(
+        node.crosssampletypes || {},
+        "crosssampletype",
+      ),
+      chosenId: "",
+    }));
+  };
+
+  // Files a resolved orderable under the chosen sample type, creating the
+  // sample entry if the order didn't already carry one of that type (mirrors
+  // parseSampletype's autofill behavior).
+  const addUnderSampleType = (option, applyToSampleType) => {
+    setSamples((prev) => {
+      const next = prev
+        .filter((s) => s.sampleTypeId !== "")
+        .map((s) => ({
+          ...s,
+          tests: [...s.tests],
+          panels: [...s.panels],
+        }));
+      let sampleType = next.find((s) => s.sampleTypeId === "" + option.id);
+      if (!sampleType) {
+        sampleType = newSampleType(option.id, option.name, next.length + 1);
+        if (configurationProperties?.AUTOFILL_COLLECTION_DATE === "true") {
+          sampleType.sampleXML.collectionDate =
+            configurationProperties.currentDateAsText;
+          sampleType.sampleXML.collectionTime =
+            configurationProperties.currentTimeAsText;
+        }
+        next.push(sampleType);
+      }
+      applyToSampleType(sampleType);
+      return next;
+    });
+  };
+
+  const resolveCrossTest = (index, optionId) => {
+    const crossTest = crossTests[index];
+    const option = crossTest.options.find((o) => o.id === optionId);
+    if (!option) {
+      return;
+    }
+    addUnderSampleType(option, (sampleType) => {
+      if (!sampleType.tests.some((t) => t.id === "" + option.testId)) {
+        sampleType.tests.push(newTest(option.testId, crossTest.name));
+      }
+    });
+    setCrossTests((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const resolveCrossPanel = (index, optionId) => {
+    const crossPanel = crossPanels[index];
+    const option = crossPanel.options.find((o) => o.id === optionId);
+    if (!option) {
+      return;
+    }
+    addUnderSampleType(option, (sampleType) => {
+      if (!sampleType.panels.some((p) => p.id === crossPanel.id)) {
+        sampleType.panels.push(newPanel(crossPanel.id, crossPanel.name));
+      }
+    });
+    setCrossPanels((prev) => prev.filter((_, i) => i !== index));
+  };
+
   function addPanelsToSampleType(sampleType, panelNodes) {
     for (let i = 0; i < panelNodes.length; i++) {
       sampleType.panels[sampleType.panels.length] = panelNodes[i];
@@ -465,6 +552,11 @@ const Index = () => {
         }
       } else if (tag == "test") {
         objList[j] = newTest(id, name);
+      } else if (tag == "crosssampletype") {
+        let testtag = nodes[j].testid;
+        if (testtag) {
+          objList[j] = newCrossSampleType(id, name, testtag);
+        } else objList[j] = newCrossSampleType(id, name);
       }
     }
 
@@ -510,6 +602,13 @@ const Index = () => {
   };
   const newTest = (id, name) => {
     return { id: "" + id, name: name };
+  };
+  const newCrossSampleType = (id, name, testId) => {
+    return {
+      id: "" + id,
+      name: name,
+      testId: testId,
+    };
   };
 
   const showAlertMessage = (msg, kind) => {
@@ -771,11 +870,76 @@ const Index = () => {
               <FormattedMessage id="order.test.request.heading" />
             </h2>
 
-            {isLoadingReferral ? (
+            {isLoadingReferral && (
               <div style={{ padding: "1rem" }}>
                 <SkeletonText paragraph lineCount={5} />
               </div>
-            ) : (
+            )}
+
+            {!isLoadingReferral &&
+              (crossTests.length > 0 || crossPanels.length > 0) && (
+                <div
+                  style={{ marginTop: "1rem" }}
+                  data-testid="awaiting-specimen-chooser"
+                >
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "notice.testCatalog.intake.awaitingSpecimen",
+                    })}
+                  />
+                  {crossTests.map((crossTest, i) => (
+                    <Select
+                      key={`cross-test-${crossTest.name}-${i}`}
+                      id={`cross-test-${i}`}
+                      labelText={crossTest.name}
+                      defaultValue=""
+                      onChange={(e) => resolveCrossTest(i, e.target.value)}
+                    >
+                      <SelectItem
+                        value=""
+                        text={intl.formatMessage({
+                          id: "label.testCatalog.specimenType",
+                        })}
+                      />
+                      {crossTest.options.map((option) => (
+                        <SelectItem
+                          key={option.id}
+                          value={option.id}
+                          text={option.name}
+                        />
+                      ))}
+                    </Select>
+                  ))}
+                  {crossPanels.map((crossPanel, i) => (
+                    <Select
+                      key={`cross-panel-${crossPanel.name}-${i}`}
+                      id={`cross-panel-${i}`}
+                      labelText={crossPanel.name}
+                      defaultValue=""
+                      onChange={(e) => resolveCrossPanel(i, e.target.value)}
+                    >
+                      <SelectItem
+                        value=""
+                        text={intl.formatMessage({
+                          id: "label.testCatalog.specimenType",
+                        })}
+                      />
+                      {crossPanel.options.map((option) => (
+                        <SelectItem
+                          key={option.id}
+                          value={option.id}
+                          text={option.name}
+                        />
+                      ))}
+                    </Select>
+                  ))}
+                </div>
+              )}
+
+            {!isLoadingReferral && (
               <>
                 {!isOnSuccess && (
                   <ProgressIndicator

@@ -22,6 +22,7 @@ import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -30,6 +31,7 @@ import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
 import org.openelisglobal.shipment.dto.ExpectedSpecimenDTO;
 import org.openelisglobal.shipment.service.ShipmentReceptionService;
@@ -117,7 +119,13 @@ public class LabOrderShipmentAcceptanceTest extends BaseWebContextSensitiveTest 
         testBox.setOriginFacilityName("Sender Lab");
         testBox.setCreatedDate(new Timestamp(System.currentTimeMillis()));
         testBox.setSystemUserId(1);
-        testBox.setDestinationFacility(organizationService.getAll().get(0));
+        // Own a persisted, session-managed destination facility rather than
+        // borrowing organizationService.getAll().get(0): the organization table is
+        // neither base-seeded nor protected, so a sibling test's DBUnit load can
+        // TRUNCATE ... RESTART IDENTITY it and leave getAll() returning a stale
+        // (transient) instance whose row no longer exists — which makes the box
+        // insert fail with TransientPropertyValueException under adverse ordering.
+        testBox.setDestinationFacility(ensureDestinationFacility());
 
         Integer boxId = shippingBoxDAO.insert(testBox);
         testBox.setId(boxId);
@@ -167,6 +175,31 @@ public class LabOrderShipmentAcceptanceTest extends BaseWebContextSensitiveTest 
                         + " WHERE name = 'Entered' AND status_type = 'EXTERNAL_ORDER')")) {
             ps.executeUpdate();
         }
+    }
+
+    // Insert (or reuse) a dedicated destination-facility organization and return a
+    // freshly fetched, session-managed instance. Persisting through the service
+    // keeps the ShippingBox.destinationFacility FK pointing at a real, managed
+    // row, so the box insert never trips TransientPropertyValueException the way
+    // borrowing organizationService.getAll().get(0) can under adverse test order.
+    private Organization ensureDestinationFacility() {
+        Organization probe = new Organization();
+        probe.setOrganizationName("ShipmentAcceptDestFacility");
+        Organization existing = organizationService.getOrganizationByName(probe, true);
+        if (existing != null && existing.getId() != null) {
+            return organizationService.get(existing.getId());
+        }
+        // A sibling test's DBUnit load can seed organization rows at fixed ids via
+        // TRUNCATE ... RESTART IDENTITY, leaving organization_seq behind the max id;
+        // advance it so this insert's nextval() doesn't collide on org_pk.
+        resyncSequence("clinlims.organization_seq", "clinlims.organization");
+        Organization org = new Organization();
+        org.setOrganizationName("ShipmentAcceptDestFacility");
+        org.setIsActive(IActionConstants.YES);
+        org.setMlsSentinelLabFlag(IActionConstants.NO);
+        org.setSysUserId("1");
+        String id = organizationService.insert(org);
+        return organizationService.get(id);
     }
 
     /**

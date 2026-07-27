@@ -314,7 +314,9 @@ public abstract class ConfigurationProperties {
         // dbName capped at 32 chars (site_information.name is varchar(32))
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_CLINICAL("sampleAcceptCheck.clinical", "text"),
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL("sampleAcceptCheck.environmental", "text"),
-        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text");
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text"),
+
+        RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"); // OGC-1020 R1: unified /Results worklist
 
         // visible on
         // the ui

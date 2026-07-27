@@ -4,9 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -27,6 +25,8 @@ import org.openelisglobal.testconfiguration.controller.TestModifyEntryController
 import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.TestSet;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
@@ -65,21 +65,22 @@ public class TestModifyServiceImpl implements TestModifyService {
     private PanelService panelService;
     @Autowired
     private TestSectionService testSectionService;
+    @Autowired
+    private TestTerminologyMappingService terminologyMappingService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
 
     @Override
     @Transactional
     public void updateTestSets(List<TestSet> testSets, TestAddParams testAddParams, Localization nameLocalization,
             Localization reportingNameLocalization, String currentUserId) {
-        if (!testSets.isEmpty()) {
-            Set<String> submittedSampleTypeIds = testSets.stream().map(s -> s.sampleTypeTest.getTypeOfSampleId())
-                    .collect(Collectors.toSet());
-            List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
-                    .getTypeOfSampleTestsForTest(testAddParams.testId);
-            for (TypeOfSampleTest tost : typeOfSampleTest) {
-                if (submittedSampleTypeIds.contains(tost.getTypeOfSampleId())) {
-                    typeOfSampleTestService.delete(tost.getId(), currentUserId);
-                }
-            }
+        // Full replace: drop every existing sample-type link for the test, then
+        // re-insert the submitted set below. A selective delete would leave stale
+        // links for sample types the user removed in this edit.
+        List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
+                .getTypeOfSampleTestsForTest(testAddParams.testId);
+        for (TypeOfSampleTest tost : typeOfSampleTest) {
+            typeOfSampleTestService.delete(tost.getId(), currentUserId);
         }
 
         List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(testAddParams.testId);
@@ -163,6 +164,7 @@ public class TestModifyServiceImpl implements TestModifyService {
                 resultLimit.setTestId(set.test.getId());
                 resultLimitService.insert(resultLimit);
             }
+            testResultComponentService.syncPrimaryComponentFromLegacy(testAddParams.testId, currentUserId);
         }
 
         saveQcThresholds(testAddParams, currentUserId);
@@ -251,6 +253,7 @@ public class TestModifyServiceImpl implements TestModifyService {
             test.setOrderable(orderable);
             test.setTimeHolding(timeHolding);
             testService.update(test);
+            terminologyMappingService.syncLegacyLoinc(testId, loinc, userId);
         }
     }
 

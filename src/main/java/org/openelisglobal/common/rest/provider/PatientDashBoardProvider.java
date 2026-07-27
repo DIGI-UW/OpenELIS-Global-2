@@ -94,7 +94,7 @@ public class PatientDashBoardProvider {
     @Autowired
     private TestSectionService testSectionService;
 
-    private double calculateAverageReceptionToValidationTime() {
+    private long calculateAverageReceptionToValidationTime() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
                 iStatusService.getStatusID(AnalysisStatus.Finalized));
 
@@ -114,10 +114,10 @@ public class PatientDashBoardProvider {
                 sum += h;
             }
         }
-        return hours.isEmpty() ? 0.0 : (double) sum / hours.size();
+        return hours.isEmpty() ? 0L : Math.round((double) sum / hours.size());
     }
 
-    private double calculateAverageReceptionToResultTime() {
+    private long calculateAverageReceptionToResultTime() {
         Set<String> statusIdSet = new HashSet<>();
         statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
         List<Analysis> analyses = analysisService
@@ -139,10 +139,10 @@ public class PatientDashBoardProvider {
                 sum += h;
             }
         }
-        return hours.isEmpty() ? 0.0 : (double) sum / hours.size();
+        return hours.isEmpty() ? 0L : Math.round((double) sum / hours.size());
     }
 
-    private double calculateAverageResultToValidationTime() {
+    private long calculateAverageResultToValidationTime() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
                 iStatusService.getStatusID(AnalysisStatus.Finalized));
 
@@ -162,7 +162,7 @@ public class PatientDashBoardProvider {
                 sum += h;
             }
         }
-        return hours.isEmpty() ? 0.0 : (double) sum / hours.size();
+        return hours.isEmpty() ? 0L : Math.round((double) sum / hours.size());
     }
 
     private List<Analysis> analysesWithDelayedTurnAroundTime() {
@@ -397,6 +397,7 @@ public class PatientDashBoardProvider {
                 List<String> estausIds = new ArrayList<>();
                 estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
                 estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
+                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
                 metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
                 break;
             case AVERAGE_TURN_AROUND_TIME:
@@ -522,10 +523,12 @@ public class PatientDashBoardProvider {
             analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
             return convertAnalysesToUserOrdersBean(analyses);
         case ORDERS_REJECTED_TODAY:
-            java.sql.Date rejectedToday = DateUtil.getNowAsSqlDate();
-            java.sql.Date rejectedTomorrow = new java.sql.Date(rejectedToday.getTime() + 86400000L);
-            analyses = analysisService.getAnalysisStartedOnRangeByStatusId(rejectedToday, rejectedTomorrow,
-                    iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+            // Use the same predicate as the count metric so the tile number and its
+            // drill-down list agree (previously a BETWEEN-range query that could
+            // diverge from the count's DATE(startedDate) = today).
+            List<String> rejectedStatusIds = new ArrayList<>();
+            rejectedStatusIds.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+            analyses = analysisService.getAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), rejectedStatusIds);
             return convertAnalysesToOrderBean(analyses);
         case UN_PRINTED_RESULTS:
             return convertAnalysesToOrderBean(unprintedResults());
@@ -533,6 +536,7 @@ public class PatientDashBoardProvider {
             List<String> estausIds = new ArrayList<>();
             estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
             estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
+            estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
             List<ElectronicOrder> eOrders = electronicOrderService.getAllElectronicOrdersByStatusList(estausIds,
                     ElectronicOrder.SortOrder.STATUS_ID);
             return convertElectronicToOrderBean(eOrders);

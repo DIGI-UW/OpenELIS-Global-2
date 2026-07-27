@@ -62,5 +62,8 @@
         <property name="significance" type="java.lang.String">
             <column name="SIGNIFICANCE" length="20" />
         </property>
+        <property name="componentId" type="java.lang.String">
+            <column name="component_id" length="36" />
+        </property>
     </class>
 </hibernate-mapping>

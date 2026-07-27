@@ -306,6 +306,9 @@ const TestCatalog = () => {
       },
     ];
 
+    // FR-68: Labels are owned solely by the v2 Test Catalog editor
+    // (LabelsSection). The legacy per-test Labels tab is retired here to remove
+    // the duplicate "two-worlds" labels surface that hit the same endpoints.
     return (
       <TableContainer>
         <Table>

@@ -110,7 +110,7 @@ public class AnalyzerBridgeStartupRegistrar {
                             ? "HL7"
                             : "ASTM";
                     if (bridgeRegistrationService.registerTcp(analyzerId, analyzerName, analyzer.getIpAddress(),
-                            analyzer.getPort(), protocol)) {
+                            analyzer.getPort(), protocol, analyzer.getIdentifierPattern())) {
                         registered++;
                         bridgeReachable = true;
                     }

@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>10</fix.version>
+        <fix.version>11</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -24,9 +24,9 @@
         <hibernate.version>5.6.15.Final</hibernate.version>
         <hibernate-validator.version>8.0.2.Final</hibernate-validator.version>
         <hibernate-search.version>6.1.8.Final</hibernate-search.version>
-        <postgresql.version>42.7.11</postgresql.version>
+        <postgresql.version>42.7.12</postgresql.version>
         <log4j.version>2.17.1</log4j.version>
-        <springframework.version>6.2.17</springframework.version>
+        <springframework.version>6.2.18</springframework.version>
         <springsecurity.version>6.2.8</springsecurity.version>
         <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
@@ -300,12 +300,12 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
-            <version>1.79</version>
+            <version>1.84</version>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
-            <version>1.78</version>
+            <version>1.84</version>
         </dependency>
         <dependency>
             <groupId>jakarta.annotation</groupId>

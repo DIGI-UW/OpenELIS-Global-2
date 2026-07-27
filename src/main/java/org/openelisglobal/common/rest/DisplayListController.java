@@ -341,6 +341,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_LABEL));
         configs.put(Property.PATIENT_ID_DOCUMENTS_LABEL.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL));
+        configs.put(Property.RESULTS_ENTRY_UNIFIED_ROUTE.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.RESULTS_ENTRY_UNIFIED_ROUTE));
         return configs;
     }
 
@@ -575,7 +577,8 @@ public class DisplayListController extends BaseRestController {
             List<IdValuePair> resultList = new ArrayList<>();
             List<TestResult> results = testResultService.getActiveTestResultsByTest(test.getId());
             results.forEach(result -> {
-                if (result.getValue() != null) {
+                String type = result.getTestResultType();
+                if (result.getValue() != null && ("D".equals(type) || "M".equals(type) || "C".equals(type))) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
                     if (dict != null) {
                         resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));

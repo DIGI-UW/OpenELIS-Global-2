@@ -51,7 +51,10 @@ public class TestSection extends EnumValueItemImpl {
 
     private String isActive;
 
-    private String domain;
+    // OGC-1020 (R1): lab-unit domain drives the Results page rendering
+    // (CLINICAL / ENVIRONMENTAL / VECTOR); mirrors the OGC-936 Test.domain
+    // pattern
+    private String domain = "CLINICAL";
 
     public TestSection() {
         super();

@@ -14,7 +14,7 @@ import {
   TextArea,
   TextInput,
 } from "@carbon/react";
-import { Copy } from "@carbon/icons-react";
+import { Copy, Launch } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
@@ -339,7 +339,13 @@ const Validation = (props) => {
       case "sampleInfo":
         return (
           <>
-            <div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+              }}
+            >
               <Button
                 onClick={async () => {
                   if ("clipboard" in navigator) {
@@ -360,6 +366,20 @@ const Validation = (props) => {
                 })}
                 hasIconOnly
                 renderIcon={Copy}
+              />
+              <Button
+                kind="ghost"
+                hasIconOnly
+                renderIcon={Launch}
+                iconDescription={intl.formatMessage({
+                  id: "label.validation.viewPatient",
+                })}
+                href={`/PatientManagement?labNumber=${encodeURIComponent(
+                  row.accessionNumber,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                as="a"
               />
             </div>
             <div className="sampleInfo" data-testid="LabNo">
@@ -507,7 +527,32 @@ const Validation = (props) => {
           : {};
         switch (row.resultType) {
           case "M":
-          case "C":
+          case "C": {
+            const labelFor = (dictId) =>
+              row.dictionaryResults?.find((result) => result.id == dictId)
+                ?.value || dictId;
+            let groups;
+            try {
+              groups = JSON.parse(row.multiSelectResultValues || "{}");
+            } catch {
+              groups = {};
+            }
+            const lines = Object.keys(groups)
+              .sort((a, b) => Number(a) - Number(b))
+              .map((k) =>
+                groups[k].split(",").filter(Boolean).map(labelFor).join(", "),
+              )
+              .filter(Boolean);
+            return (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {lines.map((line, index) => (
+                  <div key={index}>
+                    {row.resultType === "C" ? `[ ${line} ]` : line}
+                  </div>
+                ))}
+              </div>
+            );
+          }
           case "D":
             return (
               <div style={{ padding: "2px", ...holdingStyle }}>
@@ -772,7 +817,7 @@ const Validation = (props) => {
               disabled={isSubmitting || !qcAckSatisfied}
               style={{ marginTop: "16px" }}
             >
-              <FormattedMessage id="label.button.save" />
+              <FormattedMessage id="label.button.validate" />
             </ESignatureButton>
           </Form>
         )}

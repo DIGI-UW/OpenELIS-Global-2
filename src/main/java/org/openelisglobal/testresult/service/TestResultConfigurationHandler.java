@@ -5,7 +5,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
@@ -15,6 +17,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresult.valueholder.TestResultSignificance;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +60,17 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
     @Autowired
     private DictionaryService dictionaryService;
+
+    // The config loader writes tests/test_results in the legacy shape; these bridge
+    // that to the new editor's model so loaded tests appear correctly under Sample
+    // &
+    // Results (components), Ranges (result_limits repointed to the PRIMARY
+    // component) and Terminology (LOINC mapping).
+    @Autowired
+    private TestResultComponentService testResultComponentService;
+
+    @Autowired
+    private TestTerminologyMappingService terminologyMappingService;
 
     @Override
     public String getDomainName() {
@@ -104,6 +119,9 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int skippedRows = 0;
         int dataRows = 0;
         int totalResultsCreated = 0;
+        // Tests whose legacy results were loaded — bridged to the new editor model
+        // once, after all rows for the file are in.
+        Set<String> touchedTestIds = new LinkedHashSet<>();
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
@@ -117,7 +135,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 String[] values = parseCsvLine(line);
                 int resultsCreated = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
                         dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
-                        significantDigitsIndex, flagsIndex, significanceIndex, lineNumber, fileName);
+                        significantDigitsIndex, flagsIndex, significanceIndex, lineNumber, fileName, touchedTestIds);
                 if (resultsCreated > 0) {
                     totalResultsCreated += resultsCreated;
                 } else {
@@ -127,6 +145,22 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 skippedRows++;
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+            }
+        }
+
+        // Bridge every loaded test to the new editor model: create/refresh its
+        // PRIMARY result component (Sample & Results) + repoint its options and
+        // ranges onto that component, and sync its LOINC into a terminology mapping.
+        for (String testId : touchedTestIds) {
+            try {
+                testResultComponentService.syncPrimaryComponentFromLegacy(testId, "1");
+                Test test = testService.getTestById(testId);
+                if (test != null && test.getLoinc() != null && !test.getLoinc().trim().isEmpty()) {
+                    terminologyMappingService.syncLegacyLoinc(testId, test.getLoinc(), "1");
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
+                        "Failed to bridge test " + testId + " to the new editor model: " + e.getMessage());
             }
         }
 
@@ -210,7 +244,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     private int processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
             int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
             int isNormalIndex, int significantDigitsIndex, int flagsIndex, int significanceIndex, int lineNumber,
-            String fileName) {
+            String fileName, Set<String> touchedTestIds) {
 
         String testName = getValueOrEmpty(values, testNameIndex);
         String resultType = getValueOrEmpty(values, resultTypeIndex);
@@ -307,6 +341,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Created new test result for test: " + test.getDescription());
             }
+            touchedTestIds.add(test.getId());
             resultsCreated++;
         }
 
