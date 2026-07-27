@@ -37,6 +37,17 @@ export const fetchOverviewSummary = dedupedFetch((resolve) => {
   );
 });
 
+// C.4 critical-callback compliance summary for a window (OGC-714/715):
+// {enabled, criticalCount, confirmedCount, compliancePercent, target}. When
+// the CALLBACK indicator is disabled the response says enabled=false —
+// callers hide their surface (same cascade as the QI Dashboard tile).
+export const fetchCallbackSummary = (fromDate, toDate, callback) => {
+  getFromOpenElisServer(
+    `/rest/critical-callback/summary?fromDate=${fromDate}&toDate=${toDate}`,
+    (res) => callback(res ?? null),
+  );
+};
+
 // ---- Week window ----
 
 // Local-Monday fallback, used only when the summary fetch yields no server

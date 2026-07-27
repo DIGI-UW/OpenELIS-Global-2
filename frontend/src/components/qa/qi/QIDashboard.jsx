@@ -118,7 +118,7 @@ const QIDashboard = () => {
   const [rejection, setRejection] = useState({ loading: true });
   const [amendment, setAmendment] = useState({ loading: true });
   const [nce, setNce] = useState({ loading: true });
-const [callback, setCallback] = useState({ loading: true });
+  const [callback, setCallback] = useState({ loading: true });
   // OGC-711 disable cascade + OGC-710 thresholds: shared hook resolves each
   // indicator's enabled flag and target/action bands.
   const {

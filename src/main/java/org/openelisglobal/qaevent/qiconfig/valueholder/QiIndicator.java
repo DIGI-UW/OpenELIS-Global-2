@@ -9,9 +9,8 @@ package org.openelisglobal.qaevent.qiconfig.valueholder;
  * which is why this is a code enum rather than a data-driven table.
  */
 public enum QiIndicator {
-    TAT(Direction.LOWER_BETTER, true), REJECTION(Direction.LOWER_BETTER, true),
-    AMENDMENT(Direction.LOWER_BETTER, true), NCE(Direction.LOWER_BETTER, false),
-    CALLBACK(Direction.HIGHER_BETTER, false);
+    TAT(Direction.LOWER_BETTER, true), REJECTION(Direction.LOWER_BETTER, true), AMENDMENT(Direction.LOWER_BETTER, true),
+    NCE(Direction.LOWER_BETTER, false), CALLBACK(Direction.HIGHER_BETTER, false);
 
     /**
      * Whether a higher metric value is better or worse. Drives threshold ordering

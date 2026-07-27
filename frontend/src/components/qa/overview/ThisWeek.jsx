@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Tile } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import ComingSoon from "./ComingSoon";
 import { fetchNceList } from "./nceOverview";
 import {
   capasCompletedThisWeek,
+  fetchCallbackSummary,
   fetchOverviewSummary,
   ncesResolvedThisWeek,
   newNcesThisWeek,
   severityBreakdown,
+  weekStart,
 } from "./overviewData";
+import { toLocalIsoDate } from "../../utils/Utils";
 
 const Stat = ({ labelKey, value, sub, loading }) => {
   const intl = useIntl();
@@ -29,7 +31,8 @@ const Stat = ({ labelKey, value, sub, loading }) => {
 /**
  * This-Week counters (OGC-694 WS-F). NCE numbers are client-side over the
  * shared NCE fetch; QC/EQA/audit/e-sig come from the overview summary
- * endpoint. Critical results stays a placeholder until OGC-714.
+ * endpoint; critical results from the callback compliance summary
+ * (OGC-714/715).
  */
 const ThisWeek = () => {
   const intl = useIntl();
@@ -37,6 +40,7 @@ const ThisWeek = () => {
   // undefined = loading, null = fetch yielded no data
   const [nceList, setNceList] = useState();
   const [summary, setSummary] = useState();
+  const [callbacks, setCallbacks] = useState();
 
   useEffect(() => {
     let mounted = true;
@@ -46,6 +50,26 @@ const ThisWeek = () => {
       mounted = false;
     };
   }, []);
+
+  // Critical results share the server week boundary once the summary lands
+  // (local-Monday fallback when it fails), like the NCE counters above.
+  const summaryLoaded = summary !== undefined;
+  const weekFrom =
+    (summary && summary.week.weekStart) || toLocalIsoDate(weekStart());
+  useEffect(() => {
+    if (!summaryLoaded) {
+      return undefined;
+    }
+    let mounted = true;
+    fetchCallbackSummary(weekFrom, toLocalIsoDate(new Date()), (res) => {
+      if (mounted) {
+        setCallbacks(res);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [summaryLoaded, weekFrom]);
 
   // NCE counters wait for the summary too: its server week boundary keeps
   // them on the same window as the backend-computed counters (falls back to
@@ -111,11 +135,21 @@ const ThisWeek = () => {
               : null
           }
         />
-        <ComingSoon
-          variant="stat"
-          titleKey="qa.overview.week.criticalResults"
-          ticket="OGC-714"
-        />
+        {callbacks?.enabled !== false && (
+          <Stat
+            labelKey="qa.overview.week.criticalResults"
+            loading={callbacks === undefined}
+            value={callbacks ? callbacks.criticalCount : null}
+            sub={
+              callbacks && callbacks.criticalCount > 0
+                ? intl.formatMessage(
+                    { id: "qa.overview.week.confirmedCount" },
+                    { count: callbacks.confirmedCount },
+                  )
+                : null
+            }
+          />
+        )}
         <Stat
           labelKey="qa.overview.week.eqaSubmissions"
           loading={summary === undefined}
