@@ -71,14 +71,17 @@ public class RangeCoverageValidationService {
 
     public CoverageReport validate(List<ResultLimit> limits) {
         // Ranges for different result components are independent: a Male 0-10 range on
-        // component A and a Male 0-10 range on component B are NOT an overlap. Group by
-        // component (null = test-level, its own group) and validate each group in
+        // component A and a Male 0-10 range on component B are NOT an overlap. The
+        // same holds for specimen scopes (OGC-1145 Phase 2): a specimen override and
+        // the shared set never overlap each other. Group by (component, sample type)
+        // — null = test-level / shared, its own group — and validate each group in
         // isolation, then merge — so overlaps/gaps are only ever reported between
-        // ranges that apply to the same component (OGC-1127/OGC-949).
-        Map<String, List<ResultLimit>> byComponent = new LinkedHashMap<>();
+        // ranges that apply to the same component AND scope (OGC-1127/OGC-949).
+        Map<String, List<ResultLimit>> byScope = new LinkedHashMap<>();
         for (ResultLimit limit : limits) {
-            String key = limit.getComponentId() == null ? "" : limit.getComponentId();
-            byComponent.computeIfAbsent(key, k -> new ArrayList<>()).add(limit);
+            String key = (limit.getComponentId() == null ? "" : limit.getComponentId()) + "|"
+                    + (limit.getSampleTypeId() == null ? "" : limit.getSampleTypeId());
+            byScope.computeIfAbsent(key, k -> new ArrayList<>()).add(limit);
         }
 
         CoverageReport report = new CoverageReport();
@@ -87,18 +90,38 @@ public class RangeCoverageValidationService {
         report.female = new SexCoverage();
         report.female.sex = "F";
 
-        if (byComponent.isEmpty()) {
+        if (byScope.isEmpty()) {
             report.male.status = Status.EMPTY;
             report.female.status = Status.EMPTY;
             return report;
         }
 
-        for (Map.Entry<String, List<ResultLimit>> entry : byComponent.entrySet()) {
-            String componentId = entry.getKey().isEmpty() ? null : entry.getKey();
-            mergeSexCoverage(report.male, tagComponent(coverageForSex(entry.getValue(), "M"), componentId));
-            mergeSexCoverage(report.female, tagComponent(coverageForSex(entry.getValue(), "F"), componentId));
+        for (Map.Entry<String, List<ResultLimit>> entry : byScope.entrySet()) {
+            String[] scope = entry.getKey().split("\\|", -1);
+            String componentId = scope[0].isEmpty() ? null : scope[0];
+            boolean specimenScoped = !scope[1].isEmpty();
+            SexCoverage male = tagComponent(coverageForSex(entry.getValue(), "M"), componentId);
+            SexCoverage female = tagComponent(coverageForSex(entry.getValue(), "F"), componentId);
+            if (specimenScoped) {
+                // A specimen override may cover only part of the age axis — the
+                // shared set backs the rest at resolution time — so its gaps are
+                // not gaps and must not gate activation. Overlaps within one
+                // specimen scope stay real findings.
+                stripGaps(male);
+                stripGaps(female);
+            }
+            mergeSexCoverage(report.male, male);
+            mergeSexCoverage(report.female, female);
         }
         return report;
+    }
+
+    /** Drop gap findings from a specimen-scoped group's coverage (OGC-1145). */
+    private void stripGaps(SexCoverage coverage) {
+        coverage.gaps.clear();
+        if (coverage.status == Status.GAP) {
+            coverage.status = coverage.overlaps.isEmpty() ? Status.COMPLETE : Status.OVERLAP;
+        }
     }
 
     /** Stamp every gap/overlap of a group's coverage with its component id. */

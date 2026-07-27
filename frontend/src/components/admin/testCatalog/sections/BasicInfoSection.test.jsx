@@ -61,17 +61,30 @@ const savedDomain = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  getFromOpenElisServer.mockImplementation((url, cb) =>
-    cb({
-      name: "Glucose",
-      code: "GLU",
-      description: "",
-      domain: "CLINICAL",
-      antimicrobialResistance: false,
-      active: true,
-      orderable: true,
-    }),
-  );
+  getFromOpenElisServer.mockImplementation((url, cb) => {
+    if (url.endsWith("/lab-units")) {
+      cb([{ id: "7", name: "Chemistry" }]);
+    } else if (url.endsWith("/sample-types")) {
+      // Serum carries no domain (legacy shape) so domain-switch tests keep a
+      // compatible selection; Plasma is guarded to the CLINICAL domain.
+      cb([
+        { id: "2", name: "Serum" },
+        { id: "3", name: "Plasma", domain: "H" },
+      ]);
+    } else {
+      cb({
+        name: "Glucose",
+        code: "GLU",
+        description: "",
+        domain: "CLINICAL",
+        // OGC-1145: an active test must carry ≥1 sample type or Save disables
+        sampleTypeIds: ["2"],
+        antimicrobialResistance: false,
+        active: true,
+        orderable: true,
+      });
+    }
+  });
   putToOpenElisServer.mockImplementation((url, payload, cb) => cb(200));
 });
 
@@ -198,7 +211,7 @@ describe("BasicInfoSection domain-switch modal", () => {
     expect(screen.getByRole("switch", { name: /Active/ })).toBeChecked();
   });
 
-  it("edits the lab unit and sample type on modify and persists them", async () => {
+  it("edits the lab unit and sample types on modify and persists them", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url.endsWith("/lab-units")) {
         cb([
@@ -217,7 +230,7 @@ describe("BasicInfoSection domain-switch modal", () => {
           description: "",
           domain: "CLINICAL",
           labUnitId: "7",
-          sampleTypeId: "2",
+          sampleTypeIds: ["2"],
           antimicrobialResistance: false,
           active: true,
           orderable: true,
@@ -231,16 +244,35 @@ describe("BasicInfoSection domain-switch modal", () => {
       target: { value: "Hematology" },
     });
     fireEvent.click(await screen.findByText("Hematology"));
-    fireEvent.change(container.querySelector("#basic-info-edit-sample-type"), {
-      target: { value: "Plasma" },
-    });
-    fireEvent.click(await screen.findByText("Plasma"));
+
+    // OGC-1145: sample types are a multi-select — add Plasma alongside Serum.
+    const multiselect = container.querySelector(
+      "#basic-info-edit-sample-types",
+    );
+    const user = (await import("@testing-library/user-event")).default.setup();
+    await user.click(multiselect.querySelector("input"));
+    await user.click(await screen.findByRole("option", { name: /Plasma/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
     expect(body.labUnitId).toBe("8");
-    expect(body.sampleTypeId).toBe("3");
+    expect(body.sampleTypeIds).toEqual(expect.arrayContaining(["2", "3"]));
+  });
+
+  it("disables Save and warns when an active test would lose its last sample type", async () => {
+    const { container } = renderSection();
+    await screen.findByLabelText("Clinical");
+
+    // remove the only chip (Serum) → required-error + disabled Save (FR-1)
+    fireEvent.click(
+      container.querySelector(".cds--tag__close-icon, .cds--tag button"),
+    );
+    expect(
+      await screen.findByTestId("sample-type-required-error"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
   });
 
   it("shows an error state when the fetch fails", async () => {
