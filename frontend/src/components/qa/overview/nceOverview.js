@@ -27,6 +27,11 @@ export const countCriticalPending = (list) =>
 export const countInCorrectiveAction = (list) =>
   list.filter((nce) => nce.status === "Corrective Action").length;
 
+// A CAPA needs its effectiveness verdict once corrective action is recorded
+// (status "CAPA") and no Yes/No has been given yet (nc_event.effective null).
+export const countEffectivenessReviewsDue = (list) =>
+  list.filter((nce) => nce.status === "CAPA" && !nce.effective).length;
+
 // ponytail: v1 hard-coded thresholds (0 green, 1-4 amber, >=5 red) per
 // OGC-699; per-lab configuration arrives with QI config in v8.
 export const pulseColor = (count) =>

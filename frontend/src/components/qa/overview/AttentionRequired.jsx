@@ -8,6 +8,7 @@ import useQiEnabled from "../qi/useQiEnabled";
 import {
   NCE_DRILL_URL,
   countCriticalPending,
+  countEffectivenessReviewsDue,
   fetchNceList,
 } from "./nceOverview";
 import { fetchCallbackSummary, fetchOverviewSummary } from "./overviewData";
@@ -74,6 +75,7 @@ const AttentionRequired = () => {
   }, []);
 
   const criticalNce = nceList ? countCriticalPending(nceList) : nceList;
+  const reviewsDue = nceList ? countEffectivenessReviewsDue(nceList) : nceList;
   const qcViolations = summary ? summary.qc.violations24h : summary;
   const eqaDue = summary ? summary.eqa.dueSoon14d : summary;
   // hidden when the opt-in CALLBACK indicator is off (cascade)
@@ -94,7 +96,8 @@ const AttentionRequired = () => {
     qcViolations === 0 &&
     eqaDue === 0 &&
     (!callbackShown || criticalResults === 0) &&
-    overdueCapas === 0;
+    overdueCapas === 0 &&
+    reviewsDue === 0;
 
   return (
     <section className="qa-overview-section" aria-label={title}>
@@ -138,10 +141,11 @@ const AttentionRequired = () => {
           alert={qcViolations > 0}
           onClick={() => history.push("/qa/qc/alerts")}
         />
-        <ComingSoon
-          variant="row"
-          titleKey="qa.overview.attention.effectivenessReview"
-          ticket="OGC-707"
+        <LiveRow
+          count={reviewsDue}
+          labelKey="qa.overview.attention.effectivenessReview"
+          alert={reviewsDue > 0}
+          onClick={() => history.push("/NceDashboard?status=CAPA")}
         />
         <LiveRow
           count={eqaDue}

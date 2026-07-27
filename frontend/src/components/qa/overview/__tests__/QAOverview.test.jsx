@@ -59,6 +59,16 @@ const NCE_LIST = [
     status: "Corrective Action",
     reportDate: LAST_MONTH,
   },
+  // CAPA recorded, verdict pending => effectiveness review due
+  { id: "7", severity: "MAJOR", status: "CAPA", reportDate: LAST_MONTH },
+  // CAPA already reviewed ineffective => not due
+  {
+    id: "8",
+    severity: "MINOR",
+    status: "CAPA",
+    effective: "No",
+    reportDate: LAST_MONTH,
+  },
 ];
 
 const SUMMARY = {
@@ -183,7 +193,7 @@ describe("QAOverview", () => {
     // WS-E lit the Today Amendment tile, WS-G the Average TAT tile (NCE Pulse
     // already live via WS-C). These placeholders remain.
     const slotCounts = {
-      "Attention Required": 2,
+      "Attention Required": 1,
       Today: 0,
       "This Week": 0,
       "Pillar Status": 1,
@@ -283,8 +293,14 @@ describe("QAOverview", () => {
     expect(within(capaRow).getByText("1")).toBeInTheDocument();
     expect(capaRow).toHaveClass("qa-live-row-alert");
 
-    // Effectiveness reviews still await OGC-707 data; NCE SLA awaits NCE v2
-    expect(within(attention).getAllByText("OGC-707")).toHaveLength(1);
+    // Effectiveness reviews due is live: one CAPA awaiting a verdict (the
+    // reviewed-"No" CAPA doesn't count); only the NCE-v2 SLA row remains
+    const reviewRow = within(attention).getByRole("button", {
+      name: /CAPA effectiveness reviews due/,
+    });
+    expect(within(reviewRow).getByText("1")).toBeInTheDocument();
+    expect(reviewRow).toHaveClass("qa-live-row-alert");
+    expect(within(attention).queryByText("OGC-707")).not.toBeInTheDocument();
     expect(within(attention).getByText("NCE v2")).toBeInTheDocument();
   });
 
