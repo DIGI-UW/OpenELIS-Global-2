@@ -49,10 +49,11 @@
 
   <!-- QA Phase C.4 — Critical Callback -->
   <include file="liquibase/qa/008-create-critical-callback-table.xml" />
+  <include file="liquibase/qa/009-add-callback-qi-indicator.xml" />
 
   <!-- QA Phase C.3 — OGC-710: TAT thresholds become duration (hours) -->
-  <include file="liquibase/qa/009-tat-duration-thresholds.xml" />
+  <include file="liquibase/qa/010-tat-duration-thresholds.xml" />
 
   <!-- QA Phase C.3 — OGC-710: index for the rejection cohort queries -->
-  <include file="liquibase/qa/010-analysis-started-date-index.xml" />
+  <include file="liquibase/qa/011-analysis-started-date-index.xml" />
 </databaseChangeLog>

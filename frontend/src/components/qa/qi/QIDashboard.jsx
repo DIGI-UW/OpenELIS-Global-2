@@ -2,13 +2,14 @@
  * QIDashboard Component
  *
  * Quality Indicators dashboard (OGC-695, thresholds OGC-710) at
- * /qa/qi/dashboard. Four tiles in fixed order: Average TAT (OGC-696),
+ * /qa/qi/dashboard. Five tiles in fixed order: Average TAT (OGC-696),
  * Rejection Rate (OGC-697/710), Amendment Rate (OGC-698), NCE Pulse
- * (OGC-699). Each metric tile wraps its report summary API: one call for the
- * selected window, one for the equal-length prior window (delta). TAT,
- * Rejection, and Amendment color against their resolved qi_config
- * target/action bands (blue when unjudgeable); NCE Pulse keeps its
- * count-based pulse color — it ships without numeric thresholds by design.
+ * (OGC-699), Critical Callback Compliance (opt-in, OGC-715). Each metric
+ * tile wraps its report summary API: one call for the selected window, one
+ * for the equal-length prior window (delta). TAT, Rejection, and Amendment
+ * color against their resolved qi_config target/action bands (blue when
+ * unjudgeable); NCE Pulse keeps its count-based pulse color — it ships
+ * without numeric thresholds by design.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -30,7 +31,8 @@ import useQiEnabled from "./useQiEnabled";
 import { rateTone, thresholdParts } from "./qiThresholds";
 import "./QIDashboard.css";
 
-const GATED_INDICATORS = ["TAT", "REJECTION", "AMENDMENT", "NCE"];
+// CALLBACK ships disabled (opt-in) — hidden until enabled in QI Configuration.
+const GATED_INDICATORS = ["TAT", "REJECTION", "AMENDMENT", "NCE", "CALLBACK"];
 
 const WINDOW_STORAGE_KEY = "qa.qi.dashboard.window";
 const REFRESH_COOLDOWN_MS = 30000;
@@ -69,6 +71,44 @@ const breadcrumbs = [
   { label: "sideNav.label.qa.qi.dashboard", link: "" },
 ];
 
+/** Two-call windowed fetch: current window + equal-length prior (delta). */
+function fetchWindowedPair(windowId, query, setState) {
+  setState({ loading: true });
+  const dates = windowDates(windowId);
+  let current;
+  let prior;
+  let pending = 2;
+  const finish = () => {
+    if (--pending > 0) return;
+    setState({ loading: false, data: current, prior });
+  };
+  getFromOpenElisServer(query(dates.fromDate, dates.toDate), (res) => {
+    current = res;
+    finish();
+  });
+  getFromOpenElisServer(
+    query(dates.priorFromDate, dates.priorToDate),
+    (res) => {
+      prior = res;
+      finish();
+    },
+  );
+}
+
+/** Δ vs the prior window for a percent metric; tone follows higherBetter. */
+function pctDelta(current, prior, higherBetter) {
+  if (current == null || prior == null) {
+    return null;
+  }
+  const diff = current - prior;
+  const flat = Math.abs(diff) < 0.005;
+  return {
+    arrow: flat ? "—" : diff < 0 ? "↓" : "↑",
+    text: flat ? "" : `${Math.abs(diff).toFixed(2)}%`,
+    tone: flat ? "flat" : (higherBetter ? diff > 0 : diff < 0) ? "good" : "bad",
+  };
+}
+
 const QIDashboard = () => {
   const intl = useIntl();
   const [windowId, setWindowId] = useState(
@@ -78,6 +118,7 @@ const QIDashboard = () => {
   const [rejection, setRejection] = useState({ loading: true });
   const [amendment, setAmendment] = useState({ loading: true });
   const [nce, setNce] = useState({ loading: true });
+const [callback, setCallback] = useState({ loading: true });
   // OGC-711 disable cascade + OGC-710 thresholds: shared hook resolves each
   // indicator's enabled flag and target/action bands.
   const {
@@ -117,30 +158,27 @@ const QIDashboard = () => {
     );
   }, [windowId]);
 
-  const fetchAmendment = useCallback(() => {
-    setAmendment({ loading: true });
-    const dates = windowDates(windowId);
-    const query = (from, to) =>
-      `/rest/reports/amendment/summary?fromDate=${from}&toDate=${to}`;
-    let current;
-    let prior;
-    let pending = 2;
-    const finish = () => {
-      if (--pending > 0) return;
-      setAmendment({ loading: false, data: current, prior });
-    };
-    getFromOpenElisServer(query(dates.fromDate, dates.toDate), (res) => {
-      current = res;
-      finish();
-    });
-    getFromOpenElisServer(
-      query(dates.priorFromDate, dates.priorToDate),
-      (res) => {
-        prior = res;
-        finish();
-      },
-    );
-  }, [windowId]);
+  const fetchAmendment = useCallback(
+    () =>
+      fetchWindowedPair(
+        windowId,
+        (from, to) =>
+          `/rest/reports/amendment/summary?fromDate=${from}&toDate=${to}`,
+        setAmendment,
+      ),
+    [windowId],
+  );
+
+  const fetchCallback = useCallback(
+    () =>
+      fetchWindowedPair(
+        windowId,
+        (from, to) =>
+          `/rest/critical-callback/summary?fromDate=${from}&toDate=${to}`,
+        setCallback,
+      ),
+    [windowId],
+  );
 
   const fetchRejection = useCallback(() => {
     setRejection({ loading: true });
@@ -181,7 +219,8 @@ const QIDashboard = () => {
     fetchTat();
     fetchAmendment();
     fetchRejection();
-  }, [fetchTat, fetchAmendment, fetchRejection]);
+    fetchCallback();
+  }, [fetchTat, fetchAmendment, fetchRejection, fetchCallback]);
 
   useEffect(() => {
     fetchNce();
@@ -204,6 +243,7 @@ const QIDashboard = () => {
     fetchTat();
     fetchAmendment();
     fetchRejection();
+    fetchCallback();
     fetchNce();
     refetchConfig();
     setRefreshDisabled(true);
@@ -254,20 +294,12 @@ const QIDashboard = () => {
     });
   }
 
-  let amendmentDelta = null;
-  if (
-    amendmentData?.ratePercent != null &&
-    amendment.prior?.ratePercent != null
-  ) {
-    const diff = amendmentData.ratePercent - amendment.prior.ratePercent;
-    const flat = Math.abs(diff) < 0.005;
-    amendmentDelta = {
-      arrow: flat ? "—" : diff < 0 ? "↓" : "↑",
-      text: flat ? "" : `${Math.abs(diff).toFixed(2)}%`,
-      // fewer amendments = better
-      tone: flat ? "flat" : diff < 0 ? "good" : "bad",
-    };
-  }
+  // fewer amendments = better
+  const amendmentDelta = pctDelta(
+    amendmentData?.ratePercent,
+    amendment.prior?.ratePercent,
+    false,
+  );
 
   let amendmentSecondary = null;
   if (amendmentData?.releasedCount > 0) {
@@ -315,6 +347,42 @@ const QIDashboard = () => {
       {
         rejected: rejectionData.rejectedCount,
         total: rejectionData.totalCount,
+      },
+    );
+  }
+
+  // ---- Callback tile derivations ----
+  const callbackData = callback.data;
+  let callbackMessage = null;
+  if (!callback.loading && !callbackData) {
+    callbackMessage = intl.formatMessage({
+      id: "qa.qi.dashboard.tile.callback.error",
+    });
+  } else if (!callback.loading && callbackData.enabled === false) {
+    // config-gated off between the resolve and summary fetches
+    callbackMessage = intl.formatMessage({
+      id: "qa.qi.dashboard.tile.callback.disabled",
+    });
+  } else if (!callback.loading && callbackData.criticalCount === 0) {
+    callbackMessage = intl.formatMessage({
+      id: "qa.qi.dashboard.tile.callback.empty",
+    });
+  }
+
+  // higher compliance = better
+  const callbackDelta = pctDelta(
+    callbackData?.compliancePercent,
+    callback.prior?.compliancePercent,
+    true,
+  );
+
+  let callbackSecondary = null;
+  if (callbackData?.criticalCount > 0) {
+    callbackSecondary = intl.formatMessage(
+      { id: "qa.qi.dashboard.tile.callback.secondary" },
+      {
+        confirmed: callbackData.confirmedCount,
+        critical: callbackData.criticalCount,
       },
     );
   }
@@ -504,6 +572,32 @@ const QIDashboard = () => {
             secondary={nceSecondary}
             message={nceMessage}
             detailPath={NCE_DRILL_URL}
+          />
+        )}
+        {isEnabled("CALLBACK") && (
+          <QITile
+            testId="qi-tile-callback"
+            titleKey="qa.qi.dashboard.tile.callback.label"
+            tooltipKey="qa.qi.dashboard.tile.callback.tooltip"
+            accent="blue"
+            loading={callback.loading}
+            primary={
+              callbackData?.compliancePercent != null
+                ? `${callbackData.compliancePercent.toFixed(2)}%`
+                : ""
+            }
+            delta={callbackDelta}
+            targetLine={
+              callbackData?.target != null
+                ? intl.formatMessage(
+                    { id: "qa.qi.dashboard.tile.callback.target" },
+                    { target: callbackData.target },
+                  )
+                : null
+            }
+            secondary={callbackSecondary}
+            message={callbackMessage}
+            detailPath="/qa/qi/callback"
           />
         )}
       </div>

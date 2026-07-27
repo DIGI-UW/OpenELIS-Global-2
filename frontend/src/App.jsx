@@ -42,6 +42,7 @@ import QIConfigList from "./components/qa/qi/QIConfigList";
 import QIEnabledRoute from "./components/qa/qi/QIEnabledRoute";
 import AmendmentReport from "./components/qa/qi/AmendmentReport";
 import RejectionReport from "./components/qa/qi/RejectionReport";
+import CallbackReport from "./components/qa/qi/CallbackReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
 import InventoryManagement from "./components/inventory/InventoryManagement";
@@ -859,6 +860,16 @@ export default function App() {
                   component={() => (
                     <QIEnabledRoute indicator="AMENDMENT">
                       <AmendmentReport />
+                    </QIEnabledRoute>
+                  )}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
+                />
+                <SecureRoute
+                  path="/qa/qi/callback"
+                  exact
+                  component={() => (
+                    <QIEnabledRoute indicator="CALLBACK">
+                      <CallbackReport />
                     </QIEnabledRoute>
                   )}
                   role={[Roles.RESULTS, Roles.REPORTS]}

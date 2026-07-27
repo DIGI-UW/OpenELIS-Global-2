@@ -80,6 +80,22 @@ const priorRejection = {
   ratePercent: 3.1, // delta = -0.30% => fewer rejections, "good"
 };
 
+const currentCallback = {
+  enabled: true,
+  criticalCount: 4,
+  confirmedCount: 4,
+  compliancePercent: 100.0,
+  target: 100,
+};
+
+const priorCallback = {
+  enabled: true,
+  criticalCount: 2,
+  confirmedCount: 1,
+  compliancePercent: 50.0, // delta = +50% => higher compliance, "good"
+  target: 100,
+};
+
 // Resolved qi_config per indicator (OGC-710): thresholds drive tile accents.
 const resolvedConfigs = {
   TAT: { enabled: true, target: 24, action: 48, direction: "LOWER_BETTER" },
@@ -91,6 +107,12 @@ const resolvedConfigs = {
     direction: "LOWER_BETTER",
   },
   NCE: { enabled: true, target: null, action: null, direction: "LOWER_BETTER" },
+  CALLBACK: {
+    enabled: true,
+    target: null,
+    action: null,
+    direction: "HIGHER_BETTER",
+  },
 };
 
 // 3 critical pending (amber band) + 2 in corrective action; the rest is noise
@@ -113,12 +135,15 @@ const mockApis = ({
   amendPrior = priorAmendment,
   rejectCurrent = currentRejection,
   rejectPrior = priorRejection,
+  callbackCurrent = currentCallback,
+  callbackPrior = priorCallback,
   nce = nceList,
   configs = resolvedConfigs,
 } = {}) => {
   let tatCall = 0;
   let amendCall = 0;
   let rejectCall = 0;
+  let callbackCall = 0;
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url.includes("/rest/reports/tat/summary")) {
       callback(tatCall++ === 0 ? tatCurrent : tatPrior);
@@ -126,6 +151,8 @@ const mockApis = ({
       callback(amendCall++ === 0 ? amendCurrent : amendPrior);
     } else if (url.includes("/rest/reports/rejection/summary")) {
       callback(rejectCall++ === 0 ? rejectCurrent : rejectPrior);
+    } else if (url.includes("/rest/critical-callback/summary")) {
+      callback(callbackCall++ === 0 ? callbackCurrent : callbackPrior);
     } else if (url.includes("/rest/nce/dashboard")) {
       callback(nce === null ? undefined : { nceList: nce });
     } else if (url.includes("/rest/qi-config/resolve")) {
@@ -141,17 +168,22 @@ beforeEach(() => {
 });
 
 describe("QIDashboard", () => {
-  test("renders four tiles in fixed order with a live TAT tile", async () => {
+  test("renders five tiles in fixed order with a live TAT tile", async () => {
     mockApis();
     renderPage();
 
-    const tiles = ["tat", "rejection", "amendment", "nce-pulse"].map((id) =>
-      screen.getByTestId(`qi-tile-${id}`),
-    );
+    const tiles = [
+      "tat",
+      "rejection",
+      "amendment",
+      "nce-pulse",
+      "callback",
+    ].map((id) => screen.getByTestId(`qi-tile-${id}`));
     expect(tiles[0]).toHaveTextContent("Average TAT");
     expect(tiles[1]).toHaveTextContent("Rejection Rate");
     expect(tiles[2]).toHaveTextContent("Amendment Rate");
     expect(tiles[3]).toHaveTextContent("NCE Pulse");
+    expect(tiles[4]).toHaveTextContent("Critical Callback Compliance");
 
     await waitFor(() =>
       expect(screen.getByTestId("qi-tile-tat")).toHaveTextContent("18h 47m"),
@@ -166,6 +198,7 @@ describe("QIDashboard", () => {
       "/qa/qi/rejection",
       "/qa/qi/amendment",
       "/NceDashboard?severity=CRITICAL&status=Pending",
+      "/qa/qi/callback",
     ]);
   });
 
@@ -300,13 +333,14 @@ describe("QIDashboard", () => {
   test("refresh refetches every indicator and rate-limits the button", async () => {
     mockApis();
     renderPage();
-    // TAT + Rejection + Amendment fire current+prior (2 each); NCE Pulse once;
-    // plus the config resolve for all four indicators (4) = 11
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(11);
+    // TAT + Rejection + Amendment + Callback fire current+prior (2 each);
+    // NCE Pulse once; plus the config resolve for all five indicators (5)
+    // = 14
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(14);
 
     const refresh = screen.getByTestId("qi-dashboard-refresh");
     fireEvent.click(refresh);
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(22);
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(28);
     expect(refresh).toBeDisabled();
   });
 });
