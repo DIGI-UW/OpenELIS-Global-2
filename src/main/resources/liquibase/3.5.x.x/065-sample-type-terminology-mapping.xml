@@ -14,6 +14,11 @@
     -->
 
     <changeSet id="sample-type-terminology-mapping-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="sample_type_terminology_mapping"/>
+            </not>
+        </preConditions>
         <createTable schemaName="clinlims" tableName="sample_type_terminology_mapping">
             <column name="id" type="VARCHAR(36)">
                 <constraints primaryKey="true" nullable="false" primaryKeyName="pk_sample_type_terminology_mapping"/>

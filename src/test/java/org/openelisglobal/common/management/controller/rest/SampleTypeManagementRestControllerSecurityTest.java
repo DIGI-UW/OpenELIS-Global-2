@@ -3,13 +3,13 @@ package org.openelisglobal.common.management.controller.rest;
 import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Test;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
-import org.openelisglobal.testconfiguration.service.SampleTypeCreateService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.view.PageBuilderService;
 import org.springframework.context.annotation.Bean;
@@ -45,6 +45,43 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
                 .andExpect(status().isOk());
     }
 
+    // Mutating + terminology endpoints must carry the same ADMIN gate. A
+    // non-admin PUT returning 403 also pins the hasRole('ADMIN') convention —
+    // hasRole('ROLE_ADMIN') would have double-prefixed and locked admins out.
+
+    @Test
+    public void updateSampleType_WithoutAuthentication_Returns401() throws Exception {
+        mockMvc.perform(put("/rest/sample-types/1").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void updateSampleType_NonAdminRole_Returns403() throws Exception {
+        mockMvc.perform(put("/rest/sample-types/1").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void updateSampleType_AdminRole_PassesAuth() throws Exception {
+        // the mocked service returns null → 404: the request cleared the auth gate
+        mockMvc.perform(put("/rest/sample-types/1").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void terminology_NonAdminRole_Returns403() throws Exception {
+        mockMvc.perform(get("/rest/sample-types/1/terminology").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+        mockMvc.perform(put("/rest/sample-types/1/terminology").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void terminology_AdminRole_PassesAuth() throws Exception {
+        mockMvc.perform(get("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
+    }
+
     @Configuration
     @EnableWebMvc
     @org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
@@ -65,22 +102,15 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
         }
 
         @Bean
-        SampleTypeCreateService sampleTypeCreateService() {
-            return mock(SampleTypeCreateService.class);
-        }
-
-        @Bean
         SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService() {
             return mock(SampleTypeTerminologyMappingService.class);
         }
 
         @Bean
         SampleTypeManagementRestController sampleTypeManagementRestController(TypeOfSampleService typeOfSampleService,
-                SampleTypeCreateService sampleTypeCreateService,
                 SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService) {
             SampleTypeManagementRestController controller = new SampleTypeManagementRestController();
             ReflectionTestUtils.setField(controller, "typeOfSampleService", typeOfSampleService);
-            ReflectionTestUtils.setField(controller, "sampleTypeCreateService", sampleTypeCreateService);
             ReflectionTestUtils.setField(controller, "terminologyService", sampleTypeTerminologyMappingService);
             return controller;
         }

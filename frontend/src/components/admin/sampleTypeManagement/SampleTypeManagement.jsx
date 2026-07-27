@@ -58,6 +58,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
+  putToOpenElisServer,
 } from "../../utils/Utils";
 
 // Breadcrumbs
@@ -99,143 +100,7 @@ const mapBackendDomainToFrontend = (backendDomain) => {
   }
 };
 
-// ─── Mock Data ────────────────────────────────────────────────────
-const MOCK_SAMPLE_TYPES = [
-  {
-    id: 1,
-    name: "Serum",
-    description: "Blood serum after centrifugation",
-    active: true,
-    domain: "CLINICAL",
-    testCount: 142,
-  },
-  {
-    id: 2,
-    name: "Whole Blood",
-    description: "Unprocessed blood sample",
-    active: true,
-    domain: "CLINICAL",
-    testCount: 87,
-  },
-  {
-    id: 3,
-    name: "Urine",
-    description: "Spot or 24-hour urine",
-    active: true,
-    domain: "CLINICAL",
-    testCount: 63,
-  },
-  {
-    id: 4,
-    name: "Plasma",
-    description: "Anticoagulated plasma",
-    active: true,
-    domain: "CLINICAL",
-    testCount: 98,
-  },
-  {
-    id: 5,
-    name: "CSF",
-    description: "Cerebrospinal fluid",
-    active: true,
-    domain: "CLINICAL",
-    testCount: 24,
-  },
-  {
-    id: 6,
-    name: "Stool",
-    description: "Fecal specimen",
-    active: true,
-    domain: "CLINICAL",
-    testCount: 18,
-  },
-  {
-    id: 7,
-    name: "Surface Water",
-    description: "River, lake, or stream sample",
-    active: true,
-    domain: "ENVIRONMENTAL",
-    testCount: 42,
-  },
-  {
-    id: 8,
-    name: "Groundwater",
-    description: "Well or borehole water",
-    active: true,
-    domain: "ENVIRONMENTAL",
-    testCount: 38,
-  },
-  {
-    id: 9,
-    name: "Drinking Water",
-    description:
-      "Treated potable water — tested in both clinical water quality and environmental monitoring",
-    active: true,
-    domain: "VECTOR",
-    testCount: 56,
-  },
-  {
-    id: 10,
-    name: "Effluent / Wastewater",
-    description: "Industrial or municipal discharge",
-    active: true,
-    domain: "ENVIRONMENTAL",
-    testCount: 31,
-  },
-  {
-    id: 11,
-    name: "Ambient Air",
-    description: "Outdoor air quality sample",
-    active: true,
-    domain: "ENVIRONMENTAL",
-    testCount: 18,
-  },
-  {
-    id: 12,
-    name: "Topsoil",
-    description: "Surface soil (0–30 cm)",
-    active: true,
-    domain: "ENVIRONMENTAL",
-    testCount: 22,
-  },
-  {
-    id: 13,
-    name: "Sediment",
-    description: "River or lake bed sediment",
-    active: true,
-    domain: "ENVIRONMENTAL",
-    testCount: 15,
-  },
-  {
-    id: 14,
-    name: "Sputum",
-    description: "Expectorated or induced sputum",
-    active: true,
-    domain: "CLINICAL",
-    testCount: 12,
-  },
-  {
-    id: 15,
-    name: "Sludge",
-    description: "Wastewater treatment sludge",
-    active: true,
-    domain: "ENVIRONMENTAL",
-    testCount: 9,
-  },
-  {
-    id: 16,
-    name: "Throat Swab",
-    description: "Oropharyngeal swab",
-    active: true,
-    domain: "CLINICAL",
-    testCount: 8,
-  },
-];
-
 // ─── Main Component ───────────────────────────────────────────────
-
-// Set to true for testing without authentication, false for real database integration
-const USE_SIMULATION_MODE = false; // DATABASE MODE - Real PostgreSQL integration
 
 function SampleTypeManagement({ intl }) {
   const history = useHistory();
@@ -290,19 +155,8 @@ function SampleTypeManagement({ intl }) {
         setIsLoading(true);
         setLoadError(null);
 
-        if (USE_SIMULATION_MODE) {
-          // Use mock data for testing without authentication
-          console.log("Using simulation mode - loading mock data");
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate loading delay
-          setSampleTypes(MOCK_SAMPLE_TYPES);
-          return;
-        }
-
-        // Real database fetch using the sample types management endpoint with domain support
         await new Promise((resolve, reject) => {
           getFromOpenElisServer("/rest/sample-types", (response) => {
-            console.log("Fetched sample types from database:", response);
-
             if (response && response.error) {
               reject(new Error(response.error));
               return;
@@ -322,14 +176,6 @@ function SampleTypeManagement({ intl }) {
           });
         }).then((sampleTypeList) => {
           if (Array.isArray(sampleTypeList)) {
-            console.log("=== DOMAIN LOADING DEBUG ===");
-            sampleTypeList.forEach((item, idx) => {
-              console.log(
-                `Sample ${idx}: ${item.name || item.description}, Domain: ${item.domain}`,
-              );
-            });
-            console.log("============================");
-
             const sampleTypeData = sampleTypeList.map((item, index) => ({
               id: item.id || index + 1,
               name: item.name || item.description || "Unknown Sample Type",
@@ -340,7 +186,6 @@ function SampleTypeManagement({ intl }) {
               testCount: item.testCount || 0, // Use actual test count from backend
             }));
             setSampleTypes(sampleTypeData);
-            console.log("Converted sample types with domains:", sampleTypeData);
           } else {
             throw new Error(
               "Invalid response format from sample types endpoint",
@@ -348,7 +193,6 @@ function SampleTypeManagement({ intl }) {
           }
         });
       } catch (error) {
-        console.error("Error fetching sample types:", error);
         setLoadError(
           `Database connection failed: ${error.message}. Please ensure you are logged into OpenELIS with admin permissions and try refreshing the page.`,
         );
@@ -455,14 +299,6 @@ function SampleTypeManagement({ intl }) {
       testCount: st.testCount,
       abbreviation: st.abbreviation || "",
       sortOrder: st.sortOrder || 0,
-      storageTemp: st.storageTemp || st.storageTemperature || "",
-      containerType: st.containerType || "",
-      isDefault: false,
-      maxStorageDays: "",
-      processingInstructions: "",
-      collectionMethod: "",
-      requiredVolume: "",
-      volumeUnit: "ml",
     });
     setFormErrors({});
     setShowSuccess(false);
@@ -486,14 +322,6 @@ function SampleTypeManagement({ intl }) {
       testCount: 0,
       abbreviation: "",
       sortOrder: sampleTypes.length + 1,
-      isDefault: false,
-      storageTemp: "",
-      maxStorageDays: "",
-      containerType: "",
-      processingInstructions: "",
-      collectionMethod: "",
-      requiredVolume: "",
-      volumeUnit: "ml",
     });
     setFormErrors({});
     setShowSuccess(false);
@@ -563,384 +391,122 @@ function SampleTypeManagement({ intl }) {
         errors.abbreviation = "Abbreviation must be 10 characters or less";
       }
 
-      if (
-        formData.maxStorageDays &&
-        (isNaN(formData.maxStorageDays) ||
-          parseInt(formData.maxStorageDays) < 0)
-      ) {
-        errors.maxStorageDays = "Max storage days must be a positive number";
-      }
-
-      if (
-        formData.requiredVolume &&
-        (isNaN(formData.requiredVolume) ||
-          parseFloat(formData.requiredVolume) < 0)
-      ) {
-        errors.requiredVolume = "Required volume must be a positive number";
-      }
-
       return errors;
     },
     [sampleTypes],
   );
 
+  const refreshSampleTypes = useCallback(async () => {
+    await new Promise((resolve, reject) => {
+      getFromOpenElisServer("/rest/sample-types", (response) => {
+        if (response && response.success && Array.isArray(response.data)) {
+          resolve(response.data);
+        } else if (Array.isArray(response)) {
+          resolve(response);
+        } else {
+          reject(
+            new Error("Invalid response format from sample types endpoint"),
+          );
+        }
+      });
+    }).then((sampleTypeList) => {
+      setSampleTypes(
+        sampleTypeList.map((item, index) => ({
+          id: item.id || index + 1,
+          name: item.name || item.description || "",
+          description: item.description || item.name || "",
+          domain: item.domain || "CLINICAL",
+          active: item.isActive !== undefined ? item.isActive : true,
+          testCount: item.testCount || 0,
+          abbreviation: item.abbreviation || "",
+          sortOrder: item.sortOrder || 0,
+        })),
+      );
+    });
+  }, []);
+
   const saveEditor = useCallback(async () => {
     if (!editingType) return;
 
-    // Validate form
     const errors = validateForm(editingType);
     setFormErrors(errors);
-
     if (Object.keys(errors).length > 0) {
       return;
     }
 
     setIsSubmitting(true);
-
     try {
       if (view === "add") {
-        if (USE_SIMULATION_MODE) {
-          // Simulation mode - for testing without authentication
-          console.log("Simulating sample type creation:", editingType.name);
-          await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate API delay
-
-          const newSampleType = {
-            id: Date.now(),
-            name: editingType.name.trim(),
-            description: editingType.description.trim(),
-            domain: editingType.domain,
-            active: true,
-            testCount: 0,
-          };
-
-          // Add to the beginning of the list to show latest first
-          setSampleTypes((prev) => [newSampleType, ...prev]);
-          setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 3000);
-          console.log("Sample type created (simulation):", newSampleType.name);
-
-          // Return to list view
-          setTimeout(() => {
-            setEditingType(null);
-            setFormErrors({});
-            history.push(listUrl);
-          }, 1500);
-        } else {
-          // Creating new sample type using exact SampleTypeCreateForm format
-          const sampleTypeData = {
-            formName: "sampleTypeCreateForm",
-            sampleTypeEnglishName: editingType.name.trim(),
-            sampleTypeFrenchName: editingType.name.trim(), // Both are required fields
-            domain: editingType.domain || "CLINICAL", // Include domain selection
-          };
-
-          console.log("=== FRONTEND DOMAIN SUBMISSION DEBUG ===");
-          console.log("Sample Name:", editingType.name.trim());
-          console.log("Selected Domain:", editingType.domain);
-          console.log(
-            "Sending to backend:",
-            JSON.stringify(sampleTypeData, null, 2),
-          );
-          console.log("=========================================");
-
-          // Use utility function for POST request
-          const creationResult = await new Promise((resolve, reject) => {
-            postToOpenElisServerJsonResponse(
-              "/rest/SampleTypeCreate",
-              JSON.stringify(sampleTypeData),
-              (result) => {
-                console.log("=== BACKEND RESPONSE DEBUG ===");
-                console.log("Response from backend:", result);
-                console.log("==============================");
-
-                // Check for various error conditions
-                if (result && result.error) {
-                  reject(new Error(result.message || result.error));
-                  return;
-                }
-
-                if (result && result.status && result.status !== 200) {
-                  reject(
-                    new Error(
-                      `Database save failed: ${result.message || "Unknown error"}`,
-                    ),
-                  );
-                  return;
-                }
-
-                // Success - database save confirmed
-                console.log(
-                  "✓ Sample type successfully saved to database:",
-                  editingType.name,
-                );
+        // The legacy create flow also wires the workplan/results/validation
+        // role modules for the new type, so creation goes through it.
+        const sampleTypeData = {
+          formName: "sampleTypeCreateForm",
+          sampleTypeEnglishName: editingType.name.trim(),
+          sampleTypeFrenchName: editingType.name.trim(),
+          domain: editingType.domain || "CLINICAL",
+        };
+        await new Promise((resolve, reject) => {
+          postToOpenElisServerJsonResponse(
+            "/rest/SampleTypeCreate",
+            JSON.stringify(sampleTypeData),
+            (result) => {
+              if (result && result.error) {
+                reject(new Error(result.message || result.error));
+              } else if (result && result.status && result.status !== 200) {
+                reject(new Error(result.message || "Save failed"));
+              } else {
                 resolve(result);
-              },
-            );
-          });
-
-          console.log("Database persistence confirmed for:", editingType.name);
-
-          // Create a new sample type entry for the UI
-          const newSampleType = {
-            id: Date.now(),
-            name: editingType.name.trim(),
-            description: editingType.description.trim(),
-            domain: editingType.domain, // Preserve the original frontend domain selection
-            active: true,
-            testCount: 0,
-          };
-
-          // Add the new sample type to the frontend list immediately to preserve domain selection
-          setSampleTypes((prev) => [newSampleType, ...prev]);
-          console.log(
-            "✓ Sample type added to frontend list with domain:",
-            editingType.domain,
+              }
+            },
           );
-
-          // Simple verification that the sample was saved to database
-          console.log("✓ Sample type successfully saved to database");
-
-          setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 5000);
-          console.log("Sample Type created and list refreshed from database");
-
-          // Return to list view after a short delay to show success message
-          setTimeout(() => {
-            setEditingType(null);
-            setFormErrors({});
-            history.push(listUrl);
-          }, 2000);
-        }
+        });
+        await refreshSampleTypes();
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+        setEditingType(null);
+        setFormErrors({});
+        history.push(listUrl);
       } else if (view === "editor") {
-        // Editing existing sample type
-        if (USE_SIMULATION_MODE) {
-          // Simulation mode - for testing without authentication
-          console.log("Simulating sample type update:", editingType.name);
-          await new Promise((resolve) => setTimeout(resolve, 800));
-
-          // Update the sample type in the list with ALL fields
-          setSampleTypes((prev) =>
-            prev.map((st) =>
-              st.id === editingType.id
-                ? {
-                    ...st,
-                    name: editingType.name.trim(),
-                    description: editingType.description.trim(),
-                    domain: editingType.domain || st.domain,
-                    active:
-                      editingType.active !== undefined
-                        ? editingType.active
-                        : st.active,
-                    abbreviation: editingType.abbreviation || "",
-                    containerType: editingType.containerType || "",
-                    storageTemp: editingType.storageTemp || "",
-                    sortOrder: editingType.sortOrder || st.sortOrder || 0,
-                  }
-                : st,
-            ),
+        const updateData = {
+          id: editingType.id,
+          name: editingType.name?.trim() || editingType.name,
+          description:
+            editingType.description?.trim() || editingType.name?.trim(),
+          domain: editingType.domain || "CLINICAL",
+          abbreviation: editingType.abbreviation?.trim() || "",
+          isActive:
+            editingType.active !== undefined ? editingType.active : true,
+          sortOrder: editingType.sortOrder || 0,
+        };
+        await new Promise((resolve, reject) => {
+          putToOpenElisServer(
+            `/rest/sample-types/${editingType.id}`,
+            JSON.stringify(updateData),
+            (status) => {
+              if (status === 200) {
+                resolve(status);
+              } else {
+                reject(new Error(`Update failed (HTTP ${status})`));
+              }
+            },
           );
-
-          console.log("Sample type updated (simulation):", editingType.name);
-        } else {
-          // Real database update - send ALL form fields for complete persistence
-          const updateData = {
-            id: editingType.id,
-            name: editingType.name?.trim() || editingType.name,
-            description:
-              editingType.description?.trim() || editingType.name?.trim(),
-            domain: editingType.domain || "CLINICAL",
-            abbreviation: editingType.abbreviation?.trim() || "",
-            containerType: editingType.containerType?.trim() || "",
-            storageTemperature: editingType.storageTemp?.trim() || "",
-            isActive:
-              editingType.active !== undefined ? editingType.active : true,
-            sortOrder: editingType.sortOrder || 0,
-          };
-
-          console.log("=== FRONTEND UPDATE DEBUG ===");
-          console.log("Original sample type (editingType):", editingType);
-          console.log(
-            "Sending update data:",
-            JSON.stringify(updateData, null, 2),
-          );
-          console.log("Field by field check:");
-          console.log("- ID:", updateData.id);
-          console.log(
-            "- Name:",
-            `"${updateData.name}" (length: ${updateData.name ? updateData.name.length : 0})`,
-          );
-          console.log(
-            "- Description:",
-            `"${updateData.description}" (length: ${updateData.description ? updateData.description.length : 0})`,
-          );
-          console.log(
-            "- Abbreviation:",
-            `"${updateData.abbreviation}" (length: ${updateData.abbreviation ? updateData.abbreviation.length : 0})`,
-          );
-          console.log(
-            "- Container Type:",
-            `"${updateData.containerType}" (length: ${updateData.containerType ? updateData.containerType.length : 0})`,
-          );
-          console.log(
-            "- Storage Temp:",
-            `"${updateData.storageTemperature}" (length: ${updateData.storageTemperature ? updateData.storageTemperature.length : 0})`,
-          );
-          console.log("- Domain:", updateData.domain);
-          console.log("- Active:", updateData.isActive);
-          console.log("=============================");
-
-          const updateResult = await new Promise((resolve, reject) => {
-            postToOpenElisServerJsonResponse(
-              "/rest/sample-types/update",
-              JSON.stringify(updateData),
-              (result) => {
-                console.log("=== BACKEND RESPONSE DEBUG ===");
-                console.log("Response from backend:", result);
-                console.log("Response type:", typeof result);
-                console.log(
-                  "Response keys:",
-                  result ? Object.keys(result) : "null",
-                );
-                console.log("==============================");
-
-                if (result && result.error) {
-                  console.error(
-                    "Backend error response:",
-                    result.error,
-                    result.message,
-                  );
-                  reject(new Error(result.message || result.error));
-                  return;
-                }
-
-                if (result && result.success) {
-                  console.log("✅ Backend claims success:", result);
-                  console.log("Backend response data:", result.data);
-                  resolve(result.data);
-                } else if (result && result.success === false) {
-                  console.error("Backend failure response:", result.message);
-                  reject(
-                    new Error(
-                      "Update failed: " + (result.message || "Unknown error"),
-                    ),
-                  );
-                } else {
-                  console.error("Unexpected backend response format:", result);
-                  console.error(
-                    "Raw response:",
-                    JSON.stringify(result, null, 2),
-                  );
-                  reject(
-                    new Error(
-                      "Update failed: Unexpected response format - " +
-                        JSON.stringify(result),
-                    ),
-                  );
-                }
-              },
-            );
-          });
-
-          // Note: Frontend state update now happens after server verification (below)
-
-          console.log("Backend claims sample type updated successfully");
-
-          // VERIFICATION: Refresh data from server to confirm persistence
-          console.log(
-            "🔄 VERIFYING: Refreshing data from server to confirm persistence...",
-          );
-
-          try {
-            // Refetch data from server to verify the changes were actually saved
-            await new Promise((resolve, reject) => {
-              getFromOpenElisServer("/rest/sample-types", (response) => {
-                console.log(
-                  "✅ VERIFICATION: Data refetched from server:",
-                  response,
-                );
-
-                if (
-                  response &&
-                  response.success &&
-                  Array.isArray(response.data)
-                ) {
-                  const updatedSampleTypes = response.data.map(
-                    (item, index) => ({
-                      id: item.id || index + 1,
-                      name:
-                        item.name || item.description || "Unknown Sample Type",
-                      description:
-                        item.description ||
-                        item.name ||
-                        "Sample type from database",
-                      domain: item.domain || "CLINICAL",
-                      active:
-                        item.isActive !== undefined ? item.isActive : true,
-                      testCount: item.testCount || 0,
-                      abbreviation: item.abbreviation || "",
-                      containerType: item.containerType || "",
-                      storageTemp: item.storageTemperature || "",
-                    }),
-                  );
-
-                  // Update state with verified server data
-                  setSampleTypes(updatedSampleTypes);
-                  console.log(
-                    "✅ VERIFICATION: Frontend state updated with verified server data",
-                  );
-                  resolve();
-                } else {
-                  console.error(
-                    "❌ VERIFICATION: Failed to refetch data from server",
-                  );
-                  reject(new Error("Failed to verify data persistence"));
-                }
-              });
-            });
-          } catch (verificationError) {
-            console.error("❌ VERIFICATION ERROR:", verificationError);
-            alert(
-              "WARNING: Update may not have been saved. Changes will be lost on refresh.",
-            );
-          }
-        }
-
-        // Return to list view and show success
+        });
+        await refreshSampleTypes();
         setShowEditSuccess(true);
         setTimeout(() => setShowEditSuccess(false), 3000);
-        console.log("Sample Type update process completed");
-
-        // Return to list view after a short delay to show success message
-        setTimeout(() => {
-          setEditingType(null);
-          setFormErrors({});
-          history.push(listUrl);
-        }, 2000);
+        setEditingType(null);
+        setFormErrors({});
+        history.push(listUrl);
       }
     } catch (error) {
-      console.error("Error saving sample type:", error);
-      console.error("Error details:", error.message);
-      console.error("Error stack:", error.stack);
-
       const operation = view === "add" ? "create" : "update";
-      const errorMessage = `Failed to ${operation} sample type: ${error.message}`;
-
-      setFormErrors({ submit: errorMessage });
-
-      // Also show alert for immediate feedback
-      alert(
-        `ERROR: ${errorMessage}\n\nPlease check browser console for more details.`,
-      );
-
-      console.error("=== EDIT ERROR DEBUG ===");
-      console.error("View:", view);
-      console.error("EditingType ID:", editingType?.id);
-      console.error("Full error:", error);
-      console.error("======================");
+      setFormErrors({
+        submit: `Failed to ${operation} sample type: ${error.message}`,
+      });
     } finally {
       setIsSubmitting(false);
     }
-  }, [editingType, view, validateForm, history, listUrl]);
+  }, [editingType, view, validateForm, history, listUrl, refreshSampleTypes]);
 
   // ─── LIST VIEW ────────────────────────────────────────────────
   if (view === "list") {

@@ -94,10 +94,7 @@ public class SampleTypeCreateRestController extends BaseController {
         }
         String identifyingName = form.getSampleTypeEnglishName();
         String userId = getSysUserId(request);
-        String frontendDomain = form.getDomain();
-        String backendDomainCode = mapFrontendDomainToBackendCode(frontendDomain);
-
-        // Domain mapping completed for sample type creation
+        String backendDomainCode = mapFrontendDomainToBackendCode(form.getDomain());
 
         Localization localization = createLocalization(form.getSampleTypeFrenchName(), identifyingName, userId);
 
@@ -118,43 +115,6 @@ public class SampleTypeCreateRestController extends BaseController {
         try {
             sampleTypeCreateService.createAndInsertSampleType(localization, typeOfSample, workplanModule, resultModule,
                     validationModule, workplanResultModule, resultResultModule, validationValidationModule);
-
-            LogEvent.logInfo(this.getClass().getSimpleName(), "postSampleTypeCreate", "Sample Type '" + identifyingName
-                    + "' successfully saved to database with domain: " + backendDomainCode);
-
-            // Additional verification: Query the database to confirm the domain was saved
-            // correctly
-            try {
-                // Wait a moment for transaction to commit
-                Thread.sleep(500);
-
-                // Verify the saved domain by querying recent sample types
-                List<TypeOfSample> allTypes = typeOfSampleService.getAllTypeOfSamples();
-                TypeOfSample savedType = allTypes.stream().filter(type -> identifyingName.equals(type.getDescription()))
-                        .findFirst().orElse(null);
-
-                if (savedType != null) {
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "postSampleTypeCreate",
-                            "DATABASE VERIFICATION: Found saved sample type with domain '" + savedType.getDomain()
-                                    + "'");
-                    if (backendDomainCode.equals(savedType.getDomain())) {
-                        LogEvent.logInfo(this.getClass().getSimpleName(), "postSampleTypeCreate",
-                                "DOMAIN MATCH: Expected '" + backendDomainCode + "', Got '" + savedType.getDomain()
-                                        + "' - SUCCESS!");
-                    } else {
-                        LogEvent.logError(this.getClass().getSimpleName(), "postSampleTypeCreate",
-                                "DOMAIN MISMATCH: Expected '" + backendDomainCode + "', Got '" + savedType.getDomain()
-                                        + "' - ERROR!");
-                    }
-                } else {
-                    LogEvent.logError(this.getClass().getSimpleName(), "postSampleTypeCreate",
-                            "DATABASE VERIFICATION: Could not find saved sample type - may not be committed yet");
-                }
-            } catch (Exception verificationException) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "postSampleTypeCreate",
-                        "Verification check failed: " + verificationException.getMessage());
-            }
-
         } catch (LIMSRuntimeException e) {
             LogEvent.logError("Failed to save Sample Type '" + identifyingName + "' to database: " + e.getMessage(), e);
             throw e;
@@ -201,37 +161,34 @@ public class SampleTypeCreateRestController extends BaseController {
                 typeOfSample.setWhonetCode(trimmed);
             }
         }
-        typeOfSample.setIsActive(true);
+        // Legacy behavior preserved: new sample types start inactive until
+        // configured (the Activation screen gates on assigned tests).
+        typeOfSample.setIsActive(false);
         typeOfSample.setSortOrder(Integer.MAX_VALUE);
         typeOfSample.setSysUserId(userId);
         String identifyingNameKey = identifyingName.replaceAll(" ", "_");
         typeOfSample.setNameKey("Sample.type." + identifyingNameKey);
 
-        LogEvent.logInfo(this.getClass().getSimpleName(), "createTypeOfSample",
-                "TypeOfSample created with backend domain code: " + backendDomainCode);
-
         return typeOfSample;
     }
 
     /**
-     * Maps frontend domain values to backend domain codes. Frontend: CLINICAL,
-     * ENVIRONMENTAL, VECTOR Backend: H (Human/Clinical), E (Environmental), V
-     * (Vector)
+     * Maps the Clinical/Environmental/Vector choice onto the legacy
+     * {@code sample_domain} chars, matching the D-030 guard mapping shipped with
+     * OGC-1145 (H uman / E nvironmental / A nimal-vector). The enum-valued domain
+     * column remains a declared migration (OGC-296 v2.1 Dependency 4).
      */
     private String mapFrontendDomainToBackendCode(String frontendDomain) {
         if (frontendDomain == null || frontendDomain.trim().isEmpty()) {
-            return "H"; // Default to Human/Clinical
+            return "H";
         }
-
         switch (frontendDomain.toUpperCase()) {
-        case "CLINICAL":
-            return "H"; // Human/Clinical
         case "ENVIRONMENTAL":
-            return "E"; // Environmental
+            return "E";
         case "VECTOR":
-            return "V"; // Vector surveillance
+            return "A";
         default:
-            return "H"; // Default to Human/Clinical for unknown domains
+            return "H";
         }
     }
 
