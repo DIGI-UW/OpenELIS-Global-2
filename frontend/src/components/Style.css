@@ -585,6 +585,29 @@ button {
   }
 }
 
+/* Pin/unpin control at the top of the sidenav (desktop only) */
+.sidenav-pin-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.25rem 0.5rem 0;
+}
+
+/* Both sidenavs are white, but only the main nav remaps Carbon's icon tokens
+   (the admin nav hard-codes colors on its own selectors instead), so without
+   this the ghost button inherits the blue header theme's light icon color and
+   renders white-on-white in the admin nav. Match the main nav's icon grey. */
+.sidenav-pin-row .cds--btn--ghost {
+  --cds-icon-primary: #525252;
+  color: #525252;
+}
+
+.sidenav-pin-row .cds--btn--ghost:hover,
+.sidenav-pin-row .cds--btn--ghost:focus {
+  --cds-icon-primary: #161616;
+  color: #161616;
+  background-color: #f4f4f4;
+}
+
 /* Allow sidenav to scroll long menus (e.g. Admin) while hiding scrollbar */
 .cds--side-nav {
   overflow-y: auto !important;
