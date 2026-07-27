@@ -1,4 +1,4 @@
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import { tatDelta } from "../../reports/tat/tatUtils";
 
 /**
@@ -36,6 +36,17 @@ export const fetchOverviewSummary = dedupedFetch((resolve) => {
     resolve(data && data.week ? data : null),
   );
 });
+
+// C.4 critical-callback compliance summary for a window (OGC-714/715):
+// {enabled, criticalCount, confirmedCount, compliancePercent, target}. When
+// the CALLBACK indicator is disabled the response says enabled=false —
+// callers hide their surface (same cascade as the QI Dashboard tile).
+export const fetchCallbackSummary = (fromDate, toDate, callback) => {
+  getFromOpenElisServer(
+    `/rest/critical-callback/summary?fromDate=${fromDate}&toDate=${toDate}`,
+    (res) => callback(res ?? null),
+  );
+};
 
 // ---- Week window ----
 
@@ -128,10 +139,6 @@ export const nceActivityRows = (list, sinceMs) =>
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TAT_WINDOW_DAYS = 30;
 
-// UTC day strings, matching QIDashboard's formatDate so both screens query
-// identical windows.
-const utcDate = (d) => d.toISOString().split("T")[0];
-
 const tatQuery = (from, to) =>
   `/rest/reports/tat/summary?fromDate=${from}&toDate=${to}` +
   `&segment=RECEIPT_TO_VALIDATION&calculationMode=CALENDAR&breakdownBy=LAB_UNIT`;
@@ -152,12 +159,15 @@ export const fetchTatRollup = dedupedFetch((resolve) => {
     }
     resolve({ mean: current.mean, ...tatDelta(current, prior) });
   };
-  getFromOpenElisServer(tatQuery(utcDate(from), utcDate(to)), (res) => {
-    current = res;
-    finish();
-  });
   getFromOpenElisServer(
-    tatQuery(utcDate(priorFrom), utcDate(priorTo)),
+    tatQuery(toLocalIsoDate(from), toLocalIsoDate(to)),
+    (res) => {
+      current = res;
+      finish();
+    },
+  );
+  getFromOpenElisServer(
+    tatQuery(toLocalIsoDate(priorFrom), toLocalIsoDate(priorTo)),
     (res) => {
       prior = res;
       finish();

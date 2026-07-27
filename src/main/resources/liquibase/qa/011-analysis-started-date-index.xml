@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-710 rejection-report cohort queries (summary/trend/breakdown/heatmap)
+    all range-scan analysis.started_date, which had no index - the baseline
+    only indexes the sampitem/test/test_sect FKs. One btree turns every one
+    of those queries (and any future started-cohort report) into an index
+    range scan instead of a full-table scan.
+    -->
+    <changeSet author="openelisglobal" id="qi-rejection-001-analysis-started-date-index">
+        <comment>Index analysis.started_date for the rejection cohort queries</comment>
+        <createIndex schemaName="clinlims" tableName="analysis" indexName="idx_analysis_started_date">
+            <column name="started_date" />
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="analysis" indexName="idx_analysis_started_date" />
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

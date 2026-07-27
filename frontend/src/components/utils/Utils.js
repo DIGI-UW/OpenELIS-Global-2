@@ -81,6 +81,22 @@ export const toLocalIsoDate = (d) => {
   return `${year}-${month}-${day}`;
 };
 
+/**
+ * Format a timestamp (epoch millis / ISO string / Date) as local
+ * `yyyy-MM-dd HH:mm`, or "—" when absent. Companion to toLocalIsoDate for
+ * date-time display columns. (Distinct from the legacy `formatTimestamp`
+ * below, which takes Unix SECONDS and renders a UTC AM/PM string.)
+ */
+export const toLocalIsoDateTime = (value) => {
+  if (!value) {
+    return "—";
+  }
+  const d = new Date(value);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${toLocalIsoDate(d)} ${hh}:${mm}`;
+};
+
 export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
   fetch(
     config.serverBaseUrl + endPoint,

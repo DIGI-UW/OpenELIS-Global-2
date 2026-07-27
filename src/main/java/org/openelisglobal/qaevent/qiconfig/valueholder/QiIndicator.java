@@ -9,14 +9,16 @@ package org.openelisglobal.qaevent.qiconfig.valueholder;
  * which is why this is a code enum rather than a data-driven table.
  */
 public enum QiIndicator {
-    TAT(Direction.HIGHER_BETTER, true), REJECTION(Direction.LOWER_BETTER, true),
-    AMENDMENT(Direction.LOWER_BETTER, true), NCE(Direction.LOWER_BETTER, false),
-    CALLBACK(Direction.HIGHER_BETTER, false);
+    TAT(Direction.LOWER_BETTER, true), REJECTION(Direction.LOWER_BETTER, true), AMENDMENT(Direction.LOWER_BETTER, true),
+    NCE(Direction.LOWER_BETTER, false), CALLBACK(Direction.HIGHER_BETTER, false);
 
     /**
-     * Whether a higher metric value is better (e.g. TAT % on-time) or worse (e.g.
-     * rejection %). Drives threshold ordering validation and the breach comparison
-     * that OGC-712 will apply.
+     * Whether a higher metric value is better or worse. Drives threshold ordering
+     * validation and the OGC-712 breach comparison. TAT is LOWER_BETTER because its
+     * thresholds are mean-TAT <b>hours</b> (the metric every TAT surface actually
+     * computes), not an on-time compliance % — per-test TAT targets are
+     * unpopulated, so a compliance % would be incomputable (C.3 gap #3 decision).
+     * REJECTION/AMENDMENT thresholds are rate percentages.
      */
     public enum Direction {
         HIGHER_BETTER, LOWER_BETTER

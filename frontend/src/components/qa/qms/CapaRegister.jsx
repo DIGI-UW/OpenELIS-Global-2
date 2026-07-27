@@ -72,7 +72,8 @@ function shift(days) {
 }
 
 // Backend sends dueDate/dateCompleted as yyyy-MM-dd strings, so lexical compare == date compare.
-function deriveStatus(row, today) {
+// Exported for the QA Overview's overdue-CAPAs row, so the two counts agree.
+export function deriveStatus(row, today) {
   if ((row.nceStatus || "").toLowerCase() === "completed") {
     return "completed";
   }
@@ -184,7 +185,7 @@ const CapaRegister = () => {
   const statusItems = ["all", "open", "overdue", "completed"];
 
   return (
-    <div className="adminPageContent qi-dashboard">
+    <div className="pageContent qi-dashboard">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
         <FormattedMessage id="qa.qms.capaRegister.title" />

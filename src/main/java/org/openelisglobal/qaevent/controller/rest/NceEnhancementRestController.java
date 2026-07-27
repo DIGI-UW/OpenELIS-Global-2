@@ -143,6 +143,7 @@ public class NceEnhancementRestController extends BaseRestController {
             item.proposedAction = event.getProposedAction();
             item.triggerSourceType = event.getTriggerSourceType();
             item.affectedSamplesCapReason = event.getAffectedSamplesCapReason();
+            item.effective = event.getEffective();
 
             // Fetch assigned user name
             if (event.getAssignedTo() != null) {
@@ -518,6 +519,9 @@ public class NceEnhancementRestController extends BaseRestController {
         public String proposedAction;
         public String triggerSourceType;
         public String affectedSamplesCapReason;
+        // effectiveness verdict ("Yes"/"No", null while the review is due) —
+        // drives the QA Overview's reviews-due counter
+        public String effective;
         public String assignedTo;
         public String assignedToName;
         public int notesCount;

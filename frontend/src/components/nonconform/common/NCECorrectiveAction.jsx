@@ -396,12 +396,11 @@ export const NCECorrectiveAction = () => {
                             {row.nceNumber}
                           </TableCell>
                           <TableCell key={row.key + "2"}>
-                            {
-                              tData.reportingUnits.find(
-                                (obj) =>
-                                  parseInt(obj.id) === row.reportingUnitId,
-                              ).value
-                            }
+                            {/* system-created NCEs may carry no reporting
+                                unit */}
+                            {tData.reportingUnits.find(
+                              (obj) => parseInt(obj.id) === row.reportingUnitId,
+                            )?.value ?? "—"}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -504,9 +503,12 @@ export const NCECorrectiveAction = () => {
                     <FormattedMessage id="nonconform.label.prescibernamesite" />
                   </span>
                 </div>
-                <div
-                  style={{ marginBottom: "10px" }}
-                >{`${data.prescriberName}-${data.site}`}</div>
+                <div style={{ marginBottom: "10px" }}>
+                  {/* system-created NCEs carry no prescriber/site */}
+                  {[data.prescriberName, data.site]
+                    .filter(Boolean)
+                    .join(" - ") || "—"}
+                </div>
               </Column>
               <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
                 <div style={{ marginBottom: "10px" }}>

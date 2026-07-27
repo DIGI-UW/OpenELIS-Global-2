@@ -12,6 +12,7 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
  */
 public interface QiBreachNceService {
 
+    /** {@code unit} is the metric's display unit ("%" for rates, "h" for TAT). */
     NcEvent createBreachNce(String indicatorKey, String periodKey, BigDecimal actualValue, BigDecimal actionThreshold,
-            String direction);
+            String direction, String unit);
 }

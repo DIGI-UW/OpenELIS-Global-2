@@ -9,6 +9,10 @@ import QIDashboard from "../QIDashboard";
 import { NotificationContext } from "../../../layout/Layout";
 
 vi.mock("../../../utils/Utils", () => ({
+  toLocalIsoDate: (d) =>
+    d instanceof Date
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      : d || "",
   getFromOpenElisServer: vi.fn(),
 }));
 
@@ -64,6 +68,18 @@ const priorAmendment = {
   ratePercent: 0.42, // delta = -0.11% => fewer amendments, "good"
 };
 
+const currentRejection = {
+  rejectedCount: 70,
+  totalCount: 2500,
+  ratePercent: 2.8, // between target 2 and action 5 => amber
+};
+
+const priorRejection = {
+  rejectedCount: 76,
+  totalCount: 2450,
+  ratePercent: 3.1, // delta = -0.30% => fewer rejections, "good"
+};
+
 const currentCallback = {
   enabled: true,
   criticalCount: 4,
@@ -78,6 +94,25 @@ const priorCallback = {
   confirmedCount: 1,
   compliancePercent: 50.0, // delta = +50% => higher compliance, "good"
   target: 100,
+};
+
+// Resolved qi_config per indicator (OGC-710): thresholds drive tile accents.
+const resolvedConfigs = {
+  TAT: { enabled: true, target: 24, action: 48, direction: "LOWER_BETTER" },
+  REJECTION: { enabled: true, target: 2, action: 5, direction: "LOWER_BETTER" },
+  AMENDMENT: {
+    enabled: true,
+    target: 0.5,
+    action: 2,
+    direction: "LOWER_BETTER",
+  },
+  NCE: { enabled: true, target: null, action: null, direction: "LOWER_BETTER" },
+  CALLBACK: {
+    enabled: true,
+    target: null,
+    action: null,
+    direction: "HIGHER_BETTER",
+  },
 };
 
 // 3 critical pending (amber band) + 2 in corrective action; the rest is noise
@@ -98,24 +133,31 @@ const mockApis = ({
   tatPrior = priorSummary,
   amendCurrent = currentAmendment,
   amendPrior = priorAmendment,
+  rejectCurrent = currentRejection,
+  rejectPrior = priorRejection,
   callbackCurrent = currentCallback,
   callbackPrior = priorCallback,
   nce = nceList,
+  configs = resolvedConfigs,
 } = {}) => {
   let tatCall = 0;
   let amendCall = 0;
+  let rejectCall = 0;
   let callbackCall = 0;
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url.includes("/rest/reports/tat/summary")) {
       callback(tatCall++ === 0 ? tatCurrent : tatPrior);
     } else if (url.includes("/rest/reports/amendment/summary")) {
       callback(amendCall++ === 0 ? amendCurrent : amendPrior);
+    } else if (url.includes("/rest/reports/rejection/summary")) {
+      callback(rejectCall++ === 0 ? rejectCurrent : rejectPrior);
     } else if (url.includes("/rest/critical-callback/summary")) {
       callback(callbackCall++ === 0 ? callbackCurrent : callbackPrior);
     } else if (url.includes("/rest/nce/dashboard")) {
       callback(nce === null ? undefined : { nceList: nce });
     } else if (url.includes("/rest/qi-config/resolve")) {
-      callback({ enabled: true });
+      const key = new URLSearchParams(url.split("?")[1]).get("indicator");
+      callback(configs[key] || { enabled: true });
     }
   });
 };
@@ -153,10 +195,32 @@ describe("QIDashboard", () => {
     const detailLinks = screen.getAllByRole("link", { name: /View detail/ });
     expect(detailLinks.map((l) => l.getAttribute("href"))).toEqual([
       "/qa/qi/tat",
+      "/qa/qi/rejection",
       "/qa/qi/amendment",
       "/NceDashboard?severity=CRITICAL&status=Pending",
       "/qa/qi/callback",
     ]);
+  });
+
+  test("tiles color against their resolved thresholds and caption them", async () => {
+    mockApis();
+    renderPage();
+
+    // TAT mean 18.78h ≤ target 24h => green; caption shows both bands.
+    const tatTile = screen.getByTestId("qi-tile-tat");
+    await waitFor(() => expect(tatTile).toHaveTextContent("18h 47m"));
+    expect(tatTile.className).toContain("qi-tile--green");
+    expect(tatTile).toHaveTextContent("Target ≤ 24h · action ≥ 48h");
+
+    // Rejection 2.8% sits between target 2% and action 5% => amber.
+    const rejectionTile = screen.getByTestId("qi-tile-rejection");
+    expect(rejectionTile.className).toContain("qi-tile--amber");
+    expect(rejectionTile).toHaveTextContent("Target ≤ 2% · action ≥ 5%");
+
+    // Amendment 0.31% ≤ target 0.5% => green.
+    const amendmentTile = screen.getByTestId("qi-tile-amendment");
+    expect(amendmentTile.className).toContain("qi-tile--green");
+    expect(amendmentTile).toHaveTextContent("Target ≤ 0.5% · action ≥ 2%");
   });
 
   test("amendment tile shows rate, improving delta, and counts", async () => {
@@ -184,19 +248,23 @@ describe("QIDashboard", () => {
     expect(tile.className).toContain("qi-tile--amber");
   });
 
-  test("rejection tile remains a ticket-annotated placeholder", () => {
+  test("rejection tile shows rate, improving delta, and counts", async () => {
     mockApis();
     renderPage();
 
-    expect(screen.getByTestId("qi-tile-rejection")).toHaveTextContent(
-      "Coming soon — OGC-697",
-    );
+    const tile = screen.getByTestId("qi-tile-rejection");
+    await waitFor(() => expect(tile).toHaveTextContent("2.80%"));
+    expect(tile).toHaveTextContent("↓ 0.30%");
+    expect(tile).toHaveTextContent("70 rejected of 2500 started");
+    expect(tile).toHaveTextContent("vs prior 30 days");
+    expect(tile).not.toHaveTextContent("Coming soon");
   });
 
   test("shows empty states when the window has no activity", async () => {
     mockApis({
       tatCurrent: { totalCount: 0, mean: null, breakdown: [] },
       amendCurrent: { amendedCount: 0, releasedCount: 0, ratePercent: null },
+      rejectCurrent: { rejectedCount: 0, totalCount: 0, ratePercent: null },
     });
     renderPage();
 
@@ -207,6 +275,9 @@ describe("QIDashboard", () => {
     );
     expect(screen.getByTestId("qi-tile-amendment")).toHaveTextContent(
       "No results released in this window.",
+    );
+    expect(screen.getByTestId("qi-tile-rejection")).toHaveTextContent(
+      "No tests started in this window.",
     );
   });
 
@@ -224,6 +295,9 @@ describe("QIDashboard", () => {
     expect(screen.getByTestId("qi-tile-amendment")).toHaveTextContent(
       "Amendment data is unavailable.",
     );
+    expect(screen.getByTestId("qi-tile-rejection")).toHaveTextContent(
+      "Rejection data is unavailable.",
+    );
     expect(screen.getByTestId("qi-tile-nce-pulse")).toHaveTextContent(
       "NCE data is unavailable.",
     );
@@ -236,7 +310,10 @@ describe("QIDashboard", () => {
 
     const from = new Date();
     from.setDate(from.getDate() - 7);
-    const expectedFrom = from.toISOString().split("T")[0];
+    // local date components, matching toLocalIsoDate (not UTC toISOString)
+    const expectedFrom = `${from.getFullYear()}-${String(
+      from.getMonth() + 1,
+    ).padStart(2, "0")}-${String(from.getDate()).padStart(2, "0")}`;
     expect(getFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining(`fromDate=${expectedFrom}`),
       expect.any(Function),
@@ -256,14 +333,14 @@ describe("QIDashboard", () => {
   test("refresh refetches every indicator and rate-limits the button", async () => {
     mockApis();
     renderPage();
-    // TAT + Amendment + Callback fire current+prior (2 each); NCE Pulse once;
-    // plus the OGC-711 enabled-config resolve for TAT/AMENDMENT/NCE/CALLBACK
-    // (4) = 11
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(11);
+    // TAT + Rejection + Amendment + Callback fire current+prior (2 each);
+    // NCE Pulse once; plus the config resolve for all five indicators (5)
+    // = 14
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(14);
 
     const refresh = screen.getByTestId("qi-dashboard-refresh");
     fireEvent.click(refresh);
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(22);
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(28);
     expect(refresh).toBeDisabled();
   });
 });

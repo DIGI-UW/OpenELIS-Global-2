@@ -237,7 +237,7 @@ public class TATReportServiceImpl implements TATReportService {
             TATResult result = new TATResult();
             result.setLabNumber(sample.getAccessionNumber());
             result.setTestName(analysis.getTest() != null ? analysis.getTest().getLocalizedName() : "");
-            result.setLabUnit(analysis.getTestSection() != null ? analysis.getTestSection().getLocalizedName() : "");
+            result.setLabUnit(labUnit(analysis));
             result.setPriority(sample.getPriority() != null ? sample.getPriority().name() : "Routine");
             result.setSampleType(analysis.getSampleItem() != null && analysis.getSampleItem().getTypeOfSample() != null
                     ? analysis.getSampleItem().getTypeOfSample().getLocalizedName()
@@ -275,6 +275,22 @@ public class TATReportServiceImpl implements TATReportService {
         }
 
         return results;
+    }
+
+    /**
+     * The analysis-level section when assigned, else the test's home section —
+     * dev/legacy analyses often carry no test_sect_id, and an empty-string labUnit
+     * defeats the "Unknown" fallback in the LAB_UNIT breakdown (same fallback the
+     * rejection heatmap applies in SQL).
+     */
+    private String labUnit(org.openelisglobal.analysis.valueholder.Analysis analysis) {
+        if (analysis.getTestSection() != null) {
+            return analysis.getTestSection().getLocalizedName();
+        }
+        if (analysis.getTest() != null && analysis.getTest().getTestSection() != null) {
+            return analysis.getTest().getTestSection().getLocalizedName();
+        }
+        return "";
     }
 
     private Timestamp[] getSegmentTimestamps(TATSegment segment, TATResult r) {
@@ -347,16 +363,22 @@ public class TATReportServiceImpl implements TATReportService {
     }
 
     private Map<String, List<TATResult>> groupByDimension(List<TATResult> results, String dimension) {
+        // the mapping layer emits "" (not null) for missing values, so treat
+        // blank and null alike — otherwise a phantom blank-named bucket forms
         return results.stream().collect(Collectors.groupingBy(r -> {
             return switch (dimension.toUpperCase()) {
-            case "LAB_UNIT" -> r.getLabUnit() != null ? r.getLabUnit() : "Unknown";
-            case "TEST" -> r.getTestName() != null ? r.getTestName() : "Unknown";
-            case "PRIORITY" -> r.getPriority() != null ? r.getPriority() : "Routine";
-            case "SAMPLE_TYPE" -> r.getSampleType() != null ? r.getSampleType() : "Unknown";
-            case "ORDERING_SITE" -> r.getOrderingSite() != null ? r.getOrderingSite() : "Unknown";
-            default -> r.getLabUnit() != null ? r.getLabUnit() : "Unknown";
+            case "LAB_UNIT" -> orUnknown(r.getLabUnit(), "Unknown");
+            case "TEST" -> orUnknown(r.getTestName(), "Unknown");
+            case "PRIORITY" -> orUnknown(r.getPriority(), "Routine");
+            case "SAMPLE_TYPE" -> orUnknown(r.getSampleType(), "Unknown");
+            case "ORDERING_SITE" -> orUnknown(r.getOrderingSite(), "Unknown");
+            default -> orUnknown(r.getLabUnit(), "Unknown");
             };
         }));
+    }
+
+    private static String orUnknown(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     // ========== Trend ==========

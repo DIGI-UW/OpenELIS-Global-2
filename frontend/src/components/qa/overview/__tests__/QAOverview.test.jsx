@@ -59,6 +59,16 @@ const NCE_LIST = [
     status: "Corrective Action",
     reportDate: LAST_MONTH,
   },
+  // CAPA recorded, verdict pending => effectiveness review due
+  { id: "7", severity: "MAJOR", status: "CAPA", reportDate: LAST_MONTH },
+  // CAPA already reviewed ineffective => not due
+  {
+    id: "8",
+    severity: "MINOR",
+    status: "CAPA",
+    effective: "No",
+    reportDate: LAST_MONTH,
+  },
 ];
 
 const SUMMARY = {
@@ -130,8 +140,40 @@ beforeEach(() => {
       callback(++tatCalls === 1 ? TAT_CURRENT : TAT_PRIOR);
     } else if (url.includes("/rest/reports/amendment/summary")) {
       callback({ amendedCount: 8, releasedCount: 2580, ratePercent: 0.31 });
+    } else if (url.includes("/rest/reports/rejection/summary")) {
+      callback({ rejectedCount: 3, totalCount: 120, ratePercent: 2.5 });
+    } else if (url.includes("/rest/critical-callback/summary")) {
+      callback({
+        enabled: true,
+        criticalCount: 4,
+        confirmedCount: 3,
+        compliancePercent: 75.0,
+        target: 100,
+      });
+    } else if (url.includes("/rest/nce/capa-register")) {
+      callback([
+        { id: 1, nceStatus: "Pending", dueDate: LAST_MONTH }, // overdue
+        { id: 2, nceStatus: "completed", dateCompleted: TODAY },
+      ]);
     } else if (url.includes("/rest/qi-config/resolve")) {
-      callback({ enabled: true });
+      // full thresholds where the tiles judge tones (OGC-710)
+      if (url.includes("indicator=REJECTION")) {
+        callback({
+          enabled: true,
+          target: 2,
+          action: 5,
+          direction: "LOWER_BETTER",
+        });
+      } else if (url.includes("indicator=AMENDMENT")) {
+        callback({
+          enabled: true,
+          target: 0.5,
+          action: 2,
+          direction: "LOWER_BETTER",
+        });
+      } else {
+        callback({ enabled: true });
+      }
     }
   });
 });
@@ -151,9 +193,9 @@ describe("QAOverview", () => {
     // WS-E lit the Today Amendment tile, WS-G the Average TAT tile (NCE Pulse
     // already live via WS-C). These placeholders remain.
     const slotCounts = {
-      "Attention Required": 4,
-      Today: 2,
-      "This Week": 1,
+      "Attention Required": 1,
+      Today: 0,
+      "This Week": 0,
       "Pillar Status": 1,
       "Recent Activity": 0,
     };
@@ -163,10 +205,11 @@ describe("QAOverview", () => {
     });
 
     // One shared NCE fetch, one overview summary, two TAT windows, the
-    // Amendment tile's own summary fetch, plus the OGC-711 enabled-config
-    // resolves: AttentionRequired (NCE), TodayTiles (TAT/AMENDMENT/NCE),
-    // PillarStatus (TAT) = 1 + 1 + 2 + 1 + 1 + 3 + 1 = 10
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(10);
+    // Amendment + Rejection tile summaries, three callback windows (tile 30d,
+    // attention 24h, week), the CAPA register, plus the OGC-711 config
+    // resolves: AttentionRequired (NCE), TodayTiles (all five indicators),
+    // PillarStatus (TAT) = 1 + 1 + 2 + 2 + 3 + 1 + 1 + 5 + 1 = 17
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(17);
   });
 
   test("Today tiles carry the KPI titles, tickets, and the live TAT/Amendment/NCE values", async () => {
@@ -182,8 +225,9 @@ describe("QAOverview", () => {
     ].forEach((title) => {
       expect(within(today).getByText(title)).toBeInTheDocument();
     });
-    ["OGC-697", "OGC-714"].forEach((ticket) => {
-      expect(within(today).getByText(ticket)).toBeInTheDocument();
+    // All five tiles are live — no ticket badges remain (OGC-697/714 lit up)
+    ["OGC-696", "OGC-697", "OGC-714"].forEach((ticket) => {
+      expect(within(today).queryByText(ticket)).not.toBeInTheDocument();
     });
     // Average TAT is live (WS-G): value + prior-window delta, no ticket
     expect(within(today).queryByText("OGC-696")).not.toBeInTheDocument();
@@ -203,6 +247,12 @@ describe("QAOverview", () => {
     expect(within(today).queryByText("OGC-698")).not.toBeInTheDocument();
     expect(within(today).getByText("0.31%")).toHaveClass("qa-live-green");
     expect(within(today).getByText("8 of 2580 released")).toBeInTheDocument();
+    // Rejection Rate is live (OGC-697/710): between target 2 and action 5
+    expect(within(today).getByText("2.50%")).toHaveClass("qa-live-amber");
+    expect(within(today).getByText("3 of 120 started")).toBeInTheDocument();
+    // Callback compliance is live (OGC-714/715): 75% below the 100% target
+    expect(within(today).getByText("75.00%")).toHaveClass("qa-live-red");
+    expect(within(today).getByText("3 of 4 confirmed")).toBeInTheDocument();
   });
 
   test("attention queue: live NCE, QC-violation, and EQA-due rows with drill-throughs", async () => {
@@ -229,8 +279,28 @@ describe("QAOverview", () => {
     expect(within(eqaRow).getByText("3")).toBeInTheDocument();
     expect(eqaRow).not.toHaveClass("qa-live-row-alert");
 
-    // Overdue CAPAs + effectiveness reviews both light up via OGC-707
-    expect(within(attention).getAllByText("OGC-707")).toHaveLength(2);
+    // Critical results (last 24h) is live: 4 critical, 1 unconfirmed => alert
+    const criticalRow = within(attention).getByRole("button", {
+      name: /Critical results in last 24 hours/,
+    });
+    expect(within(criticalRow).getByText("4")).toBeInTheDocument();
+    expect(criticalRow).toHaveClass("qa-live-row-alert");
+
+    // Overdue CAPAs is live: one open row past its due date
+    const capaRow = within(attention).getByRole("button", {
+      name: /Overdue CAPAs/,
+    });
+    expect(within(capaRow).getByText("1")).toBeInTheDocument();
+    expect(capaRow).toHaveClass("qa-live-row-alert");
+
+    // Effectiveness reviews due is live: one CAPA awaiting a verdict (the
+    // reviewed-"No" CAPA doesn't count); only the NCE-v2 SLA row remains
+    const reviewRow = within(attention).getByRole("button", {
+      name: /CAPA effectiveness reviews due/,
+    });
+    expect(within(reviewRow).getByText("1")).toBeInTheDocument();
+    expect(reviewRow).toHaveClass("qa-live-row-alert");
+    expect(within(attention).queryByText("OGC-707")).not.toBeInTheDocument();
     expect(within(attention).getByText("NCE v2")).toBeInTheDocument();
   });
 
@@ -262,8 +332,11 @@ describe("QAOverview", () => {
       within(stat("Signature events")).getByText("1,247"),
     ).toBeInTheDocument();
 
-    // Critical results stays a placeholder until OGC-714
-    expect(within(week).getByText("OGC-714")).toBeInTheDocument();
+    // Critical results is live (OGC-714/715): week window with confirmations
+    expect(within(stat("Critical results")).getByText("4")).toBeInTheDocument();
+    expect(
+      within(stat("Critical results")).getByText("3 confirmed"),
+    ).toBeInTheDocument();
   });
 
   test("pillar chips roll up QC, QI, and QMS status; EQA stays a placeholder", async () => {

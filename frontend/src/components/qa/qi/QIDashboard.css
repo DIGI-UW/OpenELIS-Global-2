@@ -164,13 +164,15 @@
 
 .qi-tile__target,
 .qi-tile__secondary,
+.qi-tile__threshold,
 .qi-tile__message {
   font-size: 0.8125rem;
   color: var(--cds-text-secondary, #525252);
   margin: 0;
 }
 
-.qi-tile__target {
+.qi-tile__target,
+.qi-tile__threshold {
   font-size: 0.75rem;
 }
 
@@ -178,6 +180,47 @@
   margin-top: auto;
   padding-top: 0.25rem;
   font-size: 0.75rem;
+}
+
+/* Rejection heatmap (OGC-710): ordering location × test section grid; cell
+   tones come from the resolved qi_config thresholds via rateTone. */
+.qi-heatmap {
+  overflow-x: auto;
+}
+
+.qi-heatmap table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 100%;
+  background: var(--cds-layer, #ffffff);
+}
+
+.qi-heatmap th,
+.qi-heatmap td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.qi-heatmap thead th:first-child,
+.qi-heatmap th[scope="row"] {
+  text-align: left;
+}
+
+.qi-heatmap__cell--green {
+  background-color: #defbe6;
+  color: #0e6027;
+}
+
+.qi-heatmap__cell--amber {
+  background-color: #fcf4d6;
+  color: #684e00;
+}
+
+.qi-heatmap__cell--red {
+  background-color: #ffd7d9;
+  color: #a2191f;
 }
 
 /* Callback detail — time-to-acknowledge bar list (design: qa-final-preview) */
