@@ -158,9 +158,9 @@ public class QiConfigServiceIntegrationTest extends BaseWebContextSensitiveTest 
         // REJECTION is lower-better: target must be < action.
         assertThrows(IllegalArgumentException.class,
                 () -> qiConfigService.saveIndicator("REJECTION", view(true, bd("8"), bd("5")), USER));
-        // TAT is higher-better: target must be > action.
+        // TAT is lower-better (mean-TAT hours): target must be < action.
         assertThrows(IllegalArgumentException.class,
-                () -> qiConfigService.saveIndicator("TAT", view(true, bd("70"), bd("85")), USER));
+                () -> qiConfigService.saveIndicator("TAT", view(true, bd("85"), bd("70")), USER));
     }
 
     @Test

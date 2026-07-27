@@ -221,6 +221,7 @@
 .qi-heatmap__cell--red {
   background-color: #ffd7d9;
   color: #a2191f;
+}
 
 /* Callback detail — time-to-acknowledge bar list (design: qa-final-preview) */
 .qi-barlist {
@@ -263,5 +264,4 @@
   text-align: right;
   font-size: 0.875rem;
   color: var(--cds-text-secondary, #525252);
-
 }
