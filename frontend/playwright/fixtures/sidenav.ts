@@ -124,7 +124,7 @@ export class Sidenav {
       waitUntil: "domcontentloaded",
     });
     await expect(this.page).toHaveURL(new RegExp(`/Storage/${path}`));
-    await expect(this.menuButton).toBeVisible();
+    await expect(this.page.locator("#mainHeader")).toBeVisible();
   }
 
   /**
@@ -147,7 +147,7 @@ export class Sidenav {
       waitUntil: "domcontentloaded",
     });
     await expect(this.page).toHaveURL(/FreezerMonitoring/);
-    await expect(this.menuButton).toBeVisible();
+    await expect(this.page.locator("#mainHeader")).toBeVisible();
   }
 
   /**
