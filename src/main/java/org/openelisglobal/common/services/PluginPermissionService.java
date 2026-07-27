@@ -64,7 +64,6 @@ public class PluginPermissionService implements IPluginPermissionService {
             module.setHasDeleteFlag("Y");
             module.setHasSelectFlag("Y");
             module.setHasUpdateFlag("Y");
-            module.setSysUserId("1");
         }
         return module;
     }
@@ -77,7 +76,6 @@ public class PluginPermissionService implements IPluginPermissionService {
             moduleUrl = new SystemModuleUrl();
             moduleUrl.setUrlPath(urlPath);
             moduleUrl.setSystemModule(systemModule);
-            moduleUrl.setSysUserId("1");
         }
         return moduleUrl;
     }
@@ -115,7 +113,6 @@ public class PluginPermissionService implements IPluginPermissionService {
         if (roleModule.getId() == null) {
             roleModule.setRole(role);
             roleModule.setSystemModule(module);
-            roleModule.setSysUserId("1");
             roleModule.setHasAdd("Y");
             roleModule.setHasDelete("Y");
             roleModule.setHasSelect("Y");
@@ -157,7 +154,6 @@ public class PluginPermissionService implements IPluginPermissionService {
         if (roleModule.getId() == null) {
             roleModule.setRole(role);
             roleModule.setSystemModule(module);
-            roleModule.setSysUserId("1");
             roleModule.setHasAdd("Y");
             roleModule.setHasDelete("Y");
             roleModule.setHasSelect("Y");

@@ -29,6 +29,9 @@
   <!-- LocationPicker refactor (Phase 5c): rename /Storage/samples → /Storage/sample-items -->
   <include relativeToChangelogFile="true" file="006-storage-sidenav-rename.xml"/>
 
+  <!-- Daemon system user for background/scheduled operations -->
+  <include relativeToChangelogFile="true" file="003-daemon-system-user.xml"/>
+
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
 
