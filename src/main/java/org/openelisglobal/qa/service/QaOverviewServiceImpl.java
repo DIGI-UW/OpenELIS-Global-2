@@ -1,5 +1,6 @@
 package org.openelisglobal.qa.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -25,6 +26,8 @@ import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.service.QCDashboardService;
 import org.openelisglobal.qc.service.QCRuleViolationService;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +60,26 @@ public class QaOverviewServiceImpl implements QaOverviewService {
 
     @Autowired
     private AnalyzerService analyzerService;
+
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
+
+    /**
+     * Whitelisted audit reference-table IDs, resolved from names once at startup.
+     */
+    private List<String> auditReferenceTableIds = new ArrayList<>();
+
+    @PostConstruct
+    private void resolveAuditReferenceTableIds() {
+        List<String> ids = new ArrayList<>();
+        for (String name : HistoryService.SYSTEM_AUDIT_ENTITY_TABLES) {
+            ReferenceTables rt = referenceTablesService.getReferenceTableByName(name);
+            if (rt != null) {
+                ids.add(rt.getId());
+            }
+        }
+        this.auditReferenceTableIds = ids;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -135,8 +158,8 @@ public class QaOverviewServiceImpl implements QaOverviewService {
 
     private void compileWeekCounters(QaOverviewSummary summary, Timestamp weekStart, Timestamp now) {
         try {
-            summary.week.auditEntries = historyService.getSystemEventHistoryCount(weekStart, now, null, null, null,
-                    null, null);
+            summary.week.auditEntries = historyService.getSystemEventHistoryCount(weekStart, now, null,
+                    auditReferenceTableIds, null, null, null);
         } catch (RuntimeException e) {
             LogEvent.logWarn(getClass().getName(), "compileWeekCounters",
                     "Audit history count unavailable: " + e.getMessage());

@@ -188,6 +188,19 @@ const ControlLotSetup = () => {
     setSubmitting(true);
     setError(null);
 
+    // Manufacturer-fixed lots need mean + SD, entered via "Configure". Catch it
+    // here so the user gets a clear pointer instead of an opaque backend 400.
+    if (
+      statisticsConfig.calculationMethod === "MANUFACTURER_FIXED" &&
+      (statisticsConfig.mean == null ||
+        statisticsConfig.standardDeviation == null)
+    ) {
+      setError(intl.formatMessage({ id: "qc.controlLot.error.statsRequired" }));
+      setSubmitting(false);
+      setFormSubmitting(false);
+      return;
+    }
+
     const payload = {
       id: isEditMode ? lotId : undefined,
       productName: values.controlMaterial,
@@ -214,12 +227,18 @@ const ControlLotSetup = () => {
     postToOpenElisServerFullResponse(
       "/rest/qc/controlLot",
       JSON.stringify(payload),
-      (response) => {
-        if (response.ok) {
+      async (response) => {
+        if (response && response.ok) {
           history.push("/analyzers/qc/control-lots");
         } else {
+          // Surface the backend's specific message (it returns the validation
+          // reason as the 400 body) rather than a generic "save failed".
+          const backendMsg = response
+            ? await response.text().catch(() => "")
+            : "";
           setError(
-            intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
+            backendMsg?.trim() ||
+              intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
           );
         }
         setSubmitting(false);
@@ -429,6 +448,22 @@ const ControlLotSetup = () => {
                         id: "qc.controlLot.field.expiration",
                       })}
                       onBlur={handleBlur("expirationDate")}
+                      // The outer flatpickr onChange only fires on calendar
+                      // selection, so typed input was silently dropped. Capture a
+                      // fully-typed date here (dateFormat is m/d/Y) so manual
+                      // entry persists like every other date field.
+                      onChange={(e) => {
+                        const typed = e.target.value;
+                        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(typed)) return;
+                        // Reject calendar-invalid dates (e.g. 13/45/2026) that
+                        // pass the shape regex — submit parses this via new Date()
+                        // and toISOString() would throw on an invalid date.
+                        const [mm, dd, yyyy] = typed.split("/");
+                        const d = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
+                        if (!isNaN(d.getTime())) {
+                          setFieldValue("expirationDate", typed);
+                        }
+                      }}
                       invalid={
                         touched.expirationDate && !!errors.expirationDate
                       }

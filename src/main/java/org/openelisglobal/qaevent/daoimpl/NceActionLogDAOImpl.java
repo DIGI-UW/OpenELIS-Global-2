@@ -37,9 +37,12 @@ public class NceActionLogDAOImpl extends BaseDAOImpl<NceActionLog, Integer> impl
     @Transactional(readOnly = true)
     public List<CapaRegisterItem> getCapaRegister(int max) throws LIMSRuntimeException {
         try {
+            // dateCompleted is the action log's own completion date (al), not the
+            // parent NCE's (e) — the two used to diverge because the log column was
+            // never written; it is now populated in setActionLogs.
             String sql = "select new org.openelisglobal.qaevent.bean.CapaRegisterItem(al.id, al.ncEventId,"
                     + " e.nceNumber, e.status, al.correctiveAction, al.actionType, al.personResponsible, al.dueDate,"
-                    + " e.dateCompleted) from NceActionLog al, NcEvent e"
+                    + " al.dateCompleted) from NceActionLog al, NcEvent e"
                     + " where al.ncEventId = e.id order by al.id desc";
             TypedQuery<CapaRegisterItem> query = entityManager.createQuery(sql, CapaRegisterItem.class);
             query.setMaxResults(max);

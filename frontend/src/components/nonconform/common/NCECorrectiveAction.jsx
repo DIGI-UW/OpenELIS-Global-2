@@ -138,10 +138,14 @@ export const NCECorrectiveAction = () => {
     }
   };
 
+  // dateCompleted is a shared NCE-level field: the same formData.dateCompleted
+  // backs both the corrective-action row's picker and the resolution section's
+  // picker. It is therefore NOT part of "is the corrective-action row blank" —
+  // otherwise filling only the resolution date makes an empty row look
+  // non-blank and blocks a resolution-only submit (canSubmit dead-end).
   const actionLogIsBlank =
     !formData.actionLog.correctiveAction &&
     !formData.actionLog.personResponsible &&
-    !formData.dateCompleted &&
     !formData.actionLog.dueDate &&
     !formData.actionLog.actionType;
 
@@ -760,6 +764,19 @@ export const NCECorrectiveAction = () => {
                     id="capa-due-date"
                     labelText=""
                     placeholder="yyyy-mm-dd"
+                    // The outer flatpickr onChange only fires on calendar
+                    // selection, so typed input was silently dropped. Capture a
+                    // fully-typed ISO date here (dateFormat is Y-m-d) so manual
+                    // entry persists like every other date field.
+                    onChange={(e) => {
+                      const typed = e.target.value;
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(typed)) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          actionLog: { ...prev.actionLog, dueDate: typed },
+                        }));
+                      }
+                    }}
                   />
                 </DatePicker>
               </Column>

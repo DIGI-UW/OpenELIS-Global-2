@@ -21,7 +21,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -54,10 +53,7 @@ public class SystemAuditEventRestController {
 
     private static final int MAX_EXPORT_ROWS = 10000;
 
-    private static final List<String> SYSTEM_ENTITY_TABLE_NAMES = Arrays.asList("TEST", "PANEL", "METHOD",
-            "TEST_SECTION", "TYPE_OF_SAMPLE", "RESULT_LIMITS", "SYSTEM_USER", "SYSTEM_ROLE", "SYSTEM_USER_ROLE",
-            "DICTIONARY", "DICTIONARY_CATEGORY", "analyzer", "site_information", "QA_EVENT", "ANALYSIS_QAEVENT",
-            "ANALYSIS_QAEVENT_ACTION", "QA_OBSERVATION", "PATIENT", "PERSON");
+    private static final List<String> SYSTEM_ENTITY_TABLE_NAMES = HistoryService.SYSTEM_AUDIT_ENTITY_TABLES;
 
     private static final String PATIENT_ENTITY_NAME = "PATIENT";
     private static final String PERSON_ENTITY_NAME = "PERSON";

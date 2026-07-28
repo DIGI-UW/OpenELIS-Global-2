@@ -24,8 +24,12 @@ export const countCriticalPending = (list) =>
   list.filter((nce) => nce.severity === "CRITICAL" && nce.status === "Pending")
     .length;
 
+// NCEs in the corrective-action stage. The backend workflow uses status
+// "CAPA" for this stage (there is no "Corrective Action" status), so this is
+// the superset that "effectiveness reviews due" (CAPA awaiting a verdict) is
+// drawn from.
 export const countInCorrectiveAction = (list) =>
-  list.filter((nce) => nce.status === "Corrective Action").length;
+  list.filter((nce) => nce.status === "CAPA").length;
 
 // A CAPA needs its effectiveness verdict once corrective action is recorded
 // (status "CAPA") and no Yes/No has been given yet (nc_event.effective null).
