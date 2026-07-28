@@ -62,8 +62,8 @@ describe("NcePulseTile", () => {
       nce("2", "CRITICAL", "Pending"),
       nce("3", "CRITICAL", "Closed"),
       nce("4", "MAJOR", "Pending"),
-      nce("5", "CRITICAL", "Corrective Action"),
-      nce("6", "MINOR", "Corrective Action"),
+      nce("5", "CRITICAL", "CAPA"),
+      nce("6", "MINOR", "CAPA"),
     ]);
     await renderTile();
 
