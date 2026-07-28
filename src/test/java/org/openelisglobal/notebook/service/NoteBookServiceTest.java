@@ -30,6 +30,9 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/user-role.xml");
         executeDataSetWithStateManagement("testdata/dictionary.xml");
         executeDataSetWithStateManagement("testdata/notebook-test-data.xml");
+        // notebook-test-data.xml provides alice/bob; authenticate as alice
+        // so audit attribution lands on a real fixture user.
+        authenticateAs("alice");
     }
 
     // ========== Template Entry Retrieval ==========
