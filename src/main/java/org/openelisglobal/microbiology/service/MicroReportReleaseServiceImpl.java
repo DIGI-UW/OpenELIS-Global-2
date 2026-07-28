@@ -21,24 +21,29 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     private final MicroCaseActivityDAO activityDAO;
     private final MicroCaseReadinessService readinessService;
     private final MicroCriticalCommunicationDAO communicationDAO;
+    private final MicroReportProjectionService reportProjectionService;
 
     public MicroReportReleaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
-            MicroCaseReadinessService readinessService, MicroCriticalCommunicationDAO communicationDAO) {
+            MicroCaseReadinessService readinessService, MicroCriticalCommunicationDAO communicationDAO,
+            MicroReportProjectionService reportProjectionService) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.readinessService = readinessService;
         this.communicationDAO = communicationDAO;
+        this.reportProjectionService = reportProjectionService;
     }
 
     @Override
     @Transactional
     public MicroCase releasePreliminary(String caseId, String performedBy) {
+        MicroReportProjectionResult projection = reportProjectionService.releasePreliminary(caseId, performedBy);
         MicroCase microCase = getCase(caseId);
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.PRELIMINARY_RELEASED.name());
         microCase.setStage(MicroCaseStage.PRELIM_RELEASED.name());
         MicroCase updated = caseDAO.update(microCase);
         recordActivity(caseId, MicroCaseActivityType.PRELIMINARY_REPORT_RELEASED, performedBy,
-                "Preliminary report released");
+                projection.isMappingConfigured() ? "Preliminary report released and projected"
+                        : "Preliminary report released; standard report mapping is not configured");
         return updated;
     }
 
@@ -52,6 +57,7 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         if (hasOpenCriticalFollowUp(caseId)) {
             throw new IllegalStateException("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
         }
+        reportProjectionService.releaseFinal(caseId, performedBy);
         // Readiness (isolate + AST review + critical follow-up state), not the raw
         // culture stage, is the release gate: nothing in the isolate/AST flow
         // advances stage through the intermediate culture stages, so a
@@ -83,8 +89,8 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
 
     private boolean hasOpenCriticalFollowUp(String caseId) {
         for (MicroCriticalCommunication communication : communicationDAO.getByCaseId(caseId)) {
-            if (Boolean.TRUE.equals(communication.getFollowUpNeeded())
-                    && MicroCriticalCommunicationStatus.OPEN.name().equals(communication.getAcknowledgementStatus())) {
+            if (Boolean.TRUE.equals(communication.getFollowUpNeeded()) && !MicroCriticalCommunicationStatus.CLOSED
+                    .name().equals(communication.getAcknowledgementStatus())) {
                 return true;
             }
         }

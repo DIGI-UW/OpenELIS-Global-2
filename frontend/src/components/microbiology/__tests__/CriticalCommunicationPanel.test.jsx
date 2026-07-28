@@ -8,12 +8,16 @@ import messages from "../../../languages/en.json";
 const renderPanel = (service) =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <CriticalCommunicationPanel caseId="case-1" service={service} />
+      <CriticalCommunicationPanel
+        caseId="case-1"
+        sampleItemId="sample-1"
+        service={service}
+      />
     </IntlProvider>,
   );
 
 describe("CriticalCommunicationPanel", () => {
-  it("logs and acknowledges critical communication", async () => {
+  it("logs, acknowledges, and closes critical communication", async () => {
     const service = {
       getCriticalCommunications: vi
         .fn()
@@ -33,11 +37,21 @@ describe("CriticalCommunicationPanel", () => {
             message: "Positive blood culture called",
             acknowledgementStatus: "ACKNOWLEDGED",
           },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "comm-1",
+            recipient: "Provider on call",
+            message: "Positive blood culture called",
+            acknowledgementStatus: "CLOSED",
+            resolutionNote: "Read-back documented",
+          },
         ]),
       logCriticalCommunication: vi.fn().mockResolvedValue({ id: "comm-1" }),
       acknowledgeCriticalCommunication: vi
         .fn()
         .mockResolvedValue({ id: "comm-1" }),
+      closeCriticalCommunication: vi.fn().mockResolvedValue({ id: "comm-1" }),
     };
 
     renderPanel(service);
@@ -52,7 +66,11 @@ describe("CriticalCommunicationPanel", () => {
 
     await waitFor(() =>
       expect(service.logCriticalCommunication).toHaveBeenCalledWith("case-1", {
+        targetType: "CASE",
+        targetId: "case-1",
         recipient: "Provider on call",
+        recipientContact: "",
+        communicationMethod: "PHONE",
         message: "Positive blood culture called",
         followUpNeeded: true,
       }),
@@ -67,5 +85,25 @@ describe("CriticalCommunicationPanel", () => {
       ),
     );
     expect(await screen.findByText("Acknowledged")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close communication" }),
+    );
+    fireEvent.change(screen.getByLabelText("Resolution note"), {
+      target: { value: "Read-back documented" },
+    });
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Close communication" })[1],
+    );
+
+    await waitFor(() =>
+      expect(service.closeCriticalCommunication).toHaveBeenCalledWith(
+        "comm-1",
+        {
+          resolutionNote: "Read-back documented",
+        },
+      ),
+    );
+    expect(await screen.findByText("Closed")).toBeInTheDocument();
   });
 });

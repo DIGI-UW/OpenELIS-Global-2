@@ -41,10 +41,10 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         readiness.caseId = microCase.getId();
         readiness.finalReleaseReady = true;
         List<MicroIsolate> isolates = isolateDAO.getByCaseId(caseId);
-        if (isolates.isEmpty()) {
+        boolean noGrowthReady = "NO_GROWTH_READY".equals(microCase.getStage());
+        if (isolates.isEmpty() && !noGrowthReady) {
             readiness.finalReleaseReady = false;
             readiness.blockers.add("ISOLATE_REQUIRED");
-            return readiness;
         }
         if (hasOpenCriticalFollowUp(caseId)) {
             readiness.finalReleaseReady = false;
@@ -74,8 +74,8 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
 
     private boolean hasOpenCriticalFollowUp(String caseId) {
         for (MicroCriticalCommunication communication : communicationDAO.getByCaseId(caseId)) {
-            if (Boolean.TRUE.equals(communication.getFollowUpNeeded())
-                    && MicroCriticalCommunicationStatus.OPEN.name().equals(communication.getAcknowledgementStatus())) {
+            if (Boolean.TRUE.equals(communication.getFollowUpNeeded()) && !MicroCriticalCommunicationStatus.CLOSED
+                    .name().equals(communication.getAcknowledgementStatus())) {
                 return true;
             }
         }

@@ -365,6 +365,43 @@ describe("Layout", () => {
       );
     });
 
+    test("testLayout_MicrobiologyRoute_DefaultsToCollapsedNavigationOnCompactViewport", async () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === "(max-width: 1056px)",
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      try {
+        const { container } = renderWithProviders(
+          <Layout>
+            <div>Microbiology Content</div>
+          </Layout>,
+          { route: "/Microbiology/worklist" },
+        );
+
+        await waitFor(() => {
+          expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+            "content-nav-locked",
+          );
+          expect(container.querySelector(".cds--side-nav")).not.toHaveClass(
+            "cds--side-nav--expanded",
+          );
+        });
+        expect(
+          screen.getByRole("button", { name: "Open menu" }),
+        ).toBeInTheDocument();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+
     test.each([
       "/admin",
       "/MasterListsPage",

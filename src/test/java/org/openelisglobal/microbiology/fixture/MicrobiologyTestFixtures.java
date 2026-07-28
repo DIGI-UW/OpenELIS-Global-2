@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.openelisglobal.common.action.IActionConstants;
@@ -24,6 +25,7 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.stereotype.Component;
 
@@ -33,8 +35,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class MicrobiologyTestFixtures {
-
-    private static final String DEFAULT_USER_LOGIN = "admin";
 
     private final MethodService methodService;
     private final SampleService sampleService;
@@ -57,8 +57,11 @@ public class MicrobiologyTestFixtures {
     }
 
     public String defaultUserId() {
-        return systemUserService.getMatch("loginName", DEFAULT_USER_LOGIN)
-                .orElseThrow(() -> new IllegalStateException("No active admin user is available for tests")).getId();
+        return systemUserService.getAllSystemUsers().stream().filter(user -> "Y".equalsIgnoreCase(user.getIsActive()))
+                .sorted(Comparator.comparing(SystemUser::getId)).findFirst()
+                .orElseThrow(
+                        () -> new IllegalStateException("No active system user is available for microbiology tests"))
+                .getId();
     }
 
     public String firstMethodId() {

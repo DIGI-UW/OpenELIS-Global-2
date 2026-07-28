@@ -198,4 +198,10 @@
   <!-- OGC-782 M7 MVP-gap: alert_entity_ref for string-keyed alerts (M-11) -->
   <include relativeToChangelogFile="true" file="057-alert-entity-ref.xml"/>
 
+  <!-- OGC-782 remediation: explicit critical communication targets and lifecycle -->
+  <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
+
+  <!-- OGC-782 remediation: standard Result projection for microbiology reports -->
+  <include relativeToChangelogFile="true" file="059-microbiology-report-projection.xml"/>
+
 </databaseChangeLog>

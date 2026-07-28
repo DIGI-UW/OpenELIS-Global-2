@@ -35,4 +35,6 @@ public interface MicrobiologyConfigurationService {
     MicroBreakpointRule getOrCreateBreakpointRule(MicroBreakpointRule rule);
 
     MicroCultureSetup createCultureSetup(MicroCultureSetup setup);
+
+    MicroCultureSetup getOrCreateCultureSetup(MicroCultureSetup setup);
 }

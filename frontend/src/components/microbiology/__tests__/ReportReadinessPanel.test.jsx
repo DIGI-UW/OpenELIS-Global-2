@@ -23,6 +23,11 @@ describe("ReportReadinessPanel", () => {
         whonetReady: false,
         blockers: ["ORGANISM_MAPPING_REQUIRED"],
       }),
+      getReportProjection: vi.fn().mockResolvedValue({
+        reportableContent: true,
+        mappingConfigured: true,
+        content: "Escherichia coli: Ciprofloxacin S",
+      }),
       releaseFinalReport: vi.fn(),
     };
 
@@ -47,6 +52,11 @@ describe("ReportReadinessPanel", () => {
         whonetReady: true,
         blockers: [],
       }),
+      getReportProjection: vi.fn().mockResolvedValue({
+        reportableContent: true,
+        mappingConfigured: true,
+        content: "Escherichia coli: Ciprofloxacin S",
+      }),
       releaseFinalReport: vi.fn().mockResolvedValue({
         finalReleaseState: "FINAL_RELEASED",
       }),
@@ -63,5 +73,35 @@ describe("ReportReadinessPanel", () => {
       expect(service.releaseFinalReport).toHaveBeenCalledWith("case-1"),
     );
     expect(await screen.findByText("Final Released")).toBeInTheDocument();
+  });
+
+  it("blocks final release when the patient-report mapping is absent", async () => {
+    const service = {
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: true,
+        blockers: [],
+      }),
+      getWhonetReadiness: vi.fn().mockResolvedValue({
+        whonetReady: true,
+        blockers: [],
+      }),
+      getReportProjection: vi.fn().mockResolvedValue({
+        reportableContent: true,
+        mappingConfigured: false,
+        content: "Escherichia coli: Ciprofloxacin S",
+      }),
+      releaseFinalReport: vi.fn(),
+    };
+
+    renderPanel(service);
+
+    expect(
+      await screen.findByText(
+        "Patient-report mapping required for final release",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Release final report" }),
+    ).toBeDisabled();
   });
 });

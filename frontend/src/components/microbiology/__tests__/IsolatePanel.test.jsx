@@ -5,13 +5,20 @@ import { IntlProvider } from "react-intl";
 import IsolatePanel from "../IsolatePanel";
 import messages from "../../../languages/en.json";
 
-const renderPanel = (onCreateIsolate) =>
+const renderPanel = ({
+  isolates = [],
+  onCreateIsolate = vi.fn(),
+  onUpdateIdentification = vi.fn(),
+  service = { getOrganisms: vi.fn().mockResolvedValue([]) },
+} = {}) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <IsolatePanel
         caseId="case-1"
-        isolates={[]}
+        isolates={isolates}
         onCreateIsolate={onCreateIsolate}
+        onUpdateIdentification={onUpdateIdentification}
+        service={service}
         saving={false}
       />
     </IntlProvider>,
@@ -20,7 +27,7 @@ const renderPanel = (onCreateIsolate) =>
 describe("IsolatePanel", () => {
   it("submits isolate creation details", async () => {
     const onCreateIsolate = vi.fn();
-    renderPanel(onCreateIsolate);
+    renderPanel({ onCreateIsolate });
 
     fireEvent.change(screen.getByLabelText("Preliminary organism"), {
       target: { value: "Escherichia coli" },
@@ -35,5 +42,46 @@ describe("IsolatePanel", () => {
         significance: "CLINICALLY_SIGNIFICANT",
       }),
     );
+  });
+
+  it("updates isolate identification from reusable organism data", async () => {
+    const onUpdateIdentification = vi.fn();
+    renderPanel({
+      isolates: [
+        {
+          id: "isolate-1",
+          isolateLabel: "ISO-1",
+          preliminaryOrganismText: "Gram negative rod",
+          significance: "UNKNOWN",
+          identificationStatus: "PRELIMINARY",
+        },
+      ],
+      onUpdateIdentification,
+      service: {
+        getOrganisms: vi
+          .fn()
+          .mockResolvedValue([{ id: "organism-1", label: "Escherichia coli" }]),
+      },
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Update identification" }),
+    );
+    fireEvent.change(screen.getByLabelText("Organism"), {
+      target: { value: "organism-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Identification status"), {
+      target: { value: "CONFIRMED" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save identification" }),
+    );
+
+    expect(onUpdateIdentification).toHaveBeenCalledWith("isolate-1", {
+      organismId: "organism-1",
+      preliminaryOrganismText: "Gram negative rod",
+      significance: "UNKNOWN",
+      identificationStatus: "CONFIRMED",
+    });
   });
 });

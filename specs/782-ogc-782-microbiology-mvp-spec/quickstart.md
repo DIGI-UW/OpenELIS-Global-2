@@ -20,15 +20,18 @@ without re-reading every Confluence/Jira/mockup artifact from scratch.
 
 ## Code QA Skills
 
-Use the `DIGI-UW/code-qa` skill suite as the verification companion for
-implementation PRs:
+Use the pinned `DIGI-UW/code-qa` skill suite at `tools/code-qa` as the
+verification companion for implementation PRs. Initialize it with the other
+repository submodules:
 
 ```bash
-git submodule add https://github.com/DIGI-UW/code-qa tools/code-qa
+git submodule update --init tools/code-qa
 ```
 
-Then make the local skill installer scan `tools/code-qa/skills`, or otherwise
-make these skills available to the implementing agent:
+The milestone currently pins revision
+`30528d176bd128b4765242d130f38ca9fb85d7b8`. Make the local skill installer scan
+`tools/code-qa/skills`, or otherwise make these skills available to the
+implementing agent:
 
 - `meaningful-test-coverage`
 - `spec-code-alignment`

@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
@@ -31,9 +32,8 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
             String preliminaryOrganismText, MicroIsolateSignificance significance, String performedBy) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
         MicroCaseServiceImpl.requireText(isolateLabel, "isolateLabel");
-        if (!caseDAO.get(caseId).isPresent()) {
-            throw new IllegalArgumentException("Case not found");
-        }
+        MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        MicroCaseMutationGuard.requireMutable(microCase);
 
         MicroIsolate isolate = new MicroIsolate();
         isolate.setCaseId(caseId);
@@ -57,6 +57,9 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        MicroCase microCase = caseDAO.get(isolate.getCaseId())
+                .orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        MicroCaseMutationGuard.requireMutable(microCase);
         isolate.setOrganismId(organismId);
         isolate.setPreliminaryOrganismText(preliminaryOrganismText);
         isolate.setSignificance((significance == null ? MicroIsolateSignificance.UNKNOWN : significance).name());

@@ -142,6 +142,19 @@ test.describe("OGC-782 microbiology MVP", () => {
       ).toContainText("SUSCEPTIBLE", {
         timeout: LONG_TIMEOUT,
       });
+      await page
+        .getByLabel("Antibiotic", { exact: true })
+        .selectOption({ label: "Gentamicin (UAT)" });
+      await page.getByRole("button", { name: "Record AST reading" }).click();
+      await expect(
+        page.getByTestId("microbiology-ast-reading-row"),
+      ).toHaveCount(2, { timeout: LONG_TIMEOUT });
+      await expect(page.getByTestId("microbiology-ast-card")).toContainText(
+        "Ciprofloxacin (UAT)",
+      );
+      await expect(page.getByTestId("microbiology-ast-card")).toContainText(
+        "Gentamicin (UAT)",
+      );
       await captureCard(
         page,
         demo,
@@ -196,6 +209,32 @@ test.describe("OGC-782 microbiology MVP", () => {
       await expect(
         page.getByTestId("microbiology-release-state"),
       ).toContainText("Final Released", { timeout: LONG_TIMEOUT });
+      const patientReportResponse = await page.request.get(
+        `/api/OpenELIS-Global/rest/reports/patient-results?patientId=${encodeURIComponent(
+          seeded.patientId,
+        )}`,
+      );
+      expect(patientReportResponse.ok()).toBeTruthy();
+      const patientReport = await patientReportResponse.json();
+      const reportValues = (patientReport.rows || []).map(
+        (row: { dataMap?: { resultValue?: string } }) =>
+          row.dataMap?.resultValue || "",
+      );
+      expect(
+        reportValues.some((value: string) =>
+          value.includes("ISO-1: Escherichia coli"),
+        ),
+      ).toBeTruthy();
+      expect(
+        reportValues.some((value: string) =>
+          value.includes("Ciprofloxacin (UAT) R"),
+        ),
+      ).toBeTruthy();
+      expect(
+        reportValues.some((value: string) =>
+          value.includes("Gentamicin (UAT) S"),
+        ),
+      ).toBeTruthy();
       await captureCard(
         page,
         demo,

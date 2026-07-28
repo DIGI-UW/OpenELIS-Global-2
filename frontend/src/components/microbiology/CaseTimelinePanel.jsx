@@ -26,6 +26,8 @@ const CaseTimelinePanel = ({
   saving,
   setupSectionId,
   timelineSectionId,
+  showSetup = true,
+  showTimeline = true,
 }) => {
   const intl = useIntl();
   const [nextStage, setNextStage] = useState("SETUP_RECORDED");
@@ -41,104 +43,110 @@ const CaseTimelinePanel = ({
 
   return (
     <>
-      <section
-        id={setupSectionId}
-        className="microbiology-card microbiology-card--current"
-        data-testid="microbiology-setup-card"
-        aria-labelledby="microbiology-setup-heading"
-      >
-        <div className="microbiology-card__header">
-          <div>
-            <h3 id="microbiology-setup-heading">
-              {intl.formatMessage({ id: "microbiology.case.setup" })}
-            </h3>
-            <p className="microbiology-card__hint">
-              {intl.formatMessage({ id: "microbiology.case.setup.hint" })}
-            </p>
+      {showSetup && (
+        <section
+          id={setupSectionId}
+          className="microbiology-card microbiology-card--current"
+          data-testid="microbiology-setup-card"
+          aria-labelledby="microbiology-setup-heading"
+        >
+          <div className="microbiology-card__header">
+            <div>
+              <h3 id="microbiology-setup-heading">
+                {intl.formatMessage({ id: "microbiology.case.setup" })}
+              </h3>
+              <p className="microbiology-card__hint">
+                {intl.formatMessage({ id: "microbiology.case.setup.hint" })}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="microbiology-form-grid">
-          <Select
-            id="microbiology-next-stage"
-            labelText={intl.formatMessage({
-              id: "microbiology.case.cultureAction",
-            })}
-            value={nextStage}
-            onChange={(event) => setNextStage(event.target.value)}
-          >
-            {STAGE_OPTIONS.map((stage) => (
-              <SelectItem
-                key={stage.value}
-                value={stage.value}
-                text={intl.formatMessage({ id: stage.labelId })}
-              />
-            ))}
-          </Select>
-          <div />
-          <div className="microbiology-form-grid__wide">
-            <TextArea
-              id="microbiology-activity-note"
+          <div className="microbiology-form-grid">
+            <Select
+              id="microbiology-next-stage"
               labelText={intl.formatMessage({
-                id: "microbiology.case.activityNote",
+                id: "microbiology.case.cultureAction",
               })}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
+              value={nextStage}
+              onChange={(event) => setNextStage(event.target.value)}
+            >
+              {STAGE_OPTIONS.map((stage) => (
+                <SelectItem
+                  key={stage.value}
+                  value={stage.value}
+                  text={intl.formatMessage({ id: stage.labelId })}
+                />
+              ))}
+            </Select>
+            <div />
+            <div className="microbiology-form-grid__wide">
+              <TextArea
+                id="microbiology-activity-note"
+                labelText={intl.formatMessage({
+                  id: "microbiology.case.activityNote",
+                })}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </div>
+            <div>
+              <Button onClick={submit} disabled={saving}>
+                {intl.formatMessage({ id: selectedStageOption.labelId })}
+              </Button>
+            </div>
           </div>
-          <div>
-            <Button onClick={submit} disabled={saving}>
-              {intl.formatMessage({ id: selectedStageOption.labelId })}
-            </Button>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section
-        id={timelineSectionId}
-        className="microbiology-card"
-        data-testid="microbiology-timeline-card"
-        aria-labelledby="microbiology-timeline-heading"
-      >
-        <div className="microbiology-card__header">
-          <div>
-            <h3 id="microbiology-timeline-heading">
-              {intl.formatMessage({ id: "microbiology.case.timeline" })}
-            </h3>
-            <p className="microbiology-card__hint">
-              {intl.formatMessage({ id: "microbiology.case.timeline.hint" })}
-            </p>
+      {showTimeline && (
+        <section
+          id={timelineSectionId}
+          className="microbiology-card"
+          data-testid="microbiology-timeline-card"
+          aria-labelledby="microbiology-timeline-heading"
+        >
+          <div className="microbiology-card__header">
+            <div>
+              <h3 id="microbiology-timeline-heading">
+                {intl.formatMessage({ id: "microbiology.case.timeline" })}
+              </h3>
+              <p className="microbiology-card__hint">
+                {intl.formatMessage({ id: "microbiology.case.timeline.hint" })}
+              </p>
+            </div>
+            <Tag type="cool-gray">
+              {activities.length}{" "}
+              {intl.formatMessage({ id: "microbiology.case.events" })}
+            </Tag>
           </div>
-          <Tag type="cool-gray">
-            {activities.length}{" "}
-            {intl.formatMessage({ id: "microbiology.case.events" })}
-          </Tag>
-        </div>
-        {activities.length === 0 ? (
-          <p>
-            {intl.formatMessage({ id: "microbiology.case.timeline.empty" })}
-          </p>
-        ) : (
-          <ol className="microbiology-list">
-            {activities.map((activity) => (
-              <li
-                className="microbiology-list__row"
-                key={
-                  activity.id ||
-                  `${activity.activityType}-${activity.occurredAt}`
-                }
-              >
-                <strong>{formatMicrobiologyEnum(activity.activityType)}</strong>
-                {activity.note ? `: ${activity.note}` : ""}
-                {activity.occurredAt && (
-                  <div className="microbiology-list__meta">
-                    {activity.occurredAt}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+          {activities.length === 0 ? (
+            <p>
+              {intl.formatMessage({ id: "microbiology.case.timeline.empty" })}
+            </p>
+          ) : (
+            <ol className="microbiology-list">
+              {activities.map((activity) => (
+                <li
+                  className="microbiology-list__row"
+                  key={
+                    activity.id ||
+                    `${activity.activityType}-${activity.occurredAt}`
+                  }
+                >
+                  <strong>
+                    {formatMicrobiologyEnum(activity.activityType)}
+                  </strong>
+                  {activity.note ? `: ${activity.note}` : ""}
+                  {activity.occurredAt && (
+                    <div className="microbiology-list__meta">
+                      {activity.occurredAt}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      )}
     </>
   );
 };

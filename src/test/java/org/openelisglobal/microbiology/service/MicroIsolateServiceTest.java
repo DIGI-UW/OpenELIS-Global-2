@@ -16,6 +16,8 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
+import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
@@ -37,12 +39,11 @@ public class MicroIsolateServiceTest {
     @Before
     public void setUp() {
         service = new MicroIsolateServiceImpl(caseDAO, isolateDAO, activityDAO);
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
     }
 
     @Test
     public void createIsolateRequiresCaseAndRecordsActivity() {
-        when(caseDAO.get("case-1")).thenReturn(Optional.of(new MicroCase()));
-
         MicroIsolate isolate = service.createIsolate("case-1", "ISO-1", "org-1", "E. coli",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
 
@@ -68,5 +69,23 @@ public class MicroIsolateServiceTest {
         assertEquals("org-1", updated.getOrganismId());
         assertEquals(MicroIsolateIdentificationStatus.CONFIRMED.name(), updated.getIdentificationStatus());
         verify(activityDAO).insert(any(MicroCaseActivity.class));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void createIsolateRejectsFinalReleasedCases() {
+        MicroCase finalCase = mutableCase();
+        finalCase.setStage(MicroCaseStage.FINAL_RELEASED.name());
+        finalCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(finalCase));
+
+        service.createIsolate("case-1", "ISO-1", "org-1", "E. coli", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                "1");
+    }
+
+    private MicroCase mutableCase() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setStage(MicroCaseStage.RECEIVED.name());
+        return microCase;
     }
 }

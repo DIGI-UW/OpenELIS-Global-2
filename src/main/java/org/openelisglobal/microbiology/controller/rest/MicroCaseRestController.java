@@ -1,8 +1,8 @@
 package org.openelisglobal.microbiology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
-import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.microbiology.form.MicroCaseActivityRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases")
-public class MicroCaseRestController extends BaseRestController {
+public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseService caseService;
     private final MicroCaseStateService stateService;
@@ -62,16 +62,17 @@ public class MicroCaseRestController extends BaseRestController {
     @PostMapping("/{caseId}/activities")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> recordActivity(@PathVariable String caseId,
-            @RequestBody MicroCaseActivityRequestForm request) {
-        stateService.advanceStage(caseId, MicroCaseStage.valueOf(request.nextStage), request.performedBy, request.note);
+            @RequestBody MicroCaseActivityRequestForm request, HttpServletRequest httpRequest) {
+        stateService.advanceStage(caseId, MicroCaseStage.valueOf(request.nextStage), authenticatedUserId(httpRequest),
+                request.note);
         return ResponseEntity.ok(caseService.getCaseDetail(caseId));
     }
 
     @PutMapping("/{caseId}/order-detail")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> saveOrderDetail(@PathVariable String caseId,
-            @RequestBody MicroCaseOrderDetailRequestForm request) {
-        orderDetailService.saveOrderDetail(caseId, request, request.performedBy);
+            @RequestBody MicroCaseOrderDetailRequestForm request, HttpServletRequest httpRequest) {
+        orderDetailService.saveOrderDetail(caseId, request, authenticatedUserId(httpRequest));
         return ResponseEntity.ok(caseService.getCaseDetail(caseId));
     }
 

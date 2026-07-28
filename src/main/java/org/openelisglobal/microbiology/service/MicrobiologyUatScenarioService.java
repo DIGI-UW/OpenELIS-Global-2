@@ -8,8 +8,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyte.service.AnalyteService;
+import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioForm;
@@ -19,11 +26,26 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testanalyte.service.TestAnalyteService;
+import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,23 +59,56 @@ public class MicrobiologyUatScenarioService {
 
     private static final String BACTERIOLOGY = MicroWorkflowType.BACTERIOLOGY.name();
     private static final String WORKLIST_SCENARIO = "WORKLIST";
+    private static final String UAT_METHOD_NAME = "UAT micro culture";
+    private static final String UAT_METHOD_DESCRIPTION = "UAT microbiology culture method";
+    private static final String UAT_TEST_DESCRIPTION = "UAT microbiology culture";
+    private static final String UAT_ANALYTE_NAME = "UAT microbiology culture result";
+    private static final String UAT_SAMPLE_TYPE_DESCRIPTION = "UAT micro specimen";
+    private static final String UAT_PATIENT_EXTERNAL_ID_PREFIX = "UATMICRO-";
+    private static final String UAT_PATIENT_LAST_NAME = "Microbiology";
 
     private final MethodService methodService;
     private final SampleService sampleService;
     private final SampleItemService sampleItemService;
+    private final PatientService patientService;
+    private final PersonService personService;
+    private final SampleHumanService sampleHumanService;
+    private final TypeOfSampleService typeOfSampleService;
+    private final LocalizationService localizationService;
+    private final TestService testService;
+    private final TestSectionService testSectionService;
+    private final AnalyteService analyteService;
+    private final TestAnalyteService testAnalyteService;
+    private final AnalysisService analysisService;
     private final IStatusService statusService;
     private final MicrobiologyConfigurationService configurationService;
     private final MicroCaseService caseService;
+    private final MicroOrderRoutingService orderRoutingService;
 
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
-            SampleItemService sampleItemService, IStatusService statusService,
-            MicrobiologyConfigurationService configurationService, MicroCaseService caseService) {
+            SampleItemService sampleItemService, PatientService patientService, PersonService personService,
+            SampleHumanService sampleHumanService, TypeOfSampleService typeOfSampleService, TestService testService,
+            TestSectionService testSectionService, LocalizationService localizationService,
+            AnalyteService analyteService, TestAnalyteService testAnalyteService, AnalysisService analysisService,
+            IStatusService statusService, MicrobiologyConfigurationService configurationService,
+            MicroCaseService caseService, MicroOrderRoutingService orderRoutingService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
+        this.patientService = patientService;
+        this.personService = personService;
+        this.sampleHumanService = sampleHumanService;
+        this.typeOfSampleService = typeOfSampleService;
+        this.localizationService = localizationService;
+        this.testService = testService;
+        this.testSectionService = testSectionService;
+        this.analyteService = analyteService;
+        this.testAnalyteService = testAnalyteService;
+        this.analysisService = analysisService;
         this.statusService = statusService;
         this.configurationService = configurationService;
         this.caseService = caseService;
+        this.orderRoutingService = orderRoutingService;
     }
 
     @Transactional
@@ -76,11 +131,17 @@ public class MicrobiologyUatScenarioService {
                 sampleItem = items.get(0);
             }
         }
+        Patient patient = getOrCreateUatPatient(suffix, performedBy);
+        ensurePatientLink(sample, patient, performedBy);
         createAstReferenceData();
 
-        Method method = firstActiveMethod();
-        MicroCase microCase = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.BACTERIOLOGY,
-                method.getId(), performedBy);
+        ensureSampleType(sampleItem, performedBy);
+        Method method = getOrCreateUatMethod(performedBy);
+        Test test = getOrCreateUatTest(method, performedBy);
+        TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
+        configureCultureSetup(method, reportableTestAnalyte);
+        Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
+        MicroCase microCase = routeCultureAnalysis(sampleItem, analysis, performedBy);
         MicroCase sibling = null;
         if (WORKLIST_SCENARIO.equals(scenario)) {
             sibling = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.MYCOBACTERIOLOGY_TB,
@@ -93,8 +154,11 @@ public class MicrobiologyUatScenarioService {
         form.accessionNumber = accessionNumber;
         form.sampleId = sample.getId();
         form.sampleItemId = sampleItem.getId();
+        form.patientId = patient.getId();
         form.caseId = microCase.getId();
         form.siblingCaseId = sibling == null ? null : sibling.getId();
+        form.analysisId = analysis.getId();
+        form.reportableTestAnalyteId = reportableTestAnalyte.getId();
         return form;
     }
 
@@ -113,6 +177,7 @@ public class MicrobiologyUatScenarioService {
     private SampleItem createSampleItem(Sample sample, String performedBy) {
         SampleItem sampleItem = new SampleItem();
         sampleItem.setSample(sample);
+        sampleItem.setTypeOfSample(getOrCreateUatSampleType(performedBy));
         sampleItem.setSortOrder("1");
         sampleItem.setStatusId(statusService.getStatusID(OrderStatus.Entered));
         sampleItem.setSysUserId(performedBy);
@@ -120,33 +185,230 @@ public class MicrobiologyUatScenarioService {
         return sampleItem;
     }
 
+    private void ensureSampleType(SampleItem sampleItem, String performedBy) {
+        if (sampleItem.getTypeOfSample() != null) {
+            return;
+        }
+        sampleItem.setTypeOfSample(getOrCreateUatSampleType(performedBy));
+        sampleItem.setSysUserId(performedBy);
+        sampleItemService.update(sampleItem);
+    }
+
+    private Patient getOrCreateUatPatient(String suffix, String performedBy) {
+        String externalId = UAT_PATIENT_EXTERNAL_ID_PREFIX + suffix;
+        Patient patient = patientService.getByExternalId(externalId);
+        if (patient != null) {
+            return patient;
+        }
+
+        Person person = new Person();
+        person.setFirstName("UAT");
+        person.setLastName(UAT_PATIENT_LAST_NAME);
+        person.setSysUserId(performedBy);
+        personService.insert(person);
+
+        patient = new Patient();
+        patient.setPerson(person);
+        patient.setExternalId(externalId);
+        patient.setNationalId(externalId);
+        patient.setGender("F");
+        patient.setSysUserId(performedBy);
+        patientService.insert(patient);
+        return patient;
+    }
+
+    private void ensurePatientLink(Sample sample, Patient patient, String performedBy) {
+        SampleHuman lookup = new SampleHuman();
+        lookup.setSampleId(sample.getId());
+        SampleHuman sampleHuman = sampleHumanService.getDataBySample(lookup);
+        if (sampleHuman == null) {
+            sampleHuman = new SampleHuman();
+            sampleHuman.setSampleId(sample.getId());
+            sampleHuman.setPatientId(patient.getId());
+            sampleHuman.setSysUserId(performedBy);
+            sampleHumanService.insert(sampleHuman);
+            return;
+        }
+        if (!patient.getId().equals(sampleHuman.getPatientId())) {
+            sampleHuman.setPatientId(patient.getId());
+            sampleHuman.setSysUserId(performedBy);
+            sampleHumanService.update(sampleHuman);
+        }
+    }
+
     private void createAstReferenceData() {
-        MicroAntibiotic antibiotic = configurationService.getOrCreateAntibiotic("Ciprofloxacin (UAT)", "CIPUAT",
+        MicroAntibiotic ciprofloxacin = configurationService.getOrCreateAntibiotic("Ciprofloxacin (UAT)", "CIPUAT",
                 "Fluoroquinolone");
+        MicroAntibiotic gentamicin = configurationService.getOrCreateAntibiotic("Gentamicin (UAT)", "GENUAT",
+                "Aminoglycoside");
         MicroAstPanel panel = configurationService.getOrCreateAstPanel("Gram negative AST panel (UAT)", BACTERIOLOGY,
                 "GRAM_NEGATIVE");
-        configurationService.getOrCreatePanelAntibiotic(panel.getId(), antibiotic.getId(), 1);
+        configurationService.getOrCreatePanelAntibiotic(panel.getId(), ciprofloxacin.getId(), 1);
+        configurationService.getOrCreatePanelAntibiotic(panel.getId(), gentamicin.getId(), 2);
 
         MicroBreakpointStandard standard = configurationService.getOrCreateBreakpointStandard("CLSI", "2026",
                 new Date(System.currentTimeMillis()));
+        configurationService.getOrCreateBreakpointRule(micBreakpointRule(standard.getId(), ciprofloxacin.getId()));
+        configurationService.getOrCreateBreakpointRule(micBreakpointRule(standard.getId(), gentamicin.getId()));
+    }
+
+    private MicroBreakpointRule micBreakpointRule(String standardId, String antibioticId) {
         MicroBreakpointRule rule = new MicroBreakpointRule();
-        rule.setStandardId(standard.getId());
-        rule.setAntibioticId(antibiotic.getId());
+        rule.setStandardId(standardId);
+        rule.setAntibioticId(antibioticId);
         rule.setMethod("MIC");
         rule.setBreakpointType("MIC");
         rule.setSusceptibleValue(new BigDecimal("8"));
         rule.setIntermediateLowerValue(new BigDecimal("16"));
         rule.setIntermediateUpperValue(new BigDecimal("16"));
         rule.setResistantValue(new BigDecimal("32"));
-        configurationService.getOrCreateBreakpointRule(rule);
+        return rule;
     }
 
-    private Method firstActiveMethod() {
-        List<Method> methods = methodService.getAllActiveMethods();
-        if (methods == null || methods.isEmpty()) {
-            throw new IllegalStateException("No active method is available for a microbiology UAT scenario");
+    private Method getOrCreateUatMethod(String performedBy) {
+        Method method = methodService.getMethods(UAT_METHOD_NAME).stream()
+                .filter(candidate -> UAT_METHOD_NAME.equals(candidate.getMethodName())).findFirst().orElse(null);
+        if (method == null) {
+            method = new Method();
+            method.setMethodName(UAT_METHOD_NAME);
+            method.setDescription(UAT_METHOD_DESCRIPTION);
+            method.setReportingDescription(UAT_METHOD_DESCRIPTION);
+            method.setCode("UATMICRO");
+            method.setIsActive(IActionConstants.YES);
+            method.setSysUserId(performedBy);
+            methodService.insert(method);
+            return method;
         }
-        return methods.get(0);
+        if (!IActionConstants.YES.equals(method.getIsActive())) {
+            method.setIsActive(IActionConstants.YES);
+            method.setSysUserId(performedBy);
+            methodService.update(method);
+        }
+        return method;
+    }
+
+    private Test getOrCreateUatTest(Method method, String performedBy) {
+        Test test = testService.getTestByDescription(UAT_TEST_DESCRIPTION);
+        if (test == null) {
+            test = new Test();
+            test.setName(UAT_TEST_DESCRIPTION);
+            test.setDescription(UAT_TEST_DESCRIPTION);
+            test.setGuid(UUID.nameUUIDFromBytes(UAT_TEST_DESCRIPTION.getBytes(StandardCharsets.UTF_8)).toString());
+            test.setDomain("CLINICAL");
+            test.setOrderable(true);
+            test.setAntimicrobialResistance(true);
+        }
+        test.setMethod(method);
+        test.setTestSection(getUatReportTestSection());
+        test.setCultureWorkflowType(BACTERIOLOGY);
+        test.setIsActive(IActionConstants.YES);
+        test.setIsReportable(IActionConstants.YES);
+        test.setSysUserId(performedBy);
+        if (test.getId() == null) {
+            testService.insert(test);
+        } else {
+            testService.update(test);
+        }
+        return test;
+    }
+
+    private TestSection getUatReportTestSection() {
+        return testSectionService.getAllActiveTestSections().stream().findFirst()
+                .orElseThrow(() -> new IllegalStateException("UAT_REPORT_TEST_SECTION_REQUIRED"));
+    }
+
+    private TestAnalyte getOrCreateReportableTestAnalyte(Test test, String performedBy) {
+        Analyte lookup = new Analyte();
+        lookup.setAnalyteName(UAT_ANALYTE_NAME);
+        Analyte analyte = analyteService.getAnalyteByName(lookup, true);
+        if (analyte == null) {
+            analyte = lookup;
+            analyte.setIsActive(IActionConstants.YES);
+            analyte.setLocalAbbreviation("UATMC");
+            analyte.setSysUserId(performedBy);
+            analyteService.insert(analyte);
+        }
+        Analyte reportableAnalyte = analyte;
+
+        TestAnalyte testAnalyte = testAnalyteService.getAllTestAnalytesPerTest(test).stream()
+                .filter(candidate -> candidate.getAnalyte() != null
+                        && reportableAnalyte.getId().equals(candidate.getAnalyte().getId()))
+                .findFirst().orElse(null);
+        if (testAnalyte == null) {
+            testAnalyte = new TestAnalyte();
+            testAnalyte.setTest(test);
+            testAnalyte.setAnalyte(reportableAnalyte);
+            testAnalyte.setSortOrder("0");
+        }
+        testAnalyte.setIsReportable(IActionConstants.YES);
+        testAnalyte.setSysUserId(performedBy);
+        if (testAnalyte.getId() == null) {
+            testAnalyteService.insert(testAnalyte);
+        } else {
+            testAnalyteService.update(testAnalyte);
+        }
+        return testAnalyte;
+    }
+
+    private void configureCultureSetup(Method method, TestAnalyte reportableTestAnalyte) {
+        MicroCultureSetup setup = new MicroCultureSetup();
+        setup.setMethodId(method.getId());
+        setup.setName("UAT bacteriology culture");
+        setup.setWorkflowType(BACTERIOLOGY);
+        setup.setMediaDefaults("Blood agar");
+        setup.setIncubationDefaults("18-24h");
+        setup.setAtmosphereDefaults("Ambient");
+        setup.setReportableTestAnalyteId(reportableTestAnalyte.getId());
+        configurationService.getOrCreateCultureSetup(setup);
+    }
+
+    private Analysis getOrCreateAnalysis(Test test, SampleItem sampleItem, String performedBy) {
+        Analysis analysis = analysisService.getAnalysisBySampleItemAndTest(sampleItem.getId(), test.getId());
+        if (analysis != null) {
+            return analysis;
+        }
+        analysis = analysisService.buildAnalysis(test, sampleItem);
+        analysis.setSampleTypeName(UAT_SAMPLE_TYPE_DESCRIPTION);
+        analysis.setSysUserId(performedBy);
+        analysisService.insert(analysis);
+        return analysis;
+    }
+
+    private MicroCase routeCultureAnalysis(SampleItem sampleItem, Analysis analysis, String performedBy) {
+        return orderRoutingService.routeAnalysesForSampleItem(sampleItem, List.of(analysis), performedBy).stream()
+                .filter(candidate -> MicroWorkflowType.BACTERIOLOGY.name().equals(candidate.getWorkflowType()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("UAT culture analysis did not route to bacteriology"));
+    }
+
+    private TypeOfSample getOrCreateUatSampleType(String performedBy) {
+        TypeOfSample sampleType = typeOfSampleService.getAllTypeOfSamples().stream()
+                .filter(candidate -> UAT_SAMPLE_TYPE_DESCRIPTION.equals(candidate.getDescription())).findFirst()
+                .orElse(null);
+        if (sampleType == null) {
+            Localization localization = new Localization();
+            localization.setDescription("UAT microbiology sample type");
+            localization.setEnglish(UAT_SAMPLE_TYPE_DESCRIPTION);
+            localization.setSysUserId(performedBy);
+            localizationService.insert(localization);
+
+            sampleType = new TypeOfSample();
+            sampleType.setDescription(UAT_SAMPLE_TYPE_DESCRIPTION);
+            sampleType.setDomain("H");
+            sampleType.setLocalAbbreviation("UATMS");
+            sampleType.setActive(true);
+            sampleType.setSortOrder(999);
+            sampleType.setLocalization(localization);
+            sampleType.setSysUserId(performedBy);
+            typeOfSampleService.insert(sampleType);
+            return sampleType;
+        }
+        if (!sampleType.getIsActive()) {
+            sampleType.setActive(true);
+            sampleType.setSysUserId(performedBy);
+            typeOfSampleService.update(sampleType);
+        }
+        return sampleType;
     }
 
     private String normalizeScenario(String scenario) {

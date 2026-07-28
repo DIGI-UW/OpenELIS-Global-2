@@ -36,6 +36,7 @@ const AstEntryPanel = ({
     useState("RESISTANT");
   const [overrideReason, setOverrideReason] = useState("");
   const [runs, setRuns] = useState([]);
+  const [selectedReadingId, setSelectedReadingId] = useState("");
   const [readiness, setReadiness] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -95,17 +96,25 @@ const AstEntryPanel = ({
       (runs.length > 0 ? runs[runs.length - 1] : null),
     [runs],
   );
-  const currentReading = currentRun?.readings?.[0];
-  const currentAntibioticLabel =
-    currentReading?.antibioticLabel ||
-    antibiotics.find(
-      (antibiotic) => antibiotic.id === currentReading?.antibioticId,
-    )?.label ||
-    antibiotics.find((antibiotic) => antibiotic.id === selectedAntibioticId)
+  const currentReadings = currentRun?.readings || [];
+  const currentReading =
+    currentReadings.find((reading) => reading.id === selectedReadingId) ||
+    currentReadings[0];
+
+  useEffect(() => {
+    if (
+      currentReadings.length > 0 &&
+      !currentReadings.some((reading) => reading.id === selectedReadingId)
+    ) {
+      setSelectedReadingId(currentReadings[0].id);
+    }
+  }, [currentReadings, selectedReadingId]);
+
+  const antibioticLabelFor = (reading) =>
+    reading?.antibioticLabel ||
+    antibiotics.find((antibiotic) => antibiotic.id === reading?.antibioticId)
       ?.label ||
-    currentReading?.antibioticId;
-  const currentReadingValue =
-    currentReading?.rawValue ?? currentReading?.rawText ?? rawValue;
+    reading?.antibioticId;
   const busy = saving || caseSaving;
   const isReviewed = currentRun?.status === "REVIEWED";
 
@@ -343,26 +352,52 @@ const AstEntryPanel = ({
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td>{currentAntibioticLabel}</td>
-                          <td>{currentReading.method}</td>
-                          <td>{currentReadingValue}</td>
-                          <td data-testid="microbiology-ast-interpretation">
-                            <strong>{currentReading.interpretation}</strong>
-                            {currentReading.overrideInterpretation
-                              ? ` (${currentReading.overrideInterpretation})`
-                              : ""}
-                          </td>
-                          <td>
-                            {currentReading.overrideReason ||
-                              intl.formatMessage({
-                                id: "microbiology.ast.noOverride",
-                              })}
-                          </td>
-                        </tr>
+                        {currentReadings.map((reading) => (
+                          <tr
+                            key={reading.id}
+                            data-testid="microbiology-ast-reading-row"
+                          >
+                            <td>{antibioticLabelFor(reading)}</td>
+                            <td>{reading.method}</td>
+                            <td>{reading.rawValue ?? reading.rawText}</td>
+                            <td data-testid="microbiology-ast-interpretation">
+                              <strong>{reading.interpretation}</strong>
+                              {reading.overrideInterpretation
+                                ? ` (${reading.overrideInterpretation})`
+                                : ""}
+                            </td>
+                            <td>
+                              {reading.overrideReason ||
+                                intl.formatMessage({
+                                  id: "microbiology.ast.noOverride",
+                                })}
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                     <div className="microbiology-form-grid">
+                      <Select
+                        id="microbiology-ast-override-reading"
+                        labelText={intl.formatMessage({
+                          id: "microbiology.ast.reading",
+                        })}
+                        value={currentReading?.id || ""}
+                        onChange={(event) =>
+                          setSelectedReadingId(event.target.value)
+                        }
+                      >
+                        {currentReadings.map((reading) => (
+                          <SelectItem
+                            key={reading.id}
+                            value={reading.id}
+                            text={`${antibioticLabelFor(reading)}: ${
+                              reading.overrideInterpretation ||
+                              reading.interpretation
+                            }`}
+                          />
+                        ))}
+                      </Select>
                       <Select
                         id="microbiology-ast-override"
                         labelText={intl.formatMessage({

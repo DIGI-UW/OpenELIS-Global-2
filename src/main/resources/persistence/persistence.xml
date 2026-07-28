@@ -82,6 +82,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroCultureSetup</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>

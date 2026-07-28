@@ -11,11 +11,15 @@ describe("MicrobiologyRoutes", () => {
       getMicrobiologyWorklistUrl({
         urgency: "HIGH",
         workflow: "BACTERIOLOGY",
+        stage: "AST_IN_PROGRESS",
         due: "AST_REVIEW",
+        q: "blood culture",
         sort: "newest",
+        page: 3,
+        pageSize: 50,
       }),
     ).toBe(
-      "/Microbiology/worklist?workflow=BACTERIOLOGY&urgency=HIGH&due=AST_REVIEW&sort=newest",
+      "/Microbiology/worklist?workflow=BACTERIOLOGY&stage=AST_IN_PROGRESS&urgency=HIGH&due=AST_REVIEW&q=blood+culture&sort=newest&page=3&pageSize=50",
     );
   });
 
@@ -26,9 +30,13 @@ describe("MicrobiologyRoutes", () => {
       ),
     ).toEqual({
       workflow: "BACTERIOLOGY",
+      stage: "",
       urgency: "",
       due: "",
+      q: "",
       sort: "priority",
+      page: 1,
+      pageSize: 20,
     });
   });
 
@@ -49,8 +57,12 @@ describe("MicrobiologyRoutes", () => {
     ).toEqual({
       workflow: "BACTERIOLOGY",
       urgency: "HIGH",
+      stage: "",
       due: "",
+      q: "",
       sort: "priority",
+      page: 1,
+      pageSize: 20,
       section: "isolates",
     });
   });

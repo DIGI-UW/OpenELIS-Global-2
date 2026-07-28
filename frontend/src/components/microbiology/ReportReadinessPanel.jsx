@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Tag } from "@carbon/react";
+import { Button, InlineNotification, Layer, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
@@ -14,20 +14,26 @@ const ReportReadinessPanel = ({
   const intl = useIntl();
   const [readiness, setReadiness] = useState(null);
   const [whonetReadiness, setWhonetReadiness] = useState(null);
+  const [projection, setProjection] = useState(null);
   const [releaseState, setReleaseState] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const mountedRef = useRef(true);
 
   const loadState = () =>
     Promise.all([
       service.getCaseReadiness(caseId),
       service.getWhonetReadiness(caseId),
-    ]).then(([caseReadiness, whonetState]) => {
+      service.getReportProjection
+        ? service.getReportProjection(caseId)
+        : Promise.resolve({ reportableContent: true, mappingConfigured: true }),
+    ]).then(([caseReadiness, whonetState, reportProjection]) => {
       if (!mountedRef.current) {
         return;
       }
       setReadiness(caseReadiness);
       setWhonetReadiness(whonetState);
+      setProjection(reportProjection);
     });
 
   useEffect(() => {
@@ -41,6 +47,7 @@ const ReportReadinessPanel = ({
 
   const releaseFinal = () => {
     setSaving(true);
+    setError("");
     service
       .releaseFinalReport(caseId)
       .then((state) => {
@@ -52,6 +59,37 @@ const ReportReadinessPanel = ({
         }
       })
       .then(loadState)
+      .catch((releaseError) => {
+        if (mountedRef.current) {
+          setError(releaseError?.message || "REPORT_RELEASE_FAILED");
+        }
+      })
+      .finally(() => {
+        if (mountedRef.current) {
+          setSaving(false);
+        }
+      });
+  };
+
+  const releasePreliminary = () => {
+    setSaving(true);
+    setError("");
+    service
+      .releasePreliminaryReport(caseId)
+      .then((state) => {
+        if (mountedRef.current) {
+          setReleaseState(state);
+        }
+        if (onReleased) {
+          onReleased();
+        }
+      })
+      .then(loadState)
+      .catch((releaseError) => {
+        if (mountedRef.current) {
+          setError(releaseError?.message || "REPORT_RELEASE_FAILED");
+        }
+      })
       .finally(() => {
         if (mountedRef.current) {
           setSaving(false);
@@ -155,18 +193,65 @@ const ReportReadinessPanel = ({
         </div>
       </div>
 
+      <Layer className="microbiology-report-projection" level={1}>
+        <h4>
+          {intl.formatMessage({ id: "microbiology.release.patientReport" })}
+        </h4>
+        {projection?.reportableContent ? (
+          <p data-testid="microbiology-report-projection-content">
+            {projection.content}
+          </p>
+        ) : (
+          <p>
+            {intl.formatMessage({
+              id: "microbiology.release.noReportableContent",
+            })}
+          </p>
+        )}
+        <Tag type={projection?.mappingConfigured ? "green" : "warm-gray"}>
+          {intl.formatMessage({
+            id: projection?.mappingConfigured
+              ? "microbiology.release.mappingConfigured"
+              : "microbiology.release.mappingRequired",
+          })}
+        </Tag>
+      </Layer>
+
+      {error && (
+        <InlineNotification
+          kind="error"
+          title={intl.formatMessage({ id: "microbiology.case.error" })}
+          subtitle={error}
+          hideCloseButton
+        />
+      )}
+
       <div className="microbiology-report-actions">
         {finalReleased ? (
           <Tag type="green">
             {intl.formatMessage({ id: "microbiology.release.finalReleased" })}
           </Tag>
         ) : (
-          <Button
-            onClick={releaseFinal}
-            disabled={saving || !readiness?.finalReleaseReady}
-          >
-            {intl.formatMessage({ id: "microbiology.release.final" })}
-          </Button>
+          <>
+            <Button
+              kind="secondary"
+              onClick={releasePreliminary}
+              disabled={saving || !projection?.reportableContent}
+            >
+              {intl.formatMessage({ id: "microbiology.release.preliminary" })}
+            </Button>
+            <Button
+              onClick={releaseFinal}
+              disabled={
+                saving ||
+                !readiness?.finalReleaseReady ||
+                !projection?.reportableContent ||
+                !projection?.mappingConfigured
+              }
+            >
+              {intl.formatMessage({ id: "microbiology.release.final" })}
+            </Button>
+          </>
         )}
       </div>
     </section>

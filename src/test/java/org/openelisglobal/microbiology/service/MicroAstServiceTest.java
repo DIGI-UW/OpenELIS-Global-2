@@ -17,12 +17,16 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 
 /**
@@ -44,6 +48,9 @@ public class MicroAstServiceTest {
     private MicroIsolateDAO isolateDAO;
 
     @Mock
+    private MicroCaseDAO caseDAO;
+
+    @Mock
     private MicroCaseActivityDAO activityDAO;
 
     @Mock
@@ -56,8 +63,9 @@ public class MicroAstServiceTest {
 
     @Before
     public void setUp() {
-        service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, activityDAO, breakpointService,
+        service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
                 interpretationService);
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
     }
 
     @Test
@@ -134,5 +142,26 @@ public class MicroAstServiceTest {
         service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
 
         verify(breakpointService).findBreakpointRule("clsi-std", "org-1", null, "abx-1", "MIC", null, "MIC");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void startRunRejectsFinalReleasedCases() {
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        MicroCase finalCase = mutableCase();
+        finalCase.setStage(MicroCaseStage.FINAL_RELEASED.name());
+        finalCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(finalCase));
+
+        service.startRun("iso-1", "panel-1", "1");
+    }
+
+    private MicroCase mutableCase() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setStage(MicroCaseStage.RECEIVED.name());
+        return microCase;
     }
 }

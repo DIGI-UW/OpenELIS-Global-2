@@ -18,6 +18,7 @@ import org.openelisglobal.microbiology.form.MicroCaseReadinessForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
@@ -87,6 +88,21 @@ public class MicroCaseReadinessServiceTest {
         when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
+
+        MicroCaseReadinessForm readiness = service.getReadiness("case-1");
+
+        assertTrue(readiness.finalReleaseReady);
+        assertTrue(readiness.blockers.isEmpty());
+    }
+
+    @Test
+    public void noGrowthReadyAllowsFinalReleaseWithoutAnIsolate() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setStage(MicroCaseStage.NO_GROWTH_READY.name());
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
 
         MicroCaseReadinessForm readiness = service.getReadiness("case-1");
 

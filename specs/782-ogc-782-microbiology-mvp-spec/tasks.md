@@ -49,30 +49,30 @@ workflow UI is required.
 
 ### Tests First
 
-- [X] T001 [M1] Create branch `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations` from `spec/782-ogc-782-microbiology-mvp-spec` in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T002 [P] [M1] Add failing JUnit 4 service tests for workflow-type validation and culture recipe lookup in `src/test/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceServiceTest.java`.
-- [X] T003 [P] [M1] Add failing JUnit 4 service tests for breakpoint lookup including no-breakpoint behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceTest.java`.
-- [X] T004 [P] [M1] Add failing DAO/integration tests for organism, antibiotic, AST panel, and breakpoint persistence in `src/test/java/org/openelisglobal/microbiology/MicrobiologyReferenceDataIntegrationTest.java`.
-- [X] T005 [P] [M1] Add failing ORM validation test for new microbiology reference valueholders in `src/test/java/org/openelisglobal/microbiology/MicrobiologyOrmValidationTest.java`.
-- [X] T006 [P] [M1] Add failing Test Catalog regression tests for saving and loading culture workflow configuration in `src/test/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorMicrobiologyTest.java`.
+- [x] T001 [M1] Create branch `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations` from `spec/782-ogc-782-microbiology-mvp-spec` in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T002 [P] [M1] Add failing JUnit 4 service tests for workflow-type validation and culture recipe lookup in `src/test/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceServiceTest.java`.
+- [x] T003 [P] [M1] Add failing JUnit 4 service tests for breakpoint lookup including no-breakpoint behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceTest.java`.
+- [x] T004 [P] [M1] Add failing DAO/integration tests for organism, antibiotic, AST panel, and breakpoint persistence in `src/test/java/org/openelisglobal/microbiology/MicrobiologyReferenceDataIntegrationTest.java`.
+- [x] T005 [P] [M1] Add failing ORM validation test for new microbiology reference valueholders in `src/test/java/org/openelisglobal/microbiology/MicrobiologyOrmValidationTest.java`.
+- [x] T006 [P] [M1] Add failing Test Catalog regression tests for saving and loading culture workflow configuration in `src/test/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorMicrobiologyTest.java`.
 
 ### Implementation
 
-- [X] T007 [M1] Add workflow-type configuration and microbiology reference tables in `src/main/resources/liquibase/3.5.x.x/051-microbiology-reference-foundations.xml`.
-- [X] T008 [P] [M1] Add `MicroWorkflowType` enum in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroWorkflowType.java`.
-- [X] T009 [P] [M1] Add reference valueholders for organisms, antibiotics, AST panels, and breakpoint standards in `src/main/java/org/openelisglobal/microbiology/valueholder/`.
-- [X] T010 [P] [M1] Add DAO interfaces for microbiology reference valueholders in `src/main/java/org/openelisglobal/microbiology/dao/`.
-- [X] T011 [P] [M1] Add DAO implementations for microbiology reference valueholders in `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
-- [X] T012 [M1] Add `MicrobiologyReferenceService` and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceServiceImpl.java`.
-- [X] T013 [M1] Add `MicroBreakpointService` and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceImpl.java`.
-- [X] T014 [M1] Extend Test Catalog DTO/load/save behavior for culture workflow configuration in `src/main/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorRestController.java`.
-- [X] T015 [P] [M1] Add React Intl source keys for M1 admin fields in `frontend/src/languages/en.json`.
-- [X] T016 [P] [M1] Add Test Catalog microbiology field rendering and validation in `frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx`.
-- [X] T017 [P] [M1] Add frontend tests for Test Catalog microbiology fields in `frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx`.
-- [X] T018 [M1] Run focused backend validation `mvn -Dtest=MicrobiologyReferenceServiceTest,MicroBreakpointServiceTest,MicrobiologyReferenceDataIntegrationTest,MicrobiologyOrmValidationTest,TestCatalogEditorMicrobiologyTest test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T019 [M1] Run focused frontend validation `cd frontend && npm test -- BasicInfoSection.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T020 [M1] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T021 [M1] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations` to `spec/782-ogc-782-microbiology-mvp-spec` with validation evidence and link it from PR #3782.
+- [x] T007 [M1] Add workflow-type configuration and microbiology reference tables in `src/main/resources/liquibase/3.5.x.x/051-microbiology-reference-foundations.xml`.
+- [x] T008 [P] [M1] Add `MicroWorkflowType` enum in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroWorkflowType.java`.
+- [x] T009 [P] [M1] Add reference valueholders for organisms, antibiotics, AST panels, and breakpoint standards in `src/main/java/org/openelisglobal/microbiology/valueholder/`.
+- [x] T010 [P] [M1] Add DAO interfaces for microbiology reference valueholders in `src/main/java/org/openelisglobal/microbiology/dao/`.
+- [x] T011 [P] [M1] Add DAO implementations for microbiology reference valueholders in `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
+- [x] T012 [M1] Add `MicrobiologyReferenceService` and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceServiceImpl.java`.
+- [x] T013 [M1] Add `MicroBreakpointService` and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceImpl.java`.
+- [x] T014 [M1] Extend Test Catalog DTO/load/save behavior for culture workflow configuration in `src/main/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorRestController.java`.
+- [x] T015 [P] [M1] Add React Intl source keys for M1 admin fields in `frontend/src/languages/en.json`.
+- [x] T016 [P] [M1] Add Test Catalog microbiology field rendering and validation in `frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx`.
+- [x] T017 [P] [M1] Add frontend tests for Test Catalog microbiology fields in `frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx`.
+- [x] T018 [M1] Run focused backend validation `mvn -Dtest=MicrobiologyReferenceServiceTest,MicroBreakpointServiceTest,MicrobiologyReferenceDataIntegrationTest,MicrobiologyOrmValidationTest,TestCatalogEditorMicrobiologyTest test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T019 [M1] Run focused frontend validation `cd frontend && npm test -- BasicInfoSection.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T020 [M1] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T021 [M1] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations` to `spec/782-ogc-782-microbiology-mvp-spec` with validation evidence and link it from PR #3782.
 
 ## Phase 2: M2 - Case Core
 
@@ -87,27 +87,27 @@ on lazy loading in controllers.
 
 ### Tests First
 
-- [X] T022 [M2] Create branch `feat/782-ogc-782-microbiology-mvp-m2-case-core` from the M1 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T023 [P] [M2] Add failing service tests for case creation, uniqueness, and sibling lookup in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseServiceTest.java`.
-- [X] T024 [P] [M2] Add failing service tests for case state transitions and invalid transition rejection in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseStateServiceTest.java`.
-- [X] T025 [P] [M2] Add failing service tests for isolate lifecycle rules in `src/test/java/org/openelisglobal/microbiology/service/MicroIsolateServiceTest.java`.
-- [X] T026 [P] [M2] Add failing DAO/integration tests for case, activity, and isolate persistence in `src/test/java/org/openelisglobal/microbiology/MicroCaseIntegrationTest.java`.
-- [X] T027 [P] [M2] Add failing controller DTO compilation test that verifies case detail JSON without controller relationship traversal in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
-- [X] T028 [P] [M2] Add architecture regression check for no `@Transactional` annotations in microbiology controllers in `src/test/java/org/openelisglobal/microbiology/MicrobiologyArchitectureTest.java`.
+- [x] T022 [M2] Create branch `feat/782-ogc-782-microbiology-mvp-m2-case-core` from the M1 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T023 [P] [M2] Add failing service tests for case creation, uniqueness, and sibling lookup in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseServiceTest.java`.
+- [x] T024 [P] [M2] Add failing service tests for case state transitions and invalid transition rejection in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseStateServiceTest.java`.
+- [x] T025 [P] [M2] Add failing service tests for isolate lifecycle rules in `src/test/java/org/openelisglobal/microbiology/service/MicroIsolateServiceTest.java`.
+- [x] T026 [P] [M2] Add failing DAO/integration tests for case, activity, and isolate persistence in `src/test/java/org/openelisglobal/microbiology/MicroCaseIntegrationTest.java`.
+- [x] T027 [P] [M2] Add failing controller DTO compilation test that verifies case detail JSON without controller relationship traversal in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
+- [x] T028 [P] [M2] Add architecture regression check for no `@Transactional` annotations in microbiology controllers in `src/test/java/org/openelisglobal/microbiology/MicrobiologyArchitectureTest.java`.
 
 ### Implementation
 
-- [X] T029 [M2] Add case core tables and constraints in `src/main/resources/liquibase/3.5.x.x/052-microbiology-case-core.xml`.
-- [X] T030 [P] [M2] Add `MicroCase`, `MicroCaseActivity`, and `MicroIsolate` valueholders in `src/main/java/org/openelisglobal/microbiology/valueholder/`.
-- [X] T031 [P] [M2] Add case, activity, and isolate DAO interfaces in `src/main/java/org/openelisglobal/microbiology/dao/`.
-- [X] T032 [P] [M2] Add case, activity, and isolate DAO implementations in `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
-- [X] T033 [M2] Add case service contracts in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseService.java`, `MicroCaseStateService.java`, and `MicroIsolateService.java`.
-- [X] T034 [M2] Add case service implementations with service-layer transactions in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseServiceImpl.java`, `MicroCaseStateServiceImpl.java`, and `MicroIsolateServiceImpl.java`.
-- [X] T035 [M2] Add case forms/DTOs in `src/main/java/org/openelisglobal/microbiology/form/MicroCaseDetailForm.java`, `MicroCaseActivityForm.java`, and `MicroIsolateForm.java`.
-- [X] T036 [M2] Add read-only case REST controller in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
-- [X] T037 [M2] Run focused backend validation `mvn -q -Dtest='MicroCaseServiceTest,MicroCaseStateServiceTest,MicroIsolateServiceTest,MicroCaseIntegrationTest,MicroCaseRestControllerTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T038 [M2] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T039 [M2] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m2-case-core` to the M1 stacked branch with validation evidence and link it from PR #3782.
+- [x] T029 [M2] Add case core tables and constraints in `src/main/resources/liquibase/3.5.x.x/052-microbiology-case-core.xml`.
+- [x] T030 [P] [M2] Add `MicroCase`, `MicroCaseActivity`, and `MicroIsolate` valueholders in `src/main/java/org/openelisglobal/microbiology/valueholder/`.
+- [x] T031 [P] [M2] Add case, activity, and isolate DAO interfaces in `src/main/java/org/openelisglobal/microbiology/dao/`.
+- [x] T032 [P] [M2] Add case, activity, and isolate DAO implementations in `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
+- [x] T033 [M2] Add case service contracts in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseService.java`, `MicroCaseStateService.java`, and `MicroIsolateService.java`.
+- [x] T034 [M2] Add case service implementations with service-layer transactions in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseServiceImpl.java`, `MicroCaseStateServiceImpl.java`, and `MicroIsolateServiceImpl.java`.
+- [x] T035 [M2] Add case forms/DTOs in `src/main/java/org/openelisglobal/microbiology/form/MicroCaseDetailForm.java`, `MicroCaseActivityForm.java`, and `MicroIsolateForm.java`.
+- [x] T036 [M2] Add read-only case REST controller in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
+- [x] T037 [M2] Run focused backend validation `mvn -q -Dtest='MicroCaseServiceTest,MicroCaseStateServiceTest,MicroIsolateServiceTest,MicroCaseIntegrationTest,MicroCaseRestControllerTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T038 [M2] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T039 [M2] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m2-case-core` to the M1 stacked branch with validation evidence and link it from PR #3782.
 
 ## Phase 3: M3 - Order Routing
 
@@ -122,22 +122,22 @@ without duplicate accessioning.
 
 ### Tests First
 
-- [X] T040 [M3] Create branch `feat/782-ogc-782-microbiology-mvp-m3-order-routing` from the M2 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T041 [P] [M3] Add failing routing resolver unit tests in `src/test/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceTest.java`.
-- [X] T042 [P] [M3] Add failing order-save integration tests for non-micro, bacteriology, and sibling workflow cases in `src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIntegrationTest.java`.
-- [X] T043 [P] [M3] Add failing idempotency integration test for repeated order saves in `src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIdempotencyTest.java`.
-- [X] T044 [P] [M3] Add failing controller/contract test for case lookup by accession/sample item in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseLookupRestControllerTest.java`.
+- [x] T040 [M3] Create branch `feat/782-ogc-782-microbiology-mvp-m3-order-routing` from the M2 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T041 [P] [M3] Add failing routing resolver unit tests in `src/test/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceTest.java`.
+- [x] T042 [P] [M3] Add failing order-save integration tests for non-micro, bacteriology, and sibling workflow cases in `src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIntegrationTest.java`.
+- [x] T043 [P] [M3] Add failing idempotency integration test for repeated order saves in `src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIdempotencyTest.java`.
+- [x] T044 [P] [M3] Add failing controller/contract test for case lookup by accession/sample item in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseLookupRestControllerTest.java`.
 
 ### Implementation
 
-- [X] T045 [M3] Add routing service contract in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingService.java`.
-- [X] T046 [M3] Implement order routing service in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
-- [X] T047 [M3] Wire routing from the existing order/sample save integration point in `src/main/java/org/openelisglobal/sample/service/SamplePatientEntryServiceImpl.java`.
-- [X] T048 [M3] Add case lookup endpoint and DTO support in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java` and `src/main/java/org/openelisglobal/microbiology/form/MicroCaseLookupForm.java`.
-- [X] T049 [M3] Add configuration error handling for missing culture workflow/method defaults in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
-- [X] T050 [M3] Run focused backend validation `mvn -q -Dtest='MicroOrderRoutingServiceTest,MicroOrderRoutingIntegrationTest,MicroOrderRoutingIdempotencyTest,MicroCaseLookupRestControllerTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T051 [M3] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T052 [M3] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m3-order-routing` to the M2 stacked branch with validation evidence and link it from PR #3782.
+- [x] T045 [M3] Add routing service contract in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingService.java`.
+- [x] T046 [M3] Implement order routing service in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
+- [x] T047 [M3] Wire routing from the existing order/sample save integration point in `src/main/java/org/openelisglobal/sample/service/SamplePatientEntryServiceImpl.java`.
+- [x] T048 [M3] Add case lookup endpoint and DTO support in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java` and `src/main/java/org/openelisglobal/microbiology/form/MicroCaseLookupForm.java`.
+- [x] T049 [M3] Add configuration error handling for missing culture workflow/method defaults in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
+- [x] T050 [M3] Run focused backend validation `mvn -q -Dtest='MicroOrderRoutingServiceTest,MicroOrderRoutingIntegrationTest,MicroOrderRoutingIdempotencyTest,MicroCaseLookupRestControllerTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T051 [M3] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T052 [M3] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m3-order-routing` to the M2 stacked branch with validation evidence and link it from PR #3782.
 
 ## Phase 4: M4 - Case Workbench
 
@@ -153,29 +153,29 @@ timeline updates.
 
 ### Tests First
 
-- [X] T053 [M4] Create branch `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` from the M3 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T054 [P] [M4] Run `/plan-record-playwright --flows microbiology-case-workbench` and record the planned route, setup data, assertions, and project target in `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`.
-- [X] T055 [P] [M4] Add failing MockMvc tests for activity creation and isolate creation in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
-- [X] T056 [P] [M4] Add failing React interaction tests for case detail loading and setup event save in `frontend/src/components/microbiology/__tests__/MicrobiologyCaseView.test.jsx`.
-- [X] T057 [P] [M4] Add failing React interaction tests for isolate creation/update in `frontend/src/components/microbiology/__tests__/IsolatePanel.test.jsx`.
-- [X] T058 [P] [M4] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project core-app` to create a red Playwright test for routed case setup and isolate creation.
+- [x] T053 [M4] Create branch `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` from the M3 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T054 [P] [M4] Run `/plan-record-playwright --flows microbiology-case-workbench` and record the planned route, setup data, assertions, and project target in `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`.
+- [x] T055 [P] [M4] Add failing MockMvc tests for activity creation and isolate creation in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
+- [x] T056 [P] [M4] Add failing React interaction tests for case detail loading and setup event save in `frontend/src/components/microbiology/__tests__/MicrobiologyCaseView.test.jsx`.
+- [x] T057 [P] [M4] Add failing React interaction tests for isolate creation/update in `frontend/src/components/microbiology/__tests__/IsolatePanel.test.jsx`.
+- [x] T058 [P] [M4] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project core-app` to create a red Playwright test for routed case setup and isolate creation.
 
 ### Implementation
 
-- [X] T059 [M4] Add activity mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
-- [X] T060 [M4] Add isolate mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroIsolateRestController.java`.
-- [X] T061 [P] [M4] Add frontend API client functions in `frontend/src/components/microbiology/MicrobiologyService.js`.
-- [X] T062 [P] [M4] Add case page route in `frontend/src/pages/MicrobiologyPage.jsx` and `frontend/src/App.jsx`.
-- [X] T063 [M4] Add case view shell and context header in `frontend/src/components/microbiology/MicrobiologyCaseView.jsx`.
-- [X] T064 [M4] Add timeline and setup activity panel in `frontend/src/components/microbiology/CaseTimelinePanel.jsx`.
-- [X] T065 [M4] Add isolate panel in `frontend/src/components/microbiology/IsolatePanel.jsx`.
-- [X] T066 [P] [M4] Add React Intl keys for case workbench UI in `frontend/src/languages/en.json`.
-- [X] T067 [M4] Register `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` in `frontend/playwright.config.ts`.
-- [X] T068 [M4] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T069 [M4] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts`.
-- [X] T070 [M4] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
-- [X] T071 [M4] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseRestControllerTest,MicroCaseLookupRestControllerTest,MicrobiologyArchitectureTest' test` and `cd frontend && npm test -- MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [X] T072 [M4] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` to the M3 stacked branch with TDD and Playwright evidence and link it from PR #3782.
+- [x] T059 [M4] Add activity mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
+- [x] T060 [M4] Add isolate mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroIsolateRestController.java`.
+- [x] T061 [P] [M4] Add frontend API client functions in `frontend/src/components/microbiology/MicrobiologyService.js`.
+- [x] T062 [P] [M4] Add case page route in `frontend/src/pages/MicrobiologyPage.jsx` and `frontend/src/App.jsx`.
+- [x] T063 [M4] Add case view shell and context header in `frontend/src/components/microbiology/MicrobiologyCaseView.jsx`.
+- [x] T064 [M4] Add timeline and setup activity panel in `frontend/src/components/microbiology/CaseTimelinePanel.jsx`.
+- [x] T065 [M4] Add isolate panel in `frontend/src/components/microbiology/IsolatePanel.jsx`.
+- [x] T066 [P] [M4] Add React Intl keys for case workbench UI in `frontend/src/languages/en.json`.
+- [x] T067 [M4] Register `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` in `frontend/playwright.config.ts`.
+- [x] T068 [M4] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T069 [M4] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts`.
+- [x] T070 [M4] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
+- [x] T071 [M4] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseRestControllerTest,MicroCaseLookupRestControllerTest,MicrobiologyArchitectureTest' test` and `cd frontend && npm test -- MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T072 [M4] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` to the M3 stacked branch with TDD and Playwright evidence and link it from PR #3782.
 
 ## Phase 5: M5 - Manual AST
 
@@ -374,6 +374,17 @@ checklist through the Grist-backed UAT harness.
 - [x] T181 [MVP] Extend `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` to prove configured navigation and canonical URL behavior in the registered `core-app` project.
 - [x] T182 [MVP] Update the OGC-782 `amr` checklist in Grist with ten product-focused steps covering navigation, stable page state, case work, isolate/AST workflow, report propagation, and the shared-specimen case.
 - [x] T183 [MVP] Verify `https://amr.openelis-global.org/__review/uat-amr.json` and the rendered AMR `Review` overlay with Playwright; record the deployment caveat in `evidence/uat-review-harness-2026-07-24.md`.
+
+## Phase 10: Worklist UX Remediation And M-07 Scope Check
+
+**Goal**: Correct the observed worklist layout defects without turning the
+prototype into a technical contract, and make any remaining M-07 differences
+explicit product decisions or V2 scope.
+
+- [x] T184 [MVP] Add a compact-viewport layout test and make the Microbiology sidenav default closed on compact screens while retaining locked desktop navigation and saved user preferences.
+- [x] T185 [MVP] Add a Playwright mobile regression for contained table scrolling; correct the Carbon table-container sizing so the page does not horizontally overflow.
+- [x] T186 [MVP] Capture and inspect stable desktop/mobile worklist screenshots, rerun the registered worklist/critical Playwright journey, and record the comparison in `evidence/worklist-ux-follow-up-2026-07-28.md`.
+- [ ] T187 [V2 clarification] Obtain a product ruling on whether M-07's culture/AST-run switch, richer queue context, resistance strip, and recent activity are future user workflows. Keep timer, transport, schema, and component proposals out of the resulting product wording.
 
 ## Dependencies & Execution Order
 

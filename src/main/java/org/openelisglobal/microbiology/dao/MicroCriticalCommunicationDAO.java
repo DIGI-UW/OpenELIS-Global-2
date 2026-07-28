@@ -7,4 +7,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 public interface MicroCriticalCommunicationDAO extends BaseDAO<MicroCriticalCommunication, String> {
 
     List<MicroCriticalCommunication> getByCaseId(String caseId);
+
+    MicroCriticalCommunication getByAlertId(Long alertId);
 }

@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { ArrowLeft } from "@carbon/icons-react";
-import { Button, InlineNotification, Loading, Stack, Tag } from "@carbon/react";
+import {
+  Accordion,
+  AccordionItem,
+  InlineNotification,
+  Layer,
+  Loading,
+  ProgressIndicator,
+  ProgressStep,
+  Stack,
+  Tag,
+} from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation, useParams } from "react-router-dom";
 import AstEntryPanel from "./AstEntryPanel";
@@ -15,6 +24,7 @@ import {
 } from "./MicrobiologyRoutes";
 import MicrobiologyService from "./MicrobiologyService";
 import OrderDetailPanel from "./OrderDetailPanel";
+import PageBreadCrumb from "../common/PageBreadCrumb";
 import ReportReadinessPanel from "./ReportReadinessPanel";
 import "./MicrobiologyCaseView.css";
 
@@ -57,17 +67,21 @@ const getProgressStatus = (caseDetail, itemId) => {
   const hasIsolate = (caseDetail.isolates || []).length > 0;
   const astReviewed = hasActivity(caseDetail, "AST_REVIEWED");
   const finalReleased = caseDetail.stage === "FINAL_RELEASED";
+  const noGrowthReady = caseDetail.stage === "NO_GROWTH_READY";
   const statusByItem = {
     "case-info": "done",
     setup: caseDetail.stage !== "RECEIVED" ? "done" : "current",
     timeline: caseDetail.stage !== "RECEIVED" ? "done" : "todo",
-    isolates: hasIsolate
-      ? "done"
-      : caseDetail.stage !== "RECEIVED"
-        ? "current"
-        : "todo",
-    ast: astReviewed ? "done" : hasIsolate ? "current" : "todo",
-    review: astReviewed ? "done" : hasIsolate ? "todo" : "todo",
+    isolates:
+      hasIsolate || noGrowthReady
+        ? "done"
+        : caseDetail.stage !== "RECEIVED"
+          ? "current"
+          : "todo",
+    ast:
+      astReviewed || noGrowthReady ? "done" : hasIsolate ? "current" : "todo",
+    review:
+      astReviewed || noGrowthReady ? "done" : hasIsolate ? "todo" : "todo",
     reports: finalReleased ? "done" : astReviewed ? "current" : "todo",
   };
   return statusByItem[itemId] || "todo";
@@ -79,6 +93,9 @@ const getNextStepMessageId = (caseDetail) => {
   }
   if (!hasActivity(caseDetail, "STAGE_CHANGED")) {
     return "microbiology.next.recordSetup";
+  }
+  if (caseDetail.stage === "NO_GROWTH_READY") {
+    return "microbiology.next.release";
   }
   if ((caseDetail.isolates || []).length === 0) {
     return "microbiology.next.createIsolate";
@@ -145,18 +162,6 @@ const MicrobiologyCaseView = ({
     };
   }, [caseId, intl, service]);
 
-  useEffect(() => {
-    if (!caseDetail || !routeState.section) {
-      return;
-    }
-    const section = document.getElementById(
-      `microbiology-${routeState.section}`,
-    );
-    if (section && typeof section.scrollIntoView === "function") {
-      section.scrollIntoView({ block: "start", behavior: "smooth" });
-    }
-  }, [caseDetail, routeState.section]);
-
   const recordActivity = (payload) => {
     setSaving(true);
     service.recordCaseActivity(caseId, payload).then((detail) => {
@@ -175,9 +180,23 @@ const MicrobiologyCaseView = ({
     });
   };
 
+  const updateIdentification = (isolateId, payload) => {
+    setSaving(true);
+    return service.updateIsolateIdentification(isolateId, payload).then(() => {
+      loadCase({ showLoading: false });
+      setSaving(false);
+    });
+  };
+
   const selectSection = (section) => {
     history.push(getMicrobiologyCaseUrl(caseId, { ...routeState, section }));
   };
+
+  const focusedSection = routeState.section || "case-info";
+  const focusedProgressIndex = Math.max(
+    0,
+    progressItems.findIndex((item) => item.section === focusedSection),
+  );
 
   if (loading) {
     return <Loading withOverlay={false} />;
@@ -199,160 +218,213 @@ const MicrobiologyCaseView = ({
       className="microbiology-workbench"
       data-testid="microbiology-case-view"
     >
-      <header className="microbiology-workbench__hero">
-        <div>
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={ArrowLeft}
-            onClick={() => history.push(getMicrobiologyWorklistUrl(routeState))}
-          >
-            {intl.formatMessage({
-              id: "microbiology.navigation.backToWorklist",
+      <Stack gap={7}>
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            {
+              label: "microbiology.navigation.worklist",
+              link: getMicrobiologyWorklistUrl(routeState),
+            },
+            {
+              label: "microbiology.case.title",
+              link: getMicrobiologyCaseUrl(caseId, routeState),
+              isCurrentPage: true,
+            },
+          ]}
+        />
+        <header className="microbiology-workbench__hero">
+          <div>
+            <p className="microbiology-workbench__eyebrow">
+              {intl.formatMessage({ id: "microbiology.case.eyebrow" })}
+            </p>
+            <h1>{intl.formatMessage({ id: "microbiology.case.title" })}</h1>
+            <div className="microbiology-workbench__meta">
+              <span>
+                {intl.formatMessage({ id: "microbiology.case.sampleItem" })}:{" "}
+                <strong>{caseDetail.sampleItemId}</strong>
+              </span>
+              <span>
+                {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
+                <strong>
+                  {formatMicrobiologyEnum(caseDetail.workflowType)}
+                </strong>
+              </span>
+            </div>
+          </div>
+          <Tag type={caseDetail.stage === "FINAL_RELEASED" ? "green" : "blue"}>
+            {formatMicrobiologyEnum(caseDetail.stage)}
+          </Tag>
+        </header>
+
+        <div className="microbiology-workbench__layout">
+          <aside
+            className="microbiology-workbench__rail"
+            data-testid="microbiology-progress-rail"
+            aria-label={intl.formatMessage({
+              id: "microbiology.progress.title",
             })}
-          </Button>
-          <p className="microbiology-workbench__eyebrow">
-            {intl.formatMessage({ id: "microbiology.case.eyebrow" })}
-          </p>
-          <h2>{intl.formatMessage({ id: "microbiology.case.title" })}</h2>
-          <div className="microbiology-workbench__meta">
-            <span>
-              {intl.formatMessage({ id: "microbiology.case.sampleItem" })}:{" "}
-              <strong>{caseDetail.sampleItemId}</strong>
-            </span>
-            <span>
-              {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
-              <strong>{formatMicrobiologyEnum(caseDetail.workflowType)}</strong>
-            </span>
+          >
+            <h2>{intl.formatMessage({ id: "microbiology.progress.title" })}</h2>
+            <ProgressIndicator
+              currentIndex={focusedProgressIndex}
+              vertical
+              onChange={(index) => selectSection(progressItems[index].section)}
+            >
+              {progressItems.map((item) => (
+                <ProgressStep
+                  key={item.id}
+                  complete={getProgressStatus(caseDetail, item.id) === "done"}
+                  label={intl.formatMessage({ id: item.labelId })}
+                />
+              ))}
+            </ProgressIndicator>
+          </aside>
+
+          <div className="microbiology-workbench__content">
+            <Layer className="microbiology-next-step">
+              <div>
+                <p className="microbiology-workbench__eyebrow">
+                  {intl.formatMessage({ id: "microbiology.next.title" })}
+                </p>
+                <p>
+                  {intl.formatMessage({ id: getNextStepMessageId(caseDetail) })}
+                </p>
+              </div>
+            </Layer>
+
+            <Accordion>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.progress.caseInfo",
+                })}
+                open={focusedSection === "case-info"}
+                onHeadingClick={() => selectSection("case-info")}
+              >
+                <Layer
+                  className="microbiology-case-summary"
+                  data-testid="microbiology-case-summary"
+                >
+                  <span>
+                    {intl.formatMessage({ id: "microbiology.case.sampleItem" })}
+                    : {caseDetail.sampleItemId}
+                  </span>
+                  <span>
+                    {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
+                    {formatMicrobiologyEnum(caseDetail.workflowType)}
+                  </span>
+                </Layer>
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.orderDetail.title",
+                })}
+                open={focusedSection === "order-detail"}
+                onHeadingClick={() => selectSection("order-detail")}
+              >
+                <OrderDetailPanel
+                  caseId={caseDetail.id}
+                  orderDetail={caseDetail.orderDetail}
+                  service={service}
+                  onSaved={() => loadCase({ showLoading: false })}
+                />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.progress.inoculation",
+                })}
+                open={focusedSection === "setup"}
+                onHeadingClick={() => selectSection("setup")}
+              >
+                <CaseTimelinePanel
+                  activities={caseDetail.activities}
+                  onRecordActivity={recordActivity}
+                  saving={saving}
+                  setupSectionId="microbiology-setup"
+                  showTimeline={false}
+                />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.progress.timeline",
+                })}
+                open={focusedSection === "timeline"}
+                onHeadingClick={() => selectSection("timeline")}
+              >
+                <CaseTimelinePanel
+                  activities={caseDetail.activities}
+                  onRecordActivity={recordActivity}
+                  saving={saving}
+                  timelineSectionId="microbiology-timeline"
+                  showSetup={false}
+                />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.progress.isolates",
+                })}
+                open={focusedSection === "isolates"}
+                onHeadingClick={() => selectSection("isolates")}
+              >
+                <IsolatePanel
+                  caseId={caseDetail.id}
+                  isolates={caseDetail.isolates}
+                  onCreateIsolate={createIsolate}
+                  onUpdateIdentification={updateIdentification}
+                  saving={saving}
+                  service={service}
+                />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({ id: "microbiology.ast.title" })}
+                open={focusedSection === "ast"}
+                onHeadingClick={() => selectSection("ast")}
+              >
+                <AstEntryPanel
+                  caseId={caseDetail.id}
+                  workflowType={caseDetail.workflowType}
+                  isolates={caseDetail.isolates}
+                  service={service}
+                  saving={saving}
+                  onAstUpdated={() =>
+                    setReadinessRefreshToken((currentValue) => currentValue + 1)
+                  }
+                />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.critical.title",
+                })}
+                open={focusedSection === "critical-communication"}
+                onHeadingClick={() => selectSection("critical-communication")}
+              >
+                <CriticalCommunicationPanel
+                  caseId={caseDetail.id}
+                  sampleItemId={caseDetail.sampleItemId}
+                  isolates={caseDetail.isolates}
+                  service={service}
+                  onCaseUpdated={() => loadCase({ showLoading: false })}
+                />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.progress.reports",
+                })}
+                open={focusedSection === "reports"}
+                onHeadingClick={() => selectSection("reports")}
+              >
+                <ReportReadinessPanel
+                  caseId={caseDetail.id}
+                  service={service}
+                  finalReleaseState={caseDetail.stage}
+                  onReleased={() => loadCase({ showLoading: false })}
+                  refreshToken={readinessRefreshToken}
+                />
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
-        <Tag type={caseDetail.stage === "FINAL_RELEASED" ? "green" : "blue"}>
-          {formatMicrobiologyEnum(caseDetail.stage)}
-        </Tag>
-      </header>
-
-      <div className="microbiology-workbench__layout">
-        <aside
-          className="microbiology-workbench__rail"
-          data-testid="microbiology-progress-rail"
-          aria-label={intl.formatMessage({ id: "microbiology.progress.title" })}
-        >
-          <h3>{intl.formatMessage({ id: "microbiology.progress.title" })}</h3>
-          <ol className="microbiology-progress">
-            {progressItems.map((item, index) => {
-              const status = getProgressStatus(caseDetail, item.id);
-              return (
-                <li
-                  key={item.id}
-                  className={`microbiology-progress__item microbiology-progress__item--${status}`}
-                >
-                  <button
-                    type="button"
-                    className="microbiology-progress__link"
-                    onClick={() => selectSection(item.section)}
-                    aria-label={intl.formatMessage({ id: item.labelId })}
-                    aria-current={
-                      routeState.section === item.section
-                        ? "location"
-                        : undefined
-                    }
-                  >
-                    <span className="microbiology-progress__marker">
-                      {status === "done" ? "\u2713" : index + 1}
-                    </span>
-                    <span>{intl.formatMessage({ id: item.labelId })}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </aside>
-
-        <div className="microbiology-workbench__content">
-          <section className="microbiology-next-step">
-            <div>
-              <p className="microbiology-workbench__eyebrow">
-                {intl.formatMessage({ id: "microbiology.next.title" })}
-              </p>
-              <p>
-                {intl.formatMessage({ id: getNextStepMessageId(caseDetail) })}
-              </p>
-            </div>
-          </section>
-          <section
-            id="microbiology-case-info"
-            className="microbiology-case-summary"
-            data-testid="microbiology-case-summary"
-            aria-label={intl.formatMessage({
-              id: "microbiology.progress.caseInfo",
-            })}
-          >
-            <strong>
-              {intl.formatMessage({ id: "microbiology.progress.caseInfo" })}
-            </strong>
-            <span>
-              {intl.formatMessage({ id: "microbiology.case.sampleItem" })}:{" "}
-              {caseDetail.sampleItemId}
-            </span>
-            <span>
-              {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
-              {formatMicrobiologyEnum(caseDetail.workflowType)}
-            </span>
-          </section>
-          <Stack gap={5}>
-            <div id="microbiology-order-detail">
-              <OrderDetailPanel
-                caseId={caseDetail.id}
-                orderDetail={caseDetail.orderDetail}
-                service={service}
-                onSaved={() => loadCase({ showLoading: false })}
-              />
-            </div>
-            <CaseTimelinePanel
-              activities={caseDetail.activities}
-              onRecordActivity={recordActivity}
-              saving={saving}
-              setupSectionId="microbiology-setup"
-              timelineSectionId="microbiology-timeline"
-            />
-            <div id="microbiology-isolates">
-              <IsolatePanel
-                caseId={caseDetail.id}
-                isolates={caseDetail.isolates}
-                onCreateIsolate={createIsolate}
-                saving={saving}
-              />
-            </div>
-            <div id="microbiology-ast">
-              <AstEntryPanel
-                caseId={caseDetail.id}
-                workflowType={caseDetail.workflowType}
-                isolates={caseDetail.isolates}
-                service={service}
-                saving={saving}
-                onAstUpdated={() =>
-                  setReadinessRefreshToken((currentValue) => currentValue + 1)
-                }
-              />
-            </div>
-            <div id="microbiology-critical-communication">
-              <CriticalCommunicationPanel
-                caseId={caseDetail.id}
-                service={service}
-              />
-            </div>
-            <div id="microbiology-reports">
-              <ReportReadinessPanel
-                caseId={caseDetail.id}
-                service={service}
-                finalReleaseState={caseDetail.stage}
-                onReleased={() => loadCase({ showLoading: false })}
-                refreshToken={readinessRefreshToken}
-              />
-            </div>
-          </Stack>
-        </div>
-      </div>
+      </Stack>
     </main>
   );
 };

@@ -28,6 +28,12 @@ const runWithReading = {
       method: "MIC",
       rawValue: 4,
     },
+    {
+      id: "reading-2",
+      interpretation: "INTERMEDIATE",
+      method: "ZONE",
+      rawValue: 16,
+    },
   ],
 };
 
@@ -38,6 +44,7 @@ const runWithOverride = {
       ...runWithReading.readings[0],
       overrideInterpretation: "RESISTANT",
     },
+    runWithReading.readings[1],
   ],
 };
 
@@ -143,6 +150,12 @@ describe("AstEntryPanel", () => {
           element.textContent === "SUSCEPTIBLE",
       ),
     ).toBeInTheDocument();
+    expect(screen.getAllByTestId("microbiology-ast-reading-row")).toHaveLength(
+      2,
+    );
+    expect(
+      screen.getAllByTestId("microbiology-ast-reading-row")[1],
+    ).toHaveTextContent("INTERMEDIATE");
     fireEvent.change(screen.getByLabelText("Override reason"), {
       target: { value: "mixed growth confirmed on repeat" },
     });

@@ -9,6 +9,7 @@ import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -50,6 +51,16 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         return ResponseEntity.ok(forms);
     }
 
+    @GetMapping("/organisms")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms() {
+        List<MicroReferenceOptionForm> forms = new ArrayList<>();
+        for (MicroOrganism organism : referenceService.getActiveOrganisms()) {
+            forms.add(toOrganismForm(organism));
+        }
+        return ResponseEntity.ok(forms);
+    }
+
     @GetMapping("/breakpoint-standards")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroReferenceOptionForm>> getBreakpointStandards() {
@@ -81,6 +92,14 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         form.id = antibiotic.getId();
         form.label = antibiotic.getDisplayName();
         form.code = antibiotic.getWhonetCode();
+        return form;
+    }
+
+    private MicroReferenceOptionForm toOrganismForm(MicroOrganism organism) {
+        MicroReferenceOptionForm form = new MicroReferenceOptionForm();
+        form.id = organism.getId();
+        form.label = organism.getDisplayName();
+        form.code = organism.getWhonetCode();
         return form;
     }
 }

@@ -203,9 +203,53 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
         return setup;
     }
 
+    @Override
+    @Transactional
+    public MicroCultureSetup getOrCreateCultureSetup(MicroCultureSetup setup) {
+        requireText(setup == null ? null : setup.getMethodId(), "setup.methodId");
+        requireText(setup == null ? null : setup.getName(), "setup.name");
+        requireText(setup == null ? null : setup.getWorkflowType(), "setup.workflowType");
+
+        MicroCultureSetup existing = cultureSetupDAO.getActiveSetupForMethod(setup.getMethodId(),
+                setup.getWorkflowType());
+        if (existing == null) {
+            return createCultureSetup(setup);
+        }
+
+        boolean changed = false;
+        if (!setup.getName().equals(existing.getName())) {
+            existing.setName(setup.getName());
+            changed = true;
+        }
+        if (!sameValue(setup.getMediaDefaults(), existing.getMediaDefaults())) {
+            existing.setMediaDefaults(setup.getMediaDefaults());
+            changed = true;
+        }
+        if (!sameValue(setup.getIncubationDefaults(), existing.getIncubationDefaults())) {
+            existing.setIncubationDefaults(setup.getIncubationDefaults());
+            changed = true;
+        }
+        if (!sameValue(setup.getAtmosphereDefaults(), existing.getAtmosphereDefaults())) {
+            existing.setAtmosphereDefaults(setup.getAtmosphereDefaults());
+            changed = true;
+        }
+        if (!sameValue(setup.getReportableTestAnalyteId(), existing.getReportableTestAnalyteId())) {
+            existing.setReportableTestAnalyteId(setup.getReportableTestAnalyteId());
+            changed = true;
+        }
+        if (changed) {
+            cultureSetupDAO.update(existing);
+        }
+        return existing;
+    }
+
     private void requireText(String value, String fieldName) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(fieldName + " is required");
         }
+    }
+
+    private boolean sameValue(String first, String second) {
+        return first == null ? second == null : first.equals(second);
     }
 }

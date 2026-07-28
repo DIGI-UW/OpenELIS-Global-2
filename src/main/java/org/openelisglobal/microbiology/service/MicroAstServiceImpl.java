@@ -5,6 +5,7 @@ import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -13,6 +14,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
@@ -28,16 +30,18 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroAstRunDAO runDAO;
     private final MicroAstReadingDAO readingDAO;
     private final MicroIsolateDAO isolateDAO;
+    private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
     private final MicroBreakpointService breakpointService;
     private final MicroAstInterpretationService interpretationService;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
-            MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
+            MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
             MicroAstInterpretationService interpretationService) {
         this.runDAO = runDAO;
         this.readingDAO = readingDAO;
         this.isolateDAO = isolateDAO;
+        this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.breakpointService = breakpointService;
         this.interpretationService = interpretationService;
@@ -55,6 +59,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableCase(isolate.getCaseId());
         MicroAstRun run = new MicroAstRun();
         run.setIsolateId(isolateId);
         run.setPanelId(panelId);
@@ -80,6 +85,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = runDAO.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableCase(isolate.getCaseId());
         MicroBreakpointRule rule = findRule(run, isolate, antibioticId, method);
         MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
 
@@ -107,13 +113,14 @@ public class MicroAstServiceImpl implements MicroAstService {
         interpretationService.validateOverride(overrideInterpretation, overrideReason);
         MicroAstReading reading = readingDAO.get(readingId)
                 .orElseThrow(() -> new IllegalArgumentException("AST reading not found"));
-        reading.setOverrideInterpretation(overrideInterpretation.name());
-        reading.setOverrideReason(overrideReason);
-        MicroAstReading updated = readingDAO.update(reading);
         MicroAstRun run = runDAO.get(reading.getAstRunId())
                 .orElseThrow(() -> new IllegalArgumentException("AST run not found"));
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableCase(isolate.getCaseId());
+        reading.setOverrideInterpretation(overrideInterpretation.name());
+        reading.setOverrideReason(overrideReason);
+        MicroAstReading updated = readingDAO.update(reading);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
                 "AST interpretation overridden", "{\"readingId\":\"" + readingId + "\"}");
         return updated;
@@ -124,12 +131,13 @@ public class MicroAstServiceImpl implements MicroAstService {
     public MicroAstRun reviewRun(String runId, String performedBy) {
         MicroCaseServiceImpl.requireText(runId, "runId");
         MicroAstRun run = runDAO.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableCase(isolate.getCaseId());
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         run.setReviewedAt(MicroCaseServiceImpl.now());
         run.setReviewedBy(performedBy);
         MicroAstRun updated = runDAO.update(run);
-        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
-                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_REVIEWED, performedBy, "AST reviewed",
                 "{\"astRunId\":\"" + runId + "\"}");
         return updated;
@@ -166,6 +174,11 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         return breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(), null, antibioticId,
                 method.name(), null, method.name());
+    }
+
+    private void requireMutableCase(String caseId) {
+        MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        MicroCaseMutationGuard.requireMutable(microCase);
     }
 
     private void recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy, String note,

@@ -47,11 +47,15 @@ public class MicroReportReleaseServiceTest {
     @Mock
     private MicroCriticalCommunicationDAO communicationDAO;
 
+    @Mock
+    private MicroReportProjectionService reportProjectionService;
+
     private MicroReportReleaseService service;
 
     @Before
     public void setUp() {
-        service = new MicroReportReleaseServiceImpl(caseDAO, activityDAO, readinessService, communicationDAO);
+        service = new MicroReportReleaseServiceImpl(caseDAO, activityDAO, readinessService, communicationDAO,
+                reportProjectionService);
     }
 
     @Test
@@ -82,6 +86,8 @@ public class MicroReportReleaseServiceTest {
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(caseDAO.update(microCase)).thenReturn(microCase);
+        when(reportProjectionService.releaseFinal("case-1", "1"))
+                .thenReturn(new MicroReportProjectionResult("Isolate 1: Escherichia coli", true, List.of("11")));
 
         MicroCase released = service.releaseFinal("case-1", "1");
 
@@ -112,6 +118,8 @@ public class MicroReportReleaseServiceTest {
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(caseDAO.update(microCase)).thenReturn(microCase);
+        when(reportProjectionService.releaseFinal("case-1", "1"))
+                .thenReturn(new MicroReportProjectionResult("Isolate 1: Escherichia coli", true, List.of("11")));
 
         MicroCase released = service.releaseFinal("case-1", "1");
 

@@ -1,5 +1,8 @@
 package org.openelisglobal.microbiology.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class MicroCaseOrderDetailRequestForm {
 
     public String patientOrigin;
@@ -7,5 +10,4 @@ public class MicroCaseOrderDetailRequestForm {
     public String clinicalHistory;
     public String antibioticExposure;
     public String criticalNotificationPreference;
-    public String performedBy;
 }

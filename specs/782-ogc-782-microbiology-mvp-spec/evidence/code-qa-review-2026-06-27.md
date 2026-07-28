@@ -1,7 +1,8 @@
 # OGC-782 Microbiology MVP Code-QA Review
 
-Applied locally on 2026-06-27 using `DIGI-UW/code-qa` from
-`https://github.com/DIGI-UW/code-qa` cloned at `/tmp/code-qa`.
+Originally applied locally on 2026-06-27 using `DIGI-UW/code-qa`. The reviewed
+tooling is now pinned in this repository at `tools/code-qa`, revision
+`30528d176bd128b4765242d130f38ca9fb85d7b8`.
 
 ## Meaningful Test Coverage
 
@@ -52,7 +53,7 @@ unused migration was introduced in M7.
 Ran:
 
 ```bash
-node /tmp/code-qa/skills/evidence-bundle/scripts/evidence-bundle.mjs \
+node tools/code-qa/skills/evidence-bundle/scripts/evidence-bundle.mjs \
   --results frontend/test-results \
   --evidence frontend/e2e-evidence \
   --out specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27 \

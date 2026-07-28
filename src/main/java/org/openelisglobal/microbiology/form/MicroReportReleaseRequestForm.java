@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.form;
 
-public class MicroReportReleaseRequestForm {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-    public String performedBy;
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class MicroReportReleaseRequestForm {
 }

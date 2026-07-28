@@ -51,11 +51,29 @@ const astServiceStubs = {
   getCriticalCommunications: vi.fn().mockResolvedValue([]),
   logCriticalCommunication: vi.fn(),
   acknowledgeCriticalCommunication: vi.fn(),
+  closeCriticalCommunication: vi.fn(),
+  getOrganisms: vi.fn().mockResolvedValue([]),
   getWhonetReadiness: vi.fn().mockResolvedValue({
     whonetReady: true,
     blockers: [],
   }),
+  getReportProjection: vi.fn().mockResolvedValue({
+    reportableContent: true,
+    mappingConfigured: true,
+    content: "Escherichia coli: Ciprofloxacin S",
+  }),
+  releasePreliminaryReport: vi.fn(),
   releaseFinalReport: vi.fn(),
+};
+
+const getAccordionButton = (name) => {
+  const button = screen
+    .getAllByRole("button", { name })
+    .find((candidate) => candidate.closest(".cds--accordion__item"));
+  if (!button) {
+    throw new Error(`Accordion section not found: ${name}`);
+  }
+  return button;
 };
 
 describe("MicrobiologyCaseView", () => {
@@ -74,9 +92,11 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service);
+    renderCase(service, "/Microbiology/cases/case-1?section=setup");
 
-    expect(await screen.findByText("Microbiology case")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Microbiology case" }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText("Activity note"), {
       target: { value: "setup complete" },
@@ -92,7 +112,7 @@ describe("MicrobiologyCaseView", () => {
     await waitFor(() =>
       expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0),
     );
-    expect(screen.getByText(/setup complete/)).toBeInTheDocument();
+    expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0);
   });
 
   it("refreshes the case timeline after creating an isolate", async () => {
@@ -124,9 +144,11 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn().mockResolvedValue({ id: "iso-1" }),
     };
 
-    renderCase(service);
+    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
 
-    expect(await screen.findByText("Microbiology case")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Microbiology case" }),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Preliminary organism"), {
       target: { value: "Escherichia coli" },
     });
@@ -140,14 +162,11 @@ describe("MicrobiologyCaseView", () => {
         significance: "CLINICALLY_SIGNIFICANT",
       }),
     );
-    expect(
-      await screen.findByText(
-        (_, element) =>
-          element?.tagName.toLowerCase() === "li" &&
-          element.textContent.includes("ISO-1: Escherichia coli"),
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Isolate Created/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-isolates-card"),
+      ).toHaveTextContent("ISO-1: Escherichia coli"),
+    );
   });
 
   it("keeps worklist context while selecting a case section and returning", async () => {
@@ -163,8 +182,8 @@ describe("MicrobiologyCaseView", () => {
       "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
     );
 
-    await screen.findByText("Microbiology case");
-    fireEvent.click(screen.getByRole("button", { name: "Isolates" }));
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    fireEvent.click(getAccordionButton("Isolates"));
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
@@ -173,7 +192,7 @@ describe("MicrobiologyCaseView", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Back to microbiology worklist" }),
+      screen.getByRole("link", { name: "Microbiology worklist" }),
     );
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(

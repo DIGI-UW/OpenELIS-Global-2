@@ -7,6 +7,8 @@ export interface SeededMicrobiologyCase {
   caseId: string;
   sampleItemId: string;
   sampleId: string;
+  patientId: string;
+  analysisId: string;
   siblingCaseId?: string;
 }
 
@@ -50,6 +52,8 @@ async function provisionMicrobiologyScenario(
     caseId: body.caseId,
     sampleItemId: body.sampleItemId,
     sampleId: body.sampleId,
+    patientId: body.patientId,
+    analysisId: body.analysisId,
     siblingCaseId: body.siblingCaseId,
   };
 }
