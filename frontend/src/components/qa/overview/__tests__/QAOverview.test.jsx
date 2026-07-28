@@ -72,6 +72,16 @@ const NCE_LIST = [
     effective: "No",
     reportDate: LAST_MONTH,
   },
+  // CAPA recorded, verdict pending => effectiveness review due
+  { id: "7", severity: "MAJOR", status: "CAPA", reportDate: LAST_MONTH },
+  // CAPA already reviewed ineffective => not due
+  {
+    id: "8",
+    severity: "MINOR",
+    status: "CAPA",
+    effective: "No",
+    reportDate: LAST_MONTH,
+  },
 ];
 
 const SUMMARY = {
