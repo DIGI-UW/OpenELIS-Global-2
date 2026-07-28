@@ -64,13 +64,22 @@ export default function AddLocationPage({ type }) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [deviceTypes, setDeviceTypes] = useState([]);
   const [formData, setFormData] = useState({
     [meta.nameField]: "",
     code: "",
     active: true,
     description: "",
+    ...(type === "device" ? { type: "" } : {}),
     ...(meta.parentField ? { [meta.parentField]: "" } : {}),
   });
+
+  useEffect(() => {
+    if (type !== "device") return;
+    getFromOpenElisServer("/rest/storage/devices/types", (response) => {
+      if (Array.isArray(response)) setDeviceTypes(response);
+    });
+  }, [type]);
 
   useEffect(() => {
     if (!meta.parentEndpoint) {
@@ -136,6 +145,9 @@ export default function AddLocationPage({ type }) {
     if (type === "room") {
       payload.description = formData.description?.trim() || null;
     }
+    if (type === "device") {
+      payload.type = formData.type || null;
+    }
     if (meta.parentField) {
       payload[meta.parentField] = formData[meta.parentField] || null;
     }
@@ -157,7 +169,7 @@ export default function AddLocationPage({ type }) {
   };
 
   return (
-    <div className="storage-add-page">
+    <div className="storage-add-page pageContent">
       <BreadcrumbNav crumbs={crumbs} />
       <h1>
         <FormattedMessage
@@ -268,6 +280,26 @@ export default function AddLocationPage({ type }) {
           </>
         )}
 
+        {type === "device" && (
+          <Dropdown
+            id="storage-add-device-type"
+            titleText={intl.formatMessage({
+              id: "storage.device.type",
+              defaultMessage: "Device type",
+            })}
+            label={intl.formatMessage({
+              id: "storage.picker.select",
+              defaultMessage: "Select device type",
+            })}
+            items={deviceTypes}
+            itemToString={(item) => item || ""}
+            selectedItem={formData.type || null}
+            onChange={({ selectedItem }) =>
+              updateField("type", selectedItem || "")
+            }
+          />
+        )}
+
         <Checkbox
           id="storage-add-active"
           labelText={intl.formatMessage({
@@ -283,7 +315,11 @@ export default function AddLocationPage({ type }) {
         <Button kind="secondary" onClick={navigateBack}>
           <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
         </Button>
-        <Button kind="primary" onClick={handleSubmit} disabled={saving}>
+        <Button
+          kind="primary"
+          onClick={handleSubmit}
+          disabled={saving || (type === "device" && !formData.type)}
+        >
           <FormattedMessage id="label.add" defaultMessage="Add" />
         </Button>
       </div>

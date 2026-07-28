@@ -198,6 +198,13 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
 
     @Override
     @Transactional(readOnly = true)
+    public synchronized void refreshTypeIdCache() {
+        observationTypeToIdMap.clear();
+        initialize();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ObservationHistory getById(ObservationHistory observation) {
         return getBaseObjectDAO().getById(observation);
     }

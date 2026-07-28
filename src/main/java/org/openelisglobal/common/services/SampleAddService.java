@@ -153,6 +153,9 @@ public class SampleAddService {
                 }
                 item.setCollector(sampleItem.attributeValue("collector"));
                 item.setCollectionConditions(sampleItem.attributeValue("collectionConditions"));
+                item.setCollectionMethod(sampleItem.attributeValue("collectionMethod"));
+                item.setSampleTemperature(sampleItem.attributeValue("sampleTemperature"));
+                item.setSpecimenOrigin(sampleItem.attributeValue("specimenOrigin"));
 
                 String receivedDateStr = sampleItem.attributeValue("receivedDate");
                 String receivedTimeStr = sampleItem.attributeValue("receivedTime");

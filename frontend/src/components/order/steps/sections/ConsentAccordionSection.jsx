@@ -1,27 +1,26 @@
 import React from "react";
-import { useIntl, FormattedMessage } from "react-intl";
+import { useIntl } from "react-intl";
 import {
   Accordion,
   AccordionItem,
   Checkbox,
   TextInput,
   Tag,
-  Tile,
   Stack,
 } from "@carbon/react";
-import { UserAvatar, Time } from "@carbon/icons-react";
+import CustomDatePicker from "../../../common/CustomDatePicker";
 
 /**
- * ConsentAccordionSection - Informed consent capture per OGC-557 FRS v1.1.
+ * ConsentAccordionSection - Informed consent capture.
  *
  * Exported for reuse in Add Order, Edit Order, and the Sample Collection Wizard.
  *
  * Features:
- * - Carbon Accordion section, expanded by default (FR-1-001..FR-1-003)
- * - Teal "Consent Recorded" Tag in header when consent is given (FR-1-004)
- * - Consent acknowledgment checkbox (advisory per FR-5-001/FR-5-002)
+ * - Carbon Accordion section, expanded by default
+ * - Teal "Consent Recorded" Tag in header when consent is given
+ * - Consent acknowledgment checkbox
  * - Optional consent form reference number, revealed when checkbox checked
- * - Read-only audit Tile once consent is recorded server-side
+ * - Operator-entered "Recorded by" name and "Recorded at" date
  *
  * Spec: https://github.com/DIGI-UW/openelis-work/blob/main/designs/sample-collection/informed-consent.md
  */
@@ -111,84 +110,85 @@ export const ConsentAccordionSection = ({
             })}
             checked={consentGiven}
             onChange={(_, { checked }) => {
-              // Clearing the checkbox clears the reference per FR-3-002
+              // Clearing the checkbox clears all fields
               if (!checked) {
                 onConsentChange({
                   ...consentData,
                   consentGiven: false,
                   consentFormReference: "",
+                  consentRecordedAt: "",
+                  consentRecordedBy: "",
                 });
               } else {
-                handleConsentChange("consentGiven", true);
+                onConsentChange({
+                  ...consentData,
+                  consentGiven: true,
+                });
               }
             }}
             disabled={isReadOnly}
           />
 
-          {/* Reference number field — revealed only when checkbox is checked (FR-3-001) */}
+          {/* Form fields — revealed only when checkbox is checked */}
           {consentGiven && (
-            <TextInput
-              id="consentFormReference"
-              labelText={intl.formatMessage({
-                id: "label.informedConsent.formReference",
-                defaultMessage: "Consent Form Reference No.",
-              })}
-              placeholder={intl.formatMessage({
-                id: "placeholder.informedConsent.formReference",
-                defaultMessage: "e.g. CF-2026-00123",
-              })}
-              maxLength={FORM_REF_MAX_LENGTH}
-              value={consentFormReference}
-              onChange={(e) =>
-                handleConsentChange("consentFormReference", e.target.value)
-              }
-              invalid={!!formRefError}
-              invalidText={formRefError || ""}
-              disabled={isReadOnly}
-              style={{ maxWidth: "400px" }}
-            />
-          )}
+            <>
+              <TextInput
+                id="consentFormReference"
+                labelText={intl.formatMessage({
+                  id: "label.informedConsent.formReference",
+                  defaultMessage: "Consent Form Reference No.",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "placeholder.informedConsent.formReference",
+                  defaultMessage: "e.g. CF-2026-00123",
+                })}
+                maxLength={FORM_REF_MAX_LENGTH}
+                value={consentFormReference}
+                onChange={(e) =>
+                  handleConsentChange("consentFormReference", e.target.value)
+                }
+                invalid={!!formRefError}
+                invalidText={formRefError || ""}
+                disabled={isReadOnly}
+                style={{ maxWidth: "400px" }}
+              />
 
-          {/* Read-only audit Tile — shown when editing an order with previously recorded consent (FR-4-004) */}
-          {consentGiven && consentRecordedAt && (
-            <Tile>
-              <p className="consent-audit-heading">
-                <FormattedMessage
-                  id="heading.informedConsent.auditRecord"
-                  defaultMessage="Consent Audit Record"
+              <TextInput
+                id="consentRecordedBy"
+                labelText={intl.formatMessage({
+                  id: "label.informedConsent.recordedBy",
+                  defaultMessage: "Consent Recorded By",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "placeholder.informedConsent.recordedBy",
+                  defaultMessage: "e.g. Dr. Smith",
+                })}
+                maxLength={255}
+                value={consentRecordedBy}
+                onChange={(e) =>
+                  handleConsentChange("consentRecordedBy", e.target.value)
+                }
+                disabled={isReadOnly}
+                style={{ maxWidth: "400px" }}
+              />
+
+              <div style={{ maxWidth: "400px" }}>
+                <CustomDatePicker
+                  id="consentRecordedAt"
+                  labelText={intl.formatMessage({
+                    id: "label.informedConsent.recordedAt",
+                    defaultMessage: "Consent Recorded At",
+                  })}
+                  value={consentRecordedAt}
+                  updateStateValue={true}
+                  disallowFutureDate={true}
+                  disabled={isReadOnly}
+                  onChange={(date) =>
+                    handleConsentChange("consentRecordedAt", date)
+                  }
                 />
-              </p>
-              <Stack gap={3}>
-                {consentRecordedBy && (
-                  <Stack orientation="horizontal" gap={3}>
-                    <UserAvatar size={16} />
-                    <span>
-                      <strong>
-                        <FormattedMessage
-                          id="label.informedConsent.recordedBy"
-                          defaultMessage="Recorded by"
-                        />
-                        :
-                      </strong>{" "}
-                      {consentRecordedBy}
-                    </span>
-                  </Stack>
-                )}
-                <Stack orientation="horizontal" gap={3}>
-                  <Time size={16} />
-                  <span>
-                    <strong>
-                      <FormattedMessage
-                        id="label.informedConsent.recordedAt"
-                        defaultMessage="Recorded on"
-                      />
-                      :
-                    </strong>{" "}
-                    {consentRecordedAt}
-                  </span>
-                </Stack>
-              </Stack>
-            </Tile>
+              </div>
+            </>
           )}
         </Stack>
       </AccordionItem>

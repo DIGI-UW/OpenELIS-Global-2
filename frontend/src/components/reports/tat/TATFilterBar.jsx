@@ -83,13 +83,13 @@ function TATFilterBar({ onGenerate }) {
   const [siteOptions, setSiteOptions] = useState([]);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/test-sections", (res) => {
+    getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", (res) => {
       if (res)
         setLabUnitOptions(
           res.map((item) => ({ id: item.id, text: item.value })),
         );
     });
-    getFromOpenElisServer("/rest/tests", (res) => {
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (res) => {
       if (res)
         setTestOptions(
           res.map((item) => ({ id: item.id, text: item.value })),
@@ -101,7 +101,7 @@ function TATFilterBar({ onGenerate }) {
           res.map((item) => ({ id: item.id, text: item.value })),
         );
     });
-    getFromOpenElisServer("/rest/site-names", (res) => {
+    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", (res) => {
       if (res)
         setSiteOptions(
           res.map((item) => ({
@@ -184,10 +184,9 @@ function TATFilterBar({ onGenerate }) {
       >
         <DatePicker
           datePickerType="single"
+          dateFormat="Y-m-d"
           value={fromDate}
-          onChange={([date]) =>
-            date && setFromDate(date.toISOString().split("T")[0])
-          }
+          onChange={(_dates, dateStr) => setFromDate(dateStr)}
         >
           <DatePickerInput
             id="tat-from-date"
@@ -199,10 +198,9 @@ function TATFilterBar({ onGenerate }) {
 
         <DatePicker
           datePickerType="single"
+          dateFormat="Y-m-d"
           value={toDate}
-          onChange={([date]) =>
-            date && setToDate(date.toISOString().split("T")[0])
-          }
+          onChange={(_dates, dateStr) => setToDate(dateStr)}
         >
           <DatePickerInput
             id="tat-to-date"
@@ -219,6 +217,7 @@ function TATFilterBar({ onGenerate }) {
             id: s.id,
             text: intl.formatMessage({ id: s.labelKey }),
           }))}
+          itemToString={(item) => item?.text || ""}
           selectedItem={{
             id: segment,
             text: intl.formatMessage({
@@ -335,6 +334,7 @@ function TATFilterBar({ onGenerate }) {
             { id: "STAT", text: intl.formatMessage({ id: "reports.tat.priority.stat" }) },
             { id: "ASAP", text: intl.formatMessage({ id: "reports.tat.priority.asap" }) },
           ]}
+          itemToString={(item) => item?.text || ""}
           selectedItem={{
             id: priority,
             text: priority

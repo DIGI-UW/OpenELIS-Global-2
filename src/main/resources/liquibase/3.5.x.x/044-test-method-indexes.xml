@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 review follow-up (#3714) — test_method integrity + perf.
+    Additive to the merged 039 (which is released and immutable):
+      1. retype test_id / method_id VARCHAR(36) -> numeric(10,0) to match test.id / method.id.
+      2. foreign keys test_id -> test, method_id -> method for referential integrity.
+      3. partial-unique (test_id, method_id) for ACTIVE links — closes the
+         duplicate-link race the app's check-then-insert can lose.
+      4. index on test_id — every link lookup filters by it.
+      5. drop the unused test_method_seq (id is a Java-generated UUID).
+    -->
+
+    <!-- Align the id-reference columns to numeric(10,0) so they match test.id / method.id
+         (the merged 039 created them VARCHAR(36)). The table is new in #3709 and typically
+         empty, so the type change carries no data; USING makes it safe if a row does exist. -->
+    <changeSet id="OGC-949-test-method-retype-ids" author="OGC">
+        <sql>ALTER TABLE clinlims.test_method ALTER COLUMN test_id TYPE numeric(10,0) USING test_id::numeric(10,0);</sql>
+        <sql>ALTER TABLE clinlims.test_method ALTER COLUMN method_id TYPE numeric(10,0) USING method_id::numeric(10,0);</sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.test_method ALTER COLUMN test_id TYPE varchar(36) USING test_id::varchar(36);</sql>
+            <sql>ALTER TABLE clinlims.test_method ALTER COLUMN method_id TYPE varchar(36) USING method_id::varchar(36);</sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Referential integrity: a link must point at a real test and a real method.
+         test_id cascades (a link is owned by its test); method_id restricts (a method is
+         shared reference data, so block deleting one that is still linked). -->
+    <changeSet id="OGC-949-test-method-foreign-keys" author="OGC">
+        <addForeignKeyConstraint
+            constraintName="test_method_test_id_fkey"
+            baseTableSchemaName="clinlims" baseTableName="test_method" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            constraintName="test_method_method_id_fkey"
+            baseTableSchemaName="clinlims" baseTableName="test_method" baseColumnNames="method_id"
+            referencedTableSchemaName="clinlims" referencedTableName="method" referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_method" constraintName="test_method_method_id_fkey"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_method" constraintName="test_method_test_id_fkey"/>
+        </rollback>
+    </changeSet>
+
+    <!-- At most one ACTIVE link per (test, method); soft-deleted rows (is_active='N')
+         don't block re-linking, so this is a partial index. -->
+    <changeSet id="OGC-949-test-method-unique-active" author="OGC">
+        <sql>CREATE UNIQUE INDEX uq_test_method_active ON clinlims.test_method (test_id, method_id) WHERE is_active = 'Y';</sql>
+        <rollback>
+            <sql>DROP INDEX IF EXISTS clinlims.uq_test_method_active;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-949-test-method-test-id-index" author="OGC">
+        <createIndex schemaName="clinlims" tableName="test_method" indexName="idx_test_method_test_id">
+            <column name="test_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="test_method" indexName="idx_test_method_test_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-949-drop-unused-test-method-seq" author="OGC">
+        <dropSequence schemaName="clinlims" sequenceName="test_method_seq"/>
+        <rollback>
+            <createSequence schemaName="clinlims" sequenceName="test_method_seq" startValue="1" incrementBy="1"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

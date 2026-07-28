@@ -18,6 +18,7 @@ public class NceTypeServiceImpl extends AuditableBaseObjectServiceImpl<NceType, 
 
     NceTypeServiceImpl() {
         super(NceType.class);
+        this.auditTrailLog = true;
     }
 
     @Override

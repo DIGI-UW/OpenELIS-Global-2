@@ -253,8 +253,17 @@ public class SampleOrderItem implements Serializable {
             SampleEditForm.SampleEdit.class })
     private String consentFormReference;
 
-    // Audit fields for consent (read-only, populated by service layer)
+    // Audit fields for consent (form inputs)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    @ValidDate(relative = DateRelation.PAST, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
     private String consentRecordedAt;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    @Size(max = 255, groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
+            SampleEditForm.SampleEdit.class })
     private String consentRecordedBy;
 
     // for display

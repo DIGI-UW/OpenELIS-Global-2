@@ -15,7 +15,7 @@ jobs:
       contents: read
     steps:
       - name: Delete old GHCR e2e-cache package versions
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const owner = context.repo.owner;

@@ -220,6 +220,21 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
     }
 
+    // OGC-285 flow migration — TODO (NEEDS-DESIGN-CALL, do NOT force):
+    // The pathology / cytology / immunohistochemistry case-save flow is
+    // intentionally NOT migrated to the OGC-285 preset/snapshot model and remains
+    // on the legacy BarcodeWorkflowPrintService below. The gap is a product/design
+    // decision, not missing wiring: the Block / Slide / Freezer system presets are
+    // prints_per_sample and, like all per-sample presets, surface in the
+    // aggregation (OrderEntryLabelRequestService) ONLY via test->preset links — but
+    // this flow injects block/slide/freezer counts directly onto the order
+    // (form.getNumBlockLabels()/Slide/Freezer), with no test linking to those
+    // presets. The aggregation therefore cannot emit Block/Slide/Freezer columns
+    // for a pathology order. Decision needed before migrating: extend the
+    // aggregation/snapshot model to surface these per-sample presets without a
+    // test link (e.g. a pathology-context preset set), or drive them from an
+    // explicit non-test source. Until then, migrating here would silently drop the
+    // Block/Slide/Freezer labels. See the OGC-285 flow-migration report.
     private void populatePathologyWorkflowPrintModels(PathologySample pathologySample, PathologySampleForm form) {
         int orderLabels = normalizePathologyLabelQuantity(form.getNumOrderLabels());
         int specimenLabels = normalizePathologyLabelQuantity(form.getNumSpecimenLabels());

@@ -41,11 +41,15 @@ public class HistoryServiceImpl extends AuditableBaseObjectServiceImpl<History, 
 
     @Override
     public String insert(History history) {
+        // These overrides write straight to the DAO (bypassing super), so stamp the
+        // audit user here — the base class would otherwise do it in super.insert.
+        fillSysUserIdIfMissing(history);
         return baseObjectDAO.insert(history);
     }
 
     @Override
     public History update(History history) {
+        fillSysUserIdIfMissing(history);
         if (history.getLastupdated() == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "update",
                     "running update on an object with a missing version field can result in unintended"
@@ -59,23 +63,25 @@ public class HistoryServiceImpl extends AuditableBaseObjectServiceImpl<History, 
 
     @Override
     public void delete(History history) {
+        fillSysUserIdIfMissing(history);
         baseObjectDAO.delete(history);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<History> getSystemEventHistory(Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search, int page, int pageSize)
+            List<String> referenceTableIds, String activity, String search, String referenceId, int page, int pageSize)
             throws LIMSRuntimeException {
         return baseObjectDAO.getSystemEventHistory(startDate, endDate, sysUserId, referenceTableIds, activity, search,
-                page, pageSize);
+                referenceId, page, pageSize);
     }
 
     @Override
     @Transactional(readOnly = true)
     public long getSystemEventHistoryCount(Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search) throws LIMSRuntimeException {
+            List<String> referenceTableIds, String activity, String search, String referenceId)
+            throws LIMSRuntimeException {
         return baseObjectDAO.getSystemEventHistoryCount(startDate, endDate, sysUserId, referenceTableIds, activity,
-                search);
+                search, referenceId);
     }
 }

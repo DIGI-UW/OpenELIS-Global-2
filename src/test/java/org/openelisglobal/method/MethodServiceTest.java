@@ -44,8 +44,12 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
         List<Method> methods = mService.getAllActiveMethods();
 
         Assert.assertEquals(3, methods.size());
-        Assert.assertEquals("therapy", methods.get(0).getMethodName());
-        Assert.assertEquals("surgery", methods.get(2).getMethodName());
+        // getAllActiveMethods has no ORDER BY, so assert set membership rather
+        // than positions (which relied on incidental insertion/PK order).
+        java.util.Set<String> names = methods.stream().map(Method::getMethodName)
+                .collect(java.util.stream.Collectors.toSet());
+        Assert.assertTrue(names.contains("therapy"));
+        Assert.assertTrue(names.contains("surgery"));
     }
 
     @Test

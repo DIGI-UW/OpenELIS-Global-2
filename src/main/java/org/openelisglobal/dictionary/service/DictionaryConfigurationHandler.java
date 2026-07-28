@@ -225,9 +225,12 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
 
         DictionaryCategory category = getOrCreateCategory(categoryName);
 
-        // The same entry name CAN exist in different categories
-        Dictionary existingDict = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(dictEntry,
-                categoryName);
+        // CSV `category` column matches dictionary_category.name, consistent with
+        // getOrCreateCategory(categoryName) above. Looking up an existing row by
+        // description would silently fail for legacy categories where name and
+        // description diverge (e.g. id=218: name="Marital Status Demographic
+        // Information", description="Possible marriage status").
+        Dictionary existingDict = dictionaryService.getDictionaryEntryByNameAndCategoryName(dictEntry, categoryName);
         if (existingDict != null) {
             updateDictionaryFromCsv(existingDict, values, category, localAbbreviationIndex, isActiveIndex,
                     sortOrderIndex, loincCodeIndex, dictEntry, localizationColumns);
@@ -278,8 +281,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
                 // Use category name as description to avoid duplicate description conflicts
                 category.setDescription(categoryName);
                 category.setLocalAbbreviation(abbreviation);
-                category.setSysUserId("1"); // System user for configuration loading
-
                 String categoryId = dictionaryCategoryService.insert(category);
                 category = dictionaryCategoryService.get(categoryId);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "tryCreateCategoryWithUniqueAbbreviation",
@@ -341,9 +342,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             dictionary.setLoincCode(loincCode);
         }
 
-        // Set system user ID for audit
-        dictionary.setSysUserId("1"); // System user for configuration loading
-
         // Handle localization
         processLocalization(dictionary, values, dictEntry, localizationColumns);
     }
@@ -369,7 +367,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         if (localization == null) {
             localization = new Localization();
             localization.setDescription("dictionary entry: " + dictEntry);
-            localization.setSysUserId("1");
             isNewLocalization = true;
         }
 

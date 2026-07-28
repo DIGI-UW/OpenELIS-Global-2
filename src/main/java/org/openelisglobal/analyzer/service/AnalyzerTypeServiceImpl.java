@@ -95,6 +95,16 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
 
     @Override
     @Transactional(readOnly = true)
+    public AnalyzerType getByIdWithInitializedInstances(String id) {
+        AnalyzerType type = get(id);
+        if (type != null) {
+            Hibernate.initialize(type.getInstances());
+        }
+        return type;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analyzer> getInstancesForType(String analyzerTypeId) {
         AnalyzerType type = get(analyzerTypeId);
         if (type == null) {
@@ -118,7 +128,6 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
         defaultInstance.setDescription("Default instance for " + analyzerType.getName());
         defaultInstance.setAnalyzerType(analyzerType);
         defaultInstance.setActive(true);
-        defaultInstance.setSysUserId("1");
 
         analyzerService.insert(defaultInstance);
         return defaultInstance;

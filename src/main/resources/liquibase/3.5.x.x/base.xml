@@ -12,6 +12,9 @@
 
   <!-- NCE Enhancement - Phase 1: Foundation -->
   <include relativeToChangelogFile="true" file="002-nce-enhancement.xml"/>
+
+  <!-- OGC-561: Order Attachments — file uploads on a Sample/Order -->
+  <include relativeToChangelogFile="true" file="order-attachment.xml"/>
   <!-- Resync menu_seq after nce-012 used MAX(id)+1 instead of sequence -->
   <include relativeToChangelogFile="true" file="002a-resync-menu-seq.xml"/>
   <!-- Calendar Management + TAT Report permissions (OGC-310) -->
@@ -25,6 +28,9 @@
 
   <!-- LocationPicker refactor (Phase 5c): rename /Storage/samples → /Storage/sample-items -->
   <include relativeToChangelogFile="true" file="006-storage-sidenav-rename.xml"/>
+
+  <!-- Daemon system user for background/scheduled operations -->
+  <include relativeToChangelogFile="true" file="003-daemon-system-user.xml"/>
 
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
@@ -61,11 +67,114 @@
 
   <!-- Informed Consent Capture (OGC-557) -->
   <include relativeToChangelogFile="true" file="017-add-informed-consent-fields.xml"/>
+  <!-- Update consent_recorded_by field to store names instead of user IDs (OGC-558) -->
+  <include relativeToChangelogFile="true" file="019-update-consent-recorded-by-to-varchar.xml"/>
 
   <!-- Patient ID document scanning (OGC-66) -->
   <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
 
   <!-- Default nationality configuration for patient entry -->
   <include relativeToChangelogFile="true" file="default-nationality-config.xml"/>
+
+  <!-- Custom Notes + Target Disease Programme patient form fields -->
+  <include relativeToChangelogFile="true" file="018-add-patient-extra-fields.xml"/>
+
+  <!-- OGC-651 (LO-03-01): specimen detail freetext columns on sample_item -->
+  <include relativeToChangelogFile="true" file="020-add-specimen-detail-columns.xml"/>
+
+  <!-- OGC-650 (LO-01-01): patient registration GPS lat/long on person -->
+  <include relativeToChangelogFile="true" file="021-add-person-gps-columns.xml"/>
+
+  <!-- OGC-650 (LO-01-01): admin toggle for patient GPS capture (Patient Configuration Menu) -->
+  <include relativeToChangelogFile="true" file="027-add-patient-gps-capture-config.xml"/>
+
+  <!-- Repoint 'Accession number prefix' to siteIdentity domain so it shows up under Admin > General Configuration > Site Information. -->
+  <include relativeToChangelogFile="true" file="028-backfill-accession-prefix-domain.xml"/>
+
+  <!-- OGC-669 (LO-01-01): historical Madagascar address columns on person; 024 migrates these to generic identities. -->
+  <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
+  <include relativeToChangelogFile="true" file="024-migrate-madagascar-address-fields-to-identities.xml"/>
+
+  <include relativeToChangelogFile="true" file="026-register-audit-ref-tables-for-p0-services.xml"/>
+
+  <!-- Fix typo on the legacy "Urine prenancy test" -->
+  <include relativeToChangelogFile="true" file="030-fix-urine-pregnancy-test-typo.xml"/>
+
+  <include relativeToChangelogFile="true" file="031-widen-user-and-accession-columns.xml"/>
+
+  <!-- Method shortcode column + test_method join table -->
+  <include relativeToChangelogFile="true" file="039-test-method-links.xml"/>
+
+  <!-- OGC-949 M1 / OGC-936: Test domain + WHONET reference/config -->
+  <include relativeToChangelogFile="true" file="040-test-domain-amr-whonet.xml"/>
+
+  <!-- OGC-949 M1 / OGC-937: result components + component_id backfill + interpretations -->
+  <include relativeToChangelogFile="true" file="041-result-components.xml"/>
+
+  <!-- OGC-949 M1 / OGC-938: sample handling + UoM master + sample-type display order -->
+  <include relativeToChangelogFile="true" file="042-handling-uom-displayorder.xml"/>
+
+  <!-- OGC-949 M1 / OGC-939: activation-acknowledgment audit + terminology mappings -->
+  <include relativeToChangelogFile="true" file="043-acknowledgment-terminology.xml"/>
+
+  <!-- OGC-949 review follow-up (#3714): test_method unique-active index + test_id index + drop unused seq -->
+  <include relativeToChangelogFile="true" file="044-test-method-indexes.xml"/>
+
+  <!-- Widen observation_history.value to fit longer Provisional Clinical Diagnosis text (>= 250 chars) -->
+  <include relativeToChangelogFile="true" file="045-widen-observation-history-value.xml"/>
+
+  <!-- OGC-949 / OGC-937: repair NULL @Version (last_updated) on backfilled result components -->
+  <include relativeToChangelogFile="true" file="046-fix-component-version.xml"/>
+
+  <!-- OGC-949 / OGC-957: repair the 043 LOINC backfill (EQUIVALENT -> SAME_AS; seed NULL @Version) -->
+  <include relativeToChangelogFile="true" file="047-fix-loinc-terminology.xml"/>
+
+  <!-- OGC-949 / OGC-986 (epic OGC-760): test_reagent_link foundation for the v2 Reagents tab -->
+  <include relativeToChangelogFile="true" file="048-test-reagent-link.xml"/>
+
+  <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
+  <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
+
+  <!-- OGC-949 / OGC-766: cascade test_sample_handling_history when its handling row is deleted -->
+  <include relativeToChangelogFile="true" file="050-tsh-history-fk-cascade.xml"/>
+
+  <!-- OGC-749 / OGC-963 (FR-29): code + UCUM columns for the inline unit-create form -->
+  <include relativeToChangelogFile="true" file="051-uom-code-ucum.xml"/>
+
+  <!-- OGC-949: explicit is_primary boolean on result components -->
+  <include relativeToChangelogFile="true" file="052-component-is-primary.xml"/>
+
+  <!-- OGC-949 / OGC-1128: component-aware terminology mappings (nullable component_id) -->
+  <include relativeToChangelogFile="true" file="053-terminology-component-scope.xml"/>
+
+  <!-- OGC-949 / OGC-1127: per-component show_on_report default -->
+  <include relativeToChangelogFile="true" file="054-component-show-on-report.xml"/>
+
+  <!-- OGC-949 / OGC-1125: pre-seed molecular (GeneXpert PCR) result components -->
+  <include relativeToChangelogFile="true" file="055-seed-molecular-components.xml"/>
+
+  <!-- OGC-949 / OGC-1129: analyzer target→component mapping columns -->
+  <include relativeToChangelogFile="true" file="056-analyzer-component-mapping.xml"/>
+
+  <!-- OGC-1142 / FR-69: terminology mapping display name -->
+  <include relativeToChangelogFile="true" file="057-terminology-display-name.xml"/>
+
+  <!-- OGC-1142 / FR-46-55: specimen-variant grouping link -->
+  <include relativeToChangelogFile="true" file="058-test-variant-link.xml"/>
+
+  <!-- OGC-1020 / R1: unified /Results worklist — lab-unit domain + route flag -->
+  <include relativeToChangelogFile="true" file="059-results-r1-unified-worklist.xml"/>
+
+  <!-- OGC-1145 / FR-11: terminology mappings keyable by sample type (null = shared) -->
+  <include relativeToChangelogFile="true" file="060-terminology-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="061-awaiting-specimen-order-status.xml"/>
+  <include relativeToChangelogFile="true" file="062-result-limits-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="063-collapse-variant-groups.xml"/>
+
+  <!-- OGC-296 Sample Type Management: WHONET code on TypeOfSample + per-sample-type terminology mappings -->
+  <include relativeToChangelogFile="true" file="064-add-whonet-code-to-type-of-sample.xml"/>
+  <include relativeToChangelogFile="true" file="065-sample-type-terminology-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="066-sample-type-domain-enum-migration.xml"/>
+  <include relativeToChangelogFile="true" file="067-sample-type-disposal-instructions.xml"/>
 
 </databaseChangeLog>

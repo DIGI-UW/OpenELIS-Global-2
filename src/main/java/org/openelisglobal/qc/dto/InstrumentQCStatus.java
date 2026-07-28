@@ -7,7 +7,7 @@ import java.util.List;
  */
 public class InstrumentQCStatus {
 
-    private Integer instrumentId;
+    private String instrumentId;
     private String instrumentName;
     private String instrumentType;
     private String instrumentLocation;
@@ -21,11 +21,11 @@ public class InstrumentQCStatus {
     private String lastViolationTime;
     private int activeControlLots;
 
-    public Integer getInstrumentId() {
+    public String getInstrumentId() {
         return instrumentId;
     }
 
-    public void setInstrumentId(Integer instrumentId) {
+    public void setInstrumentId(String instrumentId) {
         this.instrumentId = instrumentId;
     }
 

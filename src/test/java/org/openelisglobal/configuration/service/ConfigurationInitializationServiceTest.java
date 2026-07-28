@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -23,6 +24,7 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
+import java.util.Set;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -32,6 +34,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -45,6 +48,9 @@ public class ConfigurationInitializationServiceTest {
 
     @Mock
     private PathMatchingResourcePatternResolver resolver;
+
+    @Mock
+    private DaemonContextExecutor daemonContextExecutor;
 
     /** Real resolver used to handle file: patterns against the temp folder. */
     private final PathMatchingResourcePatternResolver realResolver = new PathMatchingResourcePatternResolver();
@@ -63,6 +69,13 @@ public class ConfigurationInitializationServiceTest {
         when(mockHandler.getFileMatcher()).thenReturn("*.csv");
 
         mockEvent = mock(ContextRefreshedEvent.class);
+
+        // Make the mock actually execute the Runnable so doInitialize() runs
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(0).run();
+            return null;
+        }).when(daemonContextExecutor).executeAsDaemon(any(Runnable.class));
+        ReflectionTestUtils.setField(service, "daemonContextExecutor", daemonContextExecutor);
 
         ReflectionTestUtils.setField(service, "configurationBaseDir", tempFolder.getRoot().getAbsolutePath());
         ReflectionTestUtils.setField(service, "autocreateOn", true);
@@ -303,6 +316,38 @@ public class ConfigurationInitializationServiceTest {
         service.onApplicationEvent(mockEvent);
 
         verify(mockHandler, times(2)).processConfiguration(any(InputStream.class), eq("mutable.csv"));
+    }
+
+    @Test
+    public void reload_shouldForceReprocessUnchangedFile() throws Exception {
+        createTestFile("tests/force.csv", "unchanging content");
+
+        service.reload(ConfigurationReloadOptions.all());
+        ConfigurationReloadResult result = service.reload(new ConfigurationReloadOptions(Collections.emptySet(), true));
+
+        verify(mockHandler, times(2)).processConfiguration(any(InputStream.class), eq("force.csv"));
+        assertTrue("Forced reload should report a processed file",
+                result.files().stream().anyMatch(file -> file.status() == ConfigurationReloadFileResult.Status.PROCESSED
+                        && "force.csv".equals(file.fileName())));
+    }
+
+    @Test
+    public void reload_shouldFilterDomains() throws Exception {
+        DomainConfigurationHandler rolesHandler = mock(DomainConfigurationHandler.class);
+        when(rolesHandler.getDomainName()).thenReturn("roles");
+        when(rolesHandler.getLoadOrder()).thenReturn(200);
+        when(rolesHandler.getFileMatcher()).thenReturn("*.csv");
+
+        createTestFile("tests/lab-tests.csv", "test data");
+        createTestFile("roles/roles.csv", "role data");
+        service.setDomainHandlers(Arrays.asList(mockHandler, rolesHandler));
+
+        ConfigurationReloadResult result = service.reload(new ConfigurationReloadOptions(Set.of("roles"), false));
+
+        verify(mockHandler, never()).processConfiguration(any(InputStream.class), anyString());
+        verify(rolesHandler).processConfiguration(any(InputStream.class), eq("roles.csv"));
+        assertEquals("Only the requested domain should report results", 1, result.files().size());
+        assertEquals("roles", result.files().get(0).domain());
     }
 
     @Test
