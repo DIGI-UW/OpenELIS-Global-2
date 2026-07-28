@@ -350,7 +350,8 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
 
       const review = page.getByTestId("analyzer-setup-review");
       await expect(review).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(review).toContainText("Ready for activation");
+      await expect(review).toContainText("Analyzer active");
+      await expect(review).not.toContainText("Ready for activation");
       await expect(review).toContainText(analyzerName);
       await expect(review).toContainText("172.21.1.100:5380");
       await expect(review).toContainText("Verified by");
@@ -359,6 +360,14 @@ test.describe("OGC-1054 analyzer QC/config acceptance", () => {
       await expect(page).toHaveURL(/\/analyzers\/types\?protocol=HL7$/, {
         timeout: LONG_TIMEOUT,
       });
+
+      if (testInfo.project.name === "harness-demo") {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await expect(
+          page.getByTestId(`profile-row-${GENEXPERT_HL7_PROFILE_DOM_ID}`),
+        ).toBeVisible({ timeout: LONG_TIMEOUT });
+        await demo.evidence("an-qc-008-profile-mobile");
+      }
     });
   });
 });
