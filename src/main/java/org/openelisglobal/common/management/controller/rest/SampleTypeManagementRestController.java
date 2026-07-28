@@ -40,6 +40,12 @@ public class SampleTypeManagementRestController extends BaseRestController {
     @Autowired
     private SampleTypeTerminologyMappingService terminologyService;
 
+    @Autowired
+    private org.openelisglobal.test.service.TestService testService;
+
+    @Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
+
     // Kept in sync with the frontend `SOURCES` array in TerminologySection.jsx.
     private static final Set<String> TERM_SOURCES = new HashSet<>(
             Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL", "WHONET"));
@@ -444,6 +450,109 @@ public class SampleTypeManagementRestController extends BaseRestController {
 
     private static boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
+    }
+
+    /** A test row for the Associated Tests section (both linked and candidates). */
+    public static class AssociatedTestDto {
+        public String id;
+        public String name;
+        public String domain;
+        public boolean active;
+
+        public AssociatedTestDto(org.openelisglobal.test.valueholder.Test test) {
+            this.id = test.getId();
+            this.name = org.openelisglobal.test.service.TestServiceImpl.getLocalizedTestNameWithType(test);
+            this.domain = Domain.normalize(test.getDomain());
+            this.active = "Y".equals(test.getIsActive());
+        }
+    }
+
+    /**
+     * Tests NOT yet linked to this sample type, for the Associated Tests picker.
+     * Optional {@code search} (name substring) and {@code domain} (enum) filters.
+     * This is the sample-type side of the bidirectional test↔sample-type link; the
+     * test side lives in the Test Catalog editor's Basic Info sample-types
+     * multi-select.
+     */
+    @GetMapping(value = "/sample-types/{sampleTypeId}/associable-tests", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<AssociatedTestDto>> getAssociableTests(@PathVariable String sampleTypeId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String search,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String domain) {
+        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Set<String> linkedTestIds = new HashSet<>();
+        for (org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest link : typeOfSampleTestService
+                .getTypeOfSampleTestsForSampleType(sampleTypeId)) {
+            linkedTestIds.add(link.getTestId());
+        }
+        String needle = isBlank(search) ? null : search.trim().toLowerCase();
+        List<AssociatedTestDto> candidates = new ArrayList<>();
+        for (org.openelisglobal.test.valueholder.Test test : testService.getAllTests(false)) {
+            if (linkedTestIds.contains(test.getId())) {
+                continue;
+            }
+            if (!isBlank(domain) && !Domain.normalize(test.getDomain()).equals(domain)) {
+                continue;
+            }
+            AssociatedTestDto dto = new AssociatedTestDto(test);
+            if (needle != null && !dto.name.toLowerCase().contains(needle)) {
+                continue;
+            }
+            candidates.add(dto);
+        }
+        candidates.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
+        return ResponseEntity.ok(candidates);
+    }
+
+    /** Link an existing test to this sample type (idempotent). */
+    @PutMapping(value = "/sample-types/{sampleTypeId}/tests/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Void>> addTestToSampleType(HttpServletRequest request,
+            @PathVariable String sampleTypeId, @PathVariable String testId) {
+        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null || testService.getTestById(testId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        boolean alreadyLinked = typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleTypeId).stream()
+                .anyMatch(link -> testId.equals(link.getTestId()));
+        if (!alreadyLinked) {
+            String userId = getSysUserId(request);
+            org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest link = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+            link.setTypeOfSampleId(sampleTypeId);
+            link.setTestId(testId);
+            link.setSysUserId(userId);
+            typeOfSampleTestService.insert(link);
+            refreshOrderEntryLists();
+        }
+        return ResponseEntity.ok(new ApiResponse<>(true, "Test linked to sample type", null));
+    }
+
+    /** Unlink a test from this sample type. */
+    @org.springframework.web.bind.annotation.DeleteMapping(value = "/sample-types/{sampleTypeId}/tests/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Void>> removeTestFromSampleType(HttpServletRequest request,
+            @PathVariable String sampleTypeId, @PathVariable String testId) {
+        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String userId = getSysUserId(request);
+        boolean removed = false;
+        for (org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest link : typeOfSampleTestService
+                .getTypeOfSampleTestsForSampleType(sampleTypeId)) {
+            if (testId.equals(link.getTestId())) {
+                typeOfSampleTestService.delete(link.getId(), userId);
+                removed = true;
+            }
+        }
+        if (removed) {
+            refreshOrderEntryLists();
+        }
+        return ResponseEntity.ok(new ApiResponse<>(true, "Test unlinked from sample type", null));
+    }
+
+    private void refreshOrderEntryLists() {
+        typeOfSampleService.clearCache();
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
     }
 
     /**

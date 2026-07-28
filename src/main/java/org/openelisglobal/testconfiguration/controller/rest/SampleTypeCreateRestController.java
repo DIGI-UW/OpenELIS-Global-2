@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SampleTypeCreateRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "sampleTypeEnglishName", "sampleTypeFrenchName",
-            "domain", "whonetCode" };
+            "domain", "whonetCode", "active" };
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -99,8 +99,8 @@ public class SampleTypeCreateRestController extends BaseController {
 
         Localization localization = createLocalization(form.getSampleTypeFrenchName(), identifyingName, userId);
 
-        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId, backendDomainCode,
-                form.getWhonetCode());
+        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId, backendDomainCode, form.getWhonetCode(),
+                Boolean.TRUE.equals(form.getActive()));
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
@@ -150,7 +150,7 @@ public class SampleTypeCreateRestController extends BaseController {
     }
 
     private TypeOfSample createTypeOfSample(String identifyingName, String userId, String backendDomainCode,
-            String whonetCode) {
+            String whonetCode, boolean active) {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setDescription(identifyingName);
         typeOfSample.setDomain(backendDomainCode); // Use the already-mapped backend domain code
@@ -162,9 +162,9 @@ public class SampleTypeCreateRestController extends BaseController {
                 typeOfSample.setWhonetCode(trimmed);
             }
         }
-        // Legacy behavior preserved: new sample types start inactive until
-        // configured (the Activation screen gates on assigned tests).
-        typeOfSample.setIsActive(false);
+        // Inactive-until-configured by default; the admin may create the type
+        // active explicitly (so it is immediately orderable).
+        typeOfSample.setIsActive(active);
         typeOfSample.setSortOrder(Integer.MAX_VALUE);
         typeOfSample.setSysUserId(userId);
         String identifyingNameKey = identifyingName.replaceAll(" ", "_");

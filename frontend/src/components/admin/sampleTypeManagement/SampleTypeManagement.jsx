@@ -48,6 +48,7 @@ import {
 import TerminologySection from "./sections/TerminologySection";
 import DisplayOrderSection from "./sections/DisplayOrderSection";
 import DisposalSection from "./sections/DisposalSection";
+import AssociatedTestsSection from "./sections/AssociatedTestsSection";
 import {
   Add,
   Edit,
@@ -322,7 +323,10 @@ function SampleTypeManagement({ intl }) {
       id: null,
       name: "",
       description: "",
-      active: true,
+      // Inactive by default (inactive-until-configured); the admin can toggle
+      // it on to create an immediately-orderable type. The toggle now reflects
+      // exactly what will be persisted.
+      active: false,
       domain: "CLINICAL",
       testCount: 0,
       abbreviation: "",
@@ -449,6 +453,7 @@ function SampleTypeManagement({ intl }) {
           sampleTypeEnglishName: editingType.name.trim(),
           sampleTypeFrenchName: editingType.name.trim(),
           domain: editingType.domain || "CLINICAL",
+          active: !!editingType.active,
         };
         await new Promise((resolve, reject) => {
           postToOpenElisServerJsonResponse(
@@ -497,11 +502,33 @@ function SampleTypeManagement({ intl }) {
           );
         });
         await refreshSampleTypes();
-        setShowEditSuccess(true);
-        setTimeout(() => setShowEditSuccess(false), 3000);
-        setEditingType(null);
+        // Stay on the editor (like the Test Catalog editor) — re-sync from the
+        // authoritative record so the toggle and every field reflect exactly
+        // what was persisted, then show inline success.
+        await new Promise((resolve) => {
+          getFromOpenElisServer(
+            `/rest/sample-types/${editingType.id}`,
+            (res) => {
+              if (res && res.success && res.data) {
+                const d = res.data;
+                setEditingType({
+                  id: d.id,
+                  name: d.name,
+                  description: d.description,
+                  active: d.isActive,
+                  domain: d.domain,
+                  testCount: d.testCount,
+                  abbreviation: d.abbreviation || "",
+                  sortOrder: d.sortOrder || 0,
+                });
+              }
+              resolve();
+            },
+          );
+        });
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
         setFormErrors({});
-        history.push(listUrl);
       }
     } catch (error) {
       const operation = view === "add" ? "create" : "update";
@@ -1004,481 +1031,437 @@ function SampleTypeManagement({ intl }) {
               sub-items when this editor is open, mirroring the Test Catalog
               Editor pattern. */}
           <div>
-            {activeSection === "basic-info" && (
-              <div>
-                {view === "add" && (
-                  <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
-                    <Stack gap={5}>
-                      {showSuccess && (
-                        <InlineNotification
-                          kind="success"
-                          title=""
-                          subtitle={intl.formatMessage({
-                            id: "message.sampleType.add.success",
-                            defaultMessage:
-                              "Sample type created and saved to database successfully! The list has been refreshed to show your new sample type.",
-                          })}
-                          lowContrast
-                          hideCloseButton
-                        />
-                      )}
-                      {formErrors.submit && (
-                        <InlineNotification
-                          kind="error"
-                          title=""
-                          subtitle={formErrors.submit}
-                          lowContrast
-                          hideCloseButton={false}
-                          onCloseButtonClick={() =>
-                            setFormErrors((prev) => ({ ...prev, submit: "" }))
-                          }
-                        />
-                      )}
-                    </Stack>
-                  </div>
-                )}
-                <Tile
-                  style={{
-                    padding: "var(--cds-spacing-07)",
-                    border: "1px solid var(--cds-border-subtle)",
-                    borderRadius: "var(--cds-border-radius)",
-                  }}
-                >
-                  <Grid>
-                    <Column lg={12} md={8} sm={4}>
-                      <Stack gap={6}>
-                        {/* Additional spacing above the Name field */}
-                        <div
-                          style={{ marginBottom: "var(--cds-spacing-03)" }}
-                        />
-                        <TextInput
-                          ref={nameInputRef}
-                          id="st-name"
-                          labelText={
-                            <>
-                              <FormattedMessage
-                                id="label.sampleType.name"
-                                defaultMessage="Name"
-                              />
-                              <span
-                                style={{ color: "var(--cds-support-error)" }}
-                              >
-                                {" "}
-                                *
-                              </span>
-                            </>
-                          }
-                          value={editingType?.name || ""}
-                          onChange={(e) => {
-                            setEditingType((prev) => ({
-                              ...prev,
-                              name: e.target.value,
-                            }));
-                            if (formErrors.name) {
-                              setFormErrors((prev) => ({ ...prev, name: "" }));
-                            }
-                          }}
-                          invalid={!!formErrors.name}
-                          invalidText={formErrors.name}
-                          helperText={intl.formatMessage({
-                            id: "helper.sampleType.name",
-                            defaultMessage:
-                              'Enter a unique name for this sample type (e.g., "Serum", "Whole Blood")',
-                          })}
-                          autoComplete="off"
-                        />
-
-                        <Select
-                          id="st-domain"
-                          labelText={
-                            <>
-                              <FormattedMessage
-                                id="label.sampleType.domain"
-                                defaultMessage="Sample Domain"
-                              />
-                              <span
-                                style={{ color: "var(--cds-support-error)" }}
-                              >
-                                {" "}
-                                *
-                              </span>
-                            </>
-                          }
-                          value={editingType?.domain || "CLINICAL"}
-                          onChange={(e) =>
-                            setEditingType((prev) => ({
-                              ...prev,
-                              domain: e.target.value,
-                            }))
-                          }
-                          helperText={intl.formatMessage({
-                            id: "label.sampleType.domain.helper",
-                            defaultMessage:
-                              "Determines which workflow mode (Clinical or Environmental) this sample type appears in.",
-                          })}
-                        >
-                          {domains.map((d) => (
-                            <SelectItem
-                              key={d.id}
-                              value={d.id}
-                              text={domainLabel(d.id)}
-                            />
-                          ))}
-                        </Select>
-
-                        <Toggle
-                          id="st-active"
-                          labelText={intl.formatMessage({
-                            id: "label.sampleType.active",
-                            defaultMessage: "Active",
-                          })}
-                          labelA={intl.formatMessage({
-                            id: "label.inactive",
-                            defaultMessage: "Inactive",
-                          })}
-                          labelB={intl.formatMessage({
-                            id: "label.active",
-                            defaultMessage: "Active",
-                          })}
-                          toggled={editingType?.active}
-                          onToggle={(checked) =>
-                            setEditingType((prev) => ({
-                              ...prev,
-                              active: checked,
-                            }))
-                          }
-                        />
-
-                        {/* FRS v2.1 Basic Info: deactivating a type in use
-                            warns but proceeds — no cascade, reversible. */}
-                        {view === "editor" &&
-                          !editingType?.active &&
-                          associatedTests.filter((t) => t.isActive).length >
-                            0 && (
+            {/* The editor sections read from editingType, which hydrates
+                asynchronously from the record. Render a loader until it is
+                populated for the current id — otherwise controlled inputs (esp.
+                the Carbon Active Toggle) would mount with undefined and not
+                reflect the saved status, mirroring the Test Catalog editor's
+                load-then-render pattern. */}
+            {view === "editor" &&
+            !(
+              editingType && String(editingType.id) === String(sampleTypeId)
+            ) ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--cds-spacing-03)",
+                  padding: "var(--cds-spacing-07)",
+                }}
+              >
+                <Loading small withOverlay={false} />
+                <FormattedMessage
+                  id="label.sampleType.loading"
+                  defaultMessage="Loading sample type..."
+                />
+              </div>
+            ) : (
+              <>
+                {activeSection === "basic-info" && (
+                  <div>
+                    {(showSuccess || formErrors.submit) && (
+                      <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
+                        <Stack gap={5}>
+                          {showSuccess && (
                             <InlineNotification
-                              kind="warning"
+                              kind="success"
+                              title=""
+                              subtitle={intl.formatMessage({
+                                id:
+                                  view === "add"
+                                    ? "message.sampleType.add.success"
+                                    : "message.sampleType.edit.success",
+                                defaultMessage:
+                                  "Sample type saved successfully.",
+                              })}
                               lowContrast
                               hideCloseButton
-                              title={intl.formatMessage(
-                                { id: "warning.sampleType.deactivateInUse" },
-                                {
-                                  count: associatedTests.filter(
-                                    (t) => t.isActive,
-                                  ).length,
-                                },
-                              )}
                             />
                           )}
-
-                        <TextArea
-                          id="st-description"
-                          labelText={
-                            <>
-                              <FormattedMessage
-                                id="label.sampleType.description"
-                                defaultMessage="Description"
-                              />
-                              <span
-                                style={{ color: "var(--cds-support-error)" }}
-                              >
-                                {" "}
-                                *
-                              </span>
-                            </>
-                          }
-                          value={editingType?.description || ""}
-                          onChange={(e) => {
-                            setEditingType((prev) => ({
-                              ...prev,
-                              description: e.target.value,
-                            }));
-                            if (formErrors.description) {
-                              setFormErrors((prev) => ({
-                                ...prev,
-                                description: "",
-                              }));
-                            }
-                          }}
-                          rows={4}
-                          invalid={!!formErrors.description}
-                          invalidText={formErrors.description}
-                          helperText={intl.formatMessage({
-                            id: "helper.sampleType.description",
-                            defaultMessage:
-                              "Provide a description of this sample type for lab staff reference",
-                          })}
-                        />
-                      </Stack>
-                    </Column>
-                  </Grid>
-
-                  <div
-                    style={{
-                      borderTop: "1px solid var(--cds-border-subtle-01)",
-                      marginTop:
-                        view === "add" ? "3rem" : "var(--cds-spacing-08)",
-                      paddingTop: "var(--cds-spacing-10)",
-                    }}
-                  >
-                    <Stack orientation="horizontal" gap={4}>
-                      <Button
-                        kind="primary"
-                        size="sm"
-                        renderIcon={isSubmitting ? undefined : Save}
-                        onClick={saveEditor}
-                        disabled={
-                          isSubmitting ||
-                          !!Object.keys(formErrors).length ||
-                          !editingType?.name?.trim() ||
-                          !editingType?.description?.trim()
-                        }
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loading style={{ marginRight: "8px" }} />
-                            {view === "add" ? (
-                              <FormattedMessage
-                                id="button.sampleType.creating"
-                                defaultMessage="Creating..."
-                              />
-                            ) : (
-                              <FormattedMessage
-                                id="button.saving"
-                                defaultMessage="Saving..."
-                              />
-                            )}
-                          </>
-                        ) : view === "add" ? (
-                          <FormattedMessage
-                            id="button.sampleType.create"
-                            defaultMessage="Create Sample Type"
-                          />
-                        ) : (
-                          <FormattedMessage
-                            id="button.save"
-                            defaultMessage="Save Changes"
-                          />
-                        )}
-                      </Button>
-                      <Button kind="ghost" size="sm" onClick={goToList}>
-                        <FormattedMessage
-                          id="button.cancel"
-                          defaultMessage="Cancel"
-                        />
-                      </Button>
-                    </Stack>
-                  </div>
-                </Tile>
-              </div>
-            )}
-
-            {/* Associated Tests — read-only list of tests linked to this sample type */}
-            {activeSection === "associated-tests" && (
-              <div>
-                <Tile
-                  style={{
-                    padding: "var(--cds-spacing-06)",
-                    border: "1px solid var(--cds-border-subtle)",
-                    borderRadius: "var(--cds-border-radius)",
-                  }}
-                >
-                  {view !== "add" && (
-                    <p
-                      style={{
-                        color: "var(--cds-text-secondary)",
-                        fontSize: "13px",
-                        margin: "0 0 var(--cds-spacing-05) 0",
-                      }}
-                    >
-                      <FormattedMessage id="note.sampleType.associatedTests.viewOnly" />
-                    </p>
-                  )}
-                  {view === "add" ? (
-                    <p
-                      style={{
-                        color: "var(--cds-text-secondary)",
-                        fontSize: "14px",
-                        margin: 0,
-                      }}
-                    >
-                      <FormattedMessage
-                        id="label.sampleType.tests.addHint"
-                        defaultMessage="Save this sample type first, then associate tests from the test configuration."
-                      />
-                    </p>
-                  ) : associatedTestsLoading ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "var(--cds-spacing-03)",
-                        padding: "var(--cds-spacing-05)",
-                      }}
-                    >
-                      <Loading small withOverlay={false} />
-                      <FormattedMessage
-                        id="label.sampleType.tests.loading"
-                        defaultMessage="Loading associated tests..."
-                      />
-                    </div>
-                  ) : associatedTestsError ? (
-                    <InlineNotification
-                      kind="error"
-                      title={intl.formatMessage({
-                        id: "label.sampleType.tests.error",
-                        defaultMessage: "Failed to load associated tests",
-                      })}
-                      subtitle={associatedTestsError}
-                      lowContrast
-                      hideCloseButton
-                    />
-                  ) : associatedTests.length === 0 ? (
-                    <p
-                      style={{
-                        color: "var(--cds-text-secondary)",
-                        fontSize: "14px",
-                        margin: 0,
-                      }}
-                    >
-                      <FormattedMessage
-                        id="label.sampleType.tests.none"
-                        defaultMessage="No tests are associated with this sample type."
-                      />
-                    </p>
-                  ) : (
-                    <Table size="sm">
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
-                            <FormattedMessage
-                              id="label.test.name"
-                              defaultMessage="Test Name"
+                          {formErrors.submit && (
+                            <InlineNotification
+                              kind="error"
+                              title=""
+                              subtitle={formErrors.submit}
+                              lowContrast
+                              hideCloseButton={false}
+                              onCloseButtonClick={() =>
+                                setFormErrors((prev) => ({
+                                  ...prev,
+                                  submit: "",
+                                }))
+                              }
                             />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage
-                              id="label.sampleType.status"
-                              defaultMessage="Status"
+                          )}
+                        </Stack>
+                      </div>
+                    )}
+                    <Tile
+                      style={{
+                        padding: "var(--cds-spacing-07)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
+                      }}
+                    >
+                      <Grid>
+                        <Column lg={12} md={8} sm={4}>
+                          <Stack gap={6}>
+                            {/* Additional spacing above the Name field */}
+                            <div
+                              style={{ marginBottom: "var(--cds-spacing-03)" }}
                             />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {associatedTests.map((test) => (
-                          <TableRow key={test.id}>
-                            <TableCell>{test.name}</TableCell>
-                            <TableCell>
-                              <Tag
-                                type={test.isActive ? "green" : "gray"}
-                                size="sm"
-                              >
-                                {test.isActive ? (
+                            <TextInput
+                              ref={nameInputRef}
+                              id="st-name"
+                              labelText={
+                                <>
                                   <FormattedMessage
-                                    id="label.active"
-                                    defaultMessage="Active"
+                                    id="label.sampleType.name"
+                                    defaultMessage="Name"
+                                  />
+                                  <span
+                                    style={{
+                                      color: "var(--cds-support-error)",
+                                    }}
+                                  >
+                                    {" "}
+                                    *
+                                  </span>
+                                </>
+                              }
+                              value={editingType?.name || ""}
+                              onChange={(e) => {
+                                setEditingType((prev) => ({
+                                  ...prev,
+                                  name: e.target.value,
+                                }));
+                                if (formErrors.name) {
+                                  setFormErrors((prev) => ({
+                                    ...prev,
+                                    name: "",
+                                  }));
+                                }
+                              }}
+                              invalid={!!formErrors.name}
+                              invalidText={formErrors.name}
+                              helperText={intl.formatMessage({
+                                id: "helper.sampleType.name",
+                                defaultMessage:
+                                  'Enter a unique name for this sample type (e.g., "Serum", "Whole Blood")',
+                              })}
+                              autoComplete="off"
+                            />
+
+                            <Select
+                              id="st-domain"
+                              labelText={
+                                <>
+                                  <FormattedMessage
+                                    id="label.sampleType.domain"
+                                    defaultMessage="Sample Domain"
+                                  />
+                                  <span
+                                    style={{
+                                      color: "var(--cds-support-error)",
+                                    }}
+                                  >
+                                    {" "}
+                                    *
+                                  </span>
+                                </>
+                              }
+                              value={editingType?.domain || "CLINICAL"}
+                              onChange={(e) =>
+                                setEditingType((prev) => ({
+                                  ...prev,
+                                  domain: e.target.value,
+                                }))
+                              }
+                              helperText={intl.formatMessage({
+                                id: "label.sampleType.domain.helper",
+                                defaultMessage:
+                                  "Determines which workflow mode (Clinical or Environmental) this sample type appears in.",
+                              })}
+                            >
+                              {domains.map((d) => (
+                                <SelectItem
+                                  key={d.id}
+                                  value={d.id}
+                                  text={domainLabel(d.id)}
+                                />
+                              ))}
+                            </Select>
+
+                            <Toggle
+                              id="st-active"
+                              labelText={intl.formatMessage({
+                                id: "label.sampleType.active",
+                                defaultMessage: "Active",
+                              })}
+                              labelA={intl.formatMessage({
+                                id: "label.inactive",
+                                defaultMessage: "Inactive",
+                              })}
+                              labelB={intl.formatMessage({
+                                id: "label.active",
+                                defaultMessage: "Active",
+                              })}
+                              toggled={editingType?.active}
+                              onToggle={(checked) =>
+                                setEditingType((prev) => ({
+                                  ...prev,
+                                  active: checked,
+                                }))
+                              }
+                            />
+
+                            {/* FRS v2.1 Basic Info: deactivating a type in use
+                            warns but proceeds — no cascade, reversible. */}
+                            {view === "editor" &&
+                              !editingType?.active &&
+                              associatedTests.filter((t) => t.isActive).length >
+                                0 && (
+                                <InlineNotification
+                                  kind="warning"
+                                  lowContrast
+                                  hideCloseButton
+                                  title={intl.formatMessage(
+                                    {
+                                      id: "warning.sampleType.deactivateInUse",
+                                    },
+                                    {
+                                      count: associatedTests.filter(
+                                        (t) => t.isActive,
+                                      ).length,
+                                    },
+                                  )}
+                                />
+                              )}
+
+                            <TextArea
+                              id="st-description"
+                              labelText={
+                                <>
+                                  <FormattedMessage
+                                    id="label.sampleType.description"
+                                    defaultMessage="Description"
+                                  />
+                                  <span
+                                    style={{
+                                      color: "var(--cds-support-error)",
+                                    }}
+                                  >
+                                    {" "}
+                                    *
+                                  </span>
+                                </>
+                              }
+                              value={editingType?.description || ""}
+                              onChange={(e) => {
+                                setEditingType((prev) => ({
+                                  ...prev,
+                                  description: e.target.value,
+                                }));
+                                if (formErrors.description) {
+                                  setFormErrors((prev) => ({
+                                    ...prev,
+                                    description: "",
+                                  }));
+                                }
+                              }}
+                              rows={4}
+                              invalid={!!formErrors.description}
+                              invalidText={formErrors.description}
+                              helperText={intl.formatMessage({
+                                id: "helper.sampleType.description",
+                                defaultMessage:
+                                  "Provide a description of this sample type for lab staff reference",
+                              })}
+                            />
+                          </Stack>
+                        </Column>
+                      </Grid>
+
+                      <div
+                        style={{
+                          borderTop: "1px solid var(--cds-border-subtle-01)",
+                          marginTop:
+                            view === "add" ? "3rem" : "var(--cds-spacing-08)",
+                          paddingTop: "var(--cds-spacing-10)",
+                        }}
+                      >
+                        <Stack orientation="horizontal" gap={4}>
+                          <Button
+                            kind="primary"
+                            size="sm"
+                            renderIcon={isSubmitting ? undefined : Save}
+                            onClick={saveEditor}
+                            disabled={
+                              isSubmitting ||
+                              !!Object.keys(formErrors).length ||
+                              !editingType?.name?.trim() ||
+                              !editingType?.description?.trim()
+                            }
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <Loading style={{ marginRight: "8px" }} />
+                                {view === "add" ? (
+                                  <FormattedMessage
+                                    id="button.sampleType.creating"
+                                    defaultMessage="Creating..."
                                   />
                                 ) : (
                                   <FormattedMessage
-                                    id="label.inactive"
-                                    defaultMessage="Inactive"
+                                    id="button.saving"
+                                    defaultMessage="Saving..."
                                   />
                                 )}
-                              </Tag>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </Tile>
-              </div>
-            )}
+                              </>
+                            ) : view === "add" ? (
+                              <FormattedMessage
+                                id="button.sampleType.create"
+                                defaultMessage="Create Sample Type"
+                              />
+                            ) : (
+                              <FormattedMessage
+                                id="button.save"
+                                defaultMessage="Save Changes"
+                              />
+                            )}
+                          </Button>
+                          <Button kind="ghost" size="sm" onClick={goToList}>
+                            <FormattedMessage
+                              id="button.cancel"
+                              defaultMessage="Cancel"
+                            />
+                          </Button>
+                        </Stack>
+                      </div>
+                    </Tile>
+                  </div>
+                )}
 
-            {/* Display Order — positions this sample type in the order-entry
+                {/* Associated Tests — read-only list of tests linked to this sample type */}
+                {activeSection === "associated-tests" && (
+                  <div>
+                    <Tile
+                      style={{
+                        padding: "var(--cds-spacing-06)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
+                      }}
+                    >
+                      {view === "add" ? (
+                        <p
+                          style={{
+                            color: "var(--cds-text-secondary)",
+                            fontSize: "14px",
+                            margin: 0,
+                          }}
+                        >
+                          <FormattedMessage
+                            id="label.sampleType.tests.addHint"
+                            defaultMessage="Save this sample type first, then associate tests from the test configuration."
+                          />
+                        </p>
+                      ) : (
+                        <AssociatedTestsSection
+                          sampleTypeId={sampleTypeId}
+                          onChange={setAssociatedTests}
+                        />
+                      )}
+                    </Tile>
+                  </div>
+                )}
+
+                {/* Display Order — positions this sample type in the order-entry
                 Sample Type menu (the real sortOrder, FRS v2.1). */}
-            {activeSection === "display-order" && (
-              <div>
-                <Tile
-                  style={{
-                    padding: "var(--cds-spacing-07)",
-                    border: "1px solid var(--cds-border-subtle)",
-                    borderRadius: "var(--cds-border-radius)",
-                  }}
-                >
-                  {view === "add" ? (
-                    <p
+                {activeSection === "display-order" && (
+                  <div>
+                    <Tile
                       style={{
-                        color: "var(--cds-text-secondary)",
-                        fontSize: "14px",
-                        margin: 0,
+                        padding: "var(--cds-spacing-07)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
                       }}
                     >
-                      <FormattedMessage id="label.sampleType.displayOrder.addHint" />
-                    </p>
-                  ) : (
-                    <DisplayOrderSection sampleTypeId={sampleTypeId} />
-                  )}
-                </Tile>
-              </div>
-            )}
+                      {view === "add" ? (
+                        <p
+                          style={{
+                            color: "var(--cds-text-secondary)",
+                            fontSize: "14px",
+                            margin: 0,
+                          }}
+                        >
+                          <FormattedMessage id="label.sampleType.displayOrder.addHint" />
+                        </p>
+                      ) : (
+                        <DisplayOrderSection sampleTypeId={sampleTypeId} />
+                      )}
+                    </Tile>
+                  </div>
+                )}
 
-            {/* Disposal — free-text reference guidance (FRS v2.1); the
+                {/* Disposal — free-text reference guidance (FRS v2.1); the
                 structured handling stays per-test / per-specimen. */}
-            {activeSection === "disposal" && (
-              <div>
-                <Tile
-                  style={{
-                    padding: "var(--cds-spacing-07)",
-                    border: "1px solid var(--cds-border-subtle)",
-                    borderRadius: "var(--cds-border-radius)",
-                  }}
-                >
-                  {view === "add" ? (
-                    <p
+                {activeSection === "disposal" && (
+                  <div>
+                    <Tile
                       style={{
-                        color: "var(--cds-text-secondary)",
-                        fontSize: "14px",
-                        margin: 0,
+                        padding: "var(--cds-spacing-07)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
                       }}
                     >
-                      <FormattedMessage id="label.sampleType.disposal.addHint" />
-                    </p>
-                  ) : (
-                    <DisposalSection sampleTypeId={sampleTypeId} />
-                  )}
-                </Tile>
-              </div>
-            )}
+                      {view === "add" ? (
+                        <p
+                          style={{
+                            color: "var(--cds-text-secondary)",
+                            fontSize: "14px",
+                            margin: 0,
+                          }}
+                        >
+                          <FormattedMessage id="label.sampleType.disposal.addHint" />
+                        </p>
+                      ) : (
+                        <DisposalSection sampleTypeId={sampleTypeId} />
+                      )}
+                    </Tile>
+                  </div>
+                )}
 
-            {/* Terminology — multi-row Source/Code/Relationship mappings,
+                {/* Terminology — multi-row Source/Code/Relationship mappings,
                 mirrors the Test Catalog Editor's Terminology section. */}
-            {activeSection === "terminology" && (
-              <div>
-                <Tile
-                  style={{
-                    padding: "var(--cds-spacing-07)",
-                    border: "1px solid var(--cds-border-subtle)",
-                    borderRadius: "var(--cds-border-radius)",
-                  }}
-                >
-                  {view === "add" ? (
-                    <p
+                {activeSection === "terminology" && (
+                  <div>
+                    <Tile
                       style={{
-                        color: "var(--cds-text-secondary)",
-                        fontSize: "14px",
-                        margin: 0,
+                        padding: "var(--cds-spacing-07)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
                       }}
                     >
-                      <FormattedMessage
-                        id="label.sampleType.terminology.addHint"
-                        defaultMessage="Save this sample type first, then add terminology mappings."
-                      />
-                    </p>
-                  ) : (
-                    <TerminologySection sampleTypeId={sampleTypeId} />
-                  )}
-                </Tile>
-              </div>
+                      {view === "add" ? (
+                        <p
+                          style={{
+                            color: "var(--cds-text-secondary)",
+                            fontSize: "14px",
+                            margin: 0,
+                          }}
+                        >
+                          <FormattedMessage
+                            id="label.sampleType.terminology.addHint"
+                            defaultMessage="Save this sample type first, then add terminology mappings."
+                          />
+                        </p>
+                      ) : (
+                        <TerminologySection sampleTypeId={sampleTypeId} />
+                      )}
+                    </Tile>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </Stack>

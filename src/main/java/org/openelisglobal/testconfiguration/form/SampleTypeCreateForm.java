@@ -32,6 +32,11 @@ public class SampleTypeCreateForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String whonetCode;
 
+    // Whether the new sample type is created active. Defaults to inactive
+    // (null → false) so a type is inactive-until-configured unless the admin
+    // explicitly activates it on create.
+    private Boolean active;
+
     public SampleTypeCreateForm() {
         setFormName("sampleTypeCreateForm");
     }
@@ -98,5 +103,13 @@ public class SampleTypeCreateForm extends BaseForm {
 
     public void setWhonetCode(String whonetCode) {
         this.whonetCode = whonetCode;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 }

@@ -2,6 +2,7 @@ package org.openelisglobal.common.management.controller.rest;
 
 import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -122,6 +123,29 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
     }
 
+    // Bidirectional associated-tests endpoints carry the same ADMIN gate.
+
+    @Test
+    public void associatedTests_NonAdminRole_Returns403() throws Exception {
+        mockMvc.perform(get("/rest/sample-types/1/associable-tests").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+        mockMvc.perform(put("/rest/sample-types/1/tests/2").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+        mockMvc.perform(delete("/rest/sample-types/1/tests/2").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void associatedTests_AdminRole_PassesAuth() throws Exception {
+        // mocked service returns null → 404: the request cleared the auth gate
+        mockMvc.perform(get("/rest/sample-types/1/associable-tests").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
+        mockMvc.perform(put("/rest/sample-types/1/tests/2").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
+        mockMvc.perform(delete("/rest/sample-types/1/tests/2").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
+    }
+
     @Configuration
     @EnableWebMvc
     @org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
@@ -147,11 +171,25 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
         }
 
         @Bean
+        org.openelisglobal.test.service.TestService testService() {
+            return mock(org.openelisglobal.test.service.TestService.class);
+        }
+
+        @Bean
+        org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService() {
+            return mock(org.openelisglobal.typeofsample.service.TypeOfSampleTestService.class);
+        }
+
+        @Bean
         SampleTypeManagementRestController sampleTypeManagementRestController(TypeOfSampleService typeOfSampleService,
-                SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService) {
+                SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService,
+                org.openelisglobal.test.service.TestService testService,
+                org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService) {
             SampleTypeManagementRestController controller = new SampleTypeManagementRestController();
             ReflectionTestUtils.setField(controller, "typeOfSampleService", typeOfSampleService);
             ReflectionTestUtils.setField(controller, "terminologyService", sampleTypeTerminologyMappingService);
+            ReflectionTestUtils.setField(controller, "testService", testService);
+            ReflectionTestUtils.setField(controller, "typeOfSampleTestService", typeOfSampleTestService);
             return controller;
         }
 
