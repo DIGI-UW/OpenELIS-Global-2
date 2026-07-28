@@ -84,7 +84,7 @@ public class ChangePasswordLoginController extends BaseController {
             // get user information if password correct
             Optional<LoginUser> matchedLogin = loginService.getValidatedLogin(form.getLoginName(), form.getPassword());
             if (!matchedLogin.isPresent()) {
-                result.reject("login.error.message");
+                result.reject("login.error.password.current.incorrect");
             } else {
                 login = matchedLogin.get();
                 // update fields of login before validating again
@@ -117,7 +117,7 @@ public class ChangePasswordLoginController extends BaseController {
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
-            result.reject("login.error.message");
+            result.reject("login.error.update.message");
         }
         if (result.hasErrors()) {
             saveErrors(result);
@@ -146,8 +146,8 @@ public class ChangePasswordLoginController extends BaseController {
             json.put("success", true);
         } else {
             response.setStatus(HttpStatus.SC_UNAUTHORIZED);
-            json.put("error",
-                    errors.getAllErrors().stream().findFirst().map(ObjectError::getCode).orElse("login.error.message"));
+            json.put("error", errors.getAllErrors().stream().findFirst().map(ObjectError::getCode)
+                    .orElse("login.error.update.message"));
         }
         response.setContentType("application/json");
         try {

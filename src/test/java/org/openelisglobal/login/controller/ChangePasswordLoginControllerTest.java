@@ -47,7 +47,7 @@ public class ChangePasswordLoginControllerTest extends BaseWebContextSensitiveTe
     public void changePassword_apiCallWrongCurrentPassword_returns401AndLeavesPasswordUnchanged() throws Exception {
         mockMvc.perform(changePasswordRequest("wrongPASS9!", NEW_PASSWORD, true)).andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("login.error.message"));
+                .andExpect(jsonPath("$.error").value("login.error.password.current.incorrect"));
 
         Assert.assertTrue("original password must still be valid",
                 loginService.getValidatedLogin("admin", CURRENT_PASSWORD).isPresent());

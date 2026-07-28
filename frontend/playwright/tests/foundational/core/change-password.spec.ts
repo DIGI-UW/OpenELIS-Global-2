@@ -83,7 +83,8 @@ test.describe("Change Password page", () => {
     await page.locator("#repeat-new-password").fill("tempPASS1!");
     await page.locator('[data-cy="submitNewPassword"]').click();
 
-    // backend rejects with login.error.message; the SPA must surface it as an
+    // backend rejects a wrong current password with
+    // login.error.password.current.incorrect; the SPA must surface it as an
     // error toast and must NOT run the success flow (no redirect to /login).
     // .first(): the app mounts two AlertDialog instances, so the toast renders twice.
     await expect(
