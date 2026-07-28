@@ -19,6 +19,8 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.qa.dto.QaOverviewSummary;
 import org.openelisglobal.qa.dto.QaOverviewSummary.ActivityItem;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -43,6 +45,9 @@ public class QaOverviewServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
 
     private JdbcTemplate jdbc;
 
@@ -80,11 +85,15 @@ public class QaOverviewServiceTest extends BaseWebContextSensitiveTest {
         jdbc.update(esigInsert, "Bob Supervisor", "VALIDATED_AND_RELEASED", secondsAgo(8), 102L);
         jdbc.update(esigInsert, "Old Signer", "AUTHORED", beforeWeekStart(), 103L);
 
+        // Seed against a whitelisted audit reference table so the tile's scoped
+        // count (matching the System Audit Trail) picks these rows up.
+        ReferenceTables auditTable = referenceTablesService.getReferenceTableByName("DICTIONARY");
+        int auditTableId = Integer.parseInt(auditTable.getId());
         String historyInsert = "INSERT INTO history (id, reference_id, reference_table, timestamp, activity,"
-                + " sys_user_id) VALUES (?, 1, 1, ?, 'U', 1)";
-        jdbc.update(historyInsert, 9900001L, secondsAgo(3));
-        jdbc.update(historyInsert, 9900002L, secondsAgo(5));
-        jdbc.update(historyInsert, 9900003L, beforeWeekStart());
+                + " sys_user_id) VALUES (?, 1, ?, ?, 'U', 1)";
+        jdbc.update(historyInsert, 9900001L, auditTableId, secondsAgo(3));
+        jdbc.update(historyInsert, 9900002L, auditTableId, secondsAgo(5));
+        jdbc.update(historyInsert, 9900003L, auditTableId, beforeWeekStart());
     }
 
     /**

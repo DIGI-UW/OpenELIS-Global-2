@@ -134,6 +134,9 @@ const ControlChartTab = ({ instrument, active }) => {
             titleText={intl.formatMessage({
               id: "qc.instrumentDetail.chart.selectAnalyte",
             })}
+            label={intl.formatMessage({
+              id: "qc.instrumentDetail.chart.selectAnalyte",
+            })}
             items={analyteOptions}
             selectedItem={analyteOptions[selectedAnalyteIndex]}
             itemToString={(item) => item?.label || ""}

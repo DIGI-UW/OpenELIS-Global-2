@@ -365,10 +365,19 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     private void setActionLogs(NonConformingEventForm form, NcEvent ncEvent) {
         if (form.getActionLog() != null) {
             List<NceActionLog> actionLogs = form.getActionLog();
+            // The React corrective-action form sends the completion date only at
+            // the top level (bound to nc_event.date_completed); it never sets the
+            // per-row action-log date, so nce_action_log.date_completed was lost.
+            // Mirror the NCE completion date onto each log whose own date is unset,
+            // parsed exactly as the callers parse it so the two stay consistent.
+            Date completed = getDate(form.getDateCompleted(), "dd/MM/yyyy");
             if (actionLogs != null) {
                 for (NceActionLog actionLog : actionLogs) {
                     actionLog.setNcEventId(ncEvent.getId());
                     actionLog.setSysUserId(form.getCurrentUserId());
+                    if (actionLog.getDateCompleted() == null && completed != null) {
+                        actionLog.setDateCompleted(completed);
+                    }
                     nceActionLogService.save(actionLog);
                 }
             }
@@ -429,6 +438,10 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     public boolean resolveNCEvent(NonConformingEventForm form) {
         NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
+            // Captured before the transition to "Completed": tells us whether the
+            // corrective action is being recorded fresh in this same submit (prior
+            // status not yet "CAPA") vs. already logged when it entered CAPA.
+            String priorStatus = ncEvent.getStatus();
             ncEvent.setDiscussionDate(form.getDiscussionDate());
             setActionLogs(form, ncEvent);
             ncEvent.setStatus("Completed");
@@ -441,6 +454,17 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
             // Log history for resolution
             Integer userId = parseIntegerSafely(form.getCurrentUserId());
+            // Resolving straight from report/investigation with a corrective action
+            // in the same submit skips updateCorrectiveAction, so log the
+            // CORRECTIVE_ACTION trail here too — otherwise the CAPA-completed metric
+            // (which keys off that history event) under-counts. Skip when already
+            // "CAPA": the event was logged when it entered that stage.
+            boolean recordedCorrectiveAction = form.getActionLog() != null && form.getActionLog().stream()
+                    .anyMatch(a -> a.getCorrectiveAction() != null && !a.getCorrectiveAction().isBlank());
+            if (!"CAPA".equals(priorStatus) && recordedCorrectiveAction) {
+                nceHistoryService.logActivity(ncEvent.getId(), "CORRECTIVE_ACTION",
+                        "Corrective action recorded at resolution", null, null, userId);
+            }
             nceHistoryService.logActivity(ncEvent.getId(), "RESOLVED", "NCE resolved and marked as Completed", null,
                     "Completed", userId);
 
