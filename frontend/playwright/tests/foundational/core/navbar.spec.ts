@@ -2,8 +2,8 @@ import { test, expect } from "../../../helpers/test-base";
 
 test.describe("Navbar (Header) actions", () => {
   test("logo click navigates to home", async ({ page }) => {
-    await page.goto("/Storage/samples", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("#sidenav-menu-button")).toBeVisible();
+    await page.goto("/Storage/sample-items", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#mainHeader")).toBeVisible();
 
     // Carbon HeaderName renders an anchor; clicking should navigate home
     await page.locator("#mainHeader a.cds--header__name").click();

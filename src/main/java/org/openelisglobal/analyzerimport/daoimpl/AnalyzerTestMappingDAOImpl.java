@@ -44,11 +44,29 @@ public class AnalyzerTestMappingDAOImpl extends BaseDAOImpl<AnalyzerTestMapping,
             String sql = "from AnalyzerTestMapping a where a.compoundId.analyzerId = :analyzerId";
             Query<AnalyzerTestMapping> query = entityManager.unwrap(Session.class).createQuery(sql,
                     AnalyzerTestMapping.class);
-            query.setParameter("analyzerId", Integer.parseInt(analyzerId));
+            query.setParameter("analyzerId", analyzerId);
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in AnalyzerTestMappingDAOImpl getAllForAnalyzer()", e);
+        }
+
+        return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerTestMapping> getAllForTest(String testId) {
+        List<AnalyzerTestMapping> list;
+        try {
+            String sql = "from AnalyzerTestMapping a where a.testId = :testId";
+            Query<AnalyzerTestMapping> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    AnalyzerTestMapping.class);
+            query.setParameter("testId", testId);
+            list = query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in AnalyzerTestMappingDAOImpl getAllForTest()", e);
         }
 
         return list;

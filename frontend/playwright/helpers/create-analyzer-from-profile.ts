@@ -161,7 +161,18 @@ export async function createAnalyzerFromProfile(
   await presentation.pause(500);
 
   await list.clickAdd();
-  await form.expectOpen();
+  // A transient fetch failure on the lazy AnalyzerForm chunk renders the
+  // route error boundary, and the browser caches the failed dynamic import
+  // for the page's lifetime — only a reload recovers. Retry once.
+  try {
+    await form.expectOpen();
+  } catch {
+    await page.reload();
+    await list.goto();
+    await list.expectLoaded();
+    await list.clickAdd();
+    await form.expectOpen();
+  }
 
   // Select plugin type
   await form.selectPluginType(config.pluginType);
@@ -189,6 +200,20 @@ export async function createAnalyzerFromProfile(
     if (config.port) {
       await form.fillPort(String(config.port));
     }
+    await presentation.pause(500);
+  }
+
+  // Fill required import directory for FILE analyzers. The UI intentionally
+  // does NOT auto-generate this (per product decision) — tests must set it
+  // explicitly. Mirror the mock server's targetDir so the analyzer watches
+  // where the mock drops fixtures.
+  if (config.protocol === "FILE") {
+    const importDir =
+      config.push.protocol === "FILE"
+        ? config.push.targetDir ||
+          `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`
+        : `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`;
+    await form.fillImportDirectory(importDir);
     await presentation.pause(500);
   }
 

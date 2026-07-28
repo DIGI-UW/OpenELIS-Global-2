@@ -125,6 +125,10 @@ export const test = base.extend<{
         return;
       }
 
+      // Initializer `null` is used by the detach() call at end-of-fixture
+      // when the CDP handshake throws before assignment — the rule's
+      // control-flow analysis doesn't see that codepath.
+      // eslint-disable-next-line no-useless-assignment
       let cdp: Awaited<
         ReturnType<typeof page.context.prototype.newCDPSession>
       > | null = null;
@@ -166,7 +170,9 @@ export const test = base.extend<{
         );
       }
 
-      await cdp.detach().catch(() => {});
+      await cdp?.detach().catch(() => {
+        /* detach on crashed page is harmless; swallow */
+      });
     },
     { auto: true },
   ],

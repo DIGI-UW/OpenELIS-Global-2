@@ -1,3 +1,48 @@
+> **STATUS: Superseded as a task tracker (updated 2026-04-20).** The task list
+> below is tied to the retired January 2026 M0–M21 milestone plan and does not
+> reflect current work. MVP tasks mostly landed via alternate branches; site
+> validation + post-MVP tasks are tracked below.
+>
+> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Per-issue tracking:** Jira OGC-\* + per-PR commits
+> - **Current remaining-work summary:** see `plan.md` § "Remaining Work to
+>   Finish Line"
+
+## Remaining Work to Finish Line (2026-04-20)
+
+Use this architecture-level list, not the M0–M21 task list below, to track
+what's left on the umbrella 011 scope. Per-instrument tasks are tracked on the
+[Confluence tracker][tracker]; new analyzers on a supported protocol land as
+profile JSONs, not as tasks here.
+
+**Immediate (architecture + cross-cutting):**
+
+- [ ] PR #3195 merged (HL7 test-connection + `CommunicationMode` enum)
+- [ ] Add `communication` blocks to the remaining 8 ASTM/HL7 profiles (5 of 13
+      have them today)
+- [ ] Record E2E demo videos for the three generic plugins (GenericHL7 /
+      GenericASTM / GenericFile flows)
+- [ ] Package Playwright HTML reports for stakeholder review
+
+**Post-MVP (architecture evolution):**
+
+- [ ] Unified FHIR R4 bridge interface (Phase 3B)
+- [ ] HL7 bidirectional — `ORM^O01` + `QRY^Q02`
+- [ ] ASTM bidirectional — query-initiated result requests (#3032)
+- [ ] GeneXpert HL7 mode (OGC-336) — QBP queries
+- [ ] Bridge outbound MLLP/ASTM client (enables `LIS_INITIATED` mode)
+- [ ] `autoCreateTestMappings` profile-field-naming fix
+- [ ] TLS consolidation — shared `BridgeSslUtil` + `analyzer.bridge.tls.verify`
+- [ ] `@Scheduled` periodic bridge sync
+
+**Not tracked here (see Confluence):** HJRA site networking; per-instrument
+field validation; real-file collection for analyzer specs; vendor-doc reviews;
+site deployment sequencing.
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+---
+
 # Tasks: Madagascar Analyzer Integration
 
 **Feature**: 011-madagascar-analyzer-integration **Input**: Design documents

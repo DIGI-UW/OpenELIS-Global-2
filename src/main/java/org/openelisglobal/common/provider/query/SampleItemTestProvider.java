@@ -134,9 +134,9 @@ public class SampleItemTestProvider extends BaseQueryProvider {
         TypeOfSampleTests sampleTests = typeOfSampleTestsList.get(0);
         List<Test> tests = sampleTests.tests;
 
-        List<Integer> testIds = new ArrayList<>();
+        List<String> testIds = new ArrayList<>();
         for (Test test : tests) {
-            testIds.add(Integer.valueOf(test.getId()));
+            testIds.add(test.getId());
         }
         return analysisService.getAnalysisBySampleAndTestIds(sampleKey, testIds);
     }

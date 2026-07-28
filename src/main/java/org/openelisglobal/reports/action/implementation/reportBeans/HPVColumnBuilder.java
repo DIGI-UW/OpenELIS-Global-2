@@ -44,17 +44,17 @@ public class HPVColumnBuilder extends CIStudyColumnBuilder {
 
     @Override
     protected void defineBasicColumns() {
-        add("accession_number", "LABNO", NONE);
-        add("status_id", "SAMPLE_STATUS", SAMPLE_STATUS);
-        add("external_id", "ID_PATIENT", NONE);
-        add("project_id", "STUDY", PROJECT);
-        add("received_date", "DRCPT", DATE_TIME); // reception date
-        add("collection_date", "DINTV", DATE_TIME); // interview date
-        add("organization_code", "CODE_SITE", NONE);
-        add("organization_name", "NAME_SITE", NONE);
-        add("datim_org_code", "CODE_SITE_DATIM", NONE);
-        add("datim_org_name", "NAME_SITE_DATIM", NONE);
-        add("birth_date", "BIRTH_DATE", DATE);
+        add("accession_number", "Lab No", NONE);
+        add("status_id", "Sample Status", SAMPLE_STATUS);
+        add("external_id", "Patient ID", NONE);
+        add("project_id", "Study", PROJECT);
+        add("received_date", "Date Received", DATE_TIME);
+        add("collection_date", "Date Collected", DATE_TIME);
+        add("organization_code", "Site Code", NONE);
+        add("organization_name", "Site Name", NONE);
+        add("datim_org_code", "DATIM Site Code", NONE);
+        add("datim_org_name", "DATIM Site Name", NONE);
+        add("birth_date", "Birth Date", DATE);
     }
 
     @Override

@@ -7,6 +7,23 @@ import { Button, Layer, Tile } from "@carbon/react";
  * Catches render errors for a single route subtree so the rest of the app keeps working.
  * Copy uses react-intl message ids from `frontend/src/languages/*.json`.
  */
+import PropTypes from "prop-types";
+
+const propTypes = {
+  intl: PropTypes.object.isRequired,
+  children: PropTypes.node,
+  titleKey: PropTypes.string,
+  messageKey: PropTypes.string,
+  resetKey: PropTypes.string,
+  onReload: PropTypes.func,
+};
+
+const defaultProps = {
+  titleKey: "errorBoundary.default.title",
+  messageKey: "errorBoundary.default.message",
+  onReload: undefined,
+};
+
 class RouteErrorBoundaryClass extends React.Component {
   constructor(props) {
     super(props);
@@ -33,7 +50,12 @@ class RouteErrorBoundaryClass extends React.Component {
   }
 
   handleReload = () => {
-    window.location.reload();
+    const { onReload } = this.props;
+    if (onReload) {
+      onReload();
+    } else {
+      window.location.reload();
+    }
   };
 
   render() {
@@ -57,6 +79,9 @@ class RouteErrorBoundaryClass extends React.Component {
     return children;
   }
 }
+
+RouteErrorBoundaryClass.propTypes = propTypes;
+RouteErrorBoundaryClass.defaultProps = defaultProps;
 
 const RouteErrorBoundary = injectIntl(RouteErrorBoundaryClass);
 

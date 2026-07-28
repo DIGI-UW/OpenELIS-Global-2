@@ -106,6 +106,8 @@ public class ResultsValidationUtility {
     protected AnalysisService analysisService;
     @Autowired
     protected ResultLimitService resultLimitService;
+    @Autowired
+    protected org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -114,7 +116,7 @@ public class ResultsValidationUtility {
     protected String ANALYTE_CD4_CT_GENERATED_ID;
     protected String CONCLUSION_ID;
 
-    protected List<Integer> notValidStatus = new ArrayList<>();
+    protected List<String> notValidStatus = new ArrayList<>();
     protected Map<String, String> testIdToUnits = new HashMap<>();
     protected Map<String, Boolean> accessionToValidMap;
     protected String totalTestName = "";
@@ -122,16 +124,12 @@ public class ResultsValidationUtility {
 
     @PostConstruct
     private void initilaizeGlobalVariables() {
-        notValidStatus.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-        notValidStatus.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
-        notValidStatus.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-        notValidStatus.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-        notValidStatus.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
+        notValidStatus
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
         Analyte analyte = new Analyte();
         analyte.setAnalyteName("Conclusion");
         analyte = analyteService.getAnalyteByName(analyte, false);
@@ -152,7 +150,7 @@ public class ResultsValidationUtility {
         }
     }
 
-    public List<AnalysisItem> getResultValidationList(List<Integer> statusList, String testSectionId,
+    public List<AnalysisItem> getResultValidationList(List<String> statusList, String testSectionId,
             String accessionNumber, String date) {
 
         List<AnalysisItem> resultList = new ArrayList<>();
@@ -179,7 +177,7 @@ public class ResultsValidationUtility {
         return resultList;
     }
 
-    public int getCountResultValidationList(List<Integer> statusList, String testSectionId) {
+    public int getCountResultValidationList(List<String> statusList, String testSectionId) {
 
         // List<AnalysisItem> resultList = new ArrayList<>();
         int count = 0;
@@ -195,7 +193,7 @@ public class ResultsValidationUtility {
 
     @SuppressWarnings("unchecked")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsInTestSection(String sectionId,
-            List<Integer> statusList) {
+            List<String> statusList) {
 
         // List<Analysis> analysisList =
         // analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
@@ -208,7 +206,7 @@ public class ResultsValidationUtility {
 
     @SuppressWarnings("unchecked")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
-            List<Integer> statusList) {
+            List<String> statusList) {
 
         // List<Analysis> analysisList =
         // analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
@@ -221,16 +219,15 @@ public class ResultsValidationUtility {
 
     @SuppressWarnings("unchecked")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsByTestDate(String date,
-            List<Integer> statusList) {
+            List<String> statusList) {
 
         List<Analysis> analysisList = analysisService.getAnalysisStartedOn(DateUtil.convertStringDateToSqlDate(date))
-                .stream().filter(analysis -> statusList.contains(Integer.valueOf(analysis.getStatusId())))
-                .collect(Collectors.toList());
+                .stream().filter(analysis -> statusList.contains(analysis.getStatusId())).collect(Collectors.toList());
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
     @SuppressWarnings("unchecked")
-    public final int getCountUnValidatedTestResultItemsInTestSection(String sectionId, List<Integer> statusList) {
+    public final int getCountUnValidatedTestResultItemsInTestSection(String sectionId, List<String> statusList) {
         return analysisService.getCountAnalysisByTestSectionAndStatus(sectionId, statusList);
     }
 
@@ -369,6 +366,29 @@ public class ResultsValidationUtility {
         return valid;
     }
 
+    /**
+     * For a multi-component test, label the row with its component so validators
+     * can tell the values apart (the component is resolved via the result's
+     * test_result row).
+     */
+    protected String appendComponentLabel(String displayTestName, Result result, Test test) {
+        if (result == null || result.getTestResult() == null || result.getTestResult().getComponentId() == null) {
+            return displayTestName;
+        }
+        List<org.openelisglobal.testresultcomponent.valueholder.TestResultComponent> components = testResultComponentService
+                .getActiveComponentsByTestId(test.getId());
+        if (components.size() < 2) {
+            return displayTestName;
+        }
+        for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component : components) {
+            if (component.getId().equals(result.getTestResult().getComponentId())
+                    && !GenericValidator.isBlankOrNull(component.getLabel())) {
+                return displayTestName + " — " + component.getLabel();
+            }
+        }
+        return displayTestName;
+    }
+
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
         List<ResultValidationItem> testResultList = new ArrayList<>();
 
@@ -423,10 +443,14 @@ public class ResultsValidationUtility {
         List<TestResult> testResults = getPossibleResultsForTest(test);
 
         String displayTestName = TestServiceImpl.getLocalizedTestNameWithType(test);
+        displayTestName = appendComponentLabel(displayTestName, result, test);
         // displayTestName = augmentTestNameWithRange(displayTestName, result);
 
-        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(test,
-                currentPatient);
+        // OGC-1145 Phase 2: the analysis's specimen selects a scoped limit
+        // over the shared set when the test carries per-sample-type overrides.
+        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(
+                test.getId(), currentPatient,
+                analysis.getSampleItem() != null ? analysis.getSampleItem().getTypeOfSampleId() : null);
         ResultValidationItem testItem = new ResultValidationItem();
 
         testItem.setAccessionNumber(accessionNumber);
@@ -438,7 +462,14 @@ public class ResultsValidationUtility {
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
         testItem.setDictionaryResults(getAnyDictonaryValues(testResults));
-        testItem.setResultType(getTestResultType(testResults));
+        // The test-level type is the first test_result row's, which for a
+        // multi-component test is the primary's; an entered result knows its
+        // own component's type, so prefer the stored one.
+        if (result != null && !GenericValidator.isBlankOrNull(result.getResultType())) {
+            testItem.setResultType(result.getResultType());
+        } else {
+            testItem.setResultType(getTestResultType(testResults));
+        }
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
         testItem.setChildReflex(analysis.getTriggeredReflex() && isConclusion(result, analysis));
@@ -478,6 +509,7 @@ public class ResultsValidationUtility {
                 normalResult = true;
             } else if (!TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())
                     && !GenericValidator.isBlankOrNull(result.getValue())
+                    && GenericValidator.isDouble(result.getValue(true))
                     && (resultLimit.getHighNormal() >= Double.parseDouble(result.getValue(true))
                             && resultLimit.getLowNormal() <= Double.parseDouble(result.getValue(true)))) {
                 normalResult = true;
@@ -536,15 +568,18 @@ public class ResultsValidationUtility {
         List<IdValuePair> values = null;
         Dictionary dictionary;
 
-        if (testResults != null && testResults.size() > 0
-                && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResults.get(0).getTestResultType())) {
-            values = new ArrayList<>();
-            values.add(new IdValuePair("0", ""));
-
+        if (testResults != null) {
             for (TestResult testResult : testResults) {
                 // Note: result group use to be a criteria but was removed, if
                 // results are not as expected investigate
+                // A multi-component test mixes row types, so dictionary options
+                // are collected from any dictionary-variant row rather than
+                // gating on the first row's type.
                 if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())) {
+                    if (values == null) {
+                        values = new ArrayList<>();
+                        values.add(new IdValuePair("0", ""));
+                    }
                     dictionary = dictionaryService.getDataForId(testResult.getValue());
                     String displayValue = dictionary.getLocalizedName();
 
@@ -576,34 +611,34 @@ public class ResultsValidationUtility {
 
         /*
          * The issue with multiselect results is that each selection is one
-         * ResultValidationItem but they all need to be condensed into one AnalysisItem.
-         * There is a many to one mapping. The first multiselect result we have gets
-         * rolled into one AnalysisItem and the rest are skipped but we want to capture
-         * any qualified results
+         * ResultValidationItem but they all need to be condensed into one AnalysisItem
+         * (whose multiSelectResultValues carries every selection as JSON). The
+         * condensing is scoped per analysis: other results of the same accession —
+         * other analyses, or other components of a multi-component analysis — must
+         * still get their own rows. Qualified results found among an analysis's
+         * multiselect selections are captured onto its condensed item.
          */
-        boolean multiResultEntered = false;
-        String currentAccession = null;
-        AnalysisItem currentMultiSelectAnalysisItem = null;
+        Map<String, AnalysisItem> condensedMultiSelectByAnalysis = new HashMap<>();
         for (ResultValidationItem testResultItem : testResultList) {
-            if (!testResultItem.getAccessionNumber().equals(currentAccession)) {
-                currentAccession = testResultItem.getAccessionNumber();
-                currentMultiSelectAnalysisItem = null;
-                multiResultEntered = false;
-            }
-            if (!multiResultEntered) {
+            String analysisId = testResultItem.getAnalysis().getId();
+            boolean multiSelect = TypeOfTestResultServiceImpl.ResultType
+                    .isMultiSelectVariant(testResultItem.getResultType());
+
+            if (!multiSelect || !condensedMultiSelectByAnalysis.containsKey(analysisId)) {
                 AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem);
                 analysisResultList.add(convertedItem);
-                if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
-                    multiResultEntered = true;
-                    currentMultiSelectAnalysisItem = convertedItem;
+                if (multiSelect) {
+                    condensedMultiSelectByAnalysis.put(analysisId, convertedItem);
                 }
             }
-            if (currentMultiSelectAnalysisItem != null && testResultItem.isHasQualifiedResult()) {
-                currentMultiSelectAnalysisItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
-                currentMultiSelectAnalysisItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
-                currentMultiSelectAnalysisItem.setHasQualifiedResult(true);
-                currentMultiSelectAnalysisItem.setNormalRange(testResultItem.getNormalRange());
-                currentMultiSelectAnalysisItem.setPatientName(testResultItem.getPatientName());
+
+            AnalysisItem condensedItem = condensedMultiSelectByAnalysis.get(analysisId);
+            if (condensedItem != null && testResultItem.isHasQualifiedResult()) {
+                condensedItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
+                condensedItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
+                condensedItem.setHasQualifiedResult(true);
+                condensedItem.setNormalRange(testResultItem.getNormalRange());
+                condensedItem.setPatientName(testResultItem.getPatientName());
             }
         }
 
@@ -656,6 +691,9 @@ public class ResultsValidationUtility {
         analysisResultItem.setAnalysisId(testResultItem.getAnalysis().getId());
         analysisResultItem.setPastNotes(testResultItem.getPastNotes());
         analysisResultItem.setResultId(testResultItem.getResultId());
+        if (result != null && result.getTestResult() != null) {
+            analysisResultItem.setTestResultComponentId(result.getTestResult().getComponentId());
+        }
         analysisResultItem.setResultType(testResultItem.getResultType());
         analysisResultItem.setTestId(testResultItem.getTestId());
         analysisResultItem.setTestSortNumber(sortOrder);
@@ -735,7 +773,7 @@ public class ResultsValidationUtility {
     }
 
     public List<ResultValidationItem> getGroupedTestsForSample(Sample sample) {
-        Set<Integer> excludedAnalysisStatus = new HashSet<>();
+        Set<String> excludedAnalysisStatus = new HashSet<>();
         excludedAnalysisStatus.addAll(this.notValidStatus);
         List<Analysis> analysisList = analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(),
                 excludedAnalysisStatus);

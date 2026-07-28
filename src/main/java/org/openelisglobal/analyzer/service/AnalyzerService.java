@@ -54,9 +54,9 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
     void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId);
 
     /**
-     * Delete an analyzer and all its dependent records (file_import_configuration,
-     * analyzer_plugin_config, analyzer_field, analyzer_field_mapping,
-     * analyzer_results, analyzer_error, analyzer_pending_code, etc.).
+     * Delete an analyzer and all its dependent records (analyzer_plugin_config,
+     * analyzer_field, analyzer_field_mapping, analyzer_results, analyzer_error,
+     * analyzer_pending_code, etc.).
      *
      * @param analyzer The analyzer entity to delete
      */

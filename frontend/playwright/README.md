@@ -44,10 +44,10 @@ All Playwright tests run through a single parameterized reusable workflow
 (`e2e-playwright-reusable.yml`), called twice by the orchestrator
 (`e2e-authoritative-reusable.yml`):
 
-| Call               | Compose Files                                 | Projects                                | Fixtures                                 |
-| ------------------ | --------------------------------------------- | --------------------------------------- | ---------------------------------------- |
-| Playwright Core    | `build.docker-compose.yml`                    | `core-app` + `core-demo`                | 3 SQL files (see below)                  |
-| Playwright Harness | `build.docker-compose.yml` + harness overlays | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --analyzers=full` |
+| Call               | Compose Files                                 | Projects                                | Fixtures                                  |
+| ------------------ | --------------------------------------------- | --------------------------------------- | ----------------------------------------- |
+| Playwright Core    | `build.docker-compose.yml`                    | `core-app` + `core-demo`                | `load-test-fixtures.sh --profile=core`    |
+| Playwright Harness | `build.docker-compose.yml` + harness overlays | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 Both follow the same pattern: **test-shards → merge-reports → gate**. Each
 produces a merged HTML report artifact:
@@ -67,14 +67,13 @@ is local-only via the `-video` project variants.
 
 ## Fixtures
 
-SQL fixtures are loaded via `docker exec psql` in CI workflows:
+CI workflows load fixtures via the unified loader script:
 
-- **`src/test/resources/load-test-fixtures.sh --analyzers=full`** (analyzer
+- **`src/test/resources/load-test-fixtures.sh --profile=harness`** (analyzer
   harness job) — foundational data, `file-import-e2e.sql` cleanup, storage
   E2E fixtures, then **`src/test/resources/fixtures/analyzer-harness-lane-data.sql`**
   (isolated `HARN-*` accessions; see **`projects/analyzer-harness/LANE-IDENTIFIERS.md`**)
-- **`src/test/resources/analyzer-harness-e2e.sql`** — Used by core Playwright
-  workflow only (analyzer types + demo patient); not the full harness loader
+- **`src/test/resources/fixtures/core-demo-patient.sql`** — Core demo patient fixture loaded by `--profile=core`
 - **`src/test/resources/fixtures/file-import-e2e.sql`** — Stale analyzer cleanup,
   **lane residue reset** for `HARN-*`, and dashboard type deactivation baseline
 

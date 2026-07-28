@@ -197,7 +197,6 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             type.setActive(active.isEmpty() || "Y".equalsIgnoreCase(active));
             type.setCategoryId(categoryId);
             type.setNameLocalization(localization);
-            type.setSysUserId("1");
 
             nceTypeService.insert(type);
 
@@ -230,14 +229,12 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             localizationService.update(localization);
         }
 
-        type.setSysUserId("1");
     }
 
     private Localization createLocalization(String description, String[] values,
             Map<String, Integer> localeColumnIndexes) {
         Localization localization = new Localization();
         localization.setDescription("NCE Type: " + description);
-        localization.setSysUserId("1");
 
         for (Map.Entry<String, Integer> entry : localeColumnIndexes.entrySet()) {
             String locale = entry.getKey();
@@ -260,7 +257,6 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
                 localization.setLocalizedValue(locale, value);
             }
         }
-        localization.setSysUserId("1");
     }
 
     private String getValueOrEmpty(String[] values, int index) {

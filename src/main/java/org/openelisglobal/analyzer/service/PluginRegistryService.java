@@ -23,6 +23,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
@@ -65,7 +66,7 @@ import org.springframework.transaction.annotation.Transactional;
 @DependsOn("pluginLoader")
 public class PluginRegistryService {
 
-    private static final String GENERIC_ASTM_CLASS = "org.openelisglobal.plugins.analyzer.genericastm.GenericASTMAnalyzer";
+    private static final String GENERIC_ASTM_CLASS = "org.openelisglobal.analyzer.service.GenericASTMPlugin";
     private static final String GENERIC_HL7_CLASS = "org.openelisglobal.plugins.analyzer.generichl7.GenericHL7Analyzer";
     private static final String GENERIC_FILE_CLASS = "org.openelisglobal.plugins.analyzer.genericfile.GenericFileAnalyzer";
 
@@ -77,6 +78,9 @@ public class PluginRegistryService {
 
     @Autowired
     private PluginAnalyzerService pluginAnalyzerService;
+
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
 
     /**
      * Auto-discover and register all loaded analyzer plugins in the analyzer_type
@@ -94,6 +98,10 @@ public class PluginRegistryService {
     @PostConstruct
     @Transactional
     public void registerLoadedPlugins() {
+        daemonContextExecutor.executeAsDaemon(() -> doRegisterLoadedPlugins());
+    }
+
+    private void doRegisterLoadedPlugins() {
         LogEvent.logInfo(this.getClass().getName(), "registerLoadedPlugins",
                 "Auto-discovering loaded analyzer plugins...");
 
@@ -199,7 +207,6 @@ public class PluginRegistryService {
 
             if (matched != null) {
                 analyzer.setAnalyzerType(matched);
-                analyzer.setSysUserId("1");
                 analyzerService.save(analyzer);
                 LogEvent.logInfo(this.getClass().getName(), "linkLegacyAnalyzersToTypes",
                         "Linked analyzer '" + analyzerName + "' to type '" + matched.getName() + "'");
@@ -230,7 +237,6 @@ public class PluginRegistryService {
         type.setPluginClassName(className);
         type.setGenericPlugin(isGeneric);
         type.setActive(true);
-        type.setSysUserId("1");
 
         if (isGeneric) {
             type.setIdentifierPattern(getDefaultIdentifierPattern(className));

@@ -90,11 +90,11 @@ public class ElectronicOrderServiceImpl extends AuditableBaseObjectServiceImpl<E
     @Override
     public List<ElectronicOrder> getElectronicOrdersContainingValueExludedByOrderedBy(String searchValue,
             List<ExternalOrderStatus> excludedStatuses, SortOrder sortOrder) {
-        List<Integer> exludedStatusIds = new ArrayList<>();
+        List<String> exludedStatusIds = new ArrayList<>();
         for (ExternalOrderStatus status : excludedStatuses) {
             String statusId = statusService.getStatusID(status);
             if (!GenericValidator.isBlankOrNull(statusId)) {
-                exludedStatusIds.add(Integer.parseInt(statusId));
+                exludedStatusIds.add(statusId);
             }
         }
 
@@ -216,12 +216,12 @@ public class ElectronicOrderServiceImpl extends AuditableBaseObjectServiceImpl<E
     }
 
     @Override
-    public List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<Integer> statusIds, SortOrder sortOrder) {
+    public List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<String> statusIds, SortOrder sortOrder) {
         return getBaseObjectDAO().getAllElectronicOrdersByStatusList(statusIds, sortOrder);
     }
 
     @Override
-    public int getCountOfElectronicOrdersByStatusList(List<Integer> statusIds) {
+    public int getCountOfElectronicOrdersByStatusList(List<String> statusIds) {
         return getBaseObjectDAO().getCountOfElectronicOrdersByStatusList(statusIds);
     }
 }

@@ -254,7 +254,7 @@ public class PatientDAOImpl extends BaseDAOImpl<Patient, String> implements Pati
             String sql = "From Patient p where p.person.id = :personID";
 
             Query<Patient> query = entityManager.unwrap(Session.class).createQuery(sql, Patient.class);
-            query.setParameter("personID", Integer.parseInt(person.getId()));
+            query.setParameter("personID", person.getId());
 
             patients = query.list();
         } catch (RuntimeException e) {

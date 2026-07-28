@@ -45,6 +45,10 @@ public class SampleEditForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX, groups = { SampleEdit.class })
     private String nationalId = "";
 
+    private String patientId = "";
+
+    private String subjectNumber = "";
+
     @ValidAccessionNumber(groups = { SampleEdit.class }, searchValue = true)
     private String accessionNumber;
 
@@ -103,13 +107,13 @@ public class SampleEditForm extends BaseForm {
     private String accessionFormat = ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat);
 
     // in validator
-    private int editableAccession = AccessionNumberUtil.getChangeableLength();
+    private int editableAccession;
 
     // in validator
-    private int nonEditableAccession = AccessionNumberUtil.getInvarientLength();
+    private int nonEditableAccession;
 
     // in validator
-    private int maxAccessionLength = editableAccession + nonEditableAccession;
+    private int maxAccessionLength;
 
     private boolean customNotificationLogic;
     private List<String> patientEmailNotificationTestIds;
@@ -175,6 +179,22 @@ public class SampleEditForm extends BaseForm {
 
     public void setNationalId(String nationalId) {
         this.nationalId = nationalId;
+    }
+
+    public String getPatientId() {
+        return patientId;
+    }
+
+    public void setPatientId(String patientId) {
+        this.patientId = patientId;
+    }
+
+    public String getSubjectNumber() {
+        return subjectNumber;
+    }
+
+    public void setSubjectNumber(String subjectNumber) {
+        this.subjectNumber = subjectNumber;
     }
 
     public String getAccessionNumber() {
@@ -314,7 +334,7 @@ public class SampleEditForm extends BaseForm {
     }
 
     public int getEditableAccession() {
-        return editableAccession;
+        return AccessionNumberUtil.getChangeableLength();
     }
 
     public void setEditableAccession(int editableAccession) {
@@ -322,7 +342,7 @@ public class SampleEditForm extends BaseForm {
     }
 
     public int getNonEditableAccession() {
-        return nonEditableAccession;
+        return AccessionNumberUtil.getInvarientLength();
     }
 
     public void setNonEditableAccession(int nonEditableAccession) {
@@ -330,7 +350,7 @@ public class SampleEditForm extends BaseForm {
     }
 
     public int getMaxAccessionLength() {
-        return maxAccessionLength;
+        return getEditableAccession() + getNonEditableAccession();
     }
 
     public void setMaxAccessionLength(int maxAccessionLength) {

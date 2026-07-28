@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
 public class EQADistributionRestController extends ControllerUtills {
 
     @Autowired

@@ -1,11 +1,7 @@
-import { expect, test, Page, TestInfo } from "@playwright/test";
+import { expect, test, Page } from "../../../helpers/test-base";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
-import {
-  SHORT_TIMEOUT,
-  UI_TIMEOUT,
-  LONG_TIMEOUT,
-} from "../../../helpers/timeouts";
+import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * OGC-62 — Shipment management workflow (user stories)
@@ -48,7 +44,7 @@ async function gotoCreateBox(page: Page) {
           .getByText(/create.*box|new.*box/i)
           .first(),
       )
-      .or(page.locator('[role="combobox"]').first())
+      .or(page.locator("#destination"))
       .first(),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
 }
@@ -204,11 +200,9 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
   );
   await showSceneLabel(page, "US2 · Select Destination", testInfo);
 
-  // Look for a dropdown/combobox for facility selection
-  const facilityDropdown = page
-    .locator('[role="combobox"]')
-    .or(page.locator("select"))
-    .first();
+  // Carbon Dropdown with id="destination" in BoxCreation.jsx. The id is
+  // applied to the list-box root; clicking it opens the listbox.
+  const facilityDropdown = page.locator("#destination");
   await expect(facilityDropdown).toBeVisible({ timeout: UI_TIMEOUT });
   await scrollToAndPause(page, facilityDropdown, pause, 1200);
 
@@ -216,16 +210,18 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
   const isSelect =
     (await facilityDropdown.evaluate((el) => el.tagName)) === "SELECT";
   if (isSelect) {
-    const options = await facilityDropdown.locator("option").count();
+    const options = await facilityDropdown.locator('[role="option"]').count();
     if (options > 1) {
       await facilityDropdown.selectOption({ index: 1 });
     }
   } else {
     await facilityDropdown.click();
-    await expect(page.locator('[role="option"]').first()).toBeVisible({
+    await expect(
+      facilityDropdown.locator('[role="option"]').first(),
+    ).toBeVisible({
       timeout: UI_TIMEOUT,
     });
-    await page.locator('[role="option"]').first().click();
+    await facilityDropdown.locator('[role="option"]').first().click();
   }
   await pause(800);
 
@@ -271,8 +267,18 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
   // The create button state depends on whether a facility and sample were
   // added. On a fresh demo DB without unassigned samples it stays disabled.
   // Either state proves the form validation logic works.
-  const isEnabled = await createBtn.isEnabled();
-  if (isEnabled) {
+  //
+  // Give the button a bounded window to stabilize into its final state
+  // (enabled if form is valid, disabled otherwise). `toBeEnabled` auto-
+  // retries; catching the rejection is intentional — "disabled" is a
+  // legitimate terminal state here, not a failure. try/catch (vs `.catch()`
+  // chained) keeps ESLint's missing-playwright-await happy.
+  try {
+    await expect(createBtn).toBeEnabled({ timeout: UI_TIMEOUT });
+  } catch {
+    // disabled is a valid terminal state for this demo
+  }
+  if (await createBtn.isEnabled()) {
     await createBtn.click();
 
     const successNotification = page.getByText(/created|success/i);
@@ -332,11 +338,8 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     await scrollToAndPause(page, searchInput, pause, 1200);
   }
 
-  // State filter dropdown
-  const stateFilter = page
-    .getByText(/filter.*state/i)
-    .or(page.locator('[role="combobox"]').first())
-    .first();
+  // State filter Carbon Dropdown has id="state-filter" in ShipmentDashboard.jsx.
+  const stateFilter = page.locator("#state-filter");
   if (await stateFilter.isVisible()) {
     await scrollToAndPause(page, stateFilter, pause, 1200);
   }
@@ -394,4 +397,9 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     4000,
     testInfo,
   );
+
+  // Close the US3 flow with a URL sanity check — the user must have
+  // landed on a shipment route (dashboard or receive page) for the
+  // video to have captured the intended story.
+  await expect(page).toHaveURL(/\/SampleShipment|\/shipment/i);
 });

@@ -119,12 +119,12 @@ export class Sidenav {
   }
 
   /** Navigate to storage section and wait for load */
-  async gotoStorage(path = "samples") {
+  async gotoStorage(path = "sample-items") {
     await this.page.goto(`/Storage/${path}`, {
       waitUntil: "domcontentloaded",
     });
     await expect(this.page).toHaveURL(new RegExp(`/Storage/${path}`));
-    await expect(this.menuButton).toBeVisible();
+    await expect(this.page.locator("#mainHeader")).toBeVisible();
   }
 
   /**
@@ -147,7 +147,7 @@ export class Sidenav {
       waitUntil: "domcontentloaded",
     });
     await expect(this.page).toHaveURL(/FreezerMonitoring/);
-    await expect(this.menuButton).toBeVisible();
+    await expect(this.page.locator("#mainHeader")).toBeVisible();
   }
 
   /**

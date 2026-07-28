@@ -167,16 +167,17 @@ const ErrorDashboard = () => {
       ...(initialSearch ? { search: initialSearch } : {}),
     });
 
-    // Restore scroll position from sessionStorage
+    // Restore scroll position from sessionStorage. Capture the timer
+    // handle so the cleanup function can cancel it — otherwise the
+    // scheduled callback may fire after the component (and, in tests,
+    // the jsdom `window`) is gone, causing `ReferenceError: window is
+    // not defined` and flaking unit tests.
     const storedScrollY = sessionStorage.getItem("errorDashboard.scrollY");
+    let scrollRestoreTimer;
     if (storedScrollY) {
-      try {
-        setTimeout(() => {
-          window.scrollTo(0, parseInt(storedScrollY, 10));
-        }, 100);
-      } catch (_) {
-        // ignore
-      }
+      scrollRestoreTimer = setTimeout(() => {
+        window.scrollTo(0, parseInt(storedScrollY, 10));
+      }, 100);
     }
 
     // Persist scroll position on unload
@@ -185,6 +186,10 @@ const ErrorDashboard = () => {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
+      if (scrollRestoreTimer) clearTimeout(scrollRestoreTimer);
+      // Search-debounce timer is set in handleSearch via
+      // searchTimeoutRef; clear it here so it can't fire after unmount.
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
       window.removeEventListener("beforeunload", onBeforeUnload);
       sessionStorage.setItem("errorDashboard.scrollY", String(window.scrollY));
     };

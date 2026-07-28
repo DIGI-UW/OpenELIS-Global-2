@@ -1,3 +1,62 @@
+> **STATUS: Superseded as a delivery tracker (updated 2026-04-20).** The January
+> 2026 milestone structure below (M0–M21, RS232-via-bridge framing, Cypress 12.x
+> as E2E, contract deadline 2026-02-28) no longer describes how the work is
+> landing. The MVP architecture (three generic plugins + profile JSONs) is
+> shipped on `develop`; per-analyzer site validation and post-MVP architecture
+> evolution are open. Do not use the M0–M21 numbering below to plan current
+> work; track delivery through the Confluence tracker and per-PR commits.
+>
+> **Canonical sources.** The architecture-level roadmap is at
+> `specs/roadmaps/madagascar-analyzer-roadmap.md`. The canonical per-analyzer
+> source is the
+> [Confluence Analyzer Integration Tracker](https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396).
+> The test harness entry points are
+> `projects/analyzer-harness/seed-analyzers.sh` and `ci-parity-test.sh`.
+
+## Remaining Work to Finish Line (2026-04-20)
+
+The umbrella 011 work is now **architecture-level**, not per-instrument. Adding
+another analyzer on an already-supported protocol is a profile-JSON drop in
+[`projects/analyzer-profiles/`](../../projects/analyzer-profiles/); per-analyzer
+deployment status, site validation, and vendor-specific blockers live on the
+[Confluence tracker][tracker], not in this plan.
+
+**Remaining architecture + cross-cutting work:**
+
+- PR #3195 merge (HL7 test-connection + `CommunicationMode` enum)
+- `communication` blocks on the remaining 8 ASTM/HL7 profiles (5 of 13 have them
+  today)
+- E2E demo video evidence for the three generic plugins (GenericHL7 /
+  GenericASTM / GenericFile flows)
+- HJRA site networking + per-instrument field validation — tracked in the
+  Confluence tracker
+
+**Post-MVP (architecture evolution):**
+
+- **Unified FHIR R4 bridge interface** — bridge parses all formats, delivers
+  FHIR transaction Bundles (`DiagnosticReport` + `Observation`) to OE so OE
+  becomes format-agnostic. See `specs/roadmaps/pr-3195-remediation-plan.md`
+  Phase 3B.
+- **HL7 bidirectional** — `ORM^O01` worklist download + `QRY^Q02` host queries
+  (needs bridge outbound MLLP client)
+- **ASTM bidirectional** — query-initiated result requests (deferred, #3032)
+- **GeneXpert HL7 mode** (OGC-336) — QBP queries
+- **`LIS_INITIATED` communication mode** — OE-to-analyzer outbound (needs bridge
+  outbound ASTM/MLLP client)
+- **`autoCreateTestMappings`** profile-field-naming fix
+- **TLS consolidation** — extract shared `BridgeSslUtil`; add
+  `analyzer.bridge.tls.verify` config
+- **`@Scheduled` periodic bridge sync** (currently only on OE startup)
+
+**Not architecture work:** per-instrument specs, vendor-doc review, real-file
+collection, and site deployment sequencing live on the [Confluence
+tracker][tracker]. New instruments that land as profile JSONs don't add work to
+this plan.
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+---
+
 # Implementation Plan: Madagascar Analyzer Integration
 
 **Branch**: `feat/011-madagascar-analyzer-integration` | **Date**: 2026-01-22 |

@@ -10,7 +10,7 @@ sequence range 0000000100–0000000199.
 
 Loaded by `src/test/resources/fixtures/analyzer-harness-lane-data.sql` and reset
 by `src/test/resources/fixtures/file-import-e2e.sql` before each
-`--analyzers=full` fixture load.
+`--profile=harness` fixture load.
 
 | Lane                | Analyzer (seed name)          | Lane Code | Example Accession    | Notes                                                             |
 | ------------------- | ----------------------------- | --------- | -------------------- | ----------------------------------------------------------------- |
@@ -40,5 +40,5 @@ characters: `{PREFIX:5}{YEAR:2}{SEQUENCE:13}`.
   `projects/analyzer-harness/e2e-fixtures/genexpert_astm.json` and **recreate**
   the `astm-simulator` container (no image rebuild required).
 - After changing lane SQL or cleanup, run
-  `./src/test/resources/load-test-fixtures.sh --analyzers=full` against the
+  `./src/test/resources/load-test-fixtures.sh --profile=harness` against the
   harness DB container.

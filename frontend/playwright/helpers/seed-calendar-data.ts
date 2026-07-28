@@ -41,7 +41,7 @@ const SAMPLE_HOLIDAYS: Omit<Holiday, "id">[] = [
  */
 export async function seedHolidays(
   page: Page,
-  year: number = 2026,
+  _year: number = 2026,
 ): Promise<Holiday[]> {
   const created: Holiday[] = [];
   const csrfToken = await getCsrfToken(page);

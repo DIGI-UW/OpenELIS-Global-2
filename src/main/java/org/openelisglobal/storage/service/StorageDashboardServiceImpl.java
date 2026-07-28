@@ -54,7 +54,10 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
             }
 
             // Status filtering: Support filtering by any status ID from dropdown
-            // Frontend can send "active", "disposed", or any actual status ID
+            // Frontend can send "active", "disposed", or any actual status ID.
+            // The map's "status" field carries the raw DB status ID here; the
+            // REST controller translates it to the spec enum ("active"|"disposed")
+            // before responding to the client.
             boolean matchesStatus = true;
             if (status != null && !status.isEmpty()) {
                 String statusFilter = status.trim();
