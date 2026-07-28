@@ -26,6 +26,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -155,17 +156,18 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             String sql = "";
             // bugzilla 1387 added domain parm
             if (!StringUtil.isNullorNill(domain)) {
-                sql = "from TypeOfSample t where upper(t.description) like upper(:param) and t.domain ="
-                        + " :param2 order by upper(t.description)";
+                sql = "from TypeOfSample t where upper(t.description) like upper(:param) and t.domain in"
+                        + " (:param2) order by upper(t.description)";
             } else {
                 sql = "from TypeOfSample t where upper(t.description) like upper(:param) order by"
                         + " upper(t.description)";
             }
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
             query.setParameter("param", filter + "%");
-            // bugzilla 1387 added domain parm
+            // bugzilla 1387 added domain parm; accepts the legacy char or the
+            // enum value (OGC-296 domain migration)
             if (!StringUtil.isNullorNill(domain)) {
-                query.setParameter("param2", domain);
+                query.setParameterList("param2", List.of(domain, Domain.normalize(domain)));
             }
 
             list = query.list();
@@ -181,15 +183,15 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
     @Transactional(readOnly = true)
     public List<TypeOfSample> getTypesForDomain(SampleDomain domain) throws LIMSRuntimeException {
         List<TypeOfSample> list;
-        String key = getKeyForDomain(domain);
+        List<String> keys = getKeysForDomain(domain);
 
         try {
 
-            String sql = "from TypeOfSample t where t.domain = :domainKey order by upper(t.description)";
+            String sql = "from TypeOfSample t where t.domain in (:domainKeys) order by upper(t.description)";
 
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
 
-            query.setParameter("domainKey", key);
+            query.setParameterList("domainKeys", keys);
 
             list = query.list();
         } catch (RuntimeException e) {
@@ -203,15 +205,15 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
     @Transactional(readOnly = true)
     public List<TypeOfSample> getTypesForDomainBySortOrder(SampleDomain domain) throws LIMSRuntimeException {
         List<TypeOfSample> list = null;
-        String key = getKeyForDomain(domain);
+        List<String> keys = getKeysForDomain(domain);
 
         try {
 
-            String sql = "from TypeOfSample t where t.domain = :domainKey order by t.sortOrder";
+            String sql = "from TypeOfSample t where t.domain in (:domainKeys) order by t.sortOrder";
 
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
 
-            query.setParameter("domainKey", key);
+            query.setParameterList("domainKeys", keys);
 
             list = query.list();
         } catch (RuntimeException e) {
@@ -238,27 +240,21 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
         return null;
     }
 
-    private String getKeyForDomain(SampleDomain domain) {
-        String domainKey = "H";
+    /**
+     * Both the enum value stored since the OGC-296 domain migration and the legacy
+     * one-character code (D-030), so rows inserted outside the migration path
+     * (fixtures, plugins) keep matching.
+     */
+    private List<String> getKeysForDomain(SampleDomain domain) {
         switch (domain) {
-        case ANIMAL: {
-            domainKey = "A";
-            break;
+        case ANIMAL:
+            return List.of(Domain.VECTOR.name(), "A");
+        case ENVIRONMENTAL:
+            return List.of(Domain.ENVIRONMENTAL.name(), "E");
+        case HUMAN:
+        default:
+            return List.of(Domain.CLINICAL.name(), "H");
         }
-        case ENVIRONMENTAL: {
-            domainKey = "E";
-            break;
-        }
-        case HUMAN: {
-            domainKey = "H";
-            break;
-        }
-        default: {
-            domainKey = "H";
-        }
-        }
-
-        return domainKey;
     }
 
     // bugzilla 1411

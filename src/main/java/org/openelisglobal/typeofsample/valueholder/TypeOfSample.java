@@ -29,6 +29,8 @@ public class TypeOfSample extends BaseObject<String> {
     private String description;
     private String domain;
     private String localAbbreviation;
+    private String whonetCode;
+    private String disposalInstructions;
     private boolean isActive;
     private int sortOrder;
     private ValueHolder localization = new ValueHolder();
@@ -39,6 +41,14 @@ public class TypeOfSample extends BaseObject<String> {
 
     public void setLocalAbbreviation(String localAbbreviation) {
         this.localAbbreviation = localAbbreviation;
+    }
+
+    public String getWhonetCode() {
+        return whonetCode;
+    }
+
+    public void setWhonetCode(String whonetCode) {
+        this.whonetCode = whonetCode;
     }
 
     public TypeOfSample() {
@@ -69,6 +79,14 @@ public class TypeOfSample extends BaseObject<String> {
 
     public String getDomain() {
         return domain;
+    }
+
+    public String getDisposalInstructions() {
+        return disposalInstructions;
+    }
+
+    public void setDisposalInstructions(String disposalInstructions) {
+        this.disposalInstructions = disposalInstructions;
     }
 
     @Override
