@@ -29,8 +29,8 @@ to planning
 ## Feature Readiness
 
 - [x] All functional requirements have clear acceptance criteria
-- [x] User scenarios cover primary flows (admin config, manual upload, watcher
-      import, blocked awareness)
+- [x] User scenarios cover primary flows (admin config, direct ingestion,
+      bridge-owned watcher delivery, blocked awareness)
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] Implementation details contained to Parser Boundary section (architectural
       guidance, not prescriptive)
@@ -48,7 +48,8 @@ to planning
 
 - This is a coordination spec — it establishes sequencing and boundaries, not a
   single feature implementation
-- The FILE semantics decision (Section 2) is the most critical item for review
-  before any implementation begins
+- The FILE ownership contract in `AGENTS.md` is authoritative: the bridge owns
+  watching/transport and OpenELIS owns configuration/registration/ingestion/
+  processing.
 - Parser boundary section intentionally includes some technical detail since
   this spec targets developers, not just stakeholders

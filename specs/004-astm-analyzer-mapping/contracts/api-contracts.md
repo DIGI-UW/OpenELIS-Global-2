@@ -1,445 +1,69 @@
-# API Contracts: ASTM Analyzer Field Mapping
+# Analyzer Mapping API Contract
 
-**Feature**: 004-astm-analyzer-mapping  
-**Date**: 2025-11-14  
-**Status**: Draft
+**Base path:** `/rest/analyzer`
 
-This document defines REST API contracts for the ASTM analyzer field mapping
-feature.
+This contract covers the current configuration MVP. Result import and
+Results/Validation v4 endpoints are deferred to a separate milestone.
 
-## Base URL
+## Test Mappings and Pending Codes
 
-All endpoints are prefixed with `/rest/analyzer` (or `/rest/analyzer-mapping` if
-namespace separation needed).
+- `GET /analyzers/{id}/fields`
+- `GET /analyzers/{id}/mappings`
+- `GET /analyzers/{id}/pending-codes`
+- `GET /analyzers/{id}/test-mapping-options`
+- `PUT /analyzers/{id}/pending-codes/{pendingCodeId}/status`
+- `POST /analyzers/{id}/pending-codes/{pendingCodeId}/resolve`
 
-## Authentication
+Pending-code resolution validates the selected OpenELIS test in the service
+layer and updates the analyzer-specific mapping state.
 
-All endpoints require authentication via Spring Security session management.
-User must have appropriate role:
+## Result-Value Mappings
 
-- `LAB_USER`: View-only access
-- `LAB_SUPERVISOR`: View + acknowledge errors
-- `SYSTEM_ADMINISTRATOR`: Full CRUD access
+- `GET /analyzers/{id}/result-value-mappings`
+- `PUT /analyzers/{id}/result-value-mappings`
+- `GET /analyzers/{id}/result-value-options?testCode={code}`
+- `GET /analyzers/{id}/pending-result-values`
+- `POST /analyzers/{id}/pending-result-values/{pendingId}/resolve`
 
-## Common Response Formats
-
-### Success Response
-
-```json
-{
-  "data": { ... },
-  "status": "success"
-}
-```
-
-### Error Response
+Resolution request:
 
 ```json
 {
-  "error": "Error message",
-  "status": "error",
-  "code": "ERROR_CODE"
+  "openelisResultOptionId": "123"
 }
 ```
 
-## Endpoints
+The server derives the option value and display label. It rejects inactive
+options and options that do not belong to the pending value's mapped test.
 
-### 1. Analyzer Management
-
-#### GET /rest/analyzer
-
-List all analyzers with pagination and filtering.
-
-**Query Parameters**:
-
-- `page` (integer, default: 0): Page number
-- `size` (integer, default: 25): Page size (25, 50, 100)
-- `search` (string): Search term (name, type)
-- `status` (string): Filter by status (ACTIVE, INACTIVE)
-- `analyzerType` (string): Filter by analyzer type
-- `sort` (string, default: "lastModified,desc"): Sort field and direction
-
-**Response**:
-
-```json
-{
-  "data": {
-    "content": [
-      {
-        "id": "uuid",
-        "name": "Hematology Analyzer 1",
-        "type": "HEMATOLOGY",
-        "ipAddress": "192.168.1.10",
-        "port": 5000,
-        "protocolVersion": "ASTM LIS2-A2",
-        "isActive": true,
-        "testUnitIds": ["unit1", "unit2"],
-        "lastModified": "2025-11-14T10:00:00Z",
-        "statistics": {
-          "totalMappings": 50,
-          "requiredMappings": 3,
-          "unmappedFields": 5
-        }
-      }
-    ],
-    "totalElements": 100,
-    "totalPages": 4,
-    "page": 0,
-    "size": 25
-  },
-  "status": "success"
-}
-```
-
-#### POST /rest/analyzer
-
-Create new analyzer.
-
-**Request Body**:
-
-```json
-{
-  "name": "Hematology Analyzer 1",
-  "type": "HEMATOLOGY",
-  "ipAddress": "192.168.1.10",
-  "port": 5000,
-  "protocolVersion": "ASTM LIS2-A2",
-  "testUnitIds": ["unit1", "unit2"],
-  "isActive": false
-}
-```
-
-**Response**: 201 Created with analyzer object
-
-#### PUT /rest/analyzer/{id}
-
-Update analyzer.
-
-**Request Body**: Same as POST
-
-**Response**: 200 OK with updated analyzer object
-
-#### DELETE /rest/analyzer/{id}
-
-Delete analyzer (soft delete if recent results exist).
-
-**Response**: 204 No Content
-
-#### GET /rest/analyzer/{id}/test-connection
-
-Test TCP connection to analyzer.
-
-**Response**:
-
-```json
-{
-  "data": {
-    "success": true,
-    "latency": 45,
-    "timestamp": "2025-11-14T10:00:00Z",
-    "logs": [
-      {
-        "timestamp": "10:00:00.000",
-        "level": "INFO",
-        "message": "Starting connection test"
-      }
-    ]
-  },
-  "status": "success"
-}
-```
-
-### 2. Analyzer Field Management
-
-#### GET /rest/analyzer/{analyzerId}/fields
-
-List analyzer fields with pagination.
-
-**Query Parameters**:
-
-- `page`, `size`, `search`, `fieldType`, `sort`
-
-**Response**:
-
-```json
-{
-  "data": {
-    "content": [
-      {
-        "id": "uuid",
-        "fieldName": "GLUCOSE",
-        "astmRef": "O|1|GLUCOSE",
-        "fieldType": "NUMERIC",
-        "unit": "mg/dL",
-        "isActive": true,
-        "mappingStatus": "MAPPED"
-      }
-    ],
-    "totalElements": 50
-  },
-  "status": "success"
-}
-```
-
-#### POST /rest/analyzer/{analyzerId}/query
-
-Query analyzer to retrieve available fields.
-
-**Response**:
-
-```json
-{
-  "data": {
-    "fields": [
-      {
-        "fieldName": "GLUCOSE",
-        "astmRef": "O|1|GLUCOSE",
-        "fieldType": "NUMERIC",
-        "unit": "mg/dL"
-      }
-    ],
-    "totalFields": 50,
-    "queryTime": 2.5
-  },
-  "status": "success"
-}
-```
-
-### 3. Field Mapping Management
-
-#### GET /rest/analyzer/{analyzerId}/mappings
-
-List field mappings for analyzer.
-
-**Response**:
-
-```json
-{
-  "data": {
-    "mappings": [
-      {
-        "id": "uuid",
-        "analyzerField": {
-          "id": "uuid",
-          "fieldName": "GLUCOSE",
-          "fieldType": "NUMERIC"
-        },
-        "openelisField": {
-          "id": "uuid",
-          "name": "Glucose Test",
-          "type": "TEST",
-          "loincCode": "2339-0"
-        },
-        "mappingType": "TEST_LEVEL",
-        "isRequired": true,
-        "isActive": true
-      }
-    ],
-    "statistics": {
-      "totalMappings": 50,
-      "requiredMappings": 3,
-      "unmappedFields": 5
-    }
-  },
-  "status": "success"
-}
-```
-
-#### POST /rest/analyzer/{analyzerId}/mappings
-
-Create field mapping.
-
-**Request Body**:
-
-```json
-{
-  "analyzerFieldId": "uuid",
-  "openelisFieldId": "uuid",
-  "openelisFieldType": "TEST",
-  "mappingType": "TEST_LEVEL",
-  "isRequired": false,
-  "isActive": false
-}
-```
-
-**Response**: 201 Created with mapping object
-
-#### PUT /rest/analyzer/mappings/{mappingId}
-
-Update field mapping.
-
-**Request Body**: Same as POST
-
-**Response**: 200 OK with updated mapping object
-
-#### DELETE /rest/analyzer/mappings/{mappingId}
-
-Delete field mapping.
-
-**Response**: 204 No Content
-
-### 4. Qualitative Result Mapping
-
-#### GET /rest/analyzer/fields/{fieldId}/qualitative-mappings
-
-List qualitative value mappings for field.
-
-**Response**:
-
-```json
-{
-  "data": {
-    "mappings": [
-      {
-        "id": "uuid",
-        "analyzerValue": "POS",
-        "openelisCode": "POSITIVE",
-        "isDefault": false
-      }
-    ]
-  },
-  "status": "success"
-}
-```
-
-#### POST /rest/analyzer/fields/{fieldId}/qualitative-mappings
-
-Create qualitative value mapping.
-
-**Request Body**:
+Mapping response entries include:
 
 ```json
 {
   "analyzerValue": "POS",
-  "openelisCode": "POSITIVE",
-  "isDefault": false
+  "analyzerTestCode": "HIV",
+  "openelisResultOptionId": "123",
+  "openelisValue": "Positive",
+  "openelisLabel": "Positive",
+  "bindingStatus": "BOUND"
 }
 ```
 
-### 5. Unit Mapping
+Older free-text entries are returned with `bindingStatus: "LEGACY_UNBOUND"`.
 
-#### GET /rest/analyzer/fields/{fieldId}/unit-mapping
+## Setup Verification
 
-Get unit mapping for field.
+- `GET /analyzers/{id}/setup-verification`
+- `POST /analyzers/{id}/setup-verification`
 
-**Response**:
+Verification records confirmed mapping/QC identifiers, computed fingerprints,
+actor, and time. A mapping or QC fingerprint mismatch makes that verification
+stale. The service also records the action through the existing durable analyzer
+audit mechanism.
 
-```json
-{
-  "data": {
-    "id": "uuid",
-    "analyzerUnit": "mg/dL",
-    "openelisUnit": "mmol/L",
-    "conversionFactor": 0.0555,
-    "rejectIfMismatch": false
-  },
-  "status": "success"
-}
-```
+## Authorization and Errors
 
-#### POST /rest/analyzer/fields/{fieldId}/unit-mapping
-
-Create or update unit mapping.
-
-**Request Body**:
-
-```json
-{
-  "analyzerUnit": "mg/dL",
-  "openelisUnit": "mmol/L",
-  "conversionFactor": 0.0555,
-  "rejectIfMismatch": false
-}
-```
-
-### 6. Error Dashboard
-
-#### GET /rest/analyzer/errors
-
-List analyzer errors with filtering.
-
-**Query Parameters**:
-
-- `page`, `size`, `search`, `errorType`, `severity`, `status`, `analyzerId`,
-  `startDate`, `endDate`, `sort`
-
-**Response**:
-
-```json
-{
-  "data": {
-    "content": [
-      {
-        "id": "uuid",
-        "analyzer": {
-          "id": "uuid",
-          "name": "Hematology Analyzer 1"
-        },
-        "errorType": "MAPPING",
-        "severity": "ERROR",
-        "errorMessage": "No mapping found for test code: GLUCOSE",
-        "status": "UNACKNOWLEDGED",
-        "timestamp": "2025-11-14T10:00:00Z"
-      }
-    ],
-    "totalElements": 100,
-    "statistics": {
-      "totalErrors": 100,
-      "unacknowledged": 50,
-      "critical": 10,
-      "last24Hours": 25
-    }
-  },
-  "status": "success"
-}
-```
-
-#### POST /rest/analyzer/errors/{errorId}/acknowledge
-
-Acknowledge error.
-
-**Response**: 200 OK
-
-#### POST /rest/analyzer/errors/{errorId}/reprocess
-
-Reprocess error message after mapping created.
-
-**Response**:
-
-```json
-{
-  "data": {
-    "success": true,
-    "message": "Message reprocessed successfully"
-  },
-  "status": "success"
-}
-```
-
-### 7. Copy Mappings
-
-#### POST /rest/analyzer/{sourceId}/copy-mappings/{targetId}
-
-Copy all mappings from source analyzer to target analyzer.
-
-**Request Body**:
-
-```json
-{
-  "overwriteExisting": true
-}
-```
-
-**Response**: 200 OK with copy summary
-
-## Error Codes
-
-- `ANALYZER_NOT_FOUND`: Analyzer with given ID not found
-- `FIELD_NOT_FOUND`: Analyzer field with given ID not found
-- `MAPPING_NOT_FOUND`: Mapping with given ID not found
-- `DUPLICATE_MAPPING`: Mapping already exists
-- `TYPE_INCOMPATIBLE`: Field types are incompatible for mapping
-- `REQUIRED_MAPPING_MISSING`: Required mapping not found
-- `CONNECTION_FAILED`: TCP connection to analyzer failed
-- `QUERY_TIMEOUT`: Analyzer query timed out
-- `VALIDATION_ERROR`: Request validation failed
+Endpoints require the repository's analyzer administration authority. Validation
+failures return `400`; missing analyzer/pending/option resources return `404`;
+authorization failures follow the shared Spring Security contract. Controllers
+delegate validation and persistence to transactional services.

@@ -203,30 +203,39 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
 
 ---
 
-### User Story 7 — Admin Configures Per-Analyzer QC Rules (Priority: P3)
+### User Story 7 — Admin Completes Analyzer QC Setup (Priority: P3)
 
-A system administrator opens an analyzer's QC rules page to customize which
-patterns identify QC samples for that specific instrument. Rules support four
-types: field value equals, field value contains, specimen ID prefix matching,
-and specimen ID regex patterns. Rules are seeded automatically from the
-analyzer's profile when the analyzer is created, and the admin can add, edit, or
-disable individual rules.
+A system administrator configures analyzer-specific QC rules and active control
+lots from the analyzer's guided Verify step. Rules support four types: field
+value equals, field value contains, specimen ID prefix matching, and specimen ID
+regex patterns. Applicable defaults are seeded from the shipped profile exactly
+once; the administrator can add, edit, or disable rules and select/create
+control lots.
 
 **Why this priority**: Profile-driven defaults cover most instruments. Manual
 customization is for edge cases where the lab's naming convention differs from
 the profile default.
 
-**Independent Test**: Navigate to an analyzer's QC rules page, verify rules
-seeded from profile appear, add a new rule, verify it persists and is picked up
-by the bridge.
+**Independent Test**: Start from the analyzer Verify URL, inspect seeded rules,
+add a rule and active control lot, return to Verify, and observe current QC
+verification/readiness. Service tests prove immediate bridge resynchronization.
 
 **Acceptance Scenarios**:
 
-1. **Given** a QuantStudio analyzer is created from its profile, **When** the
-   admin opens the QC rules page, **Then** 6 rules are pre-populated (2
-   field-equals for STANDARD/NTC + 4 specimen-ID prefixes).
-2. **Given** the admin adds a new specimen ID prefix rule, **When** the bridge
-   next refreshes, **Then** the new rule appears in the bridge's active rules.
+1. **Given** a profile defines QC defaults, **When** an analyzer is created,
+   **Then** the defaults are applied once and appear in its Verify workflow.
+2. **Given** the administrator adds, updates, or deletes a QC rule or control
+   lot, **When** the mutation succeeds, **Then** readiness is recomputed and
+   bridge registration is resynchronized immediately.
+3. **Given** QC applies to the profile, **When** no active rule or control lot is
+   configured or QC verification is stale, **Then** `ACTIVE` is blocked and the
+   Review step explains each blocker.
+4. **Given** the administrator leaves a QC detour through a saved setup URL,
+   **When** they save or cancel, **Then** they return to that analyzer's Verify
+   step rather than the global analyzer/QC list.
+
+The complete setup/URL acceptance contract is
+[`OGC-1054`](../OGC-1054-analyzer-qc-config/spec.md).
 
 ---
 

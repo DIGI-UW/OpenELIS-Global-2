@@ -120,10 +120,10 @@ public class AnalyzerPendingCodeServiceImpl extends BaseObjectServiceImpl<Analyz
         if (code == null || !analyzerId.equals(code.getAnalyzerId())) {
             throw new IllegalArgumentException("Pending analyzer code does not belong to analyzer " + analyzerId);
         }
-        Test selectedTest = testService.getAllActiveTests(true).stream()
-                .filter(test -> Objects.equals(openelisTestId, test.getId())).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "OpenELIS test is not active and fully configured: " + openelisTestId));
+        Test selectedTest = testService.get(openelisTestId);
+        if (selectedTest == null || !selectedTest.isActive() || !testService.isTestFullySetup(selectedTest)) {
+            throw new IllegalArgumentException("OpenELIS test is not active and fully configured: " + openelisTestId);
+        }
 
         AnalyzerTestMapping mapping = analyzerTestMappingService.getAllForAnalyzer(analyzerId).stream()
                 .filter(existing -> Objects.equals(code.getAnalyzerTestName(), existing.getAnalyzerTestName()))

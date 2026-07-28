@@ -4,7 +4,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <changeSet author="ogc-1054" id="064-register-analyzer-plugin-config-audit">
+  <changeSet author="ogc-1054" id="068-register-analyzer-plugin-config-audit">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="0">
         SELECT COUNT(*) FROM clinlims.reference_tables

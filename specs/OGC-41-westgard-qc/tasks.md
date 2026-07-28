@@ -1,5 +1,9 @@
 # Tasks: Westgard QC Rules Dashboard (OGC-41)
 
+Analyzer rule/control-lot setup, return navigation, verification, and activation
+readiness are tracked only in
+[`OGC-1054 tasks`](../OGC-1054-analyzer-qc-config/tasks.md).
+
 **Input**: [spec.md](spec.md), [plan.md](plan.md) **Jira**:
 [OGC-41](https://uwdigi.atlassian.net/browse/OGC-41) **Organization**: By
 milestone (Constitution Principle IX) **Tests**: MANDATORY (Constitution

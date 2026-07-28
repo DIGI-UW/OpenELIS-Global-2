@@ -11,6 +11,8 @@ import org.openelisglobal.common.service.BaseObjectService;
 public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
     List<Analyzer> getAllWithTypes();
 
+    List<Analyzer> getAllWithTypes(String status, String search, String testUnit, String analyzerType);
+
     Optional<Analyzer> getWithType(String id);
 
     Analyzer getAnalyzerByName(String name);

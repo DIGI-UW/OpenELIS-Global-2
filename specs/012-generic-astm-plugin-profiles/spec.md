@@ -2,11 +2,15 @@
 
 **Feature Branch**: `spec/012-ogc-337-generic-astm-plugin-profiles` **Demo
 Branch**: `feat/012-genexpert-astm-demo` (E2E demo + test catalog work)
-**Created**: 2026-02-27 **Status**: Draft **Jira**: OGC-337
+**Created**: 2026-02-27 **Status**: Foundation implemented; UI acceptance
+continues in OGC-1054 **Jira**: OGC-337
 
 **Extends**: `004-astm-analyzer-mapping` (v1.0 complete)  
 **Relationship to 011**: Independent but complementary to
 `011-madagascar-analyzer-integration`
+
+**Current lab-facing workflow**:
+[`OGC-1054-analyzer-qc-config`](../OGC-1054-analyzer-qc-config/spec.md)
 
 ## Executive Summary
 
@@ -36,6 +40,10 @@ runtime behavior are tracked in `specs/014-hjra-file-stream-alignment/`.
 
 The following are explicitly deferred: DB-backed profile library/import-export
 sharing and lab-unit assignment model.
+
+The OGC-1054 MVP adds lab-unit selection without changing the profile storage
+model. Shipped profiles remain filesystem source-of-truth; no profile CRUD,
+import/export, reapply, or live-inheritance API is part of the current MVP.
 
 ---
 

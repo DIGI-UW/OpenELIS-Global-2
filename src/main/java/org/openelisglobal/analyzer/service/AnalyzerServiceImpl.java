@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -83,6 +84,33 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional(readOnly = true)
     public List<Analyzer> getAllWithTypes() {
         return baseObjectDAO.findAllWithTypes();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analyzer> getAllWithTypes(String status, String search, String testUnit, String analyzerType) {
+        String normalizedSearch = normalizeFilter(search);
+        String normalizedStatus = normalizeFilter(status);
+        String normalizedType = normalizeFilter(analyzerType);
+
+        return baseObjectDAO.findAllWithTypes().stream()
+                .filter(analyzer -> analyzer.getStatus() != AnalyzerStatus.DELETED)
+                .filter(analyzer -> normalizedSearch == null
+                        || normalizeFilter(analyzer.getName()) != null
+                                && normalizeFilter(analyzer.getName()).contains(normalizedSearch)
+                        || normalizeFilter(analyzer.getType()) != null
+                                && normalizeFilter(analyzer.getType()).contains(normalizedSearch))
+                .filter(analyzer -> normalizedStatus == null
+                        || analyzer.getStatus() != null && analyzer.getStatus().name().equals(normalizedStatus))
+                .filter(analyzer -> normalizedType == null
+                        || normalizedType.equals(normalizeFilter(analyzer.getType())))
+                .filter(analyzer -> testUnit == null || testUnit.isBlank()
+                        || analyzer.getTestUnitIds() != null && analyzer.getTestUnitIds().contains(testUnit))
+                .toList();
+    }
+
+    private String normalizeFilter(String value) {
+        return value == null || value.isBlank() ? null : value.toUpperCase(Locale.ROOT);
     }
 
     @Override

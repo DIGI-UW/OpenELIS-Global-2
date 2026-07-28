@@ -134,7 +134,9 @@ public class AnalyzerPendingCodeServiceTest {
         catalogTest.setId("501");
         catalogTest.setDescription("Xpert MTB/RIF");
         catalogTest.setLoinc("38379-4");
-        when(testService.getAllActiveTests(true)).thenReturn(List.of(catalogTest));
+        catalogTest.setIsActive("Y");
+        when(testService.get("501")).thenReturn(catalogTest);
+        when(testService.isTestFullySetup(catalogTest)).thenReturn(true);
         when(analyzerTestMappingService.getAllForAnalyzer("101")).thenReturn(List.of());
 
         AnalyzerPendingCode resolved = service.resolve("101", "pc-2", "501", "1");
@@ -148,6 +150,7 @@ public class AnalyzerPendingCodeServiceTest {
         assertEquals("501", mapping.getValue().getTestId());
         verify(analyzerPendingCodeDAO).update(existing);
         verify(analyzerBridgeSyncService).pushAnalyzer("101");
+        verify(testService, never()).getAllActiveTests(true);
     }
 
     @Test
@@ -162,7 +165,9 @@ public class AnalyzerPendingCodeServiceTest {
         org.openelisglobal.test.valueholder.Test catalogTest = new org.openelisglobal.test.valueholder.Test();
         catalogTest.setId("502");
         catalogTest.setDescription("Replacement test");
-        when(testService.getAllActiveTests(true)).thenReturn(List.of(catalogTest));
+        catalogTest.setIsActive("Y");
+        when(testService.get("502")).thenReturn(catalogTest);
+        when(testService.isTestFullySetup(catalogTest)).thenReturn(true);
 
         AnalyzerTestMapping currentMapping = new AnalyzerTestMapping();
         currentMapping.setAnalyzerId("101");
@@ -186,9 +191,34 @@ public class AnalyzerPendingCodeServiceTest {
         existing.setAnalyzerTestName("MTB-RIF");
         existing.setStatus(AnalyzerPendingCode.Status.PENDING);
         when(analyzerPendingCodeDAO.get("pc-2")).thenReturn(Optional.of(existing));
-        when(testService.getAllActiveTests(true)).thenReturn(List.of());
+        org.openelisglobal.test.valueholder.Test inactiveTest = new org.openelisglobal.test.valueholder.Test();
+        inactiveTest.setId("999");
+        inactiveTest.setIsActive("N");
+        when(testService.get("999")).thenReturn(inactiveTest);
 
         assertThrows(IllegalArgumentException.class, () -> service.resolve("101", "pc-2", "999", "1"));
+
+        verify(testService, never()).getAllActiveTests(true);
+        verify(analyzerTestMappingService, never()).insert(any(AnalyzerTestMapping.class));
+        verify(analyzerPendingCodeDAO, never()).update(existing);
+    }
+
+    @Test
+    public void testResolve_IncompleteActiveTest_IsRejected() {
+        AnalyzerPendingCode existing = new AnalyzerPendingCode();
+        existing.setId("pc-2");
+        existing.setAnalyzerId("101");
+        existing.setAnalyzerTestName("MTB-RIF");
+        existing.setStatus(AnalyzerPendingCode.Status.PENDING);
+        when(analyzerPendingCodeDAO.get("pc-2")).thenReturn(Optional.of(existing));
+
+        org.openelisglobal.test.valueholder.Test incompleteTest = new org.openelisglobal.test.valueholder.Test();
+        incompleteTest.setId("998");
+        incompleteTest.setIsActive("Y");
+        when(testService.get("998")).thenReturn(incompleteTest);
+        when(testService.isTestFullySetup(incompleteTest)).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> service.resolve("101", "pc-2", "998", "1"));
 
         verify(analyzerTestMappingService, never()).insert(any(AnalyzerTestMapping.class));
         verify(analyzerPendingCodeDAO, never()).update(existing);

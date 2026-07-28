@@ -1,5 +1,10 @@
 # Implementation Plan: Westgard QC Rules Dashboard
 
+Analyzer-specific QC setup and activation readiness are currently integrated by
+[`OGC-1054`](../OGC-1054-analyzer-qc-config/plan.md). This plan continues to
+govern Westgard evaluation, dashboards, violations, and corrective-action
+milestones; it does not define a second analyzer setup flow.
+
 **Branch**: `feat/qc_westgard_rules` | **Date**: 2026-04-13 | **Spec**:
 [spec.md](spec.md) **Jira**:
 [OGC-41](https://uwdigi.atlassian.net/browse/OGC-41) | **Design**:

@@ -99,6 +99,25 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.analyzers").isArray());
     }
 
+    @Test
+    public void testGetAnalyzers_FiltersByAnalyzerTypeAndTestUnit() throws Exception {
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Molecular Unit 7\",\"analyzerType\":\"MOLECULAR\",\"testUnitIds\":[\"7\"]}"))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Chemistry Unit 8\",\"analyzerType\":\"CHEMISTRY\",\"testUnitIds\":[\"8\"]}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/rest/analyzer/analyzers").param("analyzerType", "molecular").param("testUnit", "7")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.analyzers.length()").value(1))
+                .andExpect(jsonPath("$.analyzers[0].name").value("Molecular Unit 7"));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers").param("analyzerType", "MOLECULAR").param("testUnit", "8")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.analyzers.length()").value(0));
+    }
+
     /**
      * Test: GET /rest/analyzer/analyzers includes the qcRules + controlLots fields
      * per analyzer (consumed by the bridge bootstrap to populate its registry). The
@@ -124,6 +143,24 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.analyzers[0].qcRules").isArray())
                 .andExpect(jsonPath("$.analyzers[0].controlLots").exists())
                 .andExpect(jsonPath("$.analyzers[0].controlLots").isArray());
+    }
+
+    @Test
+    public void testGetAnalyzers_OmitsExpensiveVerificationSnapshotFromList() throws Exception {
+        String uniqueName = "TEST-Lightweight-List-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+        MvcResult created = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.setupVerification").exists()).andReturn();
+        String analyzerId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+        mockMvc.perform(get("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.analyzers[?(@.id == '" + analyzerId + "')].setupVerification").doesNotExist());
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.setupVerification").exists());
     }
 
     /**

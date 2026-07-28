@@ -138,35 +138,15 @@ public class AnalyzerRestController extends BaseRestController {
      */
     @GetMapping("/analyzers")
     public ResponseEntity<Map<String, Object>> getAnalyzers(@RequestParam(required = false) String status,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search, @RequestParam(required = false) String testUnit,
+            @RequestParam(required = false) String analyzerType) {
         try {
-            List<Analyzer> analyzers = analyzerService.getAllWithTypes();
+            List<Analyzer> analyzers = analyzerService.getAllWithTypes(status, search, testUnit, analyzerType);
             Set<String> loadedPlugins = getLoadedPluginClassNames();
             List<Map<String, Object>> analyzerList = new ArrayList<>();
 
             for (Analyzer analyzer : analyzers) {
-                Map<String, Object> analyzerMap = analyzerToMap(analyzer, loadedPlugins);
-
-                // Skip DELETED analyzers (soft-deleted with 90-day window)
-                String analyzerStatus = (String) analyzerMap.get("status");
-                if ("DELETED".equals(analyzerStatus)) {
-                    continue;
-                }
-
-                if (search != null && !search.isEmpty()) {
-                    String searchLower = search.toLowerCase();
-                    if (!analyzer.getName().toLowerCase().contains(searchLower) && (analyzer.getType() == null
-                            || !analyzer.getType().toLowerCase().contains(searchLower))) {
-                        continue;
-                    }
-                }
-
-                if (status != null && !status.isEmpty()) {
-                    if (analyzerStatus == null || !analyzerStatus.equalsIgnoreCase(status)) {
-                        continue;
-                    }
-                }
-
+                Map<String, Object> analyzerMap = analyzerToMap(analyzer, loadedPlugins, false);
                 analyzerList.add(analyzerMap);
             }
 
@@ -341,7 +321,7 @@ public class AnalyzerRestController extends BaseRestController {
             // until the bridge confirms it can route results for it.
             boolean bridgeRegistered = registerWithBridge(createdAnalyzer);
 
-            Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
+            Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames(), true);
             response.put("bridgeRegistered", bridgeRegistered);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (LIMSRuntimeException e) {
@@ -449,7 +429,7 @@ public class AnalyzerRestController extends BaseRestController {
                 error.put("error", "Analyzer not found: " + id);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
-            Map<String, Object> response = analyzerToMap(opt.get(), getLoadedPluginClassNames());
+            Map<String, Object> response = analyzerToMap(opt.get(), getLoadedPluginClassNames(), true);
             return ResponseEntity.ok(response);
         } catch (org.hibernate.ObjectNotFoundException e) {
             // Hibernate may throw instead of returning null for missing IDs
@@ -601,7 +581,7 @@ public class AnalyzerRestController extends BaseRestController {
             // Re-register transport mapping with bridge synchronously.
             Analyzer updatedAnalyzer = analyzerService.get(id);
             boolean bridgeRegistered = registerWithBridge(updatedAnalyzer);
-            Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames());
+            Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames(), true);
             response.put("bridgeRegistered", bridgeRegistered);
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
@@ -679,7 +659,8 @@ public class AnalyzerRestController extends BaseRestController {
      * Convert Analyzer entity to Map for JSON response. Reads all configuration
      * fields directly from the Analyzer entity (2-table model).
      */
-    private Map<String, Object> analyzerToMap(Analyzer analyzer, Set<String> loadedPlugins) {
+    private Map<String, Object> analyzerToMap(Analyzer analyzer, Set<String> loadedPlugins,
+            boolean includeSetupVerification) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", analyzer.getId());
         map.put("name", analyzer.getName());
@@ -795,7 +776,9 @@ public class AnalyzerRestController extends BaseRestController {
             }
         }
         map.put("controlLots", lotsPayload);
-        map.put("setupVerification", analyzerSetupVerificationService.getVerificationStatus(analyzer.getId()));
+        if (includeSetupVerification) {
+            map.put("setupVerification", analyzerSetupVerificationService.getVerificationStatus(analyzer.getId()));
+        }
 
         return map;
     }

@@ -64,6 +64,30 @@ public class AnalyzerServiceStatusTest {
         testAnalyzer.setStatus(AnalyzerStatus.SETUP);
     }
 
+    @Test
+    public void testGetAllWithTypes_FiltersLifecycleTypeTestUnitAndSearch() {
+        testAnalyzer.setType("MOLECULAR");
+        testAnalyzer.setTestUnitIds(List.of("7"));
+        Analyzer wrongType = new Analyzer();
+        wrongType.setId("2");
+        wrongType.setName("Chemistry Analyzer");
+        wrongType.setType("CHEMISTRY");
+        wrongType.setStatus(AnalyzerStatus.SETUP);
+        wrongType.setTestUnitIds(List.of("7"));
+        Analyzer deleted = new Analyzer();
+        deleted.setId("3");
+        deleted.setName("Test Analyzer Deleted");
+        deleted.setType("MOLECULAR");
+        deleted.setStatus(AnalyzerStatus.DELETED);
+        deleted.setTestUnitIds(List.of("7"));
+        when(baseObjectDAO.findAllWithTypes()).thenReturn(List.of(testAnalyzer, wrongType, deleted));
+
+        List<Analyzer> matches = analyzerServiceImpl.getAllWithTypes("setup", "test", "7", "molecular");
+
+        assertEquals(1, matches.size());
+        assertEquals("1", matches.get(0).getId());
+    }
+
     // === validateStatusTransition Tests ===
 
     @Test

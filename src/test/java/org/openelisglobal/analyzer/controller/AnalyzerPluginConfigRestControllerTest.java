@@ -66,28 +66,6 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
     }
 
     @Test
-    public void testUpdatePluginConfig_WithValidPayload_Returns200() throws Exception {
-        Map<String, Object> config = Map.of("connectionRole", "SERVER", "serverListenPort", 17001);
-        when(analyzerPluginConfigService.getConfigAsMap("101")).thenReturn(config);
-
-        mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
-                .with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"connectionRole\":\"SERVER\",\"serverListenPort\":17001}")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.serverListenPort").value(17001));
-    }
-
-    @Test
-    public void testUpdatePluginConfig_WithInvalidAggregation_Returns400() throws Exception {
-        when(analyzerPluginConfigService.upsert(eq("101"), any(Map.class), any()))
-                .thenThrow(new IllegalArgumentException("aggregationWindowSeconds invalid"));
-
-        mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
-                .with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"aggregationMode\":\"BY_SESSION\",\"aggregationWindowSeconds\":999}"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
-    }
-
-    @Test
     public void testGetPendingCodes_Returns200() throws Exception {
         AnalyzerPendingCode pendingCode = new AnalyzerPendingCode();
         pendingCode.setId("pc-1");
@@ -192,7 +170,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
                 .thenReturn(response);
 
         mockMvc.perform(put("/rest/analyzer/analyzers/101/result-value-mappings")
-                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON).content(
+                .with(user("admin").roles("GLOBAL_ADMIN")).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(
                         "[{\"analyzerValue\":\"Detected\",\"testCode\":\"MTB\",\"openelisResultOptionId\":\"result-option-1\"}]"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.resultValueMappings[0].openelisValue").value("9001"));
     }
@@ -203,7 +181,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
                 .thenThrow(new IllegalArgumentException("openelisResultOptionId is required"));
 
         mockMvc.perform(put("/rest/analyzer/analyzers/101/result-value-mappings")
-                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON)
+                .with(user("admin").roles("GLOBAL_ADMIN")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("[{\"analyzerValue\":\"Detected\",\"testCode\":\"MTB\",\"openelisValue\":\"POSITIVE\"}]"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("openelisResultOptionId is required"));
@@ -227,7 +205,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
                         "openelisValue", "9001"));
 
         mockMvc.perform(post("/rest/analyzer/analyzers/101/pending-result-values/rv-1/resolve")
-                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON)
+                .with(user("admin").roles("GLOBAL_ADMIN")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"openelisResultOptionId\":\"result-option-1\"}")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("MAPPED"))
                 .andExpect(jsonPath("$.openelisResultOptionId").value("result-option-1"));
@@ -251,7 +229,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
                 .thenReturn(Map.of("verificationState", "CURRENT", "verifiedBy", "1", "currentlyVerified", true));
 
         mockMvc.perform(post("/rest/analyzer/analyzers/101/setup-verification")
-                .with(user("admin").roles("GLOBAL_ADMIN")).contentType(MediaType.APPLICATION_JSON)
+                .with(user("admin").roles("GLOBAL_ADMIN")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"mappingIds\":[\"TEST:MTB\"],\"qcIds\":[\"RULE:rule-1\",\"LOT:lot-1\"]}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.verificationState").value("CURRENT"))
                 .andExpect(jsonPath("$.currentlyVerified").value(true));

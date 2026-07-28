@@ -8,6 +8,11 @@
 **Spec**: [spec.md](./spec.md)  
 **Jira**: OGC-337
 
+**Current acceptance owner**:
+[`OGC-1054`](../OGC-1054-analyzer-qc-config/plan.md). This document governs the
+plugin-config/profile foundation; OGC-1054 governs the lab-facing Carbon setup
+workflow and remote UAT.
+
 ## Summary
 
 Deliver v1.2 generic analyzer capabilities with a simplified architecture:
