@@ -1,7 +1,6 @@
 package org.openelisglobal.inventory.controller.rest;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -75,10 +74,8 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
 
     @Test
     public void testGetByType_ShouldReturnList() throws Exception {
-        mockMvc.perform(get("/rest/inventory/items/type/REAGENT")).andExpect(result -> {
-            int status = result.getResponse().getStatus();
-            assertTrue(status == 200 || status == 500);
-        });
+        mockMvc.perform(get("/rest/inventory/items/type/REAGENT")).andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$[0].itemType").value("REAGENT"));
     }
 
     @Test
