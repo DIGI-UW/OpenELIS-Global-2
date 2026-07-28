@@ -406,7 +406,7 @@ function SampleTypeManagement({ intl }) {
   );
 
   const refreshSampleTypes = useCallback(async () => {
-    await new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       getFromOpenElisServer("/rest/sample-types", (response) => {
         if (response && response.success && Array.isArray(response.data)) {
           resolve(response.data);
@@ -419,18 +419,18 @@ function SampleTypeManagement({ intl }) {
         }
       });
     }).then((sampleTypeList) => {
-      setSampleTypes(
-        sampleTypeList.map((item, index) => ({
-          id: item.id || index + 1,
-          name: item.name || item.description || "",
-          description: item.description || item.name || "",
-          domain: item.domain || "CLINICAL",
-          active: item.isActive !== undefined ? item.isActive : true,
-          testCount: item.testCount || 0,
-          abbreviation: item.abbreviation || "",
-          sortOrder: item.sortOrder || 0,
-        })),
-      );
+      const mapped = sampleTypeList.map((item, index) => ({
+        id: item.id || index + 1,
+        name: item.name || item.description || "",
+        description: item.description || item.name || "",
+        domain: item.domain || "CLINICAL",
+        active: item.isActive !== undefined ? item.isActive : true,
+        testCount: item.testCount || 0,
+        abbreviation: item.abbreviation || "",
+        sortOrder: item.sortOrder || 0,
+      }));
+      setSampleTypes(mapped);
+      return mapped;
     });
   }, []);
 
@@ -470,12 +470,25 @@ function SampleTypeManagement({ intl }) {
             },
           );
         });
-        await refreshSampleTypes();
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
-        setEditingType(null);
+        const refreshed = await refreshSampleTypes();
         setFormErrors({});
-        history.push(listUrl);
+        // Land on the newly-created sample type's editor (matching the test
+        // catalog "create → edit the new record" flow), not back on the list.
+        const createdName = editingType.name.trim();
+        const created =
+          Array.isArray(refreshed) &&
+          refreshed.find((t) => t.name === createdName);
+        if (created) {
+          setEditingType(null);
+          history.push(
+            `${listUrl}/${created.id}/${DEFAULT_SAMPLE_TYPE_SECTION}`,
+          );
+        } else {
+          setShowSuccess(true);
+          setTimeout(() => setShowSuccess(false), 3000);
+          setEditingType(null);
+          history.push(listUrl);
+        }
       } else if (view === "editor") {
         const updateData = {
           id: editingType.id,

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Button,
+  ComboBox,
   InlineNotification,
   Loading,
   Select,
@@ -13,11 +13,9 @@ import {
   TableHeader,
   TableRow,
   Tag,
-  TextInput,
 } from "@carbon/react";
-import { Add, TrashCan } from "@carbon/react/icons";
+import { TrashCan } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import useDomains from "../../../common/useDomains";
 import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
@@ -26,23 +24,25 @@ import {
 
 /**
  * Associated Tests (OGC-296) — the sample-type side of the bidirectional
- * test↔sample-type link. Lists the tests currently linked to this sample type
- * and lets the admin search the catalog (optionally filtered by domain) to add
- * more, or remove existing links. The test side of the same link lives in the
- * Test Catalog editor's Basic Info sample-types multi-select.
+ * test↔sample-type link. Lists the tests linked to this sample type, and adds
+ * more through a single autocomplete: typing filters the candidate tests, which
+ * are already constrained to this sample type's domain (D-030, applied by the
+ * backend) and optionally narrowed to the tests currently on another sample
+ * type. The test side of the same link lives in the Test Catalog editor's
+ * Basic Info sample-types multi-select.
  */
 function AssociatedTestsSection({ sampleTypeId, onChange }) {
   const intl = useIntl();
-  const domains = useDomains();
 
   const [linked, setLinked] = useState([]);
   const [linkedLoading, setLinkedLoading] = useState(true);
   const [candidates, setCandidates] = useState([]);
-  const [search, setSearch] = useState("");
-  const [domainFilter, setDomainFilter] = useState("");
-  const [selectedTestId, setSelectedTestId] = useState("");
+  const [sampleTypes, setSampleTypes] = useState([]);
+  const [sampleTypeFilter, setSampleTypeFilter] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // Bump to force the ComboBox to clear its selection after an add.
+  const [comboKey, setComboKey] = useState(0);
 
   const loadLinked = useCallback(() => {
     setLinkedLoading(true);
@@ -61,21 +61,28 @@ function AssociatedTestsSection({ sampleTypeId, onChange }) {
   }, [sampleTypeId, onChange]);
 
   const loadCandidates = useCallback(() => {
-    const params = new URLSearchParams();
-    if (search.trim()) {
-      params.set("search", search.trim());
-    }
-    if (domainFilter) {
-      params.set("domain", domainFilter);
-    }
-    const qs = params.toString();
+    const qs = sampleTypeFilter
+      ? `?sampleTypeFilter=${encodeURIComponent(sampleTypeFilter)}`
+      : "";
     getFromOpenElisServer(
-      `/rest/sample-types/${sampleTypeId}/associable-tests${qs ? `?${qs}` : ""}`,
+      `/rest/sample-types/${sampleTypeId}/associable-tests${qs}`,
       (response) => {
         setCandidates(Array.isArray(response) ? response : []);
       },
     );
-  }, [sampleTypeId, search, domainFilter]);
+  }, [sampleTypeId, sampleTypeFilter]);
+
+  // Sample types feed the optional "filter by sample type" selector (exclude
+  // this one — it can't narrow candidates by itself).
+  useEffect(() => {
+    getFromOpenElisServer("/rest/sample-types", (response) => {
+      const data =
+        response && response.success && Array.isArray(response.data)
+          ? response.data
+          : [];
+      setSampleTypes(data.filter((s) => String(s.id) !== String(sampleTypeId)));
+    });
+  }, [sampleTypeId]);
 
   useEffect(() => {
     loadLinked();
@@ -85,29 +92,32 @@ function AssociatedTestsSection({ sampleTypeId, onChange }) {
     loadCandidates();
   }, [loadCandidates]);
 
-  const addTest = useCallback(() => {
-    if (!selectedTestId) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    putToOpenElisServer(
-      `/rest/sample-types/${sampleTypeId}/tests/${selectedTestId}`,
-      JSON.stringify({}),
-      (status) => {
-        setBusy(false);
-        if (status === 200) {
-          setSelectedTestId("");
-          loadLinked();
-          loadCandidates();
-        } else {
-          setError(
-            intl.formatMessage({ id: "label.sampleType.tests.addError" }),
-          );
-        }
-      },
-    );
-  }, [sampleTypeId, selectedTestId, loadLinked, loadCandidates, intl]);
+  const addTest = useCallback(
+    (testId) => {
+      if (!testId) {
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      putToOpenElisServer(
+        `/rest/sample-types/${sampleTypeId}/tests/${testId}`,
+        JSON.stringify({}),
+        (status) => {
+          setBusy(false);
+          setComboKey((k) => k + 1);
+          if (status === 200) {
+            loadLinked();
+            loadCandidates();
+          } else {
+            setError(
+              intl.formatMessage({ id: "label.sampleType.tests.addError" }),
+            );
+          }
+        },
+      );
+    },
+    [sampleTypeId, loadLinked, loadCandidates, intl],
+  );
 
   const removeTest = useCallback(
     (testId) => {
@@ -147,78 +157,57 @@ function AssociatedTestsSection({ sampleTypeId, onChange }) {
         />
       )}
 
-      {/* Add-a-test controls: search + domain filter + pick + add */}
+      {/* Add a test: optional "on this sample type" narrowing + a single
+          autocomplete over the domain-compatible candidates. */}
       <div
         style={{
           display: "flex",
-          gap: "var(--cds-spacing-04)",
+          gap: "var(--cds-spacing-05)",
           alignItems: "flex-end",
           flexWrap: "wrap",
         }}
       >
-        <TextInput
-          id="assoc-test-search"
+        <Select
+          id="assoc-test-sampletype-filter"
           labelText={intl.formatMessage({
-            id: "label.sampleType.tests.search",
+            id: "label.sampleType.tests.filterBySampleType",
           })}
+          value={sampleTypeFilter}
+          onChange={(e) => setSampleTypeFilter(e.target.value)}
+          style={{ maxWidth: "16rem" }}
+        >
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "label.sampleType.tests.filterBySampleType.all",
+            })}
+          />
+          {sampleTypes.map((s) => (
+            <SelectItem key={s.id} value={String(s.id)} text={s.name} />
+          ))}
+        </Select>
+
+        <ComboBox
+          key={comboKey}
+          id="assoc-test-combo"
+          titleText={intl.formatMessage({ id: "label.sampleType.tests.add" })}
           placeholder={intl.formatMessage({
             id: "label.sampleType.tests.searchPlaceholder",
           })}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ maxWidth: "18rem" }}
+          items={candidates}
+          itemToString={(item) => (item ? item.name : "")}
+          shouldFilterItem={({ item, inputValue }) =>
+            !inputValue ||
+            (item?.name || "").toLowerCase().includes(inputValue.toLowerCase())
+          }
+          disabled={busy}
+          onChange={({ selectedItem }) => {
+            if (selectedItem) {
+              addTest(selectedItem.id);
+            }
+          }}
+          style={{ minWidth: "24rem" }}
         />
-        <Select
-          id="assoc-test-domain"
-          labelText={intl.formatMessage({
-            id: "label.sampleType.filterDomain",
-          })}
-          value={domainFilter}
-          onChange={(e) => setDomainFilter(e.target.value)}
-          style={{ maxWidth: "12rem" }}
-        >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "placeholder.sampleType.filter.domain",
-              defaultMessage: "All domains",
-            })}
-          />
-          {domains.map((d) => (
-            <SelectItem
-              key={d.id}
-              value={d.id}
-              text={intl.formatMessage({ id: d.labelKey })}
-            />
-          ))}
-        </Select>
-        <Select
-          id="assoc-test-picker"
-          labelText={intl.formatMessage({ id: "label.sampleType.tests.pick" })}
-          value={selectedTestId}
-          onChange={(e) => setSelectedTestId(e.target.value)}
-          style={{ maxWidth: "24rem" }}
-        >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "label.sampleType.tests.pickPlaceholder",
-            })}
-          />
-          {candidates.map((t) => (
-            <SelectItem key={t.id} value={t.id} text={t.name} />
-          ))}
-        </Select>
-        <Button
-          id="assoc-test-add"
-          kind="primary"
-          size="md"
-          renderIcon={Add}
-          disabled={!selectedTestId || busy}
-          onClick={addTest}
-        >
-          <FormattedMessage id="label.sampleType.tests.add" />
-        </Button>
       </div>
 
       {/* Currently-linked tests with remove */}
@@ -269,17 +258,26 @@ function AssociatedTestsSection({ sampleTypeId, onChange }) {
                   </Tag>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    kind="ghost"
-                    size="sm"
-                    hasIconOnly
-                    renderIcon={TrashCan}
-                    iconDescription={intl.formatMessage({
+                  <button
+                    type="button"
+                    aria-label={intl.formatMessage({
+                      id: "label.sampleType.tests.remove",
+                    })}
+                    title={intl.formatMessage({
                       id: "label.sampleType.tests.remove",
                     })}
                     disabled={busy}
                     onClick={() => removeTest(test.id)}
-                  />
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: busy ? "not-allowed" : "pointer",
+                      padding: "var(--cds-spacing-02)",
+                      color: "var(--cds-icon-primary)",
+                    }}
+                  >
+                    <TrashCan />
+                  </button>
                 </TableCell>
               </TableRow>
             ))}

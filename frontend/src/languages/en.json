@@ -4823,6 +4823,8 @@
   "label.sampleType.tests.manageIntro": "Tests linked to this sample type. Search the catalog to add more, or remove existing links. The same link can also be managed from a test's Basic Info in the Test Catalog.",
   "label.sampleType.tests.search": "Search tests",
   "label.sampleType.tests.searchPlaceholder": "Search by test name...",
+  "label.sampleType.tests.filterBySampleType": "Filter by sample type",
+  "label.sampleType.tests.filterBySampleType.all": "Any sample type",
   "label.sampleType.tests.pick": "Test to add",
   "label.sampleType.tests.pickPlaceholder": "Select a test...",
   "label.sampleType.tests.add": "Add test",

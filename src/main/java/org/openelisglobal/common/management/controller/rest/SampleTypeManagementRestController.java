@@ -468,31 +468,52 @@ public class SampleTypeManagementRestController extends BaseRestController {
     }
 
     /**
-     * Tests NOT yet linked to this sample type, for the Associated Tests picker.
-     * Optional {@code search} (name substring) and {@code domain} (enum) filters.
-     * This is the sample-type side of the bidirectional test↔sample-type link; the
-     * test side lives in the Test Catalog editor's Basic Info sample-types
-     * multi-select.
+     * Tests NOT yet linked to this sample type, for the Associated Tests
+     * autocomplete. Always constrained to this sample type's own domain (D-030), so
+     * an environmental type never offers clinical tests and vice versa. An optional
+     * {@code sampleTypeFilter} narrows further to tests currently linked to that
+     * other sample type. {@code search} is an optional name substring (the UI
+     * filters client-side, but this keeps the endpoint usable directly). This is
+     * the sample-type side of the bidirectional test↔sample-type link.
      */
     @GetMapping(value = "/sample-types/{sampleTypeId}/associable-tests", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<AssociatedTestDto>> getAssociableTests(@PathVariable String sampleTypeId,
             @org.springframework.web.bind.annotation.RequestParam(required = false) String search,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) String domain) {
-        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String sampleTypeFilter) {
+        TypeOfSample sampleType = typeOfSampleService.getTypeOfSampleById(sampleTypeId);
+        if (sampleType == null) {
             return ResponseEntity.notFound().build();
         }
+        // This sample type's domain (D-030). Null (legacy/blank) → no domain
+        // restriction, so legacy data never hides candidates.
+        Domain ownDomain = Domain.fromRaw(sampleType.getDomain());
+
         Set<String> linkedTestIds = new HashSet<>();
         for (org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest link : typeOfSampleTestService
                 .getTypeOfSampleTestsForSampleType(sampleTypeId)) {
             linkedTestIds.add(link.getTestId());
         }
+
+        // Optional "tests currently on another sample type" narrowing.
+        Set<String> filterTestIds = null;
+        if (!isBlank(sampleTypeFilter)) {
+            filterTestIds = new HashSet<>();
+            for (org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest link : typeOfSampleTestService
+                    .getTypeOfSampleTestsForSampleType(sampleTypeFilter)) {
+                filterTestIds.add(link.getTestId());
+            }
+        }
+
         String needle = isBlank(search) ? null : search.trim().toLowerCase();
         List<AssociatedTestDto> candidates = new ArrayList<>();
         for (org.openelisglobal.test.valueholder.Test test : testService.getAllTests(false)) {
             if (linkedTestIds.contains(test.getId())) {
                 continue;
             }
-            if (!isBlank(domain) && !Domain.normalize(test.getDomain()).equals(domain)) {
+            if (ownDomain != null && Domain.fromRaw(test.getDomain()) != ownDomain) {
+                continue;
+            }
+            if (filterTestIds != null && !filterTestIds.contains(test.getId())) {
                 continue;
             }
             AssociatedTestDto dto = new AssociatedTestDto(test);

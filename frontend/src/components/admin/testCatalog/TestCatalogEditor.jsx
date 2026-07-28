@@ -10,6 +10,7 @@ import {
   InlineNotification,
   Tile,
 } from "@carbon/react";
+import { ArrowLeft } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -188,6 +189,18 @@ const TestCatalogEditor = () => {
       {notificationVisible === true && <AlertDialog />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth>
+        <Column lg={16} md={8} sm={4}>
+          <Button
+            kind="ghost"
+            size="sm"
+            data-testid="test-editor-back-to-list"
+            renderIcon={ArrowLeft}
+            onClick={handleCancel}
+            style={{ marginBottom: "0.5rem" }}
+          >
+            <FormattedMessage id="sidenav.label.admin.testCatalog.backToList" />
+          </Button>
+        </Column>
         <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>

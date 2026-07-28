@@ -17,12 +17,6 @@ import {
   deleteFromOpenElisServer,
 } from "../../../utils/Utils";
 
-const DOMAINS = [
-  { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
-  { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
-  { id: "VECTOR", labelKey: "label.domain.VECTOR" },
-];
-
 const renderSection = () =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -33,47 +27,62 @@ const renderSection = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   getFromOpenElisServer.mockImplementation((url, cb) => {
-    if (url.endsWith("/domains")) {
-      cb(DOMAINS);
-    } else if (url.includes("AllTestsForSampleTypeProvider")) {
+    if (url.includes("AllTestsForSampleTypeProvider")) {
       cb({ tests: [{ id: "10", name: "Glucose (Serum)", isActive: true }] });
     } else if (url.includes("/associable-tests")) {
       cb([
         { id: "20", name: "Sodium (Serum)", domain: "CLINICAL", active: true },
-        {
-          id: "21",
-          name: "Lead (Water)",
-          domain: "ENVIRONMENTAL",
-          active: true,
-        },
+        { id: "22", name: "Urea (Serum)", domain: "CLINICAL", active: true },
       ]);
+    } else if (url.endsWith("/rest/sample-types")) {
+      cb({
+        success: true,
+        data: [
+          { id: "5", name: "Serum" },
+          { id: "6", name: "Plasma" },
+        ],
+      });
     }
   });
 });
 
 describe("AssociatedTestsSection", () => {
-  it("lists linked tests and offers candidates to add", async () => {
+  it("lists linked tests and exposes the add autocomplete + sample-type filter", async () => {
     renderSection();
     expect(await screen.findByText("Glucose (Serum)")).toBeInTheDocument();
-    // candidate picker holds the associable tests
-    const picker = document.getElementById("assoc-test-picker");
-    expect(picker).toBeInTheDocument();
-    expect(screen.getByText("Sodium (Serum)")).toBeInTheDocument();
+    expect(document.getElementById("assoc-test-combo")).toBeInTheDocument();
+    expect(
+      document.getElementById("assoc-test-sampletype-filter"),
+    ).toBeInTheDocument();
   });
 
-  it("adds a test to the sample type via PUT and reloads", async () => {
+  it("adds a test through the autocomplete via PUT", async () => {
     putToOpenElisServer.mockImplementation((_url, _body, cb) => cb(200));
     renderSection();
     await screen.findByText("Glucose (Serum)");
 
-    fireEvent.change(document.getElementById("assoc-test-picker"), {
-      target: { value: "20" },
-    });
-    fireEvent.click(document.getElementById("assoc-test-add"));
+    // open the autocomplete and pick a candidate
+    const combo = document.getElementById("assoc-test-combo");
+    fireEvent.click(combo);
+    fireEvent.click(await screen.findByText("Sodium (Serum)"));
 
     expect(putToOpenElisServer).toHaveBeenCalledWith(
       "/rest/sample-types/5/tests/20",
       expect.any(String),
+      expect.any(Function),
+    );
+  });
+
+  it("narrows candidates by the selected sample-type filter", async () => {
+    renderSection();
+    await screen.findByText("Glucose (Serum)");
+
+    fireEvent.change(document.getElementById("assoc-test-sampletype-filter"), {
+      target: { value: "6" },
+    });
+
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/sample-types/5/associable-tests?sampleTypeFilter=6",
       expect.any(Function),
     );
   });
