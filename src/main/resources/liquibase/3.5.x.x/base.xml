@@ -23,6 +23,8 @@
   <include relativeToChangelogFile="true" file="003-audit-trail-menu.xml"/>
   <!-- Electronic Signature (21 CFR Part 11 Compliance) -->
   <include relativeToChangelogFile="true" file="004-electronic-signature.xml"/>
+  <include relativeToChangelogFile="true" file="003-add-sampling-site-org-type.xml"/>
+  <include relativeToChangelogFile="true" file="004-create-site-code-sequence.xml"/>
   <!-- TAT Report menu entry under Reports (OGC-310) -->
   <include relativeToChangelogFile="true" file="005-tat-report-menu.xml"/>
 
@@ -121,6 +123,7 @@
 
   <!-- Environmental collection conditions: observation types for water temp, ambient temp, weather, preservation method, field notes -->
   <include relativeToChangelogFile="true" file="031-env-collection-condition-observation-types.xml"/>
+  <include relativeToChangelogFile="true" file="030-remove-environmental-collect-menu.xml"/>
 
   <!-- Environmental compliance standards: observation type for linked standard IDs (JSON array) -->
   <include relativeToChangelogFile="true" file="032-env-compliance-standards-observation-type.xml"/>
@@ -170,7 +173,6 @@
   <include relativeToChangelogFile="true" file="034-compliance-dashboard-indexes.xml"/>
 
   <!-- Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) on test_section -->
-  <include relativeToChangelogFile="true" file="042-test-section-domain.xml"/>
 
   <!-- V-04 (OGC-585) Vector Surveillance Reporting: dashboard access module + URL + grants -->
   <include relativeToChangelogFile="true" file="042-vector-surveillance-dashboard-permissions.xml"/>
@@ -322,6 +324,5 @@
   <include relativeToChangelogFile="true" file="067-sample-type-disposal-instructions.xml"/>
 
   <!-- Post-merge: DB default CLINICAL on test_section.domain (matches test.domain) -->
-  <include relativeToChangelogFile="true" file="068-test-section-domain-default.xml"/>
 
 </databaseChangeLog>

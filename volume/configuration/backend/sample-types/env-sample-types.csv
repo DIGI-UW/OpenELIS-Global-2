@@ -36,7 +36,6 @@ Darah,DA,V,Y,305,Blood,Sang,Sangre,Darah
 Darah binatang,DABI,V,Y,306,Animal Blood,Sang Animal,Sangre Animal,Darah binatang
 Darah binatang pembawa penyakit,DABIPE,V,Y,307,Disease-Bearing Animal Blood,Disease-Bearing Animal Blood,Disease-Bearing Animal Blood,Darah binatang pembawa penyakit
 Ekstoparasit,EK,V,Y,308,Ectoparasite,Ectoparasite,Ectoparásito,Ekstoparasit
-Ektoparasit,EK,V,Y,309,Ectoparasite,Ectoparasite,Ectoparásito,Ektoparasit
 Feses binatang,FEBI,V,Y,310,Animal Feces,Fèces Animal,Heces Animal,Feses binatang
 IVD,IV,V,Y,311,In Vitro Diagnostic Device,Dispositif de Diagnostic In Vitro,Dispositivo de Diagnóstico In Vitro,IVD
 Isolate,IS,V,Y,312,Isolate,Isolat,Aislado,Isolate
