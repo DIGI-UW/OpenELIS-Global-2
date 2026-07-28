@@ -63,6 +63,9 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/validation-qc-ack.xml");
+        // The fixture CLEAN_INSERTs system_user with only testUser, wiping the
+        // baseline admin row the base-class principal resolves to.
+        authenticateAs("testUser");
         // QAService has a static initializer that resolves SAMPLE_QAEVENT in
         // reference_tables. The Postgres seed SQL ships this row, but CI's fresh
         // Testcontainers DB doesn't always have it visible by the time our test

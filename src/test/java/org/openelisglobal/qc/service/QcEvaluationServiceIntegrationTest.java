@@ -32,6 +32,9 @@ public class QcEvaluationServiceIntegrationTest extends BaseWebContextSensitiveT
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/qc-evaluation.xml");
+        // The fixture CLEAN_INSERTs system_user with only testUser, wiping the
+        // baseline admin row the base-class principal resolves to.
+        authenticateAs("testUser");
     }
 
     // ==================== BLANK tests ====================
