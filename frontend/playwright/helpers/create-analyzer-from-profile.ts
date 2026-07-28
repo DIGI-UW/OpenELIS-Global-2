@@ -5,13 +5,15 @@
  * 1. (TCP only) Create mock network to get unique analyzer IP
  * 2. Open dashboard → click Add
  * 3. Select profile (auto-resolves plugin type + analyzer type) → fill name
- * 4. (TCP only) Fill IP address and port
- * 5. Save → verify success
+ * 4. Save → verify the profile-driven mapping route
+ * 5. Open Edit from the analyzer list
+ * 6. Enter TCP settings or the bridge-owned FILE import directory
  *
  * The inline form does not expose plugin-type/analyzer-type dropdowns — the
- * profile selection alone drives those fields server-side (see
- * `AnalyzerForm.jsx`'s `labFacingSetup` gate), so every `AnalyzerTestConfig`
- * used here must declare a `profileName`.
+ * profile selection alone drives those fields server-side. Instance connection
+ * settings are configured after creation through the visible Edit workflow.
+ * For FILE analyzers, OpenELIS stores and registers the directory while the
+ * bridge owns watching and transport.
  *
  * Returns the IP assigned to the analyzer (for TCP push destinations).
  */
@@ -194,22 +196,30 @@ export async function createAnalyzerFromProfile(
   await form.fillName(config.name);
   await presentation.pause(500);
 
-  // Fill IP and port for TCP analyzers
-  if (config.protocol !== "FILE") {
-    const ip = assignedIp || config.ipAddress;
-    if (ip) {
-      await form.fillIpAddress(ip);
-    }
-    if (config.port) {
-      await form.fillPort(String(config.port));
-    }
-    await presentation.pause(500);
-  }
+  // Create the analyzer identity from the profile. Connection settings belong
+  // to the post-create Edit/Connect surface and are intentionally absent here.
+  await waitForAnalyzerApiReady(page);
+  await form.save();
+  await expect(page).toHaveURL(
+    /\/analyzers\/\d+\/mappings\?setup=1&step=verify/,
+    { timeout: LONG_TIMEOUT },
+  );
+  const analyzerId = new URL(page.url()).pathname.split("/")[2];
+  await expect(page.getByTestId("field-mapping")).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
 
-  // Fill required import directory for FILE analyzers. The UI intentionally
-  // does NOT auto-generate this (per product decision) — tests must set it
-  // explicitly. Mirror the mock server's targetDir so the analyzer watches
-  // where the mock drops fixtures.
+  // Configure instance connection settings through the visible list → Edit
+  // workflow. For FILE, the directory is registered with the bridge; OpenELIS
+  // does not watch or poll it.
+  await list.goto();
+  await list.expectLoaded();
+  await list.search(config.name);
+  await expect(list.getRow(analyzerId)).toBeVisible({ timeout: LONG_TIMEOUT });
+  await list.openOverflowMenu(analyzerId);
+  await list.clickAction(analyzerId, "edit");
+  await form.expectOpen();
+
   if (config.protocol === "FILE") {
     const importDir =
       config.push.protocol === "FILE"
@@ -217,16 +227,22 @@ export async function createAnalyzerFromProfile(
           `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`
         : `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`;
     await form.fillImportDirectory(importDir);
-    await presentation.pause(500);
+  } else {
+    const ip = assignedIp || config.ipAddress;
+    if (ip) {
+      await form.fillIpAddress(ip);
+    }
+    if (config.port) {
+      await form.fillPort(String(config.port));
+    }
   }
+  await presentation.pause(500);
 
-  // Save
-  await waitForAnalyzerApiReady(page);
   await form.save();
-  await form.expectSuccessNotification();
-
-  // Wait for modal to close
-  await expect(form.modal).not.toBeVisible({ timeout: LONG_TIMEOUT });
+  await expect(page).toHaveURL(/\/analyzers(?:\?.*)?$/, {
+    timeout: LONG_TIMEOUT,
+  });
+  await list.expectLoaded();
   await presentation.pause(1_000);
 
   return assignedIp;
