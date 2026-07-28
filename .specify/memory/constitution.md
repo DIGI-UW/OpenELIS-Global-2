@@ -1,6 +1,50 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Principle VII: i18n Key Reuse & Hygiene
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.10.0 → 1.11.0
+Change Type: MINOR - Materially expanded guidance (Principle VII)
+Date: 2026-07-15
+
+Added Sections:
+  - Principle VII > Key Reuse & Hygiene (MANDATORY)
+    * NEW: Search before minting (npm run i18n:find); reuse canonical keys
+    * NEW: Generic UI strings MUST use common.* canonical keys
+    * NEW: No cross-feature key references; promote to common.* instead
+    * NEW: Context exceptions recorded in i18n-context-exceptions.json
+    * NEW: Dynamic key families declared via // i18n-keys: prefix.* pragma
+    * NEW: Referenced ids must exist in en.json; orphans swept periodically
+    * NEW: CI ratchet - PRs may not increase duplicate/orphan counts
+
+Rationale:
+  en.json grew 2,385 → 7,133 keys (2026-01 → 2026-07). Audit of develop
+  @ 06d531e found 1,786 keys (25%) duplicate existing English values
+  (56× "Status", 34× "Active", 28× "Cancel"), ~2,500 keys (35%) referenced
+  nowhere in frontend/src, and 386 ids referenced at react-intl call sites
+  but missing from en.json (render as raw ids to users). Every redundant
+  key multiplies into ~20 locales of translator work on Transifex.
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/spec-template.md - string reuse table
+  ⚠️ .specify/templates/plan-template.md - Existing Assets Survey
+  ⚠️ .specify/templates/tasks-template.md - Existing Assets Survey
+  ⚠️ .specify/core/commands/speckit.implement.md (+ oe variant) - reuse constraint
+  ⚠️ .specify/core/commands/speckit.analyze.md - validate string table
+  ⚠️ CLAUDE.md / AGENTS.md - key-reuse rule + i18n:find pointer
+  ⚠️ .github/workflows/i18n-check.yml - value-duplicate, missing-key, ratchet jobs
+  ⚠️ .githooks/pre-commit - local duplicate-value check
+  ⚠️ .claude/settings.json (NEW) - PostToolUse hook on en.json edits
+
+Follow-up TODOs:
+  - Seed common.* canonical key set (~150 keys) BEFORE CI check activates
+  - Ship npm run i18n:find and npm run i18n:audit
+  - Fix 386 missing keys (user-visible bugs; independent of this amendment)
+  - Pragma-annotate 336 dynamic key sites, then first orphan sweep
+  - Migrate resultsViewer (14 files) from react-i18next to react-intl
+-->
+
+<!--
 SYNC IMPACT REPORT - Principle X: Legacy Code Removal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.9.1 → 1.10.0
@@ -1115,6 +1159,32 @@ hardcoded English text in components.
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
 
+**Key Reuse & Hygiene (MANDATORY — ADDED 2026-07-15)**:
+
+Translation keys are shared vocabulary, not per-component variables. Every key
+in `en.json` creates translation work in ~20 locales on Transifex.
+
+- **Search before minting**: run `npm run i18n:find "<english text>"` before
+  adding any key. If a canonical key exists, REUSE it.
+- Generic UI strings (Status, Actions, Cancel, Save, Edit, Delete, Active,
+  Inactive, Name, Description, Search, Type, Notes, …) MUST use the
+  `common.*` canonical key.
+- **NEVER reference another feature's namespaced key.** If a needed string
+  exists only under a feature-scoped key, promote it to `common.*` and
+  repoint both features. Cross-feature key references create hidden coupling.
+- New keys require genuinely new English text, or a context exception
+  recorded in `frontend/src/languages/i18n-context-exceptions.json` (same
+  English word, different translation in the new grammatical context).
+- Namespace new keys by domain (`qc.controlLot.field.expiry`), never by
+  component (`myModal.expiryLabel`).
+- Dynamically-constructed keys MUST declare their family with an
+  `// i18n-keys: prefix.*` pragma at the construction site so tooling can
+  resolve them.
+- Every id referenced in code MUST exist in `en.json` (CI-enforced). Keys
+  with no reference and no pragma are orphans and are removed in periodic
+  sweeps.
+- **CI ratchet**: PRs may not increase the duplicate-value or orphan counts.
+
 **Translation Workflow (Transifex)**:
 
 Transifex is the **source of truth** for all non-English translations. The
@@ -1631,7 +1701,7 @@ sync.
 
 ---
 
-**Version**: 1.9.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-04-05
+**Version**: 1.11.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-07-15
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
