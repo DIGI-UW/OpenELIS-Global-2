@@ -62,7 +62,13 @@ const savedDomain = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   getFromOpenElisServer.mockImplementation((url, cb) => {
-    if (url.endsWith("/lab-units")) {
+    if (url.endsWith("/domains")) {
+      cb([
+        { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+        { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+        { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+      ]);
+    } else if (url.endsWith("/lab-units")) {
       cb([{ id: "7", name: "Chemistry" }]);
     } else if (url.endsWith("/sample-types")) {
       // Serum carries no domain (legacy shape) so domain-switch tests keep a
@@ -145,17 +151,30 @@ describe("BasicInfoSection domain-switch modal", () => {
 
   it("activating with coverage gaps requires acknowledgment (the safety gate)", async () => {
     // Load the test INACTIVE so toggling Active on triggers the activation gate.
-    getFromOpenElisServer.mockImplementation((url, cb) =>
-      cb({
-        name: "Glucose",
-        code: "GLU",
-        description: "",
-        domain: "CLINICAL",
-        antimicrobialResistance: false,
-        active: false,
-        orderable: true,
-      }),
-    );
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/domains")) {
+        cb([
+          { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+          { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+          { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+        ]);
+      } else if (url.endsWith("/lab-units")) {
+        cb([{ id: "7", name: "Chemistry" }]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([{ id: "2", name: "Serum" }]);
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          antimicrobialResistance: false,
+          active: false,
+          orderable: true,
+          sampleTypeIds: ["2"],
+        });
+      }
+    });
     const gapReport = {
       status: 409,
       male: {
@@ -213,7 +232,13 @@ describe("BasicInfoSection domain-switch modal", () => {
 
   it("edits the lab unit and sample types on modify and persists them", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
-      if (url.endsWith("/lab-units")) {
+      if (url.endsWith("/domains")) {
+        cb([
+          { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+          { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+          { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+        ]);
+      } else if (url.endsWith("/lab-units")) {
         cb([
           { id: "7", name: "Chemistry" },
           { id: "8", name: "Hematology" },
