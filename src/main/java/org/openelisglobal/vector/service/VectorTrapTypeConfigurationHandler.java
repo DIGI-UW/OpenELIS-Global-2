@@ -4,11 +4,11 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -58,7 +58,7 @@ public class VectorTrapTypeConfigurationHandler implements DomainConfigurationHa
             throw new IllegalArgumentException("Vector trap type file " + fileName + " is empty or has no header");
         }
 
-        String[] headers = parseCsvLine(headerLine);
+        String[] headers = CsvParsingUtil.parseCsvLine(headerLine);
         int nameIdx = findColumn(headers, "name");
         int descIdx = findColumn(headers, "description");
         int activeIdx = findColumn(headers, "isActive");
@@ -80,7 +80,7 @@ public class VectorTrapTypeConfigurationHandler implements DomainConfigurationHa
                 continue;
             }
             try {
-                if (processRow(parseCsvLine(line), nameIdx, descIdx, activeIdx, abbrevIdx, existing)) {
+                if (processRow(CsvParsingUtil.parseCsvLine(line), nameIdx, descIdx, activeIdx, abbrevIdx, existing)) {
                     loaded++;
                 }
             } catch (Exception e) {
@@ -169,24 +169,5 @@ public class VectorTrapTypeConfigurationHandler implements DomainConfigurationHa
             }
         }
         return -1;
-    }
-
-    private String[] parseCsvLine(String line) {
-        List<String> values = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (c == '"') {
-                inQuotes = !inQuotes;
-            } else if (c == ',' && !inQuotes) {
-                values.add(current.toString().trim());
-                current = new StringBuilder();
-            } else {
-                current.append(c);
-            }
-        }
-        values.add(current.toString().trim());
-        return values.toArray(new String[0]);
     }
 }

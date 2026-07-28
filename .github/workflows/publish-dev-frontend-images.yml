@@ -7,7 +7,7 @@ name: Publishing / Dev Images / Frontend
 
 on:
   push:
-    branches: [develop, demo-silnas]
+    branches: [develop]
   workflow_dispatch:
 
 env:

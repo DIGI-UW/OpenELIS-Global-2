@@ -1732,6 +1732,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         for (Analysis analysis : actionDataSet.getModifiedAnalysis()) {
             ServiceRequest serviceRequest = this.transformToServiceRequest(analysis.getId());
             if (serviceRequest != null) {
+                preserveTerminalServiceRequestStatus(analysis, serviceRequest);
                 this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
             }
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
@@ -1745,6 +1746,33 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         } catch (FhirPersistanceException e) {
             LogEvent.logError(getClass().getSimpleName(), method, "Fhir store currently un avalable");
         }
+    }
+
+    /**
+     * A referred-out analysis reaches ServiceRequest.status COMPLETED when the
+     * reference lab's result is accepted (OGC-799), which happens while the local
+     * Analysis is still un-validated. This sync rebuilds the ServiceRequest from
+     * the local Analysis status, so without this guard a later Result Entry save
+     * would downgrade a completed ServiceRequest back to active in the FHIR store.
+     * Terminal remote states are therefore never overwritten by a derived one.
+     */
+    private void preserveTerminalServiceRequestStatus(Analysis analysis, ServiceRequest serviceRequest) {
+        if (analysis.getFhirUuid() == null) {
+            return;
+        }
+        try {
+            fhirPersistanceService.getServiceRequestByAnalysisUuid(analysis.getFhirUuidAsString())
+                    .map(ServiceRequest::getStatus).filter(FhirTransformServiceImpl::isTerminalServiceRequestStatus)
+                    .ifPresent(serviceRequest::setStatus);
+        } catch (RuntimeException e) {
+            LogEvent.logDebug(getClass().getSimpleName(), "preserveTerminalServiceRequestStatus",
+                    "could not read existing ServiceRequest status for analysis " + analysis.getId() + ": "
+                            + e.getMessage());
+        }
+    }
+
+    private static boolean isTerminalServiceRequestStatus(ServiceRequestStatus status) {
+        return status == ServiceRequestStatus.COMPLETED || status == ServiceRequestStatus.REVOKED;
     }
 
     @Override

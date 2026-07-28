@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
@@ -78,7 +79,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             throw new IllegalArgumentException("Panel configuration file " + fileName + " is empty");
         }
 
-        String[] headers = parseCsvLine(headerLine);
+        String[] headers = CsvParsingUtil.parseCsvLine(headerLine);
 
         int panelNameIndex = findColumnIndex(headers, "panelName");
         int sampleTypesIndex = findColumnIndex(headers, "sampleTypes");
@@ -102,7 +103,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
                 continue;
             }
             try {
-                String[] values = parseCsvLine(line);
+                String[] values = CsvParsingUtil.parseCsvLine(line);
                 processRow(values, panelNameIndex, sampleTypesIndex, testsIndex, isActiveIndex, sortOrderIndex,
                         localizationColumns, lineNumber, fileName);
                 processed++;
@@ -319,25 +320,6 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             translations.put("en", defaultName);
         }
         return translations;
-    }
-
-    private String[] parseCsvLine(String line) {
-        List<String> values = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (c == '"') {
-                inQuotes = !inQuotes;
-            } else if (c == ',' && !inQuotes) {
-                values.add(current.toString().trim());
-                current = new StringBuilder();
-            } else {
-                current.append(c);
-            }
-        }
-        values.add(current.toString().trim());
-        return values.toArray(new String[0]);
     }
 
     private int findColumnIndex(String[] headers, String name) {

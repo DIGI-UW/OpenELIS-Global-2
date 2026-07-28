@@ -2108,6 +2108,116 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         return 0;
     }
 
+    /**
+     * Same predicate as {@link #getCountOfAnalysesForStatusIdsExcludingQc(List)},
+     * narrowed to a set of test sections, so a section-scoped dashboard tile counts
+     * exactly what the unscoped tile counts within the user's sections.
+     */
+    @Override
+    public int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String hql = "SELECT COUNT(*) From Analysis a WHERE a.statusId IN (:analysisStatusList) AND a.testSection.id IN"
+                + " (:testSectionIds) AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameterList("analysisStatusList", statusIdList);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc");
+        }
+
+        return 0;
+    }
+
+    /**
+     * Same predicate as
+     * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}, narrowed to a
+     * set of test sections.
+     */
+    @Override
+    public int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) From Analysis a where DATE(a.releasedDate) = DATE(:releasedDate) and a.statusId in"
+                + " ( :statusList ) and a.testSection.id in ( :testSectionIds )";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("releasedDate", completedDate);
+            query.setParameterList("statusList", statusIds);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysisCompletedOnByStatusIdAndTestSections");
+        }
+
+        return 0;
+    }
+
+    /**
+     * Same predicate as
+     * {@link #getCountOfAnalysisStartedOnExcludedByStatusId(Date, Set)}, narrowed
+     * to a set of test sections.
+     */
+    @Override
+    public int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId not"
+                + " in ( :statusList ) and a.testSection.id in ( :testSectionIds )";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("startedDate", startedDate);
+            query.setParameterList("statusList", statusIds);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections");
+        }
+
+        return 0;
+    }
+
+    /**
+     * Same predicate as {@link #getCountOfAnalysisStartedOnByStatusId(Date, List)},
+     * narrowed to a set of test sections.
+     */
+    @Override
+    public int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId in ("
+                + " :statusList ) and a.testSection.id in ( :testSectionIds )";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("startedDate", startedDate);
+            query.setParameterList("statusList", statusIds);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysisStartedOnByStatusIdAndTestSections");
+        }
+
+        return 0;
+    }
+
     @Override
     public List<Analysis> getAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds) {
         // Same predicate as getCountOfAnalysisStartedOnByStatusId, so the dashboard

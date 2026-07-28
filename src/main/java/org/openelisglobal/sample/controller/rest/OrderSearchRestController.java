@@ -31,6 +31,7 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.provider.bean.PatientInfoBean;
@@ -80,10 +81,13 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.userrole.service.UserRoleService;
+import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.openelisglobal.vector.service.VectorPoolService;
 import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorPool;
@@ -191,9 +195,20 @@ public class OrderSearchRestController extends BaseRestController {
     private TestSectionService testSectionService;
 
     @Autowired
+    private UserRoleService userRoleService;
+
+    @Autowired
     private VectorSamplingSiteService vectorSamplingSiteService;
 
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    /**
+     * Configuration property name (site_information or
+     * SystemConfiguration.properties) that opts a deployment in to scoping the
+     * recent-orders list by the user's test sections. Absent or anything other than
+     * "true" leaves the list unscoped.
+     */
+    private static final String RESTRICT_RECENT_ORDERS_PROPERTY = "restrictRecentOrdersByTestSection";
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
@@ -205,6 +220,11 @@ public class OrderSearchRestController extends BaseRestController {
      * <p>
      * Returns paginated list of orders with filtering support.
      *
+     * <p>
+     * When test-section scoping is in effect, a user still always sees the orders
+     * they created themselves, even if the analyses on them belong to another
+     * section.
+     *
      * @param page            page number (1-based)
      * @param pageSize        items per page (25, 50, or 100)
      * @param search          search query for patient name, lab number, etc.
@@ -212,6 +232,8 @@ public class OrderSearchRestController extends BaseRestController {
      * @param priority        filter by priority
      * @param includeExternal include external/EMR orders
      * @return Dashboard data with orders list and counts
+     * @see #resolveAllowedSectionIds(String) for when the list is narrowed to the
+     *      user's test sections (opt-in, off by default)
      */
     @GetMapping(value = "/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getDashboard(@RequestParam(defaultValue = "1") int page,
@@ -225,8 +247,6 @@ public class OrderSearchRestController extends BaseRestController {
             Map<String, Object> response = new HashMap<>();
             List<Map<String, Object>> ordersList = new ArrayList<>();
 
-            // Resolve the set of test section IDs the logged-in user is assigned to.
-            // Empty set = no restriction (admin or no assignments).
             String currentSysUserId = getSysUserId(request);
             Set<String> allowedSectionIds = resolveAllowedSectionIds(currentSysUserId);
 
@@ -236,9 +256,6 @@ public class OrderSearchRestController extends BaseRestController {
 
             // Apply filters
             for (Sample sample : samples) {
-                // Filter by user's assigned test sections.
-                // Users always see orders they created (even if analyses are under a
-                // different section), and orders with no analyses yet are visible to all.
                 boolean createdByCurrentUser = currentSysUserId != null
                         && currentSysUserId.equals(sample.getSysUserId());
                 if (!allowedSectionIds.isEmpty() && !createdByCurrentUser
@@ -1456,10 +1473,38 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     /**
-     * Returns the set of test section IDs the logged-in user is assigned to. An
-     * empty set means no restriction (admin or no explicit assignments).
+     * The test section IDs the recent-orders list may be narrowed to, or an empty
+     * set meaning "show everything" (the pre-existing behaviour).
+     *
+     * <p>
+     * Scoping recent orders by test section is opt-in through the
+     * {@value #RESTRICT_RECENT_ORDERS_PROPERTY} configuration property (a
+     * site_information row or a SystemConfiguration.properties entry), which is
+     * absent by default. Without the opt-in this endpoint keeps returning every
+     * recent order, as it did before section scoping was introduced: with
+     * {@code REQUIRE_LAB_UNIT_AT_LOGIN=true},
+     * {@link UserService#getUserTestSections(String, String)} returns only the
+     * single lab unit chosen at login for non-admins, which would silently collapse
+     * "Recent Orders" to one section for existing clinical deployments.
+     *
+     * <p>
+     * Even when enabled, global administrators and {@code AllLabUnits} users are
+     * never scoped, and neither is a user whose section list came from the login
+     * lab-unit constraint rather than from their own assignments.
+     *
+     * <p>
+     * The returned set is expanded to include child sections of every assigned
+     * section, because analyses are filed under child sections (e.g. "Entomology")
+     * rather than the domain-level parent (e.g. "Vector Surveillance") a user is
+     * assigned to.
      */
     private Set<String> resolveAllowedSectionIds(String sysUserId) {
+        if (!recentOrderSectionScopingEnabled()) {
+            return Collections.emptySet();
+        }
+        if (isGlobalScopeUser(sysUserId) || isLoginLabUnitConstrained()) {
+            return Collections.emptySet();
+        }
         List<IdValuePair> userSections = userService.getUserTestSections(sysUserId, null);
         if (userSections == null || userSections.isEmpty()) {
             return Collections.emptySet();
@@ -1468,10 +1513,6 @@ public class OrderSearchRestController extends BaseRestController {
         for (IdValuePair section : userSections) {
             ids.add(section.getId());
         }
-        // Expand to child test sections — analyses are filed under child sections
-        // (e.g. "Entomology"), not the domain-level parent (e.g. "Vector
-        // Surveillance") the user is assigned to. Without this, vector/env users
-        // would see no orders in the dashboard list.
         List<TestSection> allSections = testSectionService.getAllActiveTestSections();
         for (TestSection section : allSections) {
             TestSection parent = section.getParentTestSection();
@@ -1482,10 +1523,48 @@ public class OrderSearchRestController extends BaseRestController {
         return ids;
     }
 
+    private boolean recentOrderSectionScopingEnabled() {
+        return "true".equalsIgnoreCase(
+                ConfigurationProperties.getInstance().getPropertyValue(RESTRICT_RECENT_ORDERS_PROPERTY));
+    }
+
+    /**
+     * True when lab unit selection is required at login, in which case a
+     * non-admin's resolved section list is the single unit chosen at login rather
+     * than the set of sections they are actually assigned to.
+     */
+    private boolean isLoginLabUnitConstrained() {
+        return ConfigurationProperties.getInstance().isPropertyValueEqual(Property.REQUIRE_LAB_UNIT_AT_LOGIN, "true");
+    }
+
+    /**
+     * True when the user's lab-unit assignments already cover every test section —
+     * a global administrator or a user mapped to {@code AllLabUnits}.
+     */
+    private boolean isGlobalScopeUser(String sysUserId) {
+        if (sysUserId == null) {
+            return false;
+        }
+        if (userRoleService.userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)) {
+            return true;
+        }
+        UserLabUnitRoles labUnitRoles = userService.getUserLabUnitRoles(sysUserId);
+        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null) {
+            return false;
+        }
+        return labUnitRoles.getLabUnitRoleMap().stream()
+                .anyMatch(roleMap -> UnifiedSystemUserController.ALL_LAB_UNITS.equals(roleMap.getLabUnit()));
+    }
+
+    /**
+     * Whether any analysis on the sample belongs to one of the allowed sections.
+     * Samples with no analyses yet are treated as belonging everywhere — there is
+     * no section to match against, and hiding them would hide freshly entered
+     * orders.
+     */
     private boolean sampleBelongsToSections(Sample sample, Set<String> allowedSectionIds) {
         List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
         if (analyses == null || analyses.isEmpty()) {
-            // Orders with no analyses yet are visible to all — no section to match against.
             return true;
         }
         for (Analysis analysis : analyses) {

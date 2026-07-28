@@ -12,6 +12,7 @@ import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,9 +23,17 @@ import org.springframework.web.bind.annotation.RestController;
  * independent of Provider (Clinical-only) and Organization. Mirrors
  * ProviderRestController's /provider/search shape so the frontend type-ahead
  * pattern is identical across all three requester domains.
+ *
+ * <p>
+ * The response carries contact PII (name, phone, fax, email, department), so
+ * access is restricted to the roles that run order entry. There is no
+ * {@code system_module_url} row for {@code /rest/requestor/search} and
+ * {@code ModuleAuthenticationInterceptor} fails open for unmapped {@code /rest}
+ * paths, so the guard has to be declared here.
  */
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION', 'ADMIN')")
 public class RequestorRestController {
 
     @Autowired

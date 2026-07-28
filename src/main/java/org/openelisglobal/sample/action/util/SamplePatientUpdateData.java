@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
@@ -499,25 +500,36 @@ public class SamplePatientUpdateData {
         }
     }
 
+    /**
+     * Builds the ordering Provider for this order.
+     *
+     * <p>
+     * When an existing master Provider is reused (providerPersonId supplied),
+     * edited values from the order form are merged onto its shared {@link Person}
+     * row so that correcting a loaded Provider's name/phone/fax/email actually
+     * persists. The merge is PATCH-style: a blank or absent incoming value means
+     * "not supplied" and leaves the stored value alone. Blanket assignment would
+     * let any caller that doesn't populate these fields — including the frontend's
+     * own save window, where {@code providerPersonId} is set synchronously but the
+     * practitioner name/contact details only arrive in a later async callback —
+     * wipe the master Provider's details for every other order that references it.
+     * Clearing a stored provider detail is therefore done through Provider
+     * management, not through order entry.
+     */
     public void initProvider(SampleOrderItem sampleOrder) {
 
         providerPerson = null;
         if (noRequesterInformation(sampleOrder)) {
             provider = PatientUtil.getUnownProvider();
         } else if (!GenericValidator.isBlankOrNull(sampleOrder.getProviderPersonId())) {
-            // Bug (2026-07-06, same class as the Requestor fix): this loaded the
-            // existing Person but never applied the (possibly edited) field
-            // values from sampleOrder onto it, so editing an already-selected/
-            // loaded Provider's name/phone/fax/email and saving silently
-            // re-persisted the unchanged original.
             provider = SpringContext.getBean(ProviderService.class).getProviderByPerson(
                     SpringContext.getBean(PersonService.class).get(sampleOrder.getProviderPersonId()));
             providerPerson = provider.getPerson();
-            providerPerson.setFirstName(sampleOrder.getProviderFirstName());
-            providerPerson.setLastName(sampleOrder.getProviderLastName());
-            providerPerson.setWorkPhone(sampleOrder.getProviderWorkPhone());
-            providerPerson.setFax(sampleOrder.getProviderFax());
-            providerPerson.setEmail(sampleOrder.getProviderEmail());
+            setIfSupplied(sampleOrder.getProviderFirstName(), providerPerson::setFirstName);
+            setIfSupplied(sampleOrder.getProviderLastName(), providerPerson::setLastName);
+            setIfSupplied(sampleOrder.getProviderWorkPhone(), providerPerson::setWorkPhone);
+            setIfSupplied(sampleOrder.getProviderFax(), providerPerson::setFax);
+            setIfSupplied(sampleOrder.getProviderEmail(), providerPerson::setEmail);
             providerPerson.setSysUserId(currentUserId);
         } else {
             providerPerson = new Person();
@@ -534,6 +546,19 @@ public class SamplePatientUpdateData {
         }
 
         provider.setSysUserId(currentUserId);
+    }
+
+    /**
+     * Applies {@code value} through {@code setter} only when it was actually
+     * supplied (non-blank). Used for PATCH-style merges onto rows shared across
+     * orders (master Provider/Requestor {@link Person}s, referring
+     * {@link Organization}s), where an absent field in the request must never be
+     * read as "clear the stored value".
+     */
+    private void setIfSupplied(String value, Consumer<String> setter) {
+        if (!GenericValidator.isBlankOrNull(value)) {
+            setter.accept(value);
+        }
     }
 
     private boolean noRequesterInformation(SampleOrderItem sampleOrder) {
@@ -585,23 +610,37 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * Requesting Organization's own phone/fax/email are updated whenever they
-     * differ from what's stored, independent of the referring-code change check in
-     * {@link #updateCurrentOrgIfNeeded}, so contact info stays fresh even when the
-     * code is unchanged.
+     * Requesting Organization's own phone/fax/email are updated whenever a supplied
+     * value differs from what's stored, independent of the referring-code change
+     * check in {@link #updateCurrentOrgIfNeeded}, so contact info stays fresh even
+     * when the code is unchanged.
+     *
+     * <p>
+     * The merge is PATCH-style: a blank or absent incoming value means "not
+     * supplied" and leaves the stored value alone. The referring Organization row
+     * is shared by every order that references it, and several callers post only
+     * {@code referringSiteId} without any contact fields (batch entry and the
+     * legacy sample-entry controller), so treating absent fields as an instruction
+     * to clear would silently wipe the site's contact details for all other orders.
+     * Clearing a stored value is therefore done through Organization management,
+     * not through order entry.
      */
     public void updateOrganizationContactInfoIfNeeded(SampleOrderItem orderItem, String orgId) {
         Organization org = currentOrganization != null ? currentOrganization : orgService.getOrganizationById(orgId);
-        boolean changed = StringUtil.compareWithNulls(orderItem.getReferringSitePhone(), org.getPhone()) != 0
-                || StringUtil.compareWithNulls(orderItem.getReferringSiteFax(), org.getFax()) != 0
-                || StringUtil.compareWithNulls(orderItem.getReferringSiteEmail(), org.getEmail()) != 0;
+        boolean changed = isSuppliedAndDifferent(orderItem.getReferringSitePhone(), org.getPhone())
+                || isSuppliedAndDifferent(orderItem.getReferringSiteFax(), org.getFax())
+                || isSuppliedAndDifferent(orderItem.getReferringSiteEmail(), org.getEmail());
         if (changed) {
-            org.setPhone(orderItem.getReferringSitePhone());
-            org.setFax(orderItem.getReferringSiteFax());
-            org.setEmail(orderItem.getReferringSiteEmail());
+            setIfSupplied(orderItem.getReferringSitePhone(), org::setPhone);
+            setIfSupplied(orderItem.getReferringSiteFax(), org::setFax);
+            setIfSupplied(orderItem.getReferringSiteEmail(), org::setEmail);
             org.setSysUserId(currentUserId);
             currentOrganization = org;
         }
+    }
+
+    private boolean isSuppliedAndDifferent(String incoming, String stored) {
+        return !GenericValidator.isBlankOrNull(incoming) && StringUtil.compareWithNulls(incoming, stored) != 0;
     }
 
     public void initializeRequester(SampleOrderItem sampleOrder) {
@@ -634,6 +673,12 @@ public class SamplePatientUpdateData {
      * name against Persons already used as a requestor_contact before creating a
      * fresh Person, so re-typing an existing Requestor's name reuses that Person
      * instead of creating a duplicate.
+     *
+     * <p>
+     * Where an existing Person is reused, edited values are merged PATCH-style for
+     * the same reason as {@link #initProvider}: the Person row is shared by every
+     * order that references that Requestor, so a blank or absent incoming field
+     * means "not supplied", never "clear the stored value".
      */
     public void initRequestorContact(SampleOrderItem sampleOrder) {
         requestorPerson = null;
@@ -644,26 +689,22 @@ public class SamplePatientUpdateData {
         }
 
         if (!GenericValidator.isBlankOrNull(sampleOrder.getRequestorPersonId())) {
-            // Bug (2026-07-06): this branch loaded the existing Person but never
-            // applied the (possibly edited) field values from sampleOrder onto
-            // it, so editing an already-selected/loaded Requestor's name/phone/
-            // etc. and saving silently re-persisted the unchanged original.
             requestorPerson = SpringContext.getBean(PersonService.class).get(sampleOrder.getRequestorPersonId());
-            requestorPerson.setFirstName(sampleOrder.getRequestorFirstName());
-            requestorPerson.setLastName(sampleOrder.getRequestorLastName());
-            requestorPerson.setWorkPhone(sampleOrder.getRequestorPhone());
-            requestorPerson.setFax(sampleOrder.getRequestorFax());
-            requestorPerson.setEmail(sampleOrder.getRequestorEmail());
-            requestorPerson.setDepartment(sampleOrder.getRequestorDepartment());
+            setIfSupplied(sampleOrder.getRequestorFirstName(), requestorPerson::setFirstName);
+            setIfSupplied(sampleOrder.getRequestorLastName(), requestorPerson::setLastName);
+            setIfSupplied(sampleOrder.getRequestorPhone(), requestorPerson::setWorkPhone);
+            setIfSupplied(sampleOrder.getRequestorFax(), requestorPerson::setFax);
+            setIfSupplied(sampleOrder.getRequestorEmail(), requestorPerson::setEmail);
+            setIfSupplied(sampleOrder.getRequestorDepartment(), requestorPerson::setDepartment);
             requestorPerson.setSysUserId(currentUserId);
         } else {
             Person existingRequestor = findExistingRequestorContactByName(sampleOrder);
             if (existingRequestor != null) {
                 requestorPerson = existingRequestor;
-                requestorPerson.setWorkPhone(sampleOrder.getRequestorPhone());
-                requestorPerson.setFax(sampleOrder.getRequestorFax());
-                requestorPerson.setEmail(sampleOrder.getRequestorEmail());
-                requestorPerson.setDepartment(sampleOrder.getRequestorDepartment());
+                setIfSupplied(sampleOrder.getRequestorPhone(), requestorPerson::setWorkPhone);
+                setIfSupplied(sampleOrder.getRequestorFax(), requestorPerson::setFax);
+                setIfSupplied(sampleOrder.getRequestorEmail(), requestorPerson::setEmail);
+                setIfSupplied(sampleOrder.getRequestorDepartment(), requestorPerson::setDepartment);
                 requestorPerson.setSysUserId(currentUserId);
             } else {
                 requestorPerson = new Person();

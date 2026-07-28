@@ -39,8 +39,8 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * Auth-ordering tests for POST /rest/complianceReport/reissue (OGC-776 T-301).
  *
  * Constitution V.6 invariant: 403 must fire BEFORE body validation (400). A
- * caller without ROLE_RESULTS / ROLE_SUPERVISOR / ADMIN must be rejected at the
- * security layer, regardless of whether the request body is valid.
+ * caller without ROLE_RESULTS / ROLE_VALIDATION / ROLE_ADMIN must be rejected
+ * at the security layer, regardless of whether the request body is valid.
  */
 @WebAppConfiguration
 @ContextConfiguration(classes = { ComplianceReportReissueSecurityTest.TestConfig.class })

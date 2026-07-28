@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +21,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Vector/environmental sampling-site reference data. Reads are consumed by the
+ * order-entry and dashboard workflows, so they stay open to authenticated lab
+ * staff; the mutations are admin-only.
+ *
+ * <p>
+ * There is no {@code system_module_url} row for this path and
+ * {@code ModuleAuthenticationInterceptor} fails open for unmapped {@code /rest}
+ * paths, so the guard has to be declared here.
+ */
 @RestController
 @RequestMapping("/rest/admin/vector/sampling-sites")
 public class VectorSamplingSiteRestController {
@@ -74,6 +85,7 @@ public class VectorSamplingSiteRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<VectorSamplingSite> createSite(@RequestBody VectorSamplingSite site,
             HttpServletRequest request) {
         try {
@@ -94,6 +106,7 @@ public class VectorSamplingSiteRestController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<VectorSamplingSite> updateSite(@PathVariable Integer id, @RequestBody VectorSamplingSite site,
             HttpServletRequest request) {
         try {

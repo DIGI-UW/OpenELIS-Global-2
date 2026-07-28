@@ -240,6 +240,38 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
 
     /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysesForStatusIdsExcludingQc(List)}. Returns 0 for an
+     * empty section list.
+     */
+    int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}. Returns 0 for
+     * an empty section list.
+     */
+    int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnExcludedByStatusId(Date, Set)}. Returns 0
+     * for an empty section list.
+     */
+    int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnByStatusId(Date, List)}. Returns 0 for an
+     * empty section list.
+     */
+    int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
      * Analyses started on the given date with any of the statuses (same predicate
      * as the count).
      */

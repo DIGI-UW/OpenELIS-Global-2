@@ -9,6 +9,7 @@ import org.hl7.fhir.r4.model.ServiceRequest;
 import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
@@ -24,6 +25,7 @@ import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,18 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
 
     @Autowired
     private FhirConfig fhirConfig;
+
+    @Autowired
+    private UserContextHolder userContextHolder;
+
+    /**
+     * Whether an unknown sender sample type may be auto-created during inbound
+     * shipment ingestion. Default on so referred-in orders from a peer with a
+     * catalog we do not carry still pre-populate; set to {@code false} on
+     * deployments that require the sample-type catalog to be curated locally.
+     */
+    @Value("${org.openelisglobal.shipment.reception.autocreate-sample-type:true}")
+    private boolean autoCreateSampleType;
 
     @Override
     @Transactional
@@ -209,8 +223,16 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
      * Read the Specimen FHIR resource and ensure the sample type exists locally. If
      * the sender's abbreviation is unknown, create a new TypeOfSample so that
      * LabOrderSearchProvider can resolve it when pre-populating the form.
+     *
+     * <p>
+     * The reference data written here is driven by an external FHIR peer, so it is
+     * attributed through {@link UserContextHolder} rather than a hardcoded admin id
+     * and is skipped entirely when {@code autoCreateSampleType} is disabled.
      */
     private void ensureSampleTypeExists(String specimenUuid) {
+        if (!autoCreateSampleType) {
+            return;
+        }
         try {
             Specimen specimen = fhirPersistanceService.getSpecimenByUuid(specimenUuid).orElse(null);
             if (specimen == null || !specimen.hasType()) {
@@ -227,11 +249,12 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
                     return; // already exists
                 }
                 String displayName = coding.hasDisplay() ? coding.getDisplay() : abbreviation;
+                String sysUserId = resolveIngestionUserId();
 
                 Localization localization = new Localization();
                 localization.setDescription("sampleType name: " + displayName);
                 localization.setLocalizedValue("en", displayName);
-                localization.setSysUserId("1");
+                localization.setSysUserId(sysUserId);
                 localizationService.insert(localization);
 
                 TypeOfSample newType = new TypeOfSample();
@@ -241,7 +264,7 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
                 newType.setIsActive(true);
                 newType.setSortOrder(Integer.MAX_VALUE);
                 newType.setLocalization(localization);
-                newType.setSysUserId("1");
+                newType.setSysUserId(sysUserId);
                 typeOfSampleService.insert(newType);
                 typeOfSampleService.clearCache();
                 LogEvent.logInfo(this.getClass().getSimpleName(), "ensureSampleTypeExists",
@@ -252,6 +275,20 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
             LogEvent.logWarn(this.getClass().getSimpleName(), "ensureSampleTypeExists",
                     "Could not ensure sample type for specimen " + specimenUuid + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * Attribution for reference data created while ingesting an inbound shipment.
+     * Uses the authenticated operator when reception runs inside a request, and
+     * otherwise the daemon user — ingestion also runs from non-request threads,
+     * where there is no operator to attribute the write to.
+     */
+    private String resolveIngestionUserId() {
+        String currentUserId = userContextHolder.getCurrentSysUserId();
+        if (currentUserId != null && !currentUserId.isEmpty()) {
+            return currentUserId;
+        }
+        return userContextHolder.getDaemonSysUserId();
     }
 
     private String extractSpecimenUuid(String reference) {

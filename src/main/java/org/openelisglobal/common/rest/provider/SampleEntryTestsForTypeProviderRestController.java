@@ -13,6 +13,7 @@ import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
@@ -98,17 +99,31 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         return sampleEntryTests;
     }
 
+    /**
+     * Sample types offerable in clinical order entry: those explicitly in the
+     * CLINICAL domain plus those with no domain at all. A blank/unrecognised
+     * {@code type_of_sample.domain} means "offerable everywhere" (see
+     * {@link Domain#fromRaw(String)} and the contract stated by liquibase
+     * 066-sample-type-domain-enum-migration.xml, whose backfill only touched rows
+     * {@code WHERE domain IS NOT NULL}), so domainless types must not be filtered
+     * out here — doing so makes their tests unorderable. Environmental and vector
+     * types are excluded because they have their own endpoints.
+     */
     @GetMapping(value = "user-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getUserSampleTests(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         List<IdValuePair> all = userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
-        // Filter to HUMAN domain only — environmental and vector have their own
-        // endpoints
-        java.util.Set<String> humanIds = typeOfSampleService
-                .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.HUMAN).stream()
-                .map(t -> t.getId()).collect(java.util.stream.Collectors.toSet());
-        return all.stream().filter(p -> humanIds.contains(p.getId())).collect(java.util.stream.Collectors.toList());
+        java.util.Set<String> clinicalOfferableIds = typeOfSampleService.getAllTypeOfSamples().stream()
+                .filter(t -> isOfferableInClinical(t.getDomain())).map(t -> t.getId())
+                .collect(java.util.stream.Collectors.toSet());
+        return all.stream().filter(p -> clinicalOfferableIds.contains(p.getId()))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    private boolean isOfferableInClinical(String rawDomain) {
+        Domain domain = Domain.fromRaw(rawDomain);
+        return domain == null || domain == Domain.CLINICAL;
     }
 
     @GetMapping(value = "environmental-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)

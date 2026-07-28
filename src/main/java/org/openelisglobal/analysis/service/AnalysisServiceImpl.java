@@ -860,6 +860,37 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
 
     @Override
     @Transactional(readOnly = true)
+    public int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList, testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfAnalysisCompletedOnByStatusIdAndTestSections(completedDate, statusIds,
+                testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(startedDate, statusIds,
+                testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfAnalysisStartedOnByStatusIdAndTestSections(startedDate, statusIds,
+                testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds) {
         return baseObjectDAO.getAnalysisStartedOnByStatusId(startedDate, statusIds);
     }

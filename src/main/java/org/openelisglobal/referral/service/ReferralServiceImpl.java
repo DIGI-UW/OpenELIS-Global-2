@@ -334,8 +334,31 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         transition(referralId, ReferralStatus.COMPLETED, actorUserId, notes, null);
     }
 
+    /**
+     * Completes a referral whose results were phoned/faxed in and typed at Result
+     * Entry: flips the referral to COMPLETED, sets {@code manually_entered} so the
+     * row routes from Outstanding to History, and pushes the completion to the FHIR
+     * store.
+     *
+     * <p>
+     * Deliberately uses the default {@code REQUIRED} propagation, unlike the
+     * auto-trigger transitions above. Its only production caller is
+     * {@code LogbookPersistServiceImpl.persistDataSet}, which has already flushed
+     * updates to the Analysis rows this referral points at and holds their row
+     * locks; a REQUIRES_NEW boundary here would suspend that transaction and touch
+     * the same rows from a second connection, which blocks on the lock indefinitely
+     * rather than failing with a catchable exception. Joining the caller's
+     * transaction keeps everything on one connection. The transition guard's
+     * {@link IllegalStateException} is caught locally so a refused transition still
+     * doesn't poison the caller's transaction.
+     *
+     * <p>
+     * The linked Analysis is intentionally left alone. Releasing results (Finalized
+     * + releasedDate) is the Result Validation workflow's decision; a save at
+     * Result Entry must not bypass it.
+     */
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void markReferralCompletedFromManualEntry(String referralId, String actorUserId) {
         Referral referral = baseObjectDAO.getReferralById(referralId);
         if (referral == null) {
@@ -353,63 +376,42 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
                     "transition guard refused: " + e.getMessage());
             return;
         }
-        // transition() no-ops for legacy referrals without a subcontract row; only
-        // flip manually_entered when the status actually advanced to COMPLETED.
         Referral fresh = baseObjectDAO.getReferralById(referralId);
         if (fresh != null && fresh.getStatus() == ReferralStatus.COMPLETED) {
             fresh.setManuallyEntered(true);
             fresh.setSysUserId(actorUserId);
             baseObjectDAO.update(fresh);
-            advanceAnalysisToFinalized(fresh.getAnalysis(), actorUserId);
-            // Sync the peer's view: PUT Task.status=completed (+ output DiagnosticReport)
-            // and ServiceRequest.status=completed to the FHIR store. Best-effort —
-            // FHIR-store outage logs an error but leaves the local DB transition durable.
-            try {
-                fhirReferralService.publishManualEntryCompletion(fresh, actorUserId);
-            } catch (FhirLocalPersistingException e) {
-                LogEvent.logError(this.getClass().getSimpleName(), "markReferralCompletedFromManualEntry",
-                        "failed to publish FHIR completion for referral " + referralId);
-                LogEvent.logError(e);
-            }
+            publishManualEntryCompletionAfterCommit(fresh, actorUserId);
         }
     }
 
     /**
-     * Advance the local Analysis to Finalized so it matches what a manual-entry
-     * completion semantically is — a final result from our lab's perspective. Also
-     * keeps the post-persistDataSet FHIR sync at
-     * {@code LogbookResultsController:445} aligned: that sync rebuilds the
-     * ServiceRequest and DiagnosticReport from {@code Analysis.status_id}, so
-     * without this advancement the second push would clobber the
-     * {@code SR.status=completed} written by
-     * {@link FhirReferralService#publishManualEntryCompletion}. Mirrors the
-     * FHIR-result-import path's analysis advancement in
-     * {@code FhirReferralServiceImpl.setReferralResult}.
+     * This hook runs inside the Result Entry save transaction, so the FHIR push is
+     * deferred to after commit: the pushed DiagnosticReport/Observations then read
+     * committed results rather than a stale set, and a FHIR store outage cannot
+     * mark the caller's transaction rollback-only and fail the result save.
      */
-    private void advanceAnalysisToFinalized(Analysis analysis, String actorUserId) {
-        if (analysis == null) {
-            return;
+    private void publishManualEntryCompletionAfterCommit(Referral referral, String actorUserId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publishManualEntryCompletionQuietly(referral, actorUserId);
+                }
+            });
+        } else {
+            publishManualEntryCompletionQuietly(referral, actorUserId);
         }
-        String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
-        // IStatusService returns "-1" (sentinel) when the requested status isn't seeded
-        // in the local DB — happens in slim integration-test fixtures and in
-        // unconfigured
-        // dev environments. Skip rather than try to write a non-existent FK.
-        if (finalizedId == null || finalizedId.isBlank() || "-1".equals(finalizedId)) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "advanceAnalysisToFinalized",
-                    "Finalized status id is not configured (" + finalizedId
-                            + "); skipping analysis advancement for analysis " + analysis.getId());
-            return;
+    }
+
+    private void publishManualEntryCompletionQuietly(Referral referral, String actorUserId) {
+        try {
+            fhirReferralService.publishManualEntryCompletion(referral, actorUserId);
+        } catch (FhirLocalPersistingException | RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "markReferralCompletedFromManualEntry",
+                    "failed to publish FHIR completion for referral " + referral.getId());
+            LogEvent.logError(e);
         }
-        if (finalizedId.equals(analysis.getStatusId())) {
-            return;
-        }
-        Timestamp now = DateUtil.getNowAsTimestamp();
-        analysis.setStatusId(finalizedId);
-        analysis.setEnteredDate(now);
-        analysis.setReleasedDate(now);
-        analysis.setSysUserId(actorUserId);
-        analysisService.update(analysis);
     }
 
     @Override
@@ -448,15 +450,18 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         }
     }
 
+    /**
+     * Cancels the Analysis behind a lost referral. {@code IStatusService} returns
+     * the "-1" sentinel when the requested status isn't seeded locally (slim
+     * integration fixtures, unconfigured dev environments), so that case is skipped
+     * rather than written as a non-existent FK.
+     */
     private void cancelLinkedAnalysis(Referral referral, String actorUserId) {
         Analysis analysis = referral.getAnalysis();
         if (analysis == null) {
             return;
         }
         String canceledId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
-        // Same sentinel handling as advanceAnalysisToFinalized — slim integration
-        // fixtures don't always seed all AnalysisStatus rows; skip rather than
-        // write a non-existent FK.
         if (canceledId == null || canceledId.isBlank() || "-1".equals(canceledId)) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "cancelLinkedAnalysis",
                     "Canceled status id not configured (" + canceledId + "); skipping analysis cancellation for "

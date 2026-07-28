@@ -154,8 +154,18 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     /**
      * OGC-799 Manual Entry hook: when a Result is saved against an Analysis whose
      * Referral is still Outstanding, advance the referral to COMPLETED and set its
-     * manually_entered flag so the row routes from Outstanding → History.
-     * Best-effort: failures log only, never block the result save.
+     * manually_entered flag so the row routes from Outstanding → History. Only the
+     * referral's own bookkeeping is touched — the Analysis status stays under the
+     * Result Validation workflow's control.
+     *
+     * <p>
+     * {@code markReferralCompletedFromManualEntry} joins this transaction rather
+     * than opening its own: {@code persistDataSet} has already flushed the Analysis
+     * updates above and holds those row locks, so a second connection writing the
+     * same rows would block indefinitely. The per-referral catch keeps an expected
+     * no-op or a FHIR-sync problem from aborting the result save; a genuine DB
+     * failure inside the joined transaction still rolls the whole save back, which
+     * is the correct outcome once both writes share one transaction.
      */
     private void advanceReferralsForManualEntry(ResultsUpdateDataSet actionDataSet, String sysUserId) {
         Set<String> analysisIds = new HashSet<>();

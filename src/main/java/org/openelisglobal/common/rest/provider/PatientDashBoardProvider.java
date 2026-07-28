@@ -17,6 +17,7 @@ import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.provider.bean.homedashboard.AverageTimeDisplayBean;
 import org.openelisglobal.common.rest.provider.bean.homedashboard.DashBoardMetrics;
@@ -38,6 +39,7 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -45,6 +47,8 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.userrole.service.UserRoleService;
+import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -93,6 +97,9 @@ public class PatientDashBoardProvider {
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private UserRoleService userRoleService;
 
     private long calculateAverageReceptionToValidationTime() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
@@ -325,20 +332,31 @@ public class PatientDashBoardProvider {
         return orderBeanList;
     }
 
+    /**
+     * Home dashboard tile counts.
+     *
+     * <p>
+     * Users whose lab-unit assignments cover only part of the lab get counts scoped
+     * to their sections; global administrators and {@code AllLabUnits} users get
+     * the unscoped counts. The scoped and unscoped variants of every tile share the
+     * same predicate — same date field, same status set, same QC exclusion — so
+     * switching on {@code restricted} narrows the population without changing what
+     * the tile means. In particular the "today" tiles stay date-bounded when
+     * scoped; counting a section's analyses in a status regardless of date made
+     * them report activity from arbitrarily long ago.
+     */
     @GetMapping(value = "home-dashboard/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public DashBoardMetrics getDasBoardTiles(HttpServletRequest request) {
 
         DashBoardMetrics metrics = new DashBoardMetrics();
 
-        // Resolve the logged-in user's assigned test section IDs.
-        // Empty list = no restriction (admin or no explicit assignments).
-        List<String> userSectionIds = resolveUserSectionIds(ControllerUtills.getSysUserId(request));
-        boolean restricted = !userSectionIds.isEmpty();
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        List<String> userSectionIds = resolveUserSectionIds(sysUserId);
+        boolean restricted = !isGlobalScopeUser(sysUserId) && !userSectionIds.isEmpty();
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "getDasBoardTiles",
-                "sysUserId=" + ControllerUtills.getSysUserId(request) + " restricted=" + restricted + " sectionIds="
-                        + userSectionIds);
+                "sysUserId=" + sysUserId + " restricted=" + restricted + " sectionIds=" + userSectionIds);
 
         DashBoardTile.TileType.stream().forEach(type -> {
             List<String> statusIdList;
@@ -355,13 +373,17 @@ public class PatientDashBoardProvider {
             case ORDERS_READY_FOR_VALIDATION:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
-                metrics.setOrdersReadyForValidation(restricted ? countBySections(userSectionIds, statusIdList, false)
+                metrics.setOrdersReadyForValidation(restricted
+                        ? analysisService.getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList,
+                                userSectionIds)
                         : analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
                 break;
             case ORDERS_COMPLETED_TODAY:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
-                metrics.setOrdersCompletedToday(restricted ? countBySections(userSectionIds, statusIdList, false)
+                metrics.setOrdersCompletedToday(restricted
+                        ? analysisService.getCountOfAnalysisCompletedOnByStatusIdAndTestSections(
+                                DateUtil.getNowAsSqlDate(), statusIdList, userSectionIds)
                         : analysisService.getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
                                 statusIdList));
                 break;
@@ -370,23 +392,27 @@ public class PatientDashBoardProvider {
                 statusIdSet = new HashSet<>();
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
-                metrics.setPatiallyCompletedToday(
-                        restricted ? countBySections(userSectionIds, new ArrayList<>(statusIdSet), false)
-                                : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(
-                                        DateUtil.getNowAsSqlDate(), statusIdSet));
+                metrics.setPatiallyCompletedToday(restricted
+                        ? analysisService.getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(
+                                DateUtil.getNowAsSqlDate(), statusIdSet, userSectionIds)
+                        : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
+                                statusIdSet));
                 break;
             case ORDERS_ENTERED_BY_USER_TODAY:
                 statusIdSet = new HashSet<>();
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
-                metrics.setOrderEnterdByUserToday(
-                        restricted ? countBySections(userSectionIds, new ArrayList<>(statusIdSet), false)
-                                : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(
-                                        DateUtil.getNowAsSqlDate(), statusIdSet));
+                metrics.setOrderEnterdByUserToday(restricted
+                        ? analysisService.getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(
+                                DateUtil.getNowAsSqlDate(), statusIdSet, userSectionIds)
+                        : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
+                                statusIdSet));
                 break;
             case ORDERS_REJECTED_TODAY:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
-                metrics.setOrdersRejectedToday(restricted ? countBySections(userSectionIds, statusIdList, false)
+                metrics.setOrdersRejectedToday(restricted
+                        ? analysisService.getCountOfAnalysisStartedOnByStatusIdAndTestSections(
+                                DateUtil.getNowAsSqlDate(), statusIdList, userSectionIds)
                         : analysisService.getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(),
                                 statusIdList));
                 break;
@@ -416,6 +442,13 @@ public class PatientDashBoardProvider {
         return metrics;
     }
 
+    /**
+     * The test section IDs whose analyses the user may be counted against, expanded
+     * to include child sections of every assigned section: analyses are filed under
+     * child sections (e.g. "Entomology"), not the domain-level parent (e.g. "Vector
+     * Surveillance") a user is assigned to, so without the expansion the counts
+     * would always be zero. An empty list means the user has no assignments at all.
+     */
     private List<String> resolveUserSectionIds(String sysUserId) {
         List<IdValuePair> userSections = userService.getUserTestSections(sysUserId, null);
         LogEvent.logInfo(this.getClass().getSimpleName(), "resolveUserSectionIds",
@@ -427,10 +460,6 @@ public class PatientDashBoardProvider {
         for (IdValuePair pair : userSections) {
             ids.add(pair.getId());
         }
-        // Also include any child test sections whose parent is one of the assigned
-        // sections. Analyses are filed under child sections (e.g. "Entomology"),
-        // not the domain-level parent (e.g. "Vector Surveillance") the user is
-        // assigned to, so without this expansion the counts would always be zero.
         List<TestSection> allSections = testSectionService.getAllActiveTestSections();
         for (TestSection section : allSections) {
             TestSection parent = section.getParentTestSection();
@@ -442,17 +471,27 @@ public class PatientDashBoardProvider {
         return new ArrayList<>(ids);
     }
 
-    private int countBySections(List<String> sectionIds, List<String> statusIds, boolean excludeQc) {
-        int total = 0;
-        for (String sectionId : sectionIds) {
-            int count = excludeQc
-                    ? analysisService.getCountAnalysisByTestSectionAndStatusExcludingQc(sectionId, statusIds)
-                    : analysisService.getCountAnalysisByTestSectionAndStatus(sectionId, statusIds);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "countBySections",
-                    "sectionId=" + sectionId + " statusIds=" + statusIds + " count=" + count);
-            total += count;
+    /**
+     * True when the user's lab-unit assignments already cover every test section —
+     * a global administrator or a user mapped to {@code AllLabUnits}. Such users
+     * must be counted with the unscoped queries: for them
+     * {@link UserService#getUserTestSections(String, String)} returns every active
+     * section, which is indistinguishable from an explicit per-section assignment,
+     * so the section list alone cannot tell "unrestricted" from "restricted".
+     */
+    private boolean isGlobalScopeUser(String sysUserId) {
+        if (sysUserId == null) {
+            return false;
         }
-        return total;
+        if (userRoleService.userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)) {
+            return true;
+        }
+        UserLabUnitRoles labUnitRoles = userService.getUserLabUnitRoles(sysUserId);
+        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null) {
+            return false;
+        }
+        return labUnitRoles.getLabUnitRoleMap().stream()
+                .anyMatch(roleMap -> UnifiedSystemUserController.ALL_LAB_UNITS.equals(roleMap.getLabUnit()));
     }
 
     /**

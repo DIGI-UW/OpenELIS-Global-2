@@ -32,7 +32,6 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  getFromOpenElisServerForBlob,
   postToOpenElisServerForBlob,
 } from "../../utils/Utils";
 
@@ -181,8 +180,11 @@ export default function LaporanHasilReport() {
     (sampleId, labNumber) => {
       setGeneratingPdf(sampleId);
       const safeLabel = labNumber.replace(/[^a-zA-Z0-9-]/g, "");
-      getFromOpenElisServerForBlob(
-        `/rest/complianceReport/exportPdf?sampleId=${sampleId}`,
+      // Generation is recorded (and released reports archived) server-side, so
+      // this is a POST, not a GET.
+      postToOpenElisServerForBlob(
+        `/rest/complianceReport/exportPdf`,
+        JSON.stringify({ sampleId }),
         (blob) => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");

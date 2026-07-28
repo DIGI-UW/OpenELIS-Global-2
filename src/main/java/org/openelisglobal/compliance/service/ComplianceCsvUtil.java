@@ -2,88 +2,38 @@ package org.openelisglobal.compliance.service;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.util.CsvParsingUtil;
 
 /**
- * Shared CSV parsing helpers for compliance domain configuration handlers.
+ * Compliance-specific CSV reading helpers.
  *
- * Header keys are lowercased so callers can lookup with case-insensitive column
- * names. The line parser handles quoted fields with embedded commas.
+ * <p>
+ * The field-level parsing lives in {@link CsvParsingUtil}, which is the single
+ * canonical implementation shared with the other configuration handlers; the
+ * methods below only forward to it. What remains local is
+ * {@link #readHeaderLine}, whose "tolerate comments before the header" contract
+ * is specific to the compliance seed-CSV authoring rules.
  */
 final class ComplianceCsvUtil {
 
     private ComplianceCsvUtil() {
     }
 
-    /**
-     * Parses a CSV line into trimmed fields, honoring double-quoted cells.
-     *
-     * <p>
-     * Implements the RFC 4180 escaped-quote rule: a doubled {@code ""} inside a
-     * quoted field decodes to a single literal quote and does NOT end the quoted
-     * region. Earlier this method toggled {@code inQuotes} on every {@code "},
-     * which desynchronised parsing for the rest of the line the moment a regulation
-     * title or note contained an embedded quote.
-     */
     static String[] parseCsvLine(String line) {
-        List<String> values = new ArrayList<>();
-        StringBuilder currentValue = new StringBuilder();
-        boolean inQuotes = false;
-
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (c == '"') {
-                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
-                    // Escaped double-quote inside a quoted field — emit one
-                    // literal " and skip the second character.
-                    currentValue.append('"');
-                    i++;
-                } else {
-                    inQuotes = !inQuotes;
-                }
-            } else if (c == ',' && !inQuotes) {
-                values.add(currentValue.toString().trim());
-                currentValue = new StringBuilder();
-            } else {
-                currentValue.append(c);
-            }
-        }
-        values.add(currentValue.toString().trim());
-        return values.toArray(new String[0]);
+        return CsvParsingUtil.parseCsvLine(line);
     }
 
-    /**
-     * Builds a lowercased column-name → index map. Callers use lowercase keys (e.g.
-     * {@code columnIndices.get("regulationnumber")}) so the input CSV header is
-     * case-insensitive.
-     */
     static Map<String, Integer> createColumnMap(String[] headers) {
-        Map<String, Integer> columnMap = new HashMap<>();
-        for (int i = 0; i < headers.length; i++) {
-            columnMap.put(headers[i].trim().toLowerCase(), i);
-        }
-        return columnMap;
+        return CsvParsingUtil.createColumnMap(headers);
     }
 
-    /** Returns the trimmed cell at index, or {@code ""} when out of range/null. */
     static String getValueOrEmpty(String[] values, Integer index) {
-        if (index != null && index >= 0 && index < values.length) {
-            String value = values[index];
-            return value != null ? value.trim() : "";
-        }
-        return "";
+        return CsvParsingUtil.getValueOrEmpty(values, index);
     }
 
-    /** True for empty or {@code #}-prefixed comment lines. */
     static boolean isSkippableLine(String line) {
-        if (line == null) {
-            return true;
-        }
-        String trimmed = line.trim();
-        return trimmed.isEmpty() || trimmed.startsWith("#");
+        return CsvParsingUtil.isSkippableLine(line);
     }
 
     /**

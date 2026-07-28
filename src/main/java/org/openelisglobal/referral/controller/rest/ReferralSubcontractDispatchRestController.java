@@ -19,9 +19,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Subcontract hand-off for referred-out tests.
+ *
+ * <p>
+ * {@code isAuthenticated()} was equivalent to the security-chain default
+ * ({@code anyRequest().authenticated()}) and therefore added nothing to a state
+ * mutation. The dispatch is driven from the refer-out step of the order
+ * workflow, so it is limited to the roles that run that workflow.
+ */
 @RestController
 @RequestMapping("/rest/referrals")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION', 'ADMIN')")
 public class ReferralSubcontractDispatchRestController {
 
     @Autowired

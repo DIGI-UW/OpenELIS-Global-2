@@ -11,19 +11,28 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Read-only surveillance reporting endpoints. Permission-gated by the
- * {@code VectorSurveillanceDashboard} system module (Liquibase 042) via the
- * ModuleAuthenticationInterceptor URL mapping. All figures come from OpenELIS's
+ * Read-only surveillance reporting endpoints. All figures come from OpenELIS's
  * own data (FR-011) — no external system.
+ *
+ * <p>
+ * Liquibase 042 maps the {@code VectorSurveillanceDashboard} module to the
+ * {@code /VectorSurveillanceReport} page only, and
+ * {@code ModuleAuthenticationInterceptor} matches {@code system_module_url}
+ * exactly, so these {@code /rest} paths are NOT covered by that module and
+ * would fail open. The class-level guard below is what actually protects them;
+ * the roles mirror the 042 grant (Results) plus Reports and Global
+ * Administrator.
  */
 @RestController
 @RequestMapping("/rest/reports/vector-surveillance")
+@PreAuthorize("hasAnyRole('RESULTS', 'REPORTS', 'ADMIN')")
 public class VectorSurveillanceRestController {
 
     @Autowired

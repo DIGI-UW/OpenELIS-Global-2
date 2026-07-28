@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # deploy-vector-demo.sh — lifecycle helper for the V-04 Vector Surveillance demo
-# server at https://vector-demo.openelis-global.org/
+# server.
 #
 # WHY THIS EXISTS
 #   The demo EC2 was provisioned ad-hoc via AWS CLI and deployed by hand; the
@@ -11,10 +11,16 @@
 #   again. Companion note: reference_vector_demo_ec2 in the Claude memory dir.
 #
 # THE SERVER (AWS, region us-west-2)
-#   Instance   i-05e265d7fe2bc9630  (t3.large, Ubuntu 22.04, 30GB gp3, ami-0e1601cee784a69a2)
-#   Elastic IP 35.163.107.94        -> vector-demo.openelis-global.org
-#   Sec group  sg-049d715dea927aa77 (vector-demo-sg; ingress 22=your-IP, 80/443=public)
-#   SSH user   ubuntu               (key access via EC2 Instance Connect — see below)
+#   Instance   $INSTANCE_ID (t3.large, Ubuntu 22.04, 30GB gp3, ami-0e1601cee784a69a2)
+#   Elastic IP $EIP         -> $HOST
+#   Sec group  $SG_ID       (vector-demo-sg; ingress 22=your-IP, 80/443=public)
+#   SSH user   ubuntu       (key access via EC2 Instance Connect — see below)
+#
+#   EIP and HOST have no built-in defaults: the deployment address is environment
+#   data, not source, so it is not committed here. Export them (or source a local
+#   untracked env file) before running any command that talks to the server:
+#     export EIP=<elastic-ip> HOST=<fqdn>
+#   INSTANCE_ID and SG_ID are likewise overridable via env.
 #
 # WHAT RUNS ON THE VM (built on the box, not host-mounted)
 #   ~/OpenELIS-Global-2            (branch 372-vector-surveillance-reporting)
@@ -53,8 +59,8 @@ set -euo pipefail
 
 REGION="${REGION:-us-west-2}"
 INSTANCE_ID="${INSTANCE_ID:-i-05e265d7fe2bc9630}"
-EIP="${EIP:-35.163.107.94}"
-HOST="${HOST:-vector-demo.openelis-global.org}"
+EIP="${EIP:-}"
+HOST="${HOST:-}"
 SG_ID="${SG_ID:-sg-049d715dea927aa77}"
 OS_USER="${OS_USER:-ubuntu}"
 OE_BRANCH="${OE_BRANCH:-372-vector-surveillance-reporting}"
@@ -87,6 +93,12 @@ _mktmpkey() {
   # shellcheck disable=SC2064
   trap "rm -rf '$KEYDIR'" EXIT
   ssh-keygen -t ed25519 -f "$KEY" -N "" -q -C "vector-demo-$(id -un)"
+}
+
+# EIP/HOST are deployment addresses, not source; they carry no committed default.
+require_target() {
+  [ -n "$EIP" ]  || die "EIP is not set. Export the demo server's elastic IP, e.g. 'export EIP=<elastic-ip>'."
+  [ -n "$HOST" ] || die "HOST is not set. Export the demo server's FQDN, e.g. 'export HOST=<fqdn>'."
 }
 
 require_aws_auth() {
@@ -307,7 +319,7 @@ cmd_provision() {
     --query 'Instances[0].InstanceId' --output text)
   aws ec2 wait instance-running --region $REGION --instance-ids \$IID
   aws ec2 associate-address --region $REGION --instance-id \$IID --allocation-id \$EIP_ALLOC
-  # 3) point DNS $HOST at the new EIP, install Docker + compose, certbot for TLS, then:
+  # 3) point DNS ${HOST:-<fqdn>} at the new EIP, install Docker + compose, certbot for TLS, then:
   #    OE_BRANCH=$OE_BRANCH DISTRO_BRANCH=$DISTRO_BRANCH ./scripts/deploy-vector-demo.sh deploy --yes
 REF
 }
@@ -315,14 +327,14 @@ REF
 main() {
   local sub="${1:-help}"; shift || true
   case "$sub" in
-    status)    cmd_status ;;
-    connect)   cmd_connect "$@" ;;
-    deploy)    cmd_deploy "$@" ;;
-    logs)      cmd_logs ;;
-    seed)      cmd_seed ;;
+    status)    require_target; cmd_status ;;
+    connect)   require_target; cmd_connect "$@" ;;
+    deploy)    require_target; cmd_deploy "$@" ;;
+    logs)      require_target; cmd_logs ;;
+    seed)      require_target; cmd_seed ;;
     provision) cmd_provision ;;
     help|-h|--help)
-      sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//' ;;
+      sed -n '2,57p' "$0" | sed 's/^# \{0,1\}//' ;;
     *) die "unknown subcommand '$sub' (try: status | connect | deploy --yes | logs | seed | provision | help)" ;;
   esac
 }

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,10 +21,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Admin field-map management for the Manual Entry Helper (US5 / FR-009).
- * Permission module {@code VectorManualEntryFieldMap}.
+ *
+ * <p>
+ * The {@code VectorManualEntryFieldMap} module row (Liquibase 045) maps only
+ * the collection path, and {@code ModuleAuthenticationInterceptor} matches
+ * {@code system_module_url} exactly, so {@code PUT /{id}} would otherwise be
+ * unmapped and fail open. A class-level guard covers every path under this
+ * controller regardless of the module rows; it mirrors the module grant, which
+ * is Global Administrator only.
  */
 @RestController
 @RequestMapping("/rest/admin/vector/manual-entry-fields")
+@PreAuthorize("hasRole('ADMIN')")
 public class ManualEntryFieldMapRestController extends BaseRestController {
 
     @Autowired

@@ -46,9 +46,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Laporan Hasil (LHU) compliance certificate report.
+ *
+ * <p>
+ * Roles use the repo-wide short form: {@code hasRole} already prepends
+ * {@code ROLE_}, and {@code CustomUserDetailsService.toRoleAuthority}
+ * normalises seeded role names to {@code ROLE_<UPPER_SNAKE>}.
+ * {@code ROLE_SUPERVISOR} was permanently false — no such role is seeded — and
+ * the closest real role for certificate release is Validation.
+ */
 @RestController
 @RequestMapping("/rest/complianceReport")
-@PreAuthorize("hasRole('ROLE_RESULTS') or hasRole('ROLE_SUPERVISOR') or hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
 public class ComplianceReportRestController {
 
     private static final DateTimeFormatter DISPLAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -209,8 +219,35 @@ public class ComplianceReportRestController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/exportPdf")
-    public void exportPdf(@RequestParam Long sampleId, HttpServletResponse response) throws IOException {
+    public static class ExportRequest {
+        private Long sampleId;
+
+        public Long getSampleId() {
+            return sampleId;
+        }
+
+        public void setSampleId(Long sampleId) {
+            this.sampleId = sampleId;
+        }
+    }
+
+    /**
+     * Generates the certificate PDF and records the generation (and, for released
+     * samples, archives it).
+     *
+     * <p>
+     * POST rather than GET because those side effects mutate state: a GET is
+     * outside CSRF protection and is fair game for browser and proxy prefetch,
+     * which would silently stamp {@code recordGeneration} / archive rows for
+     * reports nobody downloaded.
+     */
+    @PostMapping("/exportPdf")
+    public void exportPdf(@RequestBody ExportRequest request, HttpServletResponse response) throws IOException {
+        Long sampleId = request == null ? null : request.getSampleId();
+        if (sampleId == null) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "sampleId is required");
+            return;
+        }
         Sample sample = sampleService.get(String.valueOf(sampleId));
         if (sample == null) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);

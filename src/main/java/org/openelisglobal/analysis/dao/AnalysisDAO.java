@@ -265,6 +265,34 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
 
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysesForStatusIdsExcludingQc(List)}.
+     */
+    int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}.
+     */
+    int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnExcludedByStatusId(Date, Set)}.
+     */
+    int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnByStatusId(Date, List)}.
+     */
+    int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds);
+
     List<Analysis> getAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
 
     /**

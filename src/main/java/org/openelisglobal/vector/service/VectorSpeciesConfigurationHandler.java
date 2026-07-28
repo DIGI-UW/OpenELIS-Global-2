@@ -4,9 +4,9 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
@@ -77,7 +77,7 @@ public class VectorSpeciesConfigurationHandler implements DomainConfigurationHan
             throw new IllegalArgumentException("Vector species file " + fileName + " is empty or has no header");
         }
 
-        String[] headers = parseCsvLine(headerLine);
+        String[] headers = CsvParsingUtil.parseCsvLine(headerLine);
         int genusIdx = findColumn(headers, "genus");
         int speciesIdx = findColumn(headers, "species");
         int subspeciesIdx = findColumn(headers, "subspecies");
@@ -100,8 +100,8 @@ public class VectorSpeciesConfigurationHandler implements DomainConfigurationHan
                 continue;
             }
             try {
-                if (processRow(parseCsvLine(line), genusIdx, speciesIdx, subspeciesIdx, sampleTypeIdx, isActiveIdx,
-                        pathogenCatIdx, lifecycleCatIdx)) {
+                if (processRow(CsvParsingUtil.parseCsvLine(line), genusIdx, speciesIdx, subspeciesIdx, sampleTypeIdx,
+                        isActiveIdx, pathogenCatIdx, lifecycleCatIdx)) {
                     loaded++;
                 }
             } catch (Exception e) {
@@ -215,24 +215,5 @@ public class VectorSpeciesConfigurationHandler implements DomainConfigurationHan
                 return i;
         }
         return -1;
-    }
-
-    private String[] parseCsvLine(String line) {
-        List<String> values = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (c == '"') {
-                inQuotes = !inQuotes;
-            } else if (c == ',' && !inQuotes) {
-                values.add(current.toString().trim());
-                current = new StringBuilder();
-            } else {
-                current.append(c);
-            }
-        }
-        values.add(current.toString().trim());
-        return values.toArray(new String[0]);
     }
 }

@@ -14,6 +14,7 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,8 +25,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Reference-lab referral tracking dashboard. There is no
+ * {@code system_module_url} row for {@code /rest/reference-lab-results/**}, and
+ * {@code ModuleAuthenticationInterceptor} fails open for unmapped {@code /rest}
+ * paths, so authorization has to be declared here.
+ *
+ * <p>
+ * The class-level expression covers the read-only dashboard queries; the state
+ * transitions and the outbound notification narrow it further at method level.
+ */
 @RestController
 @RequestMapping("/rest/reference-lab-results")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION', 'ADMIN')")
 public class ReferenceLabResultsRestController extends BaseRestController {
 
     @Autowired
@@ -62,6 +74,7 @@ public class ReferenceLabResultsRestController extends BaseRestController {
     }
 
     @PutMapping("/referrals/{referralId}/mark-lost")
+    @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
     public ResponseEntity<?> markReferralAsLost(@PathVariable String referralId,
             @Valid @RequestBody MarkLostRequest body, BindingResult result, HttpServletRequest request) {
         if (result.hasErrors()) {
@@ -79,6 +92,7 @@ public class ReferenceLabResultsRestController extends BaseRestController {
     }
 
     @PutMapping("/referrals/{referralId}/accept")
+    @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
     public ResponseEntity<?> acceptReferral(@PathVariable String referralId, HttpServletRequest request) {
         try {
             referenceLabResultsService.acceptReferral(referralId, getSysUserId(request));
@@ -94,6 +108,7 @@ public class ReferenceLabResultsRestController extends BaseRestController {
     }
 
     @PutMapping("/referrals/{referralId}/reject")
+    @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
     public ResponseEntity<?> rejectReferral(@PathVariable String referralId, @Valid @RequestBody RejectRequest body,
             BindingResult result, HttpServletRequest request) {
         if (result.hasErrors()) {
@@ -114,6 +129,7 @@ public class ReferenceLabResultsRestController extends BaseRestController {
     }
 
     @PostMapping("/referrals/{referralId}/notify")
+    @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
     public ResponseEntity<?> notifyReferenceLab(@PathVariable String referralId,
             @RequestBody(required = false) NotifyRequest body, HttpServletRequest request) {
         try {
