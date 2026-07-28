@@ -15,6 +15,7 @@ import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
@@ -1006,7 +1007,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (IS_RETROCI) {
             TypeOfSample typeOfSample = new TypeOfSample();
             typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain("H");
+            typeOfSample.setDomain(Domain.CLINICAL.name());
             typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
             DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
         } else {

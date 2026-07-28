@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
@@ -273,7 +274,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     private TypeOfSample findSampleTypeByDescriptionAndDomain(String description, String domain) {
         TypeOfSample searchType = new TypeOfSample();
         searchType.setDescription(description);
-        searchType.setDomain(domain);
+        searchType.setDomain(Domain.normalize(domain));
         return typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, true);
     }
 
@@ -329,7 +330,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         TypeOfSample sampleType = new TypeOfSample();
         sampleType.setDescription(description);
         sampleType.setLocalAbbreviation(localAbbreviation);
-        sampleType.setDomain(domain);
+        sampleType.setDomain(Domain.normalize(domain));
         sampleType.setLocalization(localization);
 
         // Set active status
