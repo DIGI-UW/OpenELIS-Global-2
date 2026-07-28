@@ -123,8 +123,8 @@ const nceList = [
   { id: "3", severity: "CRITICAL", status: "Pending" },
   { id: "4", severity: "CRITICAL", status: "Closed" },
   { id: "5", severity: "MAJOR", status: "Pending" },
-  { id: "6", severity: "CRITICAL", status: "Corrective Action" },
-  { id: "7", severity: "MINOR", status: "Corrective Action" },
+  { id: "6", severity: "CRITICAL", status: "CAPA" },
+  { id: "7", severity: "MINOR", status: "CAPA" },
 ];
 
 // Each windowed endpoint fires current-window before prior-window.

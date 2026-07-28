@@ -585,7 +585,13 @@ function OEHeader({
             }}
           >
             <span style={{ fontSize: `${100 - 5 * Math.max(level - 1, 0)}%` }}>
-              <FormattedMessage id={menuItem.menu.displayKey} />
+              {/* Dynamic menu entries (e.g. per-analyzer) carry a raw name as
+                  displayKey rather than an i18n key; defaultMessage renders it
+                  verbatim and suppresses the MISSING_TRANSLATION console error. */}
+              <FormattedMessage
+                id={menuItem.menu.displayKey}
+                defaultMessage={menuItem.menu.displayKey}
+              />
             </span>
           </span>
         </SideNavMenuItem>

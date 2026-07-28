@@ -53,10 +53,13 @@ const NCE_LIST = [
     ],
   },
   { id: "5", severity: "MAJOR", status: "Pending", reportDate: TODAY },
+  // In the CAPA stage with a recorded verdict => counts toward "in corrective
+  // action" (all CAPA-stage) but not "effectiveness reviews due" (verdict given)
   {
     id: "6",
     severity: "MINOR",
-    status: "Corrective Action",
+    status: "CAPA",
+    effective: "No",
     reportDate: LAST_MONTH,
   },
   // CAPA recorded, verdict pending => effectiveness review due
@@ -241,7 +244,7 @@ describe("QAOverview", () => {
     expect(within(today).queryByText("OGC-699")).not.toBeInTheDocument();
     expect(within(today).getByText("3")).toHaveClass("qa-live-amber");
     expect(
-      within(today).getByText("1 in corrective action"),
+      within(today).getByText("3 in corrective action"),
     ).toBeInTheDocument();
     // Amendment Rate is live (WS-E): rate under the green threshold
     expect(within(today).queryByText("OGC-698")).not.toBeInTheDocument();
@@ -367,7 +370,7 @@ describe("QAOverview", () => {
     expect(qiChip).toHaveTextContent("↓ 6h 40m");
 
     const qmsChip = within(pillars)
-      .getByText("3 critical pending · 1 in corrective action")
+      .getByText("3 critical pending · 3 in corrective action")
       .closest(".qa-pillar-chip");
     expect(qmsChip).toHaveClass("qa-pillar-red");
 
