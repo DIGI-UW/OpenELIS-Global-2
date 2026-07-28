@@ -286,6 +286,9 @@ const renderHeader = (options = {}) => {
     navOpen = isDesktop,
     menuData = MOCK_MENU_DATA,
     navContext = "main",
+    sessionDetails = mockUserSessionDetails,
+    logout = vi.fn(),
+    showSideNav = true,
   } = options;
   const mockGetFromServer = getFromOpenElisServer;
   mockGetFromServer.mockImplementation((url, callback) => {
@@ -305,7 +308,7 @@ const renderHeader = (options = {}) => {
     <MemoryRouter initialEntries={[initialRoute]}>
       <IntlProvider locale="en" messages={messages}>
         <UserSessionDetailsContext.Provider
-          value={{ userSessionDetails: mockUserSessionDetails }}
+          value={{ userSessionDetails: sessionDetails, logout }}
         >
           <ConfigurationContext.Provider value={mockConfigurationContext}>
             <NotificationContext.Provider value={mockNotificationContext}>
@@ -316,6 +319,7 @@ const renderHeader = (options = {}) => {
                 toggleSideNav={mockToggle}
                 closeSideNav={mockCloseSideNav}
                 navContext={navContext}
+                showSideNav={showSideNav}
               />
               <Route
                 path="*"
@@ -787,6 +791,102 @@ describe("Header Component - M2b Enhancement Tests", () => {
       expect(screen.getByTestId("current-path")).toHaveTextContent(
         "/Dashboard",
       );
+    });
+  });
+
+  describe("User panel actions", () => {
+    test("authenticated panel orders locale, change password, then logout", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-cy="headerChangePassword"]'),
+        ).toBeTruthy();
+      });
+
+      const panelItems = [
+        ...container.querySelectorAll(".headerPanel ul > li"),
+      ];
+      const localeIndex = panelItems.findIndex((li) =>
+        li.querySelector("#selector"),
+      );
+      const changePasswordIndex = panelItems.findIndex(
+        (li) => li.dataset.cy === "headerChangePassword",
+      );
+      const logoutIndex = panelItems.findIndex(
+        (li) => li.dataset.cy === "logOut",
+      );
+
+      expect(localeIndex).toBeGreaterThan(-1);
+      expect(changePasswordIndex).toBe(localeIndex + 1);
+      expect(logoutIndex).toBe(changePasswordIndex + 1);
+    });
+
+    test("change password item navigates to /ChangePasswordLogin", async () => {
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { ...originalLocation, href: "" };
+
+      const { container } = renderHeader();
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-cy="headerChangePassword"]'),
+        ).toBeTruthy();
+      });
+
+      fireEvent.click(
+        container.querySelector('[data-cy="headerChangePassword"]'),
+      );
+      expect(window.location.href).toBe("/ChangePasswordLogin");
+
+      window.location = originalLocation;
+    });
+
+    test("logout item calls the session logout", async () => {
+      const logout = vi.fn();
+      const { container } = renderHeader({ logout });
+
+      await waitFor(() => {
+        expect(container.querySelector('[data-cy="logOut"]')).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector('[data-cy="logOut"]'));
+      expect(logout).toHaveBeenCalledTimes(1);
+    });
+
+    test("unauthenticated panel hides change password and logout but keeps locale", async () => {
+      const { container } = renderHeader({
+        sessionDetails: { authenticated: false },
+      });
+
+      expect(container.querySelector("#selector")).toBeTruthy();
+      expect(
+        container.querySelector('[data-cy="headerChangePassword"]'),
+      ).toBeNull();
+      expect(container.querySelector('[data-cy="logOut"]')).toBeNull();
+    });
+  });
+
+  describe("Focused screen (showSideNav=false)", () => {
+    test("hides the sidenav and hamburger even when authenticated", async () => {
+      const desktop = renderHeader({ showSideNav: false });
+      await waitFor(() => {
+        expect(desktop.container.querySelector("#user-Icon")).toBeTruthy();
+      });
+      expect(desktop.container.querySelector(".cds--side-nav")).toBeNull();
+      desktop.unmount();
+
+      const mobile = renderHeader({ showSideNav: false, isDesktop: false });
+      expect(
+        mobile.container.querySelector('[data-cy="menuButton"]'),
+      ).toBeNull();
+    });
+
+    test("still renders the sidenav by default", async () => {
+      const { container } = renderHeader();
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
     });
   });
 });

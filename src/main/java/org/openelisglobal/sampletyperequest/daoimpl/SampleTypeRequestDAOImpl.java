@@ -16,43 +16,53 @@ public class SampleTypeRequestDAOImpl extends BaseDAOImpl<SampleTypeRequest, Int
         super(SampleTypeRequest.class);
     }
 
+    private String normalizeSampleId(String sampleId) {
+        if (sampleId == null || sampleId.trim().isEmpty()) {
+            return null;
+        }
+        return sampleId.trim();
+    }
+
     @Override
     public List<SampleTypeRequest> getRequestsBySampleId(String sampleId) {
-        if (sampleId == null || sampleId.trim().isEmpty()) {
+        String id = normalizeSampleId(sampleId);
+        if (id == null) {
             return Collections.emptyList();
         }
         Session session = entityManager.unwrap(Session.class);
         Query<SampleTypeRequest> query = session.createQuery(
                 "FROM SampleTypeRequest str WHERE str.sample.id = :sampleId ORDER BY str.sortOrder",
                 SampleTypeRequest.class);
-        query.setParameter("sampleId", sampleId.trim());
+        query.setParameter("sampleId", id);
         return query.list();
     }
 
     @Override
     public List<SampleTypeRequest> getPendingRequestsBySampleId(String sampleId) {
-        if (sampleId == null || sampleId.trim().isEmpty()) {
+        String id = normalizeSampleId(sampleId);
+        if (id == null) {
             return Collections.emptyList();
         }
         Session session = entityManager.unwrap(Session.class);
         Query<SampleTypeRequest> query = session
                 .createQuery("FROM SampleTypeRequest str WHERE str.sample.id = :sampleId "
                         + "AND str.status = :status ORDER BY str.sortOrder", SampleTypeRequest.class);
-        query.setParameter("sampleId", sampleId.trim());
+        query.setParameter("sampleId", id);
         query.setParameter("status", SampleTypeRequest.Status.REQUESTED);
         return query.list();
     }
 
     @Override
     public List<SampleTypeRequest> getFulfilledRequestsBySampleId(String sampleId) {
-        if (sampleId == null || sampleId.trim().isEmpty()) {
+        String id = normalizeSampleId(sampleId);
+        if (id == null) {
             return Collections.emptyList();
         }
         Session session = entityManager.unwrap(Session.class);
         Query<SampleTypeRequest> query = session
                 .createQuery("FROM SampleTypeRequest str WHERE str.sample.id = :sampleId "
                         + "AND str.status = :status ORDER BY str.sortOrder", SampleTypeRequest.class);
-        query.setParameter("sampleId", sampleId.trim());
+        query.setParameter("sampleId", id);
         query.setParameter("status", SampleTypeRequest.Status.COLLECTED);
         return query.list();
     }
