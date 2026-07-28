@@ -69,6 +69,46 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     }
 
     @Test
+    public void getSampleTypeById_NonAdminRole_Returns403() throws Exception {
+        mockMvc.perform(get("/rest/sample-types/1").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void getSampleTypeById_AdminRole_PassesAuth() throws Exception {
+        // the mocked service returns null → 404: the request cleared the auth gate
+        mockMvc.perform(
+                get("/rest/sample-types/1").with(user("admin").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void updateDisplayOrder_WithoutAuthentication_Returns401() throws Exception {
+        mockMvc.perform(put("/rest/sample-types/1/display-order").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"position\":1}")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void updateDisplayOrder_NonAdminRole_Returns403() throws Exception {
+        mockMvc.perform(put("/rest/sample-types/1/display-order").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"position\":1}")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void updateDisplayOrder_AdminRole_PassesAuth() throws Exception {
+        // the mocked service returns null → 404: the request cleared the auth gate
+        mockMvc.perform(put("/rest/sample-types/1/display-order").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"position\":1}")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void updateDisplayOrder_AdminRole_InvalidPosition_Returns422() throws Exception {
+        mockMvc.perform(put("/rest/sample-types/1/display-order").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"position\":0}"))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     public void terminology_NonAdminRole_Returns403() throws Exception {
         mockMvc.perform(get("/rest/sample-types/1/terminology").with(user("results").roles("RESULTS"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());

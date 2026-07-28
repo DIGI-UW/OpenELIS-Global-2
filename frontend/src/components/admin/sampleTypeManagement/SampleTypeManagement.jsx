@@ -46,6 +46,8 @@ import {
   isValidSampleTypeSection,
 } from "./sectionConfig";
 import TerminologySection from "./sections/TerminologySection";
+import DisplayOrderSection from "./sections/DisplayOrderSection";
+import DisposalSection from "./sections/DisposalSection";
 import {
   Add,
   Edit,
@@ -1190,6 +1192,27 @@ function SampleTypeManagement({ intl }) {
                           }
                         />
 
+                        {/* FRS v2.1 Basic Info: deactivating a type in use
+                            warns but proceeds — no cascade, reversible. */}
+                        {view === "editor" &&
+                          !editingType?.active &&
+                          associatedTests.filter((t) => t.isActive).length >
+                            0 && (
+                            <InlineNotification
+                              kind="warning"
+                              lowContrast
+                              hideCloseButton
+                              title={intl.formatMessage(
+                                { id: "warning.sampleType.deactivateInUse" },
+                                {
+                                  count: associatedTests.filter(
+                                    (t) => t.isActive,
+                                  ).length,
+                                },
+                              )}
+                            />
+                          )}
+
                         <TextArea
                           id="st-description"
                           labelText={
@@ -1302,6 +1325,17 @@ function SampleTypeManagement({ intl }) {
                     borderRadius: "var(--cds-border-radius)",
                   }}
                 >
+                  {view !== "add" && (
+                    <p
+                      style={{
+                        color: "var(--cds-text-secondary)",
+                        fontSize: "13px",
+                        margin: "0 0 var(--cds-spacing-05) 0",
+                      }}
+                    >
+                      <FormattedMessage id="note.sampleType.associatedTests.viewOnly" />
+                    </p>
+                  )}
                   {view === "add" ? (
                     <p
                       style={{
@@ -1403,6 +1437,62 @@ function SampleTypeManagement({ intl }) {
               </div>
             )}
 
+            {/* Display Order — positions this sample type in the order-entry
+                Sample Type menu (the real sortOrder, FRS v2.1). */}
+            {activeSection === "display-order" && (
+              <div>
+                <Tile
+                  style={{
+                    padding: "var(--cds-spacing-07)",
+                    border: "1px solid var(--cds-border-subtle)",
+                    borderRadius: "var(--cds-border-radius)",
+                  }}
+                >
+                  {view === "add" ? (
+                    <p
+                      style={{
+                        color: "var(--cds-text-secondary)",
+                        fontSize: "14px",
+                        margin: 0,
+                      }}
+                    >
+                      <FormattedMessage id="label.sampleType.displayOrder.addHint" />
+                    </p>
+                  ) : (
+                    <DisplayOrderSection sampleTypeId={sampleTypeId} />
+                  )}
+                </Tile>
+              </div>
+            )}
+
+            {/* Disposal — free-text reference guidance (FRS v2.1); the
+                structured handling stays per-test / per-specimen. */}
+            {activeSection === "disposal" && (
+              <div>
+                <Tile
+                  style={{
+                    padding: "var(--cds-spacing-07)",
+                    border: "1px solid var(--cds-border-subtle)",
+                    borderRadius: "var(--cds-border-radius)",
+                  }}
+                >
+                  {view === "add" ? (
+                    <p
+                      style={{
+                        color: "var(--cds-text-secondary)",
+                        fontSize: "14px",
+                        margin: 0,
+                      }}
+                    >
+                      <FormattedMessage id="label.sampleType.disposal.addHint" />
+                    </p>
+                  ) : (
+                    <DisposalSection sampleTypeId={sampleTypeId} />
+                  )}
+                </Tile>
+              </div>
+            )}
+
             {/* Terminology — multi-row Source/Code/Relationship mappings,
                 mirrors the Test Catalog Editor's Terminology section. */}
             {activeSection === "terminology" && (
@@ -1428,7 +1518,7 @@ function SampleTypeManagement({ intl }) {
                       />
                     </p>
                   ) : (
-                    <TerminologySection sampleTypeId={editingType?.id} />
+                    <TerminologySection sampleTypeId={sampleTypeId} />
                   )}
                 </Tile>
               </div>

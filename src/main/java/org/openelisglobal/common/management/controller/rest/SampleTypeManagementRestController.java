@@ -14,6 +14,7 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.util.SampleTypeDomainMapper;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -55,7 +56,8 @@ public class SampleTypeManagementRestController extends BaseRestController {
         private String domain;
         private String abbreviation;
         private String whonetCode;
-        private boolean isActive = true;
+        private String disposalInstructions;
+        private Boolean isActive;
         private int sortOrder;
         private int testCount;
         private String lastUpdated;
@@ -79,6 +81,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
             this.domain = mapBackendDomainToFrontend(typeOfSample.getDomain()); // Map domain to frontend format
             this.abbreviation = typeOfSample.getLocalAbbreviation();
             this.whonetCode = typeOfSample.getWhonetCode();
+            this.disposalInstructions = typeOfSample.getDisposalInstructions();
             this.isActive = typeOfSample.getIsActive();
             this.sortOrder = typeOfSample.getSortOrder();
         }
@@ -132,11 +135,19 @@ public class SampleTypeManagementRestController extends BaseRestController {
             this.whonetCode = whonetCode;
         }
 
-        public boolean getIsActive() {
+        public String getDisposalInstructions() {
+            return disposalInstructions;
+        }
+
+        public void setDisposalInstructions(String disposalInstructions) {
+            this.disposalInstructions = disposalInstructions;
+        }
+
+        public Boolean getIsActive() {
             return isActive;
         }
 
-        public void setIsActive(boolean isActive) {
+        public void setIsActive(Boolean isActive) {
             this.isActive = isActive;
         }
 
@@ -223,6 +234,48 @@ public class SampleTypeManagementRestController extends BaseRestController {
         }
     }
 
+    @GetMapping(value = "/sample-types/{sampleTypeId}")
+    public ResponseEntity<ApiResponse<SampleTypeManagementDTO>> getSampleType(@PathVariable String sampleTypeId) {
+        TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleById(sampleTypeId);
+        if (typeOfSample == null) {
+            return ResponseEntity.notFound().build();
+        }
+        SampleTypeManagementDTO dto = new SampleTypeManagementDTO(typeOfSample);
+        dto.setTestCount(typeOfSampleService.getAllTestsBySampleTypeId(sampleTypeId).size());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Sample type retrieved successfully", dto));
+    }
+
+    /** Body for the display-order move: a 1-based target position. */
+    public static class DisplayOrderRequest {
+        public Integer position;
+    }
+
+    @PutMapping(value = "/sample-types/{sampleTypeId}/display-order")
+    public ResponseEntity<ApiResponse<List<SampleTypeManagementDTO>>> updateDisplayOrder(HttpServletRequest request,
+            @PathVariable String sampleTypeId, @RequestBody DisplayOrderRequest body) {
+        if (body == null || body.position == null || body.position < 1) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(new ApiResponse<>(false, "position must be a 1-based integer", null));
+        }
+        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        List<TypeOfSample> ordered = typeOfSampleService.moveToSortOrderPosition(sampleTypeId, body.position,
+                getSysUserId(request));
+
+        // Reflect the new ordering in order entry immediately.
+        typeOfSampleService.clearCache();
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
+
+        List<SampleTypeManagementDTO> dtos = new ArrayList<>();
+        for (TypeOfSample type : ordered) {
+            dtos.add(new SampleTypeManagementDTO(type));
+        }
+        return ResponseEntity.ok(new ApiResponse<>(true, "Display order updated successfully", dtos));
+    }
+
     @PutMapping(value = "/sample-types/{sampleTypeId}")
     public ResponseEntity<ApiResponse<SampleTypeManagementDTO>> updateSampleType(HttpServletRequest request,
             @PathVariable String sampleTypeId, @RequestBody @Valid SampleTypeManagementDTO sampleTypeDTO,
@@ -233,24 +286,24 @@ public class SampleTypeManagementRestController extends BaseRestController {
         }
 
         try {
-            String userId = getSysUserId(request);
-
             TypeOfSample existingTypeOfSample = typeOfSampleService.getTypeOfSampleById(sampleTypeId);
             if (existingTypeOfSample == null) {
                 return ResponseEntity.notFound().build();
             }
 
+            String userId = getSysUserId(request);
+
             if (sampleTypeDTO.getDescription() != null && !sampleTypeDTO.getDescription().trim().isEmpty()) {
                 existingTypeOfSample.setDescription(sampleTypeDTO.getDescription().trim());
             }
 
-            // Domain (single, required — OGC-296 v2.1) is stored on the legacy
-            // char column using the D-030 mapping (OGC-1145). Only rewrite the
-            // char when the admin actually changed the domain, so legacy codes
-            // that alias to the same domain (e.g. 'N' → Clinical) are preserved.
+            // Domain (single, required — OGC-296 v2.1). Stored as the enum
+            // value since the Dependency-4 migration; only rewritten when the
+            // admin actually changed it, so any legacy-coded row keeps its
+            // original code until its domain genuinely changes.
             if (sampleTypeDTO.getDomain() != null && !sampleTypeDTO.getDomain()
                     .equals(mapBackendDomainToFrontend(existingTypeOfSample.getDomain()))) {
-                existingTypeOfSample.setDomain(mapFrontendDomainToLegacyCode(sampleTypeDTO.getDomain()));
+                existingTypeOfSample.setDomain(SampleTypeDomainMapper.normalize(sampleTypeDTO.getDomain()));
             }
 
             if (sampleTypeDTO.getAbbreviation() != null) {
@@ -268,11 +321,22 @@ public class SampleTypeManagementRestController extends BaseRestController {
                 }
             }
 
+            // Disposal instructions (OGC-296 v2.1) — free-text reference;
+            // empty string clears it.
+            if (sampleTypeDTO.getDisposalInstructions() != null) {
+                String disposal = sampleTypeDTO.getDisposalInstructions().trim();
+                existingTypeOfSample.setDisposalInstructions(disposal.isEmpty() ? null : disposal);
+            }
+
             if (sampleTypeDTO.getSortOrder() > 0) {
                 existingTypeOfSample.setSortOrder(sampleTypeDTO.getSortOrder());
             }
 
-            existingTypeOfSample.setIsActive(sampleTypeDTO.getIsActive());
+            // Null means "not sent" — section saves (e.g. Disposal) must not
+            // flip an inactive type back to active.
+            if (sampleTypeDTO.getIsActive() != null) {
+                existingTypeOfSample.setIsActive(sampleTypeDTO.getIsActive());
+            }
             existingTypeOfSample.setSysUserId(userId);
 
             // Rename updates the EXISTING localization in place (the mapping
@@ -383,38 +447,11 @@ public class SampleTypeManagementRestController extends BaseRestController {
     }
 
     /**
-     * Legacy {@code sample_domain} char → Clinical/Environmental/Vector, per the
-     * D-030 mapping shipped with OGC-1145 (H uman + N ewborn = Clinical, E
-     * nvironmental, A nimal = Vector). The enum-valued domain column remains a
-     * declared migration (OGC-296 v2.1 Dependency 4).
+     * The column stores the enum value since the OGC-296 Dependency-4 migration;
+     * this stays bilingual for legacy one-character rows (D-030) that arrive from
+     * fixtures or plugin inserts.
      */
     private static String mapBackendDomainToFrontend(String backendDomain) {
-        if (backendDomain == null || backendDomain.trim().isEmpty()) {
-            return "CLINICAL";
-        }
-        switch (backendDomain.toUpperCase()) {
-        case "E":
-            return "ENVIRONMENTAL";
-        case "A":
-            return "VECTOR";
-        default:
-            return "CLINICAL";
-        }
+        return SampleTypeDomainMapper.normalize(backendDomain);
     }
-
-    /** Clinical/Environmental/Vector → the legacy char (see above). */
-    private static String mapFrontendDomainToLegacyCode(String frontendDomain) {
-        if (frontendDomain == null || frontendDomain.trim().isEmpty()) {
-            return "H";
-        }
-        switch (frontendDomain.toUpperCase()) {
-        case "ENVIRONMENTAL":
-            return "E";
-        case "VECTOR":
-            return "A";
-        default:
-            return "H";
-        }
-    }
-
 }

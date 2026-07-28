@@ -14,6 +14,7 @@ import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.typeofsample.util.SampleTypeDomainMapper;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -273,7 +274,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     private TypeOfSample findSampleTypeByDescriptionAndDomain(String description, String domain) {
         TypeOfSample searchType = new TypeOfSample();
         searchType.setDescription(description);
-        searchType.setDomain(domain);
+        searchType.setDomain(SampleTypeDomainMapper.normalize(domain));
         return typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, true);
     }
 
@@ -329,7 +330,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         TypeOfSample sampleType = new TypeOfSample();
         sampleType.setDescription(description);
         sampleType.setLocalAbbreviation(localAbbreviation);
-        sampleType.setDomain(domain);
+        sampleType.setDomain(SampleTypeDomainMapper.normalize(domain));
         sampleType.setLocalization(localization);
 
         // Set active status

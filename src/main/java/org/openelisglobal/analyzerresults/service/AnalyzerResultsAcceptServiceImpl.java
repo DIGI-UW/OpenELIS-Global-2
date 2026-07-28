@@ -53,6 +53,7 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
+import org.openelisglobal.typeofsample.util.SampleTypeDomainMapper;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1006,7 +1007,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (IS_RETROCI) {
             TypeOfSample typeOfSample = new TypeOfSample();
             typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain("H");
+            typeOfSample.setDomain(SampleTypeDomainMapper.CLINICAL);
             typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
             DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
         } else {

@@ -17,6 +17,7 @@ import org.openelisglobal.systemusermodule.valueholder.RoleModule;
 import org.openelisglobal.testconfiguration.form.SampleTypeCreateForm;
 import org.openelisglobal.testconfiguration.service.SampleTypeCreateService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.util.SampleTypeDomainMapper;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -173,23 +174,11 @@ public class SampleTypeCreateRestController extends BaseController {
     }
 
     /**
-     * Maps the Clinical/Environmental/Vector choice onto the legacy
-     * {@code sample_domain} chars, matching the D-030 guard mapping shipped with
-     * OGC-1145 (H uman / E nvironmental / A nimal-vector). The enum-valued domain
-     * column remains a declared migration (OGC-296 v2.1 Dependency 4).
+     * Canonicalizes the Clinical/Environmental/Vector choice; the column stores the
+     * enum value since the OGC-296 Dependency-4 migration.
      */
     private String mapFrontendDomainToBackendCode(String frontendDomain) {
-        if (frontendDomain == null || frontendDomain.trim().isEmpty()) {
-            return "H";
-        }
-        switch (frontendDomain.toUpperCase()) {
-        case "ENVIRONMENTAL":
-            return "E";
-        case "VECTOR":
-            return "A";
-        default:
-            return "H";
-        }
+        return SampleTypeDomainMapper.normalize(frontendDomain);
     }
 
     private SystemModule createSystemModule(String menuItem, String identifyingName, String userId) {

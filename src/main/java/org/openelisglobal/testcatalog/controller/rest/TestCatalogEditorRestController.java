@@ -525,11 +525,14 @@ public class TestCatalogEditorRestController {
     private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
 
     // D-030 (OGC-1145 FR-3): test.domain (CLINICAL/ENVIRONMENTAL/VECTOR) vs the
-    // legacy type_of_sample.domain chars (sample_domain table: Human, Newborn,
-    // Environmental, Animal). Sample types with no domain stay offerable
-    // everywhere so legacy data never blocks the editor.
-    private static final Map<String, Set<String>> COMPATIBLE_SAMPLE_DOMAINS = Map.of("CLINICAL", Set.of("H", "N"),
-            "ENVIRONMENTAL", Set.of("E"), "VECTOR", Set.of("A"));
+    // sample type's domain. Since the OGC-296 domain migration the column holds
+    // the enum value, but legacy one-character codes (sample_domain table:
+    // Human, Newborn, Environmental, Animal) can still arrive from fixtures and
+    // plugin-inserted rows, so both forms stay accepted. Sample types with no
+    // domain stay offerable everywhere so legacy data never blocks the editor.
+    private static final Map<String, Set<String>> COMPATIBLE_SAMPLE_DOMAINS = Map.of("CLINICAL",
+            Set.of("H", "N", "CLINICAL"), "ENVIRONMENTAL", Set.of("E", "ENVIRONMENTAL"), "VECTOR",
+            Set.of("A", "VECTOR"));
 
     private static boolean sampleTypeDomainCompatible(String testDomain, TypeOfSample type) {
         if (type == null) {

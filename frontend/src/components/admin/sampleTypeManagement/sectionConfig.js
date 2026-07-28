@@ -7,6 +7,8 @@
 export const SAMPLE_TYPE_SECTIONS = [
   "basic-info",
   "associated-tests",
+  "display-order",
+  "disposal",
   "terminology",
 ];
 
