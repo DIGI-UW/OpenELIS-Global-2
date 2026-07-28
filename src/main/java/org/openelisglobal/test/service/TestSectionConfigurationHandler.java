@@ -283,8 +283,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             section.setDomain(domain);
         }
 
-        section.setSysUserId("1");
-
         // Handle localization
         processLocalization(section, values, testSectionName, localizationColumns);
     }
@@ -301,7 +299,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         localization.setDescription("test section name");
         localization.setEnglish(translations.getOrDefault("en", testSectionName));
         localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
-        localization.setSysUserId("1");
         String localizationId = localizationService.insert(localization);
         localization.setId(localizationId);
 
@@ -357,8 +354,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         String domain = getValueOrEmpty(values, domainIndex);
         section.setDomain(domain.isEmpty() ? "CLINICAL" : domain);
 
-        section.setSysUserId("1");
-
         String sectionId = testSectionService.insert(section);
         section.setId(sectionId);
 
@@ -413,7 +408,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             localization.setDescription("test section name");
             localization.setEnglish(translations.getOrDefault("en", testSectionName));
             localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
-            localization.setSysUserId("1");
             String localizationId = localizationService.insert(localization);
             localization.setId(localizationId);
             section.setLocalization(localization);

@@ -39,8 +39,10 @@ import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.util.ReflectionTestUtils;
 
+@WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
 public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private ReferralSetService referralSetService;

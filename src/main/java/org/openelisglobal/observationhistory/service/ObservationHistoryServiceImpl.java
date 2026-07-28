@@ -196,13 +196,6 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
         return null;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public synchronized void refreshCache() {
-        observationTypeToIdMap.clear();
-        initialize();
-    }
-
     private void initialize() {
         ObservationHistoryType oht;
 
@@ -212,6 +205,13 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
                 observationTypeToIdMap.put(type, oht.getId());
             }
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public synchronized void refreshTypeIdCache() {
+        observationTypeToIdMap.clear();
+        initialize();
     }
 
     @Override

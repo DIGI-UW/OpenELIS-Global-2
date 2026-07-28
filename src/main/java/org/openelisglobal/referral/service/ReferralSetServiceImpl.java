@@ -83,7 +83,6 @@ public class ReferralSetServiceImpl implements ReferralSetService {
     private SampleHumanService sampleHumanService;
     @Autowired
     private NotificationTriggerDispatcher notificationTriggerDispatcher;
-
     private String REFERRAL_CONFORMATION_ID;
 
     @PostConstruct
@@ -261,7 +260,6 @@ public class ReferralSetServiceImpl implements ReferralSetService {
                 continue;
             }
             Result result = new Result();
-            result.setSysUserId("1");
 
             Referral referral = new Referral();
             referral.setFhirUuid(UUID.randomUUID());

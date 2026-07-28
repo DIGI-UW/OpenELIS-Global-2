@@ -279,7 +279,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             candidate.setCategoryName(categoryName);
             candidate.setDescription(categoryName);
             candidate.setLocalAbbreviation(abbreviation);
-            candidate.setSysUserId("1");
 
             // Check for duplicates before inserting to avoid poisoning the JPA session
             // with a constraint-violation flush (which marks the transaction
@@ -342,9 +341,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             dictionary.setLoincCode(loincCode);
         }
 
-        // Set system user ID for audit
-        dictionary.setSysUserId("1"); // System user for configuration loading
-
         // Handle localization
         processLocalization(dictionary, values, dictEntry, localizationColumns);
     }
@@ -370,7 +366,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         if (localization == null) {
             localization = new Localization();
             localization.setDescription("dictionary entry: " + dictEntry);
-            localization.setSysUserId("1");
             isNewLocalization = true;
         }
 

@@ -2537,6 +2537,7 @@
   "header.icon.menu.close": "Fermer le menu",
   "header.icon.menu.open": "Ouvrir le menu",
   "header.icon.menu.pin": "Épingler le menu",
+  "header.icon.menu.unpin": "Unpin menu",
   "header.icon.notifications": "Notifications",
   "header.icon.search": "Rechercher",
   "header.icon.user": "Utilisateur",

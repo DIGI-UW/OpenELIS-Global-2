@@ -50,7 +50,7 @@ import MethodCreate from "./testManagementConfigMenu/MethodCreate";
 import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement";
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate";
 import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder";
-import SampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement";
+import SampleTypeManagement from "./sampleTypeManagement/SampleTypeManagement.jsx";
 import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign";
 import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder";
 import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
@@ -64,7 +64,6 @@ import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign";
 import TestActivation from "./testManagementConfigMenu/TestActivation";
 import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry";
 import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry";
-import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry";
 import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry";
 import TestSectionEdit from "./testManagementConfigMenu/TestSectionEdit";
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry";
@@ -181,7 +180,7 @@ function Admin() {
         component={TestSectionTestAssign}
       />
       <Route
-        path={`${path}/SampleTypeManagement`}
+        path={`${path}/SampleTypeManagement/:sampleTypeId?/:section?`}
         component={SampleTypeManagement}
       />
       <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
@@ -199,10 +198,6 @@ function Admin() {
       <Route path={`${path}/TestActivation`} component={TestActivation} />
       <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
       <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />
-      <Route
-        path={`${path}/SampleTypeRenameEntry`}
-        component={SampleTypeRenameEntry}
-      />
       <Route
         path={`${path}/TestSectionRenameEntry`}
         component={TestSectionRenameEntry}
