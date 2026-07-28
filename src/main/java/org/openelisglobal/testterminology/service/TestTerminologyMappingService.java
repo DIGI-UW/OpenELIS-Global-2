@@ -19,4 +19,22 @@ public interface TestTerminologyMappingService extends BaseObjectService<TestTer
      * soft-deleted ({@code is_active = 'N'}).
      */
     void saveMappingsForTest(String testId, List<TestTerminologyMapping> desired, String sysUserId);
+
+    /**
+     * Reconcile the single legacy {@code test.loinc} value into the terminology
+     * mappings so the new editor reflects edits made on the legacy Test Modify
+     * page. A non-blank {@code loinc} upserts the matching LOINC mapping (new rows
+     * default to {@code SAME_AS}) and soft-deletes any other active LOINC mapping
+     * with a different code; a blank {@code loinc} soft-deletes all active LOINC
+     * mappings. Non-LOINC mappings (SNOMED/CIEL/OCL) are left untouched.
+     */
+    void syncLegacyLoinc(String testId, String loinc, String sysUserId);
+
+    /**
+     * OGC-1145 (FR-14) — active mappings for a standard-terminology code, honoring
+     * specimen scope: mappings scoped to {@code sampleTypeId} win over shared
+     * ({@code sample_type_id} null) mappings; the shared set is returned when no
+     * specimen-scoped mapping exists (or no specimen is given).
+     */
+    List<TestTerminologyMapping> getActiveMappingsForCode(String source, String code, String sampleTypeId);
 }

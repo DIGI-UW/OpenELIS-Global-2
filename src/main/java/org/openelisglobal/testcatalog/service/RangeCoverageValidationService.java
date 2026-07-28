@@ -2,7 +2,9 @@ package org.openelisglobal.testcatalog.service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +34,11 @@ public class RangeCoverageValidationService {
     public static class AgeInterval {
         public double fromAge;
         public double toAge;
+        // The result component this gap/overlap belongs to (null = test-level). The
+        // id is set here; the human label is filled in by the caller that has the
+        // component catalog, so the UI can name which component is uncovered.
+        public String componentId;
+        public String componentLabel;
 
         public AgeInterval() {
         }
@@ -63,10 +70,94 @@ public class RangeCoverageValidationService {
     private static final double EPSILON = 1e-9;
 
     public CoverageReport validate(List<ResultLimit> limits) {
+        // Ranges for different result components are independent: a Male 0-10 range on
+        // component A and a Male 0-10 range on component B are NOT an overlap. The
+        // same holds for specimen scopes (OGC-1145 Phase 2): a specimen override and
+        // the shared set never overlap each other. Group by (component, sample type)
+        // — null = test-level / shared, its own group — and validate each group in
+        // isolation, then merge — so overlaps/gaps are only ever reported between
+        // ranges that apply to the same component AND scope (OGC-1127/OGC-949).
+        Map<String, List<ResultLimit>> byScope = new LinkedHashMap<>();
+        for (ResultLimit limit : limits) {
+            String key = (limit.getComponentId() == null ? "" : limit.getComponentId()) + "|"
+                    + (limit.getSampleTypeId() == null ? "" : limit.getSampleTypeId());
+            byScope.computeIfAbsent(key, k -> new ArrayList<>()).add(limit);
+        }
+
         CoverageReport report = new CoverageReport();
-        report.male = coverageForSex(limits, "M");
-        report.female = coverageForSex(limits, "F");
+        report.male = new SexCoverage();
+        report.male.sex = "M";
+        report.female = new SexCoverage();
+        report.female.sex = "F";
+
+        if (byScope.isEmpty()) {
+            report.male.status = Status.EMPTY;
+            report.female.status = Status.EMPTY;
+            return report;
+        }
+
+        for (Map.Entry<String, List<ResultLimit>> entry : byScope.entrySet()) {
+            String[] scope = entry.getKey().split("\\|", -1);
+            String componentId = scope[0].isEmpty() ? null : scope[0];
+            boolean specimenScoped = !scope[1].isEmpty();
+            SexCoverage male = tagComponent(coverageForSex(entry.getValue(), "M"), componentId);
+            SexCoverage female = tagComponent(coverageForSex(entry.getValue(), "F"), componentId);
+            if (specimenScoped) {
+                // A specimen override may cover only part of the age axis — the
+                // shared set backs the rest at resolution time — so its gaps are
+                // not gaps and must not gate activation. Overlaps within one
+                // specimen scope stay real findings.
+                stripGaps(male);
+                stripGaps(female);
+            }
+            mergeSexCoverage(report.male, male);
+            mergeSexCoverage(report.female, female);
+        }
         return report;
+    }
+
+    /** Drop gap findings from a specimen-scoped group's coverage (OGC-1145). */
+    private void stripGaps(SexCoverage coverage) {
+        coverage.gaps.clear();
+        if (coverage.status == Status.GAP) {
+            coverage.status = coverage.overlaps.isEmpty() ? Status.COMPLETE : Status.OVERLAP;
+        }
+    }
+
+    /** Stamp every gap/overlap of a group's coverage with its component id. */
+    private SexCoverage tagComponent(SexCoverage coverage, String componentId) {
+        for (AgeInterval gap : coverage.gaps) {
+            gap.componentId = componentId;
+        }
+        for (AgeInterval overlap : coverage.overlaps) {
+            overlap.componentId = componentId;
+        }
+        return coverage;
+    }
+
+    /** Fold one component group's coverage into the running per-sex aggregate. */
+    private void mergeSexCoverage(SexCoverage target, SexCoverage part) {
+        target.gaps.addAll(part.gaps);
+        target.overlaps.addAll(part.overlaps);
+        target.status = target.status == null ? part.status : worse(target.status, part.status);
+    }
+
+    /** Precedence for the merged status: GAP > OVERLAP > COMPLETE > EMPTY. */
+    private Status worse(Status a, Status b) {
+        return rank(b) > rank(a) ? b : a;
+    }
+
+    private int rank(Status status) {
+        switch (status) {
+        case GAP:
+            return 3;
+        case OVERLAP:
+            return 2;
+        case COMPLETE:
+            return 1;
+        default:
+            return 0;
+        }
     }
 
     private SexCoverage coverageForSex(List<ResultLimit> limits, String sex) {
@@ -96,6 +187,14 @@ public class RangeCoverageValidationService {
                 coverage.overlaps.add(new AgeInterval(min, Math.min(coveredTo, max)));
             }
             coveredTo = Math.max(coveredTo, max);
+        }
+
+        // Tail gap (FR-20/21): only an open-ended top band (max = +Infinity) covers
+        // to the top of the reportable lifetime. If the highest covered age is
+        // finite, everything above it is uncovered — e.g. bands 0–15 + 15–30 leave
+        // 30+ uncovered — which the frontier walk above would otherwise miss.
+        if (Double.isFinite(coveredTo)) {
+            coverage.gaps.add(new AgeInterval(coveredTo, Double.POSITIVE_INFINITY));
         }
 
         // Gaps drive the safety gate, so they outrank overlaps for the status.

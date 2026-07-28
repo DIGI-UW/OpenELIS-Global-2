@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 / OGC-1128 — component-aware terminology mappings.
+      Adds a nullable component_id FK to test_terminology_mapping so a mapping row
+      can be scoped to a single result component instead of the whole test.
+      component_id NULL = test-level mapping (exactly today's behavior).
+      The single (test_id, source, code) unique constraint is replaced by two
+      partial unique indexes so NULL (test-level) rows keep their uniqueness
+      guarantee (Postgres treats NULLs as distinct in a plain unique constraint).
+    -->
+
+    <changeSet id="OGC-1128-terminology-component-id" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_terminology_mapping" columnName="component_id"/>
+            </not>
+        </preConditions>
+        <comment>Add nullable component_id to test_terminology_mapping and rescope uniqueness.</comment>
+        <addColumn schemaName="clinlims" tableName="test_terminology_mapping">
+            <column name="component_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_test_terminology_mapping_component"
+            baseTableSchemaName="clinlims" baseTableName="test_terminology_mapping" baseColumnNames="component_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component" referencedColumnNames="id"/>
+        <dropUniqueConstraint schemaName="clinlims" tableName="test_terminology_mapping"
+            constraintName="uq_test_terminology_mapping"/>
+        <sql>
+            CREATE UNIQUE INDEX uq_test_terminology_mapping_test
+                ON clinlims.test_terminology_mapping (test_id, source, code)
+             WHERE component_id IS NULL;
+            CREATE UNIQUE INDEX uq_test_terminology_mapping_component
+                ON clinlims.test_terminology_mapping (test_id, component_id, source, code)
+             WHERE component_id IS NOT NULL;
+        </sql>
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS clinlims.uq_test_terminology_mapping_test;
+                DROP INDEX IF EXISTS clinlims.uq_test_terminology_mapping_component;
+            </sql>
+            <addUniqueConstraint schemaName="clinlims" tableName="test_terminology_mapping"
+                columnNames="test_id, source, code" constraintName="uq_test_terminology_mapping"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_terminology_mapping"
+                constraintName="fk_test_terminology_mapping_component"/>
+            <dropColumn schemaName="clinlims" tableName="test_terminology_mapping" columnName="component_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

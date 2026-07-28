@@ -1,0 +1,104 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Required reference tables for StatusService resolution -->
+    <status_of_sample id="10" name="Not Tested" code="10"
+        status_type="ANALYSIS" description="Analysis not yet started"
+        is_active="Y" lastupdated="2024-01-01 00:00:00"
+        display_key="status.analysis.not.tested" />
+    <status_of_sample id="11" name="Test Canceled"
+        code="11" status_type="ANALYSIS" description="Analysis canceled"
+        is_active="Y" lastupdated="2024-01-01 00:00:00"
+        display_key="status.analysis.canceled" />
+    <status_of_sample id="12" name="SampleEntered"
+        code="12" status_type="SAMPLE"
+        description="Sample entered into system" is_active="Y"
+        lastupdated="2024-01-01 00:00:00" display_key="status.sample.entered" />
+    <status_of_sample id="19" name="SampleCanceled"
+        code="19" status_type="SAMPLE" description="Sample canceled"
+        is_active="Y" lastupdated="2024-01-01 00:00:00"
+        display_key="status.sample.canceled" />
+
+    <!-- Supported Locales -->
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <!-- Localizations -->
+    <localization id="1" description="Biochemistry Section"
+        lastupdated="2024-01-01 00:00:00" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Biochemistry" last_updated="2024-01-01 00:00:00" />
+    <localization id="2" description="Glucose Test"
+        lastupdated="2024-01-01 00:00:00" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="Glucose" last_updated="2024-01-01 00:00:00" />
+    <localization id="3" description="Blood Sample Type"
+        lastupdated="2024-01-01 00:00:00" />
+    <localization_value id="3" localization_id="3"
+        locale="en" value="Blood" last_updated="2024-01-01 00:00:00" />
+
+    <!-- Person for Patient -->
+    <person id="1" last_name="Patient" first_name="Test"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Person for Provider -->
+    <person id="2" last_name="Clinician" first_name="Test"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- System User -->
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Patient -->
+    <patient id="1" person_id="1" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Provider -->
+    <provider id="1" person_id="2" provider_type="P"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Organization -->
+    <organization id="1" name="Test Health Center"
+        city="Test City" is_active="Y" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Type of Sample -->
+    <type_of_sample id="1" description="Blood"
+        local_abbrev="BLOOD" is_active="1" name_localization_id="3"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Sample -->
+    <sample id="1" accession_number="24-00001" domain="H"
+        received_date="2024-02-12 10:00:00" entered_date="2024-02-12"
+        status_id="12" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Sample Human link -->
+    <sample_human id="1" patient_id="1" samp_id="1"
+        provider_id="1" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Sample Organization link -->
+    <sample_organization id="1" samp_id="1" org_id="1"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Sample Item -->
+    <sample_item id="1" samp_id="1" sort_order="1"
+        status_id="12" typeosamp_id="1" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Test Section -->
+    <test_section id="1" name="Biochemistry"
+        description="Biochemistry Section" is_active="Y"
+        name_localization_id="1" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Test -->
+    <test id="1" name="Glucose" description="Serum Glucose"
+        test_section_id="1" is_active="Y" is_reportable="Y"
+        name_localization_id="2" guid="glucose-test-guid-001"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Analysis with NotStarted status -->
+    <analysis id="1" sampitem_id="1" test_id="1" status_id="10"
+        analysis_type="MANUAL" is_reportable="Y"
+        lastupdated="2024-02-12 10:00:00" />
+</dataset>

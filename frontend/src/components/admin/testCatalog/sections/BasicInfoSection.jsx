@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   Stack,
   TextInput,
@@ -7,6 +8,9 @@ import {
   RadioButton,
   Toggle,
   Button,
+  ComboBox,
+  FilterableMultiSelect,
+  Tag,
   Loading,
   InlineNotification,
   Modal,
@@ -14,43 +18,101 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import useDomains from "../../../common/useDomains";
 import ActivationAckModal from "./ActivationAckModal";
 
 /**
- * OGC-949 M4 / OGC-748 — Basic Info section.
+ * OGC-949 / OGC-1112 — Basic Info section.
  *
- * This slice persists the v2.5-new fields (Domain, AMR) plus the status flags
- * against the M1 schema. Name/Code/Description render read-only here (editing
- * them is OGC-950, which touches localization); the coverage-gated activation
- * modal is OGC-953, wired when Ranges (M7) lands.
+ * Edits Domain / AMR / status plus (OGC-1112 dependency 8) the Code and
+ * Description; the display name is edited in the Localization section. When
+ * opened as `testId === "new"` it renders a blank create form (FR-2): Name,
+ * Reporting name, Code (auto-suggested), Lab Unit, Sample type, Domain, toggles,
+ * Description — Save creates the test Inactive (FR-3) and lands on its editor.
  */
-const DOMAINS = ["CLINICAL", "ENVIRONMENTAL", "VECTOR"];
+// OGC-1145 FR-3 (D-030 domain guard). Since the OGC-296 domain migration a
+// sample type's domain is the enum value (CLINICAL/ENVIRONMENTAL/VECTOR), but
+// legacy one-character codes (sample_domain: H uman / N ewborn / E nvironmental
+// / A nimal) can still arrive from un-migrated or plugin-inserted rows, so we
+// normalize before comparing — the single mirror of the backend
+// SampleTypeDomainMapper. Unknown/blank domains stay offerable everywhere so
+// legacy data never blocks the editor.
+const normalizeSampleDomain = (raw) => {
+  if (!raw) {
+    return null;
+  }
+  switch (String(raw).trim().toUpperCase()) {
+    case "E":
+    case "ENVIRONMENTAL":
+      return "ENVIRONMENTAL";
+    case "A":
+    case "VECTOR":
+      return "VECTOR";
+    case "H":
+    case "N":
+    case "CLINICAL":
+      return "CLINICAL";
+    default:
+      return null;
+  }
+};
+
+const sampleTypeMatchesDomain = (type, domain) => {
+  if (!domain || !type?.domain) {
+    return true;
+  }
+  const normalized = normalizeSampleDomain(type.domain);
+  return normalized === null || normalized === domain;
+};
 
 const BasicInfoSection = ({ testId }) => {
+  const domains = useDomains();
   const intl = useIntl();
+  const history = useHistory();
+  const location = useLocation();
+  const base = location.pathname.startsWith("/admin")
+    ? "/admin"
+    : "/MasterListsPage";
+  const isCreate = testId === "new";
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isCreate);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
-  // Domain change is confirmed via a modal before it is applied (US4 AC#1).
   const [pendingDomain, setPendingDomain] = useState(null);
-  // Carbon's RadioButtonGroup caches its own selection and only re-reads
-  // valueSelected when that prop changes. Cancelling a domain change leaves
-  // valueSelected unchanged, so bumping this key remounts the group to re-sync
-  // it to the current (unchanged) domain — otherwise the radio would stay
-  // visually stuck on the rejected choice.
   const [domainRadioKey, setDomainRadioKey] = useState(0);
-  // Activation coverage gate (OGC-973): toggling Active on routes through the
-  // coverage check; uncovered ranges surface an acknowledgment modal.
   const [ackModalOpen, setAckModalOpen] = useState(false);
   const [coverageReport, setCoverageReport] = useState(null);
+  // FR-57/FR-58 — the completeness checklist returned (422) when activation is
+  // refused because the test isn't in an activatable state.
+  const [completenessReport, setCompletenessReport] = useState(null);
+  // FR-58 — the same gaps, fetched proactively on load, shown as a persistent
+  // checklist beside the status toggle for an inactive test.
+  const [completenessGaps, setCompletenessGaps] = useState([]);
+
+  // Create-mode state (FR-2).
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    reportingName: "",
+    code: "",
+    labUnitId: "",
+    sampleTypeIds: [],
+    domain: "CLINICAL",
+    antimicrobialResistance: false,
+    orderable: false,
+    description: "",
+  });
+  const [codeEdited, setCodeEdited] = useState(false);
+  const [codeError, setCodeError] = useState(false);
+  const [labUnits, setLabUnits] = useState([]);
+  const [sampleTypes, setSampleTypes] = useState([]);
 
   const cancelDomainChange = () => {
     setPendingDomain(null);
@@ -58,7 +120,7 @@ const BasicInfoSection = ({ testId }) => {
   };
 
   useEffect(() => {
-    if (!testId) {
+    if (!testId || isCreate) {
       return;
     }
     setLoading(true);
@@ -74,9 +136,164 @@ const BasicInfoSection = ({ testId }) => {
         setForm(res);
       },
     );
-  }, [testId]);
+    // FR-58 — proactively fetch what still blocks activation so the editor can
+    // show the checklist before the user tries to activate.
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/completeness`,
+      (res) => {
+        if (res && !res.complete) {
+          setCompletenessGaps(res.messages || []);
+        } else {
+          setCompletenessGaps([]);
+        }
+      },
+    );
+  }, [testId, isCreate]);
+
+  // Both create and edit need the Lab Unit + Sample type reference lists (they are
+  // editable in both modes).
+  useEffect(() => {
+    getFromOpenElisServer("/rest/test-catalog/lab-units", (res) =>
+      setLabUnits(Array.isArray(res) ? res : []),
+    );
+    getFromOpenElisServer("/rest/test-catalog/sample-types", (res) =>
+      setSampleTypes(Array.isArray(res) ? res : []),
+    );
+  }, []);
 
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+  const updateCreate = (patch) =>
+    setCreateForm((prev) => ({ ...prev, ...patch }));
+
+  // OGC-1145 FR-1/2/3 — shared sample-types multi-select with removable chips.
+  // Only domain-compatible types are offered; already-selected incompatible ones
+  // (a domain switch) stay visible as red chips so the manager can remove them.
+  const renderSampleTypesControl = (
+    idPrefix,
+    selectedIds,
+    domain,
+    onChange,
+  ) => {
+    const offered = sampleTypes.filter(
+      (t) => sampleTypeMatchesDomain(t, domain) || selectedIds.includes(t.id),
+    );
+    const selectedItems = selectedIds
+      .map((id) => sampleTypes.find((t) => t.id === id))
+      .filter(Boolean);
+    return (
+      <div>
+        <FilterableMultiSelect
+          id={`${idPrefix}-sample-types`}
+          titleText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.sampleTypes",
+          })}
+          helperText={intl.formatMessage({
+            id: "helper.testCatalog.basicInfo.sampleTypesMulti",
+          })}
+          placeholder={intl.formatMessage({
+            id: "label.testCatalog.specimenType",
+          })}
+          items={offered}
+          itemToString={(item) => (item ? item.name : "")}
+          selectedItems={selectedItems}
+          onChange={({ selectedItems: items }) =>
+            onChange((items || []).map((t) => t.id))
+          }
+        />
+        {selectedItems.length > 0 && (
+          <div style={{ marginTop: "0.5rem" }}>
+            {selectedItems.map((t) => (
+              <Tag
+                key={t.id}
+                type={sampleTypeMatchesDomain(t, domain) ? "blue" : "red"}
+                filter
+                onClose={() =>
+                  onChange(selectedIds.filter((id) => id !== t.id))
+                }
+                title={intl.formatMessage({ id: "label.button.remove" })}
+              >
+                {t.name}
+              </Tag>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const editSampleTypeIds = form?.sampleTypeIds || [];
+  const editIncompatibleTypes = form
+    ? editSampleTypeIds
+        .map((id) => sampleTypes.find((t) => t.id === id))
+        .filter((t) => t && !sampleTypeMatchesDomain(t, form.domain))
+    : [];
+  const editSampleTypesMissing = form
+    ? editSampleTypeIds.length === 0 && (!!form.active || !!form.orderable)
+    : false;
+
+  // ── Create (FR-2/FR-3/FR-4) ───────────────────────────────────────────────
+
+  const createValid =
+    createForm.name.trim() &&
+    createForm.reportingName.trim() &&
+    createForm.code.trim() &&
+    createForm.sampleTypeIds.length > 0 &&
+    createForm.domain;
+
+  const handleCreate = () => {
+    if (!createValid) {
+      return;
+    }
+    setSaving(true);
+    setCodeError(false);
+    // The create endpoint expects `amr` (not `antimicrobialResistance`); map the
+    // form's field names to the request body.
+    const payload = {
+      name: createForm.name,
+      reportingName: createForm.reportingName,
+      code: createForm.code,
+      labUnitId: createForm.labUnitId,
+      sampleTypeIds: createForm.sampleTypeIds,
+      domain: createForm.domain,
+      amr: createForm.antimicrobialResistance,
+      orderable: createForm.orderable,
+      description: createForm.description,
+    };
+    postToOpenElisServerFullResponse(
+      "/rest/test-catalog/tests",
+      JSON.stringify(payload),
+      (response) => {
+        setSaving(false);
+        if (response && response.status === 201) {
+          response.json().then((created) => {
+            setNotificationVisible(true);
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({
+                id: "label.testCatalog.section.basic-info",
+              }),
+              message: intl.formatMessage(
+                { id: "notification.testCatalog.testCreated" },
+                { name: createForm.name },
+              ),
+            });
+            history.push(
+              `${base}/TestCatalogEditor/${created.testId}/basic-info`,
+            );
+          });
+        } else if (response && response.status === 409) {
+          setCodeError(true);
+        } else {
+          setNotificationVisible(true);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "error.title" }),
+            message: intl.formatMessage({ id: "server.error.msg" }),
+          });
+        }
+      },
+    );
+  };
 
   const handleSave = () => {
     setSaving(true);
@@ -112,8 +329,11 @@ const BasicInfoSection = ({ testId }) => {
       `/rest/test-catalog/tests/${testId}/activate`,
       JSON.stringify(gapsAcknowledged ? { gapsAcknowledged } : {}),
       (res) => {
-        if (res && (res.status === 409 || res.statusCode === 409)) {
-          // Uncovered age windows → require acknowledgment before activating.
+        if (res && (res.status === 422 || res.statusCode === 422)) {
+          // FR-57/FR-59 — incomplete test: surface the checklist, never silently
+          // succeed or flip the toggle.
+          setCompletenessReport(res);
+        } else if (res && (res.status === 409 || res.statusCode === 409)) {
           setCoverageReport(res);
           setAckModalOpen(true);
         } else if (res && !res.error) {
@@ -146,6 +366,142 @@ const BasicInfoSection = ({ testId }) => {
     setAckModalOpen(false);
     setCoverageReport(null);
   };
+
+  if (isCreate) {
+    return (
+      <Stack gap={6}>
+        <TextInput
+          id="basic-info-name"
+          labelText={intl.formatMessage({ id: "label.testCatalog.testName" })}
+          value={createForm.name}
+          onChange={(e) => {
+            const name = e.target.value;
+            // Auto-suggest the code from the name until the admin edits it (FR-2).
+            updateCreate(codeEdited ? { name } : { name, code: name });
+          }}
+        />
+        <TextInput
+          id="basic-info-reporting-name"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.reportingName",
+          })}
+          value={createForm.reportingName}
+          onChange={(e) => updateCreate({ reportingName: e.target.value })}
+        />
+        <TextInput
+          id="basic-info-code"
+          labelText={intl.formatMessage({ id: "label.testCatalog.testCode" })}
+          value={createForm.code}
+          invalid={codeError}
+          invalidText={intl.formatMessage({
+            id: "error.testCatalog.codeExists",
+          })}
+          onChange={(e) => {
+            setCodeEdited(true);
+            setCodeError(false);
+            updateCreate({ code: e.target.value });
+          }}
+        />
+        <ComboBox
+          id="basic-info-lab-unit"
+          titleText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.labUnit",
+          })}
+          items={labUnits}
+          itemToString={(item) => (item ? item.name : "")}
+          selectedItem={labUnits.find((u) => u.id === createForm.labUnitId)}
+          onChange={({ selectedItem }) =>
+            updateCreate({ labUnitId: selectedItem ? selectedItem.id : "" })
+          }
+        />
+        {renderSampleTypesControl(
+          "basic-info",
+          createForm.sampleTypeIds,
+          createForm.domain,
+          (ids) => updateCreate({ sampleTypeIds: ids }),
+        )}
+        {createForm.sampleTypeIds.length === 0 && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "error.testCatalog.basicInfo.sampleTypeRequired",
+            })}
+          />
+        )}
+        <RadioButtonGroup
+          name="basic-info-create-domain"
+          legendText={intl.formatMessage({ id: "label.testCatalog.domain" })}
+          valueSelected={createForm.domain}
+          onChange={(value) => updateCreate({ domain: value })}
+        >
+          {domains.map((d) => (
+            <RadioButton
+              key={d.id}
+              id={`create-domain-${d.id}`}
+              value={d.id}
+              labelText={intl.formatMessage({ id: d.labelKey })}
+            />
+          ))}
+        </RadioButtonGroup>
+        <Toggle
+          id="basic-info-create-amr"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.amr",
+          })}
+          labelA={intl.formatMessage({ id: "label.no" })}
+          labelB={intl.formatMessage({ id: "label.yes" })}
+          toggled={createForm.antimicrobialResistance}
+          onToggle={(checked) =>
+            updateCreate({ antimicrobialResistance: checked })
+          }
+        />
+        <Toggle
+          id="basic-info-create-orderable"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.orderable",
+          })}
+          labelA={intl.formatMessage({ id: "label.no" })}
+          labelB={intl.formatMessage({ id: "label.yes" })}
+          toggled={createForm.orderable}
+          onToggle={(checked) => updateCreate({ orderable: checked })}
+        />
+        <TextArea
+          id="basic-info-create-description"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.description",
+          })}
+          value={createForm.description}
+          onChange={(e) => updateCreate({ description: e.target.value })}
+          rows={2}
+        />
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.createInactiveHint",
+          })}
+        />
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button
+            kind="primary"
+            disabled={saving || !createValid}
+            onClick={handleCreate}
+          >
+            <FormattedMessage id="label.button.save" />
+          </Button>
+          <Button
+            kind="ghost"
+            onClick={() => history.push(`${base}/TestCatalogList`)}
+          >
+            <FormattedMessage id="label.button.cancel" />
+          </Button>
+        </div>
+      </Stack>
+    );
+  }
 
   if (loading) {
     return (
@@ -188,7 +544,7 @@ const BasicInfoSection = ({ testId }) => {
           id: "label.testCatalog.basicInfo.code",
         })}
         value={form.code || ""}
-        readOnly
+        onChange={(e) => update({ code: e.target.value })}
       />
       <TextArea
         id="basic-info-description"
@@ -196,9 +552,53 @@ const BasicInfoSection = ({ testId }) => {
           id: "label.testCatalog.basicInfo.description",
         })}
         value={form.description || ""}
-        readOnly
+        onChange={(e) => update({ description: e.target.value })}
         rows={2}
       />
+
+      <ComboBox
+        id="basic-info-edit-lab-unit"
+        titleText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.labUnit",
+        })}
+        items={labUnits}
+        itemToString={(item) => (item ? item.name : "")}
+        selectedItem={labUnits.find((u) => u.id === form.labUnitId) || null}
+        onChange={({ selectedItem }) =>
+          update({ labUnitId: selectedItem ? selectedItem.id : "" })
+        }
+      />
+      <div id="basic-info-edit-sample-type">
+        {renderSampleTypesControl(
+          "basic-info-edit",
+          editSampleTypeIds,
+          form.domain,
+          (ids) => update({ sampleTypeIds: ids }),
+        )}
+      </div>
+      {editSampleTypesMissing && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "error.testCatalog.basicInfo.sampleTypeRequired",
+          })}
+          data-testid="sample-type-required-error"
+        />
+      )}
+      {editIncompatibleTypes.length > 0 && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "error.testCatalog.basicInfo.sampleTypeDomain",
+          })}
+          subtitle={editIncompatibleTypes.map((t) => t.name).join(", ")}
+          data-testid="sample-type-domain-error"
+        />
+      )}
 
       <RadioButtonGroup
         key={domainRadioKey}
@@ -208,22 +608,17 @@ const BasicInfoSection = ({ testId }) => {
         })}
         valueSelected={form.domain || "CLINICAL"}
         onChange={(value) => {
-          // Hold the change until the modal confirms it. The selection is
-          // reconciled via valueSelected (on confirm) or the remount key (on
-          // cancel) — see domainRadioKey.
           if (value !== form.domain) {
             setPendingDomain(value);
           }
         }}
       >
-        {DOMAINS.map((d) => (
+        {domains.map((d) => (
           <RadioButton
-            key={d}
-            id={`domain-${d}`}
-            value={d}
-            labelText={intl.formatMessage({
-              id: `label.testCatalog.basicInfo.domain.${d}`,
-            })}
+            key={d.id}
+            id={`domain-${d.id}`}
+            value={d.id}
+            labelText={intl.formatMessage({ id: d.labelKey })}
           />
         ))}
       </RadioButtonGroup>
@@ -248,13 +643,24 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.active}
         onToggle={(checked) => {
           if (checked && !form.active) {
-            // Activation is coverage-gated (OGC-973) — never set directly.
             handleActivate(null);
           } else {
             update({ active: checked });
           }
         }}
       />
+      {!form.active && completenessGaps.length > 0 && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "label.testCatalog.activation.incomplete.heading",
+          })}
+          subtitle={completenessGaps.join(" ")}
+          data-testid="completeness-checklist"
+        />
+      )}
       <Toggle
         id="basic-info-orderable"
         labelText={intl.formatMessage({
@@ -267,7 +673,13 @@ const BasicInfoSection = ({ testId }) => {
       />
 
       <div>
-        <Button kind="primary" disabled={saving} onClick={handleSave}>
+        <Button
+          kind="primary"
+          disabled={
+            saving || editSampleTypesMissing || editIncompatibleTypes.length > 0
+          }
+          onClick={handleSave}
+        >
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>
@@ -311,6 +723,28 @@ const BasicInfoSection = ({ testId }) => {
           onAcknowledge={() => handleActivate(JSON.stringify(coverageReport))}
           onCancel={cancelAck}
         />
+      )}
+
+      {completenessReport && (
+        <Modal
+          open={!!completenessReport}
+          passiveModal
+          modalHeading={intl.formatMessage({
+            id: "label.testCatalog.activation.incomplete.heading",
+          })}
+          onRequestClose={() => setCompletenessReport(null)}
+        >
+          <p style={{ marginBottom: "1rem" }}>
+            <FormattedMessage id="label.testCatalog.activation.incomplete.body" />
+          </p>
+          <ul style={{ listStyle: "disc", paddingLeft: "1.5rem" }}>
+            {(completenessReport.messages || []).map((msg, idx) => (
+              <li key={idx} style={{ marginBottom: "0.25rem" }}>
+                {msg}
+              </li>
+            ))}
+          </ul>
+        </Modal>
       )}
     </Stack>
   );

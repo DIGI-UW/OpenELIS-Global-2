@@ -22,6 +22,7 @@ vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   putToOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -30,6 +31,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import BasicInfoSection from "./BasicInfoSection";
 import {
   getFromOpenElisServer,
@@ -38,11 +40,17 @@ import {
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
-const renderSection = () =>
+const renderSection = (testId = "42") =>
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <BasicInfoSection testId="42" />
-    </IntlProvider>,
+    <MemoryRouter
+      initialEntries={[
+        `/MasterListsPage/TestCatalogEditor/${testId}/basic-info`,
+      ]}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <BasicInfoSection testId={testId} />
+      </IntlProvider>
+    </MemoryRouter>,
   );
 
 // The domain the section persists on Save is the source of truth for whether
@@ -53,17 +61,36 @@ const savedDomain = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  getFromOpenElisServer.mockImplementation((url, cb) =>
-    cb({
-      name: "Glucose",
-      code: "GLU",
-      description: "",
-      domain: "CLINICAL",
-      antimicrobialResistance: false,
-      active: true,
-      orderable: true,
-    }),
-  );
+  getFromOpenElisServer.mockImplementation((url, cb) => {
+    if (url.endsWith("/domains")) {
+      cb([
+        { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+        { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+        { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+      ]);
+    } else if (url.endsWith("/lab-units")) {
+      cb([{ id: "7", name: "Chemistry" }]);
+    } else if (url.endsWith("/sample-types")) {
+      // Serum carries no domain (legacy shape) so domain-switch tests keep a
+      // compatible selection; Plasma is guarded to the CLINICAL domain.
+      cb([
+        { id: "2", name: "Serum" },
+        { id: "3", name: "Plasma", domain: "H" },
+      ]);
+    } else {
+      cb({
+        name: "Glucose",
+        code: "GLU",
+        description: "",
+        domain: "CLINICAL",
+        // OGC-1145: an active test must carry ≥1 sample type or Save disables
+        sampleTypeIds: ["2"],
+        antimicrobialResistance: false,
+        active: true,
+        orderable: true,
+      });
+    }
+  });
   putToOpenElisServer.mockImplementation((url, payload, cb) => cb(200));
 });
 
@@ -124,17 +151,30 @@ describe("BasicInfoSection domain-switch modal", () => {
 
   it("activating with coverage gaps requires acknowledgment (the safety gate)", async () => {
     // Load the test INACTIVE so toggling Active on triggers the activation gate.
-    getFromOpenElisServer.mockImplementation((url, cb) =>
-      cb({
-        name: "Glucose",
-        code: "GLU",
-        description: "",
-        domain: "CLINICAL",
-        antimicrobialResistance: false,
-        active: false,
-        orderable: true,
-      }),
-    );
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/domains")) {
+        cb([
+          { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+          { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+          { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+        ]);
+      } else if (url.endsWith("/lab-units")) {
+        cb([{ id: "7", name: "Chemistry" }]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([{ id: "2", name: "Serum" }]);
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          antimicrobialResistance: false,
+          active: false,
+          orderable: true,
+          sampleTypeIds: ["2"],
+        });
+      }
+    });
     const gapReport = {
       status: 409,
       male: {
@@ -190,11 +230,104 @@ describe("BasicInfoSection domain-switch modal", () => {
     expect(screen.getByRole("switch", { name: /Active/ })).toBeChecked();
   });
 
+  it("edits the lab unit and sample types on modify and persists them", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/domains")) {
+        cb([
+          { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+          { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+          { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+        ]);
+      } else if (url.endsWith("/lab-units")) {
+        cb([
+          { id: "7", name: "Chemistry" },
+          { id: "8", name: "Hematology" },
+        ]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([
+          { id: "2", name: "Serum" },
+          { id: "3", name: "Plasma" },
+        ]);
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          labUnitId: "7",
+          sampleTypeIds: ["2"],
+          antimicrobialResistance: false,
+          active: true,
+          orderable: true,
+        });
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(container.querySelector("#basic-info-edit-lab-unit"), {
+      target: { value: "Hematology" },
+    });
+    fireEvent.click(await screen.findByText("Hematology"));
+
+    // OGC-1145: sample types are a multi-select — add Plasma alongside Serum.
+    const multiselect = container.querySelector(
+      "#basic-info-edit-sample-types",
+    );
+    const user = (await import("@testing-library/user-event")).default.setup();
+    await user.click(multiselect.querySelector("input"));
+    await user.click(await screen.findByRole("option", { name: /Plasma/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    expect(body.labUnitId).toBe("8");
+    expect(body.sampleTypeIds).toEqual(expect.arrayContaining(["2", "3"]));
+  });
+
+  it("disables Save and warns when an active test would lose its last sample type", async () => {
+    const { container } = renderSection();
+    await screen.findByLabelText("Clinical");
+
+    // remove the only chip (Serum) → required-error + disabled Save (FR-1)
+    fireEvent.click(
+      container.querySelector(".cds--tag__close-icon, .cds--tag button"),
+    );
+    expect(
+      await screen.findByTestId("sample-type-required-error"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+  });
+
   it("shows an error state when the fetch fails", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => cb(undefined));
     renderSection();
     expect(
       await screen.findByText(messages["label.testCatalog.editor.loadError"]),
     ).toBeInTheDocument();
+  });
+});
+
+describe("BasicInfoSection create mode (testId=new)", () => {
+  beforeEach(() => {
+    // Create mode fetches the Lab Unit + Sample type reference lists only.
+    getFromOpenElisServer.mockImplementation((url, cb) => cb([]));
+  });
+
+  it("renders a blank create form and gates Save until required fields are filled", async () => {
+    renderSection("new");
+    // Test name field is present (create-only label).
+    expect(
+      await screen.findByLabelText(messages["label.testCatalog.testName"]),
+    ).toBeInTheDocument();
+    // Save is disabled with an empty form (name/reportingName/code/sampleType required).
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    // It does not fetch the edit-mode basic-info payload.
+    expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+      "/rest/test-catalog/tests/new/basic-info",
+      expect.anything(),
+    );
   });
 });
