@@ -38,7 +38,7 @@ import {
   postToOpenElisServerFullResponse,
 } from "../../../components/utils/Utils";
 import ErrorDetailsModal from "./ErrorDetailsModal";
-import PageTitle from "../../common/PageTitle/PageTitle";
+import PageHeader from "../../common/PageHeader/PageHeader";
 import "./ErrorDashboard.css";
 
 const ErrorDashboard = () => {
@@ -387,7 +387,7 @@ const ErrorDashboard = () => {
         data-testid="error-dashboard-header"
       >
         <div className="error-dashboard-header-title">
-          <PageTitle
+          <PageHeader
             breadcrumbs={[
               {
                 label: intl.formatMessage({

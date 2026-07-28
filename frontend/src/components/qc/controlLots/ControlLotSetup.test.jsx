@@ -3,34 +3,37 @@ vi.mock("../../utils/Utils", () => ({
   postToOpenElisServerFullResponse: vi.fn(),
 }));
 
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    useHistory: () => ({ goBack: vi.fn(), push: vi.fn() }),
-    useLocation: () => ({ search: "?analyzerId=7" }),
-    useParams: () => ({}),
-  };
-});
-
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { BrowserRouter } from "react-router-dom";
+import { Route, Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import messages from "../../../languages/en.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import ControlLotSetup, { buildControlLotPayload } from "./ControlLotSetup";
 
-const renderWithIntl = (component) =>
-  render(
-    <BrowserRouter>
+const VERIFY_ROUTE =
+  "/analyzers/7/mappings?setup=1&step=verify&profile=astm%2Fgx";
+
+const renderWithIntl = (
+  component,
+  entry = `/analyzers/qc/control-lots/new?analyzerId=7&returnTo=${encodeURIComponent(
+    VERIFY_ROUTE,
+  )}`,
+) => {
+  const history = createMemoryHistory({ initialEntries: [entry] });
+  const result = render(
+    <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
-        {component}
+        <Route path="/analyzers/qc/control-lots/new">{component}</Route>
       </IntlProvider>
-    </BrowserRouter>,
+    </Router>,
   );
+  return { ...result, history };
+};
 
 describe("buildControlLotPayload", () => {
   test("testBuildPayload_PreservesAnalyzerAndTestIdsAsStrings", () => {
@@ -77,5 +80,16 @@ describe("ControlLotSetup", () => {
     expect(
       await screen.findByTestId("control-lot-analyzer-dropdown"),
     ).toHaveTextContent("Analyzer 7");
+  });
+
+  test("testCancel_ReturnsToOriginatingVerifyStep", async () => {
+    const { history } = renderWithIntl(<ControlLotSetup />);
+
+    await screen.findByTestId("control-lot-analyzer-dropdown");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(`${history.location.pathname}${history.location.search}`).toBe(
+      VERIFY_ROUTE,
+    );
   });
 });

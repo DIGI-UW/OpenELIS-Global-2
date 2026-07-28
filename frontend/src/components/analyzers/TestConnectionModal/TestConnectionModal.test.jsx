@@ -108,6 +108,9 @@ describe("TestConnectionModal", () => {
     // Assert: Verify analyzer info is displayed
     const analyzerInfo = screen.getByTestId("test-connection-analyzer-info");
     expect(analyzerInfo).toBeInTheDocument();
+    expect(screen.getByText("Name:")).toBeInTheDocument();
+    expect(screen.getByText("IP address:")).toBeInTheDocument();
+    expect(screen.getByText("Port:")).toBeInTheDocument();
     expect(screen.getByText("Test Analyzer 1")).toBeInTheDocument();
     expect(screen.getByText("192.168.1.50")).toBeInTheDocument();
     expect(screen.getByText("8080")).toBeInTheDocument();

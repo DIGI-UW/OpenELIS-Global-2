@@ -31,21 +31,6 @@
   color: var(--cds-text-secondary);
 }
 
-.analyzer-inline-steps {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.analyzer-inline-steps span {
-  padding: 0.25rem 0.75rem;
-  background: var(--cds-layer-02);
-  border: 1px solid var(--cds-border-subtle);
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
 .analyzer-inline-profile-summary {
   display: grid;
   grid-template-columns: minmax(12rem, 1fr) minmax(18rem, 2fr);
@@ -100,9 +85,5 @@
 
   .analyzer-inline-setup-header {
     flex-direction: column;
-  }
-
-  .analyzer-inline-steps {
-    justify-content: flex-start;
   }
 }

@@ -1,0 +1,14 @@
+.analyzer-setup-progress {
+  max-inline-size: 100%;
+}
+
+@media (max-width: 42rem) {
+  .analyzer-setup-progress {
+    overflow-x: auto;
+    padding-block-end: 0.5rem;
+  }
+
+  .analyzer-setup-progress .cds--progress-step {
+    min-inline-size: 8rem;
+  }
+}

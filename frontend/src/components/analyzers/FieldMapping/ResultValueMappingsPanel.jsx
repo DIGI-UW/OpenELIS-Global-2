@@ -9,6 +9,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
+import AnalyzerConfigTable from "../AnalyzerConfigTable/AnalyzerConfigTable";
 
 const ResultOptionSelector = ({
   analyzerId,
@@ -224,6 +225,150 @@ const ResultValueMappingsPanel = ({
     );
   };
 
+  const mappingHeaders = [
+    {
+      key: "analyzerValue",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.analyzerValue",
+      }),
+    },
+    {
+      key: "openelisValue",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.openelisValue",
+      }),
+    },
+    {
+      key: "testCode",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.testCode",
+      }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.status",
+      }),
+    },
+  ];
+  const mappingRows = mappings.map((mapping, index) => ({
+    id: `mapping-${index}`,
+    analyzerValue: mapping.analyzerValue,
+    openelisValue: mapping.openelisLabel || mapping.openelisValue || "",
+    testCode: mapping.testCode || "-",
+    status:
+      mapping.bindingStatus ||
+      (mapping.active === false ? "INACTIVE" : "ACTIVE"),
+  }));
+  const pendingHeaders = [
+    {
+      key: "analyzerValue",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.analyzerValue",
+      }),
+    },
+    {
+      key: "testCode",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.testCode",
+      }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.status",
+      }),
+    },
+    {
+      key: "openelisValue",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.openelisValue",
+      }),
+    },
+    {
+      key: "actions",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.resultValues.actions",
+      }),
+    },
+  ];
+  const pendingRows = unresolvedPendingValues.map((pendingValue) => ({
+    id: pendingValue.id,
+    analyzerValue: pendingValue.analyzerValue,
+    testCode: pendingValue.testCode || "-",
+    status: pendingValue.status,
+    openelisValue: "",
+    actions: "",
+  }));
+
+  const renderMappingCell = (cell, row) => {
+    const index = Number(row.id.replace("mapping-", ""));
+    const mapping = mappings[index];
+    if (!mapping) return cell.value;
+    if (cell.info.header === "openelisValue") {
+      return mapping.active !== false && mapping.bindingStatus !== "BOUND" ? (
+        <ResultOptionSelector
+          analyzerId={analyzerId}
+          resultValue={mapping}
+          selectorId={`mapping-${index}`}
+          selectedOption={mappingValues[mappingKey(mapping)]}
+          onChange={(option) =>
+            setMappingValues((current) => ({
+              ...current,
+              [mappingKey(mapping)]: option,
+            }))
+          }
+        />
+      ) : (
+        mapping.openelisLabel || mapping.openelisValue
+      );
+    }
+    if (cell.info.header === "status") {
+      return renderStatusTag(cell.value);
+    }
+    return cell.value;
+  };
+
+  const renderPendingCell = (cell, row) => {
+    const pendingValue = unresolvedPendingValues.find(
+      (value) => value.id === row.id,
+    );
+    if (!pendingValue) return cell.value;
+    if (cell.info.header === "status") {
+      return renderStatusTag(pendingValue.status);
+    }
+    if (cell.info.header === "openelisValue") {
+      return (
+        <ResultOptionSelector
+          analyzerId={analyzerId}
+          resultValue={pendingValue}
+          selectorId={`pending-${pendingValue.id}`}
+          selectedOption={resolveValues[pendingValue.id]}
+          onChange={(option) =>
+            setResolveValues((current) => ({
+              ...current,
+              [pendingValue.id]: option,
+            }))
+          }
+        />
+      );
+    }
+    if (cell.info.header === "actions") {
+      return (
+        <Button
+          kind="ghost"
+          size="sm"
+          disabled={busyId === pendingValue.id}
+          onClick={() => handleResolve(pendingValue)}
+          data-testid={`result-value-resolve-${pendingValue.id}`}
+        >
+          <FormattedMessage id="analyzer.fieldMapping.resultValues.resolve" />
+        </Button>
+      );
+    }
+    return cell.value;
+  };
+
   return (
     <div
       data-testid="result-value-mappings-panel"
@@ -253,67 +398,15 @@ const ResultValueMappingsPanel = ({
           <FormattedMessage id="analyzer.fieldMapping.resultValues.empty" />
         </p>
       ) : (
-        <table
-          className="result-value-mappings-table"
-          data-testid="result-value-mappings-table"
-          aria-label={intl.formatMessage({
+        <AnalyzerConfigTable
+          headers={mappingHeaders}
+          rows={mappingRows}
+          tableLabel={intl.formatMessage({
             id: "analyzer.fieldMapping.resultValues.tableLabel",
           })}
-        >
-          <thead>
-            <tr>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.analyzerValue" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.openelisValue" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.testCode" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.status" />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {mappings.map((mapping, index) => (
-              <tr
-                key={`${mapping.testCode || "all"}-${
-                  mapping.analyzerValue || index
-                }`}
-              >
-                <td>{mapping.analyzerValue}</td>
-                <td>
-                  {mapping.active !== false &&
-                  mapping.bindingStatus !== "BOUND" ? (
-                    <ResultOptionSelector
-                      analyzerId={analyzerId}
-                      resultValue={mapping}
-                      selectorId={`mapping-${index}`}
-                      selectedOption={mappingValues[mappingKey(mapping)]}
-                      onChange={(option) =>
-                        setMappingValues((current) => ({
-                          ...current,
-                          [mappingKey(mapping)]: option,
-                        }))
-                      }
-                    />
-                  ) : (
-                    mapping.openelisLabel || mapping.openelisValue
-                  )}
-                </td>
-                <td>{mapping.testCode || "-"}</td>
-                <td>
-                  {renderStatusTag(
-                    mapping.bindingStatus ||
-                      (mapping.active === false ? "INACTIVE" : "ACTIVE"),
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          testId="result-value-mappings-table"
+          renderCell={renderMappingCell}
+        />
       )}
       {hasUnboundMappings && (
         <Button
@@ -335,67 +428,15 @@ const ResultValueMappingsPanel = ({
           <FormattedMessage id="analyzer.fieldMapping.resultValues.pendingEmpty" />
         </p>
       ) : (
-        <table
-          className="result-value-mappings-table"
-          data-testid="pending-result-values-table"
-          aria-label={intl.formatMessage({
+        <AnalyzerConfigTable
+          headers={pendingHeaders}
+          rows={pendingRows}
+          tableLabel={intl.formatMessage({
             id: "analyzer.fieldMapping.resultValues.pendingTableLabel",
           })}
-        >
-          <thead>
-            <tr>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.analyzerValue" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.testCode" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.status" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.openelisValue" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.resultValues.actions" />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {unresolvedPendingValues.map((pendingValue) => (
-              <tr key={pendingValue.id}>
-                <td>{pendingValue.analyzerValue}</td>
-                <td>{pendingValue.testCode || "-"}</td>
-                <td>{renderStatusTag(pendingValue.status)}</td>
-                <td>
-                  <ResultOptionSelector
-                    analyzerId={analyzerId}
-                    resultValue={pendingValue}
-                    selectorId={`pending-${pendingValue.id}`}
-                    selectedOption={resolveValues[pendingValue.id]}
-                    onChange={(option) =>
-                      setResolveValues((current) => ({
-                        ...current,
-                        [pendingValue.id]: option,
-                      }))
-                    }
-                  />
-                </td>
-                <td>
-                  <Button
-                    kind="ghost"
-                    size="sm"
-                    disabled={busyId === pendingValue.id}
-                    onClick={() => handleResolve(pendingValue)}
-                    data-testid={`result-value-resolve-${pendingValue.id}`}
-                  >
-                    <FormattedMessage id="analyzer.fieldMapping.resultValues.resolve" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          testId="pending-result-values-table"
+          renderCell={renderPendingCell}
+        />
       )}
     </div>
   );

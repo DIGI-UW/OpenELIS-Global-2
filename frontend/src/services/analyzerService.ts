@@ -113,7 +113,7 @@ export const copyMappings = (
 
 /**
  * Get all analyzers with optional filters
- * @param {Object} filters - Optional filters { status, search }
+ * @param {Object} filters - Optional filters { status, search, testUnit, analyzerType }
  * @param {Function} callback - Callback function (data) => void
  * @param {AbortSignal|null} signal - Optional AbortSignal to cancel on unmount
  */
@@ -131,6 +131,12 @@ export const getAnalyzers = (
     }
     if (filters.search) {
       params.append("search", filters.search);
+    }
+    if (filters.testUnit) {
+      params.append("testUnit", filters.testUnit);
+    }
+    if (filters.analyzerType) {
+      params.append("analyzerType", filters.analyzerType);
     }
   }
 

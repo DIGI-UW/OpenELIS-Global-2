@@ -28,7 +28,7 @@ import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import PageTitle from "../../common/PageTitle/PageTitle";
+import PageHeader from "../../common/PageHeader/PageHeader";
 
 const STATUS_TAG = {
   ESTABLISHMENT: "gray",
@@ -137,7 +137,7 @@ const ControlLotList = () => {
 
   return (
     <div data-testid="control-lot-list">
-      <PageTitle
+      <PageHeader
         breadcrumbs={[
           {
             label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),

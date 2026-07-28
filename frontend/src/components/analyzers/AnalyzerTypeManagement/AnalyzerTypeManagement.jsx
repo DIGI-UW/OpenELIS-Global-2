@@ -1,25 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Column,
-  DataTable,
+  Dropdown,
   Grid,
   InlineNotification,
   Loading,
   Search,
   Tag,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from "@carbon/react";
-import { Launch } from "@carbon/icons-react";
+import { ArrowRight } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import PageHeader from "../../common/PageHeader/PageHeader";
+import AnalyzerConfigTable from "../AnalyzerConfigTable/AnalyzerConfigTable";
+import {
+  buildAnalyzerSetupUrl,
+  buildProfileCatalogUrl,
+  parseProfileCatalogQuery,
+} from "../analyzerRoutes";
+import "./AnalyzerTypeManagement.css";
 
 const profileDomId = (id) => String(id || "").replace(/[^a-zA-Z0-9_-]/g, "-");
 
@@ -33,18 +34,30 @@ const readinessTagType = (status) => {
   return "gray";
 };
 
+const profileReadinessStates = ["", "DRAFT", "PENDING", "READY"];
+const profileCategoryMessageIds = new Set([
+  "analyzer.type.chemistry",
+  "analyzer.type.coagulation",
+  "analyzer.type.hematology",
+  "analyzer.type.immunology",
+  "analyzer.type.microbiology",
+  "analyzer.type.molecular",
+]);
+
 const AnalyzerTypeManagement = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
 
   const [profiles, setProfiles] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
+  const routeState = useMemo(
+    () => parseProfileCatalogQuery(location.search),
+    [location.search],
+  );
 
-  const loadProfiles = useCallback(() => {
-    setLoading(true);
-    setNotification(null);
+  useEffect(() => {
     getFromOpenElisServer("/rest/analyzer/profiles", (data) => {
       setLoading(false);
       if (Array.isArray(data)) {
@@ -62,29 +75,30 @@ const AnalyzerTypeManagement = () => {
     });
   }, [intl]);
 
-  useEffect(() => {
-    loadProfiles();
-  }, [loadProfiles]);
-
   const filteredProfiles = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return profiles;
-    }
-    return profiles.filter((profile) =>
-      [
-        profile.displayName,
-        profile.analyzerName,
-        profile.id,
-        profile.protocol,
-        profile.category,
-        profile.manufacturer,
-        profile.readinessStatus,
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term)),
-    );
-  }, [profiles, searchTerm]);
+    const term = routeState.search.trim().toLowerCase();
+    return profiles.filter((profile) => {
+      const matchesSearch =
+        !term ||
+        [
+          profile.displayName,
+          profile.analyzerName,
+          profile.id,
+          profile.protocol,
+          profile.category,
+          profile.manufacturer,
+          profile.readinessStatus,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(term));
+      const matchesProtocol =
+        !routeState.protocol || profile.protocol === routeState.protocol;
+      const matchesReadiness =
+        !routeState.readiness ||
+        profile.readinessStatus === routeState.readiness;
+      return matchesSearch && matchesProtocol && matchesReadiness;
+    });
+  }, [profiles, routeState]);
 
   const headers = [
     {
@@ -139,15 +153,88 @@ const AnalyzerTypeManagement = () => {
   }));
 
   const handleSetup = (profileId) => {
-    history.push(`/analyzers?add=1&profile=${encodeURIComponent(profileId)}`);
+    history.push(
+      buildAnalyzerSetupUrl("instrument", {
+        profileId,
+        returnTo: `${location.pathname}${location.search}`,
+      }),
+    );
+  };
+
+  const updateRouteState = (changes) => {
+    history.replace(buildProfileCatalogUrl({ ...routeState, ...changes }));
+  };
+
+  const readinessLabel = (status) =>
+    status
+      ? intl.formatMessage({
+          id: `analyzerType.readiness.${status.toLowerCase()}`,
+        })
+      : intl.formatMessage({ id: "analyzerType.filter.allReadiness" });
+
+  const categoryLabel = (category) => {
+    const messageId = `analyzer.type.${String(category || "").toLowerCase()}`;
+    return profileCategoryMessageIds.has(messageId)
+      ? intl.formatMessage({ id: messageId })
+      : category;
+  };
+
+  const renderProfileCell = (cell, row) => {
+    const domId = profileDomId(row.id);
+    if (cell.info.header === "readinessStatus") {
+      return (
+        <Tag type={readinessTagType(cell.value)}>
+          {readinessLabel(cell.value)}
+        </Tag>
+      );
+    }
+    if (cell.info.header === "category") {
+      return categoryLabel(cell.value);
+    }
+    if (cell.info.header === "testMappingCount") {
+      return (
+        <span data-testid={`profile-test-mapping-count-${domId}`}>
+          {cell.value}
+        </span>
+      );
+    }
+    if (cell.info.header === "qcRuleCount") {
+      return (
+        <span data-testid={`profile-qc-rule-count-${domId}`}>{cell.value}</span>
+      );
+    }
+    if (cell.info.header === "actions") {
+      return (
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={ArrowRight}
+          data-testid={`profile-setup-${domId}`}
+          onClick={() => handleSetup(cell.value)}
+        >
+          <FormattedMessage id="analyzerType.button.setup" />
+        </Button>
+      );
+    }
+    return cell.value;
   };
 
   return (
     <Grid fullWidth>
       <Column lg={16} md={8} sm={4}>
-        <h2>
-          <FormattedMessage id="analyzerType.page.title" />
-        </h2>
+        <PageHeader
+          breadcrumbs={[
+            {
+              label: intl.formatMessage({
+                id: "analyzer.page.hierarchy.list",
+              }),
+              link: "/analyzers",
+            },
+            {
+              label: intl.formatMessage({ id: "analyzerType.page.title" }),
+            },
+          ]}
+        />
 
         {notification && (
           <InlineNotification
@@ -159,115 +246,74 @@ const AnalyzerTypeManagement = () => {
           />
         )}
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "1rem",
-          }}
-        >
-          <Search
-            size="lg"
-            placeholder={intl.formatMessage({
-              id: "analyzerType.search.placeholder",
-            })}
-            labelText={intl.formatMessage({ id: "analyzerType.search.label" })}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ maxWidth: "400px" }}
-          />
-        </div>
+        <Grid narrow className="analyzer-type-filters">
+          <Column lg={8} md={4} sm={4}>
+            <Search
+              size="lg"
+              placeholder={intl.formatMessage({
+                id: "analyzerType.search.placeholder",
+              })}
+              labelText={intl.formatMessage({
+                id: "analyzerType.search.label",
+              })}
+              value={routeState.search}
+              onChange={(event) =>
+                updateRouteState({ search: event.target.value })
+              }
+            />
+          </Column>
+          <Column lg={4} md={2} sm={4}>
+            <Dropdown
+              id="analyzer-type-protocol-filter"
+              titleText={intl.formatMessage({
+                id: "analyzerType.column.protocol",
+              })}
+              label={intl.formatMessage({
+                id: "analyzerType.filter.allProtocols",
+              })}
+              items={["", "ASTM", "HL7", "FILE"]}
+              selectedItem={routeState.protocol}
+              itemToString={(item) =>
+                item ||
+                intl.formatMessage({
+                  id: "analyzerType.filter.allProtocols",
+                })
+              }
+              onChange={({ selectedItem }) =>
+                updateRouteState({ protocol: selectedItem || "" })
+              }
+            />
+          </Column>
+          <Column lg={4} md={2} sm={4}>
+            <Dropdown
+              id="analyzer-type-readiness-filter"
+              titleText={intl.formatMessage({
+                id: "analyzerType.column.readiness",
+              })}
+              label={intl.formatMessage({
+                id: "analyzerType.filter.allReadiness",
+              })}
+              items={profileReadinessStates}
+              selectedItem={routeState.readiness}
+              itemToString={readinessLabel}
+              onChange={({ selectedItem }) =>
+                updateRouteState({ readiness: selectedItem || "" })
+              }
+            />
+          </Column>
+        </Grid>
 
         {loading ? (
           <Loading withOverlay={false} />
         ) : (
-          <DataTable rows={rows} headers={headers}>
-            {({
-              rows,
-              headers,
-              getTableProps,
-              getHeaderProps,
-              getRowProps,
-            }) => (
-              <TableContainer>
-                <Table {...getTableProps()}>
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        {...getRowProps({ row })}
-                        data-testid={`profile-row-${profileDomId(row.id)}`}
-                      >
-                        {row.cells.map((cell) => {
-                          const domId = profileDomId(row.id);
-                          if (cell.info.header === "readinessStatus") {
-                            return (
-                              <TableCell key={cell.id}>
-                                <Tag type={readinessTagType(cell.value)}>
-                                  {cell.value}
-                                </Tag>
-                              </TableCell>
-                            );
-                          }
-                          if (cell.info.header === "testMappingCount") {
-                            return (
-                              <TableCell
-                                key={cell.id}
-                                data-testid={`profile-test-mapping-count-${domId}`}
-                              >
-                                {cell.value}
-                              </TableCell>
-                            );
-                          }
-                          if (cell.info.header === "qcRuleCount") {
-                            return (
-                              <TableCell
-                                key={cell.id}
-                                data-testid={`profile-qc-rule-count-${domId}`}
-                              >
-                                {cell.value}
-                              </TableCell>
-                            );
-                          }
-                          if (cell.info.header === "actions") {
-                            return (
-                              <TableCell key={cell.id}>
-                                <Button
-                                  kind="ghost"
-                                  size="sm"
-                                  renderIcon={Launch}
-                                  data-testid={`profile-setup-${domId}`}
-                                  onClick={() => handleSetup(cell.value)}
-                                >
-                                  <FormattedMessage id="analyzerType.button.setup" />
-                                </Button>
-                              </TableCell>
-                            );
-                          }
-                          return (
-                            <TableCell key={cell.id}>{cell.value}</TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </DataTable>
+          <AnalyzerConfigTable
+            headers={headers}
+            rows={rows}
+            tableLabel={intl.formatMessage({ id: "analyzerType.page.title" })}
+            testId="analyzer-profile-table"
+            getRowTestId={(row) => `profile-row-${profileDomId(row.id)}`}
+            renderCell={renderProfileCell}
+          />
         )}
       </Column>
     </Grid>

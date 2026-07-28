@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Button, ButtonSet, InlineNotification, Loading } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import QcRuleRow from "./QcRuleRow";
-import PageTitle from "../../common/PageTitle/PageTitle";
+import PageHeader from "../../common/PageHeader/PageHeader";
 import {
   getAnalyzer,
   getQcRules,
@@ -12,6 +12,7 @@ import {
   updateQcRule,
   deleteQcRule,
 } from "../../../services/analyzerService";
+import { resolveAnalyzerReturnTo } from "../analyzerRoutes";
 
 const EMPTY_RULE = {
   ruleType: "FIELD_EQUALS",
@@ -23,7 +24,13 @@ const EMPTY_RULE = {
 const QcRulePage = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { id: analyzerId } = useParams();
+  const requestedReturnTo = new URLSearchParams(location.search || "").get(
+    "returnTo",
+  );
+  const returnTo = resolveAnalyzerReturnTo(requestedReturnTo);
+  const hasSetupReturn = Boolean(requestedReturnTo);
   const [analyzer, setAnalyzer] = useState(null);
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -154,7 +161,7 @@ const QcRulePage = () => {
       }
 
       setSaving(false);
-      history.push("/analyzers");
+      history.push(returnTo);
     } catch (error) {
       setSaving(false);
       setNotification({
@@ -167,12 +174,26 @@ const QcRulePage = () => {
 
   return (
     <div data-testid="qc-rule-page" className="qc-rule-page">
-      <PageTitle
+      <PageHeader
         breadcrumbs={[
           {
             label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),
             link: "/analyzers",
           },
+          {
+            label: analyzer?.name || "...",
+            link: hasSetupReturn ? returnTo : `/analyzers/${analyzerId}/edit`,
+          },
+          ...(hasSetupReturn
+            ? [
+                {
+                  label: intl.formatMessage({
+                    id: "analyzer.setup.step.verify",
+                  }),
+                  link: returnTo,
+                },
+              ]
+            : []),
           {
             label: intl.formatMessage(
               { id: "analyzer.qcRules.modal.title" },
@@ -235,7 +256,7 @@ const QcRulePage = () => {
       <ButtonSet className="qc-rule-actions">
         <Button
           kind="secondary"
-          onClick={() => history.push("/analyzers")}
+          onClick={() => history.push(returnTo)}
           disabled={saving}
         >
           {intl.formatMessage({ id: "label.button.cancel" })}

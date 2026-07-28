@@ -31,7 +31,7 @@ import {
   updateCustomFieldType,
   deleteCustomFieldType,
 } from "../../../services/analyzerService";
-import PageTitle from "../../common/PageTitle/PageTitle";
+import PageHeader from "../../common/PageHeader/PageHeader";
 import "./CustomFieldTypeManagement.css";
 
 /**
@@ -338,7 +338,7 @@ const CustomFieldTypeManagement = () => {
     >
       {/* Header */}
       <div className="custom-field-type-management-header">
-        <PageTitle
+        <PageHeader
           breadcrumbs={[
             {
               label: intl.formatMessage({

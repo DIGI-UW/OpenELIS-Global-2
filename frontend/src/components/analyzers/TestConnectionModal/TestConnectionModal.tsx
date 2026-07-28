@@ -135,19 +135,43 @@ const TestConnectionModal = ({
         {analyzer && (
           <div data-testid="test-connection-analyzer-info">
             <p>
-              <strong>Name:</strong> {analyzer.name}
+              <strong>
+                {intl.formatMessage({
+                  id: "analyzer.testConnection.field.name",
+                })}
+                :
+              </strong>{" "}
+              {analyzer.name}
             </p>
             {analyzer.importDirectory ? (
               <p>
-                <strong>Import Directory:</strong> {analyzer.importDirectory}
+                <strong>
+                  {intl.formatMessage({
+                    id: "analyzer.testConnection.field.importDirectory",
+                  })}
+                  :
+                </strong>{" "}
+                {analyzer.importDirectory}
               </p>
             ) : (
               <>
                 <p>
-                  <strong>IP:</strong> {analyzer.ipAddress}
+                  <strong>
+                    {intl.formatMessage({
+                      id: "analyzer.testConnection.field.ipAddress",
+                    })}
+                    :
+                  </strong>{" "}
+                  {analyzer.ipAddress}
                 </p>
                 <p>
-                  <strong>Port:</strong> {analyzer.port}
+                  <strong>
+                    {intl.formatMessage({
+                      id: "analyzer.testConnection.field.port",
+                    })}
+                    :
+                  </strong>{" "}
+                  {analyzer.port}
                 </p>
               </>
             )}
@@ -185,7 +209,13 @@ const TestConnectionModal = ({
               <div>
                 {logs.map((log, index) => (
                   <div key={index} data-testid={`test-connection-log-${index}`}>
-                    <strong>{log.level}:</strong> {log.message}
+                    <strong>
+                      {intl.formatMessage({
+                        id: `analyzer.testConnection.logLevel.${log.level}`,
+                      })}
+                      :
+                    </strong>{" "}
+                    {log.message}
                   </div>
                 ))}
               </div>

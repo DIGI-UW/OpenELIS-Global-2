@@ -3,15 +3,20 @@ import {
   Button,
   InlineLoading,
   InlineNotification,
-  Link,
+  Link as CarbonLink,
   Stack,
   Tag,
 } from "@carbon/react";
 import { CheckmarkFilled } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Link as RouterLink, useLocation } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";
+import {
+  buildAnalyzerControlLotUrl,
+  buildAnalyzerQcRuleUrl,
+} from "../analyzerRoutes";
 
-const blockerMessageIds = {
+export const blockerMessageIds = {
   NO_TEST_MAPPINGS: "analyzer.setupVerification.blocker.noTestMappings",
   PENDING_ANALYZER_CODES:
     "analyzer.setupVerification.blocker.pendingAnalyzerCodes",
@@ -29,6 +34,7 @@ const blockerMessageIds = {
 
 const SetupVerificationPanel = ({ analyzerId }) => {
   const intl = useIntl();
+  const location = useLocation();
   const [verification, setVerification] = useState(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
@@ -95,6 +101,7 @@ const SetupVerificationPanel = ({ analyzerId }) => {
   const current = verification?.currentlyVerified === true;
   const canVerify =
     verification?.mappingReady === true && verification?.qcReady === true;
+  const currentRoute = `${location.pathname}${location.search}`;
 
   return (
     <div
@@ -175,12 +182,20 @@ const SetupVerificationPanel = ({ analyzerId }) => {
         >
           <FormattedMessage id="analyzer.setupVerification.verify" />
         </Button>
-        <Link href={`/analyzers/${analyzerId}/qc-rules`}>
+        <CarbonLink
+          as={RouterLink}
+          to={buildAnalyzerQcRuleUrl(analyzerId, currentRoute)}
+          data-testid="analyzer-setup-manage-qc-rules"
+        >
           <FormattedMessage id="analyzer.setupVerification.manageRules" />
-        </Link>
-        <Link href={`/analyzers/qc/control-lots/new?analyzerId=${analyzerId}`}>
+        </CarbonLink>
+        <CarbonLink
+          as={RouterLink}
+          to={buildAnalyzerControlLotUrl(analyzerId, currentRoute)}
+          data-testid="analyzer-setup-manage-control-lots"
+        >
           <FormattedMessage id="analyzer.setupVerification.manageLots" />
-        </Link>
+        </CarbonLink>
       </Stack>
     </div>
   );

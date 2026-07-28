@@ -42,6 +42,7 @@ import BoxDetails from "./components/shipment/BoxDetails";
 import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
+import { buildAnalyzerSetupUrl } from "./components/analyzers/analyzerRoutes";
 
 /**
  * Wraps `React.lazy` with retry-on-failure semantics for the dynamic
@@ -99,6 +100,10 @@ const AnalyzerTypesPage = lazyWithRetry(
 );
 const AnalyzerFormPage = lazyWithRetry(
   () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
+);
+const AnalyzerSetupReviewPage = lazyWithRetry(
+  () =>
+    import("./components/analyzers/AnalyzerSetupReview/AnalyzerSetupReview"),
 );
 const QcRulePage = lazyWithRetry(
   () => import("./components/analyzers/QcRules/QcRuleBuilderModal"),
@@ -998,7 +1003,9 @@ export default function App() {
                 <SecureRoute
                   path="/analyzers/new"
                   exact
-                  component={() => <Redirect to="/analyzers?add=1" />}
+                  component={() => (
+                    <Redirect to={buildAnalyzerSetupUrl("instrument")} />
+                  )}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
@@ -1026,6 +1033,18 @@ export default function App() {
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
+                  path="/analyzers/:id/review"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerSetupReviewPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
                   path="/analyzers"
                   exact
                   component={() => (
@@ -1047,7 +1066,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/errors"
@@ -1089,43 +1108,43 @@ export default function App() {
                   path="/analyzers/qc/instruments/:instrumentId"
                   exact
                   component={() => <InstrumentDetailPage />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={[Roles.LAB_SUPERVISOR, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/db"
                   exact
                   component={() => <QCDashboard />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={[Roles.LAB_SUPERVISOR, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/charts/:analyzerId"
                   exact
                   component={() => <ControlChartDetail />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={[Roles.LAB_SUPERVISOR, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots"
                   exact
                   component={() => <ControlLotList />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={[Roles.LAB_SUPERVISOR, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots/new"
                   exact
                   component={() => <ControlLotSetup />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={[Roles.LAB_SUPERVISOR, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots/:id"
                   exact
                   component={() => <ControlLotSetup />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={[Roles.LAB_SUPERVISOR, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/rule-config"
                   exact
                   component={() => <RuleConfigPanel />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={[Roles.LAB_SUPERVISOR, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/PatientHistory"

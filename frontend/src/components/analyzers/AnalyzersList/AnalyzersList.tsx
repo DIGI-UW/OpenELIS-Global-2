@@ -29,6 +29,7 @@ import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import {
+  getAnalyzerLabUnits,
   getAnalyzers,
   type AnalyzerFilters,
   type AnalyzersResponse,
@@ -40,10 +41,16 @@ import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 // QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 
-import PageTitle from "../../common/PageTitle/PageTitle";
+import PageHeader from "../../common/PageHeader/PageHeader";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../../utils/Utils";
 import type { Analyzer, AnalyzerStatus } from "../types";
+import {
+  buildAnalyzerListUrl,
+  buildAnalyzerSetupUrl,
+  parseAnalyzerListQuery,
+} from "../analyzerRoutes";
+import { buildAnalyzerTypeOptions } from "../analyzerOptions";
 import "./AnalyzersList.css";
 
 interface AnalyzerStats {
@@ -76,6 +83,11 @@ interface AnalyzerTableRow {
   _analyzer: Analyzer;
 }
 
+interface LabUnit {
+  id: string;
+  value: string;
+}
+
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -93,6 +105,7 @@ const AnalyzersList = () => {
     testUnit: "",
     analyzerType: "",
   });
+  const [labUnits, setLabUnits] = useState<LabUnit[]>([]);
   const [stats, setStats] = useState<AnalyzerStats>({
     total: 0,
     active: 0,
@@ -158,26 +171,32 @@ const AnalyzersList = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams(window.location.search);
-    const initialSearch = params.get("search") || "";
-    const initialStatus = params.get("status") || "";
-    const initialTestUnit = params.get("testUnit") || "";
-    const initialAnalyzerType = params.get("analyzerType") || "";
-    setSearchTerm(initialSearch);
-    const initialFilters = {
-      status: initialStatus,
-      testUnit: initialTestUnit,
-      analyzerType: initialAnalyzerType,
+    const routeState = parseAnalyzerListQuery(location.search);
+    setSearchTerm(routeState.search);
+    const routeFilters = {
+      status: routeState.status,
+      testUnit: routeState.testUnit,
+      analyzerType: routeState.analyzerType,
     };
-    setFilters(initialFilters);
+    setFilters(routeFilters);
     loadAnalyzers(
       {
-        ...initialFilters,
-        ...(initialSearch ? { search: initialSearch } : {}),
+        ...routeFilters,
+        ...(routeState.search ? { search: routeState.search } : {}),
       },
       controller.signal,
     );
 
+    return () => controller.abort();
+  }, [loadAnalyzers, location.search]);
+
+  useEffect(() => {
+    getAnalyzerLabUnits((data) => {
+      setLabUnits(Array.isArray(data) ? data : []);
+    });
+  }, []);
+
+  useEffect(() => {
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
     if (storedScrollY) {
       try {
@@ -192,11 +211,19 @@ const AnalyzersList = () => {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
-      controller.abort();
       window.removeEventListener("beforeunload", onBeforeUnload);
       sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
     };
-  }, [loadAnalyzers]);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -206,18 +233,12 @@ const AnalyzersList = () => {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      const searchFilters: AnalyzerFilters = { ...filters };
-      if (value.trim()) {
-        searchFilters.search = value.trim();
-      }
-      loadAnalyzers(searchFilters);
-      const params = new URLSearchParams(window.location.search);
-      if (value.trim()) {
-        params.set("search", value.trim());
-      } else {
-        params.delete("search");
-      }
-      history.replace({ search: params.toString() });
+      history.replace(
+        buildAnalyzerListUrl({
+          ...filters,
+          search: value,
+        }),
+      );
     }, 300);
   };
 
@@ -227,14 +248,12 @@ const AnalyzersList = () => {
   ) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
-    loadAnalyzers(newFilters);
-    const params = new URLSearchParams(window.location.search);
-    if (value) {
-      params.set(filterName, value);
-    } else {
-      params.delete(filterName);
-    }
-    history.replace({ search: params.toString() });
+    history.replace(
+      buildAnalyzerListUrl({
+        ...newFilters,
+        search: searchTerm,
+      }),
+    );
   };
 
   const headers = [
@@ -300,43 +319,55 @@ const AnalyzersList = () => {
 
   const setupParams = new URLSearchParams(location.search || "");
   const isSetupFlow = canConfigure && setupParams.get("add") === "1";
-
-  const isSetupReady = (analyzer) =>
-    analyzer?.setupVerification?.readyForActivation === true;
+  const analyzerTypeOptions = [
+    {
+      id: "",
+      text: intl.formatMessage({ id: "analyzer.filter.type.all" }),
+    },
+    ...buildAnalyzerTypeOptions(intl),
+  ];
+  const testUnitOptions = [
+    {
+      id: "",
+      value: intl.formatMessage({ id: "analyzer.filter.testUnit.all" }),
+    },
+    ...labUnits,
+  ];
 
   return (
     <div className="analyzers-list" data-testid="analyzers-list">
-      <div
-        className="analyzers-list-header"
-        data-testid="analyzers-list-header"
-      >
-        <div className="analyzers-list-header-title">
-          <PageTitle
-            breadcrumbs={[
-              {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.root",
-                }),
-              },
-              {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.list",
-                }),
-              },
-            ]}
-            subtitle={intl.formatMessage({ id: "analyzer.list.subtitle" })}
-          />
-        </div>
-        {canConfigure && (
-          <Button
-            kind="primary"
-            renderIcon={Add}
-            data-testid="add-analyzer-button"
-            onClick={() => history.push("/analyzers?add=1")}
-          >
-            {intl.formatMessage({ id: "analyzer.action.add" })}
-          </Button>
-        )}
+      <div data-testid="analyzers-list-header">
+        <PageHeader
+          breadcrumbs={[
+            {
+              label: intl.formatMessage({
+                id: "analyzer.page.hierarchy.list",
+              }),
+            },
+          ]}
+          subtitle={intl.formatMessage({ id: "analyzer.list.subtitle" })}
+          actions={
+            canConfigure ? (
+              <Button
+                kind="primary"
+                renderIcon={Add}
+                data-testid="add-analyzer-button"
+                onClick={() =>
+                  history.push(
+                    buildAnalyzerSetupUrl("instrument", {
+                      returnTo: buildAnalyzerListUrl({
+                        ...filters,
+                        search: searchTerm,
+                      }),
+                    }),
+                  )
+                }
+              >
+                {intl.formatMessage({ id: "analyzer.action.add" })}
+              </Button>
+            ) : null
+          }
+        />
       </div>
 
       {isSetupFlow && (
@@ -495,6 +526,45 @@ const AnalyzersList = () => {
               size="lg"
             />
           </Column>
+          <Column lg={4} md={4} sm={4}>
+            <Dropdown
+              id="analyzer-type-filter"
+              data-testid="analyzer-type-filter"
+              titleText={intl.formatMessage({ id: "analyzer.filter.type" })}
+              label={intl.formatMessage({ id: "analyzer.filter.type" })}
+              items={analyzerTypeOptions}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={
+                analyzerTypeOptions.find(
+                  (item) => item.id === filters.analyzerType,
+                ) || analyzerTypeOptions[0]
+              }
+              onChange={({ selectedItem }) =>
+                handleFilterChange("analyzerType", selectedItem?.id || "")
+              }
+              size="lg"
+            />
+          </Column>
+          <Column lg={4} md={4} sm={4}>
+            <Dropdown
+              id="analyzer-test-unit-filter"
+              data-testid="analyzer-test-unit-filter"
+              titleText={intl.formatMessage({
+                id: "analyzer.filter.testUnit",
+              })}
+              label={intl.formatMessage({ id: "analyzer.filter.testUnit" })}
+              items={testUnitOptions}
+              itemToString={(item) => (item ? item.value : "")}
+              selectedItem={
+                testUnitOptions.find((item) => item.id === filters.testUnit) ||
+                testUnitOptions[0]
+              }
+              onChange={({ selectedItem }) =>
+                handleFilterChange("testUnit", selectedItem?.id || "")
+              }
+              size="lg"
+            />
+          </Column>
         </Grid>
       </div>
 
@@ -600,29 +670,15 @@ const AnalyzersList = () => {
                                 unifiedStatus === "ERROR_PENDING"
                                   ? "analyzer.status.error_pending"
                                   : `analyzer.status.${unifiedStatus.toLowerCase()}`;
-                              const setupReady = isSetupReady(analyzer);
                               cellContent = (
-                                <div className="analyzer-status-tags">
-                                  <Tag
-                                    type={statusColor}
-                                    data-testid={`status-badge-${row.id}`}
-                                  >
-                                    {intl.formatMessage({
-                                      id: statusKey,
-                                    })}
-                                  </Tag>
-                                  <Tag
-                                    type={setupReady ? "green" : "warm-gray"}
-                                    size="sm"
-                                    data-testid={`analyzer-qc-readiness-${row.id}`}
-                                  >
-                                    {intl.formatMessage({
-                                      id: setupReady
-                                        ? "analyzer.setupReadiness.ready"
-                                        : "analyzer.setupReadiness.required",
-                                    })}
-                                  </Tag>
-                                </div>
+                                <Tag
+                                  type={statusColor}
+                                  data-testid={`status-badge-${row.id}`}
+                                >
+                                  {intl.formatMessage({
+                                    id: statusKey,
+                                  })}
+                                </Tag>
                               );
                             } else if (headerKey === "lastModified") {
                               testId = `analyzer-last-modified-${row.id}`;

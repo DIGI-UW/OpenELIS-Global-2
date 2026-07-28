@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, ComboBox, InlineNotification, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
+import AnalyzerConfigTable from "../AnalyzerConfigTable/AnalyzerConfigTable";
 
 const PendingCodesPanel = ({ analyzerId, pendingCodes = [], onUpdated }) => {
   const intl = useIntl();
@@ -94,6 +95,47 @@ const PendingCodesPanel = ({ analyzerId, pendingCodes = [], onUpdated }) => {
     );
   };
 
+  const headers = [
+    {
+      key: "code",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.pendingCodes.code",
+      }),
+    },
+    {
+      key: "seenCount",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.pendingCodes.seenCount",
+      }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.pendingCodes.status",
+      }),
+    },
+    {
+      key: "openelisTest",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.pendingCodes.openelisTest",
+      }),
+    },
+    {
+      key: "actions",
+      header: intl.formatMessage({
+        id: "analyzer.fieldMapping.pendingCodes.actions",
+      }),
+    },
+  ];
+  const rows = pendingCodes.map((code) => ({
+    id: code.id,
+    code: code.analyzerTestName,
+    seenCount: code.seenCount,
+    status: code.status,
+    openelisTest: code.openelisTestId || "",
+    actions: code.status,
+  }));
+
   return (
     <div data-testid="pending-codes-panel" className="pending-codes-panel">
       <h4>
@@ -117,34 +159,20 @@ const PendingCodesPanel = ({ analyzerId, pendingCodes = [], onUpdated }) => {
           <FormattedMessage id="analyzer.fieldMapping.pendingCodes.empty" />
         </p>
       ) : (
-        <table
-          className="pending-codes-table"
-          data-testid="pending-codes-table"
-          aria-label={intl.formatMessage({
+        <AnalyzerConfigTable
+          headers={headers}
+          rows={rows}
+          tableLabel={intl.formatMessage({
             id: "analyzer.fieldMapping.pendingCodes.tableLabel",
           })}
-        >
-          <thead>
-            <tr>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.pendingCodes.code" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.pendingCodes.seenCount" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.pendingCodes.status" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.pendingCodes.openelisTest" />
-              </th>
-              <th>
-                <FormattedMessage id="analyzer.fieldMapping.pendingCodes.actions" />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {pendingCodes.map((code) => {
+          testId="pending-codes-table"
+          renderCell={(cell, row) => {
+            const code = pendingCodes.find((item) => item.id === row.id);
+            if (!code) return cell.value;
+            if (cell.info.header === "status") {
+              return renderStatusTag(code.status);
+            }
+            if (cell.info.header === "openelisTest") {
               const selectedTest = Object.prototype.hasOwnProperty.call(
                 selectedTests,
                 code.id,
@@ -156,58 +184,64 @@ const PendingCodesPanel = ({ analyzerId, pendingCodes = [], onUpdated }) => {
               const isResolved =
                 code.status === "MAPPED" && Boolean(code.openelisTestId);
               return (
-                <tr key={code.id}>
-                  <td>{code.analyzerTestName}</td>
-                  <td>{code.seenCount}</td>
-                  <td>{renderStatusTag(code.status)}</td>
-                  <td>
-                    <ComboBox
-                      id={`pending-code-test-${code.id}`}
-                      items={testOptions}
-                      itemToString={optionLabel}
-                      selectedItem={selectedTest}
-                      onChange={({ selectedItem }) =>
-                        setSelectedTests((current) => ({
-                          ...current,
-                          [code.id]: selectedItem || null,
-                        }))
-                      }
-                      titleText={intl.formatMessage({
-                        id: "analyzer.fieldMapping.pendingCodes.openelisTest",
-                      })}
-                      placeholder={intl.formatMessage({
-                        id: "analyzer.fieldMapping.pendingCodes.selectTest",
-                      })}
-                      disabled={isResolved}
-                    />
-                  </td>
-                  <td>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      disabled={
-                        busyId === code.id || isResolved || !selectedTest
-                      }
-                      onClick={() => handleResolve(code.id, selectedTest?.id)}
-                      data-testid={`pending-code-map-${code.id}`}
-                    >
-                      <FormattedMessage id="analyzer.fieldMapping.pendingCodes.resolve" />
-                    </Button>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      disabled={busyId === code.id || code.status === "IGNORED"}
-                      onClick={() => handleStatusUpdate(code.id, "IGNORED")}
-                      data-testid={`pending-code-ignore-${code.id}`}
-                    >
-                      <FormattedMessage id="analyzer.fieldMapping.pendingCodes.ignore" />
-                    </Button>
-                  </td>
-                </tr>
+                <ComboBox
+                  id={`pending-code-test-${code.id}`}
+                  items={testOptions}
+                  itemToString={optionLabel}
+                  selectedItem={selectedTest}
+                  onChange={({ selectedItem }) =>
+                    setSelectedTests((current) => ({
+                      ...current,
+                      [code.id]: selectedItem || null,
+                    }))
+                  }
+                  titleText={intl.formatMessage({
+                    id: "analyzer.fieldMapping.pendingCodes.openelisTest",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "analyzer.fieldMapping.pendingCodes.selectTest",
+                  })}
+                  disabled={isResolved}
+                />
               );
-            })}
-          </tbody>
-        </table>
+            }
+            if (cell.info.header === "actions") {
+              const selectedTest = Object.prototype.hasOwnProperty.call(
+                selectedTests,
+                code.id,
+              )
+                ? selectedTests[code.id]
+                : testOptions.find(
+                    (option) => option.id === code.openelisTestId,
+                  ) || null;
+              const isResolved =
+                code.status === "MAPPED" && Boolean(code.openelisTestId);
+              return (
+                <>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    disabled={busyId === code.id || isResolved || !selectedTest}
+                    onClick={() => handleResolve(code.id, selectedTest?.id)}
+                    data-testid={`pending-code-map-${code.id}`}
+                  >
+                    <FormattedMessage id="analyzer.fieldMapping.pendingCodes.resolve" />
+                  </Button>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    disabled={busyId === code.id || code.status === "IGNORED"}
+                    onClick={() => handleStatusUpdate(code.id, "IGNORED")}
+                    data-testid={`pending-code-ignore-${code.id}`}
+                  >
+                    <FormattedMessage id="analyzer.fieldMapping.pendingCodes.ignore" />
+                  </Button>
+                </>
+              );
+            }
+            return cell.value;
+          }}
+        />
       )}
     </div>
   );

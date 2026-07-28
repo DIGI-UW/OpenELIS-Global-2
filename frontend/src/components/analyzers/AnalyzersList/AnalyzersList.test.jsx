@@ -22,21 +22,6 @@ vi.mock("../../../services/analyzerService", () => ({
   updateAnalyzer: vi.fn(),
 }));
 
-const mockHistory = {
-  push: vi.fn(),
-  replace: vi.fn(),
-};
-let mockLocationSearch = "";
-
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    useHistory: () => mockHistory,
-    useLocation: () => ({ pathname: "/analyzers", search: mockLocationSearch }),
-  };
-});
-
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
 // 1. React
@@ -55,7 +40,8 @@ import { IntlProvider } from "react-intl";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // 6. Router (if component uses routing)
-import { BrowserRouter } from "react-router-dom";
+import { Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
 
 // 7. Component under test
 import AnalyzersList from "./AnalyzersList";
@@ -64,6 +50,7 @@ import AnalyzersList from "./AnalyzersList";
 import {
   getAnalyzers,
   getAnalyzerTypes,
+  getAnalyzerLabUnits,
   getDefaultConfigs,
   getDefaultConfig,
   createAnalyzer,
@@ -76,9 +63,14 @@ import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 // ========== TEST SETUP ==========
 
 // Standard render helper with IntlProvider
-const renderWithIntl = (component, roles = ["Global Administrator"]) => {
-  return render(
-    <BrowserRouter>
+const renderWithIntl = (
+  component,
+  roles = ["Global Administrator"],
+  initialRoute = "/analyzers",
+) => {
+  const history = createMemoryHistory({ initialEntries: [initialRoute] });
+  const result = render(
+    <Router history={history}>
       <UserSessionDetailsContext.Provider
         value={{ userSessionDetails: { roles } }}
       >
@@ -86,8 +78,9 @@ const renderWithIntl = (component, roles = ["Global Administrator"]) => {
           {component}
         </IntlProvider>
       </UserSessionDetailsContext.Provider>
-    </BrowserRouter>,
+    </Router>,
   );
+  return { ...result, history };
 };
 
 // Mock data builder
@@ -108,10 +101,6 @@ describe("AnalyzersList", () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
-    mockHistory.push.mockClear();
-    mockHistory.replace.mockClear();
-    mockLocationSearch = "";
-
     // Default mock implementations for AnalyzerForm dependencies
     getAnalyzerTypes.mockImplementation((filters, callback) => {
       callback([
@@ -127,6 +116,13 @@ describe("AnalyzersList", () => {
           protocol: "HL7",
           isGenericPlugin: true,
         },
+      ]);
+    });
+
+    getAnalyzerLabUnits.mockImplementation((callback) => {
+      callback([
+        { id: "7", value: "Molecular Biology" },
+        { id: "8", value: "Chemistry" },
       ]);
     });
 
@@ -229,8 +225,9 @@ describe("AnalyzersList", () => {
     });
 
     // Act: Render component
+    let rendered;
     act(() => {
-      renderWithIntl(<AnalyzersList />);
+      rendered = renderWithIntl(<AnalyzersList />);
     });
 
     // Wait for initial data load
@@ -249,6 +246,9 @@ describe("AnalyzersList", () => {
       },
       { timeout: 2000 },
     );
+    expect(
+      `${rendered.history.location.pathname}${rendered.history.location.search}`,
+    ).toBe("/analyzers?search=Hematology");
   });
 
   /**
@@ -268,8 +268,9 @@ describe("AnalyzersList", () => {
     });
 
     // Act: Render component
+    let rendered;
     act(() => {
-      renderWithIntl(<AnalyzersList />);
+      rendered = renderWithIntl(<AnalyzersList />);
     });
 
     // Wait for component to render
@@ -282,7 +283,9 @@ describe("AnalyzersList", () => {
     await userEvent.click(addButton);
 
     // Assert: navigation occurred to the inline setup flow
-    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers?add=1");
+    expect(
+      `${rendered.history.location.pathname}${rendered.history.location.search}`,
+    ).toBe("/analyzers?add=1&step=instrument&returnTo=%2Fanalyzers");
   });
 
   test("testAnalyzerImportRole_SeesReadOnlyListWithoutConfigurationActions", async () => {
@@ -304,7 +307,6 @@ describe("AnalyzersList", () => {
   });
 
   test("testInlineAnalyzerSetup_UsesLabFacingFlowAndKeepsListVisible", async () => {
-    mockLocationSearch = "?add=1&profile=astm%2Fgenexpert-astm";
     getAnalyzers.mockImplementation((filters, callback) => {
       act(() => {
         callback({
@@ -343,7 +345,11 @@ describe("AnalyzersList", () => {
     });
 
     act(() => {
-      renderWithIntl(<AnalyzersList />);
+      renderWithIntl(
+        <AnalyzersList />,
+        ["Global Administrator"],
+        "/analyzers?add=1&step=instrument&profile=astm%2Fgenexpert-astm&returnTo=%2Fanalyzers",
+      );
     });
 
     expect(
@@ -409,7 +415,7 @@ describe("AnalyzersList", () => {
     expect(statusBadge.textContent).toMatch(/validation/i);
   });
 
-  test("testAnalyzerQcSetup_ShowsReadinessAndControlLotAction", async () => {
+  test("testAnalyzerQcSetup_ShowsControlLotActionWithoutFabricatedReadiness", async () => {
     const mockAnalyzers = [
       createMockAnalyzer({
         id: "1",
@@ -426,79 +432,26 @@ describe("AnalyzersList", () => {
       });
     });
 
+    let rendered;
     act(() => {
-      renderWithIntl(<AnalyzersList />);
+      rendered = renderWithIntl(<AnalyzersList />);
     });
 
+    expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
+      messages["analyzer.status.validation"],
+    );
     expect(
-      await screen.findByTestId("analyzer-qc-readiness-1"),
-    ).toHaveTextContent(messages["analyzer.setupReadiness.required"]);
+      screen.queryByTestId("analyzer-qc-readiness-1"),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
     await userEvent.click(
       await screen.findByTestId("analyzer-action-control-lots-1"),
     );
 
-    expect(mockHistory.push).toHaveBeenCalledWith(
-      "/analyzers/qc/control-lots/new?analyzerId=1",
-    );
-  });
-
-  test("testAnalyzerSetupReadiness_UsesCurrentVerificationState", async () => {
-    getAnalyzers.mockImplementation((filters, callback) => {
-      act(() => {
-        callback({
-          analyzers: [
-            createMockAnalyzer({
-              id: "1",
-              name: "Verified Analyzer",
-              status: "ACTIVE",
-              qcRules: [],
-              controlLots: [],
-              setupVerification: {
-                verificationState: "CURRENT",
-                readyForActivation: true,
-                currentlyVerified: true,
-              },
-            }),
-          ],
-        });
-      });
-    });
-
-    act(() => {
-      renderWithIntl(<AnalyzersList />);
-    });
-
     expect(
-      await screen.findByTestId("analyzer-qc-readiness-1"),
-    ).toHaveTextContent(messages["analyzer.setupReadiness.ready"]);
-  });
-
-  test("testAnalyzerSetupReadiness_DoesNotInferReadinessFromQcCollections", async () => {
-    getAnalyzers.mockImplementation((filters, callback) => {
-      act(() => {
-        callback({
-          analyzers: [
-            createMockAnalyzer({
-              id: "1",
-              name: "Unverified Analyzer",
-              status: "VALIDATION",
-              qcRules: [{ id: "rule-1", isActive: true }],
-              controlLots: [{ id: "lot-1", status: "ACTIVE" }],
-            }),
-          ],
-        });
-      });
-    });
-
-    act(() => {
-      renderWithIntl(<AnalyzersList />);
-    });
-
-    expect(
-      await screen.findByTestId("analyzer-qc-readiness-1"),
-    ).toHaveTextContent(messages["analyzer.setupReadiness.required"]);
+      `${rendered.history.location.pathname}${rendered.history.location.search}`,
+    ).toBe("/analyzers/qc/control-lots/new?analyzerId=1");
   });
 
   /**
@@ -561,5 +514,42 @@ describe("AnalyzersList", () => {
     // Note: Carbon Dropdown interaction may require specific approach
     // For now, verify the filter exists and can be interacted with
     expect(statusFilter).not.toBeNull();
+  });
+
+  test("testListFilters_RestoreTypeAndTestUnitFromUrl", async () => {
+    getAnalyzers.mockImplementation((filters, callback) => {
+      callback({
+        analyzers: [
+          createMockAnalyzer({
+            id: "7",
+            name: "Molecular Unit 7",
+            analyzerType: "MOLECULAR",
+            testUnitIds: ["7"],
+          }),
+        ],
+      });
+    });
+
+    renderWithIntl(
+      <AnalyzersList />,
+      ["Global Administrator"],
+      "/analyzers?search=xpert&status=SETUP&testUnit=7&analyzerType=MOLECULAR",
+    );
+
+    expect(await screen.findByText("Molecular Unit 7")).toBeInTheDocument();
+    expect(getAnalyzerLabUnits).toHaveBeenCalledTimes(1);
+    expect(getAnalyzers).toHaveBeenCalledWith(
+      {
+        search: "xpert",
+        status: "SETUP",
+        testUnit: "7",
+        analyzerType: "MOLECULAR",
+      },
+      expect.any(Function),
+      expect.any(AbortSignal),
+    );
+    expect(screen.getByTestId("analyzer-type-filter")).toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-test-unit-filter")).toBeInTheDocument();
+    expect(screen.getByText("Molecular Biology")).toBeInTheDocument();
   });
 });

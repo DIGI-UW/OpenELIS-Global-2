@@ -1,0 +1,24 @@
+.analyzer-setup-review {
+  padding: 1rem;
+}
+
+.analyzer-setup-review > .cds--progress {
+  margin-block-end: 2rem;
+}
+
+.analyzer-setup-review__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block-end: 1rem;
+}
+
+.analyzer-setup-review__blockers {
+  margin-block: 1rem;
+  padding-inline-start: 1.5rem;
+}
+
+.analyzer-setup-review__actions {
+  margin-block-start: 2rem;
+}

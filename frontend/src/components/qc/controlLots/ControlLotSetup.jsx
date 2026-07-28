@@ -37,7 +37,8 @@ import {
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import StatisticsConfigSection from "./StatisticsConfigSection";
-import PageTitle from "../../common/PageTitle/PageTitle";
+import PageHeader from "../../common/PageHeader/PageHeader";
+import { resolveAnalyzerReturnTo } from "../../analyzers/analyzerRoutes";
 import "./ControlLotSetup.css";
 
 export const buildControlLotPayload = (
@@ -74,6 +75,10 @@ const ControlLotSetup = () => {
   const isEditMode = !!lotId;
   const preselectedAnalyzerId =
     new URLSearchParams(location.search || "").get("analyzerId") || "";
+  const requestedReturnTo = new URLSearchParams(location.search || "").get(
+    "returnTo",
+  );
+  const returnTo = resolveAnalyzerReturnTo(requestedReturnTo);
 
   // State
   const [loading, setLoading] = useState(false);
@@ -226,7 +231,9 @@ const ControlLotSetup = () => {
       JSON.stringify(payload),
       (response) => {
         if (response.ok) {
-          history.push("/analyzers/qc/control-lots");
+          history.push(
+            requestedReturnTo ? returnTo : "/analyzers/qc/control-lots",
+          );
         } else {
           setError(
             intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
@@ -240,7 +247,7 @@ const ControlLotSetup = () => {
 
   // Handle cancel
   const handleCancel = () => {
-    history.goBack();
+    history.push(requestedReturnTo ? returnTo : "/analyzers/qc/control-lots");
   };
 
   // Handle statistics config save
@@ -270,7 +277,7 @@ const ControlLotSetup = () => {
         className="control-lot-setup-header"
         data-testid="control-lot-setup-header"
       >
-        <PageTitle
+        <PageHeader
           breadcrumbs={[
             {
               label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),

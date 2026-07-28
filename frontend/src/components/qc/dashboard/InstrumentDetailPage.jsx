@@ -29,7 +29,7 @@ import {
 } from "./qcDashboardUtils";
 import ActivityTimelineTab from "./ActivityTimelineTab";
 import ControlChartTab from "./ControlChartTab";
-import PageTitle from "../../common/PageTitle/PageTitle";
+import PageHeader from "../../common/PageHeader/PageHeader";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import "./InstrumentDetailModal.css";
 
@@ -61,7 +61,7 @@ const InstrumentDetailPage = () => {
   if (!instrument) {
     return (
       <div>
-        <PageTitle
+        <PageHeader
           breadcrumbs={[
             {
               label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),
@@ -86,7 +86,7 @@ const InstrumentDetailPage = () => {
       data-testid="instrument-detail-page"
       className="instrument-detail-page"
     >
-      <PageTitle
+      <PageHeader
         breadcrumbs={[
           {
             label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),

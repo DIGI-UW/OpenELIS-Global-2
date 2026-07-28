@@ -4,7 +4,8 @@ import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { BrowserRouter, MemoryRouter, Route } from "react-router-dom";
+import { BrowserRouter, Route, Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
 import AnalyzerForm from "../AnalyzerForm";
 import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
@@ -30,15 +31,17 @@ const renderWithIntl = (component) => {
 };
 
 const renderAtRoute = (entry) => {
-  return render(
-    <MemoryRouter initialEntries={[entry]}>
+  const history = createMemoryHistory({ initialEntries: [entry] });
+  const result = render(
+    <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <Route path="/analyzers">
           <AnalyzerForm inline />
         </Route>
       </IntlProvider>
-    </MemoryRouter>,
+    </Router>,
   );
+  return { ...result, history };
 };
 
 describe("AnalyzerForm - Default Configs (M20)", () => {
@@ -285,7 +288,9 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
   });
 
   test("preselects profile from setup URL and submits defaultConfigId once", async () => {
-    renderAtRoute("/analyzers?add=1&profile=file%2Fquantstudio");
+    const { history } = renderAtRoute(
+      "/analyzers?add=1&step=instrument&profile=file%2Fquantstudio&returnTo=%2Fanalyzers%2Ftypes",
+    );
 
     await waitFor(() => {
       expect(analyzerService.getDefaultConfig).toHaveBeenCalledWith(
@@ -295,20 +300,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
       );
     });
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("analyzer-form-file-format-dropdown"),
-      ).toBeInTheDocument();
-    });
+    expect(
+      screen.queryByTestId("analyzer-form-file-format-dropdown"),
+    ).not.toBeInTheDocument();
 
     await userEvent.type(
       screen.getByTestId("analyzer-form-name-input"),
       "Main lab QuantStudio",
-      { delay: 0 },
-    );
-    await userEvent.type(
-      screen.getByTestId("analyzer-form-import-directory-input"),
-      "/data/analyzer-imports/quantstudio/incoming",
       { delay: 0 },
     );
     await userEvent.click(screen.getByTestId("analyzer-form-save-button"));
@@ -326,10 +324,17 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
       "Target Name": "testCode",
       "Quantity Mean": "result",
     });
+    await waitFor(() => {
+      expect(`${history.location.pathname}${history.location.search}`).toBe(
+        "/analyzers/NEW-ANALYZER-ID/mappings?setup=1&step=verify&profile=file%2Fquantstudio&returnTo=%2Fanalyzers%2Ftypes",
+      );
+    });
   });
 
   test("preselects ASTM profile from setup URL with the generic ASTM plugin", async () => {
-    renderAtRoute("/analyzers?add=1&profile=astm%2Fgenexpert-astm");
+    const { history } = renderAtRoute(
+      "/analyzers?add=1&step=instrument&profile=astm%2Fgenexpert-astm&returnTo=%2Fanalyzers",
+    );
 
     await waitFor(() => {
       expect(analyzerService.getDefaultConfig).toHaveBeenCalledWith(
@@ -371,6 +376,11 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     expect(submitPayload.testUnitIds).toEqual(["12"]);
     expect(submitPayload.fileFormat).toBeNull();
     expect(submitPayload.importDirectory).toBeNull();
+    await waitFor(() => {
+      expect(`${history.location.pathname}${history.location.search}`).toBe(
+        "/analyzers/NEW-ANALYZER-ID/mappings?setup=1&step=verify&profile=astm%2Fgenexpert-astm&returnTo=%2Fanalyzers",
+      );
+    });
   });
 
   // Tests below require Carbon Dropdown interaction (click → select option)

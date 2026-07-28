@@ -4,6 +4,7 @@ import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import SetupVerificationPanel from "./SetupVerificationPanel";
 import messages from "../../../languages/en.json";
@@ -16,9 +17,15 @@ vi.mock("../../../services/analyzerService", () => ({
 
 const renderPanel = () =>
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <SetupVerificationPanel analyzerId="2013" />
-    </IntlProvider>,
+    <MemoryRouter
+      initialEntries={[
+        "/analyzers/2013/mappings?setup=1&step=verify&profile=astm%2Fgx",
+      ]}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <SetupVerificationPanel analyzerId="2013" />
+      </IntlProvider>
+    </MemoryRouter>,
   );
 
 describe("SetupVerificationPanel", () => {
@@ -103,10 +110,16 @@ describe("SetupVerificationPanel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Manage QC rules" }),
-    ).toHaveAttribute("href", "/analyzers/2013/qc-rules");
+    ).toHaveAttribute(
+      "href",
+      "/analyzers/2013/qc-rules?returnTo=%2Fanalyzers%2F2013%2Fmappings%3Fsetup%3D1%26step%3Dverify%26profile%3Dastm%252Fgx",
+    );
     expect(
       screen.getByRole("link", { name: "Add or select control lot" }),
-    ).toHaveAttribute("href", "/analyzers/qc/control-lots/new?analyzerId=2013");
+    ).toHaveAttribute(
+      "href",
+      "/analyzers/qc/control-lots/new?analyzerId=2013&returnTo=%2Fanalyzers%2F2013%2Fmappings%3Fsetup%3D1%26step%3Dverify%26profile%3Dastm%252Fgx",
+    );
     expect(document.querySelector(".setup-verification-actions")).toHaveClass(
       "cds--stack-horizontal",
       "cds--stack-scale-4",

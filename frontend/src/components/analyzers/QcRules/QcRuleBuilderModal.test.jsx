@@ -6,22 +6,14 @@ vi.mock("../../../services/analyzerService", () => ({
   deleteQcRule: vi.fn(),
 }));
 
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    useHistory: () => mockHistory,
-    useParams: () => ({ id: "AN-STR-1" }),
-  };
-});
-
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { BrowserRouter } from "react-router-dom";
+import { Route, Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
 import QcRulePage from "./QcRuleBuilderModal";
 import {
   createQcRule,
@@ -30,23 +22,29 @@ import {
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
 
-const mockHistory = {
-  push: vi.fn(),
-};
+const VERIFY_ROUTE =
+  "/analyzers/AN-STR-1/mappings?setup=1&step=verify&profile=astm%2Fgx";
 
-const renderWithIntl = (component) =>
-  render(
-    <BrowserRouter>
+const renderWithIntl = (
+  component,
+  entry = `/analyzers/AN-STR-1/qc-rules?returnTo=${encodeURIComponent(
+    VERIFY_ROUTE,
+  )}`,
+) => {
+  const history = createMemoryHistory({ initialEntries: [entry] });
+  const result = render(
+    <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
-        {component}
+        <Route path="/analyzers/:id/qc-rules">{component}</Route>
       </IntlProvider>
-    </BrowserRouter>,
+    </Router>,
   );
+  return { ...result, history };
+};
 
 describe("QcRulePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockHistory.push.mockClear();
     getAnalyzer.mockImplementation((id, callback) => {
       callback({ id, name: "Analyzer One" });
     });
@@ -60,14 +58,17 @@ describe("QcRulePage", () => {
 
     await screen.findByTestId("qc-rule-page");
     expect(
-      await screen.findByText("QC Sample Identification Rules — Analyzer One"),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "QC Sample Identification Rules — Analyzer One",
+      }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/\\{analyzerName\\}/)).not.toBeInTheDocument();
     expect(
       screen
-        .getByTestId("page-title-breadcrumbs")
-        .textContent.match(/Analyzer One/g),
-    ).toHaveLength(1);
+        .getByTestId("page-header-breadcrumbs")
+        .querySelector('a[href*="/analyzers/AN-STR-1/mappings"]'),
+    ).toHaveTextContent("Analyzer One");
 
     await waitFor(() => {
       expect(getQcRules).toHaveBeenCalledWith("AN-STR-1", expect.any(Function));
@@ -79,7 +80,7 @@ describe("QcRulePage", () => {
       callback({ id: "rule-1", ...payload });
     });
 
-    renderWithIntl(<QcRulePage />);
+    const { history } = renderWithIntl(<QcRulePage />);
 
     await userEvent.click(await screen.findByTestId("qc-rule-add-btn"));
     await userEvent.type(await screen.findByTestId("qc-rule-field-0"), "O.12");
@@ -97,7 +98,9 @@ describe("QcRulePage", () => {
         }),
         expect.any(Function),
       );
-      expect(mockHistory.push).toHaveBeenCalledWith("/analyzers");
+      expect(`${history.location.pathname}${history.location.search}`).toBe(
+        VERIFY_ROUTE,
+      );
     });
   });
 });

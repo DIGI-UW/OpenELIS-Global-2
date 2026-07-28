@@ -33,7 +33,7 @@ import { useIntl } from "react-intl";
 import { useParams, useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import LeveyJenningsChart from "./LeveyJenningsChart";
-import PageTitle from "../../common/PageTitle/PageTitle";
+import PageHeader from "../../common/PageHeader/PageHeader";
 import "./ControlChartDetail.css";
 
 const ControlChartDetail = () => {
@@ -275,7 +275,7 @@ const ControlChartDetail = () => {
         className="control-chart-detail-header"
         data-testid="control-chart-detail-header"
       >
-        <PageTitle
+        <PageHeader
           breadcrumbs={[
             {
               label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),

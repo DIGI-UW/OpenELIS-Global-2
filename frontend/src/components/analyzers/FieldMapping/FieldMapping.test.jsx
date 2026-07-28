@@ -1,8 +1,10 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { BrowserRouter } from "react-router-dom";
+import { Route, Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import messages from "../../../languages/en.json";
 import * as analyzerService from "../../../services/analyzerService";
@@ -26,27 +28,19 @@ vi.mock("../../../services/analyzerService", () => ({
   verifyAnalyzerSetup: vi.fn(),
 }));
 
-const mockHistory = {
-  push: vi.fn(),
-};
-
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    useHistory: () => mockHistory,
-    useParams: () => ({ id: "1" }),
-  };
-});
-
-const renderComponent = () =>
-  render(
-    <BrowserRouter>
+const renderComponent = (entry = "/analyzers/1/mappings") => {
+  const history = createMemoryHistory({ initialEntries: [entry] });
+  const result = render(
+    <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
-        <FieldMapping />
+        <Route path="/analyzers/:id/mappings">
+          <FieldMapping />
+        </Route>
       </IntlProvider>
-    </BrowserRouter>,
+    </Router>,
   );
+  return { ...result, history };
+};
 
 describe("FieldMapping", () => {
   beforeEach(() => {
@@ -182,5 +176,27 @@ describe("FieldMapping", () => {
       await screen.findByTestId("profile-applied-mapping-row-GLUCOSE"),
     ).toHaveTextContent("Glucose");
     expect(screen.queryByTestId("field-mapping-panel")).not.toBeInTheDocument();
+  });
+
+  test("guided Verify continues to Connect with preserved setup state", async () => {
+    const { history } = renderComponent(
+      "/analyzers/1/mappings?setup=1&step=verify&profile=hl7%2Fgenexpert-hl7&returnTo=%2Fanalyzers%3Fstatus%3DSETUP",
+    );
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Verify" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-setup-progress")).toHaveAttribute(
+      "data-current-step",
+      "verify",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save and continue" }),
+    );
+
+    expect(`${history.location.pathname}${history.location.search}`).toBe(
+      "/analyzers/1/edit?setup=1&step=connect&profile=hl7%2Fgenexpert-hl7&returnTo=%2Fanalyzers%3Fstatus%3DSETUP",
+    );
   });
 });
