@@ -446,6 +446,9 @@ function SampleTypeManagement({ intl }) {
     setIsSubmitting(true);
     try {
       if (view === "add") {
+        // Snapshot existing ids so we can identify the newly-created row after
+        // refresh regardless of how its name is stored/localized.
+        const existingIds = new Set(sampleTypes.map((t) => String(t.id)));
         // The legacy create flow also wires the workplan/results/validation
         // role modules for the new type, so creation goes through it.
         const sampleTypeData = {
@@ -474,10 +477,13 @@ function SampleTypeManagement({ intl }) {
         setFormErrors({});
         // Land on the newly-created sample type's editor (matching the test
         // catalog "create → edit the new record" flow), not back on the list.
+        // Identify it as the row whose id wasn't present before the create;
+        // fall back to a name match, then to the list.
         const createdName = editingType.name.trim();
         const created =
           Array.isArray(refreshed) &&
-          refreshed.find((t) => t.name === createdName);
+          (refreshed.find((t) => !existingIds.has(String(t.id))) ||
+            refreshed.find((t) => t.name === createdName));
         if (created) {
           setEditingType(null);
           history.push(
