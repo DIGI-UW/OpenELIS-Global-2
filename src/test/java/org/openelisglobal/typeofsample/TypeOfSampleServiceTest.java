@@ -129,6 +129,28 @@ public class TypeOfSampleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void moveToSortOrderPosition_shouldPlaceTypeAndRenumberDensely() {
+        List<TypeOfSample> ordered = tosSample.moveToSortOrderPosition("2", 1, "1");
+
+        Assert.assertEquals("2", ordered.get(0).getId());
+        for (int i = 0; i < ordered.size(); i++) {
+            Assert.assertEquals(i + 1, ordered.get(i).getSortOrder());
+        }
+
+        List<TypeOfSample> reloaded = tosSample.getAllTypeOfSamplesSortOrdered();
+        Assert.assertEquals("2", reloaded.get(0).getId());
+        Assert.assertEquals(1, reloaded.get(0).getSortOrder());
+    }
+
+    @Test
+    public void moveToSortOrderPosition_shouldClampPositionBeyondEndToLast() {
+        List<TypeOfSample> ordered = tosSample.moveToSortOrderPosition("1", 99, "1");
+
+        Assert.assertEquals("1", ordered.get(ordered.size() - 1).getId());
+        Assert.assertEquals(ordered.size(), ordered.get(ordered.size() - 1).getSortOrder());
+    }
+
+    @Test
     public void getTypeOfSampleForTest_shouldReturnTypeOfSampleForTest() {
         List<TypeOfSample> typeOfSamples = tosSample.getTypeOfSampleForTest("5");
         Assert.assertEquals(1, typeOfSamples.size());

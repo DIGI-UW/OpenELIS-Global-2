@@ -1,4 +1,4 @@
-package org.openelisglobal.systemUser.controller.rest;
+package org.openelisglobal.systemuser.controller.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
