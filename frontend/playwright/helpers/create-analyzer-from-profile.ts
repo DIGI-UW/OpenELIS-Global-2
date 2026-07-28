@@ -161,7 +161,18 @@ export async function createAnalyzerFromProfile(
   await presentation.pause(500);
 
   await list.clickAdd();
-  await form.expectOpen();
+  // A transient fetch failure on the lazy AnalyzerForm chunk renders the
+  // route error boundary, and the browser caches the failed dynamic import
+  // for the page's lifetime — only a reload recovers. Retry once.
+  try {
+    await form.expectOpen();
+  } catch {
+    await page.reload();
+    await list.goto();
+    await list.expectLoaded();
+    await list.clickAdd();
+    await form.expectOpen();
+  }
 
   // Select plugin type
   await form.selectPluginType(config.pluginType);

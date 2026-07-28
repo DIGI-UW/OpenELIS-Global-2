@@ -37,12 +37,16 @@ import org.dom4j.Element;
 import org.hibernate.InstantiationException;
 import org.openelisglobal.common.exception.LIMSException;
 import org.openelisglobal.common.log.LogEvent;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 @Component
 @DependsOn({ "pluginMenuService", "pluginAnalyzerService" })
 public class PluginLoader {
+
+    @Autowired
+    private org.openelisglobal.security.DaemonContextExecutor daemonContextExecutor;
     public static final String PLUGIN_ANALYZER = "/var/lib/openelis-global/plugins/";
     public static final String VERSION = "version";
     public static final String SUPPORTED_VERSION = "1.0";
@@ -69,7 +73,14 @@ public class PluginLoader {
     }
 
     @PostConstruct
-    private void load() {
+    void load() {
+        // Legacy plugin connect() persists Analyzer rows, test mappings, and
+        // menu/permission bindings through auditable services; @PostConstruct
+        // runs on the unauthenticated bootstrap thread, so run as the daemon.
+        daemonContextExecutor.executeAsDaemon(this::doLoad);
+    }
+
+    void doLoad() {
         File pluginDir = new File(PLUGIN_ANALYZER);
 
         loadDirectory(pluginDir);

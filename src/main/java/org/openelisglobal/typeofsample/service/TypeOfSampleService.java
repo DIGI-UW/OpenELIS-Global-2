@@ -56,4 +56,12 @@ public interface TypeOfSampleService extends BaseObjectService<TypeOfSample, Str
     Localization getLocalizationForSampleType(String id);
 
     TypeOfSample getTypeOfSampleByLocalizedName(String typeOfSampleName, Locale locale);
+
+    /**
+     * Moves the given sample type to the 1-based position in the global sort-order
+     * sequence and renumbers every sample type to a dense 1..n, so the order-entry
+     * Sample Type menu ordering is deterministic. Returns the resulting full list
+     * in its new order.
+     */
+    List<TypeOfSample> moveToSortOrderPosition(String typeOfSampleId, int position, String sysUserId);
 }

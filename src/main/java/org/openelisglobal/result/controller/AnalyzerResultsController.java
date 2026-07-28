@@ -24,6 +24,7 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
@@ -150,7 +151,7 @@ public class AnalyzerResultsController extends BaseController {
         if (IS_RETROCI) {
             TypeOfSample typeOfSample = new TypeOfSample();
             typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain("H");
+            typeOfSample.setDomain(Domain.CLINICAL.name());
             typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
             DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
         } else {
