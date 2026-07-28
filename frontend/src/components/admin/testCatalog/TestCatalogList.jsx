@@ -29,19 +29,14 @@ import {
   Loading,
   InlineNotification,
 } from "@carbon/react";
-import {
-  Add,
-  Edit,
-  Filter,
-  Link as LinkIcon,
-  Unlink,
-} from "@carbon/icons-react";
+import { Add, Edit, Filter } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import useDomains from "../../common/useDomains";
 import { DEFAULT_SECTION } from "./sectionConfig";
 
 /**
@@ -55,15 +50,12 @@ import { DEFAULT_SECTION } from "./sectionConfig";
  * Type column (FR-39) disambiguates same-name sibling tests. Filter + page state
  * is mirrored to the URL so a reload restores it.
  */
-const DOMAIN_OPTIONS = [
-  { id: "", label: "label.testCatalog.list.filter.allDomains" },
-  { id: "CLINICAL", label: "label.testCatalog.basicInfo.domain.CLINICAL" },
-  {
-    id: "ENVIRONMENTAL",
-    label: "label.testCatalog.basicInfo.domain.ENVIRONMENTAL",
-  },
-  { id: "VECTOR", label: "label.testCatalog.basicInfo.domain.VECTOR" },
-];
+// "All domains" sentinel; the concrete domains come from the single
+// /rest/domains source (see useDomains) so nothing here hard-codes the list.
+const ALL_DOMAINS_OPTION = {
+  id: "",
+  label: "label.testCatalog.list.filter.allDomains",
+};
 
 const STATUS_OPTIONS = [
   { id: "all", label: "label.testCatalog.list.filter.allStatus" },
@@ -83,6 +75,10 @@ const SEARCH_DEBOUNCE_MS = 300;
 const SEVERITY_RANK = { ERROR: 0, WARNING: 1, INFO: 2 };
 
 const TestCatalogList = () => {
+  const domainOptions = [
+    ALL_DOMAINS_OPTION,
+    ...useDomains().map((d) => ({ id: d.id, label: d.labelKey })),
+  ];
   const intl = useIntl();
   const history = useHistory();
 
@@ -112,12 +108,6 @@ const TestCatalogList = () => {
     initParams.get("issuesOnly") === "true",
   );
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  // FR-50 — grouped (default) vs flat view; flat persists as ?view=flat.
-  const [view, setView] = useState(
-    initParams.get("view") === "flat" ? "flat" : "grouped",
-  );
-  // Refresh trigger after a link/unlink mutation.
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Sample types for the filter dropdown — fetched once (static reference data).
   useEffect(() => {
@@ -146,7 +136,6 @@ const TestCatalogList = () => {
     if (sampleType) params.set("sampleType", sampleType);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (issuesOnly) params.set("issuesOnly", "true");
-    if (view === "flat") params.set("view", "flat");
     params.set("page", String(page));
     params.set("pageSize", String(pageSize));
     history.replace({ search: params.toString() });
@@ -177,8 +166,6 @@ const TestCatalogList = () => {
     sampleType,
     debouncedSearch,
     issuesOnly,
-    view,
-    refreshKey,
     page,
     pageSize,
     history,
@@ -239,37 +226,6 @@ const TestCatalogList = () => {
     );
   };
 
-  // FR-51 — link ≥2 selected ungrouped rows into one assay group.
-  const linkVariants = (selectedRows) => {
-    const testIds = selectedRows.map((r) => r.id);
-    postToOpenElisServerJsonResponse(
-      "/rest/test-catalog/variants/link",
-      JSON.stringify({ testIds }),
-      (res) => {
-        if (res && res.groupId) {
-          setRefreshKey((k) => k + 1);
-        }
-      },
-    );
-  };
-
-  // FR-51 — remove selected rows from their groups without touching any field.
-  const unlinkVariants = (selectedRows) => {
-    let remaining = selectedRows.length;
-    selectedRows.forEach((r) => {
-      postToOpenElisServerJsonResponse(
-        "/rest/test-catalog/variants/unlink",
-        JSON.stringify({ testId: r.id }),
-        () => {
-          remaining -= 1;
-          if (remaining <= 0) {
-            setRefreshKey((k) => k + 1);
-          }
-        },
-      );
-    });
-  };
-
   const sampleTypeItems = [
     {
       id: "",
@@ -290,62 +246,20 @@ const TestCatalogList = () => {
     id: r.testId,
     name: r.name,
     sampleType: r.sampleType || "",
+    // OGC-1145 FR-9: all associated specimens; the cell shows "{first} +{n}".
+    sampleTypes: r.sampleTypes || [],
     code: r.code || "",
     domain: r.domain || "",
     active: r.active,
     amr: r.amr,
     coverageIncomplete: r.coverageIncomplete,
     hasLoinc: r.hasLoinc,
-    groupId: r.groupId || null,
     findings: r.findings || [],
   }));
 
-  // FR-46/47 — group metadata for the current page, keyed by groupId. Only groups
-  // with ≥2 members on this page get group chrome; single-member groups and
-  // ungrouped rows render flat (FR-48).
-  const groupMeta = {};
-  baseRows.forEach((r) => {
-    if (!r.groupId) {
-      return;
-    }
-    const g = (groupMeta[r.groupId] = groupMeta[r.groupId] || {
-      count: 0,
-      activeCount: 0,
-      domains: new Set(),
-      errorCount: 0,
-      warningCount: 0,
-    });
-    g.count += 1;
-    if (r.active) {
-      g.activeCount += 1;
-    }
-    if (r.domain) {
-      g.domains.add(r.domain);
-    }
-    (r.findings || []).forEach((f) => {
-      if (f.severity === "ERROR") {
-        g.errorCount += 1;
-      } else if (f.severity === "WARNING") {
-        g.warningCount += 1;
-      }
-    });
-  });
-  const isRealGroup = (gid) =>
-    gid && groupMeta[gid] && groupMeta[gid].count >= 2;
-
-  // In grouped view, order rows so members of the same real group are adjacent
-  // (FR-47); flat view keeps the server's name order exactly (FR-50).
-  const tableRows =
-    view === "grouped"
-      ? [...baseRows].sort((a, b) => {
-          const ga = isRealGroup(a.groupId) ? a.groupId : `~${a.id}`;
-          const gb = isRealGroup(b.groupId) ? b.groupId : `~${b.id}`;
-          if (ga !== gb) {
-            return ga < gb ? -1 : 1;
-          }
-          return (a.name || "").localeCompare(b.name || "");
-        })
-      : baseRows;
+  // OGC-1145 Phase 3: the variant grouped view retired with the variant
+  // subsystem — one row per test already shows every specimen (FR-9).
+  const tableRows = baseRows;
 
   // FR-63 — finding severity → Carbon tag color.
   const findingTagType = (severity) =>
@@ -399,11 +313,11 @@ const TestCatalogList = () => {
                     id: "label.testCatalog.basicInfo.domain",
                   })}
                   label=""
-                  items={DOMAIN_OPTIONS}
+                  items={domainOptions}
                   itemToString={(item) =>
                     item ? intl.formatMessage({ id: item.label }) : ""
                   }
-                  selectedItem={DOMAIN_OPTIONS.find((o) => o.id === domain)}
+                  selectedItem={domainOptions.find((o) => o.id === domain)}
                   onChange={({ selectedItem }) => {
                     setPage(1);
                     setDomain(selectedItem ? selectedItem.id : "");
@@ -548,24 +462,6 @@ const TestCatalogList = () => {
                           id: "button.testCatalog.editRelated",
                         })}
                       </TableBatchAction>
-                      <TableBatchAction
-                        renderIcon={LinkIcon}
-                        disabled={selectedRows.length < 2}
-                        onClick={() => linkVariants(selectedRows)}
-                      >
-                        {intl.formatMessage({
-                          id: "button.testCatalog.linkVariants",
-                        })}
-                      </TableBatchAction>
-                      <TableBatchAction
-                        renderIcon={Unlink}
-                        disabled={selectedRows.length < 1}
-                        onClick={() => unlinkVariants(selectedRows)}
-                      >
-                        {intl.formatMessage({
-                          id: "button.testCatalog.unlinkVariants",
-                        })}
-                      </TableBatchAction>
                     </TableBatchActions>
                     <TableToolbarContent>
                       <Search
@@ -581,23 +477,6 @@ const TestCatalogList = () => {
                         }}
                         value={search}
                       />
-                      <Button
-                        kind="ghost"
-                        onClick={() => {
-                          setPage(1);
-                          setView((v) =>
-                            v === "grouped" ? "flat" : "grouped",
-                          );
-                        }}
-                        data-testid="view-toggle"
-                      >
-                        {intl.formatMessage({
-                          id:
-                            view === "grouped"
-                              ? "button.testCatalog.view.flat"
-                              : "button.testCatalog.view.grouped",
-                        })}
-                      </Button>
                       <Button
                         renderIcon={Add}
                         onClick={openNewTest}
@@ -634,81 +513,10 @@ const TestCatalogList = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {rows.map((row, rowIndex) => {
+                        {rows.map((row) => {
                           const source = tableRows.find((t) => t.id === row.id);
-                          // FR-47 — in grouped view, emit a group header before the
-                          // first member of each real (≥2) group on this page.
-                          const gid = source && source.groupId;
-                          const prevSource =
-                            rowIndex > 0
-                              ? tableRows.find(
-                                  (t) => t.id === rows[rowIndex - 1].id,
-                                )
-                              : null;
-                          const prevGid = prevSource && prevSource.groupId;
-                          const showGroupHeader =
-                            view === "grouped" &&
-                            isRealGroup(gid) &&
-                            gid !== prevGid;
-                          const meta = gid ? groupMeta[gid] : null;
-                          const groupHeader =
-                            showGroupHeader && meta ? (
-                              <TableRow
-                                key={`group-${gid}`}
-                                data-testid={`group-header-${gid}`}
-                              >
-                                <TableCell colSpan={hdrs.length + 1}>
-                                  <strong>{source.name}</strong>{" "}
-                                  <Tag type="blue" size="sm">
-                                    {intl.formatMessage(
-                                      {
-                                        id: "label.testCatalog.list.group.variantCount",
-                                      },
-                                      { count: meta.count },
-                                    )}
-                                  </Tag>{" "}
-                                  <Tag type="cool-gray" size="sm">
-                                    {intl.formatMessage(
-                                      {
-                                        id: "label.testCatalog.list.group.statusUnion",
-                                      },
-                                      {
-                                        active: meta.activeCount,
-                                        inactive: meta.count - meta.activeCount,
-                                      },
-                                    )}
-                                  </Tag>{" "}
-                                  {meta.errorCount > 0 && (
-                                    <Tag type="red" size="sm">
-                                      {meta.errorCount}
-                                    </Tag>
-                                  )}
-                                  {meta.warningCount > 0 && (
-                                    <Tag type="warm-gray" size="sm">
-                                      {meta.warningCount}
-                                    </Tag>
-                                  )}{" "}
-                                  <Button
-                                    kind="ghost"
-                                    size="sm"
-                                    renderIcon={Add}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      history.push(
-                                        `/MasterListsPage/TestCatalogEditor/new/${DEFAULT_SECTION}?copyFrom=${source.id}`,
-                                      );
-                                    }}
-                                  >
-                                    {intl.formatMessage({
-                                      id: "button.testCatalog.addVariant",
-                                    })}
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ) : null;
                           return (
                             <React.Fragment key={row.id}>
-                              {groupHeader}
                               <TableRow
                                 {...getRowProps({ row })}
                                 onClick={() => openEditor(row.id)}
@@ -757,6 +565,25 @@ const TestCatalogList = () => {
                                           }
                                         />
                                       </Tag>
+                                    ) : cell.info.header === "sampleType" &&
+                                      source &&
+                                      (source.sampleTypes || []).length > 1 ? (
+                                      // OGC-1145 FR-9 — one row per test; the cell
+                                      // summarizes its specimens, full list in the
+                                      // tooltip.
+                                      <span
+                                        title={source.sampleTypes.join(", ")}
+                                      >
+                                        {intl.formatMessage(
+                                          {
+                                            id: "label.testCatalog.list.sampleTypesSummary",
+                                          },
+                                          {
+                                            first: source.sampleTypes[0],
+                                            n: source.sampleTypes.length - 1,
+                                          },
+                                        )}
+                                      </span>
                                     ) : (
                                       cell.value
                                     )}

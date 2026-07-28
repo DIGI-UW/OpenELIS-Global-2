@@ -9,6 +9,8 @@ import {
   Toggle,
   Button,
   ComboBox,
+  FilterableMultiSelect,
+  Tag,
   Loading,
   InlineNotification,
   Modal,
@@ -21,6 +23,7 @@ import {
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import useDomains from "../../../common/useDomains";
 import ActivationAckModal from "./ActivationAckModal";
 
 /**
@@ -32,9 +35,43 @@ import ActivationAckModal from "./ActivationAckModal";
  * Reporting name, Code (auto-suggested), Lab Unit, Sample type, Domain, toggles,
  * Description — Save creates the test Inactive (FR-3) and lands on its editor.
  */
-const DOMAINS = ["CLINICAL", "ENVIRONMENTAL", "VECTOR"];
+// OGC-1145 FR-3 (D-030 domain guard). Since the OGC-296 domain migration a
+// sample type's domain is the enum value (CLINICAL/ENVIRONMENTAL/VECTOR), but
+// legacy one-character codes (sample_domain: H uman / N ewborn / E nvironmental
+// / A nimal) can still arrive from un-migrated or plugin-inserted rows, so we
+// normalize before comparing — the single mirror of the backend
+// SampleTypeDomainMapper. Unknown/blank domains stay offerable everywhere so
+// legacy data never blocks the editor.
+const normalizeSampleDomain = (raw) => {
+  if (!raw) {
+    return null;
+  }
+  switch (String(raw).trim().toUpperCase()) {
+    case "E":
+    case "ENVIRONMENTAL":
+      return "ENVIRONMENTAL";
+    case "A":
+    case "VECTOR":
+      return "VECTOR";
+    case "H":
+    case "N":
+    case "CLINICAL":
+      return "CLINICAL";
+    default:
+      return null;
+  }
+};
+
+const sampleTypeMatchesDomain = (type, domain) => {
+  if (!domain || !type?.domain) {
+    return true;
+  }
+  const normalized = normalizeSampleDomain(type.domain);
+  return normalized === null || normalized === domain;
+};
 
 const BasicInfoSection = ({ testId }) => {
+  const domains = useDomains();
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
@@ -60,18 +97,13 @@ const BasicInfoSection = ({ testId }) => {
   // checklist beside the status toggle for an inactive test.
   const [completenessGaps, setCompletenessGaps] = useState([]);
 
-  // FR-52/54 — specimen-variant create: ?copyFrom=<sourceTestId> seeds the copy
-  // source and links the new test into that assay group on save.
-  const copyFromId = new URLSearchParams(location.search).get("copyFrom") || "";
-  const [sourceInfo, setSourceInfo] = useState(null);
-
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
     name: "",
     reportingName: "",
     code: "",
     labUnitId: "",
-    sampleTypeId: "",
+    sampleTypeIds: [],
     domain: "CLINICAL",
     antimicrobialResistance: false,
     orderable: false,
@@ -86,31 +118,6 @@ const BasicInfoSection = ({ testId }) => {
     setPendingDomain(null);
     setDomainRadioKey((k) => k + 1);
   };
-
-  // FR-54/54a — prefill the variant form from its source: domain is inherited
-  // (all variants of an assay share a domain), AMR carries over. Name/Code/Sample
-  // type remain the admin's to set (specimen is identity).
-  useEffect(() => {
-    if (!isCreate || !copyFromId) {
-      return;
-    }
-    getFromOpenElisServer(
-      `/rest/test-catalog/tests/${copyFromId}/basic-info`,
-      (res) => {
-        if (!res) {
-          return;
-        }
-        setSourceInfo(res);
-        setCreateForm((f) => ({
-          ...f,
-          domain: res.domain || f.domain,
-          antimicrobialResistance: !!res.antimicrobialResistance,
-          labUnitId: res.labUnitId || f.labUnitId,
-        }));
-      },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCreate, copyFromId]);
 
   useEffect(() => {
     if (!testId || isCreate) {
@@ -158,13 +165,79 @@ const BasicInfoSection = ({ testId }) => {
   const updateCreate = (patch) =>
     setCreateForm((prev) => ({ ...prev, ...patch }));
 
+  // OGC-1145 FR-1/2/3 — shared sample-types multi-select with removable chips.
+  // Only domain-compatible types are offered; already-selected incompatible ones
+  // (a domain switch) stay visible as red chips so the manager can remove them.
+  const renderSampleTypesControl = (
+    idPrefix,
+    selectedIds,
+    domain,
+    onChange,
+  ) => {
+    const offered = sampleTypes.filter(
+      (t) => sampleTypeMatchesDomain(t, domain) || selectedIds.includes(t.id),
+    );
+    const selectedItems = selectedIds
+      .map((id) => sampleTypes.find((t) => t.id === id))
+      .filter(Boolean);
+    return (
+      <div>
+        <FilterableMultiSelect
+          id={`${idPrefix}-sample-types`}
+          titleText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.sampleTypes",
+          })}
+          helperText={intl.formatMessage({
+            id: "helper.testCatalog.basicInfo.sampleTypesMulti",
+          })}
+          placeholder={intl.formatMessage({
+            id: "label.testCatalog.specimenType",
+          })}
+          items={offered}
+          itemToString={(item) => (item ? item.name : "")}
+          selectedItems={selectedItems}
+          onChange={({ selectedItems: items }) =>
+            onChange((items || []).map((t) => t.id))
+          }
+        />
+        {selectedItems.length > 0 && (
+          <div style={{ marginTop: "0.5rem" }}>
+            {selectedItems.map((t) => (
+              <Tag
+                key={t.id}
+                type={sampleTypeMatchesDomain(t, domain) ? "blue" : "red"}
+                filter
+                onClose={() =>
+                  onChange(selectedIds.filter((id) => id !== t.id))
+                }
+                title={intl.formatMessage({ id: "label.button.remove" })}
+              >
+                {t.name}
+              </Tag>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const editSampleTypeIds = form?.sampleTypeIds || [];
+  const editIncompatibleTypes = form
+    ? editSampleTypeIds
+        .map((id) => sampleTypes.find((t) => t.id === id))
+        .filter((t) => t && !sampleTypeMatchesDomain(t, form.domain))
+    : [];
+  const editSampleTypesMissing = form
+    ? editSampleTypeIds.length === 0 && (!!form.active || !!form.orderable)
+    : false;
+
   // ── Create (FR-2/FR-3/FR-4) ───────────────────────────────────────────────
 
   const createValid =
     createForm.name.trim() &&
     createForm.reportingName.trim() &&
     createForm.code.trim() &&
-    createForm.sampleTypeId &&
+    createForm.sampleTypeIds.length > 0 &&
     createForm.domain;
 
   const handleCreate = () => {
@@ -180,12 +253,11 @@ const BasicInfoSection = ({ testId }) => {
       reportingName: createForm.reportingName,
       code: createForm.code,
       labUnitId: createForm.labUnitId,
-      sampleTypeId: createForm.sampleTypeId,
+      sampleTypeIds: createForm.sampleTypeIds,
       domain: createForm.domain,
       amr: createForm.antimicrobialResistance,
       orderable: createForm.orderable,
       description: createForm.description,
-      copyFromId: copyFromId || undefined,
     };
     postToOpenElisServerFullResponse(
       "/rest/test-catalog/tests",
@@ -298,21 +370,6 @@ const BasicInfoSection = ({ testId }) => {
   if (isCreate) {
     return (
       <Stack gap={6}>
-        {copyFromId && (
-          <InlineNotification
-            kind="info"
-            lowContrast
-            hideCloseButton
-            data-testid="variant-copy-banner"
-            title={intl.formatMessage({
-              id: "label.testCatalog.variant.copyBanner.title",
-            })}
-            subtitle={intl.formatMessage(
-              { id: "label.testCatalog.variant.copyBanner.subtitle" },
-              { source: sourceInfo ? sourceInfo.name || "" : "" },
-            )}
-          />
-        )}
         <TextInput
           id="basic-info-name"
           labelText={intl.formatMessage({ id: "label.testCatalog.testName" })}
@@ -357,34 +414,34 @@ const BasicInfoSection = ({ testId }) => {
             updateCreate({ labUnitId: selectedItem ? selectedItem.id : "" })
           }
         />
-        <ComboBox
-          id="basic-info-sample-type"
-          titleText={intl.formatMessage({
-            id: "label.testCatalog.specimenType",
-          })}
-          items={sampleTypes}
-          itemToString={(item) => (item ? item.name : "")}
-          selectedItem={
-            sampleTypes.find((s) => s.id === createForm.sampleTypeId) || null
-          }
-          onChange={({ selectedItem }) =>
-            updateCreate({ sampleTypeId: selectedItem ? selectedItem.id : "" })
-          }
-        />
+        {renderSampleTypesControl(
+          "basic-info",
+          createForm.sampleTypeIds,
+          createForm.domain,
+          (ids) => updateCreate({ sampleTypeIds: ids }),
+        )}
+        {createForm.sampleTypeIds.length === 0 && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "error.testCatalog.basicInfo.sampleTypeRequired",
+            })}
+          />
+        )}
         <RadioButtonGroup
           name="basic-info-create-domain"
           legendText={intl.formatMessage({ id: "label.testCatalog.domain" })}
           valueSelected={createForm.domain}
           onChange={(value) => updateCreate({ domain: value })}
         >
-          {DOMAINS.map((d) => (
+          {domains.map((d) => (
             <RadioButton
-              key={d}
-              id={`create-domain-${d}`}
-              value={d}
-              labelText={intl.formatMessage({
-                id: `label.testCatalog.basicInfo.domain.${d}`,
-              })}
+              key={d.id}
+              id={`create-domain-${d.id}`}
+              value={d.id}
+              labelText={intl.formatMessage({ id: d.labelKey })}
             />
           ))}
         </RadioButtonGroup>
@@ -511,20 +568,37 @@ const BasicInfoSection = ({ testId }) => {
           update({ labUnitId: selectedItem ? selectedItem.id : "" })
         }
       />
-      <ComboBox
-        id="basic-info-edit-sample-type"
-        titleText={intl.formatMessage({
-          id: "label.testCatalog.specimenType",
-        })}
-        items={sampleTypes}
-        itemToString={(item) => (item ? item.name : "")}
-        selectedItem={
-          sampleTypes.find((s) => s.id === form.sampleTypeId) || null
-        }
-        onChange={({ selectedItem }) =>
-          update({ sampleTypeId: selectedItem ? selectedItem.id : "" })
-        }
-      />
+      <div id="basic-info-edit-sample-type">
+        {renderSampleTypesControl(
+          "basic-info-edit",
+          editSampleTypeIds,
+          form.domain,
+          (ids) => update({ sampleTypeIds: ids }),
+        )}
+      </div>
+      {editSampleTypesMissing && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "error.testCatalog.basicInfo.sampleTypeRequired",
+          })}
+          data-testid="sample-type-required-error"
+        />
+      )}
+      {editIncompatibleTypes.length > 0 && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "error.testCatalog.basicInfo.sampleTypeDomain",
+          })}
+          subtitle={editIncompatibleTypes.map((t) => t.name).join(", ")}
+          data-testid="sample-type-domain-error"
+        />
+      )}
 
       <RadioButtonGroup
         key={domainRadioKey}
@@ -539,14 +613,12 @@ const BasicInfoSection = ({ testId }) => {
           }
         }}
       >
-        {DOMAINS.map((d) => (
+        {domains.map((d) => (
           <RadioButton
-            key={d}
-            id={`domain-${d}`}
-            value={d}
-            labelText={intl.formatMessage({
-              id: `label.testCatalog.basicInfo.domain.${d}`,
-            })}
+            key={d.id}
+            id={`domain-${d.id}`}
+            value={d.id}
+            labelText={intl.formatMessage({ id: d.labelKey })}
           />
         ))}
       </RadioButtonGroup>
@@ -601,7 +673,13 @@ const BasicInfoSection = ({ testId }) => {
       />
 
       <div>
-        <Button kind="primary" disabled={saving} onClick={handleSave}>
+        <Button
+          kind="primary"
+          disabled={
+            saving || editSampleTypesMissing || editIncompatibleTypes.length > 0
+          }
+          onClick={handleSave}
+        >
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>

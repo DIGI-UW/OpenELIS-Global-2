@@ -109,8 +109,6 @@ public class ObservationHistoryTypeConfigurationHandler implements DomainConfigu
                 ObservationHistoryType newType = new ObservationHistoryType();
                 newType.setTypeName(typeName);
                 newType.setDescription(description != null ? description : typeName);
-                newType.setSysUserId("1"); // System user
-
                 observationHistoryTypeService.insert(newType);
                 createdCount++;
 
@@ -163,8 +161,6 @@ public class ObservationHistoryTypeConfigurationHandler implements DomainConfigu
             localization.setDescription(localizationKey);
             localization.setEnglish(localizedValues.getOrDefault("en", fallbackValue));
             localization.setFrench(localizedValues.getOrDefault("fr", fallbackValue));
-            localization.setSysUserId("1");
-
             localizationService.insert(localization);
 
             LogEvent.logDebug(this.getClass().getSimpleName(), "createLocalizations",

@@ -29,6 +29,9 @@
   <!-- LocationPicker refactor (Phase 5c): rename /Storage/samples → /Storage/sample-items -->
   <include relativeToChangelogFile="true" file="006-storage-sidenav-rename.xml"/>
 
+  <!-- Daemon system user for background/scheduled operations -->
+  <include relativeToChangelogFile="true" file="003-daemon-system-user.xml"/>
+
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
 
@@ -158,5 +161,20 @@
 
   <!-- OGC-1142 / FR-46-55: specimen-variant grouping link -->
   <include relativeToChangelogFile="true" file="058-test-variant-link.xml"/>
+
+  <!-- OGC-1020 / R1: unified /Results worklist — lab-unit domain + route flag -->
+  <include relativeToChangelogFile="true" file="059-results-r1-unified-worklist.xml"/>
+
+  <!-- OGC-1145 / FR-11: terminology mappings keyable by sample type (null = shared) -->
+  <include relativeToChangelogFile="true" file="060-terminology-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="061-awaiting-specimen-order-status.xml"/>
+  <include relativeToChangelogFile="true" file="062-result-limits-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="063-collapse-variant-groups.xml"/>
+
+  <!-- OGC-296 Sample Type Management: WHONET code on TypeOfSample + per-sample-type terminology mappings -->
+  <include relativeToChangelogFile="true" file="064-add-whonet-code-to-type-of-sample.xml"/>
+  <include relativeToChangelogFile="true" file="065-sample-type-terminology-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="066-sample-type-domain-enum-migration.xml"/>
+  <include relativeToChangelogFile="true" file="067-sample-type-disposal-instructions.xml"/>
 
 </databaseChangeLog>

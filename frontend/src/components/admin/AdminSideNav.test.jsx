@@ -22,11 +22,12 @@ vi.mock("../utils/Utils", () => ({
 
 // ========== IMPORTS ==========
 import React from "react";
-import { render, act } from "@testing-library/react";
+import { render, act, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import AdminSideNav from "./AdminSideNav";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
+import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
 import messages from "../../languages/en.json";
 
 const renderNav = () =>
@@ -140,6 +141,77 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
       unmount();
     });
     expect(signal.aborted).toBe(true);
+  });
+
+  it("shows entity links first, then only the sample-type sections, when editing a sample type", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/SampleTypeManagement/38/basic-info",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    const sampleTypesLink = container.querySelector(
+      '[data-cy="sampleTypeManagement"]',
+    );
+    const testsLink = container.querySelector('[data-cy="testCatalogList"]');
+    expect(sampleTypesLink.textContent).toBe("← All Sample Types");
+    expect(testsLink.textContent).toBe("Test Catalog Editor");
+
+    // both entity links precede the editing caption and its sections
+    const caption = container.querySelector(
+      '[data-cy="sampleTypeSectionsContext"]',
+    );
+    expect(caption).not.toBeNull();
+    expect(
+      sampleTypesLink.compareDocumentPosition(testsLink) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      testsLink.compareDocumentPosition(caption) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    // sample-type sections are live routed links
+    SAMPLE_TYPE_SECTIONS.forEach((key) => {
+      const item = container.querySelector(
+        `[data-cy="sampleType-section-${key}"]`,
+      );
+      expect(item).not.toBeNull();
+      expect(item.getAttribute("href")).toBe(
+        `/MasterListsPage/SampleTypeManagement/38/${key}`,
+      );
+    });
+
+    // the test editor's (disabled) sections are not rendered at all
+    V1_SECTIONS.forEach((key) => {
+      expect(container.querySelector(`[data-cy="section-${key}"]`)).toBeNull();
+    });
+  });
+
+  it("stays expanded on the list routes so leaving an editor doesn't collapse it", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/SampleTypeManagement",
+      search: "",
+    };
+    const first = renderNav();
+    expect(
+      screen.getByRole("button", { name: "Test Catalog Management" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    first.unmount();
+
+    mockLocation = { pathname: "/MasterListsPage/TestCatalogList", search: "" };
+    const second = renderNav();
+    expect(
+      screen.getByRole("button", { name: "Test Catalog Management" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    second.unmount();
+
+    // ...but stays collapsed by default outside the Test Catalog area
+    mockLocation = { pathname: "/MasterListsPage/reflex", search: "" };
+    renderNav();
+    expect(
+      screen.getByRole("button", { name: "Test Catalog Management" }),
+    ).toHaveAttribute("aria-expanded", "false");
   });
 
   it("uses the /admin base prefix when on an /admin editor route", () => {
