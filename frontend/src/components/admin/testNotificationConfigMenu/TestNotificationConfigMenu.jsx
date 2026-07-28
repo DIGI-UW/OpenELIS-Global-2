@@ -13,14 +13,9 @@ import {
   TableBody,
   TableHeader,
   TableCell,
-  TableSelectRow,
-  TableSelectAll,
   TableContainer,
   Pagination,
   Search,
-  Modal,
-  TextInput,
-  Dropdown,
   Checkbox,
   Select,
   SelectItem,
@@ -28,10 +23,9 @@ import {
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
@@ -39,7 +33,6 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Settings } from "@carbon/icons-react";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },

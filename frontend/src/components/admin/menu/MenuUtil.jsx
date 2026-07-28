@@ -3,8 +3,6 @@ import { Checkbox } from "@carbon/react";
 import { jpSet } from "../../utils/JsonPath";
 import { useIntl } from "react-intl";
 
-export const updateMenuWithElementId = (newMenus, field, value) => {};
-
 export const MenuCheckBox = (props) => {
   const intl = useIntl();
 

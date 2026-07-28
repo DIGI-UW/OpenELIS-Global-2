@@ -21,7 +21,6 @@ import {
   SelectItem,
   Loading,
   Link,
-  FileUploader,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";

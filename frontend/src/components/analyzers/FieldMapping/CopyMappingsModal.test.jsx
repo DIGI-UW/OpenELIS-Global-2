@@ -32,7 +32,6 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 
 // 3. userEvent (PREFERRED for user interactions)
-import userEvent from "@testing-library/user-event";
 
 // 4. IntlProvider
 import { IntlProvider } from "react-intl";

@@ -7,7 +7,7 @@ import {
   NumberInput,
   Stack,
 } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import { StorageLocationAPI } from "./InventoryService";
 
 const StorageLocationModal = ({ open, onClose, onSave }) => {

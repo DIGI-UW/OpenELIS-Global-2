@@ -15,7 +15,7 @@ import {
   TimePicker,
   Link,
 } from "@carbon/react";
-import { Printer, TrashCan } from "@carbon/icons-react";
+import { Printer } from "@carbon/icons-react";
 
 /**
  * SampleCollectionCard - Card for a single sample with collection details

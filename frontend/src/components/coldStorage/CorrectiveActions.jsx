@@ -26,13 +26,11 @@ import {
   Stack,
   TextInput,
   TextArea,
-  Select,
-  SelectItem,
   InlineNotification,
   Link,
   Toggle,
 } from "@carbon/react";
-import { Add, Edit, WarningAlt } from "@carbon/icons-react";
+import { Add, WarningAlt } from "@carbon/icons-react";
 import {
   fetchCorrectiveActions,
   createCorrectiveAction,

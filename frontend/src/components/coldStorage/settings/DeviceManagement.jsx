@@ -15,15 +15,11 @@ import {
   Tag,
   Pagination,
   Modal,
-  Form,
   Stack,
   TextInput,
-  Select,
-  SelectItem,
   Dropdown,
   Toggle,
   IconButton,
-  FormLabel,
 } from "@carbon/react";
 import { Add, Edit, Power, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";

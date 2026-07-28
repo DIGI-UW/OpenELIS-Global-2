@@ -60,7 +60,7 @@ echo ""
 
 # Step 2: Run unit tests
 echo -e "${YELLOW}[2/3] Running frontend unit tests...${NC}"
-if npm test -- --watchAll=false --coverage=false; then
+if npm test -- --coverage=false; then
     echo -e "${GREEN}✓ Unit tests passed${NC}"
 else
     echo -e "${RED}✗ Unit tests failed${NC}"

@@ -1,11 +1,10 @@
 import React, { useState, useRef } from "react";
 import {
   FileUploaderDropContainer,
-  FileUploaderItem,
   Button,
   InlineLoading,
 } from "@carbon/react";
-import { TrashCan, Add } from "@carbon/react/icons";
+import { TrashCan } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./NceFileAttachment.css";
 

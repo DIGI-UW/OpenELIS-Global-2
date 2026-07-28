@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  SideNav,
-  SideNavItems,
   Button,
   Tabs,
   TabList,

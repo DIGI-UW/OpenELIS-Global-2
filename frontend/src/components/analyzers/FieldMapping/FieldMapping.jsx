@@ -10,15 +10,8 @@
  * - Field selection opens mapping panel
  */
 
-import React, { useState, useEffect, useRef } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Search,
-  Tile,
-  InlineNotification,
-} from "@carbon/react";
+import React, { useState, useEffect } from "react";
+import { Grid, Column, Button, Tile, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams, useHistory, useLocation } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";

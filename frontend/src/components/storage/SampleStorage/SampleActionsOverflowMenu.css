@@ -1,8 +1,4 @@
 /* SampleActionsOverflowMenu styling - match ghost button appearance */
-.sample-actions-overflow-menu {
-  /* Override Carbon's default blue color to match ghost button style */
-}
-
 /* Target the trigger button (the ⋮ button) */
 .sample-actions-overflow-menu button.cds--overflow-menu__trigger,
 .sample-actions-overflow-menu .cds--overflow-menu__trigger {

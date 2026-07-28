@@ -22,8 +22,6 @@ import {
   TableHeader,
   TableBody,
   TableCell,
-  Section,
-  Heading,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";

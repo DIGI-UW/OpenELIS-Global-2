@@ -22,7 +22,6 @@ import {
   DatePicker,
   DatePickerInput,
   Dropdown,
-  NumberInput,
   Button,
   Loading,
   InlineNotification,

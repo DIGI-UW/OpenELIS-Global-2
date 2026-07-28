@@ -9,7 +9,6 @@ import {
   render as rtlRender,
   screen,
   fireEvent,
-  waitFor,
   act,
 } from "@testing-library/react";
 import "@testing-library/jest-dom";

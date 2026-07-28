@@ -20,7 +20,6 @@ import {
 import { useIntl } from "react-intl";
 import { deleteAnalyzer } from "../../../services/analyzerService";
 import type { Analyzer, AnalyzerApiError } from "../types";
-import "./DeleteAnalyzerModal.css";
 
 interface DeleteAnalyzerModalProps {
   analyzer?: Analyzer | null;
@@ -98,7 +97,6 @@ const DeleteAnalyzerModal = ({
       preventCloseOnClickOutside={isDeleting}
       danger
       data-testid="delete-analyzer-modal"
-      className="delete-analyzer-modal"
     >
       <ModalHeader
         title={intl.formatMessage({ id: "analyzer.delete.title" })}

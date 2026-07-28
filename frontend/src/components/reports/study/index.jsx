@@ -6,8 +6,6 @@ import {
   Grid,
   Column,
   Section,
-  Breadcrumb,
-  BreadcrumbItem,
   Loading,
 } from "@carbon/react";
 import { injectIntl, FormattedMessage, useIntl } from "react-intl";

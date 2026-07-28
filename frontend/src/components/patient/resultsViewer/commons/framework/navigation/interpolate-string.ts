@@ -1,9 +1,5 @@
 /** @module @category Navigation */
 
-function trimTrailingSlash(str: string) {
-  return str.replace(/\/$/, "");
-}
-
 /**
  * Interpolates a string with openmrsBase and openmrsSpaBase.
  *
@@ -37,11 +33,8 @@ export function interpolateUrl(
   template: string,
   additionalParams?: { [key: string]: string },
 ): string {
-  //const openmrsSpaBase = trimTrailingSlash(window.getOpenmrsSpaBase());
   return interpolateString(template, {
     openmrsBase: window.openmrsBase,
-    // openmrsSpaBase: openmrsSpaBase,
-    openmrsSpaBase: "https://localhost/api",
     ...additionalParams,
   }).replace(/^\/\//, "/"); // remove extra initial slash if present
 }

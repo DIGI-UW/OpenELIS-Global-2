@@ -5,8 +5,6 @@ import {
   DataTable,
   DataTableSkeleton,
   Heading,
-  InlineNotification,
-  Loading,
   OverflowMenu,
   OverflowMenuItem,
   Section,

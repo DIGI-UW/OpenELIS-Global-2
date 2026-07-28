@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { Heading, Button, Grid, Column, Section } from "@carbon/react";
+import { Heading, Grid, Column, Section } from "@carbon/react";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
