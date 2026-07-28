@@ -332,7 +332,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                     orgType = new OrganizationType();
                     orgType.setName(levelName);
                     orgType.setDescription("Address Hierarchy Level " + level);
-                    orgType.setSysUserId("1");
+
                     String typeId = organizationTypeService.insert(orgType);
                     orgType.setId(typeId);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "buildOrCreateLevelTypes",
@@ -343,7 +343,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                     if (orgType.getDescription() == null
                             || !orgType.getDescription().startsWith("Address Hierarchy Level ")) {
                         orgType.setDescription(expectedDescription);
-                        orgType.setSysUserId("1");
+
                         organizationTypeService.update(orgType);
                         LogEvent.logInfo(this.getClass().getSimpleName(), "buildOrCreateLevelTypes",
                                 "Updated organization type: " + levelName + " with level " + level);
@@ -451,8 +451,6 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             newOrg.setShortName(name.length() > 15 ? name.substring(0, 15) : name);
             newOrg.setIsActive("Y");
             newOrg.setMlsSentinelLabFlag("N");
-            newOrg.setSysUserId("1");
-
             // Set parent using lightweight reference when possible
             if (parentId != null) {
                 // Parent has been flushed - use getReference for lightweight proxy

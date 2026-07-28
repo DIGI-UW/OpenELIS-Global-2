@@ -196,7 +196,6 @@ public class PluginAnalyzerService {
             analyzer.setName(type.getName());
             analyzer.setAnalyzerType(type);
             analyzer.setActive(true);
-            analyzer.setSysUserId("1");
             String id = analyzerService.insert(analyzer);
             LogEvent.logInfo(this.getClass().getSimpleName(), "findOrCreateAnalyzerForType",
                     "Created Analyzer '" + type.getName() + "' (id=" + id + ") for legacy plugin '" + pluginName + "'");
