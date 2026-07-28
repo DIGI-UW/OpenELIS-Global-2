@@ -164,9 +164,6 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
             test.setIsActive("Y");
             test.setOrderable(true);
 
-            // Default system user; SecurityContext integration deferred
-            test.setSysUserId("1");
-
             String testId = testService.insert(test);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "createTestField",
