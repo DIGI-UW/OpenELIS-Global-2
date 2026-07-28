@@ -65,8 +65,11 @@ test.describe("Analyzer Form", () => {
 
     // Save
     await form.save();
-    await form.expectSuccessNotification();
-    await expect(form.modal).not.toBeVisible();
+    await expect(page).toHaveURL(
+      /\/analyzers\/\d+\/mappings\?setup=1&step=verify/,
+    );
+    createdAnalyzerId = new URL(page.url()).pathname.split("/")[2];
+    await expect(page.getByTestId("field-mapping")).toBeVisible();
 
     // Verify analyzer appears in the list
     await list.goto();
@@ -75,13 +78,10 @@ test.describe("Analyzer Form", () => {
 
     const rows = page.locator("tbody tr");
     await expect(rows).toHaveCount(1);
-
-    // Store ID for edit test and cleanup
-    const row = rows.first();
-    const testid = await row.getAttribute("data-testid");
-    if (testid && testid.startsWith("analyzer-row-")) {
-      createdAnalyzerId = testid.replace("analyzer-row-", "");
-    }
+    await expect(rows.first()).toHaveAttribute(
+      "data-testid",
+      `analyzer-row-${createdAnalyzerId}`,
+    );
   });
 
   test("edits an existing analyzer", async ({ page }) => {
