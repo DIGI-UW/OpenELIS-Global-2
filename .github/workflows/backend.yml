@@ -69,6 +69,34 @@ jobs:
           repository: ${{github.repository}}
           submodules: recursive
 
+      - name: Scan repository dependencies for vulnerabilities
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          output: trivy-results.txt
+          exit-code: 1
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          scanners: vuln,secret
+
+      - name: Generate backend SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          output-file: sbom.spdx.json
+          artifact-name: openelis-backend-sbom.spdx.json
+          dependency-snapshot: true
+
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-security-reports
+          path: |
+            trivy-results.txt
+            sbom.spdx.json
+
       - name: check formatting
         run: mvn spotless:check
 

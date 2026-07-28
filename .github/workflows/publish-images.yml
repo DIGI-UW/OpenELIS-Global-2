@@ -187,6 +187,31 @@ jobs:
       - name: Pull tested image from GHCR
         run: docker pull "${{ steps.source.outputs.ghcr_source }}"
 
+      - name: Scan tested image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ steps.source.outputs.ghcr_source }}
+          format: table
+          output: ${{ format('trivy-{0}.txt', matrix.dockerhub_suffix) }}
+          exit-code: 1
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Generate tested image SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.source.outputs.ghcr_source }}
+          output-file: ${{ format('sbom-{0}.spdx.json', matrix.dockerhub_suffix) }}
+          artifact-name: ${{ format('openelis-{0}-sbom.spdx.json', matrix.dockerhub_suffix) }}
+
+      - name: Upload image security artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ format('publish-{0}-security-reports', matrix.dockerhub_suffix) }}
+          path: |
+            ${{ format('trivy-{0}.txt', matrix.dockerhub_suffix) }}
+            ${{ format('sbom-{0}.spdx.json', matrix.dockerhub_suffix) }}
+
       - name: Retag and publish tested image to DockerHub
         run: |
           while IFS= read -r target_tag; do
