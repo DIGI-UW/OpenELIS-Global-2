@@ -1,7 +1,7 @@
 # Analyzer QC and Configuration Implementation Roadmap
 
 **Updated:** 2026-07-28
-**Status:** Acceptance remediation in progress
+**Status:** MVP accepted on analyzer UAT; PR merge gates in progress
 **Epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
 **Branch:** `codex/ogc-1054-analyzer-qc-mvp`
 **Pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
@@ -10,8 +10,9 @@
 
 Deliver a lab-facing, profile-driven analyzer QC/configuration MVP through one
 reviewable branch and non-draft PR. The code currently provides the backend and
-UI foundation. Final acceptance requires the URL-addressable Carbon workflow,
-current automated validation, and build-bound remote UAT evidence.
+UI foundation. The URL-addressable Carbon workflow, current automated
+validation, build-bound remote UAT, and MP4 evidence are complete. Remaining
+work is PR-level review/CI closure, not feature implementation.
 
 The normative feature definition is
 [OGC-1054-analyzer-qc-config](../OGC-1054-analyzer-qc-config/spec.md).
@@ -38,29 +39,29 @@ state only.
 
 ## Current Classification
 
-| Milestone | State | Current position |
-| --- | --- | --- |
-| M0 - stabilization | Implemented foundation | Routed QC loading, string-safe lot payloads, deterministic bridge collections, and FILE ownership pass the 875-test analyzer/QC package gate. |
-| M1 - profile verification | Partially accepted | Shipped-profile summaries, setup actions, URL-backed filters, shared semantic page shell, and Carbon tables have focused coverage. Responsive screenshot proof remains. |
-| M2 - guided setup | Partially accepted | Inline creation, exact-once profile application, canonical four-step routes, browser state, contextual detours, and Review are implemented and covered below E2E. Remote UI proof remains. |
-| M3 - mappings/result values | Implemented foundation | Catalog-bound result options, legacy-unbound state, pending resolution, fingerprints, audit, and reusable Carbon mapping tables exist. Remote UI proof remains. |
-| M4 - analyzer QC | Implemented foundation | Existing QC entities, readiness, bridge sync, blocker presentation, and detour returns pass focused and package tests. Remote validation remains. |
-| C4 - remote UAT/evidence | Not accepted | Previous videos and reports are historical. A fresh exact-build UI-only run is required after C1-C3. |
+| Milestone                   | State    | Current position                                                                                                                              |
+| --------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 - stabilization          | Accepted | Routed QC loading, string-safe lot payloads, deterministic bridge collections, and FILE ownership pass the 875-test analyzer/QC package gate. |
+| M1 - profile verification   | Accepted | Shipped-profile summaries, setup actions, URL-backed filters, Carbon tables, and inspected desktop/mobile evidence pass.                      |
+| M2 - guided setup           | Accepted | Inline creation, exact-once profile application, canonical routes, browser history, contextual detours, and Review pass the remote UI story.  |
+| M3 - mappings/result values | Accepted | Catalog-bound result options, legacy-unbound state, pending resolution, fingerprints, audit, and persisted reload behavior pass.              |
+| M4 - analyzer QC            | Accepted | Existing QC entities, readiness, bridge sync, blocker presentation, and rule/control-lot detours pass automated and remote acceptance.        |
+| C4 - remote UAT/evidence    | Accepted | Exact-build non-video/video runs pass; Grist report records 8 pass, 0 fail, 0 stale, and 0 required open.                                     |
 
 ## Requirement Matrix
 
-| Requirement | Code surface | Automated owner | Design reference | UAT step | State |
-| --- | --- | --- | --- | --- | --- |
-| Searchable shipped-profile catalog | `AnalyzerRestController`, `AnalyzerTypeManagement` | JUnit + RTL | analyzer integration/profile designs | `AN-QC-001` | Automated; remote pending |
-| Inline profile-driven creation | `AnalyzersList`, `AnalyzerForm` | JUnit + RTL + Playwright | setup wizard/form patterns | `AN-QC-002` | Automated below E2E; remote pending |
-| Deterministic mapping verification | `FieldMapping`, plugin-config/verification services | JUnit + RTL + Playwright | mapping/data-table patterns | `AN-QC-003` | Automated below E2E; remote pending |
-| Visible connection test | `AnalyzerForm`, connection endpoint | RTL + Playwright | form/notification patterns | `AN-QC-004` | Automated below E2E; remote pending |
-| Catalog-bound qualitative resolution | result-option/pending-value services and panel | JUnit + RTL + Playwright | result-option designs | `AN-QC-005` | Foundation complete |
-| Existing-model QC setup | rule builder, control lots, readiness services | JUnit + RTL + Playwright | Westgard/QC designs | `AN-QC-006` | Partial |
-| Explained activation readiness | verification/readiness services and Review step | JUnit + RTL + Playwright | status/notification patterns | `AN-QC-007` | Partial |
-| Coherent lab-facing review | four setup routes, `AnalyzerSetupReview`, shared page shell | RTL + Playwright | Style Guide v2.3 | `AN-QC-008` | Automated below E2E; remote pending |
-| Deterministic bridge contract | bridge registration service | JUnit/contract tests | ownership contract | not human UAT | Foundation complete |
-| Build-bound review provenance | review-tooling schema v2/build manifest | harness tests | UAT harness contract | all | External dependency |
+| Requirement                          | Code surface                                                | Automated owner          | Design reference                     | UAT step      | State                            |
+| ------------------------------------ | ----------------------------------------------------------- | ------------------------ | ------------------------------------ | ------------- | -------------------------------- |
+| Searchable shipped-profile catalog   | `AnalyzerRestController`, `AnalyzerTypeManagement`          | JUnit + RTL              | analyzer integration/profile designs | `AN-QC-001`   | Accepted                         |
+| Inline profile-driven creation       | `AnalyzersList`, `AnalyzerForm`                             | JUnit + RTL + Playwright | setup wizard/form patterns           | `AN-QC-002`   | Accepted                         |
+| Deterministic mapping verification   | `FieldMapping`, plugin-config/verification services         | JUnit + RTL + Playwright | mapping/data-table patterns          | `AN-QC-003`   | Accepted                         |
+| Visible connection test              | `AnalyzerForm`, connection endpoint                         | RTL + Playwright         | form/notification patterns           | `AN-QC-004`   | Accepted                         |
+| Catalog-bound qualitative resolution | result-option/pending-value services and panel              | JUnit + RTL + Playwright | result-option designs                | `AN-QC-005`   | Accepted                         |
+| Existing-model QC setup              | rule builder, control lots, readiness services              | JUnit + RTL + Playwright | Westgard/QC designs                  | `AN-QC-006`   | Accepted                         |
+| Explained activation readiness       | verification/readiness services and Review step             | JUnit + RTL + Playwright | status/notification patterns         | `AN-QC-007`   | Accepted                         |
+| Coherent lab-facing review           | four setup routes, `AnalyzerSetupReview`, shared page shell | RTL + Playwright         | Style Guide v2.3                     | `AN-QC-008`   | Accepted                         |
+| Deterministic bridge contract        | bridge registration service                                 | JUnit/contract tests     | ownership contract                   | not human UAT | Accepted                         |
+| Build-bound review provenance        | review-tooling schema v2/build manifest                     | harness tests            | UAT harness contract                 | all           | Accepted with tooling follow-ups |
 
 ## Acceptance Checkpoints
 
@@ -130,23 +131,22 @@ against the exact recorded build; PR #3792 is green, non-draft, and mergeable.
 1. `AN-QC-001` - Find and inspect a shipped profile.
 2. `AN-QC-002` - Create an analyzer through inline Instrument setup.
 3. `AN-QC-003` - Review and verify deterministic test/QC mappings.
-4. `AN-QC-005` - Resolve a pending qualitative value with a valid catalog
+4. `AN-QC-004` - Enter connection settings and observe a connection-test result.
+5. `AN-QC-005` - Resolve a pending qualitative value with a valid catalog
    option.
-5. `AN-QC-006` - Add/select an active QC rule and control lot.
-6. `AN-QC-007` - Observe blocked then satisfied readiness.
-7. `AN-QC-004` - Enter connection settings and observe a connection-test result.
+6. `AN-QC-006` - Add/select an active QC rule and control lot.
+7. `AN-QC-007` - Observe blocked then satisfied readiness.
 8. `AN-QC-008` - Review the completed analyzer for lab-facing clarity.
 
-This ordering follows the implemented four-step story while retaining stable
-step keys. Grist is the reviewer-authored source; repository fixtures are a
-tested bootstrap/example only.
+Grist is the reviewer-authored source; repository fixtures are a tested
+bootstrap/example only.
 
 ## Evidence Policy
 
 The deleted June evidence note and prior recordings remain available through
-git history. They cannot accept the current branch. Current evidence will be
-recorded in `ogc-1054-analyzer-qc-config-mvp-evidence-2026-07-28.md` only after
-the exact deployed application/harness SHAs and checklist revision are known.
+git history and do not accept this branch. Current acceptance is recorded in
+`ogc-1054-analyzer-qc-config-mvp-evidence-2026-07-28.md` with the exact
+deployed application/harness SHAs and checklist revision.
 
 Fixture loading may establish preconditions. The acceptance story itself uses
 visible UI controls and assertions only. It must not use `page.request`, API

@@ -1,6 +1,6 @@
 # OGC-1054 Analyzer QC and Configuration MVP
 
-**Status:** Implementation in progress
+**Status:** MVP accepted on analyzer UAT; PR pending merge
 **Branch:** `codex/ogc-1054-analyzer-qc-mvp`
 **Pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
 **Design baseline:** [`DIGI-UW/openelis-work@4c0e1a28`](https://github.com/DIGI-UW/openelis-work/tree/4c0e1a28/designs)
@@ -88,24 +88,24 @@ configuration and when.
 
 ## Deterministic Acceptance Criteria
 
-| ID | Acceptance criterion | Primary proof |
-| --- | --- | --- |
-| AC-1054-01 | Profile catalog search, protocol, and readiness filters round-trip through the URL and restore identical visible rows after reload. | RTL + UI E2E |
-| AC-1054-02 | Every analyzer/profile/setup page has one semantic `h1` and a breadcrumb whose links resolve to valid application routes. | RTL + UI E2E |
-| AC-1054-03 | Starting setup from a profile opens the Instrument URL with the selected profile and a safe encoded `returnTo`. | RTL + UI E2E |
-| AC-1054-04 | Submitting Instrument creates exactly one analyzer, applies defaults once, and navigates to Verify using the returned analyzer ID. | JUnit + RTL + UI E2E |
-| AC-1054-05 | Reload, back, and forward retain the active saved-analyzer setup step without creating or mutating data. | UI E2E |
-| AC-1054-06 | Verify presents profile-applied test mappings, pending codes, qualitative mappings, and current/stale verification with Carbon table semantics. | RTL + UI E2E |
-| AC-1054-07 | Pending qualitative resolution offers only active options for the mapped test and persists the chosen option ID, derived value, and label. | JUnit + RTL + UI E2E |
-| AC-1054-08 | Wrong-test and inactive result options return a validation error and leave the pending value unresolved. | JUnit |
-| AC-1054-09 | Mapping/QC verification stores fingerprints, actor, and time, emits a durable audit event, and becomes stale after relevant change. | JUnit |
-| AC-1054-10 | QC-rule and control-lot create/update/delete operations recompute readiness and invoke bridge registration sync. | JUnit |
-| AC-1054-11 | Setup detours to QC rule/control-lot pages preserve `returnTo` and return to the originating Verify step after save or cancel. | RTL + UI E2E |
-| AC-1054-12 | Connect displays protocol-appropriate fields and a visible success/failure result from a real saved-analyzer connection test. | RTL + UI E2E |
-| AC-1054-13 | Review lists all readiness blockers; `ACTIVE` is rejected while mapping verification is stale or applicable QC is incomplete. | JUnit + RTL + UI E2E |
-| AC-1054-14 | Bridge payload collection ordering and empty collections are deterministic; no human UAT inspects payload internals. | JUnit/contract test |
-| AC-1054-15 | The focused Playwright acceptance story uses visible UI only: no `page.request`, API assertions, response polling, forced Carbon controls, or arbitrary waits. | Playwright guard + audit |
-| AC-1054-16 | Final evidence identifies application SHA, harness SHA, deployment time, checklist revision, routes, statuses, mark times, screenshots, and MP4 for all required UAT steps. | Remote UAT report |
+| ID         | Acceptance criterion                                                                                                                                                        | Primary proof            |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| AC-1054-01 | Profile catalog search, protocol, and readiness filters round-trip through the URL and restore identical visible rows after reload.                                         | RTL + UI E2E             |
+| AC-1054-02 | Every analyzer/profile/setup page has one semantic `h1` and a breadcrumb whose links resolve to valid application routes.                                                   | RTL + UI E2E             |
+| AC-1054-03 | Starting setup from a profile opens the Instrument URL with the selected profile and a safe encoded `returnTo`.                                                             | RTL + UI E2E             |
+| AC-1054-04 | Submitting Instrument creates exactly one analyzer, applies defaults once, and navigates to Verify using the returned analyzer ID.                                          | JUnit + RTL + UI E2E     |
+| AC-1054-05 | Reload, back, and forward retain the active saved-analyzer setup step without creating or mutating data.                                                                    | UI E2E                   |
+| AC-1054-06 | Verify presents profile-applied test mappings, pending codes, qualitative mappings, and current/stale verification with Carbon table semantics.                             | RTL + UI E2E             |
+| AC-1054-07 | Pending qualitative resolution offers only active options for the mapped test and persists the chosen option ID, derived value, and label.                                  | JUnit + RTL + UI E2E     |
+| AC-1054-08 | Wrong-test and inactive result options return a validation error and leave the pending value unresolved.                                                                    | JUnit                    |
+| AC-1054-09 | Mapping/QC verification stores fingerprints, actor, and time, emits a durable audit event, and becomes stale after relevant change.                                         | JUnit                    |
+| AC-1054-10 | QC-rule and control-lot create/update/delete operations recompute readiness and invoke bridge registration sync.                                                            | JUnit                    |
+| AC-1054-11 | Setup detours to QC rule/control-lot pages preserve `returnTo` and return to the originating Verify step after save or cancel.                                              | RTL + UI E2E             |
+| AC-1054-12 | Connect displays protocol-appropriate fields and a visible success/failure result from a real saved-analyzer connection test.                                               | RTL + UI E2E             |
+| AC-1054-13 | Review lists all readiness blockers; `ACTIVE` is rejected while mapping verification is stale or applicable QC is incomplete.                                               | JUnit + RTL + UI E2E     |
+| AC-1054-14 | Bridge payload collection ordering and empty collections are deterministic; no human UAT inspects payload internals.                                                        | JUnit/contract test      |
+| AC-1054-15 | The focused Playwright acceptance story uses visible UI only: no `page.request`, API assertions, response polling, forced Carbon controls, or arbitrary waits.              | Playwright guard + audit |
+| AC-1054-16 | Final evidence identifies application SHA, harness SHA, deployment time, checklist revision, routes, statuses, mark times, screenshots, and MP4 for all required UAT steps. | Remote UAT report        |
 
 ## Boundaries
 
