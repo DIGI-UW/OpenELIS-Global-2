@@ -4,14 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.lang.reflect.Field;
 import java.util.List;
-import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
-import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
@@ -20,8 +17,6 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
-import org.springframework.aop.framework.Advised;
-import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
@@ -41,17 +36,10 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/observation-history.xml");
-        clearObservationTypeCache();
-    }
-
-    private void clearObservationTypeCache() throws Exception {
-        Object target = observationHistoryService;
-        while (AopUtils.isAopProxy(target) && target instanceof Advised) {
-            target = ((Advised) target).getTargetSource().getTarget();
-        }
-        Field f = ObservationHistoryServiceImpl.class.getDeclaredField("observationTypeToIdMap");
-        f.setAccessible(true);
-        ((Map<?, ?>) f.get(target)).clear();
+        // The fixture truncated and reloaded observation_history_type with fresh
+        // ids; rebuild the singleton type-id cache so prior cached ids don't
+        // stale-poison lookups.
+        observationHistoryService.refreshTypeIdCache();
     }
 
     public void testDataInDataBase() {

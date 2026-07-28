@@ -42,6 +42,7 @@ public class RolesConfigurationHandlerTest {
         testRole.setActive(true);
         testRole.setEditable(true);
         testRole.setGroupingRole(false);
+
     }
 
     @Test
