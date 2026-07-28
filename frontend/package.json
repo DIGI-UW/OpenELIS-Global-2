@@ -41,7 +41,6 @@
     "rxjs": "6.x",
     "single-spa": "5.x",
     "styled-components": "^5.3.6",
-    "swr": "2.0.3",
     "web-vitals": "^2.1.4",
     "yup": "^0.29.2"
   },

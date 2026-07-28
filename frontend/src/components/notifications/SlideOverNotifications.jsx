@@ -12,7 +12,7 @@ import {
   putToOpenElisServer,
   urlBase64ToUint8Array,
 } from "../utils/Utils";
-import Spinner from "../common/Sprinner";
+import Spinner from "../common/Spinner";
 import { useIntl } from "react-intl";
 import { useContext, useEffect, useState } from "react";
 import { NotificationContext } from "../layout/Layout";
