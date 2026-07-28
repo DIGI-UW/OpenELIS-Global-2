@@ -91,7 +91,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testactivation.service", "org.openelisglobal.testactivation.daoimpl",
         "org.openelisglobal.testsamplehandling.service", "org.openelisglobal.testsamplehandling.daoimpl",
         "org.openelisglobal.testterminology.service", "org.openelisglobal.testterminology.daoimpl",
-        "org.openelisglobal.testvariant.service", "org.openelisglobal.testvariant.daoimpl",
         "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
         "org.openelisglobal.testalertrule.service", "org.openelisglobal.testalertrule.daoimpl",
         "org.openelisglobal.testcatalog.service", "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer",
@@ -116,7 +115,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.fhir.providers", "org.openelisglobal.common.dao", "org.openelisglobal.report",
         "org.openelisglobal.eqa", "org.openelisglobal.qc", "org.openelisglobal.externalconnections",
         "org.openelisglobal.notifications", "org.openelisglobal.calendar", "org.openelisglobal.esig",
-        "org.openelisglobal.resultreporting.service" }, excludeFilters = {
+        "org.openelisglobal.resultreporting.service", "org.openelisglobal.security" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -127,6 +126,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.config.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.odoo.config.OdooConnectionConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.scheduler.SchedulerConfig"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.SecurityConfig"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.DaemonUserConfig"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.login.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qc.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.scheduler.*"),
@@ -360,9 +362,31 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Bean
+    public org.openelisglobal.result.controller.rest.ResultEntryRestController resultEntryRestController() {
+        return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
+    }
+
+    @Bean
     @Profile("test")
     public PagingProperties pagingProperties() {
         return new PagingProperties();
+    }
+
+    @Bean("daemonSystemUser")
+    @Profile("test")
+    public org.openelisglobal.systemuser.valueholder.SystemUser daemonSystemUser() {
+        org.openelisglobal.systemuser.valueholder.SystemUser user = new org.openelisglobal.systemuser.valueholder.SystemUser();
+        user.setId("1");
+        user.setLoginName("daemon");
+        user.setFirstName("System");
+        user.setLastName("Daemon");
+        return user;
+    }
+
+    @Bean("daemonSysUserId")
+    @Profile("test")
+    public String daemonSysUserId() {
+        return "1";
     }
 
     @Bean

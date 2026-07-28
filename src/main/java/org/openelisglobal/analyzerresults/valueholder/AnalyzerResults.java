@@ -86,6 +86,11 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "complete_date")
     private Timestamp completeDate;
 
+    // OGC-1145 FR-8: staged row held because its test runs on several sample
+    // types and the message carried no specimen; the review page's chooser
+    // resolves it.
+    public static final String IMPORT_ISSUE_AWAITING_SPECIMEN = "awaiting_specimen";
+
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
 

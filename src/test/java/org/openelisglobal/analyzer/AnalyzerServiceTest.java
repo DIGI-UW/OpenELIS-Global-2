@@ -17,6 +17,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.test.context.support.WithMockUser;
 
 public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
 
@@ -66,6 +67,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
     public void persistData_shouldInsertNewAnalyzerAndMappings() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "analyzer_test_map", "analyzer" });
         Analyzer newAnalyzer = createTestAnalyzer("Test Analyzer", "TEST-001", "TEST");
@@ -97,6 +99,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
     public void persistData_shouldUpdateExistingAnalyzerAndAddNewMappings() {
         Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(existingAnalyzer);
@@ -132,6 +135,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
     public void persistData_shouldNotDuplicateExistingMappings() {
         Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(existingAnalyzer);

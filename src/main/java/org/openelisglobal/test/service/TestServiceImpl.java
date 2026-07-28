@@ -192,6 +192,12 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     @Override
+    /**
+     * Primary (first-linked) sample type only. A test may associate several sample
+     * types (OGC-1145); callers that have a specimen in context must use
+     * {@link #getActiveTestByLoincCodeAndSampleType} or
+     * {@link #getTypeOfSamples(Test)} — never assume this is THE sample type.
+     */
     @Transactional(readOnly = true)
     public TypeOfSample getTypeOfSample(Test test) {
         if (test == null) {
@@ -207,6 +213,18 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         String typeOfSampleId = typeOfSampleTests.get(0).getTypeOfSampleId();
 
         return typeOfSampleService.getTypeOfSampleById(typeOfSampleId);
+    }
+
+    /** All sample types associated with the test (OGC-1145 m:n model). */
+    @Override
+    @Transactional(readOnly = true)
+    public List<TypeOfSample> getTypeOfSamples(Test test) {
+        if (test == null) {
+            return new ArrayList<>();
+        }
+        // the cached testId→types map holds no entry (null) for zero-link tests
+        List<TypeOfSample> types = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+        return types == null ? new ArrayList<>() : types;
     }
 
     @Override
@@ -347,7 +365,11 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
                 TypeOfSampleTest typeOfSampleTest = typeOfSampleTests.get(0);
                 TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
                 if (typeOfSample != null && !typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
-                    sampleName = "(" + typeOfSample.getLocalizedName() + ")";
+                    // OGC-1145: a test may associate several sample types; the
+                    // augmented display name summarizes rather than implying one
+                    sampleName = typeOfSampleTests.size() > 1
+                            ? "(" + typeOfSample.getLocalizedName() + " +" + (typeOfSampleTests.size() - 1) + ")"
+                            : "(" + typeOfSample.getLocalizedName() + ")";
                 }
             }
         }
@@ -545,6 +567,21 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     @Override
     public Optional<Test> getActiveTestByLoincCodeAndSampleType(String loincCode, String sampleTypeId) {
+        // OGC-1145 (FR-14): a specimen-scoped terminology mapping (e.g. CSF
+        // 2342-4) routes directly to its (test, specimen); shared mappings and
+        // the legacy test.loinc column resolve via the junction filter below.
+        // Resolved lazily via SpringContext: the mapping service already
+        // injects TestService, so field injection here would be circular.
+        for (org.openelisglobal.testterminology.valueholder.TestTerminologyMapping mapping : SpringContext
+                .getBean(org.openelisglobal.testterminology.service.TestTerminologyMappingService.class)
+                .getActiveMappingsForCode("LOINC", loincCode, sampleTypeId)) {
+            if (mapping.getSampleTypeId() != null && mapping.getSampleTypeId().equals(sampleTypeId)) {
+                Test mappedTest = get(mapping.getTestId());
+                if (mappedTest != null && "Y".equals(mappedTest.getIsActive())) {
+                    return Optional.of(mappedTest);
+                }
+            }
+        }
         List<Test> tests = getBaseObjectDAO().getActiveTestsByLoinc(loincCode);
         for (Test test : tests) {
             for (TypeOfSampleTest typeOfSampleTest : typeOfSampleTestService

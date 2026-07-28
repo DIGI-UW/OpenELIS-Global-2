@@ -6,6 +6,7 @@ import java.util.Locale;
 import javax.validation.Valid;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
@@ -34,7 +35,8 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class SampleTypeCreateRestController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "sampleTypeEnglishName", "sampleTypeFrenchName" };
+    private static final String[] ALLOWED_FIELDS = new String[] { "sampleTypeEnglishName", "sampleTypeFrenchName",
+            "domain", "whonetCode", "active" };
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -93,10 +95,12 @@ public class SampleTypeCreateRestController extends BaseController {
         }
         String identifyingName = form.getSampleTypeEnglishName();
         String userId = getSysUserId(request);
+        String backendDomainCode = mapFrontendDomainToBackendCode(form.getDomain());
 
         Localization localization = createLocalization(form.getSampleTypeFrenchName(), identifyingName, userId);
 
-        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId);
+        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId, backendDomainCode, form.getWhonetCode(),
+                Boolean.TRUE.equals(form.getActive()));
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
@@ -113,7 +117,8 @@ public class SampleTypeCreateRestController extends BaseController {
             sampleTypeCreateService.createAndInsertSampleType(localization, typeOfSample, workplanModule, resultModule,
                     validationModule, workplanResultModule, resultResultModule, validationValidationModule);
         } catch (LIMSRuntimeException e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError("Failed to save Sample Type '" + identifyingName + "' to database: " + e.getMessage(), e);
+            throw e;
         }
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
@@ -144,18 +149,36 @@ public class SampleTypeCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private TypeOfSample createTypeOfSample(String identifyingName, String userId) {
+    private TypeOfSample createTypeOfSample(String identifyingName, String userId, String backendDomainCode,
+            String whonetCode, boolean active) {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setDescription(identifyingName);
-        typeOfSample.setDomain("H");
+        typeOfSample.setDomain(backendDomainCode); // Use the already-mapped backend domain code
         typeOfSample.setLocalAbbreviation(
                 identifyingName.length() > 10 ? identifyingName.substring(0, 10) : identifyingName);
-        typeOfSample.setIsActive(false);
+        if (whonetCode != null) {
+            String trimmed = whonetCode.trim();
+            if (!trimmed.isEmpty() && trimmed.length() <= 5) {
+                typeOfSample.setWhonetCode(trimmed);
+            }
+        }
+        // Inactive-until-configured by default; the admin may create the type
+        // active explicitly (so it is immediately orderable).
+        typeOfSample.setIsActive(active);
         typeOfSample.setSortOrder(Integer.MAX_VALUE);
         typeOfSample.setSysUserId(userId);
         String identifyingNameKey = identifyingName.replaceAll(" ", "_");
         typeOfSample.setNameKey("Sample.type." + identifyingNameKey);
+
         return typeOfSample;
+    }
+
+    /**
+     * Canonicalizes the Clinical/Environmental/Vector choice; the column stores the
+     * enum value since the OGC-296 Dependency-4 migration.
+     */
+    private String mapFrontendDomainToBackendCode(String frontendDomain) {
+        return Domain.normalize(frontendDomain);
     }
 
     private SystemModule createSystemModule(String menuItem, String identifyingName, String userId) {
