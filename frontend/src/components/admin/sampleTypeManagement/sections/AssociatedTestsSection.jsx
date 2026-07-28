@@ -157,8 +157,10 @@ function AssociatedTestsSection({ sampleTypeId, onChange }) {
         />
       )}
 
-      {/* Add a test: optional "on this sample type" narrowing + a single
-          autocomplete over the domain-compatible candidates. */}
+      {/* Add a test: optional "on this sample type" narrowing sits directly
+          beside a single autocomplete over the domain-compatible candidates.
+          Fixed flex bases (no grow) keep the two controls adjacent instead of
+          stretching apart across the row. */}
       <div
         style={{
           display: "flex",
@@ -167,47 +169,51 @@ function AssociatedTestsSection({ sampleTypeId, onChange }) {
           flexWrap: "wrap",
         }}
       >
-        <Select
-          id="assoc-test-sampletype-filter"
-          labelText={intl.formatMessage({
-            id: "label.sampleType.tests.filterBySampleType",
-          })}
-          value={sampleTypeFilter}
-          onChange={(e) => setSampleTypeFilter(e.target.value)}
-          style={{ maxWidth: "16rem" }}
-        >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "label.sampleType.tests.filterBySampleType.all",
+        <div style={{ flex: "0 0 16rem" }}>
+          <Select
+            id="assoc-test-sampletype-filter"
+            labelText={intl.formatMessage({
+              id: "label.sampleType.tests.filterBySampleType",
             })}
-          />
-          {sampleTypes.map((s) => (
-            <SelectItem key={s.id} value={String(s.id)} text={s.name} />
-          ))}
-        </Select>
+            value={sampleTypeFilter}
+            onChange={(e) => setSampleTypeFilter(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "label.sampleType.tests.filterBySampleType.all",
+              })}
+            />
+            {sampleTypes.map((s) => (
+              <SelectItem key={s.id} value={String(s.id)} text={s.name} />
+            ))}
+          </Select>
+        </div>
 
-        <ComboBox
-          key={comboKey}
-          id="assoc-test-combo"
-          titleText={intl.formatMessage({ id: "label.sampleType.tests.add" })}
-          placeholder={intl.formatMessage({
-            id: "label.sampleType.tests.searchPlaceholder",
-          })}
-          items={candidates}
-          itemToString={(item) => (item ? item.name : "")}
-          shouldFilterItem={({ item, inputValue }) =>
-            !inputValue ||
-            (item?.name || "").toLowerCase().includes(inputValue.toLowerCase())
-          }
-          disabled={busy}
-          onChange={({ selectedItem }) => {
-            if (selectedItem) {
-              addTest(selectedItem.id);
+        <div style={{ flex: "0 0 26rem", maxWidth: "100%" }}>
+          <ComboBox
+            key={comboKey}
+            id="assoc-test-combo"
+            titleText={intl.formatMessage({ id: "label.sampleType.tests.add" })}
+            placeholder={intl.formatMessage({
+              id: "label.sampleType.tests.searchPlaceholder",
+            })}
+            items={candidates}
+            itemToString={(item) => (item ? item.name : "")}
+            shouldFilterItem={({ item, inputValue }) =>
+              !inputValue ||
+              (item?.name || "")
+                .toLowerCase()
+                .includes(inputValue.toLowerCase())
             }
-          }}
-          style={{ minWidth: "24rem" }}
-        />
+            disabled={busy}
+            onChange={({ selectedItem }) => {
+              if (selectedItem) {
+                addTest(selectedItem.id);
+              }
+            }}
+          />
+        </div>
       </div>
 
       {/* Currently-linked tests with remove */}
