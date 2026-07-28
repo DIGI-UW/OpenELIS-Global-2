@@ -193,6 +193,8 @@ describe("SampleResultsSection", () => {
     fireEvent.change(container.querySelector("#comp-label-1"), {
       target: { value: "Diastolic" },
     });
+    // The result type is a required explicit choice (FR-56) — pick Numeric.
+    fireEvent.click(container.querySelector("#comp-type-1-N"));
     fireEvent.click(saveButton());
 
     const components = savedPayload().components;

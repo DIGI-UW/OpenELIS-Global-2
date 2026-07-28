@@ -1,6 +1,8 @@
 package org.openelisglobal.testcatalog.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.List;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
@@ -10,11 +12,17 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testactivation.service.TestActivationAcknowledgmentService;
 import org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,17 +54,92 @@ public class TestCatalogActivationRestController {
 
     private final TestActivationAcknowledgmentService ackService;
 
+    private final TestResultComponentService componentService;
+
+    private final TestResultService testResultService;
+
     public TestCatalogActivationRestController(TestService testService, ResultLimitService resultLimitService,
-            RangeCoverageValidationService coverageService, TestActivationAcknowledgmentService ackService) {
+            RangeCoverageValidationService coverageService, TestActivationAcknowledgmentService ackService,
+            TestResultComponentService componentService, TestResultService testResultService) {
         this.testService = testService;
         this.resultLimitService = resultLimitService;
         this.coverageService = coverageService;
         this.ackService = ackService;
+        this.componentService = componentService;
+        this.testResultService = testResultService;
     }
 
     /** Acknowledgment payload: the coverage-gap report the user is accepting. */
     public static class ActivateRequest {
         public String gapsAcknowledged;
+    }
+
+    /**
+     * FR-57 completeness report — the structured reason an activation was refused.
+     * Returned with 422 so the UI can render a checklist instead of failing
+     * silently (FR-58/FR-59). {@code missing} lists machine-readable issue codes;
+     * {@code messages} the human-readable equivalents.
+     */
+    public static class CompletenessReport {
+        public boolean complete;
+        public List<String> missing = new ArrayList<>();
+        public List<String> messages = new ArrayList<>();
+
+        void add(String code, String message) {
+            missing.add(code);
+            messages.add(message);
+        }
+    }
+
+    /**
+     * FR-57 — a test may only go Active when it is safe to order and result: it
+     * must have a name, at least one active PRIMARY component carrying a result
+     * type, and every dictionary-backed active component must have at least one
+     * result option. Returns a {@link CompletenessReport} listing every gap;
+     * {@code complete} is true only when nothing is missing.
+     */
+    private CompletenessReport checkCompleteness(Test test) {
+        CompletenessReport rep = new CompletenessReport();
+        String name = test.getName();
+        if (name == null || name.isBlank()) {
+            rep.add("NO_NAME", "The test has no name.");
+        }
+
+        List<TestResultComponent> components = componentService.getActiveComponentsByTestId(test.getId());
+        boolean hasTypedPrimary = components.stream()
+                .anyMatch(c -> c.getIsPrimary() && c.getResultType() != null && !c.getResultType().isBlank());
+        if (!hasTypedPrimary) {
+            rep.add("NO_PRIMARY_RESULT_TYPE", "The test needs an active primary result component with a result type.");
+        }
+
+        List<TestResult> options = testResultService.getActiveTestResultsByTest(test.getId());
+        for (TestResultComponent c : components) {
+            String type = c.getResultType();
+            if (type != null && TypeOfTestResultServiceImpl.ResultType.isDictionaryVarientById(type)) {
+                boolean hasOption = options.stream().anyMatch(o -> c.getId().equals(o.getComponentId()));
+                if (!hasOption) {
+                    rep.add("NO_DICTIONARY_OPTIONS",
+                            "Result component \"" + c.getLabel() + "\" has no result options defined.");
+                }
+            }
+        }
+
+        rep.complete = rep.missing.isEmpty();
+        return rep;
+    }
+
+    /**
+     * FR-58 — the completeness checklist for a test, so the editor can show what
+     * still blocks activation before the user even tries. Same evaluation as the
+     * activation gate; always 200 with the report.
+     */
+    @GetMapping(value = "/tests/{testId}/completeness", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CompletenessReport> getCompleteness(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(checkCompleteness(test));
     }
 
     /**
@@ -66,11 +149,19 @@ public class TestCatalogActivationRestController {
      * Returns the coverage report either way.
      */
     @PostMapping(value = "/tests/{testId}/activate", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<RangeCoverageValidationService.CoverageReport> activateTest(@PathVariable String testId,
+    public ResponseEntity<?> activateTest(@PathVariable String testId,
             @RequestBody(required = false) ActivateRequest body, HttpServletRequest request) {
         Test test = testService.getTestById(testId);
         if (test == null) {
             return ResponseEntity.notFound().build();
+        }
+        // FR-57 — refuse activation of an incomplete test up front, before the
+        // range-coverage gate, so the user gets the structured checklist (FR-58)
+        // rather than a downstream failure. 422 = the request was well-formed but
+        // the test isn't in an activatable state.
+        CompletenessReport completeness = checkCompleteness(test);
+        if (!completeness.complete) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(completeness);
         }
         String sysUserId = ControllerUtills.getSysUserId(request);
         RangeCoverageValidationService.CoverageReport report = coverageService

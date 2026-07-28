@@ -12,6 +12,7 @@ import {
   TableCell,
   Loading,
   InlineNotification,
+  Modal,
 } from "@carbon/react";
 import { Add, TrashCan, View, ArrowUp, ArrowDown } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -52,6 +53,8 @@ const PanelsSection = ({ testId }) => {
   const [newPanelName, setNewPanelName] = useState("");
   const [creating, setCreating] = useState(false);
   const [comboKey, setComboKey] = useState(0);
+  // FR-79: removing a panel membership is confirmed, not immediate.
+  const [panelToRemove, setPanelToRemove] = useState(null);
   // FR-42: show the panel's other tests for context when repositioning.
   const [contextPanelId, setContextPanelId] = useState(null);
   const [contextTests, setContextTests] = useState([]);
@@ -326,7 +329,7 @@ const PanelsSection = ({ testId }) => {
                     iconDescription={intl.formatMessage({
                       id: "label.testCatalog.panels.remove",
                     })}
-                    onClick={() => removePanel(m.panelId)}
+                    onClick={() => setPanelToRemove(m)}
                   />
                 </TableCell>
               </TableRow>
@@ -387,6 +390,34 @@ const PanelsSection = ({ testId }) => {
       <Button kind="primary" disabled={saving} onClick={handleSave}>
         <FormattedMessage id="label.button.save" />
       </Button>
+
+      {/* FR-79: confirm before dropping a panel membership. */}
+      <Modal
+        open={panelToRemove !== null}
+        danger
+        modalHeading={intl.formatMessage({
+          id: "label.testCatalog.panels.remove.confirm.heading",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "label.testCatalog.panels.remove",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setPanelToRemove(null)}
+        onSecondarySubmit={() => setPanelToRemove(null)}
+        onRequestSubmit={() => {
+          if (panelToRemove) {
+            removePanel(panelToRemove.panelId);
+          }
+          setPanelToRemove(null);
+        }}
+      >
+        <p>
+          <FormattedMessage
+            id="label.testCatalog.panels.remove.confirm.body"
+            values={{ panel: panelToRemove?.panelName || "" }}
+          />
+        </p>
+      </Modal>
     </Stack>
   );
 };

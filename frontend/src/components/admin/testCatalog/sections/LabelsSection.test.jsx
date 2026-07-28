@@ -69,7 +69,11 @@ describe("LabelsSection", () => {
     });
     renderSection();
 
-    expect(await screen.findByText("Specimen Label")).toBeInTheDocument();
+    // The preset name shows both in the config table and the order-entry preview
+    // (FR-67), so match all occurrences.
+    expect(
+      (await screen.findAllByText("Specimen Label")).length,
+    ).toBeGreaterThan(0);
     expect(document.getElementById("default-1").value).toBe("2");
     expect(document.getElementById("max-1").value).toBe("5");
     expect(
