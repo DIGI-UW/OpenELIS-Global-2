@@ -29,6 +29,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
+import org.openelisglobal.security.WithDaemonUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +54,7 @@ import org.springframework.web.context.WebApplicationContext;
 @WebAppConfiguration
 @TestPropertySource("classpath:common.properties")
 @ActiveProfiles("test")
+@WithDaemonUser
 public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJUnit4SpringContextTests {
 
     Logger logger = LoggerFactory.getLogger(getClass());
@@ -111,7 +113,13 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     @Before
-    public void setDefaultTestAuthentication() {
+    public void setDefaultTestAuthentication() throws Exception {
+        // Ensure the "admin" SystemUser row exists so UserContextHolder can
+        // resolve the principal set below (or by @WithMockUser(username="admin")
+        // on individual tests). Without this, fillSysUserIdIfMissing throws
+        // for any test whose own fixture doesn't include system_user.
+        ensureBaselineSystemUserRows();
+
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
                 List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"))));
     }
@@ -128,6 +136,22 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     @Before
     public void setUp() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
+    }
+
+    /**
+     * Replace the SecurityContext principal with the given login name. Use this in
+     * a subclass {@code @Before} (after {@code super}'s @Before set the admin
+     * principal) when the test loads a fixture that replaces {@code system_user}
+     * with its own users — e.g. {@code testUser}, {@code alice}. The login name
+     * passed must match a {@code login_name} present in the test's loaded fixture
+     * so {@link org.openelisglobal.common.util.UserContextHolder} can resolve it;
+     * ROLE_ADMIN / ROLE_RESULTS authorities are granted so
+     * 
+     * @PreAuthorize-protected paths still pass.
+     */
+    protected void authenticateAs(String loginName) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(loginName, "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"))));
     }
 
     /**
@@ -231,6 +255,28 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     inputStream.close();
                 }
             }
+        }
+    }
+
+    /**
+     * Ensure a {@code system_user} row with {@code login_name='admin'} exists so
+     * the principal set by {@link #setDefaultTestAuthentication()} resolves via
+     * {@link org.openelisglobal.common.util.UserContextHolder}. Idempotent: checks
+     * by {@code login_name} (not by PK) to avoid creating a second admin when
+     * another fixture already populated the row with a different id.
+     *
+     * <p>
+     * Tests whose fixtures truncate {@code system_user} and load their own users
+     * (e.g. {@code testUser}, {@code alice}) wipe this row; those tests should set
+     * up a daemon SecurityContext in their own {@code @Before} to avoid the admin
+     * DB lookup entirely.
+     */
+    private void ensureBaselineSystemUserRows() throws SQLException {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.execute("INSERT INTO system_user (id, external_id, login_name, last_name, first_name, initials, "
+                    + "is_active, is_employee, lastupdated) "
+                    + "SELECT nextval('system_user_seq'), 'TEST_ADMIN', 'admin', 'Doe', 'John', 'JD', 'Y', 'Y', now() "
+                    + "WHERE NOT EXISTS (SELECT 1 FROM system_user WHERE login_name = 'admin')");
         }
     }
 
@@ -340,6 +386,23 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     protected void ensureReferenceTables(String... names) {
         for (String name : names) {
             ensureReferenceTable(name);
+        }
+    }
+
+    /**
+     * Resync a Postgres sequence to {@code MAX(id)+1} of its table. DBUnit fixture
+     * loads insert rows with explicit ids without advancing the sequence, so a
+     * later sequence-backed insert can collide with a seeded id depending on test
+     * order (e.g. {@code person_pk id=2 already exists}). Call this before
+     * sequence-backed inserts into a fixture-seeded table.
+     */
+    protected void resyncSequence(String sequence, String table) {
+        try (Connection conn = dataSource.getConnection(); Statement st = conn.createStatement()) {
+            // id columns are numeric(10); setval needs a bigint.
+            st.execute("SELECT setval('" + sequence + "', (SELECT COALESCE(MAX(id), 0) + 1 FROM " + table
+                    + ")::bigint, false)");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
         }
     }
 

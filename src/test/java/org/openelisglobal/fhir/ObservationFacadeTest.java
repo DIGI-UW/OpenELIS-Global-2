@@ -67,6 +67,15 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         new JdbcTemplate(dataSource)
                 .execute("SELECT setval('result_seq', COALESCE((SELECT MAX(id) FROM result), 1)::bigint)");
 
+        // The fixture inserts result rows with explicit ids (3, 4) without
+        // advancing result_seq, so whether createObservation's sequence-driven
+        // insert collides with them depends on how many results earlier tests
+        // happened to create — a suite-order coin flip. Resync the sequence
+        // past the fixture's ids so this test is order-independent.
+        new org.springframework.jdbc.core.JdbcTemplate(dataSource)
+                .queryForObject("SELECT setval('clinlims.result_seq', (SELECT GREATEST(COALESCE(MAX(id), 1), 1)::bigint"
+                        + " FROM clinlims.result))", Long.class);
+
         servletContext = new MockServletContext();
 
         fhirServlet = new RestfulServer(FhirContext.forR4());

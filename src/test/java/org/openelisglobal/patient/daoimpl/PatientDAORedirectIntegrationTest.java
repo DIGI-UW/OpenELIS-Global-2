@@ -39,11 +39,12 @@ public class PatientDAORedirectIntegrationTest extends BaseWebContextSensitiveTe
     @Before
     public void setUp() throws Exception {
         ensureReferenceTables("PERSON", "PATIENT");
-        // Test isolation: earlier fixtures load explicit person/patient ids via
-        // named sequences that TRUNCATE ... RESTART IDENTITY does not reset, so
-        // leftover rows collide with our sequence-generated inserts. Empty the
-        // tables first so the collision cannot occur regardless of run order.
+        // Test isolation: empty the tables so leftover explicit-id rows from
+        // sibling DBUnit fixtures can't collide with our inserts, then resync the
+        // sequences to the now-empty tables so sequence-generated ids start clean.
         cleanRowsInCurrentConnection(new String[] { "patient", "person" });
+        resyncSequence("clinlims.person_seq", "clinlims.person");
+        resyncSequence("clinlims.patient_seq", "clinlims.patient");
         // Create persons for test patients
         primaryPerson = new Person();
         primaryPerson.setFirstName("John");

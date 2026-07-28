@@ -23,6 +23,7 @@ import { Add, Edit, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import RangeModal from "./sections/RangeModal";
 import StorageSection from "./sections/StorageSection";
@@ -61,7 +62,7 @@ const CombinedTestEditor = () => {
   const base = location.pathname.startsWith("/admin")
     ? "/admin"
     : "/MasterListsPage";
-  const { addNotification, setNotificationVisible } =
+  const { addNotification, setNotificationVisible, notificationVisible } =
     useContext(NotificationContext);
 
   const testIds = (ids || "").split(",").filter(Boolean);
@@ -73,6 +74,9 @@ const CombinedTestEditor = () => {
   const [ranges, setRanges] = useState([]);
   const [components, setComponents] = useState([]);
   const [differs, setDiffers] = useState(false);
+  // FR-74 — per-test view of which tests diverge from the seed (first test), so
+  // the admin sees exactly what "set all to" will overwrite.
+  const [rangeDiffByTest, setRangeDiffByTest] = useState({});
   const [editingIndex, setEditingIndex] = useState(null);
   const [sharedSection, setSharedSection] = useState("ranges");
 
@@ -101,11 +105,18 @@ const CombinedTestEditor = () => {
               perTest[id] = (r && r.ranges) || [];
               pending -= 1;
               if (pending === 0) {
+                const seedSig = rangeSignature(perTest[testIds[0]]);
                 const signatures = testIds.map((t) =>
                   rangeSignature(perTest[t]),
                 );
-                const allSame = signatures.every((s) => s === signatures[0]);
+                const allSame = signatures.every((s) => s === seedSig);
                 setDiffers(!allSame);
+                // FR-74 — record which tests differ from the seed for the breakdown.
+                const diffMap = {};
+                testIds.forEach((t) => {
+                  diffMap[t] = rangeSignature(perTest[t]) !== seedSig;
+                });
+                setRangeDiffByTest(diffMap);
                 // Seed the editor from the first test's ranges (the "set all to"
                 // starting point when they differ; the shared value when they agree).
                 setRanges(perTest[testIds[0]] || []);
@@ -232,6 +243,9 @@ const CombinedTestEditor = () => {
 
   return (
     <>
+      {/* Group saves raise toasts via NotificationContext; the page must render
+          the AlertDialog for them to be visible (app-wide pattern). */}
+      {notificationVisible === true && <AlertDialog />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
@@ -301,6 +315,12 @@ const CombinedTestEditor = () => {
                           }
                         />
                       </Tag>
+                      {/* FR-74 — flag tests whose ranges differ from the seed. */}
+                      {rangeDiffByTest[s.testId] && (
+                        <Tag type="warm-gray" size="sm">
+                          <FormattedMessage id="state.testCatalog.differsAcrossTests" />
+                        </Tag>
+                      )}
                     </TableCell>
                     <TableCell>
                       {/* FR-13: drop a test from the set before saving. */}

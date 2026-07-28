@@ -265,6 +265,24 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     @org.junit.Test
+    public void saveSampleResults_roundTripsThePrimaryFlag_exactlyOnePrimary() {
+        // Mark the second component primary; the save must persist the flag and the
+        // read must return exactly one primary.
+        ResultComponentDto sys = comp(null, "SYS", "Systolic", 1);
+        ResultComponentDto primary = comp(null, "PRIMARY", "Diastolic", 2);
+        primary.isPrimary = true;
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(sys, primary), authedRequest());
+
+        SampleResults loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(2, loaded.components.size());
+        long primaries = loaded.components.stream().filter(c -> Boolean.TRUE.equals(c.isPrimary)).count();
+        assertEquals("exactly one primary", 1L, primaries);
+        ResultComponentDto flagged = loaded.components.stream().filter(c -> Boolean.TRUE.equals(c.isPrimary))
+                .findFirst().get();
+        assertEquals("PRIMARY", flagged.code);
+    }
+
+    @org.junit.Test
     public void saveSampleResults_updatesExistingComponentById_withoutCreatingARow() {
         controller.saveSampleResults(String.valueOf(TEST_ID), body(comp(null, "SYS", "Systolic", 1)), authedRequest());
         SampleResults loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
@@ -569,7 +587,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 SAMPLE_TYPE_ID, TEST_ID);
 
         TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null,
-                "SampleResultsIT", 1, 25);
+                "SampleResultsIT", false, 1, 25);
         TestCatalogEditorRestController.TestListRow row = page.rows.stream()
                 .filter(r -> r.testId.equals(String.valueOf(TEST_ID))).findFirst().orElseThrow();
         assertTrue("test name must be disambiguated by its sample type, got: " + row.name,

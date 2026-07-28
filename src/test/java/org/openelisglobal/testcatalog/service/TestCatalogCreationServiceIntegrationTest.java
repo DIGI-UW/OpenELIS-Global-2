@@ -13,7 +13,9 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,6 +36,8 @@ public class TestCatalogCreationServiceIntegrationTest extends BaseWebContextSen
     @Autowired
     private TestService testService;
     @Autowired
+    private TestSectionService testSectionService;
+    @Autowired
     private TypeOfSampleTestService typeOfSampleTestService;
     @Autowired
     private LocalizationService localizationService;
@@ -42,6 +46,7 @@ public class TestCatalogCreationServiceIntegrationTest extends BaseWebContextSen
 
     private JdbcTemplate jdbc;
     private String createdTestId;
+    private String createdSectionId;
 
     @Before
     @Override
@@ -67,10 +72,30 @@ public class TestCatalogCreationServiceIntegrationTest extends BaseWebContextSen
     private void cleanup() {
         if (createdTestId != null) {
             jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", Long.parseLong(createdTestId));
+            // FR-56 pre-seeds a primary component on create; delete it before the test.
+            jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", Long.parseLong(createdTestId));
             jdbc.update("DELETE FROM clinlims.test WHERE id = ?", Long.parseLong(createdTestId));
             createdTestId = null;
         }
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id IN"
+                + " (SELECT id FROM clinlims.test WHERE local_code = ?)", CODE);
         jdbc.update("DELETE FROM clinlims.test WHERE local_code = ?", CODE);
+        if (createdSectionId != null) {
+            java.util.List<Long> secLocIds = jdbc.queryForList(
+                    "SELECT name_localization_id FROM clinlims.test_section WHERE id = ?", Long.class,
+                    Long.parseLong(createdSectionId));
+            jdbc.update("DELETE FROM clinlims.test_section WHERE id = ?", Long.parseLong(createdSectionId));
+            for (Long id : secLocIds) {
+                if (id != null) {
+                    try {
+                        localizationService.delete(String.valueOf(id), "1");
+                    } catch (RuntimeException ignored) {
+                        // already gone
+                    }
+                }
+            }
+            createdSectionId = null;
+        }
         java.util.List<Long> locIds = jdbc.queryForList(
                 "SELECT name_localization_id FROM clinlims.type_of_sample WHERE id = ?", Long.class, SAMPLE_TYPE_ID);
         jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id = ?", SAMPLE_TYPE_ID);
@@ -105,6 +130,44 @@ public class TestCatalogCreationServiceIntegrationTest extends BaseWebContextSen
         assertFalse("sample-type link must be created",
                 typeOfSampleTestService.getTypeOfSampleTestsForTest(createdTestId).isEmpty());
         assertTrue("code must now be reported in use", creationService.codeInUse(CODE));
+        // FR-56 — one active PRIMARY component pre-seeded, label defaulting to the
+        // test name, result type left unset (required before activation, not here).
+        java.util.List<java.util.Map<String, Object>> components = jdbc
+                .queryForList("SELECT code, label, is_primary, result_type FROM clinlims.test_result_component"
+                        + " WHERE test_id = ? AND is_active = 'Y'", Long.parseLong(createdTestId));
+        assertEquals("exactly one pre-seeded component", 1, components.size());
+        assertEquals("PRIMARY", components.get(0).get("code"));
+        assertEquals(params.name, components.get(0).get("label"));
+        assertEquals(Boolean.TRUE, components.get(0).get("is_primary"));
+    }
+
+    @Test
+    public void createInactiveTest_activatesAssignedInactiveLabUnit() {
+        // Seed an inactive lab unit (test section) with its required name localization.
+        Localization sectionName = LocalizationServiceImpl.createNewLocalization("CreateIT-Sec", "CreateIT-Sec",
+                LocalizationServiceImpl.LocalizationType.TEST_NAME);
+        sectionName.setSysUserId("1");
+        String sectionLocId = localizationService.insert(sectionName);
+        Long sectionId = jdbc.queryForObject("SELECT nextval('clinlims.test_section_seq')", Long.class);
+        jdbc.update(
+                "INSERT INTO clinlims.test_section (id, name, description, is_external, is_active,"
+                        + " name_localization_id, lastupdated) VALUES (?, ?, ?, 'N', 'N', ?, NOW())",
+                sectionId, "CreateIT-Sec", "CreateIT inactive section", Long.parseLong(sectionLocId));
+        createdSectionId = String.valueOf(sectionId);
+
+        TestCatalogCreationService.CreateTestParams params = new TestCatalogCreationService.CreateTestParams();
+        params.name = "CreateIT " + UUID.randomUUID();
+        params.reportingName = params.name;
+        params.code = CODE;
+        params.sampleTypeId = String.valueOf(SAMPLE_TYPE_ID);
+        params.labUnitId = createdSectionId;
+        params.domain = "CLINICAL";
+
+        createdTestId = creationService.createInactiveTest(params, "1");
+
+        // Assigning the test to the inactive section must have activated it (OGC-1116).
+        TestSection reloaded = testSectionService.get(createdSectionId);
+        assertEquals("Y", reloaded.getIsActive());
     }
 
     @Test

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -12,9 +13,14 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.common.domain.Domain;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationServiceImpl;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -26,6 +32,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testcatalog.service.CatalogHealthService;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testcatalog.service.TestCatalogCreationService;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -123,6 +130,15 @@ public class TestCatalogEditorRestController {
     @Autowired(required = false)
     private TestSectionService testSectionService;
 
+    // Field-injected (optional) so the existing all-args constructor used by unit
+    // tests stays unchanged; drives the FR-61–65 per-row issue tags.
+    @Autowired(required = false)
+    private CatalogHealthService catalogHealthService;
+
+    // Field-injected (optional) for the FR-43 panel-create name localization.
+    @Autowired(required = false)
+    private LocalizationService localizationService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
@@ -152,11 +168,21 @@ public class TestCatalogEditorRestController {
         public String testId;
         public String name;
         public String sampleType;
+        // OGC-1145 FR-9: every associated specimen, first one first; the list cell
+        // renders "{first} +{n}" from this. `sampleType` stays the primary name.
+        public List<String> sampleTypes = new ArrayList<>();
         public String code;
         public String domain;
         public boolean active;
         public boolean amr;
         public boolean coverageIncomplete;
+        // FR-71: whether the test carries a LOINC code; drives the "No LOINC" tag.
+        public boolean hasLoinc;
+        // FR-61/62: catalog-health findings for this row, plus severity roll-up.
+        public List<CatalogHealthService.Finding> findings = new ArrayList<>();
+        public int errorCount;
+        public int warningCount;
+        public int infoCount;
     }
 
     public static class TestListPage {
@@ -164,14 +190,26 @@ public class TestCatalogEditorRestController {
         public int pageSize;
         public int total;
         public List<TestListRow> rows = new ArrayList<>();
+        // FR-61(d): catalog-wide roll-up for the "N tests have configuration issues"
+        // banner and severity counts, across the whole filtered set (not just page).
+        public int totalWithIssues;
+        public int totalErrors;
+        public int totalWarnings;
+        public int totalInfo;
     }
 
     @GetMapping(value = "/tests", produces = MediaType.APPLICATION_JSON_VALUE)
     public TestListPage listTests(@RequestParam(required = false) String domain,
             @RequestParam(required = false, defaultValue = "all") String status,
             @RequestParam(required = false) Boolean amr, @RequestParam(required = false) String sampleType,
-            @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "25") int pageSize) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "false") boolean issuesOnly,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize) {
+        // FR-61/62 findings are computed once for the whole catalog (cached) and
+        // consulted both for the "issues only" filter and per-row decoration.
+        Map<String, List<CatalogHealthService.Finding>> findingsByTest = catalogHealthService != null
+                ? catalogHealthService.getAll()
+                : Map.of();
         String searchLower = search == null ? null : search.toLowerCase(Locale.ROOT);
         // Resolve the test ids for the requested sample type once (one query),
         // rather than looking up each test's sample types while filtering.
@@ -206,6 +244,10 @@ public class TestCatalogEditorRestController {
                     && (name == null || !name.toLowerCase(Locale.ROOT).contains(searchLower))) {
                 continue;
             }
+            List<CatalogHealthService.Finding> findings = findingsByTest.getOrDefault(test.getId(), List.of());
+            if (issuesOnly && findings.isEmpty()) {
+                continue;
+            }
             TestListRow row = new TestListRow();
             row.testId = test.getId();
             row.name = name;
@@ -213,8 +255,19 @@ public class TestCatalogEditorRestController {
             row.domain = test.getDomain();
             row.active = active;
             row.amr = testAmr;
+            row.hasLoinc = !isBlank(test.getLoinc());
             // Coverage-incomplete decoration is wired with Ranges/Coverage Validation (M7).
             row.coverageIncomplete = false;
+            row.findings = findings;
+            for (CatalogHealthService.Finding f : findings) {
+                if (f.severity == CatalogHealthService.Severity.ERROR) {
+                    row.errorCount++;
+                } else if (f.severity == CatalogHealthService.Severity.WARNING) {
+                    row.warningCount++;
+                } else {
+                    row.infoCount++;
+                }
+            }
             filtered.add(row);
         }
         filtered.sort((a, b) -> {
@@ -225,6 +278,15 @@ public class TestCatalogEditorRestController {
 
         TestListPage result = new TestListPage();
         result.total = filtered.size();
+        // Catalog-wide roll-up (FR-61d) over the filtered set, for the banner counts.
+        for (TestListRow r : filtered) {
+            if (!r.findings.isEmpty()) {
+                result.totalWithIssues++;
+            }
+            result.totalErrors += r.errorCount;
+            result.totalWarnings += r.warningCount;
+            result.totalInfo += r.infoCount;
+        }
         result.pageSize = Math.max(1, pageSize);
         result.page = Math.max(1, page);
         int from = Math.min((result.page - 1) * result.pageSize, filtered.size());
@@ -237,8 +299,10 @@ public class TestCatalogEditorRestController {
         for (TestListRow row : result.rows) {
             Test test = testService.getTestById(row.testId);
             row.name = TestServiceImpl.getLocalizedTestNameWithType(test);
-            TypeOfSample sampleTypeOfRow = testService.getTypeOfSample(test);
-            row.sampleType = sampleTypeOfRow != null ? sampleTypeOfRow.getLocalizedName() : null;
+            for (TypeOfSample typeOfRow : testService.getTypeOfSamples(test)) {
+                row.sampleTypes.add(typeOfRow.getLocalizedName());
+            }
+            row.sampleType = row.sampleTypes.isEmpty() ? null : row.sampleTypes.get(0);
         }
         return result;
     }
@@ -286,10 +350,19 @@ public class TestCatalogEditorRestController {
         public String code;
         public String labUnitId;
         public String sampleTypeId;
+        // OGC-1145 FR-1/2: every sample type the test runs on. Takes precedence
+        // over the legacy scalar when present.
+        public List<String> sampleTypeIds;
         public String domain;
         public Boolean amr;
         public Boolean orderable;
         public String description;
+        // Copy the source test's result components into the new test. The
+        // OGC-1145 m:n model retired the specimen-variant link that used to
+        // accompany this — "another specimen" is now just another sample type
+        // ticked on ONE test — but component copying stays useful for creating
+        // a genuinely different test modeled on an existing one.
+        public String copyFromId;
     }
 
     public static class CreatedTest {
@@ -301,9 +374,19 @@ public class TestCatalogEditorRestController {
         if (testCatalogCreationService == null) {
             return ResponseEntity.status(503).build();
         }
+        List<String> desiredSampleTypes = body == null ? List.of()
+                : resolveSampleTypeIds(body.sampleTypeIds, body.sampleTypeId);
         if (body == null || isBlank(body.name) || isBlank(body.reportingName) || isBlank(body.code)
-                || isBlank(body.domain) || !DOMAINS.contains(body.domain) || isBlank(body.sampleTypeId)) {
+                || isBlank(body.domain) || !DOMAINS.contains(body.domain) || desiredSampleTypes.isEmpty()) {
             return ResponseEntity.unprocessableEntity().build();
+        }
+        // D-030 domain guard (OGC-1145 FR-3): every sample type must be compatible
+        // with the test's domain.
+        for (String sampleTypeId : desiredSampleTypes) {
+            TypeOfSample type = typeOfSampleService.get(sampleTypeId);
+            if (type == null || !sampleTypeDomainCompatible(body.domain, type)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
         }
         // Code uniqueness (FR-4) → 409 so the UI can flag the field.
         if (testCatalogCreationService.codeInUse(body.code)) {
@@ -314,12 +397,27 @@ public class TestCatalogEditorRestController {
         params.reportingName = body.reportingName;
         params.code = body.code;
         params.labUnitId = body.labUnitId;
-        params.sampleTypeId = body.sampleTypeId;
+        params.sampleTypeIds = desiredSampleTypes;
         params.domain = body.domain;
         params.amr = body.amr;
         params.orderable = body.orderable;
         params.description = body.description;
-        String newId = testCatalogCreationService.createInactiveTest(params, ControllerUtills.getSysUserId(request));
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        String newId = testCatalogCreationService.createInactiveTest(params, sysUserId);
+        // Copy the source's result components (incl. options/interpretations).
+        // The variant-group link that used to accompany this is retired
+        // (OGC-1145 Phase 3): the m:n sample-type model replaced variants.
+        if (!isBlank(body.copyFromId) && testService.getTestById(body.copyFromId) != null) {
+            componentService.copyComponentsFromTest(body.copyFromId, newId, sysUserId);
+            invalidateHealth();
+        }
+        // Creating a test may have activated a previously-inactive lab unit; refresh
+        // the cached section lists (which back the order-entry section filter) and
+        // clear the sample-type cache so the new sample-type link is picked up once
+        // the test is activated (OGC-1116). Runs post-commit — the service is done.
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        typeOfSampleService.clearCache();
         CreatedTest created = new CreatedTest();
         created.testId = newId;
         return ResponseEntity.status(201).body(created);
@@ -425,7 +523,45 @@ public class TestCatalogEditorRestController {
         return ResponseEntity.ok(integrity);
     }
 
-    private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
+    private static final List<String> DOMAINS = java.util.Arrays.stream(Domain.values()).map(Enum::name)
+            .collect(java.util.stream.Collectors.toList());
+
+    // D-030 (OGC-1145 FR-3): a test's domain (CLINICAL/ENVIRONMENTAL/VECTOR) vs
+    // the sample type's domain. The single source of truth for interpreting a
+    // sample-type domain — legacy one-character code or migrated enum value — is
+    // Domain.normalize; both this guard and the value emitted to
+    // the client run through it. Sample types with no (or unknown) domain stay
+    // offerable everywhere so legacy data never blocks the editor.
+    private static boolean sampleTypeDomainCompatible(String testDomain, TypeOfSample type) {
+        if (type == null) {
+            return false;
+        }
+        Domain typeDomain = Domain.fromRaw(type.getDomain());
+        // Blank test domain, or a sample type with no/unknown domain, stays
+        // offerable everywhere so legacy data never blocks the editor.
+        if (isBlank(testDomain) || typeDomain == null) {
+            return true;
+        }
+        return typeDomain.name().equals(testDomain);
+    }
+
+    /**
+     * Desired sample-type ids for a write: the list wins when present, otherwise
+     * the legacy scalar; blanks and duplicates dropped, order preserved.
+     */
+    private static List<String> resolveSampleTypeIds(List<String> sampleTypeIds, String sampleTypeId) {
+        LinkedHashSet<String> resolved = new LinkedHashSet<>();
+        if (sampleTypeIds != null) {
+            for (String id : sampleTypeIds) {
+                if (!isBlank(id)) {
+                    resolved.add(id);
+                }
+            }
+        } else if (!isBlank(sampleTypeId)) {
+            resolved.add(sampleTypeId);
+        }
+        return new ArrayList<>(resolved);
+    }
 
     /** OGC-748 Basic Info — identity + domain + AMR flag + status. */
     public static class BasicInfo {
@@ -434,6 +570,11 @@ public class TestCatalogEditorRestController {
         public String code;
         public String description;
         public String domain;
+        public String labUnitId;
+        public String sampleTypeId;
+        // OGC-1145 FR-1/2: all associated sample types (order preserved, primary
+        // first). On write this list wins over the legacy scalar when present.
+        public List<String> sampleTypeIds;
         public Boolean antimicrobialResistance;
         public Boolean active;
         public Boolean orderable;
@@ -458,6 +599,25 @@ public class TestCatalogEditorRestController {
         if (body.domain != null && !DOMAINS.contains(body.domain)) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        // OGC-1145 FR-1/2/3 — validate the sample-type set up front so a rejected
+        // request leaves the test untouched. Absent list + blank scalar means the
+        // caller didn't send the field (partial PUT): skip reconcile entirely.
+        List<String> desiredSampleTypes = resolveSampleTypeIds(body.sampleTypeIds, body.sampleTypeId);
+        boolean reconcileSampleTypes = body.sampleTypeIds != null || !isBlank(body.sampleTypeId);
+        if (reconcileSampleTypes) {
+            boolean effectiveOrderable = body.orderable != null ? body.orderable
+                    : Boolean.TRUE.equals(test.getOrderable());
+            boolean effectiveActive = body.active != null ? body.active : test.isActive();
+            if (desiredSampleTypes.isEmpty() && (effectiveActive || effectiveOrderable)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            String effectiveDomain = body.domain != null ? body.domain : test.getDomain();
+            for (String sampleTypeId : desiredSampleTypes) {
+                if (!sampleTypeDomainCompatible(effectiveDomain, typeOfSampleService.get(sampleTypeId))) {
+                    return ResponseEntity.unprocessableEntity().build();
+                }
+            }
+        }
         // The display name is localized — it is edited in the Localization section
         // (which owns the per-locale + English values), so it stays immutable here.
         // Code and description ARE editable here now (OGC-1112 dependency 8).
@@ -481,6 +641,20 @@ public class TestCatalogEditorRestController {
         if (body.orderable != null) {
             test.setOrderable(body.orderable);
         }
+        // Lab unit (test section) is editable on modify too (not just create).
+        // Assigning an inactive section activates it, mirroring the create flow and
+        // the legacy Test Section assignment, so the test surfaces on Add Order.
+        if (!isBlank(body.labUnitId) && testSectionService != null) {
+            TestSection section = testSectionService.get(body.labUnitId);
+            if (section != null) {
+                if ("N".equals(section.getIsActive())) {
+                    section.setIsActive("Y");
+                    section.setSysUserId(ControllerUtills.getSysUserId(request));
+                    testSectionService.update(section);
+                }
+                test.setTestSection(section);
+            }
+        }
         // Activation (N→Y) is gated on reference-range coverage (the H-03 safety
         // gate) and must go through POST .../activate; basic-info only persists a
         // deactivation, so it cannot be used to bypass the coverage acknowledgment.
@@ -489,7 +663,47 @@ public class TestCatalogEditorRestController {
         }
         test.setSysUserId(ControllerUtills.getSysUserId(request));
         Test updated = testService.update(test);
+        // OGC-1145 FR-2: reconcile the type_of_sample_test junction to the desired
+        // set — delete removed links, insert added ones, and drop duplicate rows
+        // for the same type (validated above, so this cannot fail mid-write).
+        if (reconcileSampleTypes) {
+            String sysUserId = ControllerUtills.getSysUserId(request);
+            Set<String> kept = new HashSet<>();
+            for (TypeOfSampleTest link : typeOfSampleTestService.getTypeOfSampleTestsForTest(testId)) {
+                if (!desiredSampleTypes.contains(link.getTypeOfSampleId()) || !kept.add(link.getTypeOfSampleId())) {
+                    typeOfSampleTestService.delete(link.getId(), sysUserId);
+                }
+            }
+            for (String sampleTypeId : desiredSampleTypes) {
+                if (!kept.contains(sampleTypeId)) {
+                    TypeOfSampleTest link = new TypeOfSampleTest();
+                    link.setTypeOfSampleId(sampleTypeId);
+                    link.setTestId(testId);
+                    link.setSysUserId(sysUserId);
+                    typeOfSampleTestService.insert(link);
+                }
+            }
+        }
+        // Reflect active / orderable / lab-unit / sample-type changes in the cached
+        // order-picker lists immediately; otherwise the change lags until an
+        // unrelated refresh (same stale-cache cause as OGC-1116).
+        if (body.active != null || body.orderable != null || !isBlank(body.labUnitId) || reconcileSampleTypes) {
+            refreshTestCaches();
+        }
+        invalidateHealth();
         return ResponseEntity.ok(toBasicInfo(updated));
+    }
+
+    /**
+     * Rebuild the cached order-picker + section lists after a test/section change.
+     */
+    private void refreshTestCaches() {
+        testService.refreshTestNames();
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ALL_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ORDERABLE_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        typeOfSampleService.clearCache();
     }
 
     /**
@@ -510,6 +724,12 @@ public class TestCatalogEditorRestController {
         info.code = test.getLocalCode();
         info.description = test.getDescription();
         info.domain = test.getDomain();
+        info.labUnitId = test.getTestSection() == null ? null : test.getTestSection().getId();
+        info.sampleTypeIds = new ArrayList<>();
+        for (TypeOfSample type : testService.getTypeOfSamples(test)) {
+            info.sampleTypeIds.add(type.getId());
+        }
+        info.sampleTypeId = info.sampleTypeIds.isEmpty() ? null : info.sampleTypeIds.get(0);
         info.antimicrobialResistance = Boolean.TRUE.equals(test.getAntimicrobialResistance());
         info.active = test.isActive();
         info.orderable = Boolean.TRUE.equals(test.getOrderable());
@@ -552,6 +772,12 @@ public class TestCatalogEditorRestController {
         public Integer significantDigits;
         public String defaultResult;
         public Boolean allowMultipleReadings;
+        // Exactly one component per test is primary — the one mirrored to the
+        // legacy test columns. The service normalizes to a single primary.
+        public Boolean isPrimary;
+        // Per-component default for printing on the patient report (OGC-1127).
+        // Null/absent = true (backward-compatible: existing components print).
+        public Boolean showOnReport;
         public List<InterpretationDto> interpretations = new ArrayList<>();
         public List<OptionDto> options = new ArrayList<>();
     }
@@ -607,6 +833,8 @@ public class TestCatalogEditorRestController {
             e.setSignificantDigits(c.significantDigits);
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
+            e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
+            e.setShowOnReport(!Boolean.FALSE.equals(c.showOnReport));
             desired.add(e);
 
             List<TestResultInterpretation> interps = new ArrayList<>();
@@ -633,13 +861,27 @@ public class TestCatalogEditorRestController {
                 tr.setValue(o.value);
                 tr.setSortOrder(o.sortOrder != null ? String.valueOf(o.sortOrder) : null);
                 tr.setIsNormal(Boolean.TRUE.equals(o.normal));
-                tr.setTestResultType(o.resultType != null ? o.resultType : c.resultType);
+                // Option rows must carry the component's type ('D'/'M'/'C') —
+                // result entry derives the widget from them, so a stale
+                // per-option type would render the wrong control.
+                tr.setTestResultType(c.resultType != null ? c.resultType : o.resultType);
                 opts.add(tr);
             }
             optionsByCode.put(c.code, opts);
         }
         componentService.saveSampleResults(testId, desired, interpsByCode, optionsByCode, sysUserId);
+        invalidateHealth();
         return ResponseEntity.ok(toSampleResults(testId));
+    }
+
+    /**
+     * FR-65 — drop cached catalog-health findings after a write that can change
+     * them.
+     */
+    private void invalidateHealth() {
+        if (catalogHealthService != null) {
+            catalogHealthService.invalidate();
+        }
     }
 
     @PostMapping(value = "/tests/{testId}/sample-results/copy-from/{sourceId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -667,6 +909,8 @@ public class TestCatalogEditorRestController {
             dto.significantDigits = c.getSignificantDigits();
             dto.defaultResult = c.getDefaultResult();
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
+            dto.isPrimary = c.getIsPrimary();
+            dto.showOnReport = c.getShowOnReport();
             for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {
                 InterpretationDto idto = new InterpretationDto();
                 idto.id = i.getId();
@@ -752,6 +996,9 @@ public class TestCatalogEditorRestController {
     public static class RangeDto {
         public String id;
         public String componentId;
+        // OGC-1145 Phase 2: null = shared (every specimen the test runs on);
+        // a value overrides this range for that sample type only.
+        public String sampleTypeId;
         public String gender;
         public Double minAge;
         public Double maxAge;
@@ -759,6 +1006,8 @@ public class TestCatalogEditorRestController {
         public Double highNormal;
         public Double lowCritical;
         public Double highCritical;
+        public Double lowValid;
+        public Double highValid;
         public Double lowReporting;
         public Double highReporting;
     }
@@ -769,6 +1018,9 @@ public class TestCatalogEditorRestController {
         // The coverage report is computed on every load/save so the UI's per-sex
         // gap panel reflects exactly what was persisted, no separate round-trip.
         public RangeCoverageValidationService.CoverageReport coverage;
+        // OGC-1145 Phase 2: the test's associated sample types, so the editor
+        // can offer the per-specimen override picker without a second request.
+        public List<SampleTypeOption> sampleTypes = new ArrayList<>();
     }
 
     @GetMapping(value = "/tests/{testId}/ranges", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -787,6 +1039,12 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
+        // OGC-1145 Phase 2: a specimen-scoped range must target one of the
+        // test's associated sample types.
+        Set<String> associatedTypeIds = new HashSet<>();
+        for (TypeOfSample type : testService.getTypeOfSamples(test)) {
+            associatedTypeIds.add(type.getId());
+        }
         for (RangeDto r : body.ranges) {
             if (r.gender != null && !r.gender.isBlank() && !RANGE_GENDERS.contains(r.gender)) {
                 return ResponseEntity.unprocessableEntity().build();
@@ -794,6 +1052,9 @@ public class TestCatalogEditorRestController {
             double min = r.minAge != null ? r.minAge : 0d;
             double max = r.maxAge != null ? r.maxAge : Double.POSITIVE_INFINITY;
             if (min < 0d || max <= min) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!isBlank(r.sampleTypeId) && !associatedTypeIds.contains(r.sampleTypeId)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
         }
@@ -811,6 +1072,7 @@ public class TestCatalogEditorRestController {
                 limit.setId(r.id);
             }
             limit.setComponentId(isBlank(r.componentId) ? null : r.componentId);
+            limit.setSampleTypeId(isBlank(r.sampleTypeId) ? null : r.sampleTypeId);
             limit.setGender(isBlank(r.gender) ? null : r.gender);
             limit.setMinAge(unbox(r.minAge, 0d));
             limit.setMaxAge(unbox(r.maxAge, Double.POSITIVE_INFINITY));
@@ -818,8 +1080,10 @@ public class TestCatalogEditorRestController {
             limit.setHighNormal(unbox(r.highNormal, Double.POSITIVE_INFINITY));
             limit.setLowCritical(unbox(r.lowCritical, Double.POSITIVE_INFINITY));
             limit.setHighCritical(unbox(r.highCritical, Double.POSITIVE_INFINITY));
-            // Valid / reporting ranges are not edited here; the service preserves
-            // whatever the existing row already had (see saveRangesForTest).
+            limit.setLowValid(unbox(r.lowValid, Double.NEGATIVE_INFINITY));
+            limit.setHighValid(unbox(r.highValid, Double.POSITIVE_INFINITY));
+            // Reporting range is per-Method (not edited in this dialog); the service
+            // preserves whatever the existing row already had (see saveRangesForTest).
             desired.add(limit);
         }
         return desired;
@@ -934,6 +1198,7 @@ public class TestCatalogEditorRestController {
             for (RangeDto r : body.ranges) {
                 RangeDto copy = new RangeDto();
                 copy.componentId = r.componentId;
+                copy.sampleTypeId = r.sampleTypeId;
                 copy.gender = r.gender;
                 copy.minAge = r.minAge;
                 copy.maxAge = r.maxAge;
@@ -941,6 +1206,8 @@ public class TestCatalogEditorRestController {
                 copy.highNormal = r.highNormal;
                 copy.lowCritical = r.lowCritical;
                 copy.highCritical = r.highCritical;
+                copy.lowValid = r.lowValid;
+                copy.highValid = r.highValid;
                 perTest.add(copy);
             }
             resultLimitService.saveRangesForTest(testId, toResultLimits(perTest), sysUserId);
@@ -956,6 +1223,7 @@ public class TestCatalogEditorRestController {
             RangeDto d = new RangeDto();
             d.id = l.getId();
             d.componentId = l.getComponentId();
+            d.sampleTypeId = l.getSampleTypeId();
             d.gender = l.getGender();
             d.minAge = finiteOrNull(l.getMinAge());
             d.maxAge = finiteOrNull(l.getMaxAge());
@@ -963,12 +1231,52 @@ public class TestCatalogEditorRestController {
             d.highNormal = finiteOrNull(l.getHighNormal());
             d.lowCritical = finiteOrNull(l.getLowCritical());
             d.highCritical = finiteOrNull(l.getHighCritical());
+            d.lowValid = finiteOrNull(l.getLowValid());
+            d.highValid = finiteOrNull(l.getHighValid());
             d.lowReporting = finiteOrNull(l.getLowReportingRange());
             d.highReporting = finiteOrNull(l.getHighReportingRange());
             resp.ranges.add(d);
         }
         resp.coverage = coverageService.validate(limits);
+        // Name the component behind each gap/overlap so the UI can say which
+        // component is uncovered — only meaningful when the test has several.
+        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
+        if (comps.size() > 1) {
+            Map<String, String> labelById = new HashMap<>();
+            for (TestResultComponent c : comps) {
+                labelById.put(c.getId(), isBlank(c.getLabel()) ? c.getCode() : c.getLabel());
+            }
+            labelCoverageComponents(resp.coverage, labelById);
+        }
+        // OGC-1145 Phase 2: the test's sample types feed the override picker.
+        for (TypeOfSample type : testService.getTypeOfSamples(testService.getTestById(testId))) {
+            SampleTypeOption option = new SampleTypeOption();
+            option.id = type.getId();
+            option.name = type.getLocalizedName();
+            option.domain = Domain.normalize(type.getDomain());
+            resp.sampleTypes.add(option);
+        }
         return resp;
+    }
+
+    /** Fill in componentLabel on every gap/overlap of the coverage report. */
+    private void labelCoverageComponents(RangeCoverageValidationService.CoverageReport coverage,
+            Map<String, String> labelById) {
+        if (coverage == null) {
+            return;
+        }
+        for (RangeCoverageValidationService.SexCoverage sex : new RangeCoverageValidationService.SexCoverage[] {
+                coverage.male, coverage.female }) {
+            if (sex == null) {
+                continue;
+            }
+            for (RangeCoverageValidationService.AgeInterval interval : sex.gaps) {
+                interval.componentLabel = labelById.get(interval.componentId);
+            }
+            for (RangeCoverageValidationService.AgeInterval interval : sex.overlaps) {
+                interval.componentLabel = labelById.get(interval.componentId);
+            }
+        }
     }
 
     /** ±Infinity / NaN → null so the bound serializes cleanly as JSON. */
@@ -1145,6 +1453,9 @@ public class TestCatalogEditorRestController {
     public static class SampleTypeOption {
         public String id;
         public String name;
+        // OGC-1145 FR-3: legacy sample-domain char (H/N/E/A, may be null) so the
+        // editor can enforce the D-030 domain guard client-side.
+        public String domain;
     }
 
     /** One test's position within a sample type. */
@@ -1170,12 +1481,18 @@ public class TestCatalogEditorRestController {
     }
 
     @GetMapping(value = "/sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<SampleTypeOption> listSampleTypes() {
+    public List<SampleTypeOption> listSampleTypes(@RequestParam(required = false) String domain) {
         List<SampleTypeOption> options = new ArrayList<>();
         for (TypeOfSample t : typeOfSampleService.getAllTypeOfSamplesSortOrdered()) {
+            // OGC-1145 FR-3: an explicit test-domain filter only offers compatible
+            // sample types (D-030 guard); without it all types are listed.
+            if (!isBlank(domain) && !sampleTypeDomainCompatible(domain, t)) {
+                continue;
+            }
             SampleTypeOption o = new SampleTypeOption();
             o.id = t.getId();
             o.name = !isBlank(t.getDescription()) ? t.getDescription() : t.getLocalAbbreviation();
+            o.domain = Domain.normalize(t.getDomain());
             options.add(o);
         }
         return options;
@@ -1242,11 +1559,32 @@ public class TestCatalogEditorRestController {
         public String source;
         public String code;
         public String relationship;
+        // Human-readable label for the standard term (FR-69), e.g. LOINC long name.
+        public String displayName;
+        // Null = test-level mapping (default). Otherwise the id of a result
+        // component of this test that the mapping is scoped to (OGC-1128).
+        public String componentId;
+        // OGC-1145 FR-13: null = shared (applies to every specimen the test
+        // runs on); otherwise the mapping overrides for that sample type only.
+        public String sampleTypeId;
+    }
+
+    /** A result component this test's mappings may be scoped to. */
+    public static class TerminologyComponentDto {
+        public String id;
+        public String code;
+        public String label;
     }
 
     public static class TerminologyResponse {
         public String testId;
         public List<MappingDto> mappings = new ArrayList<>();
+        // The test's active components, so the editor can offer an "Applies to"
+        // scope per mapping row without a second request.
+        public List<TerminologyComponentDto> components = new ArrayList<>();
+        // OGC-1145 FR-13: the test's associated sample types, so the editor can
+        // offer the per-specimen override picker without a second request.
+        public List<SampleTypeOption> sampleTypes = new ArrayList<>();
     }
 
     @GetMapping(value = "/tests/{testId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1265,6 +1603,18 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
+        // Valid scopes: null (test-level) or the id of an active component of this
+        // test.
+        Set<String> componentIds = new HashSet<>();
+        for (TestResultComponent c : componentService.getActiveComponentsByTestId(testId)) {
+            componentIds.add(c.getId());
+        }
+        // OGC-1145 FR-13: a specimen-scoped mapping must target one of the
+        // test's associated sample types.
+        Set<String> associatedTypeIds = new HashSet<>();
+        for (TypeOfSample type : testService.getTypeOfSamples(test)) {
+            associatedTypeIds.add(type.getId());
+        }
         Set<String> seen = new HashSet<>();
         List<TestTerminologyMapping> desired = new ArrayList<>();
         for (MappingDto m : body.mappings) {
@@ -1276,18 +1626,33 @@ public class TestCatalogEditorRestController {
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
-            // (source, code) unique within the request — the DB enforces it per test,
-            // but reject early + cleanly rather than surfacing a raw 500.
-            if (!seen.add(m.source + " " + m.code)) {
+            // A scoped mapping must target a real component of this test.
+            String componentId = isBlank(m.componentId) ? null : m.componentId;
+            if (componentId != null && !componentIds.contains(componentId)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            String sampleTypeId = isBlank(m.sampleTypeId) ? null : m.sampleTypeId;
+            if (sampleTypeId != null && !associatedTypeIds.contains(sampleTypeId)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            // (component, sample type, source, code) unique within the request — the
+            // DB enforces it per test/scope, but reject early + cleanly rather than
+            // surfacing a raw 500.
+            if (!seen.add((componentId == null ? "" : componentId) + " " + (sampleTypeId == null ? "" : sampleTypeId)
+                    + " " + m.source + " " + m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             TestTerminologyMapping e = new TestTerminologyMapping();
+            e.setComponentId(componentId);
+            e.setSampleTypeId(sampleTypeId);
             e.setSource(m.source);
             e.setCode(m.code);
             e.setRelationship(isBlank(m.relationship) ? null : m.relationship);
+            e.setDisplayName(isBlank(m.displayName) ? null : m.displayName.trim());
             desired.add(e);
         }
         terminologyService.saveMappingsForTest(testId, desired, ControllerUtills.getSysUserId(request));
+        invalidateHealth();
         return ResponseEntity.ok(toTerminology(testId));
     }
 
@@ -1300,7 +1665,24 @@ public class TestCatalogEditorRestController {
             dto.source = m.getSource();
             dto.code = m.getCode();
             dto.relationship = m.getRelationship();
+            dto.displayName = m.getDisplayName();
+            dto.componentId = m.getComponentId();
+            dto.sampleTypeId = m.getSampleTypeId();
             resp.mappings.add(dto);
+        }
+        for (TestResultComponent c : componentService.getActiveComponentsByTestId(testId)) {
+            TerminologyComponentDto cd = new TerminologyComponentDto();
+            cd.id = c.getId();
+            cd.code = c.getCode();
+            cd.label = c.getLabel();
+            resp.components.add(cd);
+        }
+        for (TypeOfSample type : testService.getTypeOfSamples(testService.getTestById(testId))) {
+            SampleTypeOption option = new SampleTypeOption();
+            option.id = type.getId();
+            option.name = type.getLocalizedName();
+            option.domain = Domain.normalize(type.getDomain());
+            resp.sampleTypes.add(option);
         }
         return resp;
     }
@@ -1371,12 +1753,22 @@ public class TestCatalogEditorRestController {
         if (body == null || isBlank(body.name)) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        String name = body.name.trim();
+        // panel.name_localization_id is NOT NULL — create the name localization
+        // first, mirroring the legacy panel-add flow.
+        Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(name, name,
+                LocalizationServiceImpl.LocalizationType.PANEL_NAME);
+        nameLocalization.setSysUserId(sysUserId);
+        String localizationId = localizationService.insert(nameLocalization);
+
         Panel panel = new Panel();
-        panel.setPanelName(body.name.trim());
-        panel.setDescription(body.name.trim());
+        panel.setPanelName(name);
+        panel.setDescription(name);
+        panel.setLocalization(localizationService.get(localizationId));
         panel.setIsActive("Y");
         panel.setSortOrderInt(Integer.MAX_VALUE);
-        panel.setSysUserId(ControllerUtills.getSysUserId(request));
+        panel.setSysUserId(sysUserId);
         String id = panelService.insert(panel);
         PanelOption created = new PanelOption();
         created.id = id;

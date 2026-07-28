@@ -108,11 +108,17 @@ describe("PanelsSection", () => {
     wire([{ panelId: "1", panelName: "Lipid Panel", position: 3 }]);
     renderSection();
     await screen.findByText("Lipid Panel");
+    // FR-79 — the trash button opens a confirm modal; click its danger primary
+    // button to confirm the removal.
     fireEvent.click(
       screen.getByRole("button", {
         name: messages["label.testCatalog.panels.remove"],
       }),
     );
+    const confirmButton = document.querySelector(
+      ".cds--modal-footer .cds--btn--danger",
+    );
+    fireEvent.click(confirmButton);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     expect(

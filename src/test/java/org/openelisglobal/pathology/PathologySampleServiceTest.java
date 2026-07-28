@@ -29,6 +29,9 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/pathology-sample.xml");
+        // Fixture replaces system_user with technician1 / pathologist1 etc.;
+        // authenticate as technician1 so audit attribution lands on a real user.
+        authenticateAs("technician1");
     }
 
     @Test
