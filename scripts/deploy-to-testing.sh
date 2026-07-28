@@ -96,6 +96,16 @@ log "Deploying ${BRANCH} (${REF_DESC}) -> ${TARGET}:${REMOTE_DIR}"
 if [[ "${SKIP_BUILD:-0}" == "1" && -f target/OpenELIS-Global.war ]]; then
     log "SKIP_BUILD=1 — reusing existing target/OpenELIS-Global.war"
 else
+    # The WAR depends on org.itech:dataexport-{api,core} — local-only artifacts
+    # that live in the ./dataexport git submodule and are NOT published to any
+    # remote repo. Init/update the submodule, then build+install them to ~/.m2
+    # first, or the WAR build fails to resolve them.
+    log "Initializing dataexport submodule…"
+    git submodule update --init --recursive dataexport
+    log "Building dataexport submodule (mvn install -> ~/.m2)…"
+    cd dataexport
+    mvn -q clean install -DskipTests -Dmaven.test.skip=true
+    cd "$REPO_ROOT"
     log "Building WAR (mvn clean package -DskipTests -Dmaven.test.skip=true)…"
     mvn -q clean package -DskipTests -Dmaven.test.skip=true
 fi

@@ -88,7 +88,16 @@ public class ResultsValidation {
 
     private void validateTestDate(TestResultItem item, Errors errors) {
 
-        Date date = CustomDateValidator.getInstance().getDate(item.getTestDate());
+        // The results loader emits testDate as "date time" ("dd/MM/yyyy HH:mm")
+        // and the save path persists that combined value (lenient parse for
+        // completedDate). Validate the DATE portion; the bare validator rejects
+        // the combined format outright, which the legacy whole-page save only
+        // survived because its controller collected-and-ignored these errors.
+        // The unified per-analysis save (OGC-1020) treats validation as
+        // blocking, which surfaced the mismatch.
+        String testDate = item.getTestDate() == null ? null : item.getTestDate().trim();
+        String datePortion = testDate == null ? null : testDate.split("\\s+")[0];
+        Date date = CustomDateValidator.getInstance().getDate(datePortion);
 
         if (date == null) {
             // errors.add(new ActionError("errors.date", new

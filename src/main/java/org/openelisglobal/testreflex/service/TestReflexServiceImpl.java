@@ -170,6 +170,12 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<TestReflex> getTestReflexsByTestId(String testId) {
+        return baseObjectDAO.getTestReflexsByTestId(testId);
+    }
+
+    @Override
     @Transactional()
     public void saveOrUpdateReflexRule(ReflexRule reflexRule) {
         if (reflexRule.getId() == null) {
@@ -318,7 +324,6 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         defaultResult.setTestResultType(testService.getResultType(triggerTest));
         defaultResult.setSortOrder("0");
         defaultResult.setIsActive(true);
-        defaultResult.setSysUserId("1");
         return testResultService.save(defaultResult);
     }
 

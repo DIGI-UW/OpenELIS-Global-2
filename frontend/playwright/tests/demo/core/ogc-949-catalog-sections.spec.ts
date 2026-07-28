@@ -70,7 +70,11 @@ test.describe("OGC-949: Test Catalog editor sections M9–M12 (US9–US12)", () 
       // (CustomNotification timeout), so assert it was rendered (attached) —
       // it is created only on a 200 — and let the reload below be the durable
       // proof. toBeVisible races the 2s dismiss under demo cursor timing.
-      await expect(page.getByText("Terminology mappings saved.")).toBeAttached({
+      // .first(): the toast renders twice — the editor's visible AlertDialog
+      // and the copy inside the (closed, off-screen) notifications slide-over.
+      await expect(
+        page.getByText("Terminology mappings saved.").first(),
+      ).toBeAttached({
         timeout: 15_000,
       });
       await demo.scene("TERMINOLOGY SAVED");
@@ -88,8 +92,10 @@ test.describe("OGC-949: Test Catalog editor sections M9–M12 (US9–US12)", () 
       await expect(page.getByTestId("panels-section")).toBeVisible({
         timeout: 10_000,
       });
-      // The add-to-panel typeahead + the "create new panel" pointer to Master Lists.
-      await page.getByRole("button", { name: "Create new panel" }).click();
+      // The add-to-panel typeahead + name-only inline "create new panel": type a
+      // name, then the Create button enables and creates + assigns the panel.
+      await page.locator("#new-panel-name").fill("E2E Panel");
+      await page.getByTestId("create-panel-button").click();
       await demo.evidence("US9-panels-section");
       await demo.pause(2000);
     });

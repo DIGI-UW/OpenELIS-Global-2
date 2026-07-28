@@ -24,6 +24,7 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
@@ -34,6 +35,7 @@ import org.openelisglobal.common.services.PluginMenuService;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -60,6 +62,7 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,7 +88,7 @@ public class AnalyzerResultsController extends BaseController {
             "resultList*.sampleGroupingNumber", "resultList*.readOnly", "resultList*.testResultType",
             "resultList*.testId", "resultList*.accessionNumber", "resultList*.isAccepted", "resultList*.isRejected",
             "resultList*.isDeleted", "resultList*.result", "resultList*.completeDate", "resultList*.note",
-            "resultList*.reflexSelectionId", };
+            "resultList*.reflexSelectionId", "resultList*.typeOfSampleId", };
 
     private static final boolean IS_RETROCI = ConfigurationProperties.getInstance()
             .isPropertyValueEqual(ConfigurationProperties.Property.configurationName, "CI_GENERAL");
@@ -148,7 +151,7 @@ public class AnalyzerResultsController extends BaseController {
         if (IS_RETROCI) {
             TypeOfSample typeOfSample = new TypeOfSample();
             typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain("H");
+            typeOfSample.setDomain(Domain.CLINICAL.name());
             typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
             DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
         } else {
@@ -396,6 +399,7 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setUnits(getUnits(result.getUnits()));
         resultItem.setId(result.getId());
         resultItem.setTestId(result.getTestId());
+        resultItem.setComponentId(result.getComponentId());
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());
         resultItem.setReadOnly((result.isReadOnly() || result.getTestId() == null));
@@ -412,7 +416,42 @@ public class AnalyzerResultsController extends BaseController {
             setChoiceForCurrentValue(resultItem, result);
             resultItem.setUserChoicePending(!GenericValidator.isBlankOrNull(resultItem.getSelectionOneText()));
         }
+        addSampleTypeOptionsIfAmbiguous(resultItem, result);
         return resultItem;
+    }
+
+    /**
+     * OGC-1145 FR-8 — when the row's test runs on several sample types, the message
+     * carried no specimen, and the accession has no sample item that pins one of
+     * them, offer the candidate types so the reviewer chooses instead of the system
+     * first-matching. Control rows never need a specimen choice.
+     */
+    private void addSampleTypeOptionsIfAmbiguous(AnalyzerResultItem resultItem, AnalyzerResults result) {
+        if (resultItem.getIsControl() || GenericValidator.isBlankOrNull(result.getTestId())) {
+            return;
+        }
+        List<TypeOfSampleTest> candidates = typeOfSampleTestService.getTypeOfSampleTestsForTest(result.getTestId());
+        if (candidates.size() <= 1) {
+            return;
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(result.getAccessionNumber());
+        if (sample != null) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleId(sample.getId())) {
+                for (TypeOfSampleTest candidate : candidates) {
+                    if (candidate.getTypeOfSampleId().equals(analysis.getSampleItem().getTypeOfSampleId())) {
+                        return;
+                    }
+                }
+            }
+        }
+        List<IdValuePair> options = new ArrayList<>();
+        for (TypeOfSampleTest candidate : candidates) {
+            TypeOfSample typeOfSample = typeOfSampleService.get(candidate.getTypeOfSampleId());
+            if (typeOfSample != null) {
+                options.add(new IdValuePair(typeOfSample.getId(), typeOfSample.getLocalizedName()));
+            }
+        }
+        resultItem.setSampleTypeOptions(options);
     }
 
     private boolean giveUserChoice(AnalyzerResults result) {

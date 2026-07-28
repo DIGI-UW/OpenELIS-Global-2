@@ -22,11 +22,19 @@
         </property>
 
         <property name="domain" type="java.lang.String">
-            <column name="DOMAIN" length="1" />
+            <column name="DOMAIN" length="20" />
+        </property>
+
+        <property name="disposalInstructions" type="java.lang.String">
+            <column name="disposal_instructions" />
         </property>
 
         <property name="localAbbreviation" type="java.lang.String">
             <column name="LOCAL_ABBREV" length="10" unique="true" />
+        </property>
+
+        <property name="whonetCode" type="java.lang.String">
+            <column name="WHONET_CODE" length="5" />
         </property>
 
         <property name="active" type="java.lang.Boolean">

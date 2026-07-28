@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.config;
 
 import java.util.concurrent.Executor;
+import org.openelisglobal.config.UserContextPropagatingTaskDecorator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -19,6 +20,7 @@ public class BridgeRegistrationAsyncConfig {
         executor.setMaxPoolSize(4);
         executor.setQueueCapacity(256);
         executor.setThreadNamePrefix("bridge-reg-");
+        executor.setTaskDecorator(new UserContextPropagatingTaskDecorator());
         executor.initialize();
         return executor;
     }

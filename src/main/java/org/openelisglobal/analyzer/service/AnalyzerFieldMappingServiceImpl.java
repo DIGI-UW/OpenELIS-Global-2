@@ -18,6 +18,7 @@ import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,13 +76,17 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Autowired(required = false)
     private CustomFieldTypeService customFieldTypeService;
 
+    private final UserContextHolder userContextHolder;
+
     @Autowired
     public AnalyzerFieldMappingServiceImpl(AnalyzerFieldMappingDAO analyzerFieldMappingDAO,
-            AnalyzerFieldDAO analyzerFieldDAO, AnalyzerFieldMappingHydrator hydrator) {
+            AnalyzerFieldDAO analyzerFieldDAO, AnalyzerFieldMappingHydrator hydrator,
+            UserContextHolder userContextHolder) {
         super(AnalyzerFieldMapping.class);
         this.analyzerFieldMappingDAO = analyzerFieldMappingDAO;
         this.analyzerFieldDAO = analyzerFieldDAO;
         this.hydrator = hydrator;
+        this.userContextHolder = userContextHolder;
     }
 
     @Override
@@ -139,6 +144,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             mapping.setLastupdatedFields();
         }
 
+        stampSysUserId(mapping);
         return analyzerFieldMappingDAO.insert(mapping);
     }
 
@@ -207,6 +213,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
 
         mapping.setIsActive(true);
         mapping.setLastupdatedFields();
+        stampSysUserId(mapping);
 
         return analyzerFieldMappingDAO.update(mapping);
     }
@@ -368,8 +375,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         mapping.setIsActive(isActive != null ? isActive : false);
         mapping.setSpecimenTypeConstraint(specimenTypeConstraint);
         mapping.setPanelConstraint(panelConstraint);
-        mapping.setSysUserId("1"); // Default system user (should come from security context)
-
         String mappingId = createMapping(mapping);
         return getMappingWithCompleteData(mappingId);
     }
@@ -557,6 +562,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         // mapping.getSysUserId(),
         // IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
 
+        stampSysUserId(existingMapping);
         return analyzerFieldMappingDAO.update(existingMapping);
     }
 
@@ -649,7 +655,14 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         // mapping.getSysUserId(),
         // IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
 
+        stampSysUserId(mapping);
         return analyzerFieldMappingDAO.update(mapping);
+    }
+
+    private void stampSysUserId(AnalyzerFieldMapping mapping) {
+        if (mapping.getSysUserId() == null || mapping.getSysUserId().isEmpty()) {
+            mapping.setSysUserId(userContextHolder.requireSysUserId());
+        }
     }
 
     /**

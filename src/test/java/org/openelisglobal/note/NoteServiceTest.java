@@ -32,6 +32,10 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/notes.xml");
+        // notes.xml replaces system_user with testUser/anotherUser. Authenticate
+        // as testUser so the fillSysUserIdIfMissing lookup resolves to the
+        // fixture's user (audit rows attribute correctly to a real user).
+        authenticateAs("testUser");
     }
 
     @Test
