@@ -4,7 +4,7 @@ import { Page, TestInfo } from "@playwright/test";
 import { showSceneLabel, showStepCard, showTitleCard } from "./title-card";
 import { isVideoProject, videoPause } from "./video-pause";
 
-/** Directory where loose screenshot evidence files are saved (video mode). */
+/** Directory where loose screenshot evidence files are saved. */
 const EVIDENCE_DIR = new URL("../../e2e-evidence", import.meta.url).pathname;
 
 export type DemoPresentation = {
@@ -29,6 +29,8 @@ export function createDemoPresentation(
   testInfo: TestInfo,
 ): DemoPresentation {
   const isVideo = isVideoProject(testInfo);
+  const captureEvidence =
+    isVideo || process.env.DEMO_EVIDENCE?.toLowerCase() === "on";
 
   return {
     isVideo,
@@ -39,7 +41,7 @@ export function createDemoPresentation(
     scene: (label) => showSceneLabel(page, label, testInfo),
     pause: (ms) => videoPause(page, ms, testInfo),
     evidence: async (name: string) => {
-      if (!isVideo) return;
+      if (!captureEvidence) return;
       const screenshot = await page.screenshot({
         animations: "disabled",
         caret: "hide",

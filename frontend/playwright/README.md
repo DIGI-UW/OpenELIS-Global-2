@@ -293,6 +293,14 @@ npm run pw:bundle-report
 `analyzer-harness-demo-video-playwright-report-*.zip`.
 Use `PW_BUNDLE_REPORT_PREFIX=<custom-prefix>` to override the filename prefix.
 
+For an acceptance preflight against an already-deployed review instance, enable
+named screenshots without enabling video:
+
+```bash
+BASE_URL=https://analyzers.openelis-global.org DEMO_EVIDENCE=on \
+  npm run pw:test -- --project=harness-demo playwright/tests/demo/harness/<story>.spec.ts
+```
+
 ### `videoPause` Pattern
 
 Video-pacing timeouts (pauses between actions for viewer readability) use the
@@ -335,11 +343,12 @@ test("my demo test", async ({ page }, testInfo) => {
 
 ## Environment Variables
 
-| Variable            | Default             | Description                                                          |
-| ------------------- | ------------------- | -------------------------------------------------------------------- |
-| `BASE_URL`          | `https://localhost` | App URL                                                              |
-| `TEST_USER`         | —                   | Login username (required)                                            |
-| `TEST_PASS`         | —                   | Login password (required)                                            |
-| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects                   |
-| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects)               |
-| `CI`                | —                   | Set by GitHub Actions; enables CI mode settings in Playwright config |
+| Variable            | Default             | Description                                                                |
+| ------------------- | ------------------- | -------------------------------------------------------------------------- |
+| `BASE_URL`          | `https://localhost` | App URL                                                                    |
+| `TEST_USER`         | —                   | Login username (required)                                                  |
+| `TEST_PASS`         | —                   | Login password (required)                                                  |
+| `DEMO_EVIDENCE`     | `off`               | Set to `on` for named screenshots in a non-video demo acceptance preflight |
+| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects                         |
+| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects)                     |
+| `CI`                | —                   | Set by GitHub Actions; enables CI mode settings in Playwright config       |
