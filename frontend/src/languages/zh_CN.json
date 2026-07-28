@@ -2537,6 +2537,7 @@
   "header.icon.menu.close": "Close menu",
   "header.icon.menu.open": "Open menu",
   "header.icon.menu.pin": "Pin menu",
+  "header.icon.menu.unpin": "Unpin menu",
   "header.icon.notifications": "Notifications",
   "header.icon.search": "搜索",
   "header.icon.user": "用户",

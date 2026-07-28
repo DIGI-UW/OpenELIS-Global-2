@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -58,7 +59,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         when(analyzerPluginConfigService.getConfigAsMap("101")).thenReturn(config);
 
         mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON)
+                .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"connectionRole\":\"SERVER\",\"serverListenPort\":17001}")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.serverListenPort").value(17001));
     }
@@ -69,7 +70,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
                 .thenThrow(new IllegalArgumentException("aggregationWindowSeconds invalid"));
 
         mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON)
+                .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"aggregationMode\":\"BY_SESSION\",\"aggregationWindowSeconds\":999}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
     }
@@ -99,7 +100,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
 
         mockMvc.perform(
                 put("/rest/analyzer/analyzers/101/pending-codes/pc-1/status").with(user("admin").roles("GLOBAL_ADMIN"))
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"MAPPED\"}"))
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"MAPPED\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value("pc-1"))
                 .andExpect(jsonPath("$.status").value("MAPPED"));
     }

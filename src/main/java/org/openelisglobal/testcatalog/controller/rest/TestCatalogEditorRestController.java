@@ -13,6 +13,7 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -522,24 +523,26 @@ public class TestCatalogEditorRestController {
         return ResponseEntity.ok(integrity);
     }
 
-    private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
+    private static final List<String> DOMAINS = java.util.Arrays.stream(Domain.values()).map(Enum::name)
+            .collect(java.util.stream.Collectors.toList());
 
-    // D-030 (OGC-1145 FR-3): test.domain (CLINICAL/ENVIRONMENTAL/VECTOR) vs the
-    // legacy type_of_sample.domain chars (sample_domain table: Human, Newborn,
-    // Environmental, Animal). Sample types with no domain stay offerable
-    // everywhere so legacy data never blocks the editor.
-    private static final Map<String, Set<String>> COMPATIBLE_SAMPLE_DOMAINS = Map.of("CLINICAL", Set.of("H", "N"),
-            "ENVIRONMENTAL", Set.of("E"), "VECTOR", Set.of("A"));
-
+    // D-030 (OGC-1145 FR-3): a test's domain (CLINICAL/ENVIRONMENTAL/VECTOR) vs
+    // the sample type's domain. The single source of truth for interpreting a
+    // sample-type domain — legacy one-character code or migrated enum value — is
+    // Domain.normalize; both this guard and the value emitted to
+    // the client run through it. Sample types with no (or unknown) domain stay
+    // offerable everywhere so legacy data never blocks the editor.
     private static boolean sampleTypeDomainCompatible(String testDomain, TypeOfSample type) {
         if (type == null) {
             return false;
         }
-        if (isBlank(testDomain) || isBlank(type.getDomain())) {
+        Domain typeDomain = Domain.fromRaw(type.getDomain());
+        // Blank test domain, or a sample type with no/unknown domain, stays
+        // offerable everywhere so legacy data never blocks the editor.
+        if (isBlank(testDomain) || typeDomain == null) {
             return true;
         }
-        Set<String> allowed = COMPATIBLE_SAMPLE_DOMAINS.get(testDomain);
-        return allowed == null || allowed.contains(type.getDomain());
+        return typeDomain.name().equals(testDomain);
     }
 
     /**
@@ -1250,7 +1253,7 @@ public class TestCatalogEditorRestController {
             SampleTypeOption option = new SampleTypeOption();
             option.id = type.getId();
             option.name = type.getLocalizedName();
-            option.domain = type.getDomain();
+            option.domain = Domain.normalize(type.getDomain());
             resp.sampleTypes.add(option);
         }
         return resp;
@@ -1489,7 +1492,7 @@ public class TestCatalogEditorRestController {
             SampleTypeOption o = new SampleTypeOption();
             o.id = t.getId();
             o.name = !isBlank(t.getDescription()) ? t.getDescription() : t.getLocalAbbreviation();
-            o.domain = t.getDomain();
+            o.domain = Domain.normalize(t.getDomain());
             options.add(o);
         }
         return options;
@@ -1678,7 +1681,7 @@ public class TestCatalogEditorRestController {
             SampleTypeOption option = new SampleTypeOption();
             option.id = type.getId();
             option.name = type.getLocalizedName();
-            option.domain = type.getDomain();
+            option.domain = Domain.normalize(type.getDomain());
             resp.sampleTypes.add(option);
         }
         return resp;

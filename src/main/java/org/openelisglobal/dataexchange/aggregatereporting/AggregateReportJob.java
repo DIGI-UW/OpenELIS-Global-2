@@ -21,6 +21,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportQueueType;
 import org.openelisglobal.dataexchange.common.ITransmissionResponseHandler;
@@ -30,6 +31,7 @@ import org.openelisglobal.dataexchange.service.aggregatereporting.ReportQueueTyp
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.scheduler.service.CronSchedulerService;
 import org.openelisglobal.scheduler.valueholder.CronScheduler;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.spring.util.SpringContext;
@@ -58,6 +60,11 @@ public class AggregateReportJob implements Job {
 
     @Override
     public void execute(JobExecutionContext arg0) throws JobExecutionException {
+        DaemonContextExecutor daemonContextExecutor = SpringContext.getBean(DaemonContextExecutor.class);
+        daemonContextExecutor.executeAsDaemon(() -> executeInternal());
+    }
+
+    private void executeInternal() {
         LogEvent.logInfo("AggregateReportJob", "execute()",
                 "Reporting triggered: " + DateUtil.getCurrentDateAsText("dd-MM-yyyy hh:mm"));
 
@@ -129,7 +136,7 @@ public class AggregateReportJob implements Job {
     private void updateRunTimestamp() {
         CronScheduler reportScheduler = cronSchedulerService.getCronScheduleByJobName("sendSiteIndicators");
         reportScheduler.setLastRun(DateUtil.getNowAsTimestamp());
-        reportScheduler.setSysUserId("1");
+        reportScheduler.setSysUserId(SpringContext.getBean(UserContextHolder.class).requireSysUserId());
 
         try {
             cronSchedulerService.update(reportScheduler);
@@ -192,18 +199,19 @@ public class AggregateReportJob implements Job {
         private void handleSuccess() {
 
             try {
+                String sysUserId = SpringContext.getBean(UserContextHolder.class).requireSysUserId();
                 for (ReportExternalExport report : sendableReports) {
                     report = reportExternalExportService.loadReport(report);
                     report.setSend(false);
                     report.setSentDate(DateUtil.getNowAsTimestamp());
-                    report.setSysUserId("1");
+                    report.setSysUserId(sysUserId);
                     reportExternalExportService.update(report);
                 }
 
                 SiteInformation sendInfo = siteInfoService.getSiteInformationByName("testUsageSendStatus");
                 if (sendInfo != null) {
                     sendInfo.setValue(MessageUtil.getMessage("http.success"));
-                    sendInfo.setSysUserId("1");
+                    sendInfo.setSysUserId(sysUserId);
                     siteInfoService.update(sendInfo);
                 }
 
@@ -269,7 +277,7 @@ public class AggregateReportJob implements Job {
                 SiteInformation sendInfo = siteInfoService.getSiteInformationByName("testUsageSendStatus");
                 if (sendInfo != null) {
                     sendInfo.setValue(status);
-                    sendInfo.setSysUserId("1");
+                    sendInfo.setSysUserId(SpringContext.getBean(UserContextHolder.class).requireSysUserId());
                     siteInfoService.update(sendInfo);
                 }
             } catch (LIMSRuntimeException e) {
