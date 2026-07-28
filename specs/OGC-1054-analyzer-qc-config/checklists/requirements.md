@@ -43,5 +43,5 @@
 
 - [x] Spotless, formatting, lint, focused suites, and package suites pass.
 - [x] `digi-uw/code-qa` gates pass or have explicit disposition.
-- [ ] PR title/body and linked evidence describe current HEAD.
+- [x] PR title/body and linked evidence describe current HEAD.
 - [ ] PR is non-draft, mergeable, and all required checks/reviews pass.

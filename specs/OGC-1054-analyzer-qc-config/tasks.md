@@ -6,7 +6,7 @@
 - [x] Run focused analyzer/QC baseline tests.
 - [x] Create the canonical OGC-1054 spec, plan, route contract, and checklist.
 - [x] Reconcile Feature 004, 012, 014, OGC-41, and the roadmap.
-- [ ] Replace PR title/body with current acceptance state.
+- [x] Replace PR title/body with current acceptance state.
 - [x] Commit the C0 checkpoint.
 
 ## C1 - URL state and page shell
@@ -52,5 +52,5 @@
 - [x] Run and inspect `harness-demo`.
 - [x] Run `harness-demo-video` and retain MP4/screenshots/report.
 - [x] Update evidence and roadmap with exact SHAs and results.
-- [ ] Update the PR body after pushing the final provenance commit.
+- [x] Update the PR body after pushing the final provenance commit.
 - [ ] Resolve review comments and CI; keep the PR non-draft.
