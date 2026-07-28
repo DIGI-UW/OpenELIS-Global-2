@@ -26,13 +26,13 @@ import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.dao.TypeOfSampleDAO;
-import org.openelisglobal.typeofsample.util.SampleTypeDomainMapper;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -167,7 +167,7 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             // bugzilla 1387 added domain parm; accepts the legacy char or the
             // enum value (OGC-296 domain migration)
             if (!StringUtil.isNullorNill(domain)) {
-                query.setParameterList("param2", List.of(domain, SampleTypeDomainMapper.normalize(domain)));
+                query.setParameterList("param2", List.of(domain, Domain.normalize(domain)));
             }
 
             list = query.list();
@@ -248,12 +248,12 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
     private List<String> getKeysForDomain(SampleDomain domain) {
         switch (domain) {
         case ANIMAL:
-            return List.of(SampleTypeDomainMapper.VECTOR, "A");
+            return List.of(Domain.VECTOR.name(), "A");
         case ENVIRONMENTAL:
-            return List.of(SampleTypeDomainMapper.ENVIRONMENTAL, "E");
+            return List.of(Domain.ENVIRONMENTAL.name(), "E");
         case HUMAN:
         default:
-            return List.of(SampleTypeDomainMapper.CLINICAL, "H");
+            return List.of(Domain.CLINICAL.name(), "H");
         }
     }
 

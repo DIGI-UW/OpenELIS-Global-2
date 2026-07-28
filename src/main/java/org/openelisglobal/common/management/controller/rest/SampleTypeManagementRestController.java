@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
@@ -14,7 +15,6 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.openelisglobal.typeofsample.util.SampleTypeDomainMapper;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -303,7 +303,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
             // original code until its domain genuinely changes.
             if (sampleTypeDTO.getDomain() != null && !sampleTypeDTO.getDomain()
                     .equals(mapBackendDomainToFrontend(existingTypeOfSample.getDomain()))) {
-                existingTypeOfSample.setDomain(SampleTypeDomainMapper.normalize(sampleTypeDTO.getDomain()));
+                existingTypeOfSample.setDomain(Domain.normalize(sampleTypeDTO.getDomain()));
             }
 
             if (sampleTypeDTO.getAbbreviation() != null) {
@@ -452,6 +452,6 @@ public class SampleTypeManagementRestController extends BaseRestController {
      * fixtures or plugin inserts.
      */
     private static String mapBackendDomainToFrontend(String backendDomain) {
-        return SampleTypeDomainMapper.normalize(backendDomain);
+        return Domain.normalize(backendDomain);
     }
 }

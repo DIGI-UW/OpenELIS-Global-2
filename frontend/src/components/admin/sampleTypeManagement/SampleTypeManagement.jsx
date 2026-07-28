@@ -57,6 +57,7 @@ import {
 } from "@carbon/react/icons";
 import { injectIntl, FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import useDomains from "../../common/useDomains";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
@@ -74,33 +75,9 @@ let breadcrumbs = [
 ];
 
 // ─── Domain Config ────────────────────────────────────────────────
-const DOMAIN_OPTIONS = [
-  { value: "CLINICAL", label: "Clinical" },
-  { value: "ENVIRONMENTAL", label: "Environmental" },
-  { value: "VECTOR", label: "Vector" },
-];
-
-const DOMAIN_TAG_KIND = {
-  CLINICAL: "green",
-  ENVIRONMENTAL: "purple",
-  VECTOR: "teal",
-};
-
-// ─── Domain Mapping Functions ────────────────────────────────────
-const mapBackendDomainToFrontend = (backendDomain) => {
-  switch (backendDomain) {
-    case "H":
-      return "CLINICAL";
-    case "E":
-      return "ENVIRONMENTAL";
-    case "V":
-      return "VECTOR";
-    case "A":
-      return "CLINICAL"; // Animal samples show as Clinical for now
-    default:
-      return "CLINICAL";
-  }
-};
+// Domain values come from the single /rest/domains source (useDomains); only
+// the tag color palette is presentational and assigned by list position.
+const DOMAIN_TAG_COLORS = ["green", "purple", "teal", "cyan", "magenta"];
 
 // ─── Main Component ───────────────────────────────────────────────
 
@@ -124,6 +101,25 @@ function SampleTypeManagement({ intl }) {
     : DEFAULT_SAMPLE_TYPE_SECTION;
 
   const [editingType, setEditingType] = useState(null);
+
+  // Single source for the domain list + presentational helpers.
+  const domains = useDomains();
+  const domainColor = useCallback(
+    (id) => {
+      const index = domains.findIndex((d) => d.id === id);
+      return index >= 0
+        ? DOMAIN_TAG_COLORS[index % DOMAIN_TAG_COLORS.length]
+        : "gray";
+    },
+    [domains],
+  );
+  const domainLabel = useCallback(
+    (id) => {
+      const match = domains.find((d) => d.id === id);
+      return match ? intl.formatMessage({ id: match.labelKey }) : id;
+    },
+    [domains, intl],
+  );
 
   // Filter state
   const [searchText, setSearchText] = useState("");
@@ -251,12 +247,19 @@ function SampleTypeManagement({ intl }) {
     [page, pageSize],
   );
 
-  // Domain counts
+  // Domain counts, keyed by the domains served from the single source.
   const domainCounts = useMemo(() => {
-    const counts = { CLINICAL: 0, ENVIRONMENTAL: 0, VECTOR: 0 };
-    sampleTypes.forEach((st) => counts[st.domain]++);
+    const counts = {};
+    domains.forEach((d) => {
+      counts[d.id] = 0;
+    });
+    sampleTypes.forEach((st) => {
+      if (counts[st.domain] !== undefined) {
+        counts[st.domain]++;
+      }
+    });
     return counts;
-  }, [sampleTypes]);
+  }, [sampleTypes, domains]);
 
   const loadAssociatedTests = useCallback((id) => {
     setAssociatedTests([]);
@@ -624,57 +627,23 @@ function SampleTypeManagement({ intl }) {
                         alignItems: "center",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "var(--cds-spacing-02)",
-                        }}
-                      >
-                        <Tag type="green" size="md">
-                          {domainCounts.CLINICAL}
-                        </Tag>
-                        <span style={{ fontSize: "14px", fontWeight: 500 }}>
-                          <FormattedMessage
-                            id="label.sampleType.domain.clinical"
-                            defaultMessage="Clinical"
-                          />
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "var(--cds-spacing-02)",
-                        }}
-                      >
-                        <Tag type="purple" size="md">
-                          {domainCounts.ENVIRONMENTAL}
-                        </Tag>
-                        <span style={{ fontSize: "14px", fontWeight: 500 }}>
-                          <FormattedMessage
-                            id="label.sampleType.domain.environmental"
-                            defaultMessage="Environmental"
-                          />
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "var(--cds-spacing-02)",
-                        }}
-                      >
-                        <Tag type="teal" size="md">
-                          {domainCounts.VECTOR}
-                        </Tag>
-                        <span style={{ fontSize: "14px", fontWeight: 500 }}>
-                          <FormattedMessage
-                            id="label.sampleType.domain.vector"
-                            defaultMessage="Vector"
-                          />
-                        </span>
-                      </div>
+                      {domains.map((d) => (
+                        <div
+                          key={d.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "var(--cds-spacing-02)",
+                          }}
+                        >
+                          <Tag type={domainColor(d.id)} size="md">
+                            {domainCounts[d.id] || 0}
+                          </Tag>
+                          <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                            {domainLabel(d.id)}
+                          </span>
+                        </div>
+                      ))}
                     </Stack>
                   </Column>
                 </Grid>
@@ -740,14 +709,11 @@ function SampleTypeManagement({ intl }) {
                           defaultMessage: "All domains",
                         })}
                       />
-                      {DOMAIN_OPTIONS.map((opt) => (
+                      {domains.map((d) => (
                         <SelectItem
-                          key={opt.value}
-                          value={opt.value}
-                          text={intl.formatMessage({
-                            id: `label.sampleType.domain.${opt.value.toLowerCase()}`,
-                            defaultMessage: opt.label,
-                          })}
+                          key={d.id}
+                          value={d.id}
+                          text={domainLabel(d.id)}
                         />
                       ))}
                     </Select>
@@ -832,11 +798,8 @@ function SampleTypeManagement({ intl }) {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Tag type={DOMAIN_TAG_KIND[st.domain]} size="sm">
-                              <FormattedMessage
-                                id={`label.sampleType.domain.${st.domain.toLowerCase()}`}
-                                defaultMessage={st.domain}
-                              />
+                            <Tag type={domainColor(st.domain)} size="sm">
+                              {domainLabel(st.domain)}
                             </Tag>
                           </TableCell>
                           <TableCell>
@@ -994,11 +957,8 @@ function SampleTypeManagement({ intl }) {
                     )}
                   </p>
                   {view === "editor" && editingType?.domain && (
-                    <Tag type={DOMAIN_TAG_KIND[editingType?.domain]} size="md">
-                      <FormattedMessage
-                        id={`label.sampleType.domain.${editingType?.domain?.toLowerCase()}`}
-                        defaultMessage={editingType?.domain}
-                      />
+                    <Tag type={domainColor(editingType?.domain)} size="md">
+                      {domainLabel(editingType?.domain)}
                     </Tag>
                   )}
                   {view === "editor" &&
@@ -1157,14 +1117,11 @@ function SampleTypeManagement({ intl }) {
                               "Determines which workflow mode (Clinical or Environmental) this sample type appears in.",
                           })}
                         >
-                          {DOMAIN_OPTIONS.map((opt) => (
+                          {domains.map((d) => (
                             <SelectItem
-                              key={opt.value}
-                              value={opt.value}
-                              text={intl.formatMessage({
-                                id: `label.sampleType.domain.${opt.value.toLowerCase()}`,
-                                defaultMessage: opt.label,
-                              })}
+                              key={d.id}
+                              value={d.id}
+                              text={domainLabel(d.id)}
                             />
                           ))}
                         </Select>

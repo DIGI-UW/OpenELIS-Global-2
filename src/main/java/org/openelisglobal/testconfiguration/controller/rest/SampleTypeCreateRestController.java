@@ -6,6 +6,7 @@ import java.util.Locale;
 import javax.validation.Valid;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
@@ -17,7 +18,6 @@ import org.openelisglobal.systemusermodule.valueholder.RoleModule;
 import org.openelisglobal.testconfiguration.form.SampleTypeCreateForm;
 import org.openelisglobal.testconfiguration.service.SampleTypeCreateService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.openelisglobal.typeofsample.util.SampleTypeDomainMapper;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -178,7 +178,7 @@ public class SampleTypeCreateRestController extends BaseController {
      * enum value since the OGC-296 Dependency-4 migration.
      */
     private String mapFrontendDomainToBackendCode(String frontendDomain) {
-        return SampleTypeDomainMapper.normalize(frontendDomain);
+        return Domain.normalize(frontendDomain);
     }
 
     private SystemModule createSystemModule(String menuItem, String identifyingName, String userId) {
