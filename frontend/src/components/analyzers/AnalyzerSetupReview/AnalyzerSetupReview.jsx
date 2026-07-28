@@ -61,6 +61,8 @@ const AnalyzerSetupReview = () => {
   }
 
   const ready = verification?.readyForActivation === true;
+  const active = analyzer?.status === "ACTIVE";
+  const reviewState = active ? "active" : ready ? "ready" : "blocked";
   const summaryRows = [
     [
       intl.formatMessage({ id: "analyzer.review.instrument" }),
@@ -102,7 +104,11 @@ const AnalyzerSetupReview = () => {
             label: intl.formatMessage({ id: "analyzer.setup.step.review" }),
           },
         ]}
-        subtitle={intl.formatMessage({ id: "analyzer.review.subtitle" })}
+        subtitle={intl.formatMessage({
+          id: active
+            ? "analyzer.review.active.subtitle"
+            : "analyzer.review.subtitle",
+        })}
       />
       <AnalyzerSetupProgress currentStep="review" />
 
@@ -132,15 +138,13 @@ const AnalyzerSetupReview = () => {
       </section>
 
       <InlineNotification
-        kind={ready ? "success" : "warning"}
+        kind={active || ready ? "success" : "warning"}
         title={intl.formatMessage({
-          id: ready ? "analyzer.review.ready" : "analyzer.review.blocked",
+          id: `analyzer.review.${reviewState}`,
         })}
-        subtitle={
-          ready
-            ? intl.formatMessage({ id: "analyzer.review.ready.subtitle" })
-            : intl.formatMessage({ id: "analyzer.review.blocked.subtitle" })
-        }
+        subtitle={intl.formatMessage({
+          id: `analyzer.review.${reviewState}.detail`,
+        })}
         lowContrast
         hideCloseButton
       />

@@ -1,3 +1,7 @@
+export function getServiceWorkerUrl(location = window.location) {
+  return new URL("/service-worker.js", location.origin).toString();
+}
+
 // Function to register the service worker
 export function registerServiceWorker() {
   // Only register service worker in production
@@ -10,7 +14,7 @@ export function registerServiceWorker() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      const swUrl = `./service-worker.js`;
+      const swUrl = getServiceWorkerUrl();
 
       navigator.serviceWorker
         .register(swUrl)

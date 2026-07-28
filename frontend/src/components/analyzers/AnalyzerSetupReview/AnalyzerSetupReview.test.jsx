@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { Route, Router } from "react-router-dom";
 import { createMemoryHistory } from "history";
+import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 import AnalyzerSetupReview from "./AnalyzerSetupReview";
 import * as analyzerService from "../../../services/analyzerService";
@@ -79,5 +80,33 @@ describe("AnalyzerSetupReview", () => {
     expect(`${history.location.pathname}${history.location.search}`).toBe(
       "/analyzers?status=SETUP",
     );
+  });
+
+  test("describes an active analyzer as active instead of ready for activation", async () => {
+    analyzerService.getAnalyzer.mockImplementation((id, callback) =>
+      callback({
+        id,
+        name: "Main GeneXpert",
+        protocolVersion: "ASTM_LIS2_A2",
+        status: "ACTIVE",
+        ipAddress: "10.0.0.4",
+        port: 5000,
+      }),
+    );
+    analyzerService.getSetupVerification.mockImplementation((id, callback) =>
+      callback({
+        verificationState: "CURRENT",
+        currentlyVerified: true,
+        readyForActivation: true,
+        blockers: [],
+        verifiedBy: "77",
+        verifiedAt: "2026-07-28T12:00:00Z",
+      }),
+    );
+
+    renderReview();
+
+    expect(await screen.findByText("Analyzer active")).toBeInTheDocument();
+    expect(screen.queryByText("Ready for activation")).not.toBeInTheDocument();
   });
 });
