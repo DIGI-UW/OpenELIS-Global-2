@@ -112,8 +112,8 @@ const InventoryCatalog = () => {
             text: intl.formatMessage({ id: "inventory.filter.all" }),
           },
           ...types.map((type) => ({
-            id: type.code,
-            text: type.label,
+            id: type,
+            text: getItemTypeLabel(type),
           })),
         ];
         setItemTypes(formattedTypes);
@@ -127,6 +127,17 @@ const InventoryCatalog = () => {
   useEffect(() => {
     fetchItems();
   }, [typeFilter, statusFilter]);
+
+  const getItemTypeLabel = (type) => {
+    const labels = {
+      REAGENT: "Reagent",
+      RDT: "RDT (Rapid Diagnostic Test)",
+      CARTRIDGE: "Analyzer Cartridge",
+      HIV_KIT: "HIV Test Kit",
+      SYPHILIS_KIT: "Syphilis Test Kit",
+    };
+    return labels[type] || type;
+  };
 
   const fetchItems = async () => {
     setLoading(true);

@@ -54,8 +54,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       try {
         const types = await InventoryItemAPI.getItemTypes();
         const formattedTypes = types.map((type) => ({
-          id: type.code,
-          text: type.label,
+          id: type,
+          text: getItemTypeLabel(type),
         }));
         setItemTypes(formattedTypes);
       } catch (err) {
@@ -69,6 +69,17 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     };
     loadItemTypes();
   }, [notify, intl]);
+
+  const getItemTypeLabel = (type) => {
+    const labels = {
+      REAGENT: "Reagent",
+      RDT: "RDT (Rapid Diagnostic Test)",
+      CARTRIDGE: "Analyzer Cartridge",
+      HIV_KIT: "HIV Test Kit",
+      SYPHILIS_KIT: "Syphilis Test Kit",
+    };
+    return labels[type] || type;
+  };
 
   // Load item data if editing, reset if adding new
   useEffect(() => {
@@ -208,7 +219,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     } catch (err) {
       console.error("Error saving item:", err);
       // err.errorCode (OGC-658 C8) is an en.json message id set by
-      // InventoryItemRestController/InventoryItemTypeRestController for
+      // InventoryItemRestController for
       // validation failures (duplicate/malformed code, etc.) — prefer it over
       // err.message, which is the untranslated backend fallback string.
       const errorMessage = err.errorCode

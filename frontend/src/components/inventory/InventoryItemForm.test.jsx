@@ -41,10 +41,7 @@ const renderForm = (props = {}) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  InventoryItemAPI.getItemTypes.mockResolvedValue([
-    { code: "REAGENT", label: "Reagent" },
-    { code: "RDT", label: "RDT (Rapid Diagnostic Test)" },
-  ]);
+  InventoryItemAPI.getItemTypes.mockResolvedValue(["REAGENT", "RDT"]);
 });
 
 describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {

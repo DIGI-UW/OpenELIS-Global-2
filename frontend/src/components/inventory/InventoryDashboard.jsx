@@ -150,7 +150,10 @@ const InventoryDashboard = () => {
             id: "ALL",
             text: intl.formatMessage({ id: "inventory.filter.all" }),
           },
-          ...types.map((type) => ({ id: type.code, text: type.label })),
+          ...types.map((type) => ({
+            id: type,
+            text: getItemTypeLabel(type),
+          })),
         ]);
       } catch (err) {
         console.error("Error loading item types:", err);
@@ -158,6 +161,17 @@ const InventoryDashboard = () => {
     };
     loadItemTypes();
   }, [intl]);
+
+  const getItemTypeLabel = (type) => {
+    const labels = {
+      REAGENT: "Reagent",
+      RDT: "RDT (Rapid Diagnostic Test)",
+      CARTRIDGE: "Analyzer Cartridge",
+      HIV_KIT: "HIV Test Kit",
+      SYPHILIS_KIT: "Syphilis Test Kit",
+    };
+    return labels[type] || type;
+  };
 
   useEffect(() => {
     fetchLots();

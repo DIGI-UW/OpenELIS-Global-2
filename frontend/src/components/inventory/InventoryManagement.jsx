@@ -13,7 +13,6 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import InventoryDashboard from "./InventoryDashboard";
 import InventoryCatalog from "./InventoryCatalog";
 import InventoryReports from "./InventoryReports";
-import InventoryItemTypeManagement from "../admin/generalConfig/InventoryItemTypeManagement";
 import "./InventoryList.css";
 
 const breadcrumbs = [
@@ -50,9 +49,6 @@ const InventoryManagement = () => {
                   <FormattedMessage id="inventory.tab.catalog" />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="inventory.tab.itemTypes" />
-                </Tab>
-                <Tab>
                   <FormattedMessage id="inventory.tab.reports" />
                 </Tab>
               </TabList>
@@ -66,11 +62,6 @@ const InventoryManagement = () => {
                 {/* Catalog Tab - Manage Inventory Items */}
                 <TabPanel>
                   <InventoryCatalog />
-                </TabPanel>
-
-                {/* Item Types Tab - Manage the Item Type lookup list (OGC-658 Part A) */}
-                <TabPanel>
-                  <InventoryItemTypeManagement />
                 </TabPanel>
 
                 {/* Reports Tab - Generate Reports */}

@@ -54,7 +54,7 @@ const post = (endpoint, data) => {
               `Request failed with status ${json.status || json.statusCode}`,
           );
           // errorCode/params (LocalizedValidationException, see
-          // InventoryItemRestController/InventoryItemTypeRestController) let the
+          // InventoryItemRestController) let the
           // caller show a translated message instead of this raw English fallback.
           if (json.errorCode) {
             error.errorCode = json.errorCode;
@@ -306,90 +306,6 @@ export const InventoryLotStorageAPI = {
         null,
       );
     }),
-};
-
-/**
- * Inventory Item Type API (OGC-658 Part A)
- * Admin CRUD for the item-type lookup table backing the Inventory Catalog's
- * "Type of Item" dropdown, replacing the old hardcoded enum.
- */
-const ITEM_TYPE_BASE_PATH = "/rest/inventory-item-types";
-
-// PUT against an absolute path (item types live outside BASE_PATH's /rest/inventory prefix)
-const putAbsolute = (endpoint, data) => {
-  return new Promise((resolve, reject) => {
-    fetch(`${config.serverBaseUrl}${endpoint}`, {
-      credentials: "include",
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-      body: data ? JSON.stringify(data) : null,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response
-            .json()
-            .catch(() => ({}))
-            .then((errorJson) => {
-              throw new Error(
-                errorJson.message ||
-                  errorJson.error ||
-                  `Failed to update: HTTP ${response.status}`,
-              );
-            });
-        }
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          return response.json();
-        }
-        return {};
-      })
-      .then((json) => resolve(json))
-      .catch((error) => reject(error));
-  });
-};
-
-export const InventoryItemTypeAPI = {
-  // Admin list — all statuses, sorted by sortOrder
-  getAll: () => promisify(getFromOpenElisServer, ITEM_TYPE_BASE_PATH),
-
-  // Create a new item type ({ code, name, locale, sortOrder })
-  create: (payload) =>
-    new Promise((resolve, reject) => {
-      postToOpenElisServerJsonResponse(
-        ITEM_TYPE_BASE_PATH,
-        JSON.stringify(payload),
-        (json) => {
-          if (json && (json.status >= 400 || json.statusCode >= 400)) {
-            const error = new Error(
-              json.message ||
-                json.error ||
-                `Request failed with status ${json.status || json.statusCode}`,
-            );
-            // errorCode/params (LocalizedValidationException, see
-            // InventoryItemTypeRestController) let the caller show a translated
-            // message instead of this raw English fallback.
-            if (json.errorCode) {
-              error.errorCode = json.errorCode;
-              error.params = json.params;
-            }
-            reject(error);
-          } else {
-            resolve(json);
-          }
-        },
-        null,
-      );
-    }),
-
-  // Update name (for the given locale) and sort order
-  update: (id, payload) => putAbsolute(`${ITEM_TYPE_BASE_PATH}/${id}`, payload),
-
-  // Deactivate (soft delete) — no reactivate endpoint in Part A
-  deactivate: (id) =>
-    putAbsolute(`${ITEM_TYPE_BASE_PATH}/${id}/deactivate`, {}),
 };
 
 /**

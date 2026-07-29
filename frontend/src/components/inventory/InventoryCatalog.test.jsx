@@ -58,10 +58,7 @@ const ITEMS = [
 
 beforeEach(() => {
   vi.clearAllMocks();
-  InventoryItemAPI.getItemTypes.mockResolvedValue([
-    { code: "REAGENT", label: "Reagent" },
-    { code: "RDT", label: "RDT (Rapid Diagnostic Test)" },
-  ]);
+  InventoryItemAPI.getItemTypes.mockResolvedValue(["REAGENT", "RDT"]);
   InventoryItemAPI.getAll.mockResolvedValue(ITEMS);
 });
 

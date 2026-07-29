@@ -106,14 +106,14 @@ beforeEach(() => {
     units: "kits",
   });
   InventoryItemAPI.getItemTypes.mockResolvedValue([
-    { code: "REAGENT", label: "Reagent" },
-    { code: "RDT", label: "RDT (Rapid Diagnostic Test)" },
-    { code: "CONTROL", label: "Control Material" },
+    "REAGENT",
+    "RDT",
+    "CARTRIDGE",
   ]);
 });
 
 describe("InventoryDashboard type filter", () => {
-  it("sources the type filter options from the admin-managed item types API, not a hardcoded list", async () => {
+  it("populates the type filter from the item types API with display labels", async () => {
     InventoryLotAPI.getAll.mockResolvedValue([]);
     renderDashboard();
 
@@ -121,11 +121,8 @@ describe("InventoryDashboard type filter", () => {
       expect(InventoryItemAPI.getItemTypes).toHaveBeenCalled();
     });
 
-    // "Control Material" only exists via the mocked API response — if it
-    // appears once the dropdown is opened, the options came from the API,
-    // not the old hardcoded REAGENT/RDT/CARTRIDGE array.
     fireEvent.click(document.querySelector("#type-filter button"));
-    expect(await screen.findByText("Control Material")).toBeInTheDocument();
+    expect(await screen.findByText("Analyzer Cartridge")).toBeInTheDocument();
   });
 });
 
