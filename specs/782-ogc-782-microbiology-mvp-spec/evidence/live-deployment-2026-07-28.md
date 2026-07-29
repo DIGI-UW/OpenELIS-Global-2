@@ -2,21 +2,28 @@
 
 ## Current Candidate Status
 
-- PR candidate: `1e3aadfafb9818b46d8193416ca324a0c2f44f1e`
-- Current AMR deployment:
-  `3aade44dff784d2b5f3d04a8343c5f54bdb8abe0`
-- Current deployment ID: `20260729T064243Z-3aade44dff78`
-- Status: the candidate is pushed but not yet deployed. Final deployed
-  Playwright, screenshot/video, and human UAT evidence remain open in
-  `tasks.md` as T197, T198, and T200.
-
-The current deployment predates the final named HTTP 409 response for writes
-against final cases and the latest visible-report test refinements. It must not
-be treated as final acceptance evidence for the PR candidate.
+- PR candidate and deployed app SHA:
+  `ee5e4d1fa5324dd0ae742c0cc303b9e1b61b25cf`
+- Application deployment ID: `20260729T140857Z-69be0c1c164e`
+- Frontend evidence deployment ID: `20260729T142935Z-ee5e4d1fa532`
+- Review-tooling SHA:
+  `4df8441896e59520ffb9bb247b1b2e3ce3f5248d`
+- Deployment scope: backend/app at `69be0c1c164ecb97128b06aaa003df72e58154e6`,
+  then frontend-only at the exact PR head.
+- Status: health, smoke, public SHA guard, focused tests, canonical deployed
+  Playwright, and paced video evidence passed. Human Review-overlay rulings
+  remain open as T200.
 
 ## Provenance
 
 - Target: `https://amr.openelis-global.org`
+- Final public target metadata:
+  `https://amr.openelis-global.org/__review/target.json`
+- Final live checklist:
+  `https://amr.openelis-global.org/__review/uat-amr.json`
+- Final health and smoke verification: passed
+- Final app SHA guard:
+  `ee5e4d1fa5324dd0ae742c0cc303b9e1b61b25cf`
 - Earlier verified OpenELIS commit:
   `9d0c55b6fd3c2363ff8b16d83474f396132180ba`
 - Review-tooling commit:
@@ -58,7 +65,7 @@ Primary case:
 
 The live JSON contains configured-navigation, canonical-state, case navigation,
 isolate, AST, report-propagation, and shared-specimen review steps. The final
-rendered-overlay revision and application-SHA guard must be rechecked after the
+application-SHA guard and live checklist revision were rechecked after the
 candidate deployment.
 
 ## UI And Route Verification
@@ -75,17 +82,28 @@ candidate deployment.
 - The case breadcrumb points back to
   `/Microbiology/worklist?workflow=BACTERIOLOGY&sort=newest`.
 
-## Validation
+## Final Validation
 
-- Backend focused logic tests: 51 passed.
-- Frontend focused tests: 34 passed across eight files.
+- Complete microbiology backend group: 99 passed with Testcontainers.
+- Patient History narrative renderer: 2 focused Vitest tests passed.
 - Frontend production build: passed.
+- Deployed foundational `core-app` group: 5 passed.
+- Canonical deployed `core-demo`: setup plus MVP journey passed.
+- Paced deployed `core-demo-video`: setup plus MVP journey passed in 1.9
+  minutes.
+- The visible Patient History row contains the confirmed organism,
+  `Gentamicin (UAT) S`, and `Ciprofloxacin (UAT) R`.
+- The final-case mutation request returns named HTTP 409
+  `MICROBIOLOGY_CASE_LOCKED`.
 - Review-tooling tests: 90 passed, including no-SQL seeding, AMR-only endpoint
   enablement, and the authenticated service-provisioning contract.
 - Formatting and whitespace validation passed.
-- The ORM/Testcontainers check could not start because Docker Desktop was
-  unavailable in the local validation environment; its two errors were
-  environment startup errors, not test assertion or compilation failures.
+- External evidence:
+  `/tmp/ogc-782-mvp-evidence-final-2026-07-29/`
+- MP4:
+  `/tmp/ogc-782-mvp-evidence-final-2026-07-29/videos/ogc-782-microbiology-mvp-walkthrough.mp4`
+- Contact sheet:
+  `/tmp/ogc-782-mvp-evidence-final-2026-07-29/contact-sheet.png`
 
 ## Issues Flagged
 
@@ -101,3 +119,12 @@ candidate deployment.
    subscription check logs failed fetch/JSON parsing errors. The Microbiology
    workflow and Review overlay continue to work; this appears to originate in
    the existing notification surface rather than OGC-782.
+4. **Shared edge-router restart interrupted one recording.** OpenELIS
+   containers remained healthy, but the review-tooling router restarted and
+   briefly refused HTTPS connections. The recovered rerun passed.
+5. **Legacy frontend warnings remain.** Deployed navigation emits global 404
+   and `react-i18next` initialization warnings. The production build also
+   reports existing `:global` CSS, large-chunk, and direct-`eval` warnings.
+6. **WHONET mapping remains outside MVP.** Final release succeeds, while
+   WHONET export correctly reports `Organism Mapping Required`; complete
+   surveillance mapping remains follow-up scope.
