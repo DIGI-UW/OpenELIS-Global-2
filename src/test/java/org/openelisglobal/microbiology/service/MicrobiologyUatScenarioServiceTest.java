@@ -194,6 +194,10 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("sample-type-1", mappingCaptor.getValue().getTypeOfSampleId());
         assertEquals(test.getId(), mappingCaptor.getValue().getTestId());
         verify(typeOfSampleService).clearCache();
+        assertNotNull(test.getLocalizedTestName());
+        assertEquals("UAT microbiology culture", test.getLocalizedTestName().getEnglish());
+        assertNotNull(test.getLocalizedReportingName());
+        assertEquals("UAT microbiology culture", test.getLocalizedReportingName().getEnglish());
     }
 
     @Test
@@ -317,6 +321,7 @@ public class MicrobiologyUatScenarioServiceTest {
     private org.openelisglobal.test.valueholder.Test test(String id) {
         org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
         test.setId(id);
+        test.setDescription("UAT microbiology culture");
         return test;
     }
 

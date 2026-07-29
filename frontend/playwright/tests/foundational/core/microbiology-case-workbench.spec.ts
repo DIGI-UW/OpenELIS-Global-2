@@ -27,7 +27,7 @@ test.describe("Microbiology case workbench", () => {
 
     await page
       .locator(".cds--accordion__heading")
-      .filter({ hasText: "Setup" })
+      .filter({ hasText: "Inoculation" })
       .click();
     await expect(page).toHaveURL(/section=setup/);
     await page.getByLabel("Activity note").fill("setup complete");

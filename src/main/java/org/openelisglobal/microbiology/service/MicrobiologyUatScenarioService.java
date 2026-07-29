@@ -357,6 +357,13 @@ public class MicrobiologyUatScenarioService {
             test.setOrderable(true);
             test.setAntimicrobialResistance(true);
         }
+        if (test.getLocalizedTestName() == null) {
+            test.setLocalizedTestName(createUatTestLocalization("UAT microbiology test name", performedBy));
+        }
+        if (test.getLocalizedReportingName() == null) {
+            test.setLocalizedReportingName(
+                    createUatTestLocalization("UAT microbiology reporting test name", performedBy));
+        }
         test.setMethod(method);
         test.setTestSection(getUatReportTestSection());
         test.setCultureWorkflowType(BACTERIOLOGY);
@@ -369,6 +376,22 @@ public class MicrobiologyUatScenarioService {
             testService.update(test);
         }
         return test;
+    }
+
+    private Localization createUatTestLocalization(String description, String performedBy) {
+        Localization localization = new Localization();
+        localization.setDescription(description);
+        localization.setSysUserId(performedBy);
+        List<Locale> activeLocales = localizationService.getAllActiveLocales();
+        if (activeLocales.isEmpty()) {
+            localization.setEnglish(UAT_TEST_DESCRIPTION);
+        } else {
+            for (Locale locale : activeLocales) {
+                localization.setLocalizedValue(locale.getLanguage(), UAT_TEST_DESCRIPTION);
+            }
+        }
+        localizationService.insert(localization);
+        return localization;
     }
 
     private TestSection getUatReportTestSection() {
