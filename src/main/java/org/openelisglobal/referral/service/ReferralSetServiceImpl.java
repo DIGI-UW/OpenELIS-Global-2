@@ -63,7 +63,6 @@ public class ReferralSetServiceImpl implements ReferralSetService {
     private OrganizationService organizationService;
     @Autowired
     private ReferralTypeService referralTypeService;
-
     private String REFERRAL_CONFORMATION_ID;
 
     @PostConstruct
@@ -208,7 +207,6 @@ public class ReferralSetServiceImpl implements ReferralSetService {
         List<ReferralSet> referralSets = new ArrayList<>();
         for (ReferralItem referralItem : referralItems) {
             Result result = new Result();
-            result.setSysUserId("1");
 
             Referral referral = new Referral();
             referral.setFhirUuid(UUID.randomUUID());

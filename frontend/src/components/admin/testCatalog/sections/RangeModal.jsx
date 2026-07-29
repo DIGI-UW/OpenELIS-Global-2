@@ -50,7 +50,13 @@ const displayAge = (range) => {
   };
 };
 
-const RangeModal = ({ range, components = [], onSave, onCancel }) => {
+const RangeModal = ({
+  range,
+  components = [],
+  sampleTypes = [],
+  onSave,
+  onCancel,
+}) => {
   const intl = useIntl();
   const editing = !!(range && range.id);
 
@@ -63,6 +69,7 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       return {
         id: undefined,
         componentId: defaultComponentId,
+        sampleTypeId: "",
         gender: "",
         ageUnit: "years",
         minAgeValue: "0",
@@ -79,6 +86,7 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       id: range.id,
       // Preserve the existing association; fall back to the sole component.
       componentId: range.componentId || defaultComponentId,
+      sampleTypeId: range.sampleTypeId || "",
       gender: range.gender || "",
       ...displayAge(range),
       lowNormal: numOrEmpty(range.lowNormal),
@@ -133,6 +141,7 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
     onSave({
       id: draft.id,
       componentId: draft.componentId || null,
+      sampleTypeId: draft.sampleTypeId || null,
       gender: draft.gender || null,
       minAge: minDays,
       maxAge: maxDays,
@@ -187,6 +196,29 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
             />
             {components.map((c) => (
               <SelectItem key={c.id} value={c.id} text={c.label} />
+            ))}
+          </Select>
+        )}
+
+        {/* OGC-1145 Phase 2 — override for a specific specimen; blank = the
+            shared set that applies to every sample type the test runs on. */}
+        {sampleTypes.length > 1 && (
+          <Select
+            id="range-sample-type"
+            labelText={intl.formatMessage({
+              id: "label.testCatalog.override.col.sampleType",
+            })}
+            value={draft.sampleTypeId || ""}
+            onChange={(e) => set({ sampleTypeId: e.target.value })}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "label.testCatalog.override.shared",
+              })}
+            />
+            {sampleTypes.map((t) => (
+              <SelectItem key={t.id} value={t.id} text={t.name} />
             ))}
           </Select>
         )}

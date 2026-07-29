@@ -112,6 +112,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
             // the dictionary normal are NOT edited here, so leave the managed row's
             // existing values intact (a new row keeps its ±Infinity defaults).
             target.setComponentId(incoming.getComponentId());
+            target.setSampleTypeId(incoming.getSampleTypeId());
             target.setGender(incoming.getGender());
             target.setMinAge(incoming.getMinAge());
             target.setMaxAge(incoming.getMaxAge());
@@ -147,16 +148,59 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient) {
-        return selectForPatient(getResultLimits(testId), patient);
+        return getResultLimitForTestAndPatient(testId, patient, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId) {
+        return selectForPatient(scopeToSampleType(getResultLimits(testId), sampleTypeId), patient);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient) {
+        return getResultLimitForComponentAndPatient(componentId, patient, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient, String sampleTypeId) {
         if (GenericValidator.isBlankOrNull(componentId)) {
             return null;
         }
-        return selectForPatient(getResultLimitsByComponentId(componentId), patient);
+        return selectForPatient(scopeToSampleType(getResultLimitsByComponentId(componentId), sampleTypeId), patient);
+    }
+
+    /**
+     * OGC-1145 Phase 2 — specimen precedence over a limit pool: rows scoped to the
+     * given sample type win; otherwise the shared (null-scope) rows apply. Without
+     * a specimen in context, shared rows are preferred so an override for one
+     * specimen never leaks into another's evaluation. The full pool is the last
+     * resort (legacy data where every row predates scoping).
+     */
+    private static List<ResultLimit> scopeToSampleType(List<ResultLimit> pool, String sampleTypeId) {
+        if (pool == null || pool.isEmpty()) {
+            return pool;
+        }
+        if (!GenericValidator.isBlankOrNull(sampleTypeId)) {
+            List<ResultLimit> scoped = new ArrayList<>();
+            for (ResultLimit limit : pool) {
+                if (sampleTypeId.equals(limit.getSampleTypeId())) {
+                    scoped.add(limit);
+                }
+            }
+            if (!scoped.isEmpty()) {
+                return scoped;
+            }
+        }
+        List<ResultLimit> shared = new ArrayList<>();
+        for (ResultLimit limit : pool) {
+            if (GenericValidator.isBlankOrNull(limit.getSampleTypeId())) {
+                shared.add(limit);
+            }
+        }
+        return shared.isEmpty() ? pool : shared;
     }
 
     /** Pick the best-matching limit from a pool for the patient's age/gender. */
@@ -537,7 +581,10 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForAnalysis(Analysis analysis) {
-        return getResultLimitForTestAndPatient(analysis.getTest(),
-                sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample()));
+        // OGC-1145 Phase 2: the analysis's sample item pins the specimen, so a
+        // limit scoped to that sample type wins over the shared set.
+        String sampleTypeId = analysis.getSampleItem() != null ? analysis.getSampleItem().getTypeOfSampleId() : null;
+        return getResultLimitForTestAndPatient(analysis.getTest().getId(),
+                sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample()), sampleTypeId);
     }
 }

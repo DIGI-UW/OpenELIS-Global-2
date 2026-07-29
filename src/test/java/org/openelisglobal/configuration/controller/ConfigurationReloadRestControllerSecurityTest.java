@@ -13,6 +13,7 @@ import org.openelisglobal.configuration.service.ConfigurationInitializationServi
 import org.openelisglobal.configuration.service.ConfigurationReloadFileResult;
 import org.openelisglobal.configuration.service.ConfigurationReloadOptions;
 import org.openelisglobal.configuration.service.ConfigurationReloadResult;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +26,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 @WebAppConfiguration
@@ -64,6 +64,21 @@ public class ConfigurationReloadRestControllerSecurityTest extends SecuritySlice
             return http.build();
         }
 
+        // Required: Spring autowires @Autowired fields on @Bean-returned mocks
+        // (Mockito proxies still carry the parent class's @Autowired metadata).
+        // The mocked ConfigurationInitializationService has an @Autowired
+        // DaemonContextExecutor field that must resolve, so DaemonContextExecutor
+        // (and its @Qualifier("daemonSysUserId") dependency) must be present here.
+        @Bean("daemonSysUserId")
+        String daemonSysUserId() {
+            return "1";
+        }
+
+        @Bean
+        DaemonContextExecutor daemonContextExecutor() {
+            return new DaemonContextExecutor();
+        }
+
         @Bean
         ConfigurationInitializationService configurationInitializationService() {
             ConfigurationInitializationService service = mock(ConfigurationInitializationService.class);
@@ -78,14 +93,8 @@ public class ConfigurationReloadRestControllerSecurityTest extends SecuritySlice
         }
 
         @Bean
-        ConfigurationReloadRestController configurationReloadRestController(
-                ConfigurationInitializationService configurationInitializationService,
-                ConfigurationReloadRefreshService configurationReloadRefreshService) {
-            ConfigurationReloadRestController controller = new ConfigurationReloadRestController();
-            ReflectionTestUtils.setField(controller, "configurationInitializationService",
-                    configurationInitializationService);
-            ReflectionTestUtils.setField(controller, "refreshService", configurationReloadRefreshService);
-            return controller;
+        ConfigurationReloadRestController configurationReloadRestController() {
+            return new ConfigurationReloadRestController();
         }
     }
 }
