@@ -27,16 +27,24 @@ work:
 ### 1. FR-002 order-detail capture
 
 - **FRS source:** M-03 Order Entry hook (`m-03-order-entry-micro-hook.md`); spec [FR-002](../spec.md) ("Users MUST be able to capture microbiology order details ... including culture setup default, patient origin, number of sets, clinical history, antibiotic exposure, and critical notification preference").
-- **As-built:** [`MicroOrderRoutingServiceImpl.routeAnalysesForSampleItem`](../../../../src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java) (lines 30-58) only resolves workflow type and culture method, then calls `caseService.createOrGetCase(sampleItemId, workflowType, methodId, performedBy)`. No patient origin, number of sets, clinical history, antibiotic exposure, or critical-notification-preference field exists anywhere in `micro_case` or its related tables.
+- **As-built at the July 3 checkpoint:** [`MicroOrderRoutingServiceImpl.routeAnalysesForSampleItem`](../../../../src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java) resolved workflow type and culture method but the generic order-entry page did not supply microbiology details.
 - **Cause:** unintended divergence. The speckit M3 task (`tasks.md` T040-T052) narrowed scope to pure routing and silently dropped the order-detail-capture requirement, even though FR-002 is a spec "MUST."
-- **Disposition: MVP.** Built in this session: a `micro_case_order_detail` table (`055-microbiology-order-detail.xml`), a `MicroCaseOrderDetailService`, a `MicroOrderRoutingService.routeAnalysesForSampleItem(..., MicroCaseOrderDetailRequestForm)` overload that persists detail atomically with case creation when the caller supplies it, and a `PUT /rest/microbiology/cases/{caseId}/order-detail` endpoint plus an `OrderDetailPanel` in the case workbench so a technologist can capture/edit the fields inline. **Scoping decision:** the legacy generic order-entry flow (`SamplePatientEntryServiceImpl`/`SampleOrderItem`) is NOT threaded through to supply this data automatically — `SampleOrderItem` fields are only ever passed as method parameters, never stored on `SamplePatientUpdateData` for later read, so wiring this would mean changing `persistData`'s signature across simple/batch/EQA sample entry, a wide-blast-radius change to a core legacy path outside this gap's justified scope (Constitution Principle X: do not casually extend a legacy path). The workbench capture path satisfies FR-002's literal requirement ("Users MUST be able to capture...") without that risk; the routing-time overload exists and is tested so a future, deliberate order-entry integration can call it directly.
+- **Disposition: MVP. Resolved.** The order-detail model and workbench editor
+  landed first. The July 28 closure then added a culture-aware section to the
+  existing order form and passed its values through
+  `SamplePatientEntryServiceImpl` to the existing routing overload. Non-culture
+  tests do not reveal the fields. The closure reuses the existing model and
+  therefore adds no migration.
 
-### 2. FR-016 amendment / reidentification report history
+### 2. Historical FR-016 amendment / reidentification report history
 
-- **FRS source:** M-04 §"lifecycle" (AMENDED terminal stage); spec [FR-016](../spec.md) ("The system MUST preserve report history when a case is amended or reidentified after release").
-- **As-built:** [`MicroCaseStage.AMENDED`](../../../../src/main/java/org/openelisglobal/microbiology/valueholder/MicroCaseStage.java) exists as an enum value and `MicroCaseStateServiceImpl` allows a `FINAL_RELEASED -> AMENDED` transition, but [`MicroReportReleaseServiceImpl`](../../../../src/main/java/org/openelisglobal/microbiology/service/MicroReportReleaseServiceImpl.java) only implements `releasePreliminary`/`releaseFinal`; there is no amend/reopen code path and no report-version history table.
+- **FRS source:** M-04 §"lifecycle" (AMENDED terminal stage) and the original
+  spec FR-016. The current spec moves this outcome to V2-001.
+- **As-built:** [`MicroCaseStage.AMENDED`](../../../../src/main/java/org/openelisglobal/microbiology/valueholder/MicroCaseStage.java) remains a reserved enum value, but `MicroCaseStateServiceImpl` permits no transition out of `FINAL_RELEASED`; there is no amend/reopen code path or report-version history. `MicroCaseMutationGuard` rejects isolate and AST changes after final release.
 - **Cause:** mostly unintended. The enum value was added for future-proofing but the workflow was never implemented in M7.
-- **Disposition: V2.** Not built this session.
+- **Disposition: V2.** Not built. The MVP now rejects isolate and AST mutation
+  after final release through `MicroCaseMutationGuard`; this is a safety lock,
+  not amendment history.
 
 ### 3. M-11 Alerts Dashboard integration (reconciles FR-018)
 
@@ -55,7 +63,9 @@ work:
 ### 5. M-05 AST depth: multi-row metadata, reagent lot, per-run breakpoint selection
 
 - **FRS source:** M-05 AST Entry & Interpretation (`m-05-ast-entry-and-interpretation.md`), which specifies `micro_ast_run.breakpoint_standard_id` chosen and snapshotted **per run**, plus `reagent_lot_id` (M-12/OGC-784) and multi-row per-drug metadata.
-- **As-built:** [`MicroAstRun`](../../../../src/main/java/org/openelisglobal/microbiology/valueholder/MicroAstRun.java) has no `breakpointStandardId` field. [`MicroAstServiceImpl.findRule`](../../../../src/main/java/org/openelisglobal/microbiology/service/MicroAstServiceImpl.java) (lines 143-151) hardcodes `DEFAULT_BREAKPOINT_AUTHORITY = "CLSI"` and `DEFAULT_BREAKPOINT_VERSION = "2026"` for every run.
+- **As-built at the July 3 checkpoint:** AST used the default CLSI 2026
+  standard. The remediation added per-run standard selection and snapshots the
+  selected standard for interpretation.
 - **Cause:** deliberate simplification, flagged in [mock-comparison-2026-06-27.md](./mock-comparison-2026-06-27.md) as a feature-depth gap.
 - **Disposition: Split.**
   - **MVP (build this session):** per-run breakpoint-standard selection — let the tech pick an active standard when starting a run, snapshot it on `MicroAstRun`, and interpret against the chosen standard instead of the hardcoded default.
@@ -101,8 +111,8 @@ see `microbiology-case-workbench.spec.ts` and
 
 | # | Gap | Disposition | Built this session? |
 | --- | --- | --- | --- |
-| 1 | FR-002 order-detail capture | MVP | Yes (resolved) |
-| 2 | FR-016 amendment/reidentification history | V2 | No |
+| 1 | FR-002 culture-aware order-entry detail capture | MVP | Yes (resolved) |
+| 2 | Amendment/reidentification history; MVP has final mutation lock only | V2 | No |
 | 3 | M-11 Alerts Dashboard (FR-018) | MVP | Yes (resolved) |
 | 4 | M-09 WHONET export + mapping UI | V2 | No |
 | 5a | M-05 per-run breakpoint selection | MVP | Yes (resolved) |

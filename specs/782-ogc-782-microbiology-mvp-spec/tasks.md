@@ -5,14 +5,17 @@
 **Prerequisites**: `spec.md`, `plan.md`, `research.md`, `data-model.md`,
 `contracts/microbiology-openapi.yaml`, `quickstart.md`
 
-**Tests**: Mandatory. Each milestone starts with failing tests or test plans
-before implementation. Runtime Playwright evidence is required for UI milestones
-and for final MVP acceptance. Milestone PRs must also use the
+**Tests**: Mandatory. Each implementation phase starts with failing tests or
+test plans before implementation. Runtime Playwright evidence is required for
+UI work and for final MVP acceptance. The implementation must also use the
 `DIGI-UW/code-qa` skill suite for meaningful test coverage, spec-code alignment,
 simplicity review, and evidence bundling.
 
-**Organization**: OpenELIS milestone-first per Constitution Principle IX. Each
-milestone is one PR and maps back to the user stories in `spec.md`.
+**Organization**: The original execution used milestone branches per
+Constitution Principle IX. At the user's direction, those implementation
+milestones were consolidated into the single active milestone PR #3789; the
+phase history below is retained for traceability and maps back to the user
+stories in `spec.md`.
 
 ## Format: `[ID] [P?] [Milestone] Description`
 
@@ -20,7 +23,8 @@ milestone is one PR and maps back to the user stories in `spec.md`.
 - **[M#]**: Milestone from `plan.md`.
 - Every implementation task names the intended file path.
 - Branch creation is always the first task in a milestone.
-- PR creation is always the last task in a milestone.
+- Historical PR-creation tasks record the original stack; #3789 is the only
+  active implementation PR.
 
 ## Milestone Dependency Graph
 
@@ -260,9 +264,9 @@ directory data.
 **Branch**:
 `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`
 
-**Goal**: Add preliminary/final release readiness gates, report release handoff,
-amendment-safe history, WHONET readiness extension, and final MVP Playwright
-evidence.
+**Goal**: Add preliminary/final release readiness gates, visible patient-report
+handoff, final-case mutation locking, WHONET readiness, and final MVP
+Playwright evidence. Amendment and re-identification history are V2.
 
 **Independent Test**: A complete MVP bacteriology case can go from order-routed
 case to setup, isolate, manual AST, review, preliminary/final readiness, and
@@ -320,7 +324,7 @@ breakpoint-standard selection.
 - [x] T160 [P] Add failing routing-overload tests for order-detail pass-through in `src/test/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceTest.java`.
 - [x] T161 [P] Add failing frontend tests for `OrderDetailPanel` in `frontend/src/components/microbiology/__tests__/OrderDetailPanel.test.jsx`.
 - [x] T162 Add `micro_case_order_detail` table in `src/main/resources/liquibase/3.5.x.x/055-microbiology-order-detail.xml`; add `MicroCaseOrderDetail` valueholder, DAO, `MicroCaseOrderDetailService`, controller endpoint, `OrderDetailPanel.jsx`, and `MicrobiologyService.saveOrderDetail`; register the entity in `persistence/persistence.xml` and `persistence/test-persistence.xml`.
-- [x] T163 Wire an optional order-detail overload on `MicroOrderRoutingService.routeAnalysesForSampleItem` so a future order-entry integration can supply it atomically with case creation, without changing the existing 3-arg signature. Document the deliberate scoping decision (legacy `SamplePatientEntryServiceImpl` order-entry flow is not threaded through this session) in the gap-analysis doc.
+- [x] T163 Wire an optional order-detail overload on `MicroOrderRoutingService.routeAnalysesForSampleItem` so order entry can supply it atomically with case creation without changing the existing 3-arg signature. The historical workbench-only scoping decision was superseded by T191 after the order form boundary was validated.
 
 ### M-11: Alerts Dashboard integration (reconciles FR-018)
 
@@ -394,6 +398,25 @@ without bypassing OpenELIS application services.
 - [x] T188 [MVP] Replace the review-tooling AMR SQL seed with authenticated, property-gated `MicrobiologyUatScenarioService` provisioning; prove repeated runs return the same accession and case identifiers.
 - [x] T189 [MVP] Deploy OpenELIS and review tooling, verify the exact application SHA, canonical worklist and case URLs, desktop and compact layouts, live ten-step Grist overlay, and deterministic service-created case; record results and remaining issues in `evidence/live-deployment-2026-07-28.md`.
 
+## Phase 12: Deterministic MVP Closure And Human Acceptance
+
+**Goal**: Correct CI evidence, close the remaining product-story gaps, reconcile
+scope claims, deploy the exact candidate, and keep automated prechecks distinct
+from Piotr's human UAT ruling.
+
+- [x] T190 [MVP] Correct service-created fixture status handling and replace backend-only report inspection in the canonical Playwright flow with visible navigation and assertions on the patient-results page (`4cafa530a`).
+- [x] T191 [MVP] Show reusable microbiology order-detail fields only when a selected test routes to a culture workflow, preserve workflow metadata through order selection, and submit the details through the existing sample-entry service path (`8b6982867`).
+- [x] T192 [MVP] Compile patient, accession, and specimen context inside the case service transaction; keep it visible in the workbench; capture media/bottle, incubation, and atmosphere explicitly in the existing activity record (`8b6982867`).
+- [x] T193 [MVP] Expose existing projected Result identifiers to critical communication and link the report workflow to the visible patient-results page without adding schema (`8b6982867`).
+- [x] T194 [MVP] Pass 13 focused backend tests and 18 focused frontend tests for the July 28 story-closure slice; run Spotless, Prettier, focused source ESLint, and `git diff --check`.
+- [x] T195 [MVP] Reconcile the feature spec, implementation plan, task ledger, gap analysis, and Jira-umbrella relationship; record amendment, TB, reagent, WHONET, performance, report-proof, and human-UAT rulings in `evidence/scope-rulings-2026-07-28.md`.
+- [ ] T196 [MVP] Reconcile the ten Grist checklist rows with the current behavior contract, verify the live JSON revision, and ensure the AMR Review overlay renders the same required steps.
+- [ ] T197 [MVP] Deploy the exact #3789 candidate plus compatible review-tooling revision to `amr.openelis-global.org`; record both SHAs and pass the deployment health/SHA guard.
+- [ ] T198 [MVP] Run registered `core-app`/deployed Playwright pre-UAT journeys for order routing, worklist state, case setup, isolate/AST, critical communication, final lock, and visible patient-report propagation; retain stable screenshots and trace/video evidence.
+- [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target in #3789 until evidence exists.
+- [ ] T200 [Human UAT] Piotr completes all ten Review-overlay steps and records pass/fail/N/A plus notes. Automated execution cannot check off this task.
+- [ ] T201 [MVP] Update PR #3789 with final scope, V2 exclusions, exact commits, test/evidence links, UAT revision and rulings, deployment SHAs, and one-shot required-check status.
+
 ## Dependencies & Execution Order
 
 - M1 blocks all later milestones.
@@ -407,6 +430,9 @@ without bypassing OpenELIS application services.
 - Phase 8 (MVP-gap remediation) depends on M7 because it extends the same held
   branch/PR with FR-002, M-11, and M-05 gap coverage before merge.
 - Final MVP acceptance depends on Phase 8.
+- Phase 12 deployment depends on the story-closure and artifact-reconciliation
+  commits. Human UAT depends on the exact deployed SHA and matching live Grist
+  revision.
 
 ## Parallel Opportunities
 

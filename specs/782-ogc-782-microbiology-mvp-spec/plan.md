@@ -35,10 +35,11 @@ validation tests, Vitest/React Testing Library, Playwright-first E2E planning
 served by the existing OpenELIS web app
 **Project Type**: Web application with traditional Spring MVC backend and React
 frontend
-**Performance Goals**: Worklist users can find urgent positive/growth/AST-review
-work within 30 seconds in a seeded data set of at least 200 in-flight cases;
-REST reads for worklist and case detail should target sub-second p95 in that
-seeded data set; individual ORM validation tests must run in under 5 seconds
+**Performance Goals**: Worklist users can identify urgent
+positive/growth/AST-review work through deterministic priority and filter
+controls; individual ORM validation tests must run in under 5 seconds. The
+source M-NFR 200-case/sub-second-p95 target requires a separate, repeatable
+performance qualification and is not claimed by this MVP
 **Constraints**: Service-layer transactions only; no controller transactions;
 Carbon-only UI; React Intl for all user-facing text; Liquibase-only schema
 changes with rollback; configuration-driven variation; no product artifact may
@@ -78,10 +79,14 @@ _GATE: Passed before Phase 0 research. Re-check after Phase 1 design._
 
 ## Clarification Result
 
-`/speckit.clarify` was applied conceptually against the active spec. No
-critical product ambiguities were detected that justified stopping for a formal
-question. Remaining choices are engineering planning decisions captured in
-`research.md` and this plan.
+The implementation audit found and resolved material scope ambiguity. OGC-782
+is the doc-only Jira umbrella while PR #3789 is the single MVP implementation
+milestone across linked stories. Final cases are mutation-locked; amendment and
+re-identification history are V2. The sibling TB record proves shared-specimen
+separation only; operational TB processing is V2. Reagent/card lots, full
+WHONET export/mapping, and the unmeasured 200-case performance target are not
+merge claims. Rulings and evidence are recorded in
+`evidence/scope-rulings-2026-07-28.md`.
 
 ## Milestone Plan
 
@@ -97,7 +102,7 @@ _GATE: This feature exceeds three days; each milestone is intended as one PR._
 | M4 | `m4-case-workbench` | REST and React case workbench for setup, incubation/growth/no-growth/rejection events, isolate creation/update, and case history | US2 | MockMvc controller tests, React interaction tests, Playwright case-workflow smoke plan | M3 |
 | M5 | `m5-manual-ast` | Manual AST setup, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit | US3 | Breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests | M4 |
 | M6 | `m6-worklists-critical` | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing | US4, US5 | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks | M5 |
-| M7 | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, report release handoff, amendment-safe history, and WHONET readiness extension over finalized cases | US5, US6 | Release-blocking integration tests, WHONET readiness tests, Playwright release/readiness flow | M6 |
+| M7 | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2 | US5, US6 | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow | M6 |
 
 ### Milestone Dependency Graph
 
@@ -113,15 +118,13 @@ graph LR
 
 ### PR Strategy
 
-- **Spec PR**: `spec/782-ogc-782-microbiology-mvp-spec` -> `develop`
-- **Milestone PRs**:
-  - `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations`
-  - `feat/782-ogc-782-microbiology-mvp-m2-case-core`
-  - `feat/782-ogc-782-microbiology-mvp-m3-order-routing`
-  - `feat/782-ogc-782-microbiology-mvp-m4-case-workbench`
-  - `feat/782-ogc-782-microbiology-mvp-m5-manual-ast`
-  - `feat/782-ogc-782-microbiology-mvp-m6-worklists-critical`
-  - `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`
+- **Spec PR**: the clean specification PR remains the product/planning
+  authority.
+- **Single milestone PR**:
+  [#3789](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3789) carries the
+  combined MVP implementation and targets `develop`.
+- Earlier stacked implementation PRs are historical and must not be presented
+  as active merge dependencies.
 
 ## Project Structure
 
@@ -260,8 +263,9 @@ inside product requirements.
   tests.
 - **After M6**: Worklist prioritization, alert surfacing, critical
   communication audit, accessibility checks.
-- **After M7**: Release readiness, report handoff, WHONET readiness, and
-  Playwright happy-path/blocking-path flows.
+- **After M7**: Release readiness, visible patient-report handoff, final-case
+  mutation lock, WHONET readiness, and Playwright happy-path/blocking-path
+  flows. Amendment history is explicitly excluded.
 - **Final MVP Code QA**: Run `DIGI-UW/code-qa` workflows for meaningful test
   coverage, spec-code alignment, simplicity review, and evidence bundling before
   marking the MVP implementation complete.
