@@ -25,6 +25,11 @@ test.describe("Microbiology case workbench", () => {
       caseHeader.locator(".cds--tag__label").filter({ hasText: "Received" }),
     ).toBeVisible();
 
+    await page
+      .locator(".cds--accordion__heading")
+      .filter({ hasText: "Setup" })
+      .click();
+    await expect(page).toHaveURL(/section=setup/);
     await page.getByLabel("Activity note").fill("setup complete");
     await page.getByRole("button", { name: "Start inoculation" }).click();
     await expect(caseHeader.getByText("Setup Recorded")).toBeVisible({
@@ -32,6 +37,11 @@ test.describe("Microbiology case workbench", () => {
     });
     await expect(page.getByText(/setup complete/)).toBeVisible();
 
+    await page
+      .locator(".cds--accordion__heading")
+      .filter({ hasText: "Isolates" })
+      .click();
+    await expect(page).toHaveURL(/section=isolates/);
     await page.getByLabel("Preliminary organism").fill("Escherichia coli");
     await page.getByRole("button", { name: "Create isolate" }).click();
     await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({

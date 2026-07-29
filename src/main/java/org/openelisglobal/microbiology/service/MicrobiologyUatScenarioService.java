@@ -45,7 +45,9 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,6 +77,7 @@ public class MicrobiologyUatScenarioService {
     private final PersonService personService;
     private final SampleHumanService sampleHumanService;
     private final TypeOfSampleService typeOfSampleService;
+    private final TypeOfSampleTestService typeOfSampleTestService;
     private final LocalizationService localizationService;
     private final TestService testService;
     private final TestSectionService testSectionService;
@@ -88,7 +91,8 @@ public class MicrobiologyUatScenarioService {
 
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, PatientService patientService, PersonService personService,
-            SampleHumanService sampleHumanService, TypeOfSampleService typeOfSampleService, TestService testService,
+            SampleHumanService sampleHumanService, TypeOfSampleService typeOfSampleService,
+            TypeOfSampleTestService typeOfSampleTestService, TestService testService,
             TestSectionService testSectionService, LocalizationService localizationService,
             AnalyteService analyteService, TestAnalyteService testAnalyteService, AnalysisService analysisService,
             IStatusService statusService, MicrobiologyConfigurationService configurationService,
@@ -100,6 +104,7 @@ public class MicrobiologyUatScenarioService {
         this.personService = personService;
         this.sampleHumanService = sampleHumanService;
         this.typeOfSampleService = typeOfSampleService;
+        this.typeOfSampleTestService = typeOfSampleTestService;
         this.localizationService = localizationService;
         this.testService = testService;
         this.testSectionService = testSectionService;
@@ -139,6 +144,7 @@ public class MicrobiologyUatScenarioService {
         ensureSampleType(sampleItem, performedBy);
         Method method = getOrCreateUatMethod(performedBy);
         Test test = getOrCreateUatTest(method, performedBy);
+        ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
         configureCultureSetup(method, reportableTestAnalyte);
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
@@ -401,6 +407,19 @@ public class MicrobiologyUatScenarioService {
             testAnalyteService.update(testAnalyte);
         }
         return testAnalyte;
+    }
+
+    private void ensureOrderableSampleTypeMapping(TypeOfSample sampleType, Test test, String performedBy) {
+        boolean mapped = typeOfSampleTestService.getTypeOfSampleTestsForTest(test.getId()).stream()
+                .anyMatch(candidate -> sampleType.getId().equals(candidate.getTypeOfSampleId()));
+        if (!mapped) {
+            TypeOfSampleTest mapping = new TypeOfSampleTest();
+            mapping.setTypeOfSampleId(sampleType.getId());
+            mapping.setTestId(test.getId());
+            mapping.setSysUserId(performedBy);
+            typeOfSampleTestService.insert(mapping);
+        }
+        typeOfSampleService.clearCache();
     }
 
     private void configureCultureSetup(Method method, TestAnalyte reportableTestAnalyte) {

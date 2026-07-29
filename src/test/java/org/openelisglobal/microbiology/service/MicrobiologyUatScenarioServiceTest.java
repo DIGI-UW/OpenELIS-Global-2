@@ -54,6 +54,9 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -81,6 +84,9 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Mock
     private TypeOfSampleService typeOfSampleService;
+
+    @Mock
+    private TypeOfSampleTestService typeOfSampleTestService;
 
     @Mock
     private TestService testService;
@@ -142,9 +148,9 @@ public class MicrobiologyUatScenarioServiceTest {
         MessageUtil.setMessageSource(messageSource);
 
         service = new MicrobiologyUatScenarioService(methodService, sampleService, sampleItemService, patientService,
-                personService, sampleHumanService, typeOfSampleService, testService, testSectionService,
-                localizationService, analyteService, testAnalyteService, analysisService, statusService,
-                configurationService, caseService, orderRoutingService);
+                personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
+                testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
+                statusService, configurationService, caseService, orderRoutingService);
     }
 
     @After
@@ -182,6 +188,12 @@ public class MicrobiologyUatScenarioServiceTest {
         assertTrue(patientCaptor.getValue().getExternalId().startsWith("UATMICRO-"));
         assertEquals(patientCaptor.getValue().getExternalId(), patientCaptor.getValue().getNationalId());
         assertEquals(Timestamp.valueOf("1990-03-13 00:00:00"), patientCaptor.getValue().getBirthDate());
+
+        ArgumentCaptor<TypeOfSampleTest> mappingCaptor = ArgumentCaptor.forClass(TypeOfSampleTest.class);
+        verify(typeOfSampleTestService).insert(mappingCaptor.capture());
+        assertEquals("sample-type-1", mappingCaptor.getValue().getTypeOfSampleId());
+        assertEquals(test.getId(), mappingCaptor.getValue().getTestId());
+        verify(typeOfSampleService).clearCache();
     }
 
     @Test
@@ -247,6 +259,11 @@ public class MicrobiologyUatScenarioServiceTest {
             return null;
         }).when(patientService).insert(any(Patient.class));
         when(sampleHumanService.getDataBySample(any(SampleHuman.class))).thenReturn(null);
+        doAnswer(invocation -> {
+            TypeOfSample sampleType = invocation.getArgument(0);
+            sampleType.setId("sample-type-1");
+            return null;
+        }).when(typeOfSampleService).insert(any(TypeOfSample.class));
 
         MicroAntibiotic ciprofloxacin = antibiotic("antibiotic-cip");
         MicroAntibiotic gentamicin = antibiotic("antibiotic-gen");
