@@ -255,4 +255,39 @@ describe("MicrobiologyCaseView", () => {
       ),
     );
   });
+
+  it("shows a final case as read-only and disables isolate mutation", async () => {
+    const finalCase = {
+      ...caseDetail,
+      stage: "FINAL_RELEASED",
+      finalReleaseState: "FINAL_RELEASED",
+      isolates: [
+        {
+          id: "iso-1",
+          isolateLabel: "ISO-1",
+          preliminaryOrganismText: "Escherichia coli",
+          significance: "CLINICALLY_SIGNIFICANT",
+          identificationStatus: "CONFIRMED",
+        },
+      ],
+    };
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(finalCase),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
+
+    expect(
+      await screen.findByText("Final case is read-only"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Update identification" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Create isolate" }),
+    ).toBeDisabled();
+  });
 });

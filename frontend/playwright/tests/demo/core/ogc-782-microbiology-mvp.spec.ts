@@ -45,6 +45,16 @@ const captureCard = async (
   await demo.pause(3000);
 };
 
+const getCsrfToken = async (page: Page) => {
+  const state = await page.context().storageState();
+  for (const origin of state.origins) {
+    for (const item of origin.localStorage) {
+      if (item.name === "CSRF") return item.value;
+    }
+  }
+  return "";
+};
+
 test.describe("OGC-782 microbiology MVP", () => {
   test("case setup, isolate creation, manual AST, override, and review", async ({
     page,
@@ -75,6 +85,9 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Record setup activity", async () => {
       await demo.step(2, "Start inoculation and write the activity timeline");
+      await page.getByLabel("Media or bottle").fill("Blood culture bottle");
+      await page.getByLabel("Incubation").fill("35 C for 24 hours");
+      await page.getByLabel("Atmosphere").fill("Ambient");
       await page.getByLabel("Activity note").fill("setup complete");
       await captureCard(
         page,
@@ -89,6 +102,13 @@ test.describe("OGC-782 microbiology MVP", () => {
         timeout: LONG_TIMEOUT,
       });
       await expect(page.getByText(/setup complete/)).toBeVisible();
+      await expect(
+        page.getByText(/Media or bottle: Blood culture bottle/),
+      ).toBeVisible();
+      await expect(
+        page.getByText(/Incubation: 35 C for 24 hours/),
+      ).toBeVisible();
+      await expect(page.getByText(/Atmosphere: Ambient/)).toBeVisible();
       await captureCard(
         page,
         demo,
@@ -113,6 +133,18 @@ test.describe("OGC-782 microbiology MVP", () => {
         "microbiology-isolates-card",
         "ogc-782-04-isolate-created",
       );
+      await page.getByRole("button", { name: "Update identification" }).click();
+      await page
+        .getByLabel("Preliminary organism")
+        .fill("Escherichia coli confirmed");
+      await page.getByLabel("Identification status").selectOption("CONFIRMED");
+      await page.getByRole("button", { name: "Save identification" }).click();
+      await expect(
+        page.getByText(/ISO-1: Escherichia coli confirmed/),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(
+        page.getByText(/Clinically Significant · Confirmed/),
+      ).toBeVisible();
     });
 
     await test.step("Start an AST run and record a MIC reading", async () => {
@@ -197,8 +229,55 @@ test.describe("OGC-782 microbiology MVP", () => {
       );
     });
 
+    await test.step("Complete a Result-target critical communication", async () => {
+      await demo.step(
+        6,
+        "Log, acknowledge, and close a critical communication against the projected result",
+      );
+      await page
+        .getByRole("button", { name: "Critical communication" })
+        .click();
+      await page.getByLabel("Critical result target").selectOption("RESULT");
+      await expect(page.getByLabel("Target record")).not.toHaveValue("");
+      await page
+        .getByLabel("Recipient", { exact: true })
+        .fill("Provider on call");
+      await page
+        .getByLabel("Message")
+        .fill("Resistant isolate result called to provider");
+      await page.getByRole("button", { name: "Log communication" }).click();
+      await expect(
+        page.getByTestId("microbiology-critical-status"),
+      ).toContainText("Open", { timeout: LONG_TIMEOUT });
+      await page.getByRole("button", { name: "Acknowledge" }).click();
+      await expect(
+        page.getByTestId("microbiology-critical-status"),
+      ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
+      await page.getByRole("button", { name: "Close communication" }).click();
+      await page
+        .getByLabel("Resolution note")
+        .fill("Provider read back and accepted the result");
+      await page
+        .getByRole("button", { name: "Close communication" })
+        .last()
+        .click();
+      await expect(
+        page.getByTestId("microbiology-critical-status"),
+      ).toContainText("Closed", { timeout: LONG_TIMEOUT });
+      await expect(
+        page.getByText("Provider read back and accepted the result"),
+      ).toBeVisible();
+      await captureCard(
+        page,
+        demo,
+        "microbiology-critical-card",
+        "ogc-782-08-critical-communication-closed",
+      );
+    });
+
     await test.step("Release the final report", async () => {
-      await demo.step(6, "Review report readiness and release final report");
+      await demo.step(7, "Review report readiness and release final report");
+      await page.getByRole("button", { name: "Reports" }).click();
       await expect(
         page.getByRole("heading", { name: "Report readiness" }),
       ).toBeVisible();
@@ -213,10 +292,36 @@ test.describe("OGC-782 microbiology MVP", () => {
         page,
         demo,
         "microbiology-report-card",
-        "ogc-782-08-final-released-readiness",
+        "ogc-782-09-final-released-readiness",
       );
+      await expect(page.getByText("Final case is read-only")).toBeVisible();
+      await page.getByRole("button", { name: "Isolates", exact: true }).click();
+      await expect(
+        page.getByRole("button", { name: "Update identification" }),
+      ).toBeDisabled();
+      await expect(
+        page.getByRole("button", { name: "Create isolate" }),
+      ).toBeDisabled();
+
+      const lockedMutation = await page.request.post(
+        "/api/OpenELIS-Global/rest/microbiology/isolates",
+        {
+          data: {
+            caseId: seeded.caseId,
+            isolateLabel: "ISO-LOCKED",
+            preliminaryOrganismText: "Must not persist",
+            significance: "UNKNOWN",
+          },
+          headers: { "X-CSRF-Token": await getCsrfToken(page) },
+        },
+      );
+      expect(lockedMutation.status()).toBe(409);
+      await expect(lockedMutation.json()).resolves.toMatchObject({
+        error: "MICROBIOLOGY_CASE_LOCKED",
+      });
+
       await demo.step(
-        7,
+        8,
         "Open the patient results screen and verify the released microbiology result",
       );
       await page.goto(`/PatientResults/${seeded.patientId}`, {
@@ -230,7 +335,7 @@ test.describe("OGC-782 microbiology MVP", () => {
       });
       await expect(page.getByText("Ciprofloxacin (UAT) R")).toBeVisible();
       await expect(page.getByText("Gentamicin (UAT) S")).toBeVisible();
-      await captureViewport(page, demo, "ogc-782-09-patient-results-released");
+      await captureViewport(page, demo, "ogc-782-10-patient-results-released");
       await demo.title(
         "MVP checkpoint complete",
         "Setup, isolate, manual AST, review, final release, and visible patient results were exercised.",

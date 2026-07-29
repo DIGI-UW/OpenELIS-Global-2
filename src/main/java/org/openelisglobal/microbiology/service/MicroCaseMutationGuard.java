@@ -15,7 +15,7 @@ final class MicroCaseMutationGuard {
     static void requireMutable(MicroCase microCase) {
         if (MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())
                 || MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())) {
-            throw new IllegalStateException(
+            throw new MicroCaseLockedException(
                     "Final-released microbiology cases cannot be changed until amendment history is available");
         }
     }

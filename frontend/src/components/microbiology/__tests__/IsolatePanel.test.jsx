@@ -9,6 +9,7 @@ const renderPanel = ({
   isolates = [],
   onCreateIsolate = vi.fn(),
   onUpdateIdentification = vi.fn(),
+  readOnly = false,
   service = { getOrganisms: vi.fn().mockResolvedValue([]) },
 } = {}) =>
   render(
@@ -18,6 +19,7 @@ const renderPanel = ({
         isolates={isolates}
         onCreateIsolate={onCreateIsolate}
         onUpdateIdentification={onUpdateIdentification}
+        readOnly={readOnly}
         service={service}
         saving={false}
       />
@@ -83,5 +85,27 @@ describe("IsolatePanel", () => {
       significance: "UNKNOWN",
       identificationStatus: "CONFIRMED",
     });
+  });
+
+  it("disables isolate mutation controls for a final case", async () => {
+    renderPanel({
+      isolates: [
+        {
+          id: "isolate-1",
+          isolateLabel: "ISO-1",
+          preliminaryOrganismText: "Escherichia coli",
+          significance: "CLINICALLY_SIGNIFICANT",
+          identificationStatus: "CONFIRMED",
+        },
+      ],
+      readOnly: true,
+    });
+
+    expect(
+      await screen.findByRole("button", { name: "Update identification" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Create isolate" }),
+    ).toBeDisabled();
   });
 });

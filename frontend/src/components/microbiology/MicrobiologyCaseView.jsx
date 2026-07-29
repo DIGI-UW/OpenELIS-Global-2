@@ -223,6 +223,8 @@ const MicrobiologyCaseView = ({
     );
   }
 
+  const finalReleased = caseDetail.stage === "FINAL_RELEASED";
+
   return (
     <main
       className="microbiology-workbench"
@@ -288,6 +290,20 @@ const MicrobiologyCaseView = ({
             {formatMicrobiologyEnum(caseDetail.stage)}
           </Tag>
         </header>
+
+        {finalReleased && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.case.finalLocked.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "microbiology.case.finalLocked.message",
+            })}
+          />
+        )}
 
         <div className="microbiology-workbench__layout">
           <aside
@@ -404,6 +420,7 @@ const MicrobiologyCaseView = ({
                   onCreateIsolate={createIsolate}
                   onUpdateIdentification={updateIdentification}
                   saving={saving}
+                  readOnly={finalReleased}
                   service={service}
                 />
               </AccordionItem>

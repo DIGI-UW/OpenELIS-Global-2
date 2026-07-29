@@ -21,6 +21,7 @@ const IsolatePanel = ({
   onCreateIsolate,
   onUpdateIdentification,
   saving,
+  readOnly = false,
   service = MicrobiologyService,
 }) => {
   const intl = useIntl();
@@ -137,6 +138,7 @@ const IsolatePanel = ({
                   kind="ghost"
                   size="sm"
                   onClick={() => editIsolate(isolate)}
+                  disabled={readOnly}
                 >
                   {intl.formatMessage({ id: "microbiology.isolate.edit" })}
                 </Button>
@@ -151,7 +153,7 @@ const IsolatePanel = ({
               id: "microbiology.case.isolateLabel",
             })}
             value={isolateLabel}
-            disabled={Boolean(editingIsolateId)}
+            disabled={readOnly || Boolean(editingIsolateId)}
             onChange={(event) => setIsolateLabel(event.target.value)}
           />
           <Select
@@ -160,6 +162,7 @@ const IsolatePanel = ({
               id: "microbiology.isolate.organism",
             })}
             value={organismId}
+            disabled={readOnly}
             onChange={(event) => setOrganismId(event.target.value)}
           >
             <SelectItem
@@ -182,6 +185,7 @@ const IsolatePanel = ({
               id: "microbiology.case.preliminaryOrganism",
             })}
             value={preliminaryOrganismText}
+            disabled={readOnly}
             onChange={(event) => setPreliminaryOrganismText(event.target.value)}
           />
           <Select
@@ -190,6 +194,7 @@ const IsolatePanel = ({
               id: "microbiology.case.significance",
             })}
             value={significance}
+            disabled={readOnly}
             onChange={(event) => setSignificance(event.target.value)}
           >
             {SIGNIFICANCE_OPTIONS.map((option) => (
@@ -207,6 +212,7 @@ const IsolatePanel = ({
                 id: "microbiology.isolate.identificationStatus",
               })}
               value={identificationStatus}
+              disabled={readOnly}
               onChange={(event) => setIdentificationStatus(event.target.value)}
             >
               {IDENTIFICATION_STATUS_OPTIONS.map((status) => (
@@ -223,6 +229,7 @@ const IsolatePanel = ({
               onClick={submit}
               disabled={
                 saving ||
+                readOnly ||
                 !isolateLabel.trim() ||
                 (!preliminaryOrganismText.trim() && !organismId)
               }

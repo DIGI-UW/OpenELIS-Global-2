@@ -7317,6 +7317,8 @@
   "microbiology.case.timeline.empty": "No case activity recorded",
   "microbiology.case.timeline.hint": "Recorded case activity is shown chronologically.",
   "microbiology.case.events": "events",
+  "microbiology.case.finalLocked.message": "Isolate and AST changes are disabled after final release.",
+  "microbiology.case.finalLocked.title": "Final case is read-only",
   "microbiology.case.title": "Microbiology case",
   "microbiology.case.workflow": "Workflow",
   "microbiology.ast.antibiotic": "Antibiotic",
