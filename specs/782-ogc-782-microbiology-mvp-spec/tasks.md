@@ -386,6 +386,14 @@ explicit product decisions or V2 scope.
 - [x] T186 [MVP] Capture and inspect stable desktop/mobile worklist screenshots, rerun the registered worklist/critical Playwright journey, and record the comparison in `evidence/worklist-ux-follow-up-2026-07-28.md`.
 - [ ] T187 [V2 clarification] Obtain a product ruling on whether M-07's culture/AST-run switch, richer queue context, resistance strip, and recent activity are future user workflows. Keep timer, transport, schema, and component proposals out of the resulting product wording.
 
+## Phase 11: Deployed UAT Fixture Integrity
+
+**Goal**: Deploy the merge candidate and make its live UAT data reproducible
+without bypassing OpenELIS application services.
+
+- [x] T188 [MVP] Replace the review-tooling AMR SQL seed with authenticated, property-gated `MicrobiologyUatScenarioService` provisioning; prove repeated runs return the same accession and case identifiers.
+- [x] T189 [MVP] Deploy OpenELIS and review tooling, verify the exact application SHA, canonical worklist and case URLs, desktop and compact layouts, live ten-step Grist overlay, and deterministic service-created case; record results and remaining issues in `evidence/live-deployment-2026-07-28.md`.
+
 ## Dependencies & Execution Order
 
 - M1 blocks all later milestones.

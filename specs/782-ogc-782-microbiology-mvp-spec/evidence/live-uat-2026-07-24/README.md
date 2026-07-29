@@ -1,5 +1,9 @@
 # OGC-782 Live AMR UAT Evidence
 
+> Historical media bundle. Current deployment, checklist, and fixture
+> provenance are recorded in
+> [../live-deployment-2026-07-28.md](../live-deployment-2026-07-28.md).
+
 ## Provenance
 
 - Target: `https://amr.openelis-global.org`
@@ -50,11 +54,9 @@ The test verifies:
 - [Raw Playwright WebM](videos/ogc-782-live-uat.webm)
 - [Playwright HTML report](playwright-report/index.html)
 
-## Follow-Up Signals
+## Historical Follow-Up Signals
 
-- Every current Grist row has `required=false`, so the overlay labels all ten
-  checks optional. This does not hide or break the checklist, but it should be
-  confirmed as UAT policy before formal sign-off.
-- Route-relative service-worker requests return HTML/404 on nested
-  Microbiology URLs. The workflow passes, but the console noise should be
-  handled independently of OGC-782.
+At this checkpoint, all ten Grist rows were optional and nested routes produced
+route-relative service-worker requests. The current deployment evidence
+supersedes both observations: all ten steps are required, and service-worker
+registration is rooted at the application origin.

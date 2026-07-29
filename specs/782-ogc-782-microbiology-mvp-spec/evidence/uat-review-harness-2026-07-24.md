@@ -1,5 +1,9 @@
 # OGC-782 UAT Review Harness Evidence
 
+> Historical checkpoint. Current deployment, checklist, and fixture provenance
+> are recorded in
+> [live-deployment-2026-07-28.md](live-deployment-2026-07-28.md).
+
 ## Live Contract
 
 - Authoring source: Grist `UAT Checklists`, instance `amr`
@@ -89,9 +93,7 @@ Evidence is packaged under
 `evidence/live-uat-2026-07-24/`, including three inspected screenshots, WebM
 and MP4 video, the Playwright HTML report, and a machine-readable manifest.
 
-Two follow-up signals remain:
-
-- all ten Grist rows currently have `required=false`, so they display as
-  optional;
-- nested routes emit route-relative service-worker 404/MIME console noise,
-  although the tested workflow passes.
+At this checkpoint, all ten Grist rows had `required=false` and nested routes
+emitted route-relative service-worker noise. Both observations are superseded
+by the current deployment evidence linked above: all ten steps are now required,
+and service-worker registration is rooted at the application origin.
