@@ -119,47 +119,6 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public InventoryLot getByBarcode(String barcode) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryLot l WHERE l.barcode = :barcode";
-            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("barcode", barcode);
-            query.setMaxResults(1);
-            List<InventoryLot> results = query.list();
-            return results.isEmpty() ? null : results.get(0);
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting lot by barcode", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryLot> getByQCStatus(QCStatus qcStatus) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryLot l WHERE l.qcStatus = :qcStatus ORDER BY l.expirationDate";
-            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("qcStatus", qcStatus);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting lots by QC status", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryLot> getByStatus(LotStatus status) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryLot l WHERE l.status = :status ORDER BY l.expirationDate";
-            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("status", status);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting lots by status", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Integer getTotalCurrentQuantity(String itemId) throws LIMSRuntimeException {
         try {
             String sql = "SELECT COALESCE(SUM(current_quantity), 0.0) FROM clinlims.inventory_lot "

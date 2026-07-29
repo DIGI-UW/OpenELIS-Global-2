@@ -232,20 +232,6 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public boolean isLotExpired(Long lotId) {
-        InventoryLot lot = get(lotId);
-        return lot != null && lot.isExpired();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean isLotAvailable(Long lotId) {
-        InventoryLot lot = get(lotId);
-        return lot != null && lot.isAvailableForUse();
-    }
-
-    @Override
     @Transactional
     public int processExpiredLots() {
         List<InventoryLot> expiredLots = getExpiredActiveLots();

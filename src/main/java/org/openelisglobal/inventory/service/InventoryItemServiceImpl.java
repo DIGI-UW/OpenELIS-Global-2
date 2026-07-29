@@ -98,15 +98,12 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
      * "Low stock" is judged against usable quantity
      * ({@link InventoryLot#isAvailableForUse()} — excludes
      * EXPIRED/DISPOSED/QUARANTINED lots and anything that failed QC), not the raw
-     * sum of every lot. {@code InventoryItemDAO.getLowStockItems()}'s native-SQL
-     * query sums every lot's current_quantity regardless of status, so an item
-     * sitting on a pile of expired/disposed stock would never trip the alert
-     * despite having nothing actually usable — backwards for an alert meant to
-     * answer "what do we need to reorder." Computed here in Java (same approach as
-     * {@code InventoryReportServiceImpl.buildLowStockReport()}, which had this
-     * exact fix already) rather than in the DAO, since replicating
-     * {@code isAvailableForUse()}'s expiration/status/QC logic correctly in SQL is
-     * more error-prone than reusing the one Java implementation.
+     * sum of every lot — a raw-total check would count an item sitting on a pile of
+     * expired/disposed stock as well-stocked, backwards for an alert meant to
+     * answer "what do we need to reorder." Computed in Java rather than SQL since
+     * replicating {@code isAvailableForUse()}'s expiration/status/QC logic
+     * correctly in SQL is more error-prone than reusing the one Java
+     * implementation.
      *
      * <p>
      * Known trade-off: one lot query per active item (N+1) — fine at current

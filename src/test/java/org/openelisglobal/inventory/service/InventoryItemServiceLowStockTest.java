@@ -19,13 +19,10 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 /**
  * "Low stock" must be judged against usable quantity
- * ({@link InventoryLot#isAvailableForUse()}), not the raw sum of every lot —
- * the previous implementation delegated to
- * {@code InventoryItemDAO.getLowStockItems()}'s native-SQL query, which summed
- * every lot's current_quantity regardless of status, so an item sitting on a
- * pile of expired/disposed stock would never trip the alert despite having
- * nothing actually usable. This also backed the Inventory Dashboard's low-stock
- * tile via the same code path.
+ * ({@link InventoryLot#isAvailableForUse()}), not the raw sum of every lot — a
+ * raw-total check counts expired/disposed stock as usable, so an item sitting
+ * on a pile of dead inventory would never trip the alert. This also backs the
+ * Inventory Dashboard's low-stock tile via the same code path.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class InventoryItemServiceLowStockTest {

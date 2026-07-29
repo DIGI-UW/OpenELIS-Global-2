@@ -95,16 +95,6 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     InventoryLot disposeLot(Long lotId, String reason, String notes, String sysUserId);
 
     /**
-     * Check if a lot is expired based on effective expiration date
-     */
-    boolean isLotExpired(Long lotId);
-
-    /**
-     * Check if a lot is available for use
-     */
-    boolean isLotAvailable(Long lotId);
-
-    /**
      * Process automatic expiration updates Marks expired ACTIVE/IN_USE lots as
      * EXPIRED Returns count of lots updated
      */
