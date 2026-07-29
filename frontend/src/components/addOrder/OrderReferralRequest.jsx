@@ -89,10 +89,15 @@ const OrderReferralRequest = ({
     },
   ];
 
+  // One referral row per selected test, rebuilt (not appended) on every render so
+  // the rows stay aligned with selectedTests by index. Appending here previously
+  // accumulated a duplicate entry per render and left only a single entry for a
+  // multi-test sample, which the payload builder then collapsed into comma-joined
+  // ids such as "4,4" — values the server rejects.
   const updateUIRender = () => {
     const rows = [];
     let obj = {};
-    const updateReferralRequest = [...referralRequests];
+    const updateReferralRequest = [];
     let testValue = {};
     let defaultSelect = {};
 
@@ -108,7 +113,7 @@ const OrderReferralRequest = ({
           value: "",
         };
 
-        obj = {
+        obj = referralRequests.find((r) => r && r.testId === test.id) || {
           referralRequestObject: referralReasons[0].id,
           referrer:
             userSessionDetails.firstName + " " + userSessionDetails.lastName,
@@ -116,6 +121,7 @@ const OrderReferralRequest = ({
           sentDate: "",
           testId: test.id,
         };
+        updateReferralRequest.push(obj);
         let row = {
           reason: (
             <CustomSelect
@@ -180,7 +186,6 @@ const OrderReferralRequest = ({
         rows.push(row);
       });
     setReferralRows(rows);
-    updateReferralRequest.push(obj);
     setReferralRequests(updateReferralRequest);
   };
 

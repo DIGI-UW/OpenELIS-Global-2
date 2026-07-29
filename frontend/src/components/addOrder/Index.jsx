@@ -790,35 +790,39 @@ const Index = () => {
             sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' collectionMethod='${collectionMethod}' sampleTemperature='${sampleTemperature}' specimenOrigin='${specimenOrigin}' numOrderLabels='${sampleItem.sampleXML?.numOrderLabels || 1}' numSpecimenLabels='${sampleItem.sampleXML?.numSpecimenLabels || 1}'/>`;
           }
           if (sampleItem.referralItems.length > 0) {
-            const referredInstitutes = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].institute;
-              })
-              .join(",");
-
-            const sentDates = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].sentDate;
-              })
-              .join(",");
-
-            const referralReasonIds = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].reasonForReferral;
-              })
-              .join(",");
-
-            const referrers = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].referrer;
-              })
-              .join(",");
-            referralItems.push({
-              referrer: referrers,
-              referredInstituteId: referredInstitutes,
-              referredTestId: tests,
-              referredSendDate: sentDates,
-              referralReasonId: referralReasonIds,
+            // One payload entry per referred test, carrying scalar ids. The server
+            // resolves referredInstituteId as an organization id and matches
+            // referredTestId against a single analysis, so comma-joining the rows
+            // (as this did previously) produced values like "4,4" and failed the save.
+            const sampleTestIds = String(tests || "")
+              .split(",")
+              .filter(Boolean);
+            const seen = new Set();
+            sampleItem.referralItems.forEach((referral) => {
+              if (!referral) {
+                return;
+              }
+              const institute = referral.institute || "";
+              if (!institute) {
+                return;
+              }
+              const targetTestIds = referral.testId
+                ? [String(referral.testId)]
+                : sampleTestIds;
+              targetTestIds.forEach((testId) => {
+                const key = institute + ":" + testId;
+                if (!testId || seen.has(key)) {
+                  return;
+                }
+                seen.add(key);
+                referralItems.push({
+                  referrer: referral.referrer || "",
+                  referredInstituteId: institute,
+                  referredTestId: testId,
+                  referredSendDate: referral.sentDate || "",
+                  referralReasonId: referral.reasonForReferral || "",
+                });
+              });
             });
           }
         });
