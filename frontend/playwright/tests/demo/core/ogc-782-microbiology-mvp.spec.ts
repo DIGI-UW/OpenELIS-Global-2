@@ -180,6 +180,9 @@ test.describe("OGC-782 microbiology MVP", () => {
         .getByRole("option", { name: "Ciprofloxacin (UAT)", exact: true });
       await expect(uatAntibiotic).toBeAttached();
       await expect(uatAntibiotic).toHaveCount(1);
+      await page
+        .getByLabel("Antibiotic", { exact: true })
+        .selectOption({ label: "Ciprofloxacin (UAT)" });
       await page.getByRole("button", { name: "Record AST reading" }).click();
       await expect(
         page.getByTestId("microbiology-ast-interpretation"),
@@ -213,8 +216,11 @@ test.describe("OGC-782 microbiology MVP", () => {
         .getByLabel("Override reason")
         .fill("mixed growth confirmed on repeat");
       await page.getByRole("button", { name: "Apply override" }).click();
+      const ciprofloxacinRow = page
+        .getByTestId("microbiology-ast-reading-row")
+        .filter({ hasText: "Ciprofloxacin (UAT)" });
       await expect(
-        page.getByTestId("microbiology-ast-interpretation"),
+        ciprofloxacinRow.getByTestId("microbiology-ast-interpretation"),
       ).toContainText("RESISTANT", {
         timeout: LONG_TIMEOUT,
       });
