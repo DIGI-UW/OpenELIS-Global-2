@@ -20,11 +20,15 @@ import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
 import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
 import DataExportStatus from "./DataExportStatus/DataExportStatus";
-import BarcodeConfiguration from "./barcodeConfiguration/BarcodeConfiguration";
+import LabelPresetList from "./labelPresets/LabelPresetList";
+import { Redirect } from "react-router-dom";
 import AnalyzerTestName from "./analyzerTestName/AnalyzerTestName";
 import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
+import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
+import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
+import TestCatalogList from "./testCatalog/TestCatalogList";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
 import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
@@ -45,7 +49,7 @@ import MethodCreate from "./testManagementConfigMenu/MethodCreate";
 import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement";
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate";
 import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder";
-import SampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement";
+import SampleTypeManagement from "./sampleTypeManagement/SampleTypeManagement.jsx";
 import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign";
 import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder";
 import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
@@ -59,7 +63,6 @@ import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign";
 import TestActivation from "./testManagementConfigMenu/TestActivation";
 import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry";
 import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry";
-import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry";
 import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry";
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
@@ -85,16 +88,26 @@ function Admin() {
       <Route path={`${path}/reflex`} component={ReflexTestManagement} />
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
+      <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
+      <Route
+        path={`${path}/TestCatalogEditor/group/:ids/:section?`}
+        component={CombinedTestEditor}
+      />
+      <Route
+        path={`${path}/TestCatalogEditor/:testId?/:section?`}
+        component={TestCatalogEditor}
+      />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
       <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
+      <Route path={`${path}/labelPresets`} component={LabelPresetList} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
       <Route path={`${path}/dataExportStatus`} component={DataExportStatus} />
       <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
-      <Route
-        path={`${path}/barcodeConfiguration`}
-        component={BarcodeConfiguration}
+      <Redirect
+        from={`${path}/barcodeConfiguration`}
+        to={`${path}/labelPresets`}
       />
       <Route
         path={`${path}/organizationManagement`}
@@ -144,6 +157,9 @@ function Admin() {
         path={`${path}/ResultSelectListAdd`}
         component={ResultSelectListAdd}
       />
+      {/* OGC-1112 FR-38: the unified New test flow (TestCatalogEditor/new) is the
+          intended create path. The legacy 7-step Add Test and the legacy Modify Test
+          are kept available in parallel temporarily during the transition. */}
       <Route path={`${path}/TestAdd`} component={TestAdd} />
       <Route path={`${path}/TestModifyEntry`} component={TestModifyEntry} />
       <Route path={`${path}/TestOrderability`} component={TestOrderability} />
@@ -159,7 +175,7 @@ function Admin() {
         component={TestSectionTestAssign}
       />
       <Route
-        path={`${path}/SampleTypeManagement`}
+        path={`${path}/SampleTypeManagement/:sampleTypeId?/:section?`}
         component={SampleTypeManagement}
       />
       <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
@@ -177,10 +193,6 @@ function Admin() {
       <Route path={`${path}/TestActivation`} component={TestActivation} />
       <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
       <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />
-      <Route
-        path={`${path}/SampleTypeRenameEntry`}
-        component={SampleTypeRenameEntry}
-      />
       <Route
         path={`${path}/TestSectionRenameEntry`}
         component={TestSectionRenameEntry}

@@ -85,7 +85,24 @@ public class ResultSaveService {
                 try {
                     JSONObject jsonResult = (JSONObject) parser.parse(serviceBean.getMultiSelectResultValues());
 
-                    List<Result> existingResults = resultService.getResultsByAnalysis(analysis);
+                    // Only this item's own multiselect selections may be reconciled
+                    // (and leftovers deleted). A multi-component analysis also holds
+                    // the other components' results — deleting those here orphans
+                    // their rows mid-save and their own update then fails.
+                    List<Result> existingResults = new ArrayList<>();
+                    for (Result existingResult : resultService.getResultsByAnalysis(analysis)) {
+                        if (!TypeOfTestResultServiceImpl.ResultType
+                                .isMultiSelectVariant(existingResult.getResultType())) {
+                            continue;
+                        }
+                        String existingComponentId = existingResult.getTestResult() == null ? null
+                                : existingResult.getTestResult().getComponentId();
+                        if (serviceBean.getTestResultComponentId() != null && existingComponentId != null
+                                && !serviceBean.getTestResultComponentId().equals(existingComponentId)) {
+                            continue;
+                        }
+                        existingResults.add(existingResult);
+                    }
                     for (Object key : jsonResult.keySet()) {
                         getResultsForMultiSelect(results, existingResults, serviceBean, (String) key,
                                 (String) jsonResult.get(key), isQualifiedResult);
@@ -122,9 +139,22 @@ public class ResultSaveService {
                 // result
             } else {
                 List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(serviceBean.getTestId());
-                // we are assuming there is only one testResult for a numeric
-                // type result
-                if (!testResultList.isEmpty()) {
+                // Multi-component tests post one bean per component; bind the result
+                // to that component's test_result row so it stays attributable to
+                // its component. Single-component tests keep the historic
+                // first-row assumption.
+                TestResult boundTestResult = null;
+                if (!GenericValidator.isBlankOrNull(serviceBean.getTestResultComponentId())) {
+                    for (TestResult testResult : testResultList) {
+                        if (serviceBean.getTestResultComponentId().equals(testResult.getComponentId())) {
+                            boundTestResult = testResult;
+                            break;
+                        }
+                    }
+                }
+                if (boundTestResult != null) {
+                    result.setTestResult(boundTestResult);
+                } else if (result.getTestResult() == null && !testResultList.isEmpty()) {
                     result.setTestResult(testResultList.get(0));
                 }
             }

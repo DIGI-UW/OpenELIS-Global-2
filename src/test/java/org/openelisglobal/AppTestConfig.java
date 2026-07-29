@@ -73,20 +73,28 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.referencetables", "org.openelisglobal.history", "org.openelisglobal.menu",
         "org.openelisglobal.login", "org.openelisglobal.systemusermodule", "org.openelisglobal.rolemodule",
         "org.openelisglobal.view", "org.openelisglobal.search", "org.openelisglobal.common.util",
-        "org.openelisglobal.sample", "org.openelisglobal.sampleitem", "org.openelisglobal.analysis",
-        "org.openelisglobal.result", "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits",
-        "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
-        "org.openelisglobal.role", "org.openelisglobal.organization", "org.openelisglobal.region",
-        "org.openelisglobal.program", "org.openelisglobal.note", "org.openelisglobal.requester",
-        "org.openelisglobal.method", "org.openelisglobal.sampleorganization", "org.openelisglobal.analyte",
-        "org.openelisglobal.panel", "org.openelisglobal.panelitem", "org.openelisglobal.reports",
-        "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer",
-        "org.openelisglobal.scriptlet", "org.openelisglobal.localization", "org.openelisglobal.systemuser",
-        "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
-        "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
+        "org.openelisglobal.sample", "org.openelisglobal.sampleitem", "org.openelisglobal.sampletyperequest",
+        "org.openelisglobal.analysis", "org.openelisglobal.result", "org.openelisglobal.resultlimit",
+        "org.openelisglobal.resultlimits", "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman",
+        "org.openelisglobal.provider", "org.openelisglobal.role", "org.openelisglobal.organization",
+        "org.openelisglobal.region", "org.openelisglobal.program", "org.openelisglobal.note",
+        "org.openelisglobal.requester", "org.openelisglobal.method", "org.openelisglobal.sampleorganization",
+        "org.openelisglobal.analyte", "org.openelisglobal.panel", "org.openelisglobal.panelitem",
+        "org.openelisglobal.reports", "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure",
+        "org.openelisglobal.testtrailer", "org.openelisglobal.scriptlet", "org.openelisglobal.localization",
+        "org.openelisglobal.systemuser", "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary",
+        "org.openelisglobal.dictionarycategory", "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
-        "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.plugin",
-        "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
+        "org.openelisglobal.testmethod.service", "org.openelisglobal.testmethod.daoimpl",
+        "org.openelisglobal.testresultcomponent.service", "org.openelisglobal.testresultcomponent.daoimpl",
+        "org.openelisglobal.testresultinterpretation.service", "org.openelisglobal.testresultinterpretation.daoimpl",
+        "org.openelisglobal.testactivation.service", "org.openelisglobal.testactivation.daoimpl",
+        "org.openelisglobal.testsamplehandling.service", "org.openelisglobal.testsamplehandling.daoimpl",
+        "org.openelisglobal.testterminology.service", "org.openelisglobal.testterminology.daoimpl",
+        "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
+        "org.openelisglobal.testalertrule.service", "org.openelisglobal.testalertrule.daoimpl",
+        "org.openelisglobal.testcatalog.service", "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer",
+        "org.openelisglobal.plugin", "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
         "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
         "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.image",
         "org.openelisglobal.testresult", "org.openelisglobal.barcode", "org.openelisglobal.referral",
@@ -101,12 +109,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testconfiguration", "org.openelisglobal.usertestsection",
         "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
         "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.coldstorage",
-        "org.openelisglobal.alert", "org.openelisglobal.notification", "org.openelisglobal.shipment",
-        "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler", "org.openelisglobal.sitebranding",
-        "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
-        "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
-        "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
-        "org.openelisglobal.esig" }, excludeFilters = {
+        "org.openelisglobal.labelpreset", "org.openelisglobal.alert", "org.openelisglobal.notification",
+        "org.openelisglobal.shipment", "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
+        "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin",
+        "org.openelisglobal.fhir.providers", "org.openelisglobal.common.dao", "org.openelisglobal.report",
+        "org.openelisglobal.eqa", "org.openelisglobal.qc", "org.openelisglobal.externalconnections",
+        "org.openelisglobal.notifications", "org.openelisglobal.calendar", "org.openelisglobal.esig",
+        "org.openelisglobal.resultreporting.service", "org.openelisglobal.security" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -117,6 +126,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.config.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.odoo.config.OdooConnectionConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.scheduler.SchedulerConfig"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.SecurityConfig"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.DaemonUserConfig"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.login.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qc.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.scheduler.*"),
@@ -350,9 +362,36 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Bean
+    public org.openelisglobal.result.controller.rest.ResultEntryRestController resultEntryRestController() {
+        return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
+    }
+
+    @Bean
+    public org.openelisglobal.login.controller.ChangePasswordLoginController changePasswordLoginController() {
+        return new org.openelisglobal.login.controller.ChangePasswordLoginController();
+    }
+
+    @Bean
     @Profile("test")
     public PagingProperties pagingProperties() {
         return new PagingProperties();
+    }
+
+    @Bean("daemonSystemUser")
+    @Profile("test")
+    public org.openelisglobal.systemuser.valueholder.SystemUser daemonSystemUser() {
+        org.openelisglobal.systemuser.valueholder.SystemUser user = new org.openelisglobal.systemuser.valueholder.SystemUser();
+        user.setId("1");
+        user.setLoginName("daemon");
+        user.setFirstName("System");
+        user.setLastName("Daemon");
+        return user;
+    }
+
+    @Bean("daemonSysUserId")
+    @Profile("test")
+    public String daemonSysUserId() {
+        return "1";
     }
 
     @Bean

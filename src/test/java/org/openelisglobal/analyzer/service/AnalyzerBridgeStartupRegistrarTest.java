@@ -105,6 +105,6 @@ public class AnalyzerBridgeStartupRegistrarTest {
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerFile(any(), any(), any(), any(),
                 any(), any(), any(), any(), any());
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerTcp(any(), any(), any(), any(),
-                any());
+                any(), any());
     }
 }

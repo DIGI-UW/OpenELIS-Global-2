@@ -185,8 +185,8 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
         if (StringUtil.isInteger(result)) {
             List<TestResult> list;
             try {
-                String sql = "from TestResult t where  t.testResultType in ('D','M','Q') and t.test.id = :testId and"
-                        + " t.value = :testValue";
+                String sql = "from TestResult t where  t.testResultType in ('D','M','Q','C') and t.test.id = :testId"
+                        + " and t.value = :testValue";
                 Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
                 query.setParameter("testId", testId);
                 query.setParameter("testValue", result);

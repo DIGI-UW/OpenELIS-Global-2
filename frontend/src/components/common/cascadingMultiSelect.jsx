@@ -31,7 +31,23 @@ export default function CascadingMultiSelect({
     }
   };
 
-  const [cascades, setCascades] = useState(() => parseValue(value));
+  // Selections are derived from the value prop so saved results display and
+  // edits round-trip through the parent form state. Empty cascades are
+  // stripped from the emitted JSON, so newly added (still empty) rows live in
+  // local state until they get a selection.
+  const savedCascades = useMemo(() => parseValue(value), [value]);
+  const [draftKeys, setDraftKeys] = useState([]);
+
+  const cascades = useMemo(() => {
+    const merged = {};
+    draftKeys.forEach((k) => {
+      merged[k] = [];
+    });
+    Object.keys(savedCascades).forEach((k) => {
+      merged[k] = savedCascades[k];
+    });
+    return merged;
+  }, [savedCascades, draftKeys]);
 
   const cascadeKeys = Object.keys(cascades)
     .map(Number)
@@ -50,26 +66,26 @@ export default function CascadingMultiSelect({
 
   const addCascade = () => {
     const nextKey = cascadeKeys.length ? Math.max(...cascadeKeys) + 1 : 0;
-
-    const updated = { ...cascades, [nextKey]: [] };
-    setCascades(updated);
-    emitChange(updated);
+    setDraftKeys([...draftKeys, nextKey]);
   };
 
   const removeCascade = (key) => {
+    setDraftKeys(draftKeys.filter((k) => k !== key));
+
     const updated = { ...cascades };
     delete updated[key];
-    setCascades(updated);
     emitChange(updated);
   };
 
   const updateCascade = (key, selectedItems) => {
-    const updated = {
+    if (!draftKeys.includes(key)) {
+      setDraftKeys([...draftKeys, key]);
+    }
+
+    emitChange({
       ...cascades,
       [key]: selectedItems.map((i) => i.id),
-    };
-    setCascades(updated);
-    emitChange(updated);
+    });
   };
 
   return (
@@ -82,32 +98,35 @@ export default function CascadingMultiSelect({
             );
 
             return (
-              <div
-                key={key}
-                style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
-              >
-                <Column lg={16} sm={4} md={8}>
-                  <MultiSelect
-                    id={`${id}_${key}`}
-                    items={items}
-                    selectedItems={selectedItems}
-                    itemToString={(item) => item?.label || ""}
-                    onChange={({ selectedItems }) =>
-                      updateCascade(key, selectedItems)
-                    }
-                    label=""
-                    selectionFeedback="top-after-reopen"
-                    style={{ minWidth: "250px" }}
+              <div key={key} style={{ marginBottom: "0.5rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginBottom: "-0.5rem",
+                  }}
+                >
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
+                    renderIcon={TrashCan}
+                    iconDescription="Remove"
+                    onClick={() => removeCascade(key)}
                   />
-                </Column>
+                </div>
 
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  hasIconOnly
-                  renderIcon={TrashCan}
-                  iconDescription="Remove"
-                  onClick={() => removeCascade(key)}
+                <MultiSelect
+                  id={`${id}_${key}`}
+                  items={items}
+                  selectedItems={selectedItems}
+                  itemToString={(item) => item?.label || ""}
+                  onChange={({ selectedItems }) =>
+                    updateCascade(key, selectedItems)
+                  }
+                  label=""
+                  selectionFeedback="top-after-reopen"
+                  style={{ minWidth: "250px" }}
                 />
               </div>
             );

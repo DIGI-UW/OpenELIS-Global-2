@@ -46,6 +46,14 @@ public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
     @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
+    /**
+     * OGC-1129 — optional result component this analyzer target maps to
+     * ({@code test_result_component.id}, VARCHAR(36)). Null = the test's PRIMARY
+     * component (today's behavior); existing rows are unaffected.
+     */
+    @Column(name = "component_id", length = 36)
+    private String componentId;
+
     @Transient
     private String uniqueIdentifyer;
 
@@ -87,6 +95,14 @@ public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
     public String getTestId() {
         return testId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentId() {
+        return componentId;
     }
 
     public void setUniqueIdentifyer(String uniqueIdentifyer) {

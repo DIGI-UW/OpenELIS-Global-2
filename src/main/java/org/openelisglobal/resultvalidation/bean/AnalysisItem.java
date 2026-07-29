@@ -77,6 +77,9 @@ public class AnalysisItem implements Serializable {
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { ResultValidationForm.ResultValidation.class })
     private String resultId;
 
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
+    private String testResultComponentId;
+
     private double lowerCritical;
     private double higherCritical;
     private String normalRange;
@@ -602,6 +605,14 @@ public class AnalysisItem implements Serializable {
 
     public String getResultId() {
         return resultId;
+    }
+
+    public String getTestResultComponentId() {
+        return testResultComponentId;
+    }
+
+    public void setTestResultComponentId(String testResultComponentId) {
+        this.testResultComponentId = testResultComponentId;
     }
 
     public void setResultType(String resultType) {

@@ -3,16 +3,25 @@
   "profileMeta": {
     "id": "mindray-bs360e",
     "version": "1.2.0",
-    "displayName": "Mindray BS-360E"
+    "displayName": "Mindray BS-360E",
+    "confidence": "HIGH"
   },
   "analyzer_name": "Mindray BS-360E",
   "manufacturer": "Mindray",
   "category": "CHEMISTRY",
-  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "protocol": {
+    "name": "HL7",
+    "version": "2.3.1"
+  },
   "identifier_pattern": "MINDRAY.*BS.?360E|BS.?360E",
-  "transport": ["TCP/IP"],
+  "transport": [
+    "TCP/IP"
+  ],
   "transport_config": {
-    "TCP/IP": { "default_port": 6001, "framing": "MLLP" }
+    "TCP/IP": {
+      "default_port": 6001,
+      "framing": "MLLP"
+    }
   },
   "msh3_pattern": "MINDRAY",
   "default_test_mappings": [

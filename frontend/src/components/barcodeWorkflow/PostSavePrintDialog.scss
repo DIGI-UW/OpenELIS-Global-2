@@ -28,9 +28,19 @@
   color: var(--cds-text-secondary);
 }
 
+.post-save-dialog__qty-cell {
+  width: 8rem;
+  vertical-align: middle;
+}
+
 .post-save-dialog__action-cell {
   text-align: right;
   vertical-align: middle;
+}
+
+.post-save-dialog__skip {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .post-save-dialog__footer {

@@ -162,7 +162,10 @@ export const mapTestCatBeanToFormData = (test) => {
     inLabOnly: test.inLabOnly ? "Y" : "N",
     antimicrobialResistance: test.antimicrobialResistance ? "Y" : "N",
     active: test.active === "Active" ? "Y" : "N",
-    dictionary: test.dictionaryValues || [],
+    dictionary: (test.dictionaryIds || []).map((id, i) => ({
+      id,
+      value: (test.dictionaryValues || [])[i] || "",
+    })),
     dictionaryReference: Number.isNaN(Number(test.referenceValue))
       ? ""
       : test.referenceValue,

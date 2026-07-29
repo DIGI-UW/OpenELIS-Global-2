@@ -201,6 +201,16 @@ const AnalyserResults = (props) => {
     jpSet(form, name, checked);
   };
 
+  // OGC-1145 FR-8 — set the choice directly on the row: the field is absent
+  // from the loaded JSON (nulls are stripped), and a jsonpath set cannot
+  // create a missing terminal property.
+  const handleSampleTypeChoice = (e, rowId) => {
+    const row = (props.results.resultList || []).find((r) => r.id === rowId);
+    if (row) {
+      row.typeOfSampleId = e.target.value;
+    }
+  };
+
   const handleAutomatedCheck = (checked, name) => {
     let form = props.results;
     jpSet(form, name, checked);
@@ -268,6 +278,32 @@ const AnalyserResults = (props) => {
         return (
           <div className="sampleInfo" data-testid="sampleInfo">
             {row.testName}
+            {/* OGC-1145 FR-8 — specimen-ambiguous row: the reviewer picks the
+                sample type; accepting without a choice keeps the row staged
+                (awaiting specimen) instead of guessing. */}
+            {row.sampleTypeOptions && row.sampleTypeOptions.length > 0 && (
+              <Select
+                id={"resultList" + row.id + ".typeOfSampleId"}
+                name={"resultList[?(@.id == " + row.id + ")].typeOfSampleId"}
+                labelText={intl.formatMessage({
+                  id: "label.testCatalog.specimenType",
+                })}
+                helperText={intl.formatMessage({
+                  id: "notice.testCatalog.intake.awaitingSpecimen",
+                })}
+                defaultValue={row.typeOfSampleId || ""}
+                onChange={(e) => handleSampleTypeChoice(e, row.id)}
+              >
+                <SelectItem value="" text="--" />
+                {row.sampleTypeOptions.map((option) => (
+                  <SelectItem
+                    key={option.id}
+                    value={option.id}
+                    text={option.value}
+                  />
+                ))}
+              </Select>
+            )}
           </div>
         );
 

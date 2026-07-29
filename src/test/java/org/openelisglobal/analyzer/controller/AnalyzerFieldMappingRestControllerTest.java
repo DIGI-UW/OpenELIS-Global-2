@@ -21,7 +21,7 @@ import org.springframework.test.web.servlet.MvcResult;
 /**
  * Integration tests for AnalyzerFieldMappingRestController Following TDD
  * approach: Write tests BEFORE implementation
- * 
+ *
  */
 public class AnalyzerFieldMappingRestControllerTest extends AuthenticatedAnalyzerControllerTest {
 

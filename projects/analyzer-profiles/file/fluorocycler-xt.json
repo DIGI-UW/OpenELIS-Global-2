@@ -1,41 +1,117 @@
 {
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "profileMeta": {
     "id": "fluorocycler-xt",
     "version": "3.0.0",
     "displayName": "Bruker FluoroCycler XT",
+    "confidence": "MEDIUM_HIGH",
     "manufacturer": "Bruker"
   },
   "category": "MOLECULAR",
   "protocol": {
     "name": "FILE",
-    "format": "ODS"
+    "format": "XLSX"
   },
-  "supported_extensions": [".ods", ".xlsx", ".xls"],
+  "supported_extensions": [
+    ".ods",
+    ".xlsx",
+    ".xls"
+  ],
+  "_column_mapping_note": "Superset: recognizes BOTH the raw instrument export (Sample ID/Calc. Conc./Result) and the standardized converter output (SampleID/CalcConc/TargetName/Interpretation, via scripts/converters/convert-fluorocycler-legacy.py). The parser assigns a role to each header it finds, so a file in either format imports without running the converter.",
   "column_mapping": {
     "Sample ID": "sampleId",
+    "SampleID": "sampleId",
     "Type": "qcTask",
+    "Calc. Conc.": "result",
+    "CalcConc": "result",
     "Result": "interpretation",
-    "Calc. Conc.": "result"
+    "Interpretation": "interpretation",
+    "TargetName": "testCode",
+    "testCode": "testCode",
+    "WellPosition": "position"
   },
   "default_test_mappings": [
-    { "test_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
-    { "test_code": "MPXV", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
-    { "test_code": "Mpox", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
-    { "test_code": "MPox", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
-    { "test_code": "CHIKV", "test_name_hint": "Chikungunya PCR", "loinc": "60260-7", "unit": "" },
-    { "test_code": "DENV", "test_name_hint": "Dengue PCR", "loinc": "7855-0", "unit": "" },
-    { "test_code": "ZIKV", "test_name_hint": "Zika PCR", "loinc": "85622-9", "unit": "" }
+    {
+      "test_code": "VIH-1",
+      "test_name_hint": "HIV-1 Viral Load",
+      "loinc": "20447-9",
+      "unit": "copies/mL"
+    },
+    {
+      "test_code": "MPXV",
+      "test_name_hint": "Monkeypox virus DNA",
+      "loinc": "100383-9",
+      "unit": ""
+    },
+    {
+      "test_code": "Mpox",
+      "test_name_hint": "Monkeypox virus DNA",
+      "loinc": "100383-9",
+      "unit": ""
+    },
+    {
+      "test_code": "MPox",
+      "test_name_hint": "Monkeypox virus DNA",
+      "loinc": "100383-9",
+      "unit": ""
+    },
+    {
+      "test_code": "CHIKV",
+      "test_name_hint": "Chikungunya PCR",
+      "loinc": "60260-7",
+      "unit": ""
+    },
+    {
+      "test_code": "DENV",
+      "test_name_hint": "Dengue PCR",
+      "loinc": "7855-0",
+      "unit": ""
+    },
+    {
+      "test_code": "ZIKV",
+      "test_name_hint": "Zika PCR",
+      "loinc": "85622-9",
+      "unit": ""
+    }
   ],
   "configDefaults": {
-    "fileFormat": "ODS",
+    "fileFormat": "XLSX",
     "hasHeader": true,
     "sheetIndex": 0,
     "qcRules": [
-      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Positive", "isActive": true, "sortOrder": 1 },
-      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Negative", "isActive": true, "sortOrder": 2 },
-      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Standard", "isActive": true, "sortOrder": 3 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "C+", "isActive": true, "sortOrder": 4 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "C-", "isActive": true, "sortOrder": 5 }
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "QC_TASK",
+        "operand": "Positive",
+        "isActive": true,
+        "sortOrder": 1
+      },
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "QC_TASK",
+        "operand": "Negative",
+        "isActive": true,
+        "sortOrder": 2
+      },
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "QC_TASK",
+        "operand": "Standard",
+        "isActive": true,
+        "sortOrder": 3
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "C+",
+        "isActive": true,
+        "sortOrder": 4
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "C-",
+        "isActive": true,
+        "sortOrder": 5
+      }
     ]
   }
 }

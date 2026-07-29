@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-285 M2: seed label_preset_field rows for each system preset. Looks up presets BY NAME
+         (the PK generated in 030 is not stable across migrations; the name IS stable). -->
+
+    <changeSet id="label-preset-seed-002-system-preset-fields" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.label_preset_field
+                WHERE preset_id IN (SELECT id FROM clinlims.label_preset WHERE is_system = true)
+            </sqlCheck>
+        </preConditions>
+
+        <comment>Seed LAB_NUMBER (required, position 1) for each system preset</comment>
+
+        <!-- Every system preset gets LAB_NUMBER at position 1 -->
+        <sql>
+            INSERT INTO clinlims.label_preset_field (id, preset_id, field_key, source_type, is_required, display_order, last_updated)
+            SELECT nextval('clinlims.label_preset_field_seq'),
+                   id, 'LAB_NUMBER', 'SYSTEM', true, 1, CURRENT_TIMESTAMP
+            FROM clinlims.label_preset
+            WHERE is_system = true;
+        </sql>
+
+        <!-- v1 carry-over optional fields per type are deferred to the admin UI (M3); the legacy
+             BarcodeConfiguration checkbox state is migrated there, not pre-seeded, so the seed stays
+             deterministic and minimal (LAB_NUMBER only). -->
+
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.label_preset_field
+                WHERE preset_id IN (SELECT id FROM clinlims.label_preset WHERE is_system = true);
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

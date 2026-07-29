@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 / OGC-1125 — pre-seed molecular result components, so multi-component
+    capture works out of the box on a test that ships in every deployment.
+
+      * Target: COVIDPCR(Respiratory Swab), created by the global (context-less)
+        changeset new_tests.xml, so it is present in every default deployment.
+        Keyed by its unique test.description (LOINC 94500-6 is reused across many
+        tests — COVID/HIV/HBV/HCV VL, Dengue, antibody — so LOINC would over-match).
+      * Additive only. INSERT ... SELECT ... WHERE NOT EXISTS on (test_id, code)
+        mirrors uq_test_result_component_test_code, so it is idempotent and a no-op
+        where the test is absent. The M1-backfilled PRIMARY (overall call) is
+        untouched; seeded components are non-primary with show_on_report = true.
+
+    Scope note — Xpert MTB/RIF (rpoB probes A–E) is intentionally NOT seeded here.
+    There is no MTB/RIF test in the base SQL dump or any global Liquibase changeset;
+    the only MTB/RIF tests are distro-specific (ci_TB "GeneXpert MTB/RIF";
+    Madagascar "Xpert MTB/RIF(Sputum)"). rpoB seeding therefore belongs in the
+    relevant distro's seed, not in this base changeset.
+
+    Curation note: N2/E are the SARS-CoV-2 target Cts from Cepheid package inserts
+    (OGC-1125). Whether a deployment's GeneXpert transmits per-target Ct is an
+    operational question; where it does not, these components stay blank on entry.
+    -->
+
+    <!-- A "Ct" (cycle threshold) unit for the numeric target components. -->
+    <changeSet id="OGC-1125-seed-ct-uom" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.unit_of_measure WHERE name = 'Ct'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed the Ct unit of measure used by molecular target components.</comment>
+        <insert schemaName="clinlims" tableName="unit_of_measure">
+            <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+            <column name="name" value="Ct"/>
+            <column name="description" value="Cycle threshold"/>
+            <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+        </insert>
+        <rollback>
+            <sql>DELETE FROM clinlims.unit_of_measure WHERE name = 'Ct'</sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+    Component definitions: seed the SARS-CoV-2 target components (N2, E) onto the
+    universal COVIDPCR(Respiratory Swab) test, keyed by its unique test.description.
+    gen_random_uuid()::varchar id mirrors the M1 backfill (041-result-components.xml);
+    numeric target components ('N') carry the Ct unit; the overall call already exists
+    as the PRIMARY. Both timestamps are set: lastupdated is the DB-managed column and
+    last_updated is Hibernate's @Version — leaving last_updated NULL would make a later
+    UPDATE ... WHERE last_updated = NULL match no rows (StaleStateException) when the
+    component is edited (mirrors the 046/047 backfill repair).
+    -->
+    <changeSet id="OGC-1125-seed-molecular-components" author="OGC">
+        <sql splitStatements="true" endDelimiter=";">
+            INSERT INTO clinlims.test_result_component
+                (id, test_id, code, label, display_order, result_type, uom_id, is_active, lastupdated, last_updated)
+            SELECT gen_random_uuid()::varchar, t.id, v.code, v.label, v.ord, 'N',
+                   (SELECT id FROM clinlims.unit_of_measure WHERE name = 'Ct' LIMIT 1), 'Y', now(), now()
+              FROM clinlims.test t
+              CROSS JOIN (VALUES
+                    ('N2', 'N2 (Ct)', 1),
+                    ('E',  'E (Ct)',  2)
+                  ) AS v(code, label, ord)
+             WHERE t.description = 'COVIDPCR(Respiratory Swab)'
+               AND NOT EXISTS (SELECT 1 FROM clinlims.test_result_component c
+                                WHERE c.test_id = t.id AND c.code = v.code);
+        </sql>
+        <!--
+        Result-type rows: each numeric target component needs its OWN test_result row
+        (typed 'N', linked via component_id) so result entry binds one Result per
+        component. Without it a saved N2/E value cannot find its component's test_result
+        and falls back to the test's first row (the PRIMARY), corrupting the binding.
+        This mirrors what the Test Catalog editor creates for a non-dictionary component
+        (TestResultComponentServiceImpl). LASTUPDATED is the @Version column.
+        -->
+        <sql splitStatements="true" endDelimiter=";">
+            INSERT INTO clinlims.test_result
+                (id, test_id, tst_rslt_type, sort_order, is_active, component_id, lastupdated)
+            SELECT nextval('clinlims.test_result_seq'), c.test_id, 'N', c.display_order + 1, true, c.id, now()
+              FROM clinlims.test_result_component c
+             WHERE c.code IN ('N2','E')
+               AND c.test_id IN (SELECT id FROM clinlims.test WHERE description = 'COVIDPCR(Respiratory Swab)')
+               AND NOT EXISTS (SELECT 1 FROM clinlims.test_result tr
+                                WHERE tr.component_id = c.id AND tr.is_active = true);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.test_result
+                 WHERE component_id IN (SELECT id FROM clinlims.test_result_component
+                                         WHERE code IN ('N2','E')
+                                           AND test_id IN (SELECT id FROM clinlims.test
+                                                            WHERE description = 'COVIDPCR(Respiratory Swab)'));
+                DELETE FROM clinlims.test_result_component
+                 WHERE code IN ('N2','E')
+                   AND test_id IN (SELECT id FROM clinlims.test WHERE description = 'COVIDPCR(Respiratory Swab)');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

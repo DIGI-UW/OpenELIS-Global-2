@@ -35,6 +35,23 @@ WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%'
            SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%'
        )
    );
+-- Barcode print-count rows (OGC-284) and persisted label snapshots (OGC-285)
+-- reference sample/sample_item and must go before them.
+DELETE FROM order_label_request WHERE parent_sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
+DELETE FROM sample_item_barcode_info WHERE sample_item_id IN (
+    SELECT id FROM sample_item WHERE samp_id IN (
+        SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%'
+    )
+);
+DELETE FROM sample_barcode_info WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
+
+-- Program (pathology/cytology/IHC) demo orders also land on DEV0126
+-- accessions; each program table references sample directly.
+DELETE FROM pathology_sample WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
+DELETE FROM cytology_sample WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
+DELETE FROM immunohistochemistry_sample WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
+DELETE FROM program_sample WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
+
 DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
 DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
 DELETE FROM sample WHERE accession_number LIKE 'DEV0126%';

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 M? / OGC-986 (epic OGC-760) — Test-Reagent linkage foundation.
+    Prerequisite for the v2 Reagents tab (OGC-762).
+    Real target per codebase model: a "reagent" is an inventory_item with
+    item_type = 'REAGENT' (org.openelisglobal.inventory). There is no standalone
+    `reagent` table; the FRS/AC `reagent(id)` maps to inventory_item(id) (numeric).
+    Table starts empty — no data backfill.
+    -->
+
+    <changeSet id="OGC-986-test-reagent-link-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_reagent_link">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_reagent_link"/>
+            </column>
+            <column name="test_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- BIGINT to match inventory_item.id (Long, sequence-generated) -->
+            <column name="reagent_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="usage_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity_per_test" type="numeric(15,6)"/>
+            <column name="quantity_unit" type="VARCHAR(50)"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <!-- BaseObject @Version maps to last_updated -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.test_reagent_link
+            ADD CONSTRAINT test_reagent_link_usage_type_chk
+            CHECK (usage_type IN ('PRIMARY', 'SECONDARY'))
+        </sql>
+        <addUniqueConstraint schemaName="clinlims" tableName="test_reagent_link"
+            columnNames="test_id, reagent_id" constraintName="uq_test_reagent_link_test_reagent"/>
+        <addForeignKeyConstraint constraintName="fk_test_reagent_link_test"
+            baseTableSchemaName="clinlims" baseTableName="test_reagent_link" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_test_reagent_link_inventory_item"
+            baseTableSchemaName="clinlims" baseTableName="test_reagent_link" baseColumnNames="reagent_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_item" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="test_reagent_link"
+            indexName="idx_test_reagent_link_test_usage">
+            <column name="test_id"/>
+            <column name="usage_type"/>
+        </createIndex>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_reagent_link"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

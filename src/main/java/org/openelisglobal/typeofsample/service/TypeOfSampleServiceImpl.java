@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
@@ -154,8 +155,19 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
 
         for (TypeOfSampleTest typeTest : typeOfSampleTestList) {
             String testId = typeTest.getTestId();
-            TypeOfSample typeOfSample = typeOfSampleIdtoTypeOfSampleMap
-                    .get(baseObjectDAO.getTypeOfSampleById(typeTest.getTypeOfSampleId()).getId());
+            TypeOfSample loaded = baseObjectDAO.getTypeOfSampleById(typeTest.getTypeOfSampleId());
+            if (loaded == null) {
+                // junction points at a deleted sample type — skip rather than NPE
+                continue;
+            }
+            // The identity map is a singleton built at clearCache/startup; a type
+            // created since then is absent. Fall back to the freshly-loaded row
+            // (and cache it) so the lookup is order-independent, never null.
+            TypeOfSample typeOfSample = typeOfSampleIdtoTypeOfSampleMap.get(loaded.getId());
+            if (typeOfSample == null) {
+                typeOfSample = loaded;
+                typeOfSampleIdtoTypeOfSampleMap.put(loaded.getId(), loaded);
+            }
             if (testIdToTypeOfSampleMap.containsKey(testId)) {
                 testIdToTypeOfSampleMap.get(testId).add(typeOfSample);
             } else {
@@ -385,5 +397,35 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     @Override
     public TypeOfSample getTypeOfSampleByLocalizedName(String typeOfSampleName, Locale locale) {
         return baseObjectDAO.getTypeOfSampleByLocalizedName(typeOfSampleName, locale);
+    }
+
+    @Override
+    @Transactional
+    public List<TypeOfSample> moveToSortOrderPosition(String typeOfSampleId, int position, String sysUserId) {
+        List<TypeOfSample> ordered = new ArrayList<>(baseObjectDAO.getAllTypeOfSamplesSortOrdered());
+        TypeOfSample target = null;
+        for (TypeOfSample type : ordered) {
+            if (type.getId().equals(typeOfSampleId)) {
+                target = type;
+                break;
+            }
+        }
+        if (target == null) {
+            throw new LIMSRuntimeException("Sample type not found: " + typeOfSampleId);
+        }
+        ordered.remove(target);
+        int index = Math.max(0, Math.min(position - 1, ordered.size()));
+        ordered.add(index, target);
+
+        for (int i = 0; i < ordered.size(); i++) {
+            TypeOfSample type = ordered.get(i);
+            if (type.getSortOrder() != i + 1) {
+                type.setSortOrder(i + 1);
+                type.setSysUserId(sysUserId);
+                baseObjectDAO.update(type);
+            }
+        }
+        baseObjectDAO.clearMap();
+        return ordered;
     }
 }

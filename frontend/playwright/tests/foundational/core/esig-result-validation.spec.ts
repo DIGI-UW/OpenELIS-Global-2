@@ -150,19 +150,19 @@ test("E-Signature — full result entry and validation flow", async ({
     await searchInput.fill(accessionNumber);
     await main.getByRole("button", { name: /search/i }).click();
 
-    await expect(main.getByRole("button", { name: "Save" })).toBeVisible({
+    await expect(main.getByRole("button", { name: "Validate" })).toBeVisible({
       timeout: NAV_TIMEOUT,
     });
   });
 
-  await test.step("Select all results and click Save — e-sig modal shows VALIDATED_AND_RELEASED", async () => {
+  await test.step("Select all results and click Validate — e-sig modal shows VALIDATED_AND_RELEASED", async () => {
     // Select all results for validation
     const saveAllLabel = page.locator('label[for="saveallresults"]');
     if (await saveAllLabel.isVisible()) {
       await saveAllLabel.click();
     }
 
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("button", { name: "Validate" }).click();
 
     const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: UI_TIMEOUT });

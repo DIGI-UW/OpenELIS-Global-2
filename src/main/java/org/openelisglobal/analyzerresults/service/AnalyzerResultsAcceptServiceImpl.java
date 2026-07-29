@@ -15,6 +15,7 @@ import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
@@ -108,6 +109,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             return;
         }
 
+        // OGC-1145 FR-8 — never first-match a specimen: any accepted grouping
+        // whose test is specimen-ambiguous and carries no reviewer choice stays
+        // staged, flagged awaiting_specimen, so the review page shows its
+        // chooser; everything else in the batch proceeds normally.
+        holdGroupsAwaitingSpecimen(actionableResults, sysUserId);
+        if (actionableResults.isEmpty()) {
+            return;
+        }
+
         // Remove actionable items from the remaining list so we can detect
         // childless controls among the leftovers.
         List<AnalyzerResultItem> remaining = new ArrayList<>(allResults);
@@ -130,6 +140,77 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         }
 
         analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, sysUserId);
+    }
+
+    // ---------------------------------------------------------------
+    // OGC-1145 FR-8 — awaiting-specimen hold
+    // ---------------------------------------------------------------
+
+    /**
+     * Removes every grouping that contains an accepted, specimen-ambiguous row
+     * without a reviewer-chosen sample type, and flags its staged rows
+     * {@code awaiting_specimen} so they stay in review with the chooser.
+     */
+    private void holdGroupsAwaitingSpecimen(List<AnalyzerResultItem> actionableResults, String sysUserId) {
+        Set<Integer> heldGroups = new HashSet<>();
+        for (AnalyzerResultItem item : actionableResults) {
+            if (item.getIsAccepted() && needsSpecimenChoice(item)) {
+                heldGroups.add(item.getSampleGroupingNumber());
+            }
+        }
+        if (heldGroups.isEmpty()) {
+            return;
+        }
+        List<AnalyzerResultItem> heldItems = new ArrayList<>();
+        for (AnalyzerResultItem item : actionableResults) {
+            if (heldGroups.contains(item.getSampleGroupingNumber())) {
+                heldItems.add(item);
+            }
+        }
+        actionableResults.removeAll(heldItems);
+        for (AnalyzerResultItem item : heldItems) {
+            AnalyzerResults stagedRow = analyzerResultsService.get(item.getId());
+            if (stagedRow != null) {
+                stagedRow.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN);
+                stagedRow.setSysUserId(sysUserId);
+                analyzerResultsService.update(stagedRow);
+            }
+            LogEvent.logWarn(this.getClass().getSimpleName(), "holdGroupsAwaitingSpecimen",
+                    "holding accession " + item.getAccessionNumber() + " test " + item.getTestId()
+                            + " awaiting specimen: test runs on several sample types and no sample type was chosen");
+        }
+    }
+
+    /**
+     * True when accepting this row would force a specimen guess: its test runs on
+     * more than one sample type, the reviewer chose none, no existing sample item
+     * on the accession pins one of the candidates, and no special-case rule
+     * (RetroCI LDBS→DBS) applies.
+     */
+    private boolean needsSpecimenChoice(AnalyzerResultItem item) {
+        if (item.getIsControl() || GenericValidator.isBlankOrNull(item.getTestId())
+                || !GenericValidator.isBlankOrNull(item.getTypeOfSampleId())) {
+            return false;
+        }
+        List<TypeOfSampleTest> candidates = typeOfSampleTestService.getTypeOfSampleTestsForTest(item.getTestId());
+        if (candidates.size() <= 1) {
+            return false;
+        }
+        if (IS_RETROCI && item.getAccessionNumber() != null && item.getAccessionNumber().startsWith("LDBS")
+                && candidates.stream().anyMatch(c -> DBS_SAMPLE_TYPE_ID.equals(c.getTypeOfSampleId()))) {
+            return false;
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(item.getAccessionNumber());
+        if (sample != null) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleId(sample.getId())) {
+                for (TypeOfSampleTest candidate : candidates) {
+                    if (candidate.getTypeOfSampleId().equals(analysis.getSampleItem().getTypeOfSampleId())) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     // ---------------------------------------------------------------
@@ -361,6 +442,12 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 .getTypeOfSampleTestsForTest(groupedAnalyzerResultItems.get(0).getTestId());
         List<String> typeOfSampleIds = typeOfSampleForNewTest.stream().map(e -> e.getTypeOfSampleId())
                 .collect(Collectors.toList());
+        // OGC-1145 FR-8 — the reviewer's chosen sample type narrows the ambiguous
+        // candidate set to exactly that specimen, for both reuse and creation.
+        String chosenTypeOfSampleId = groupedAnalyzerResultItems.get(0).getTypeOfSampleId();
+        if (!GenericValidator.isBlankOrNull(chosenTypeOfSampleId) && typeOfSampleIds.contains(chosenTypeOfSampleId)) {
+            typeOfSampleIds = List.of(chosenTypeOfSampleId);
+        }
 
         SampleItem sampleItem = null;
         int maxSampleItemSortOrder = 0;
@@ -383,6 +470,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             sampleItem.setSysUserId(sysUserId);
             sampleItem.setSortOrder(Integer.toString(maxSampleItemSortOrder + 1));
             sampleItem.setStatusId(statusService.getStatusID(SampleStatus.Entered));
+            if (typeOfSampleIds.size() > 1) {
+                // Accepted ambiguous groups are intercepted by the FR-8
+                // awaiting-specimen hold before reaching here; this fallback
+                // (e.g. rejected results) stays deterministic with a warning.
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getOrCreateSampleItem",
+                        "creating sample item for test " + groupedAnalyzerResultItems.get(0).getTestId() + " which has "
+                                + typeOfSampleIds.size() + " sample types and no specimen context; using the primary"
+                                + " link");
+            }
             TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleIds.get(0));
             sampleItem.setTypeOfSample(typeOfSample);
         }
@@ -564,7 +660,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
                 resultToUserSelectionMap, noteList, patient, sysUserId);
 
-        addSampleTypeToSampleItem(sampleItem, analysisList, sample.getAccessionNumber());
+        addSampleTypeToSampleItem(sampleItem, analysisList, sample.getAccessionNumber(),
+                groupedAnalyzerResultItems.get(0).getTypeOfSampleId());
 
         sampleGrouping.sample = sample;
         sampleGrouping.sampleHuman = sampleHuman;
@@ -621,6 +718,23 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         }
     }
 
+    /**
+     * The existing Result bound to the given component (null = PRIMARY), preferring
+     * the last match to preserve prior single-component behavior. Null when none of
+     * the analysis's results belongs to that component.
+     */
+    private Result findResultForComponent(List<Result> resultList, String componentId) {
+        Result match = null;
+        for (Result candidate : resultList) {
+            String candidateComponentId = candidate.getTestResult() == null ? null
+                    : candidate.getTestResult().getComponentId();
+            if (componentId == null ? candidateComponentId == null : componentId.equals(candidateComponentId)) {
+                match = candidate;
+            }
+        }
+        return match;
+    }
+
     private Analysis getExistingAnalysis(AnalyzerResultItem resultItem) {
         List<Analysis> analysisList = analysisService.getAnalysisByAccessionAndTestId(resultItem.getAccessionNumber(),
                 resultItem.getTestId());
@@ -634,8 +748,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (analysis.getId() != null) {
             List<Result> resultList = resultService.getResultsByAnalysis(analysis);
 
-            if (!resultList.isEmpty()) {
-                result = resultList.get(resultList.size() - 1);
+            // OGC-1129: update the existing Result for THIS component, not just the last
+            // one — otherwise multiplex components sharing an analysis clobber each other.
+            result = findResultForComponent(resultList, resultItem.getComponentId());
+            if (result != null) {
                 String resultValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
                 TestResult resolvedTestResult = getTestResultForResult(resultItem);
                 result.setTestResult(resolvedTestResult);
@@ -715,14 +831,22 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     private TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
-        List<TestResult> candidates = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
-        if (candidates == null || candidates.isEmpty()) {
+        List<TestResult> all = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
+        if (all == null || all.isEmpty()) {
             return null;
         }
+        // OGC-1129: bind to the test_result rows of the resolved component so the
+        // created Result carries the component (null = PRIMARY, today's behavior).
+        List<TestResult> candidates = filterTestResultsByComponent(all, resultItem.getComponentId());
         boolean hasDictCandidates = candidates.stream().anyMatch(c -> "D".equals(c.getTestResultType()));
         if (hasDictCandidates) {
             TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
                     resultItem.getResult());
+            // Only trust the test-scoped dictionary match when it belongs to the target
+            // component; otherwise fall through to the component-filtered candidates.
+            if (testResult != null && !candidates.contains(testResult)) {
+                testResult = null;
+            }
             if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
                 String desired = resultItem.getResult().trim();
                 for (TestResult candidate : candidates) {
@@ -744,12 +868,30 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         return candidates.get(0);
     }
 
+    /**
+     * Keep only the test_result rows belonging to the resolved component (null =
+     * PRIMARY / legacy component_id-null rows). Falls back to the full list when no
+     * row matches, so a test whose test_result rows predate components still works.
+     */
+    private List<TestResult> filterTestResultsByComponent(List<TestResult> candidates, String componentId) {
+        List<TestResult> filtered = new ArrayList<>();
+        for (TestResult candidate : candidates) {
+            String candidateComponentId = candidate.getComponentId();
+            if (componentId == null ? candidateComponentId == null : componentId.equals(candidateComponentId)) {
+                filtered.add(candidate);
+            }
+        }
+        return filtered.isEmpty() ? candidates : filtered;
+    }
+
     private void addMinMaxNormal(Result result, AnalyzerResultItem resultItem, Patient patient) {
         boolean limitsFound = false;
 
         if (resultItem != null) {
+            // OGC-1145 Phase 2: the reviewer-resolved specimen (when present)
+            // selects a scoped limit over the shared set.
             ResultLimit resultLimit = resultLimitService.getResultLimitForTestAndPatient(resultItem.getTestId(),
-                    patient);
+                    patient, resultItem.getTypeOfSampleId());
             if (resultLimit != null) {
                 result.setMinNormal(resultLimit.getLowNormal());
                 result.setMaxNormal(resultLimit.getHighNormal());
@@ -767,14 +909,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // Sample type helpers
     // ---------------------------------------------------------------
 
-    private void addSampleTypeToSampleItem(SampleItem sampleItem, List<Analysis> analysisList, String accessionNumber) {
+    private void addSampleTypeToSampleItem(SampleItem sampleItem, List<Analysis> analysisList, String accessionNumber,
+            String chosenTypeOfSampleId) {
         if (analysisList.size() > 0) {
-            String typeOfSampleId = getTypeOfSampleId(analysisList, accessionNumber);
+            String typeOfSampleId = getTypeOfSampleId(analysisList, accessionNumber, chosenTypeOfSampleId);
             sampleItem.setTypeOfSample(typeOfSampleService.get(typeOfSampleId));
         }
     }
 
-    private String getTypeOfSampleId(List<Analysis> analysisList, String accessionNumber) {
+    private String getTypeOfSampleId(List<Analysis> analysisList, String accessionNumber, String chosenTypeOfSampleId) {
         if (IS_RETROCI && accessionNumber.startsWith("LDBS")) {
             List<TypeOfSampleTest> typeOfSmapleTestList = typeOfSampleTestService
                     .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
@@ -788,6 +931,19 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
         List<TypeOfSampleTest> sampleTests = typeOfSampleTestService
                 .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
+        // OGC-1145 FR-8 — the reviewer's chosen sample type wins over the
+        // primary link when the test is specimen-ambiguous.
+        if (!GenericValidator.isBlankOrNull(chosenTypeOfSampleId)
+                && sampleTests.stream().anyMatch(st -> chosenTypeOfSampleId.equals(st.getTypeOfSampleId()))) {
+            return chosenTypeOfSampleId;
+        }
+        if (sampleTests.size() > 1) {
+            // Accepted ambiguous groups are intercepted by the FR-8 hold; this
+            // fallback stays deterministic with a warning.
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getTypeOfSampleId",
+                    "test " + analysisList.get(0).getTest().getId() + " has " + sampleTests.size()
+                            + " sample types and no specimen context; using the primary link");
+        }
         return sampleTests.get(0).getTypeOfSampleId();
     }
 
@@ -851,7 +1007,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (IS_RETROCI) {
             TypeOfSample typeOfSample = new TypeOfSample();
             typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain("H");
+            typeOfSample.setDomain(Domain.CLINICAL.name());
             typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
             DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
         } else {

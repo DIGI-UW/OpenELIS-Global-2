@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-285 M2: configurable barcode label preset schema (FRS §7.1-§7.3) -->
+
+    <changeSet id="label-preset-001-label-preset" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="label_preset" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Create label_preset table and sequence for configurable label preset config</comment>
+
+        <createSequence schemaName="clinlims" sequenceName="label_preset_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="label_preset" schemaName="clinlims">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="label_preset_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(120)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="label_preset_name_uniq"/>
+            </column>
+            <column name="height_mm" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="width_mm" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="barcode_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="prints_per_order" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="prints_per_sample" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="default_per_order" type="INTEGER" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="max_per_order" type="INTEGER" defaultValueNumeric="10"><constraints nullable="false"/></column>
+            <column name="default_per_sample" type="INTEGER" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="max_per_sample" type="INTEGER" defaultValueNumeric="10"><constraints nullable="false"/></column>
+            <column name="is_system" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <!-- Table-level CHECK constraints (cross-column rules) -->
+        <sql>ALTER TABLE clinlims.label_preset
+             ADD CONSTRAINT label_preset_height_range  CHECK (height_mm BETWEEN 5 AND 200),
+             ADD CONSTRAINT label_preset_width_range   CHECK (width_mm  BETWEEN 5 AND 200),
+             ADD CONSTRAINT label_preset_barcode_type  CHECK (barcode_type IN ('CODE_128','QR','DATAMATRIX')),
+             ADD CONSTRAINT label_preset_default_nonneg
+                 CHECK (default_per_order >= 0 AND default_per_sample >= 0),
+             ADD CONSTRAINT label_preset_max_gte_default
+                 CHECK (max_per_order >= default_per_order AND max_per_sample >= default_per_sample),
+             ADD CONSTRAINT label_preset_scope_required
+                 CHECK (prints_per_order OR prints_per_sample);</sql>
+
+        <createIndex indexName="idx_label_preset_active" tableName="label_preset" schemaName="clinlims">
+            <column name="is_active"/>
+        </createIndex>
+        <createIndex indexName="idx_label_preset_system" tableName="label_preset" schemaName="clinlims">
+            <column name="is_system"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_label_preset_active" tableName="label_preset" schemaName="clinlims"/>
+            <dropIndex indexName="idx_label_preset_system" tableName="label_preset" schemaName="clinlims"/>
+            <dropTable tableName="label_preset" schemaName="clinlims"/>
+            <dropSequence sequenceName="label_preset_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="label-preset-002-label-preset-field" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="label_preset_field" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Create label_preset_field table and sequence for per-preset content field ordering</comment>
+
+        <createSequence schemaName="clinlims" sequenceName="label_preset_field_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="label_preset_field" schemaName="clinlims">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="label_preset_field_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="preset_id" type="INTEGER">
+                <constraints nullable="false"
+                    foreignKeyName="fk_label_preset_field_preset"
+                    references="label_preset(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="field_key" type="VARCHAR(60)"><constraints nullable="false"/></column>
+            <column name="source_type" type="VARCHAR(20)" defaultValue="SYSTEM"><constraints nullable="false"/></column>
+            <column name="is_required" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="display_order" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <addUniqueConstraint constraintName="label_preset_field_order_uniq" tableName="label_preset_field" schemaName="clinlims"
+            columnNames="preset_id, display_order"/>
+        <addUniqueConstraint constraintName="label_preset_field_key_uniq" tableName="label_preset_field" schemaName="clinlims"
+            columnNames="preset_id, field_key"/>
+
+        <sql>ALTER TABLE clinlims.label_preset_field
+             ADD CONSTRAINT label_preset_field_source_type CHECK (source_type = 'SYSTEM');</sql>
+
+        <createIndex indexName="idx_label_preset_field_preset" tableName="label_preset_field" schemaName="clinlims">
+            <column name="preset_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_label_preset_field_preset" tableName="label_preset_field" schemaName="clinlims"/>
+            <dropTable tableName="label_preset_field" schemaName="clinlims"/>
+            <dropSequence sequenceName="label_preset_field_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="label-preset-003-test-label-config" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="test_label_config" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Create test_label_config table: 1:1 master label toggle per test (FRS §7.2)</comment>
+
+        <createSequence schemaName="clinlims" sequenceName="test_label_config_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="test_label_config" schemaName="clinlims">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="test_label_config_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="test_id" type="numeric(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_test_label_config_test"
+                    references="test(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="allow_order_entry_override" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <createIndex indexName="idx_test_label_config_test_id" tableName="test_label_config" schemaName="clinlims">
+            <column name="test_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_test_label_config_test_id" tableName="test_label_config" schemaName="clinlims"/>
+            <dropTable tableName="test_label_config" schemaName="clinlims"/>
+            <dropSequence sequenceName="test_label_config_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- test_label_preset_link: OGC-761 has NOT landed on develop, so M2 CREATEs the full table
+         (per data-model.md §3.1 / research.md §5). If OGC-761 lands first, the precondition skips
+         the CREATE and a follow-up ALTER adds allow_override. -->
+    <changeSet id="label-preset-004-test-label-preset-link" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="test_label_preset_link" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Create test_label_preset_link table: per-test preset links with per-sample qty overrides (FRS §3.5)</comment>
+
+        <createSequence schemaName="clinlims" sequenceName="test_label_preset_link_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="test_label_preset_link" schemaName="clinlims">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="test_label_preset_link_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="test_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_test_label_preset_link_test"
+                    references="test(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="preset_id" type="INTEGER">
+                <constraints nullable="false"
+                    foreignKeyName="fk_test_label_preset_link_preset"
+                    references="label_preset(id)"/>
+            </column>
+            <column name="default_qty" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="max_qty" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="allow_override" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <addUniqueConstraint constraintName="test_label_preset_link_uniq" tableName="test_label_preset_link" schemaName="clinlims"
+            columnNames="test_id, preset_id"/>
+
+        <sql>ALTER TABLE clinlims.test_label_preset_link
+             ADD CONSTRAINT test_label_preset_link_qty_nonneg CHECK (default_qty >= 0),
+             ADD CONSTRAINT test_label_preset_link_max_gte_default CHECK (max_qty >= default_qty);</sql>
+
+        <createIndex indexName="idx_test_label_preset_link_test" tableName="test_label_preset_link" schemaName="clinlims">
+            <column name="test_id"/>
+        </createIndex>
+        <createIndex indexName="idx_test_label_preset_link_preset" tableName="test_label_preset_link" schemaName="clinlims">
+            <column name="preset_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_test_label_preset_link_test" tableName="test_label_preset_link" schemaName="clinlims"/>
+            <dropIndex indexName="idx_test_label_preset_link_preset" tableName="test_label_preset_link" schemaName="clinlims"/>
+            <dropTable tableName="test_label_preset_link" schemaName="clinlims"/>
+            <dropSequence sequenceName="test_label_preset_link_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="label-preset-005-order-label-request" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="order_label_request" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Create order_label_request table: per-order/per-sample label requests with JSONB preset snapshot (FRS §7.3)</comment>
+
+        <createSequence schemaName="clinlims" sequenceName="order_label_request_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="order_label_request" schemaName="clinlims">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="order_label_request_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="parent_sample_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_order_label_request_parent_sample"
+                    references="sample(id)"/>
+            </column>
+            <column name="sample_item_id" type="numeric(10,0)">
+                <constraints nullable="true"
+                    foreignKeyName="fk_order_label_request_sample_item"
+                    references="sample_item(id)"/>
+            </column>
+            <column name="preset_id" type="INTEGER">
+                <constraints nullable="false"
+                    foreignKeyName="fk_order_label_request_preset"
+                    references="label_preset(id)"/>
+            </column>
+            <column name="qty" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="preset_snapshot" type="JSONB"><constraints nullable="false"/></column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <sql>ALTER TABLE clinlims.order_label_request
+             ADD CONSTRAINT order_label_request_qty_nonneg CHECK (qty >= 0);</sql>
+
+        <createIndex indexName="idx_order_label_request_parent_sample" tableName="order_label_request" schemaName="clinlims">
+            <column name="parent_sample_id"/>
+        </createIndex>
+        <createIndex indexName="idx_order_label_request_sample_item" tableName="order_label_request" schemaName="clinlims">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex indexName="idx_order_label_request_preset" tableName="order_label_request" schemaName="clinlims">
+            <column name="preset_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_order_label_request_parent_sample" tableName="order_label_request" schemaName="clinlims"/>
+            <dropIndex indexName="idx_order_label_request_sample_item" tableName="order_label_request" schemaName="clinlims"/>
+            <dropIndex indexName="idx_order_label_request_preset" tableName="order_label_request" schemaName="clinlims"/>
+            <dropTable tableName="order_label_request" schemaName="clinlims"/>
+            <dropSequence sequenceName="order_label_request_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

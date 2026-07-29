@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1142 / FR-69 — human-readable display name for a terminology mapping.
+      Adds a nullable display_name column to test_terminology_mapping so the
+      editor can store (and the reader can show) the standard term's label next
+      to its code — e.g. "Glucose [Mass/volume] in Serum or Plasma" for LOINC
+      2345-7. Nullable because most existing rows only carry a code.
+    -->
+
+    <changeSet id="OGC-1142-terminology-display-name" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_terminology_mapping" columnName="display_name"/>
+            </not>
+        </preConditions>
+        <comment>Add nullable display_name to test_terminology_mapping.</comment>
+        <addColumn schemaName="clinlims" tableName="test_terminology_mapping">
+            <column name="display_name" type="VARCHAR(255)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_terminology_mapping" columnName="display_name"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

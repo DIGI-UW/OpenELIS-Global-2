@@ -55,6 +55,8 @@ We welcome community contributions to help improve OpenELIS Global!
    on the project wiki.
 2. Check out our [CONTRIBUTING guide](./CONTRIBUTING.md) for detailed
    contribution practices and [pull request tips](PULL_REQUEST_TIPS.md).
+3. To report a **security vulnerability**, follow [SECURITY.md](./SECURITY.md)
+   (private reporting — not public issues).
 
 ### Requirements
 

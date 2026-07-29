@@ -24,8 +24,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
@@ -497,14 +497,27 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         if (test == null) {
             List<Test> alltests = testService.getActiveTestsByLoinc(loinc);
             if (alltests != null && alltests.size() > 0) {
+                if (alltests.size() > 1) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "addToTestOrPanel",
+                            "LOINC " + loinc + " matches " + alltests.size()
+                                    + " active tests and the order carried no usable specimen; the request stays"
+                                    + " ambiguous until a specimen is chosen (OGC-1145)");
+                }
                 test = alltests.get(0);
             }
         }
         if (test != null) {
             if (typeOfSample == null) {
-                typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId()).get(0);
+                // OGC-1145: only bind a sample type the order itself implies —
+                // a single-type test is deterministic; a multi-type test stays
+                // unbound (blank) so createMapsForTests routes it to the
+                // user-facing sample-type chooser instead of first-match
+                List<TypeOfSample> testTypes = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+                if (testTypes.size() == 1) {
+                    typeOfSample = testTypes.get(0);
+                }
             }
-            tests.add(new Request(test.getName(), loinc, typeOfSample.getLocalizedName()));
+            tests.add(new Request(test.getName(), loinc, typeOfSample == null ? "" : typeOfSample.getLocalizedName()));
             return;
         }
         panel = panelService.getPanelByLoincCode(loinc);
@@ -543,51 +556,46 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         for (Request testRequest : testRequests) {
             List<Test> tests = testService.getActiveTestsByLoinc(testRequest.getLoinc());
 
-            Test singleTest = tests.get(0);
-            List<TypeOfSample> sampleTypes = typeOfSampleService.getTypeOfSampleForTest(singleTest.getId());
-            TypeOfSample singleSampleType = sampleTypes.get(0);
-            boolean hasSingleSampleType = sampleTypes.size() == 1 && tests.size() == 1;
-
-            if (tests.size() > 1) {
-                if (!GenericValidator.isBlankOrNull(testRequest.getSampleType())) {
-                    for (Test test : tests) {
-                        List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
-                        Optional<TypeOfSample> matchingSampleType = typeOfSamples.stream()
-                                .filter(e -> e.getDescription().equals(testRequest.getSampleType())).findFirst();
-                        if (matchingSampleType.isPresent()) {
-                            hasSingleSampleType = true;
-                            singleSampleType = matchingSampleType.get();
-                            singleTest = test;
-                            break;
-                        }
-                    }
-                }
-
-                if (!hasSingleSampleType) {
-                    List<TestSampleType> testSampleTypeList = testNameTestSampleTypeMap.get(testRequest.getName());
-
-                    if (testSampleTypeList == null) {
-                        testSampleTypeList = new ArrayList<>();
-                        testNameTestSampleTypeMap.put(testRequest.getName(), testSampleTypeList);
-                    }
-
-                    for (Test test : tests) {
-                        sampleTypes = typeOfSampleService.getTypeOfSampleForTest(test.getId());
-                        for (TypeOfSample sampleType : sampleTypes) {
-                            testSampleTypeList.add(new TestSampleType(test, sampleType));
-                        }
-                    }
+            // OGC-1145: enumerate every candidate (test, sample type) pair for
+            // the code, narrow by the specimen the order carried, and only
+            // resolve when exactly one pair remains — otherwise the pairs go to
+            // the user-facing sample-type chooser. This replaces the old
+            // first-match reduction AND fixes the dropped-request bug where a
+            // single test with several sample types matched no branch at all.
+            List<TestSampleType> candidatePairs = new ArrayList<>();
+            for (Test test : tests) {
+                for (TypeOfSample sampleType : typeOfSampleService.getTypeOfSampleForTest(test.getId())) {
+                    candidatePairs.add(new TestSampleType(test, sampleType));
                 }
             }
 
-            if (hasSingleSampleType) {
-                PanelTestLists panelTestLists = typeOfSampleMap.get(singleSampleType);
+            if (!GenericValidator.isBlankOrNull(testRequest.getSampleType())) {
+                List<TestSampleType> matchingPairs = candidatePairs.stream()
+                        .filter(pair -> testRequest.getSampleType().equals(pair.getSampleType().getDescription()))
+                        .collect(Collectors.toList());
+                if (!matchingPairs.isEmpty()) {
+                    candidatePairs = matchingPairs;
+                }
+            }
+
+            if (candidatePairs.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "createMapsForTests",
+                        "no (test, sample type) candidate for LOINC " + testRequest.getLoinc());
+                continue;
+            }
+
+            if (candidatePairs.size() == 1) {
+                TestSampleType resolved = candidatePairs.get(0);
+                PanelTestLists panelTestLists = typeOfSampleMap.get(resolved.getSampleType());
                 if (panelTestLists == null) {
                     panelTestLists = new PanelTestLists();
-                    typeOfSampleMap.put(singleSampleType, panelTestLists);
+                    typeOfSampleMap.put(resolved.getSampleType(), panelTestLists);
                 }
-
-                panelTestLists.addTest(singleTest);
+                panelTestLists.addTest(resolved.getTest());
+            } else {
+                List<TestSampleType> testSampleTypeList = testNameTestSampleTypeMap
+                        .computeIfAbsent(testRequest.getName(), name -> new ArrayList<>());
+                testSampleTypeList.addAll(candidatePairs);
             }
         }
     }

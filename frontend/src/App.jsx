@@ -107,6 +107,10 @@ import {
   RuleConfigPanel,
 } from "./components/qc";
 import ResultSearch from "./components/resultPage/ResultSearch";
+import {
+  LegacyResultsGate,
+  UnifiedResultsRoute,
+} from "./components/resultPage/unified/routeGates";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { languages, languageMessages } from "./languages";
@@ -1190,13 +1194,27 @@ export default function App() {
                   component={() => <Workplan type="priority" />}
                   role={Roles.RESULTS}
                 />
+                {/* OGC-1020 (R1): canonical unified worklist, gated by the
+                    results.entry.unifiedRoute site flag */}
+                <SecureRoute
+                  path="/Results"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
+                      <UnifiedResultsRoute />
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.RESULTS}
+                />
                 <SecureRoute
                   path="/result"
                   exact
                   component={() => (
-                    <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
-                    </RouteErrorBoundary>
+                    <LegacyResultsGate>
+                      <RouteErrorBoundary {...routeErrorResultsSearch}>
+                        <ResultSearch />
+                      </RouteErrorBoundary>
+                    </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
                 />
@@ -1204,9 +1222,11 @@ export default function App() {
                   path="/LogbookResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
-                    </RouteErrorBoundary>
+                    <LegacyResultsGate>
+                      <RouteErrorBoundary {...routeErrorResultsSearch}>
+                        <ResultSearch />
+                      </RouteErrorBoundary>
+                    </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
                 />
@@ -1214,9 +1234,11 @@ export default function App() {
                   path="/PatientResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
-                    </RouteErrorBoundary>
+                    <LegacyResultsGate>
+                      <RouteErrorBoundary {...routeErrorResultsSearch}>
+                        <ResultSearch />
+                      </RouteErrorBoundary>
+                    </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
                 />
@@ -1224,9 +1246,11 @@ export default function App() {
                   path="/AccessionResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
-                    </RouteErrorBoundary>
+                    <LegacyResultsGate>
+                      <RouteErrorBoundary {...routeErrorResultsSearch}>
+                        <ResultSearch />
+                      </RouteErrorBoundary>
+                    </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
                 />
@@ -1234,9 +1258,11 @@ export default function App() {
                   path="/StatusResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
-                    </RouteErrorBoundary>
+                    <LegacyResultsGate>
+                      <RouteErrorBoundary {...routeErrorResultsSearch}>
+                        <ResultSearch />
+                      </RouteErrorBoundary>
+                    </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
                 />
@@ -1244,9 +1270,11 @@ export default function App() {
                   path="/RangeResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
-                    </RouteErrorBoundary>
+                    <LegacyResultsGate>
+                      <RouteErrorBoundary {...routeErrorResultsSearch}>
+                        <ResultSearch />
+                      </RouteErrorBoundary>
+                    </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
                 />

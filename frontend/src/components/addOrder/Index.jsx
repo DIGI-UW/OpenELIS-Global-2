@@ -1,5 +1,13 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Button, ProgressIndicator, ProgressStep, Stack } from "@carbon/react";
+import {
+  Button,
+  InlineNotification,
+  ProgressIndicator,
+  ProgressStep,
+  Select,
+  SelectItem,
+  Stack,
+} from "@carbon/react";
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
 import AddOrder from "./AddOrder";
@@ -23,7 +31,7 @@ import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "sidenav.label.addorder", link: "/SamplePatientEntry" },
+  { label: "breadcrumb.label.addOrder", link: "/SamplePatientEntry" },
 ];
 
 export let sampleObject = {
@@ -65,14 +73,14 @@ const Index = () => {
     contactPhone: { body: "", status: true },
   });
   const [stagedAttachments, setStagedAttachments] = useState([]);
+  // OGC-1145 FR-8 — e-order tests/panels whose sample type couldn't be resolved
+  // from the message (multi-specimen test, no specimen coding): the accessioner
+  // picks the specimen here, which files the orderable under that sample type.
+  const [crossTests, setCrossTests] = useState([]);
+  const [crossPanels, setCrossPanels] = useState([]);
 
   let SampleTypes = [];
   let sampleTypeMap = {};
-  let CrossPanels = [];
-  let CrossTests = [];
-  let sampleTypeOrder;
-  let crossSampleTypeMap = {};
-  let crossSampleTypeOrderMap = {};
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -154,8 +162,6 @@ const Index = () => {
     let newOrderFormValues = { ...orderFormValues };
 
     SampleTypes = [];
-    CrossPanels = [];
-    CrossTests = [];
     sampleTypeMap = {};
 
     //TODO all these actions mimic other areas of the code. Possible rework could centralize these calls into a context
@@ -181,11 +187,6 @@ const Index = () => {
         alert(order.user_alert);
       }
 
-      // initialize objects and globals
-      sampleTypeOrder = -1;
-      crossSampleTypeMap = {};
-      crossSampleTypeOrderMap = {};
-
       if (order.sampleTypes != "") {
         parseSampletypes(
           newOrderFormValues,
@@ -209,23 +210,16 @@ const Index = () => {
         },
       };
       setOrderFormValues(newOrderFormValues);
-      setSamples(SampleTypes);
+      // A pure awaiting-specimen order carries no pre-bound sample types; keep
+      // the blank sample entry so the Add Sample step stays usable while the
+      // chooser below resolves the specimens.
+      setSamples(SampleTypes.length > 0 ? SampleTypes : [sampleObject]);
 
-      //TODO not translated over for 3.0 Unsure if needed
-      // parseCrossPanels(
-      //   order.crosspanel,
-      //   crossSampleTypeMap,
-      //   crossSampleTypeOrderMap,
-      // );
-      // parseCrossTests(
-      //   order.crosstest,
-      //   crossSampleTypeMap,
-      //   crossSampleTypeOrderMap,
-      // );
-      // populateCrossPanelsAndTests(CrossPanels, CrossTests, '${entryDate}');
-      // displaySampleTypes('${entryDate}');
-
-      // if (SampleTypes.length > 0) sampleClicked(1);
+      // OGC-1145 FR-8 — orderables the provider couldn't bind to one specimen
+      // (<crosstest>/<crosspanel> in the provider XML) go to the chooser instead
+      // of being first-matched; resolving one files it under the chosen type.
+      setCrossTests(order.crosstest ? parseCrossList(order.crosstest) : []);
+      setCrossPanels(order.crosspanel ? parseCrossList(order.crosspanel) : []);
     } else {
       alert(message);
     }
@@ -359,71 +353,76 @@ const Index = () => {
     return index;
   };
 
-  // const parseCrossPanels = (
-  //   crosspanels,
-  //   crossSampleTypeMap,
-  //   crossSampleTypeOrderMap,
-  // ) => {
-  //   for (let i = 0; i < crosspanels.length; i++) {
-  //     var crossPanelName = crosspanels[i].name;
-  //     var crossPanelId = crosspanels[i].id;
-  //     var crossSampleTypes = crosspanels[i].crosssampletypes;
+  // <crosstest>/<crosspanel> nodes → { id?, name, options: [{id, name, testId}] }.
+  // Options are the candidate sample types the orderable may run under.
+  const parseCrossList = (crossNodes) => {
+    const nodes = crossNodes instanceof Array ? crossNodes : [crossNodes];
+    return nodes.filter(Boolean).map((node) => ({
+      id: node.id ? "" + node.id : null,
+      name: node.name,
+      options: getNodeNamesByTagName(
+        node.crosssampletypes || {},
+        "crosssampletype",
+      ),
+      chosenId: "",
+    }));
+  };
 
-  //     CrossPanels[i] = newCrossPanel(crossPanelId, crossPanelName);
-  //     CrossPanels[i].sampleTypes = getNodeNamesByTagName(
-  //       crossSampleTypes,
-  //       "crosssampletype",
-  //     );
-  //     CrossPanels[i].typeMap = [CrossPanels[i].sampleTypes.length];
+  // Files a resolved orderable under the chosen sample type, creating the
+  // sample entry if the order didn't already carry one of that type (mirrors
+  // parseSampletype's autofill behavior).
+  const addUnderSampleType = (option, applyToSampleType) => {
+    setSamples((prev) => {
+      const next = prev
+        .filter((s) => s.sampleTypeId !== "")
+        .map((s) => ({
+          ...s,
+          tests: [...s.tests],
+          panels: [...s.panels],
+        }));
+      let sampleType = next.find((s) => s.sampleTypeId === "" + option.id);
+      if (!sampleType) {
+        sampleType = newSampleType(option.id, option.name, next.length + 1);
+        if (configurationProperties?.AUTOFILL_COLLECTION_DATE === "true") {
+          sampleType.sampleXML.collectionDate =
+            configurationProperties.currentDateAsText;
+          sampleType.sampleXML.collectionTime =
+            configurationProperties.currentTimeAsText;
+        }
+        next.push(sampleType);
+      }
+      applyToSampleType(sampleType);
+      return next;
+    });
+  };
 
-  //     for (let j = 0; j < CrossPanels[i].sampleTypes.length; j = j + 1) {
-  //       CrossPanels[i].typeMap[CrossPanels[i].sampleTypes[j].name] = "t";
-  //       var sampleType = crossSampleTypeMap[CrossPanels[i].sampleTypes[j].id];
+  const resolveCrossTest = (index, optionId) => {
+    const crossTest = crossTests[index];
+    const option = crossTest.options.find((o) => o.id === optionId);
+    if (!option) {
+      return;
+    }
+    addUnderSampleType(option, (sampleType) => {
+      if (!sampleType.tests.some((t) => t.id === "" + option.testId)) {
+        sampleType.tests.push(newTest(option.testId, crossTest.name));
+      }
+    });
+    setCrossTests((prev) => prev.filter((_, i) => i !== index));
+  };
 
-  //       if (sampleType === undefined) {
-  //         crossSampleTypeMap[CrossPanels[i].sampleTypes[j].id] =
-  //           CrossPanels[i].sampleTypes[j];
-  //         sampleTypeOrder = sampleTypeOrder + 1;
-  //         crossSampleTypeOrderMap[sampleTypeOrder] =
-  //           CrossPanels[i].sampleTypes[j].id;
-  //       }
-  //     }
-  //   }
-  // };
-
-  // const parseCrossTests = (
-  //   crosstests,
-  //   crossSampleTypeMap,
-  //   crossSampleTypeOrderMap,
-  // ) => {
-  //   for (let x = 0; x < crosstests.length; x = x + 1) {
-  //     var crossTestName = crosstests[x].name;
-  //     var crossSampleTypes = crosstests[x].crosssampletypes;
-
-  //     CrossTests[x] = newCrossTest(crossTestName);
-  //     CrossTests[x].sampleTypes = getNodeNamesByTagName(
-  //       crossSampleTypes,
-  //       "crosssampletype",
-  //     );
-  //     CrossTests[x].typeMap = [CrossTests[x].sampleTypes.length];
-  //     var sTypes = [];
-  //     for (var y = 0; y < CrossTests[x].sampleTypes.length; y++) {
-  //       //alert(crossTestName + " " + CrossTests[x].sampleTypes[y].id + " testid=" + CrossTests[x].sampleTypes[y].testId);
-  //       sTypes[y] = CrossTests[x].sampleTypes[y];
-  //       CrossTests[x].typeMap[CrossTests[x].sampleTypes[y].name] = "t";
-  //       var sType = crossSampleTypeMap[CrossTests[x].sampleTypes[y].id];
-
-  //       if (sType === undefined) {
-  //         crossSampleTypeMap[CrossTests[x].sampleTypes[y].id] =
-  //           CrossTests[x].sampleTypes[y];
-  //         sampleTypeOrder++;
-  //         crossSampleTypeOrderMap[sampleTypeOrder] =
-  //           CrossTests[x].sampleTypes[y].id;
-  //       }
-  //     }
-  //     crossTestSampleTypeTestIdMap[crossTestName] = sTypes;
-  //   }
-  // };
+  const resolveCrossPanel = (index, optionId) => {
+    const crossPanel = crossPanels[index];
+    const option = crossPanel.options.find((o) => o.id === optionId);
+    if (!option) {
+      return;
+    }
+    addUnderSampleType(option, (sampleType) => {
+      if (!sampleType.panels.some((p) => p.id === crossPanel.id)) {
+        sampleType.panels.push(newPanel(crossPanel.id, crossPanel.name));
+      }
+    });
+    setCrossPanels((prev) => prev.filter((_, i) => i !== index));
+  };
 
   function addPanelsToSampleType(sampleType, panelNodes) {
     for (let i = 0; i < panelNodes.length; i++) {
@@ -537,21 +536,6 @@ const Index = () => {
       id: "" + id,
       name: name,
       testId: testId,
-    };
-  };
-  const newCrossPanel = (id, name) => {
-    return {
-      id: "" + id,
-      name: name,
-      sampleTypes: [],
-      typeMap: [],
-    };
-  };
-  const newCrossTest = (name) => {
-    return {
-      name: name,
-      sampleTypes: [],
-      typeMap: [],
     };
   };
 
@@ -834,6 +818,68 @@ const Index = () => {
                   label={intl.formatMessage({ id: "order.label.add" })}
                 />
               </ProgressIndicator>
+            )}
+
+            {(crossTests.length > 0 || crossPanels.length > 0) && (
+              <div
+                style={{ marginTop: "1rem" }}
+                data-testid="awaiting-specimen-chooser"
+              >
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "notice.testCatalog.intake.awaitingSpecimen",
+                  })}
+                />
+                {crossTests.map((crossTest, i) => (
+                  <Select
+                    key={`cross-test-${crossTest.name}-${i}`}
+                    id={`cross-test-${i}`}
+                    labelText={crossTest.name}
+                    defaultValue=""
+                    onChange={(e) => resolveCrossTest(i, e.target.value)}
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "label.testCatalog.specimenType",
+                      })}
+                    />
+                    {crossTest.options.map((option) => (
+                      <SelectItem
+                        key={option.id}
+                        value={option.id}
+                        text={option.name}
+                      />
+                    ))}
+                  </Select>
+                ))}
+                {crossPanels.map((crossPanel, i) => (
+                  <Select
+                    key={`cross-panel-${crossPanel.name}-${i}`}
+                    id={`cross-panel-${i}`}
+                    labelText={crossPanel.name}
+                    defaultValue=""
+                    onChange={(e) => resolveCrossPanel(i, e.target.value)}
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "label.testCatalog.specimenType",
+                      })}
+                    />
+                    {crossPanel.options.map((option) => (
+                      <SelectItem
+                        key={option.id}
+                        value={option.id}
+                        text={option.name}
+                      />
+                    ))}
+                  </Select>
+                ))}
+              </div>
             )}
 
             {page === patientInfoPageNumber && (

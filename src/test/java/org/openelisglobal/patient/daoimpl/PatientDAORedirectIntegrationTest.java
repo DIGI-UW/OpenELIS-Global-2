@@ -39,6 +39,11 @@ public class PatientDAORedirectIntegrationTest extends BaseWebContextSensitiveTe
     @Before
     public void setUp() throws Exception {
         ensureReferenceTables("PERSON", "PATIENT");
+        // Sibling tests seed person/patient rows with explicit ids (DBUnit
+        // fixtures) without advancing the sequences; resync so the inserts below
+        // can't collide with a seeded id (order-dependent person_pk flake).
+        resyncSequence("clinlims.person_seq", "clinlims.person");
+        resyncSequence("clinlims.patient_seq", "clinlims.patient");
         // Create persons for test patients
         primaryPerson = new Person();
         primaryPerson.setFirstName("John");

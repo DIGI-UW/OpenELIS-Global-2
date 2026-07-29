@@ -10,6 +10,13 @@ services:
     volumes:
       - ./projects/analyzer-harness/e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
+      # Canonical analyzer profiles — the mock derives each analyzer's assay menu
+      # (the OBX results it emits) from these via profile_adapter. Templates are
+      # transport-only and carry NO embedded result fields, so without this mount
+      # the profile lookup FileNotFounds, falls back to an empty template, and the
+      # mock emits OBX-less ORUs that the bridge rejects (MSA|AE). Must match
+      # ANALYZER_PROFILES_DIR below.
+      - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "5000:9600"
@@ -22,6 +29,10 @@ services:
       - RESPONSE_DELAY_MS=0
       - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
       - MOCK_CONTAINER_NAME=openelis-astm-simulator
+      # Profiles ROOT (profile_adapter appends {astm,hl7,file}/<name>.json). Without
+      # this the unset-env fallback resolves to /projects/analyzer-profiles (dirname
+      # bottoms out at / from WORKDIR /app) which does not exist in the container.
+      - ANALYZER_PROFILES_DIR=/data/analyzer-profiles
     command: >
       python -u server.py
       --port 9600

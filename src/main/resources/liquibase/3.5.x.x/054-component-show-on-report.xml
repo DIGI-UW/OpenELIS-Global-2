@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 / OGC-1127 — per-component "show on report" default.
+      Adds show_on_report to test_result_component (default true) so existing
+      components keep printing. The patient report omits components whose flag
+      is false; single-component tests are unchanged.
+    -->
+
+    <changeSet id="OGC-1127-component-show-on-report" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_result_component" columnName="show_on_report"/>
+            </not>
+        </preConditions>
+        <comment>Add show_on_report boolean (default true) to test_result_component.</comment>
+        <addColumn schemaName="clinlims" tableName="test_result_component">
+            <column name="show_on_report" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_result_component" columnName="show_on_report"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

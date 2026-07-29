@@ -28,6 +28,10 @@ import { CustomCommonSortableOrderList } from "./../sortableListComponent/Sortab
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import { extractAgeRangeParts } from "./TestFormData";
+import {
+  hydrateDictionaryFromInitial,
+  resolveDictionaryItemId,
+} from "./testStepDictionaryMatching";
 
 export const TestStepForm = ({
   initialData,
@@ -313,29 +317,12 @@ export const TestStepForm = ({
       }
 
       if (initialData.dictionary && Array.isArray(initialData.dictionary)) {
-        const matchedDictFlat = initialData.dictionary
-          .map((val) => {
-            const isString = typeof val === "string";
-            const valueRaw = isString ? val : (val?.value ?? "");
-
-            const firstToken = valueRaw.trim().split(" ")[0];
-            const qualified = valueRaw.toLowerCase().includes("qualifiable")
-              ? "Y"
-              : "N";
-
-            const matched = dictionaryList.find((dictItem) => {
-              return dictItem.value.trim() === firstToken;
-            });
-
-            return matched
-              ? {
-                  id: matched.id,
-                  value: matched.value,
-                  qualified,
-                }
-              : null;
-          })
-          .filter(Boolean);
+        // OGC-525: hydrate against the FULL value, not the first token.
+        const matchedDictFlat = hydrateDictionaryFromInitial(
+          initialData.dictionary,
+          dictionaryList,
+          groupedDictionaryList,
+        );
 
         setSingleSelectDictionaryList(matchedDictFlat);
         setMultiSelectDictionaryList(matchedDictFlat);
@@ -352,30 +339,26 @@ export const TestStepForm = ({
           })),
         }));
 
-        const extractFirst = (val) => val?.trim()?.split(" ")[0];
+        const refMatchId = resolveDictionaryItemId(
+          initialData?.dictionaryReference,
+          dictionaryList,
+        );
+        const defaultMatchId = resolveDictionaryItemId(
+          initialData?.defaultTestResult,
+          dictionaryList,
+        );
 
-        const refValue = extractFirst(initialData?.dictionaryReference);
-        const defaultVal = extractFirst(initialData?.defaultTestResult);
-
-        const refMatch = dictionaryList.find((item) => {
-          return item.value.trim() === refValue;
-        });
-
-        const defaultMatch = dictionaryList.find((item) => {
-          return item.value.trim() === defaultVal;
-        });
-
-        if (refMatch) {
+        if (refMatchId) {
           setFormData((prev) => ({
             ...prev,
-            dictionaryReference: refMatch.id,
+            dictionaryReference: refMatchId,
           }));
         }
 
-        if (defaultMatch) {
+        if (defaultMatchId) {
           setFormData((prev) => ({
             ...prev,
-            defaultTestResult: defaultMatch.id,
+            defaultTestResult: defaultMatchId,
           }));
         }
       }
@@ -2482,10 +2465,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                       : NaN;
 
                     const validAgainstLowNormal =
-                      isNaN(lowNormal) || lowValid < lowNormal;
+                      isNaN(lowNormal) || lowValid <= lowNormal;
 
                     const validAgainstLowNormalFemale =
-                      isNaN(lowNormalFemale) || lowValid < lowNormalFemale;
+                      isNaN(lowNormalFemale) || lowValid <= lowNormalFemale;
 
                     return validAgainstLowNormal && validAgainstLowNormalFemale;
                   },
@@ -2537,10 +2520,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                       : NaN;
 
                     const validAgainstHighNormal =
-                      isNaN(highNormal) || highValid > highNormal;
+                      isNaN(highNormal) || highValid >= highNormal;
 
                     const validAgainstHighNormalFemale =
-                      isNaN(highNormalFemale) || highValid > highNormalFemale;
+                      isNaN(highNormalFemale) || highValid >= highNormalFemale;
 
                     return (
                       validAgainstHighNormal && validAgainstHighNormalFemale

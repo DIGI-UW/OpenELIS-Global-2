@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -141,6 +142,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
+import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -169,6 +172,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private AnalysisService analysisService;
     @Autowired
     private TestService testService;
+    @Autowired
+    private TestTerminologyMappingService testTerminologyMappingService;
+    @Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
     @Autowired
     private ResultService resultService;
     @Autowired
@@ -1141,10 +1148,158 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformTestToCodeableConcept",
                 "transformTestToCodeableConcept test called");
 
+        String display = test.getLocalizedTestName() != null ? test.getLocalizedTestName().getEnglish()
+                : test.getName();
         CodeableConcept codeableConcept = new CodeableConcept();
-        codeableConcept
-                .addCoding(new Coding("http://loinc.org", test.getLoinc(), test.getLocalizedTestName().getEnglish()));
+
+        // Group the configured terminology mappings (the editor's Terminology section
+        // is the source of truth) by their FHIR system, keeping only those with a
+        // recognized system and a code. The legacy test.loinc value participates as a
+        // LOINC SAME_AS candidate — it is kept in sync with the LOINC SAME_AS mapping
+        // and also covers tests not yet migrated to the terminology editor.
+        Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
+        for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
+            // Only test-level mappings identify the test itself; component-scoped
+            // mappings (component_id != null) describe a sub-result, not this code.
+            if (mapping.getComponentId() != null) {
+                continue;
+            }
+            String system = terminologySystemUrl(mapping.getSource());
+            if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
+                continue;
+            }
+            // Coding.display: the mapping's curated display name (the standard
+            // term's label, FR-69) when present; otherwise the test name.
+            String codingDisplay = GenericValidator.isBlankOrNull(mapping.getDisplayName()) ? display
+                    : mapping.getDisplayName();
+            bySystem.computeIfAbsent(system, k -> new ArrayList<>()).add(new Candidate(mapping.getCode(),
+                    "SAME_AS".equalsIgnoreCase(mapping.getRelationship()), codingDisplay));
+        }
+        if (!GenericValidator.isBlankOrNull(test.getLoinc())) {
+            bySystem.computeIfAbsent("http://loinc.org", k -> new ArrayList<>())
+                    .add(new Candidate(test.getLoinc(), true, display));
+        }
+
+        // Emit one system's codings at a time. Within a system the SAME_AS mapping is
+        // the equivalent concept, so it wins; with no SAME_AS we keep the rest. A test
+        // thus maps to multiple terminology systems at once (LOINC + SNOMED + ...).
+        for (Map.Entry<String, List<Candidate>> entry : bySystem.entrySet()) {
+            String system = entry.getKey();
+            List<Candidate> candidates = entry.getValue();
+            boolean hasSameAs = candidates.stream().anyMatch(c -> c.sameAs);
+            Set<String> seenCodes = new HashSet<>();
+            for (Candidate candidate : candidates) {
+                if (hasSameAs && !candidate.sameAs) {
+                    continue;
+                }
+                if (seenCodes.add(candidate.code)) {
+                    codeableConcept.addCoding(new Coding(system, candidate.code, candidate.display));
+                }
+            }
+        }
         return codeableConcept;
+    }
+
+    /**
+     * The active result component a result belongs to (via its test_result's
+     * component_id), or null when the result is not component-scoped / legacy.
+     */
+    private org.openelisglobal.testresultcomponent.valueholder.TestResultComponent resolveResultComponent(String testId,
+            Result result) {
+        String componentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (componentId == null) {
+            return null;
+        }
+        for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent c : testResultComponentService
+                .getActiveComponentsByTestId(testId)) {
+            if (componentId.equals(c.getId())) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The CodeableConcept for a result's Observation. It always starts from the
+     * whole-test codings (the "Applies to = whole test" mappings + legacy LOINC),
+     * so every component Observation still carries the test's identity. When the
+     * result belongs to a component it ALSO gets that component's own codings (the
+     * "Applies to = this component" mappings) — including the primary — so a single
+     * Observation can bear both the test and the component terminology. A
+     * non-primary component additionally gets an OpenELIS coding for its stable
+     * code and the component label as text, so it is individually identifiable.
+     */
+    private CodeableConcept transformResultCodeableConcept(Test test,
+            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component) {
+        // Base: the whole-test codings, applied to every result's Observation.
+        CodeableConcept codeableConcept = transformTestToCodeableConcept(test);
+        if (component == null) {
+            return codeableConcept;
+        }
+        String label = GenericValidator.isBlankOrNull(component.getLabel()) ? component.getCode()
+                : component.getLabel();
+        for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
+            if (!component.getId().equals(mapping.getComponentId())) {
+                continue;
+            }
+            String system = terminologySystemUrl(mapping.getSource());
+            if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
+                continue;
+            }
+            // Coding.display: the mapping's curated display name (FR-69) when
+            // present; otherwise the component's name.
+            String codingDisplay = GenericValidator.isBlankOrNull(mapping.getDisplayName()) ? label
+                    : mapping.getDisplayName();
+            codeableConcept.addCoding(new Coding(system, mapping.getCode(), codingDisplay));
+        }
+        if (!component.getIsPrimary()) {
+            codeableConcept.addCoding(
+                    new Coding(fhirConfig.getOeFhirSystem() + "/test_result_component", component.getCode(), label));
+            codeableConcept.setText(label);
+        }
+        return codeableConcept;
+    }
+
+    /**
+     * A candidate code for one terminology system, flagged if it is a SAME_AS
+     * mapping, carrying the display to emit on its Coding (the mapping's curated
+     * display name when present, else the test/component name).
+     */
+    private static final class Candidate {
+        private final String code;
+        private final boolean sameAs;
+        private final String display;
+
+        private Candidate(String code, boolean sameAs, String display) {
+            this.code = code;
+            this.sameAs = sameAs;
+            this.display = display;
+        }
+    }
+
+    /**
+     * Canonical FHIR system URI for a terminology mapping source. LOINC and SNOMED
+     * use the HL7-registered URIs already used elsewhere in this service; CIEL and
+     * OCL use their OpenConceptLab canonical URLs. Returns {@code null} for an
+     * unrecognized source so it is skipped rather than emitting a bogus system.
+     */
+    private String terminologySystemUrl(String source) {
+        if (source == null) {
+            return null;
+        }
+        switch (source.toUpperCase()) {
+        case "LOINC":
+            return "http://loinc.org";
+        case "SNOMED":
+            return "http://snomed.info/sct";
+        case "CIEL":
+            return "https://openconceptlab.org/orgs/CIEL/sources/CIEL";
+        case "OCL":
+            return "https://openconceptlab.org";
+        default:
+            return null;
+        }
     }
 
     private Specimen transformToFhirSpecimen(SampleTestCollection sampleTest) {
@@ -2038,7 +2193,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 observation.setValue(new StringType(result.getValue()));
             }
         }
-        observation.setCode(transformTestToCodeableConcept(test.getId()));
+        // Each result's Observation carries the whole-test codings PLUS, when it
+        // belongs to a component, that component's own codings — so a component
+        // Observation can bear more than one terminology (test + component), and the
+        // primary carries both too (OGC-1128/OGC-1129).
+        org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = resolveResultComponent(
+                test.getId(), result);
+        observation.setCode(transformResultCodeableConcept(test, component));
         observation.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         observation.setSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
         // OGC-356: Environmental samples don't have a patient
@@ -2473,7 +2634,25 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Test requestedTest = null;
         if (serviceRequest.hasCode()) {
             List<Test> foundTests = resolveTestsFromServiceRequest(serviceRequest);
-            requestedTest = foundTests.get(0);
+            // OGC-1145: the ServiceRequest's specimen was resolved above —
+            // prefer the candidate test associated with that sample type
+            // instead of first-match, so a shared code (or a test spanning
+            // several specimens) resolves to the specimen the order names
+            if (sampleItem != null && sampleItem.getTypeOfSample() != null && foundTests.size() > 1) {
+                String specimenTypeId = sampleItem.getTypeOfSample().getId();
+                requestedTest = foundTests
+                        .stream().filter(candidate -> typeOfSampleService.getTypeOfSampleForTest(candidate.getId())
+                                .stream().anyMatch(type -> specimenTypeId.equals(type.getId())))
+                        .findFirst().orElse(null);
+                if (requestedTest == null) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "buildSampleEditItems",
+                            "no candidate test for ServiceRequest " + serviceRequest.getIdElement().getIdPart()
+                                    + " matches specimen type " + specimenTypeId + "; falling back to first match");
+                }
+            }
+            if (requestedTest == null) {
+                requestedTest = foundTests.get(0);
+            }
         }
 
         // Build edit item for existing analysis if available

@@ -1,10 +1,12 @@
 package org.openelisglobal.logging.controller;
 
+import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Test;
+import org.openelisglobal.logging.controller.LoggingController.InMemoryLogAppender;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,6 +55,11 @@ public class LoggingControllerSecurityTest extends SecuritySliceMockMvcTest {
         @Bean
         LoggingController loggingController() {
             return new LoggingController();
+        }
+
+        @Bean
+        InMemoryLogAppender inMemoryLogAppender() {
+            return mock(InMemoryLogAppender.class);
         }
     }
 }

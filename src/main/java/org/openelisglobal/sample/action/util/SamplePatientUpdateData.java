@@ -287,28 +287,33 @@ public class SamplePatientUpdateData {
     }
 
     public void validateSample(Errors errors, boolean requireSampleItems) {
+        // OGC-743: surface every validation failure as a field-tagged
+        // rejectValue so the frontend's fieldErrors[] (built by
+        // SamplePatientEntryRestController.buildErrorBody from
+        // BindingResult.getFieldErrors) sees them. Global errors via
+        // errors.reject(...) were dropped from the response body.
+
         // assure accession number - skip validation for updates (sample already exists)
         // When updating, the accession number is already in the database for this
-        // sample,
-        // so checkAccessionNumberValidity would incorrectly return USED_FAIL
+        // sample, so checkAccessionNumberValidity would incorrectly return USED_FAIL
         if (sample == null || sample.getId() == null) {
             IAccessionNumberValidator.ValidationResults result = AccessionNumberUtil
                     .checkAccessionNumberValidity(accessionNumber, null, null, null);
 
             if (result != IAccessionNumberValidator.ValidationResults.SUCCESS) {
                 String message = AccessionNumberUtil.getInvalidMessage(result);
-                errors.reject(message);
+                errors.rejectValue("sampleOrderItems.labNo", "accession.invalid", message);
             }
         }
 
         // assure that there is at least 1 sample (skip for order-entry-only mode)
         if (requireSampleItems && sampleItemsTests.isEmpty()) {
-            errors.reject("errors.no.sample");
+            errors.rejectValue("sampleOrderItems", "errors.no.sample", "errors.no.sample");
         }
 
         // assure that all samples have tests (skip for order-entry-only mode)
         if (requireSampleItems && !allSamplesHaveTests()) {
-            errors.reject("errors.samples.with.no.tests");
+            errors.rejectValue("sampleOrderItems", "errors.samples.with.no.tests", "errors.samples.with.no.tests");
         }
 
         // check patient errors

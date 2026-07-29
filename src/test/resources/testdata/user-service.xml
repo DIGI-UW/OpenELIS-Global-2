@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- IDs >= 100 for every table that tests INSERT into (system_user, login_user,
+        lab_unit_role_map). After TRUNCATE RESTART IDENTITY CASCADE the sequences
+        reset to 1, so new rows inserted by service calls get IDs 1-99, which never
+        collide with these fixture rows. No jdbcTemplate hacks needed. IDs stay low
+        (1, 2) for reference-only tables (system_role, test_section) because tests
+        never INSERT into those — they are only looked up. -->
+
+    <!-- System users -->
+    <system_user id="100" external_id="EXT100"
+        login_name="admin" last_name="Admin" first_name="Super" initials="SA"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="101" external_id="EXT101"
+        login_name="jdoe" last_name="Doe" first_name="John" initials="JD"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="102" external_id="EXT102"
+        login_name="asmith" last_name="Smith" first_name="Alice" initials="AS"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <!-- Login users -->
+    <login_user id="100" login_name="admin" password="password"
+        password_expired_dt="2030-04-09" account_locked="N"
+        account_disabled="N" is_admin="Y" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+    <login_user id="101" login_name="jdoe" password="password"
+        password_expired_dt="2026-04-09" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+
+    <!-- Roles — low IDs are safe; tests never INSERT into system_role -->
+    <system_role id="1" name="adminRole"
+        description="Administrator role" is_grouping_role="false"
+        grouping_parent="1" display_key="adminKey" active="true"
+        editable="true" />
+    <system_role id="2" name="labTech"
+        description="Lab Tech role" is_grouping_role="false"
+        grouping_parent="1" display_key="techKey" active="true"
+        editable="true" />
+
+    <!-- User-role assignments -->
+    <system_user_role system_user_id="100" role_id="1" />
+    <system_user_role system_user_id="101" role_id="2" />
+
+    <!-- UserLabUnitRoles base row — for getAllUserLabUnitRoles test -->
+    <user_lab_unit_roles system_user_id="101"
+        last_updated="2025-03-08 12:00:00" />
+
+    <!-- LabUnitRoleMap — high ID so sequence (reset to 1) generates new IDs
+        freely -->
+    <lab_unit_role_map lab_unit_role_map_id="100"
+        lab_unit="chemistry" />
+</dataset>
