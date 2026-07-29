@@ -5703,7 +5703,7 @@
   "sideNav.title.vlreport": "VL Report",
   "sideNav.label.audittrail.orderEvents": "Order Events",
   "sideNav.label.audittrail.systemEvents": "System Events",
-  "sidenav.label.addorder": "Add Generic Order",
+  "sidenav.label.addorder": "Add Order",
   "sidenav.label.admin.sampleTypeManagement": "Sample Type Management",
   "sidenav.title.statusreport": "Patient Status Report",
   "systemAudit.filter.startDate": "Start Date",
