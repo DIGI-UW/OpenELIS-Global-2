@@ -55,6 +55,12 @@ test.describe("Microbiology case workbench", () => {
     await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
+
+    await page
+      .locator(".cds--accordion__heading")
+      .filter({ hasText: "Timeline" })
+      .click();
+    await expect(page).toHaveURL(/section=timeline/);
     await expect(page.getByText(/Isolate Created/)).toBeVisible();
   });
 });
