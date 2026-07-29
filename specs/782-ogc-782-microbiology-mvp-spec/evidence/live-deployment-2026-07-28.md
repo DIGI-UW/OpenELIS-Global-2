@@ -1,9 +1,24 @@
 # OGC-782 Live Deployment And UAT Verification
 
+## Current Candidate Status
+
+- PR candidate: `1e3aadfafb9818b46d8193416ca324a0c2f44f1e`
+- Current AMR deployment:
+  `3aade44dff784d2b5f3d04a8343c5f54bdb8abe0`
+- Current deployment ID: `20260729T064243Z-3aade44dff78`
+- Status: the candidate is pushed but not yet deployed. Final deployed
+  Playwright, screenshot/video, and human UAT evidence remain open in
+  `tasks.md` as T197, T198, and T200.
+
+The current deployment predates the final named HTTP 409 response for writes
+against final cases and the latest visible-report test refinements. It must not
+be treated as final acceptance evidence for the PR candidate.
+
 ## Provenance
 
 - Target: `https://amr.openelis-global.org`
-- OpenELIS commit: `9d0c55b6fd3c2363ff8b16d83474f396132180ba`
+- Earlier verified OpenELIS commit:
+  `9d0c55b6fd3c2363ff8b16d83474f396132180ba`
 - Review-tooling commit:
   `427aa5feb23a8d7b884211f64df6f752b4878a1e`
 - Full application deployment: `20260728T222317Z-9d0c55b6fd3c`
@@ -33,16 +48,18 @@ Primary case:
 
 - Checklist: `Microbiology MVP - review`
 - Structure: four stories, ten steps
-- Policy: all ten steps required
+- Policy: steps 1-9 required; step 10, shared-specimen TB reflection, optional
 - Checklist revision:
-  `e4b7ae19652e786a09aeead8fd39567bb66dc487fef9f9a8b0ac75f7aa0f0a37`
+  `cec8626fb1998b8d1e78ae84616b32f006759d3ad7681fe7d2a4c307ce26dc52`
 - Live source: `grist-live`
 - The rendered overlay reported
   `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness @
   9d0c55b`.
 
-The live overlay contains configured-navigation, canonical-state, case
-navigation, isolate, AST, report-propagation, and shared-specimen review steps.
+The live JSON contains configured-navigation, canonical-state, case navigation,
+isolate, AST, report-propagation, and shared-specimen review steps. The final
+rendered-overlay revision and application-SHA guard must be rechecked after the
+candidate deployment.
 
 ## UI And Route Verification
 
@@ -84,4 +101,3 @@ navigation, isolate, AST, report-propagation, and shared-specimen review steps.
    subscription check logs failed fetch/JSON parsing errors. The Microbiology
    workflow and Review overlay continue to work; this appears to originate in
    the existing notification surface rather than OGC-782.
-

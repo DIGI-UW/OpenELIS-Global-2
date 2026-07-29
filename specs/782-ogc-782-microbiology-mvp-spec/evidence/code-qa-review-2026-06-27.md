@@ -4,7 +4,8 @@ Originally applied locally on 2026-06-27 using `DIGI-UW/code-qa`. The reviewed
 tooling is now pinned in this repository at `tools/code-qa`, revision
 `30528d176bd128b4765242d130f38ca9fb85d7b8`.
 
-Remediation review refreshed on 2026-07-28 at app commit `3440cbdc3`.
+Remediation review refreshed on 2026-07-29 at candidate commit
+`1e3aadfafb9818b46d8193416ca324a0c2f44f1e`.
 
 ## Meaningful Test Coverage
 
@@ -19,7 +20,7 @@ Remediation review refreshed on 2026-07-28 at app commit `3440cbdc3`.
 | Service/REST | `MicroIsolateServiceTest`, `MicroAstServiceTest`, `MicrobiologyRestExceptionHandlerTest` | Final cases reject mutation and expose a named HTTP 409 conflict instead of a generic 500. |
 | Component | `IsolatePanel.test.jsx`, `MicrobiologyCaseView.test.jsx` | Final cases visibly become read-only and no longer offer enabled isolate mutation actions. |
 | E2E | `microbiology-order-entry.spec.ts` on `core-app` | The real order wizard shows microbiology details for a culture-routed test and removes them after switching to a nonculture test. |
-| E2E | `ogc-782-microbiology-mvp.spec.ts` on `core-demo` and `core-demo-video` | The assembled browser flow covers explicit setup, isolate creation and identification update, two AST readings, override/review, Result-target critical communication, final release, named mutation rejection, and visible patient-report content. |
+| E2E | `ogc-782-microbiology-mvp.spec.ts` on `core-demo` and `core-demo-video` | The assembled browser flow covers explicit setup, isolate creation and identification update, two AST readings, override/review, preliminary report projection, Result-target critical communication, final release, named mutation rejection, and visible patient-report content. |
 
 The load-bearing guards are the browser E2E proof plus release and mutation
 service tests. Reverting culture routing, report projection, final readiness, or
@@ -35,6 +36,9 @@ the final-case lock breaks a focused test at the layer that owns the behavior.
 | Final-release readiness did not block cases with no isolate. | Real code defect found during implementation. | Fixed `MicroCaseReadinessServiceImpl` and added `missingIsolateBlocksFinalRelease`. |
 | Release panel unmounted during post-release refresh in E2E. | Real code defect found by Playwright. | Kept the case workbench mounted during post-release refresh and guarded async panel updates. |
 | A service-created UAT `Method` lacked localization and broke backend restart. | Real fixture-integrity defect found by deployment. | The fixture now creates or repairs localization through services; the display list uses the entity's null-safe localized-value accessor. |
+| The service-created order scenario lacked selectable sample/test mapping and complete patient demographics. | Real fixture-integrity defect found by deployed Playwright. | The property-gated fixture repairs patient demographics and creates the sample/test mapping through application services, then clears the owning service cache. |
+| Optional isolate organism identifiers arrived as empty strings from the UI and violated the organism foreign key. | Real integration defect found by deployed Playwright and server logs. | `MicroIsolateService` normalizes blank optional identifiers to `null` on create and update; focused service tests cover both paths. |
+| Result-target critical communication had no target before report projection. | Real workflow-order defect found by deployed Playwright. | The journey performs preliminary release first, refreshes projected Result identifiers, then exercises the full Result-target communication lifecycle before final release. |
 | Final-case mutation surfaced as generic HTTP 500 and left edit controls active. | Real behavior/UX defect found during acceptance review. | Added a named 409 conflict and an explicit read-only final state while retaining service-layer enforcement. |
 | Culture-specific order fields had component tests but no assembled browser proof. | Evidence gap. | Added a registered `core-app` Playwright test across both culture and nonculture branches. |
 
@@ -63,13 +67,22 @@ unused migration was introduced in M7.
 
 ## Validation Refresh
 
-Passed locally at `3440cbdc3`:
+Passed locally through `1e3aadfaf`:
 
-- 15 focused backend controller/service tests.
-- 9 focused frontend component tests.
+- Focused backend fixture, isolate, report-release, and competing-advice
+  controller tests.
+- `ReportReadinessPanel.test.jsx`: 5 tests passed, including preliminary
+  projection target refresh.
 - Playwright ESLint and project discovery for `core-app` and `core-demo`.
 - `npm run pw:guard`.
 - Backend Spotless and frontend Prettier.
+
+Deployed runs against the prior candidate passed the focused order-entry,
+worklist/mobile, case-workbench, and critical-communication journeys. The
+canonical full demo reached preliminary projection, the Result-target critical
+lifecycle, and final release; it exposed the 500-versus-409 response defect
+that is fixed in the current candidate. The full deployed rerun, video, and
+human UAT remain pending until the exact candidate is deployed.
 
 After refreshing ignored local dependencies, TypeScript 6.0.3 executes but the
 repository-wide `npm run typecheck` still reports broad pre-existing strict-type
