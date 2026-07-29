@@ -58,6 +58,9 @@ const getCsrfToken = async (page: Page) => {
 const accordionButton = (page: Page, name: string) =>
   page.locator(".cds--accordion__heading").filter({ hasText: name });
 
+const caseStatusTag = (page: Page, name: string) =>
+  page.locator("header .cds--tag__label").filter({ hasText: name });
+
 test.describe("OGC-782 microbiology MVP", () => {
   test("case setup, isolate creation, manual AST, override, and review", async ({
     page,
@@ -79,7 +82,7 @@ test.describe("OGC-782 microbiology MVP", () => {
       await expect(
         page.getByRole("heading", { name: "Microbiology case" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(page.locator("header").getByText("Received")).toBeVisible();
+      await expect(caseStatusTag(page, "Received")).toBeVisible();
       await expect(
         page.getByTestId("microbiology-progress-rail"),
       ).toContainText("Inoculation");
@@ -88,6 +91,8 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Record setup activity", async () => {
       await demo.step(2, "Start inoculation and write the activity timeline");
+      await accordionButton(page, "Inoculation").click();
+      await expect(page).toHaveURL(/section=setup/);
       await page.getByLabel("Media or bottle").fill("Blood culture bottle");
       await page.getByLabel("Incubation").fill("35 C for 24 hours");
       await page.getByLabel("Atmosphere").fill("Ambient");
@@ -99,11 +104,11 @@ test.describe("OGC-782 microbiology MVP", () => {
         "ogc-782-02-inoculation-ready",
       );
       await page.getByRole("button", { name: "Start inoculation" }).click();
-      await expect(
-        page.locator("header").getByText("Setup Recorded"),
-      ).toBeVisible({
+      await expect(caseStatusTag(page, "Setup Recorded")).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
+      await accordionButton(page, "Timeline").click();
+      await expect(page).toHaveURL(/section=timeline/);
       await expect(page.getByText(/setup complete/)).toBeVisible();
       await expect(
         page.getByText(/Media or bottle: Blood culture bottle/),
@@ -122,6 +127,8 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Create a clinically significant isolate", async () => {
       await demo.step(3, "Add a clinically significant isolate");
+      await accordionButton(page, "Isolates").click();
+      await expect(page).toHaveURL(/section=isolates/);
       await page.getByLabel("Preliminary organism").fill("Escherichia coli");
       await page.getByRole("button", { name: "Create isolate" }).click();
       await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({
@@ -152,6 +159,8 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Start an AST run and record a MIC reading", async () => {
       await demo.step(4, "Record manual AST and show the interpreted result");
+      await accordionButton(page, "Manual AST").click();
+      await expect(page).toHaveURL(/section=ast/);
       await expect(
         page.getByRole("heading", { name: "Manual AST" }),
       ).toBeVisible();
@@ -238,6 +247,7 @@ test.describe("OGC-782 microbiology MVP", () => {
         "Log, acknowledge, and close a critical communication against the projected result",
       );
       await accordionButton(page, "Critical communication").click();
+      await expect(page).toHaveURL(/section=critical-communication/);
       await page.getByLabel("Critical result target").selectOption("RESULT");
       await expect(page.getByLabel("Target record")).not.toHaveValue("");
       await page
@@ -279,6 +289,7 @@ test.describe("OGC-782 microbiology MVP", () => {
     await test.step("Release the final report", async () => {
       await demo.step(7, "Review report readiness and release final report");
       await accordionButton(page, "Reports").click();
+      await expect(page).toHaveURL(/section=reports/);
       await expect(
         page.getByRole("heading", { name: "Report readiness" }),
       ).toBeVisible();
@@ -297,6 +308,7 @@ test.describe("OGC-782 microbiology MVP", () => {
       );
       await expect(page.getByText("Final case is read-only")).toBeVisible();
       await accordionButton(page, "Isolates").click();
+      await expect(page).toHaveURL(/section=isolates/);
       await expect(
         page.getByRole("button", { name: "Update identification" }),
       ).toBeDisabled();
