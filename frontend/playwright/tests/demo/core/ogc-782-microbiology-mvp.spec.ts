@@ -134,9 +134,6 @@ test.describe("OGC-782 microbiology MVP", () => {
       await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
-      await expect(
-        page.getByLabel("Manual AST").getByText("Final release blocked"),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
       await captureCard(
         page,
         demo,
@@ -161,6 +158,9 @@ test.describe("OGC-782 microbiology MVP", () => {
       await demo.step(4, "Record manual AST and show the interpreted result");
       await accordionButton(page, "Manual AST").click();
       await expect(page).toHaveURL(/section=ast/);
+      await expect(
+        page.getByLabel("Manual AST").getByText("Final release blocked"),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
         page.getByRole("heading", { name: "Manual AST" }),
       ).toBeVisible();
