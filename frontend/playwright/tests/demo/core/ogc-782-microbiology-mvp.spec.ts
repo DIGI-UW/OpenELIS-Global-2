@@ -373,11 +373,26 @@ test.describe("OGC-782 microbiology MVP", () => {
       await expect(
         page.getByRole("heading", { name: "Patient History" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(page.getByText("ISO-1: Escherichia coli")).toBeVisible({
-        timeout: LONG_TIMEOUT,
+      const releasedResult = page.locator(".cds--tag__label", {
+        hasText: "ISO-1: Escherichia coli confirmed",
       });
-      await expect(page.getByText("Ciprofloxacin (UAT) R")).toBeVisible();
-      await expect(page.getByText("Gentamicin (UAT) S")).toBeVisible();
+      await expect(releasedResult).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(releasedResult).toHaveAttribute(
+        "title",
+        /ISO-1: Escherichia coli confirmed;.*Ciprofloxacin \(UAT\) R/,
+      );
+      await expect(releasedResult).toHaveAttribute(
+        "title",
+        /Gentamicin \(UAT\) S/,
+      );
+      await releasedResult.hover();
+      const releasedResultTooltip = page.locator(".cds--popover-content", {
+        hasText: "ISO-1: Escherichia coli confirmed",
+      });
+      await expect(releasedResultTooltip).toContainText(
+        "Ciprofloxacin (UAT) R",
+      );
+      await expect(releasedResultTooltip).toContainText("Gentamicin (UAT) S");
       await captureViewport(page, demo, "ogc-782-11-patient-results-released");
       await demo.title(
         "MVP checkpoint complete",
