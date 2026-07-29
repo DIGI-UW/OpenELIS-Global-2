@@ -209,41 +209,31 @@ test.describe("OGC-782 microbiology MVP", () => {
       await expect(
         page.getByTestId("microbiology-release-state"),
       ).toContainText("Final Released", { timeout: LONG_TIMEOUT });
-      const patientReportResponse = await page.request.get(
-        `/api/OpenELIS-Global/rest/reports/patient-results?patientId=${encodeURIComponent(
-          seeded.patientId,
-        )}`,
-      );
-      expect(patientReportResponse.ok()).toBeTruthy();
-      const patientReport = await patientReportResponse.json();
-      const reportValues = (patientReport.rows || []).map(
-        (row: { dataMap?: { resultValue?: string } }) =>
-          row.dataMap?.resultValue || "",
-      );
-      expect(
-        reportValues.some((value: string) =>
-          value.includes("ISO-1: Escherichia coli"),
-        ),
-      ).toBeTruthy();
-      expect(
-        reportValues.some((value: string) =>
-          value.includes("Ciprofloxacin (UAT) R"),
-        ),
-      ).toBeTruthy();
-      expect(
-        reportValues.some((value: string) =>
-          value.includes("Gentamicin (UAT) S"),
-        ),
-      ).toBeTruthy();
       await captureCard(
         page,
         demo,
         "microbiology-report-card",
         "ogc-782-08-final-released-readiness",
       );
+      await demo.step(
+        7,
+        "Open the patient results screen and verify the released microbiology result",
+      );
+      await page.goto(`/PatientResults/${seeded.patientId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(
+        page.getByRole("heading", { name: "Patient History" }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(page.getByText("ISO-1: Escherichia coli")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(page.getByText("Ciprofloxacin (UAT) R")).toBeVisible();
+      await expect(page.getByText("Gentamicin (UAT) S")).toBeVisible();
+      await captureViewport(page, demo, "ogc-782-09-patient-results-released");
       await demo.title(
         "MVP checkpoint complete",
-        "Setup, isolate, manual AST, review, final release, and WHONET readiness were exercised.",
+        "Setup, isolate, manual AST, review, final release, and visible patient results were exercised.",
         3500,
       );
     });

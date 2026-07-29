@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
@@ -76,14 +76,14 @@ public class MicrobiologyTestFixtures {
         sample.setAccessionNumber(accessionNumber);
         sample.setEnteredDate(today);
         sample.setReceivedTimestamp(Timestamp.from(Instant.now()));
-        sample.setStatusId(statusService.getStatusID(OrderStatus.Entered));
+        sample.setStatusId(requireSampleEnteredStatus());
         sample.setSysUserId(defaultUserId());
         sampleService.insert(sample);
 
         SampleItem sampleItem = new SampleItem();
         sampleItem.setSample(sample);
         sampleItem.setSortOrder("1");
-        sampleItem.setStatusId(statusService.getStatusID(OrderStatus.Entered));
+        sampleItem.setStatusId(requireSampleEnteredStatus());
         sampleItem.setSysUserId(defaultUserId());
         sampleItemService.insert(sampleItem);
         return sampleItem;
@@ -192,6 +192,14 @@ public class MicrobiologyTestFixtures {
 
     private String uniqueSuffix() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+    }
+
+    private String requireSampleEnteredStatus() {
+        String statusId = statusService.getStatusID(SampleStatus.Entered);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("SampleStatus.Entered is required for microbiology test fixtures");
+        }
+        return statusId;
     }
 
     private <T> T first(List<T> values, String message) {

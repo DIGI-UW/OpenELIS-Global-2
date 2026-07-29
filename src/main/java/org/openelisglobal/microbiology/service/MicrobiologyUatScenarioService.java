@@ -14,7 +14,7 @@ import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
@@ -168,7 +168,7 @@ public class MicrobiologyUatScenarioService {
         sample.setAccessionNumber(accessionNumber);
         sample.setEnteredDate(today);
         sample.setReceivedTimestamp(Timestamp.from(Instant.now()));
-        sample.setStatusId(statusService.getStatusID(OrderStatus.Entered));
+        sample.setStatusId(requireSampleEnteredStatus());
         sample.setSysUserId(performedBy);
         sampleService.insert(sample);
         return sample;
@@ -179,7 +179,7 @@ public class MicrobiologyUatScenarioService {
         sampleItem.setSample(sample);
         sampleItem.setTypeOfSample(getOrCreateUatSampleType(performedBy));
         sampleItem.setSortOrder("1");
-        sampleItem.setStatusId(statusService.getStatusID(OrderStatus.Entered));
+        sampleItem.setStatusId(requireSampleEnteredStatus());
         sampleItem.setSysUserId(performedBy);
         sampleItemService.insert(sampleItem);
         return sampleItem;
@@ -192,6 +192,14 @@ public class MicrobiologyUatScenarioService {
         sampleItem.setTypeOfSample(getOrCreateUatSampleType(performedBy));
         sampleItem.setSysUserId(performedBy);
         sampleItemService.update(sampleItem);
+    }
+
+    private String requireSampleEnteredStatus() {
+        String statusId = statusService.getStatusID(SampleStatus.Entered);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("SampleStatus.Entered is required for microbiology UAT scenarios");
+        }
+        return statusId;
     }
 
     private Patient getOrCreateUatPatient(String suffix, String performedBy) {
