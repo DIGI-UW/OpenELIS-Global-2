@@ -14,6 +14,8 @@ public class CallbackSummaryResponse {
     private Double compliancePercent;
     /** The qi_config %-goal for the CALLBACK indicator; null if unset. */
     private Double target;
+    /** The configured callback target window, so surfaces can state it. */
+    private int slaMinutes;
 
     public boolean isEnabled() {
         return enabled;
@@ -53,5 +55,13 @@ public class CallbackSummaryResponse {
 
     public void setTarget(Double target) {
         this.target = target;
+    }
+
+    public int getSlaMinutes() {
+        return slaMinutes;
+    }
+
+    public void setSlaMinutes(int slaMinutes) {
+        this.slaMinutes = slaMinutes;
     }
 }

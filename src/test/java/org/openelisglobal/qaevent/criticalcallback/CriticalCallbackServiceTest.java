@@ -16,6 +16,8 @@ import org.openelisglobal.qaevent.criticalcallback.bean.CallbackSummaryResponse;
 import org.openelisglobal.qaevent.criticalcallback.service.CriticalCallbackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * OGC-714 read side — Critical Callback Compliance compute against a real DB.
@@ -27,9 +29,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * inside the window, and one critical analysis released outside it — so the
  * expected summary is exactly 4 critical / 1 confirmed / 25.00%. Also covers
  * the disabled short-circuit (the qa/009 CALLBACK row flipped off), the
- * negative-delta rule (a call logged before release is compliant), and the
+ * negative-delta rule (a call logged before release is compliant), the
  * repeat-POST attempt log (UNABLE then CONFIRMED counts once, detail shows the
- * latest attempt).
+ * latest attempt), and that the SLA window itself is configurable rather than
+ * fixed at 60 minutes.
  */
 public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
 
@@ -147,6 +150,35 @@ public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, summary.getConfirmedCount());
         assertEquals(Double.valueOf(25.00), summary.getCompliancePercent());
         assertEquals(Double.valueOf(100.0), summary.getTarget());
+        assertEquals(60, summary.getSlaMinutes());
+    }
+
+    @Test
+    public void getSummary_slaWindowIsConfigurable() {
+        // The "late" call at 150 min is non-compliant at the default 60-min target
+        // and compliant at 180 — proving the numerator reads the configured window
+        // instead of a hard-coded 60.
+        CriticalCallbackService target = AopTestUtils.getTargetObject(callbackService);
+        // Restore whatever was configured, not a literal — the field lives on a
+        // context-cached singleton, so a wrong restore poisons every later test.
+        Object configured = ReflectionTestUtils.getField(target, "slaMinutes");
+        ReflectionTestUtils.setField(target, "slaMinutes", 180);
+        try {
+            CallbackSummaryResponse summary = callbackService.getSummary(FROM, TO);
+
+            assertEquals(180, summary.getSlaMinutes());
+            assertEquals(4, summary.getCriticalCount());
+            assertEquals(2, summary.getConfirmedCount());
+            assertEquals(Double.valueOf(50.00), summary.getCompliancePercent());
+
+            // the same widened window moves the late call out of the failure table
+            CallbackDetailResponse detail = callbackService.getDetail(FROM, TO, 0, 25);
+            assertEquals(Long.valueOf(0), detail.getFailureCounts().get("overTarget"));
+            // …but the latency histogram is absolute, so it still reads "over 60"
+            assertEquals(Long.valueOf(1), detail.getAckDistribution().get("over60"));
+        } finally {
+            ReflectionTestUtils.setField(target, "slaMinutes", configured);
+        }
     }
 
     @Test

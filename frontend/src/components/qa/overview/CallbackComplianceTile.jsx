@@ -3,14 +3,15 @@ import { ClickableTile, SkeletonText } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { toLocalIsoDate } from "../../utils/Utils";
+import { rateTone } from "../qi/qiThresholds";
 import { fetchCallbackSummary } from "./overviewData";
 
 /**
  * Critical Callback Compliance overview tile (OGC-714/715): rolling-30-day
  * read-back compliance from the same /rest/critical-callback/summary the QI
  * Dashboard tile uses. Rendering is gated upstream on the opt-in CALLBACK
- * indicator; the summary's own target drives the tone (green at/above, red
- * below — compliance is HIGHER_BETTER).
+ * indicator; tone comes from the resolved qi_config thresholds (passed down by
+ * TodayTiles), so this tile bands green/amber/red exactly like its siblings.
  */
 
 function windowDates() {
@@ -20,7 +21,7 @@ function windowDates() {
   return { fromDate: toLocalIsoDate(from), toDate: toLocalIsoDate(to) };
 }
 
-const CallbackComplianceTile = () => {
+const CallbackComplianceTile = ({ config }) => {
   const history = useHistory();
   // undefined = loading, null = fetch yielded no data
   const [summary, setSummary] = useState();
@@ -39,12 +40,7 @@ const CallbackComplianceTile = () => {
   }, []);
 
   const pct = summary?.compliancePercent;
-  const tone =
-    pct != null && summary?.target != null
-      ? pct >= summary.target
-        ? "green"
-        : "red"
-      : null;
+  const tone = rateTone(pct, config);
 
   return (
     <ClickableTile
@@ -58,7 +54,11 @@ const CallbackComplianceTile = () => {
         <SkeletonText heading width="40%" />
       ) : (
         <>
-          <div className={"qa-live-count" + (tone ? ` qa-live-${tone}` : "")}>
+          <div
+            className={
+              "qa-live-count" + (tone !== "gray" ? ` qa-live-${tone}` : "")
+            }
+          >
             {pct != null ? `${pct.toFixed(2)}%` : "—"}
           </div>
           <div className="qa-live-caption">

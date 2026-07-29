@@ -242,7 +242,10 @@ const CallbackReport = () => {
       {summary && (
         <div className="amendment-rate-header">
           <span className="qi-tile__title">
-            <FormattedMessage id="qa.qi.callback.rate.label" />
+            <FormattedMessage
+              id="qa.qi.callback.rate.label"
+              values={{ minutes: summary.slaMinutes }}
+            />
           </span>
           <Tag
             type={tone === "amber" ? "gray" : tone}

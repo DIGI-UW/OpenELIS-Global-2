@@ -56,4 +56,7 @@
 
   <!-- QA Phase C.3 — OGC-710: index for the rejection cohort queries -->
   <include file="liquibase/qa/011-analysis-started-date-index.xml" />
+
+  <!-- QA Phase C.4 — index for the released-cohort QI queries (polled) -->
+  <include file="liquibase/qa/012-analysis-released-date-index.xml" />
 </databaseChangeLog>

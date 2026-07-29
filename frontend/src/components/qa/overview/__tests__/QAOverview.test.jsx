@@ -174,6 +174,14 @@ beforeEach(() => {
           action: 2,
           direction: "LOWER_BETTER",
         });
+      } else if (url.includes("indicator=CALLBACK")) {
+        // the one HIGHER_BETTER indicator (qa/009 seed: 100 target / 95 action)
+        callback({
+          enabled: true,
+          target: 100,
+          action: 95,
+          direction: "HIGHER_BETTER",
+        });
       } else {
         callback({ enabled: true });
       }

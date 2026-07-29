@@ -29,7 +29,9 @@ const TodayTiles = () => {
         {isEnabled("AMENDMENT") && (
           <AmendmentRateTile config={getConfig("AMENDMENT")} />
         )}
-        {isEnabled("CALLBACK") && <CallbackComplianceTile />}
+        {isEnabled("CALLBACK") && (
+          <CallbackComplianceTile config={getConfig("CALLBACK")} />
+        )}
         {isEnabled("NCE") && <NcePulseTile />}
       </div>
     </section>
