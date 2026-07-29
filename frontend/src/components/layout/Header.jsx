@@ -2,6 +2,7 @@ import {
   Close,
   Language,
   Logout,
+  Password,
   Notification,
   Search,
   UserAvatarFilledAlt,
@@ -52,6 +53,7 @@ function OEHeader({
   closeSideNav,
   storageKeyPrefix = "main",
   navContext = "main",
+  showSideNav = true,
 }) {
   const { configurationProperties, enabledLanguages } =
     useContext(ConfigurationContext);
@@ -668,27 +670,29 @@ function OEHeader({
           }}
         >
           <Header id="mainHeader" className="mainHeader" aria-label="">
-            {userSessionDetails.authenticated && !navPersistent && (
-              <button
-                id="sidenav-menu-button"
-                data-cy="menuButton"
-                className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
-                aria-label={intl.formatMessage({
-                  id: navOpen
-                    ? "header.icon.menu.close"
-                    : "header.icon.menu.open",
-                })}
-                onClick={toggleSideNav}
-                title={intl.formatMessage({
-                  id: navOpen
-                    ? "header.icon.menu.close"
-                    : "header.icon.menu.open",
-                })}
-                type="button"
-              >
-                {navOpen ? <Close size={20} /> : <Menu size={20} />}
-              </button>
-            )}
+            {userSessionDetails.authenticated &&
+              !navPersistent &&
+              showSideNav && (
+                <button
+                  id="sidenav-menu-button"
+                  data-cy="menuButton"
+                  className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
+                  aria-label={intl.formatMessage({
+                    id: navOpen
+                      ? "header.icon.menu.close"
+                      : "header.icon.menu.open",
+                  })}
+                  onClick={toggleSideNav}
+                  title={intl.formatMessage({
+                    id: navOpen
+                      ? "header.icon.menu.close"
+                      : "header.icon.menu.open",
+                  })}
+                  type="button"
+                >
+                  {navOpen ? <Close size={20} /> : <Menu size={20} />}
+                </button>
+              )}
             <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
               <span id="header-logo">{logo()}</span>
               <div className="banner">
@@ -808,14 +812,6 @@ function OEHeader({
                         {userSessionDetails.loginLabUnit}{" "}
                       </li>
                     )}
-                    <li
-                      data-cy="logOut"
-                      className="userDetails clickableUserDetails"
-                      onClick={logout}
-                    >
-                      <Logout style={{ marginRight: "3px" }} />
-                      <FormattedMessage id="header.label.logout" />
-                    </li>
                   </>
                 )}
                 <li className="userDetails">
@@ -840,6 +836,28 @@ function OEHeader({
                     </Select>
                   </Theme>
                 </li>
+                {userSessionDetails.authenticated && (
+                  <>
+                    <li
+                      data-cy="headerChangePassword"
+                      className="userDetails clickableUserDetails"
+                      onClick={() => {
+                        window.location.href = "/ChangePasswordLogin";
+                      }}
+                    >
+                      <Password style={{ marginRight: "3px" }} />
+                      <FormattedMessage id="label.button.changepassword" />
+                    </li>
+                    <li
+                      data-cy="logOut"
+                      className="userDetails clickableUserDetails"
+                      onClick={logout}
+                    >
+                      <Logout style={{ marginRight: "3px" }} />
+                      <FormattedMessage id="header.label.logout" />
+                    </li>
+                  </>
+                )}
                 <li className="userDetails">
                   <label className="cds--label">
                     {" "}
@@ -849,7 +867,7 @@ function OEHeader({
                 </li>
               </ul>
             </HeaderPanel>
-            {userSessionDetails.authenticated && (
+            {userSessionDetails.authenticated && showSideNav && (
               <>
                 <SideNav
                   aria-label="Side navigation"

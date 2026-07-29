@@ -121,10 +121,15 @@ export default function Layout(props) {
     closeSideNav();
   }, [location.pathname, closeSideNav]);
 
+  // Credential-change screens are login-adjacent and render focused (no sidenav),
+  // matching /login regardless of auth state.
+  const isFocusedAuthRoute = location.pathname === "/ChangePasswordLogin";
+
   // Only push content when the persistent sidenav is actually present
   // (authenticated desktop UX with the nav pinned). Unauthenticated pages
   // like /login have no sidenav to make room for.
-  const isLocked = userSessionDetails.authenticated && navPersistent;
+  const isLocked =
+    userSessionDetails.authenticated && navPersistent && !isFocusedAuthRoute;
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
@@ -218,6 +223,7 @@ export default function Layout(props) {
             closeSideNav={closeSideNav}
             storageKeyPrefix={storageKeyPrefix}
             navContext={navContext}
+            showSideNav={!isFocusedAuthRoute}
           />
           {/* Theme wrapper creates white theme zone for content area */}
           {/* Global SCSS theme = blue header/nav, this = light content */}

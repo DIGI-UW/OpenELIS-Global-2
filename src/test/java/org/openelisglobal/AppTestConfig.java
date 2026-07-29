@@ -367,6 +367,11 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Bean
+    public org.openelisglobal.login.controller.ChangePasswordLoginController changePasswordLoginController() {
+        return new org.openelisglobal.login.controller.ChangePasswordLoginController();
+    }
+
+    @Bean
     @Profile("test")
     public PagingProperties pagingProperties() {
         return new PagingProperties();
