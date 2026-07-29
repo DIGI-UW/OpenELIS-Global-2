@@ -38,6 +38,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
@@ -217,12 +218,22 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
         astService.overrideReading(ciprofloxacinReading.getId(), MicroAstInterpretation.RESISTANT,
                 "UAT verification override", performedBy);
         astService.reviewRun(run.getId(), performedBy);
+        List<MicroAstRun> persistedRuns = astService.getRunsForIsolate(isolate.getId());
+        assertEquals(1, persistedRuns.size());
+        assertEquals(MicroAstRunStatus.REVIEWED.name(), persistedRuns.get(0).getStatus());
+        assertEquals(2, astService.getReadingsForRun(run.getId()).size());
 
         reportReleaseService.releaseFinal(scenario.caseId, performedBy);
         Analysis analysis = analysisService.get(scenario.analysisId);
         assertNotNull("UAT analysis must have a test section", analysis.getTestSection());
-        assertTrue("Projected Result is missing", resultService.getResultsByAnalysis(analysis).stream()
-                .map(Result::getValue).anyMatch(value -> value.contains("ISO-1: Escherichia coli")));
+        List<String> projectedValues = resultService.getResultsByAnalysis(analysis).stream().map(Result::getValue)
+                .toList();
+        assertTrue("Projected Result is missing: " + projectedValues,
+                projectedValues.stream().anyMatch(value -> value.contains("ISO-1: Escherichia coli")));
+        assertTrue("Projected Result is missing ciprofloxacin interpretation: " + projectedValues,
+                projectedValues.stream().anyMatch(value -> value.contains("Ciprofloxacin (UAT) R")));
+        assertTrue("Projected Result is missing gentamicin interpretation: " + projectedValues,
+                projectedValues.stream().anyMatch(value -> value.contains("Gentamicin (UAT) S")));
         assertTrue("UAT test is not discoverable from its test section",
                 testService.getTestsByTestSectionIds(List.of(analysis.getTestSection().getId())).stream()
                         .anyMatch(test -> analysis.getTest().getId().equals(test.getId())));
@@ -234,16 +245,24 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
                         && item.getResult().getValue().contains("ISO-1: Escherichia coli")));
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
         grantResultsAccess(performedBy, analysis.getTestSection());
-        assertTrue("Reporting user cannot see the UAT test section", reportingUserTestSections(performedBy).stream()
-                .anyMatch(section -> analysis.getTestSection().getId().equals(section.getId())));
+        List<IdValuePair> visibleSections = reportingUserTestSections(performedBy);
+        assertTrue(
+                "Reporting user cannot see UAT test section " + analysis.getTestSection().getId() + "; visible="
+                        + visibleSections.stream().map(IdValuePair::getId).toList() + "; mappings="
+                        + userRoleService.getUserLabUnitRoles(performedBy).getLabUnitRoleMap().stream()
+                                .map(mapping -> mapping.getLabUnit() + "=" + mapping.getRoles()).toList(),
+                visibleSections.stream()
+                        .anyMatch(section -> analysis.getTestSection().getId().equals(section.getId())));
         ReportingData patientReport = buildPatientReport(scenario.patientId, performedBy);
         List<String> reportValues = patientReport.getRows().stream()
                 .map(row -> String.valueOf(row.getDataMap().get("resultValue"))).toList();
 
         assertTrue("Expected microbiology content in patient report values: " + reportValues,
                 reportValues.stream().anyMatch(value -> value.contains("ISO-1: Escherichia coli")));
-        assertTrue(reportValues.stream().anyMatch(value -> value.contains("Ciprofloxacin (UAT) R")));
-        assertTrue(reportValues.stream().anyMatch(value -> value.contains("Gentamicin (UAT) S")));
+        assertTrue("Expected ciprofloxacin interpretation in patient report values: " + reportValues,
+                reportValues.stream().anyMatch(value -> value.contains("Ciprofloxacin (UAT) R")));
+        assertTrue("Expected gentamicin interpretation in patient report values: " + reportValues,
+                reportValues.stream().anyMatch(value -> value.contains("Gentamicin (UAT) S")));
     }
 
     private MicroAntibiotic uatAntibiotic(String whonetCode) {

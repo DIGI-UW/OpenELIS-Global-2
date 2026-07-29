@@ -53,6 +53,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -104,6 +106,9 @@ public class MicrobiologyUatScenarioServiceTest {
     private TestAnalyteService testAnalyteService;
 
     @Mock
+    private TestResultService testResultService;
+
+    @Mock
     private AnalysisService analysisService;
 
     @Mock
@@ -150,7 +155,7 @@ public class MicrobiologyUatScenarioServiceTest {
         service = new MicrobiologyUatScenarioService(methodService, sampleService, sampleItemService, patientService,
                 personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
                 testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
-                statusService, configurationService, caseService, orderRoutingService);
+                testResultService, statusService, configurationService, caseService, orderRoutingService);
     }
 
     @After
@@ -198,6 +203,11 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("UAT microbiology culture", test.getLocalizedTestName().getEnglish());
         assertNotNull(test.getLocalizedReportingName());
         assertEquals("UAT microbiology culture", test.getLocalizedReportingName().getEnglish());
+        ArgumentCaptor<TestResult> testResultCaptor = ArgumentCaptor.forClass(TestResult.class);
+        verify(testResultService).insert(testResultCaptor.capture());
+        assertEquals(test, testResultCaptor.getValue().getTest());
+        assertEquals("R", testResultCaptor.getValue().getTestResultType());
+        assertTrue(testResultCaptor.getValue().getIsActive());
     }
 
     @Test

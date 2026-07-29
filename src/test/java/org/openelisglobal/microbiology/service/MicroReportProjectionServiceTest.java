@@ -44,6 +44,8 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroReportProjectionServiceTest {
@@ -76,6 +78,9 @@ public class MicroReportProjectionServiceTest {
     private TestAnalyteService testAnalyteService;
 
     @Mock
+    private TestResultService testResultService;
+
+    @Mock
     private ResultService resultService;
 
     @Mock
@@ -86,7 +91,8 @@ public class MicroReportProjectionServiceTest {
     @Before
     public void setUp() {
         service = new MicroReportProjectionServiceImpl(caseDAO, caseAnalysisDAO, isolateDAO, astRunDAO, readingDAO,
-                organismDAO, antibioticDAO, analysisService, testAnalyteService, resultService, statusService);
+                organismDAO, antibioticDAO, analysisService, testAnalyteService, testResultService, resultService,
+                statusService);
     }
 
     @Test
@@ -113,6 +119,8 @@ public class MicroReportProjectionServiceTest {
         when(antibioticDAO.get("cip")).thenReturn(Optional.of(antibiotic("cip", "Ciprofloxacin")));
         when(analysisService.get("42")).thenReturn(analysis);
         when(testAnalyteService.get("17")).thenReturn(testAnalyte);
+        TestResult reportTestResult = reportTestResult(analysisTest);
+        when(testResultService.getAllActiveTestResultsPerTest(analysisTest)).thenReturn(List.of(reportTestResult));
         when(resultService.insert(any(Result.class))).thenAnswer(invocation -> {
             Result result = invocation.getArgument(0);
             result.setId("201");
@@ -122,12 +130,13 @@ public class MicroReportProjectionServiceTest {
 
         MicroReportProjectionResult result = service.releaseFinal("case-1", "9");
 
-        assertEquals("Isolate A: Escherichia coli (Ampicillin R, Ciprofloxacin S)", result.getContent());
+        assertEquals("Isolate A: Escherichia coli; Ampicillin R, Ciprofloxacin S", result.getContent());
         assertEquals(List.of("201"), result.getProjectedResultIds());
         ArgumentCaptor<Result> resultCaptor = ArgumentCaptor.forClass(Result.class);
         verify(resultService).insert(resultCaptor.capture());
         assertEquals("Y", resultCaptor.getValue().getIsReportable());
-        assertEquals("A", resultCaptor.getValue().getResultType());
+        assertEquals("R", resultCaptor.getValue().getResultType());
+        assertEquals(reportTestResult, resultCaptor.getValue().getTestResult());
         assertEquals("9", resultCaptor.getValue().getSysUserId());
         assertEquals("201", link.getProjectedResultId());
         verify(caseAnalysisDAO).update(link);
@@ -159,6 +168,27 @@ public class MicroReportProjectionServiceTest {
         try {
             service.releaseFinal("case-1", "9");
             fail("Expected final release to require a configured report mapping");
+        } catch (IllegalStateException expected) {
+            assertEquals("REPORT_MAPPING_REQUIRED", expected.getMessage());
+        }
+    }
+
+    @Test
+    public void finalReleaseRequiresAnActiveRemarkResultDefinitionForPatientHistory() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.NO_GROWTH_READY);
+        MicroCaseAnalysis link = link("case-1", "42", "17");
+        Analysis analysis = mock(Analysis.class);
+        org.openelisglobal.test.valueholder.Test analysisTest = new org.openelisglobal.test.valueholder.Test();
+        analysisTest.setId("test-1");
+        when(analysis.getTest()).thenReturn(analysisTest);
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
+        when(analysisService.get("42")).thenReturn(analysis);
+        when(testResultService.getAllActiveTestResultsPerTest(analysisTest)).thenReturn(List.of());
+
+        try {
+            service.releaseFinal("case-1", "9");
+            fail("Expected final release to require a remark result definition");
         } catch (IllegalStateException expected) {
             assertEquals("REPORT_MAPPING_REQUIRED", expected.getMessage());
         }
@@ -219,6 +249,15 @@ public class MicroReportProjectionServiceTest {
         testAnalyte.setAnalyte(analyte);
         testAnalyte.setIsReportable("Y");
         return testAnalyte;
+    }
+
+    private TestResult reportTestResult(org.openelisglobal.test.valueholder.Test test) {
+        TestResult testResult = new TestResult();
+        testResult.setId("test-result-1");
+        testResult.setTest(test);
+        testResult.setTestResultType("R");
+        testResult.setIsActive(true);
+        return testResult;
     }
 
     private MicroIsolate isolate(String id) {

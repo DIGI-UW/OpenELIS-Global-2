@@ -30,6 +30,8 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,13 +50,15 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     private final MicroAntibioticDAO antibioticDAO;
     private final AnalysisService analysisService;
     private final TestAnalyteService testAnalyteService;
+    private final TestResultService testResultService;
     private final ResultService resultService;
     private final IStatusService statusService;
 
     public MicroReportProjectionServiceImpl(MicroCaseDAO caseDAO, MicroCaseAnalysisDAO caseAnalysisDAO,
             MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO, MicroAstReadingDAO readingDAO,
             MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO, AnalysisService analysisService,
-            TestAnalyteService testAnalyteService, ResultService resultService, IStatusService statusService) {
+            TestAnalyteService testAnalyteService, TestResultService testResultService, ResultService resultService,
+            IStatusService statusService) {
         this.caseDAO = caseDAO;
         this.caseAnalysisDAO = caseAnalysisDAO;
         this.isolateDAO = isolateDAO;
@@ -64,6 +68,7 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
         this.antibioticDAO = antibioticDAO;
         this.analysisService = analysisService;
         this.testAnalyteService = testAnalyteService;
+        this.testResultService = testResultService;
         this.resultService = resultService;
         this.statusService = statusService;
     }
@@ -104,8 +109,7 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
         String content = buildContent(microCase);
         List<MicroCaseAnalysis> links = caseAnalysisDAO.getByCaseId(caseId);
-        boolean mappingConfigured = !links.isEmpty()
-                && links.stream().allMatch(link -> hasText(link.getReportableTestAnalyteId()));
+        boolean mappingConfigured = !links.isEmpty() && links.stream().allMatch(this::hasReportConfiguration);
         return new ProjectionInput(content, links, mappingConfigured);
     }
 
@@ -116,11 +120,16 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
             Analysis analysis = analysisService.get(link.getAnalysisId());
             TestAnalyte testAnalyte = testAnalyteService.get(link.getReportableTestAnalyteId());
             validateMapping(analysis, testAnalyte);
+            TestResult reportTestResult = reportTestResult(analysis);
+            if (reportTestResult == null) {
+                throw new IllegalStateException("REPORT_MAPPING_INVALID");
+            }
             Result result = existingOrNewResult(link, analysis);
             result.setAnalysis(analysis);
             result.setAnalyte(testAnalyte.getAnalyte());
             result.setIsReportable("Y");
-            result.setResultType(ResultType.ALPHA.getCharacterValue());
+            result.setResultType(ResultType.REMARK.getCharacterValue());
+            result.setTestResult(reportTestResult);
             result.setSortOrder("0");
             result.setValue(input.content());
             result.setSysUserId(performedBy);
@@ -176,6 +185,22 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
         }
     }
 
+    private boolean hasReportConfiguration(MicroCaseAnalysis link) {
+        if (!hasText(link.getReportableTestAnalyteId())) {
+            return false;
+        }
+        return reportTestResult(analysisService.get(link.getAnalysisId())) != null;
+    }
+
+    private TestResult reportTestResult(Analysis analysis) {
+        if (analysis == null || analysis.getTest() == null) {
+            return null;
+        }
+        return testResultService.getAllActiveTestResultsPerTest(analysis.getTest()).stream()
+                .filter(testResult -> ResultType.REMARK.matches(testResult.getTestResultType())).findFirst()
+                .orElse(null);
+    }
+
     private void finalizeAnalysis(Analysis analysis, String performedBy) {
         analysis.setStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
         analysis.setReleasedDate(new Timestamp(System.currentTimeMillis()));
@@ -204,7 +229,7 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
             }
             String value = isolate.getIsolateLabel() + ": " + identification;
             if (readings.length() > 0) {
-                value += " (" + readings + ")";
+                value += "; " + readings;
             }
             isolates.add(value);
         }

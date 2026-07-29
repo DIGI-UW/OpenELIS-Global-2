@@ -44,10 +44,13 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,6 +87,7 @@ public class MicrobiologyUatScenarioService {
     private final AnalyteService analyteService;
     private final TestAnalyteService testAnalyteService;
     private final AnalysisService analysisService;
+    private final TestResultService testResultService;
     private final IStatusService statusService;
     private final MicrobiologyConfigurationService configurationService;
     private final MicroCaseService caseService;
@@ -95,8 +99,9 @@ public class MicrobiologyUatScenarioService {
             TypeOfSampleTestService typeOfSampleTestService, TestService testService,
             TestSectionService testSectionService, LocalizationService localizationService,
             AnalyteService analyteService, TestAnalyteService testAnalyteService, AnalysisService analysisService,
-            IStatusService statusService, MicrobiologyConfigurationService configurationService,
-            MicroCaseService caseService, MicroOrderRoutingService orderRoutingService) {
+            TestResultService testResultService, IStatusService statusService,
+            MicrobiologyConfigurationService configurationService, MicroCaseService caseService,
+            MicroOrderRoutingService orderRoutingService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -111,6 +116,7 @@ public class MicrobiologyUatScenarioService {
         this.analyteService = analyteService;
         this.testAnalyteService = testAnalyteService;
         this.analysisService = analysisService;
+        this.testResultService = testResultService;
         this.statusService = statusService;
         this.configurationService = configurationService;
         this.caseService = caseService;
@@ -145,6 +151,7 @@ public class MicrobiologyUatScenarioService {
         Method method = getOrCreateUatMethod(performedBy);
         Test test = getOrCreateUatTest(method, performedBy);
         ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
+        ensureRemarkTestResult(test, performedBy);
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
         configureCultureSetup(method, reportableTestAnalyte);
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
@@ -430,6 +437,21 @@ public class MicrobiologyUatScenarioService {
             testAnalyteService.update(testAnalyte);
         }
         return testAnalyte;
+    }
+
+    private void ensureRemarkTestResult(Test test, String performedBy) {
+        boolean configured = testResultService.getAllActiveTestResultsPerTest(test).stream()
+                .anyMatch(testResult -> ResultType.REMARK.matches(testResult.getTestResultType()));
+        if (configured) {
+            return;
+        }
+        TestResult testResult = new TestResult();
+        testResult.setTest(test);
+        testResult.setTestResultType(ResultType.REMARK.getCharacterValue());
+        testResult.setIsActive(true);
+        testResult.setSortOrder("0");
+        testResult.setSysUserId(performedBy);
+        testResultService.insert(testResult);
     }
 
     private void ensureOrderableSampleTypeMapping(TypeOfSample sampleType, Test test, String performedBy) {
