@@ -1,5 +1,7 @@
 package org.openelisglobal.reportconfiguration.service;
 
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -100,14 +102,14 @@ public class ReportServiceImplTest {
         // and once more by the trailing sort-order/visibility loop that runs
         // for every report regardless of category change.
         verify(menuService, times(2)).save(eq(reportMenu));
-        assertTrue("reportMenu should now be parented under the new category menu",
-                reportMenu.getParent() == newCategoryMenu);
+        assertSame("reportMenu should now be parented under the new category menu",
+        newCategoryMenu, reportMenu.getParent());
     }
 
     @Test
     public void updateReport_whenCategoryUnchanged_doesNotReassignMenuParent() {
         // Form submits the same category the report already has.
-        ReportConfigurationForm form = buildForm(OLD_CATEGORY_ID);
+        ReportConfigurationForm form = buildForm(new String(OLD_CATEGORY_ID));
         // Match the "no category" lookup: reportCategoryList only contains
         // NEW_CATEGORY_ID, so no ReportCategory matches OLD_CATEGORY_ID -
         // fine, since the category-changed branch should not run at all.
@@ -119,6 +121,6 @@ public class ReportServiceImplTest {
         // (which runs unconditionally), but never re-parented, since the
         // category-reassignment branch should not have run.
         verify(menuService, times(1)).save(eq(reportMenu));
-        assertTrue("reportMenu parent should remain unset", reportMenu.getParent() == null);
+        assertNull("reportMenu parent should remain unset", reportMenu.getParent());
     }
 }
