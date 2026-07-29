@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Locale;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -139,6 +141,31 @@ public class MicrobiologyUatScenarioServiceTest {
         verify(patientService).insert(patientCaptor.capture());
         assertTrue(patientCaptor.getValue().getExternalId().startsWith("UATMICRO-"));
         assertEquals(patientCaptor.getValue().getExternalId(), patientCaptor.getValue().getNationalId());
+    }
+
+    @Test
+    public void repairsExistingUatMethodMissingLocalization() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+        when(localizationService.getAllActiveLocales()).thenReturn(List.of(Locale.ENGLISH, Locale.FRENCH));
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "WORKLIST";
+        request.scenarioKey = "playwright-worklist-7bd4adf1";
+
+        service.provision(request, "1");
+
+        verify(methodService).update(method);
+        assertNotNull(method.getLocalization());
+        verify(localizationService).insert(method.getLocalization());
+        assertEquals("UAT micro culture", method.getLocalization().getLocalizedValue(Locale.ENGLISH));
+        assertEquals("UAT micro culture", method.getLocalization().getLocalizedValue(Locale.FRENCH));
     }
 
     private void configureHappyPath(Sample sample, SampleItem sampleItem, Method method,

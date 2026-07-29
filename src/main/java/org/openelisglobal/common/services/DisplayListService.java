@@ -1091,7 +1091,7 @@ public class DisplayListService implements LocaleChangeListener {
         List<Method> methods = methodService.getAll();
 
         for (Method method : methods) {
-            methodPairs.add(new IdValuePair(method.getId(), method.getLocalization().getLocalizedValue()));
+            methodPairs.add(new IdValuePair(method.getId(), method.getLocalizedValue()));
         }
 
         return methodPairs;

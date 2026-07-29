@@ -282,17 +282,43 @@ public class MicrobiologyUatScenarioService {
             method.setDescription(UAT_METHOD_DESCRIPTION);
             method.setReportingDescription(UAT_METHOD_DESCRIPTION);
             method.setCode("UATMICRO");
+            method.setNameKey("method.UAT_micro_culture");
             method.setIsActive(IActionConstants.YES);
             method.setSysUserId(performedBy);
+            method.setLocalization(createUatMethodLocalization(performedBy));
             methodService.insert(method);
             return method;
         }
+        boolean changed = false;
+        if (method.getLocalization() == null) {
+            method.setLocalization(createUatMethodLocalization(performedBy));
+            changed = true;
+        }
         if (!IActionConstants.YES.equals(method.getIsActive())) {
             method.setIsActive(IActionConstants.YES);
+            changed = true;
+        }
+        if (changed) {
             method.setSysUserId(performedBy);
             methodService.update(method);
         }
         return method;
+    }
+
+    private Localization createUatMethodLocalization(String performedBy) {
+        Localization localization = new Localization();
+        localization.setDescription(UAT_METHOD_DESCRIPTION);
+        localization.setSysUserId(performedBy);
+        List<Locale> activeLocales = localizationService.getAllActiveLocales();
+        if (activeLocales.isEmpty()) {
+            localization.setEnglish(UAT_METHOD_NAME);
+        } else {
+            for (Locale locale : activeLocales) {
+                localization.setLocalizedValue(locale.getLanguage(), UAT_METHOD_NAME);
+            }
+        }
+        localizationService.insert(localization);
+        return localization;
     }
 
     private Test getOrCreateUatTest(Method method, String performedBy) {
