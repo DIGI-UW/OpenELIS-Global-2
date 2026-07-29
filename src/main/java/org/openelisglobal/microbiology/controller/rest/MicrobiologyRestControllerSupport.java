@@ -1,12 +1,22 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
 
 /** Shared authenticated-actor lookup for microbiology write endpoints. */
 abstract class MicrobiologyRestControllerSupport extends BaseRestController {
+
+    @ExceptionHandler(MicroCaseLockedException.class)
+    protected ResponseEntity<Map<String, Object>> handleLockedCase(MicroCaseLockedException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
+                "MICROBIOLOGY_CASE_LOCKED", "message", exception.getMessage()));
+    }
 
     protected String authenticatedUserId(HttpServletRequest request) {
         String userId = getSysUserId(request);
