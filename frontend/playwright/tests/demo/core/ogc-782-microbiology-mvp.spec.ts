@@ -373,30 +373,12 @@ test.describe("OGC-782 microbiology MVP", () => {
       await expect(
         page.getByRole("heading", { name: "Patient History" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      const releasedResult = page.locator(".cds--tag__label", {
-        hasText: "ISO-1: Escherichia coli confirmed",
+      const releasedResultRow = page.getByRole("row", {
+        name: /UAT microbiology culture.*ISO-1: Escherichia coli confirmed/,
       });
-      await expect(releasedResult).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(releasedResult).toHaveAttribute(
-        "title",
-        /ISO-1: Escherichia coli confirmed;.*Ciprofloxacin \(UAT\) R/,
-      );
-      await expect(releasedResult).toHaveAttribute(
-        "title",
-        /Gentamicin \(UAT\) S/,
-      );
-      const releasedResultTrigger = page.getByRole("button", {
-        name: /ISO-1: Escherichia coli confirmed;.*Ciprofloxacin \(UAT\) R/,
-      });
-      await releasedResultTrigger.click();
-      const releasedResultTooltip = page.locator(".cds--popover-content", {
-        hasText: "ISO-1: Escherichia coli confirmed",
-      });
-      await expect(releasedResultTooltip).toBeVisible();
-      await expect(releasedResultTooltip).toContainText(
-        "Ciprofloxacin (UAT) R",
-      );
-      await expect(releasedResultTooltip).toContainText("Gentamicin (UAT) S");
+      await expect(releasedResultRow).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(releasedResultRow).toContainText("Ciprofloxacin (UAT) R");
+      await expect(releasedResultRow).toContainText("Gentamicin (UAT) S");
       await settleForVideo(demo);
       await demo.evidence("ogc-782-11-patient-results-released", {
         fullPage: false,

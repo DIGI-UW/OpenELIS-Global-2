@@ -35,6 +35,10 @@ function formatDateHeader(iso: string): string {
   });
 }
 
+function isNarrativeResult(value: string): boolean {
+  return value.length > 40 || value.includes("\n");
+}
+
 export const GroupedTimeline = () => {
   const { activeTests, timelineData, checkboxes, someChecked } =
     useContext(FilterContext);
@@ -115,12 +119,16 @@ export const GroupedTimeline = () => {
                     if (!v) return <TableCell key={cell.id}>—</TableCell>;
                     return (
                       <TableCell key={cell.id}>
-                        <Tag
-                          type={interpretationToTagType(v.interpretation)}
-                          size="sm"
-                        >
-                          {v.value}
-                        </Tag>
+                        {isNarrativeResult(v.value) ? (
+                          <span>{v.value}</span>
+                        ) : (
+                          <Tag
+                            type={interpretationToTagType(v.interpretation)}
+                            size="sm"
+                          >
+                            {v.value}
+                          </Tag>
+                        )}
                       </TableCell>
                     );
                   })}
