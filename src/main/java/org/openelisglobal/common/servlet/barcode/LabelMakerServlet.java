@@ -367,7 +367,6 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
      * Validate the given parameters
      *
      * @param labNo     Make sure it is properly formatted
-     * @param patientId Ensure is int
      * @param type      Ensure is default, specimen, order, or blank
      * @param quantity  Ensure is int
      * @param override  Ensure is bool
