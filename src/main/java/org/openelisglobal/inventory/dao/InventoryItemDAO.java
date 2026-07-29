@@ -3,9 +3,12 @@ package org.openelisglobal.inventory.dao;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 public interface InventoryItemDAO extends BaseDAO<InventoryItem, String> {
+
+    List<ItemType> getAllItemTypes();
 
     /**
      * Get all active inventory items
@@ -13,7 +16,7 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, String> {
     List<InventoryItem> getAllActive() throws LIMSRuntimeException;
 
     /**
-     * Get inventory items by type (item_type FK code, e.g. "REAGENT")
+     * Get inventory items by type (item_type code, e.g. "REAGENT")
      */
     List<InventoryItem> getByItemType(String itemType) throws LIMSRuntimeException;
 

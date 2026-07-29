@@ -3,13 +3,12 @@ package org.openelisglobal.inventory.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.service.InventoryItemTypeService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,20 +31,10 @@ public class InventoryItemRestController extends BaseRestController {
     @Autowired
     private InventoryItemService inventoryItemService;
 
-    @Autowired
-    private InventoryItemTypeService inventoryItemTypeService;
-
-    /**
-     * Active item types, sorted for display — sourced from the admin-managed
-     * {@code inventory_item_type} table (OGC-658 Part A), not a hardcoded enum.
-     * Labels are resolved for the current request locale so the frontend no longer
-     * needs its own hardcoded label map.
-     */
     @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<ItemTypeOption>> getAllItemTypes() {
+    public ResponseEntity<List<ItemType>> getAllItemTypes() {
         try {
-            List<ItemTypeOption> types = inventoryItemTypeService.getAllActiveOrderedBySortOrder().stream()
-                    .map(type -> new ItemTypeOption(type.getCode(), type.getLabel())).collect(Collectors.toList());
+            List<ItemType> types = inventoryItemService.getAllItemTypes();
             return ResponseEntity.ok(types);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -258,18 +247,6 @@ public class InventoryItemRestController extends BaseRestController {
             this.inStock = inStock;
         }
 
-    }
-
-    @Setter
-    @Getter
-    public static class ItemTypeOption {
-        private String code;
-        private String label;
-
-        public ItemTypeOption(String code, String label) {
-            this.code = code;
-            this.label = label;
-        }
     }
 
 }

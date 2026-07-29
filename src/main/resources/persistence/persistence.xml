@@ -59,7 +59,6 @@
 
         <!-- Inventory Management entities -->
         <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryItemType</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>

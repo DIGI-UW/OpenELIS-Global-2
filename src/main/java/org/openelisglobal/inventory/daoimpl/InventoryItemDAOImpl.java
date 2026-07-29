@@ -7,6 +7,7 @@ import java.util.List;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,12 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, String> imp
 
     public InventoryItemDAOImpl() {
         super(InventoryItem.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ItemType> getAllItemTypes() {
+        return java.util.Arrays.asList(ItemType.values());
     }
 
     @Override

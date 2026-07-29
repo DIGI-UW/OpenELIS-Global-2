@@ -2,9 +2,12 @@ package org.openelisglobal.inventory.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 public interface InventoryItemService extends BaseObjectService<InventoryItem, String> {
+
+    List<ItemType> getAllItemTypes();
 
     /**
      * Get all active inventory items
@@ -12,8 +15,7 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, S
     List<InventoryItem> getAllActive();
 
     /**
-     * Get items by item type code (e.g. "REAGENT", "RDT", "CARTRIDGE") — see
-     * {@link InventoryItemTypeService} for the admin-managed type list.
+     * Get items by item type code (e.g. "REAGENT", "RDT", "CARTRIDGE")
      */
     List<InventoryItem> getByItemType(String itemType);
 

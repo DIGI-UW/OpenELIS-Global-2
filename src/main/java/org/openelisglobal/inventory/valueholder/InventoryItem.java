@@ -26,7 +26,7 @@ public class InventoryItem extends BaseObject<String> {
 
     // OGC-658 Part C: the PK is a server-generated UPPER_SNAKE code (see
     // InventoryItemServiceImpl.insert()), not an auto-increment surrogate.
-    // The DB column is named "code" (matching inventory_item_type.code) but
+    // The DB column is named "code" but
     // the Java property/JSON key stays "id" to satisfy BaseObject<PK>'s
     // getId()/setId() contract and keep every existing JSON payload and the
     // TestReagentLinkRestController.findItem() getAllMatching("id", ...)
@@ -50,8 +50,9 @@ public class InventoryItem extends BaseObject<String> {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    // OGC-658 Part A: FK to inventory_item_type(code), not a Java enum — admins
-    // manage the type list at runtime via the Inventory Item Types admin page.
+    // Plain string constrained by the chk_item_type CHECK to the
+    // InventoryEnums.ItemType values (OGC-658's managed-type table was
+    // superseded; type becomes a free-form tag in the inventory redesign).
     @Column(name = "item_type", nullable = false, length = 50)
     @NotNull
     @Size(min = 1, max = 50)

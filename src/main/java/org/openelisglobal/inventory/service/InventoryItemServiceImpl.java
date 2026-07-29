@@ -9,6 +9,7 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +62,12 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     private boolean codeExists(String code) {
         return !getAllMatching("id", code).isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ItemType> getAllItemTypes() {
+        return inventoryItemDAO.getAllItemTypes();
     }
 
     @Override

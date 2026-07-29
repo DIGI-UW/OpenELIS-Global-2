@@ -9,12 +9,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.service.InventoryItemTypeService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
-import org.openelisglobal.inventory.valueholder.InventoryItemType;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
@@ -52,9 +50,6 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
     @Autowired
     private InventoryTransactionService inventoryTransactionService;
-
-    @Autowired
-    private InventoryItemTypeService inventoryItemTypeService;
 
     @Autowired
     private SampleStorageService sampleStorageService;
@@ -119,7 +114,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
             double availableQuantity = availableQuantity(lots);
             totalSum += totalQuantity;
             availableSum += availableQuantity;
-            table.addRow(List.of(item.getId(), item.getName(), itemTypeLabel(item.getItemType()),
+            table.addRow(List.of(item.getId(), item.getName(), nullToEmpty(item.getItemType()),
                     nullToEmpty(item.getCategory()), locationByItemId.get(item.getId()),
                     formatNumber(availableQuantity), formatNumber(totalQuantity), item.getUnits(),
                     item.isActive() ? "Active" : "Inactive"));
@@ -156,7 +151,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
             double totalQuantity = totalQuantity(lots);
             availableSum += availableQuantity;
             totalSum += totalQuantity;
-            table.addRow(List.of(item.getId(), item.getName(), itemTypeLabel(item.getItemType()),
+            table.addRow(List.of(item.getId(), item.getName(), nullToEmpty(item.getItemType()),
                     nullToEmpty(item.getCategory()), locationByItemId.get(item.getId()),
                     formatNumber(availableQuantity), formatNumber(totalQuantity),
                     item.getLowStockThreshold().toString(), item.getUnits()));
@@ -190,8 +185,9 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         Comparator<InventoryLot> byExpiration = Comparator.comparing(InventoryLot::getEffectiveExpirationDate);
         Comparator<InventoryLot> comparator = byExpiration;
         if (request.isGroupByType()) {
-            comparator = Comparator.comparing(
-                    (InventoryLot l) -> itemTypeLabel(itemsById.get(l.getInventoryItem().getId()).getItemType()))
+            comparator = Comparator
+                    .comparing(
+                            (InventoryLot l) -> nullToEmpty(itemsById.get(l.getInventoryItem().getId()).getItemType()))
                     .thenComparing(byExpiration);
         } else if (request.isGroupByLocation()) {
             comparator = Comparator.comparing((InventoryLot l) -> resolveLotLocation(l, locationsByLotId))
@@ -206,7 +202,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         for (InventoryLot lot : allLots) {
             InventoryItem item = itemsById.get(lot.getInventoryItem().getId());
             long daysUntil = (lot.getEffectiveExpirationDate().getTime() - now) / (1000L * 60 * 60 * 24);
-            table.addRow(List.of(item.getId(), item.getName(), itemTypeLabel(item.getItemType()), lot.getLotNumber(),
+            table.addRow(List.of(item.getId(), item.getName(), nullToEmpty(item.getItemType()), lot.getLotNumber(),
                     resolveLotLocation(lot, locationsByLotId), formatDate(lot.getEffectiveExpirationDate()),
                     Long.toString(daysUntil), expirationUrgency(daysUntil),
                     formatNumber(lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0),
@@ -267,10 +263,9 @@ public class InventoryReportServiceImpl implements InventoryReportService {
             grandTotalUsed += totalUsed;
             totalEvents += eventCount;
 
-            table.addRow(
-                    List.of(item.getId(), item.getName(), itemTypeLabel(item.getItemType()), formatNumber(totalUsed),
-                            Integer.toString(eventCount), formatNumber(eventCount == 0 ? 0.0 : totalUsed / eventCount),
-                            formatDateTime(firstUse), formatDateTime(lastUse)));
+            table.addRow(List.of(item.getId(), item.getName(), nullToEmpty(item.getItemType()), formatNumber(totalUsed),
+                    Integer.toString(eventCount), formatNumber(eventCount == 0 ? 0.0 : totalUsed / eventCount),
+                    formatDateTime(firstUse), formatDateTime(lastUse)));
         }
         List<String> totalsRow = new java.util.ArrayList<>(
                 java.util.Collections.nCopies(table.getHeaders().size(), ""));
@@ -379,7 +374,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                     .thenComparing(comparator);
         }
         if (request.isGroupByType()) {
-            comparator = Comparator.comparing((InventoryItem i) -> itemTypeLabel(i.getItemType()))
+            comparator = Comparator.comparing((InventoryItem i) -> nullToEmpty(i.getItemType()))
                     .thenComparing(comparator);
         }
         return items.stream().sorted(comparator).collect(Collectors.toList());
@@ -426,14 +421,6 @@ public class InventoryReportServiceImpl implements InventoryReportService {
             return distinctLocations.iterator().next();
         }
         return MULTIPLE_LOCATIONS;
-    }
-
-    private String itemTypeLabel(String itemTypeCode) {
-        if (itemTypeCode == null) {
-            return "";
-        }
-        InventoryItemType type = inventoryItemTypeService.getByCode(itemTypeCode);
-        return type != null ? type.getLabel() : itemTypeCode;
     }
 
     private String resolveUserName(Integer userId, Map<Integer, String> cache) {
