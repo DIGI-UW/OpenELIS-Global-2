@@ -75,8 +75,6 @@ public abstract class BaseFhirDao {
     private static final char LIKE_ESCAPE_CHARACTER = '\\';
     private static final int DEFAULT_MAX_RESULTS = Integer
             .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-    private static final int MAX_ALLOWED_RESULTS = Integer
-            .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
 
     @PersistenceContext
     protected EntityManager entityManager;
@@ -764,7 +762,7 @@ public abstract class BaseFhirDao {
     protected <R> List<R> list(FhirCriteriaContext<?, R> context, int firstResult, int maxResults) {
         validateContext(context);
         validatePagination(firstResult, maxResults);
-        return executeQuery(context, firstResult, Math.min(maxResults, MAX_ALLOWED_RESULTS));
+        return executeQuery(context, firstResult, maxResults);
     }
 
     /**
@@ -967,9 +965,6 @@ public abstract class BaseFhirDao {
         if (maxResults <= 0) {
             throw new IllegalArgumentException("Maximum results must be greater than zero: " + maxResults);
         }
-        if (maxResults > MAX_ALLOWED_RESULTS) {
-            LOGGER.warn("Requested max results {} exceeds limit {}, truncating to {}", maxResults, MAX_ALLOWED_RESULTS,
-                    MAX_ALLOWED_RESULTS);
-        }
+
     }
 }

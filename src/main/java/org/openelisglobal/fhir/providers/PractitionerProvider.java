@@ -9,8 +9,10 @@ import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.annotation.Sort;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.api.SortSpec;
 import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.StringAndListParam;
@@ -223,7 +225,9 @@ public class PractitionerProvider implements IResourceProvider {
     }
 
     @Search
-    public IBundleProvider searchPractitioner(@OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
+    public IBundleProvider searchPractitioner(
+
+            @OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
 
             @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier,
 
@@ -233,25 +237,51 @@ public class PractitionerProvider implements IResourceProvider {
 
             @OptionalParam(name = Practitioner.SP_FAMILY) StringAndListParam family,
 
+            @OptionalParam(name = Practitioner.SP_ADDRESS_CITY) StringAndListParam city,
+
+            @OptionalParam(name = Practitioner.SP_ADDRESS_STATE) StringAndListParam state,
+
+            @OptionalParam(name = Practitioner.SP_ADDRESS_POSTALCODE) StringAndListParam postalCode,
+
+            @OptionalParam(name = Practitioner.SP_ADDRESS_COUNTRY) StringAndListParam country,
+
+            @OptionalParam(name = Practitioner.SP_TELECOM) TokenAndListParam telecom,
+
+            @OptionalParam(name = Practitioner.SP_EMAIL) TokenAndListParam email,
+
+            @OptionalParam(name = Practitioner.SP_PHONE) TokenAndListParam phone,
+
             @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
+
+            @Sort SortSpec sort,
 
             @IncludeParam(reverse = true, allow = {
                     "ServiceRequest:" + ServiceRequest.SP_REQUESTER }) HashSet<Include> revIncludes,
 
             HttpServletRequest request) {
 
-        String methodName = "searchPractitionerBundle";
+        final String methodName = "searchPractitioner";
 
-        LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Practitioners");
+        LogEvent.logDebug(getClass().getSimpleName(), methodName, "Searching for Practitioners");
 
         try {
-            PractitionerSearchParams params = new PractitionerSearchParams(identifier, name, given, family, null, null,
-                    null, id, lastUpdated, null);
+            PractitionerSearchParams params = new PractitionerSearchParams(identifier, name, given, family, city, state,
+                    postalCode, country, telecom, email, phone, id, lastUpdated, sort, revIncludes);
 
             return practitionerSearchService.searchPractitioners(params);
 
+        } catch (InvalidRequestException exception) {
+            throw exception;
+
+        } catch (IllegalArgumentException exception) {
+            LogEvent.logError(getClass().getSimpleName(), methodName,
+                    "Invalid Practitioner search parameter: " + exception.getMessage());
+
+            throw new InvalidRequestException("Invalid Practitioner search parameter: " + exception.getMessage(),
+                    exception);
+
         } catch (Exception exception) {
-            LogEvent.logError(this.getClass().getSimpleName(), methodName,
+            LogEvent.logError(getClass().getSimpleName(), methodName,
                     "Error searching Practitioners: " + exception.getMessage());
 
             throw new InternalErrorException("Error searching Practitioners", exception);

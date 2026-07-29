@@ -20,8 +20,6 @@ import org.openelisglobal.common.util.ConfigurationProperties;
  */
 public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> implements IBundleProvider {
 
-    private static final int FALLBACK_PAGE_SIZE = 20;
-
     private static final int DEFAULT_PAGE_SIZE = resolveDefaultPageSize();
 
     /**
@@ -203,19 +201,17 @@ public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> impleme
     private static int resolveDefaultPageSize() {
 
         try {
-            String configuredPageSize = ConfigurationProperties.getInstance().getPropertyValue("default.page.size");
+            int configuredPageSize = Integer
+                    .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
 
-            if (configuredPageSize == null || configuredPageSize.isBlank()) {
-
-                return FALLBACK_PAGE_SIZE;
+            if (configuredPageSize <= 0) {
+                return (Integer) null;
             }
 
-            int parsedPageSize = Integer.parseInt(configuredPageSize.trim());
-
-            return parsedPageSize > 0 ? parsedPageSize : FALLBACK_PAGE_SIZE;
+            return configuredPageSize;
 
         } catch (RuntimeException exception) {
-            return FALLBACK_PAGE_SIZE;
+            throw new RuntimeException("Failed to read default page size from configuration", exception);
         }
     }
 }
