@@ -12,11 +12,12 @@
     break per the story (Inventory has no production users yet) — existing
     rows are dropped and recreated with auto-generated codes, not migrated.
 
-    TRUNCATE inventory_item CASCADE first (while the old FKs still exist) so
-    Postgres walks the whole dependency graph automatically — inventory_lot,
-    inventory_usage, test_reagent_link, and (transitively, via inventory_lot)
-    inventory_transaction — rather than us hand-listing every dependent
-    table and risking missing one as the schema grows.
+    Must NOT use "TRUNCATE ... CASCADE": 068 puts sample_storage_assignment/
+    movement in inventory_item's cascade closure (fk_assignment_inventory_lot/
+    fk_movement_inventory_lot), so CASCADE would wipe shipped sample-storage
+    data on upgraded instances. DELETE in FK dependency order instead — a
+    future reference into these tables then fails loudly here rather than
+    being silently truncated.
     -->
     <changeSet id="OGC-658-part-c-migrate-inventory-item-pk-to-code" author="OGC">
         <preConditions onFail="MARK_RAN">
@@ -30,7 +31,15 @@
             transitively references them) are truncated, not migrated.
         </comment>
 
-        <sql>TRUNCATE TABLE clinlims.inventory_item CASCADE;</sql>
+        <sql>
+            DELETE FROM clinlims.sample_storage_movement WHERE occupant_type = 'INVENTORY_LOT';
+            DELETE FROM clinlims.sample_storage_assignment WHERE occupant_type = 'INVENTORY_LOT';
+            DELETE FROM clinlims.inventory_usage;
+            DELETE FROM clinlims.inventory_transaction;
+            DELETE FROM clinlims.test_reagent_link;
+            DELETE FROM clinlims.inventory_lot;
+            DELETE FROM clinlims.inventory_item;
+        </sql>
 
         <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="inventory_lot"
             constraintName="fk_lot_inventory_item"/>
@@ -77,7 +86,7 @@
 
         <rollback>
             <!--
-            Best-effort only: the TRUNCATE above is not reversible, same as
+            Best-effort only: the deletes above are not reversible, same as
             any clean-break changeset in this codebase. This restores the
             pre-migration shape (empty tables), not the pre-migration data.
             -->
@@ -88,7 +97,15 @@
             <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_reagent_link"
                 constraintName="fk_test_reagent_link_inventory_item"/>
 
-            <sql>TRUNCATE TABLE clinlims.inventory_item CASCADE;</sql>
+            <sql>
+                DELETE FROM clinlims.sample_storage_movement WHERE occupant_type = 'INVENTORY_LOT';
+                DELETE FROM clinlims.sample_storage_assignment WHERE occupant_type = 'INVENTORY_LOT';
+                DELETE FROM clinlims.inventory_usage;
+                DELETE FROM clinlims.inventory_transaction;
+                DELETE FROM clinlims.test_reagent_link;
+                DELETE FROM clinlims.inventory_lot;
+                DELETE FROM clinlims.inventory_item;
+            </sql>
 
             <modifyDataType tableName="inventory_lot" schemaName="clinlims" columnName="inventory_item_id"
                 newDataType="BIGINT"/>
