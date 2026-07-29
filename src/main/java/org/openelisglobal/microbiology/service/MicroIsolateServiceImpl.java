@@ -38,7 +38,7 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroIsolate isolate = new MicroIsolate();
         isolate.setCaseId(caseId);
         isolate.setIsolateLabel(isolateLabel);
-        isolate.setOrganismId(organismId);
+        isolate.setOrganismId(optionalId(organismId));
         isolate.setPreliminaryOrganismText(preliminaryOrganismText);
         isolate.setSignificance((significance == null ? MicroIsolateSignificance.UNKNOWN : significance).name());
         isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.PRELIMINARY.name());
@@ -60,7 +60,7 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroCase microCase = caseDAO.get(isolate.getCaseId())
                 .orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseMutationGuard.requireMutable(microCase);
-        isolate.setOrganismId(organismId);
+        isolate.setOrganismId(optionalId(organismId));
         isolate.setPreliminaryOrganismText(preliminaryOrganismText);
         isolate.setSignificance((significance == null ? MicroIsolateSignificance.UNKNOWN : significance).name());
         isolate.setIdentificationStatus(
@@ -76,6 +76,10 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     @Transactional(readOnly = true)
     public List<MicroIsolate> getIsolatesForCase(String caseId) {
         return isolateDAO.getByCaseId(caseId);
+    }
+
+    private String optionalId(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
     }
 
     private void recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy, String note,
