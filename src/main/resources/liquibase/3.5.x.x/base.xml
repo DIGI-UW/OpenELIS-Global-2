@@ -188,19 +188,16 @@
        and drop the non-functional inventory storage skeleton (inventory_storage_location) -->
   <include relativeToChangelogFile="true" file="069-generalize-storage-assignment-occupant.xml"/>
 
-  <!-- OGC-658 Part A: admin-managed, localized inventory_item_type table, replacing
-       the hardcoded InventoryEnums.ItemType enum -->
-  <include relativeToChangelogFile="true" file="070-inventory-item-type.xml"/>
+  <!-- OGC-658 (superseded): corrective cleanup for environments that already ran the
+       since-deleted Part A changesets (inventory_item_type table + item_type FK) -->
+  <include relativeToChangelogFile="true" file="070-drop-inventory-item-type.xml"/>
 
   <!-- OGC-658 Part C: inventory_item's PK migrated from BIGINT id to a
        server-generated VARCHAR(64) code -->
   <include relativeToChangelogFile="true" file="071-inventory-item-code-pk.xml"/>
 
-  <!-- OGC-658 Part A fix: inventory_item_type was missing the last_updated
-       column BaseObject's @Version field requires -->
-  <include relativeToChangelogFile="true" file="072-fix-inventory-item-type-last-updated.xml"/>
 
   <!-- OGC-658: corrective cleanup for environments that already ran the
        since-deleted 061 changeset (menu_inventory_item_types) -->
-  <include relativeToChangelogFile="true" file="073-remove-inventory-item-type-menu-entry.xml"/>
+  <include relativeToChangelogFile="true" file="072-remove-inventory-item-type-menu-entry.xml"/>
 </databaseChangeLog>
