@@ -304,7 +304,9 @@ const InventoryCatalog = () => {
                   label={intl.formatMessage({ id: "inventory.filter.type" })}
                   items={itemTypes}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
+                  selectedItem={
+                    itemTypes.find((t) => t.id === typeFilter) ?? null
+                  }
                   onChange={({ selectedItem }) =>
                     setTypeFilter(selectedItem.id)
                   }
@@ -317,9 +319,9 @@ const InventoryCatalog = () => {
                   label={intl.formatMessage({ id: "inventory.filter.status" })}
                   items={statusOptions}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
+                  selectedItem={
+                    statusOptions.find((s) => s.id === statusFilter) ?? null
+                  }
                   onChange={({ selectedItem }) =>
                     setStatusFilter(selectedItem.id)
                   }

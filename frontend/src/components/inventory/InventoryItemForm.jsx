@@ -301,7 +301,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           label="Select item type"
           items={itemTypes}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={itemTypes.find((t) => t.id === formData.itemType)}
+          selectedItem={
+            itemTypes.find((t) => t.id === formData.itemType) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("itemType", selectedItem.id)
           }

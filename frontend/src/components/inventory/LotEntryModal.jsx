@@ -284,7 +284,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
               formData.inventoryItem
-                ? items.find((i) => i.id === formData.inventoryItem.id)
+                ? (items.find((i) => i.id === formData.inventoryItem.id) ??
+                  null)
                 : null
             }
             onChange={({ selectedItem }) =>
@@ -408,9 +409,9 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             label="Select QC status"
             items={qcStatusOptions}
             itemToString={(item) => (item ? item.text : "")}
-            selectedItem={qcStatusOptions.find(
-              (s) => s.id === formData.qcStatus,
-            )}
+            selectedItem={
+              qcStatusOptions.find((s) => s.id === formData.qcStatus) ?? null
+            }
             onChange={({ selectedItem }) =>
               handleChange("qcStatus", selectedItem.id)
             }
@@ -422,7 +423,9 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             label="Select status"
             items={statusOptions}
             itemToString={(item) => (item ? item.text : "")}
-            selectedItem={statusOptions.find((s) => s.id === formData.status)}
+            selectedItem={
+              statusOptions.find((s) => s.id === formData.status) ?? null
+            }
             onChange={({ selectedItem }) =>
               handleChange("status", selectedItem.id)
             }

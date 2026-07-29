@@ -3635,6 +3635,8 @@
   "notification.info": "Information",
   "notification.invalid.confirm.password": "Your entered password is not same as above password.",
   "notification.invalid.loginName": "Please enter AlphaNumeric values without spaces only.",
+  "notification.success": "Success",
+  "notification.warning": "Warning",
   "notification.invalid.name": "Please enter Alphanumeric values only.",
   "notification.invalid.password": "Please enter password according to instructions.",
   "notification.login.generic.error": "Error while attempting login",

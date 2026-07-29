@@ -135,7 +135,9 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "qc.status.select" })}
           items={qcStatusOptions}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={qcStatusOptions.find((s) => s.id === formData.qcStatus)}
+          selectedItem={
+            qcStatusOptions.find((s) => s.id === formData.qcStatus) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("qcStatus", selectedItem.id)
           }
