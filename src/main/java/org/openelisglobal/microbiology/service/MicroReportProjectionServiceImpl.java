@@ -94,7 +94,9 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     @Transactional(readOnly = true)
     public MicroReportProjectionResult preview(String caseId) {
         ProjectionInput input = projectionInput(caseId);
-        return new MicroReportProjectionResult(input.content(), input.mappingConfigured(), List.of());
+        List<String> projectedResultIds = input.links().stream().map(MicroCaseAnalysis::getProjectedResultId)
+                .filter(this::hasText).toList();
+        return new MicroReportProjectionResult(input.content(), input.mappingConfigured(), projectedResultIds);
     }
 
     private ProjectionInput projectionInput(String caseId) {

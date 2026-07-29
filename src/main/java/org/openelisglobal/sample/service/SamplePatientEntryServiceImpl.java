@@ -153,7 +153,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         updateData.setPatientId(patientUpdate.getPatientId(form));
 
         persistProviderData(updateData);
-        persistSampleData(updateData);
+        persistSampleData(updateData, form.getMicrobiologyOrderDetail());
 
         // Only persist requester data and observations if sample was successfully
         // created
@@ -274,7 +274,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
-    private void persistSampleData(SamplePatientUpdateData updateData) {
+    private void persistSampleData(SamplePatientUpdateData updateData,
+            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm microbiologyOrderDetail) {
         String analysisRevision = ConfigurationProperties.getInstance().getPropertyValue("analysis.default.revision");
 
         if (updateData.getSample() == null) {
@@ -436,7 +437,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     persistAnalysisNotificationConfigs(analysis, updateData);
                 }
             }
-            routeMicrobiologyCases(savedItem, sampleTestCollection, updateData.getCurrentUserId());
+            routeMicrobiologyCases(savedItem, sampleTestCollection, updateData.getCurrentUserId(),
+                    microbiologyOrderDetail);
         }
 
         persistOrderSpecimenBarcodeCounts(updateData.getSample(), orderLabelQuantity, specimenLabelQuantities);
@@ -512,11 +514,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     }
 
     private void routeMicrobiologyCases(SampleItem sampleItem, SampleTestCollection sampleTestCollection,
-            String currentUserId) {
+            String currentUserId,
+            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm microbiologyOrderDetail) {
         if (microOrderRoutingService == null) {
             return;
         }
-        microOrderRoutingService.routeAnalysesForSampleItem(sampleItem, sampleTestCollection.analysises, currentUserId);
+        microOrderRoutingService.routeAnalysesForSampleItem(sampleItem, sampleTestCollection.analysises, currentUserId,
+                microbiologyOrderDetail);
     }
 
     /*

@@ -5,18 +5,38 @@ import { IntlProvider } from "react-intl";
 import CriticalCommunicationPanel from "../CriticalCommunicationPanel";
 import messages from "../../../languages/en.json";
 
-const renderPanel = (service) =>
+const renderPanel = (service, props = {}) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <CriticalCommunicationPanel
         caseId="case-1"
         sampleItemId="sample-1"
         service={service}
+        {...props}
       />
     </IntlProvider>,
   );
 
 describe("CriticalCommunicationPanel", () => {
+  it("offers projected patient-report results as communication targets", async () => {
+    const service = {
+      getCriticalCommunications: vi.fn().mockResolvedValue([]),
+    };
+
+    renderPanel(service, { projectedResultIds: ["result-1", "result-2"] });
+
+    fireEvent.change(await screen.findByLabelText("Critical result target"), {
+      target: { value: "RESULT" },
+    });
+
+    expect(
+      screen.getByRole("option", { name: "result-1" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "result-2" }),
+    ).toBeInTheDocument();
+  });
+
   it("logs, acknowledges, and closes critical communication", async () => {
     const service = {
       getCriticalCommunications: vi

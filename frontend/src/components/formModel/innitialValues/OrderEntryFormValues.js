@@ -7,6 +7,13 @@ export const SampleOrderFormValues = {
   patientSMSNotificationTestIds: [],
   providerEmailNotificationTestIds: [],
   providerSMSNotificationTestIds: [],
+  microbiologyOrderDetail: {
+    patientOrigin: "",
+    numberOfSets: "",
+    clinicalHistory: "",
+    antibioticExposure: "",
+    criticalNotificationPreference: "",
+  },
   patientUpdateStatus: "ADD",
   referralItems: [],
   referralOrganizations: null,

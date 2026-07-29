@@ -9,6 +9,10 @@ import messages from "../../../languages/en.json";
 const caseDetail = {
   id: "case-1",
   sampleItemId: "1001",
+  patientId: "patient-1",
+  patientName: "Microbiology, UAT",
+  accessionNumber: "UATMICRO001",
+  specimenType: "Blood",
   workflowType: "BACTERIOLOGY",
   stage: "RECEIVED",
   activities: [
@@ -61,6 +65,7 @@ const astServiceStubs = {
     reportableContent: true,
     mappingConfigured: true,
     content: "Escherichia coli: Ciprofloxacin S",
+    projectedResultIds: ["result-1"],
   }),
   releasePreliminaryReport: vi.fn(),
   releaseFinalReport: vi.fn(),
@@ -97,7 +102,19 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByRole("heading", { name: "Microbiology case" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Microbiology, UAT")).toBeInTheDocument();
+    expect(screen.getByText("UATMICRO001")).toBeInTheDocument();
+    expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("Media or bottle"), {
+      target: { value: "Blood culture bottle" },
+    });
+    fireEvent.change(screen.getByLabelText("Incubation"), {
+      target: { value: "35 C for 24 hours" },
+    });
+    fireEvent.change(screen.getByLabelText("Atmosphere"), {
+      target: { value: "Ambient" },
+    });
     fireEvent.change(screen.getByLabelText("Activity note"), {
       target: { value: "setup complete" },
     });
@@ -106,13 +123,51 @@ describe("MicrobiologyCaseView", () => {
     await waitFor(() =>
       expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
         nextStage: "SETUP_RECORDED",
-        note: "setup complete",
+        note: "Media or bottle: Blood culture bottle; Incubation: 35 C for 24 hours; Atmosphere: Ambient; setup complete",
       }),
     );
     await waitFor(() =>
       expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0),
     );
     expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0);
+  });
+
+  it("links the report workflow to the patient results page", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=reports");
+
+    expect(
+      await screen.findByRole("link", { name: "View patient results" }),
+    ).toHaveAttribute("href", "/PatientResults/patient-1");
+  });
+
+  it("opens critical communication from its canonical section URL", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?section=critical-communication",
+    );
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=critical-communication",
+    );
+    expect(getAccordionButton("Critical communication")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 
   it("refreshes the case timeline after creating an isolate", async () => {

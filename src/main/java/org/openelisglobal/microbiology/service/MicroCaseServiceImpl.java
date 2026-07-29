@@ -17,6 +17,12 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +33,20 @@ public class MicroCaseServiceImpl implements MicroCaseService {
     private final MicroCaseActivityDAO activityDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroCaseOrderDetailDAO orderDetailDAO;
+    private final SampleItemService sampleItemService;
+    private final SampleHumanService sampleHumanService;
+    private final PatientService patientService;
 
     public MicroCaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroIsolateDAO isolateDAO,
-            MicroCaseOrderDetailDAO orderDetailDAO) {
+            MicroCaseOrderDetailDAO orderDetailDAO, SampleItemService sampleItemService,
+            SampleHumanService sampleHumanService, PatientService patientService) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.isolateDAO = isolateDAO;
         this.orderDetailDAO = orderDetailDAO;
+        this.sampleItemService = sampleItemService;
+        this.sampleHumanService = sampleHumanService;
+        this.patientService = patientService;
     }
 
     @Override
@@ -91,6 +104,7 @@ public class MicroCaseServiceImpl implements MicroCaseService {
             return null;
         }
         MicroCaseDetailForm form = toDetailForm(microCase);
+        compileSpecimenContext(form, microCase.getSampleItemId());
         for (MicroCaseActivity activity : activityDAO.getByCaseId(caseId)) {
             form.activities.add(toActivityForm(activity));
         }
@@ -102,6 +116,28 @@ public class MicroCaseServiceImpl implements MicroCaseService {
             form.orderDetail = toOrderDetailForm(orderDetail);
         }
         return form;
+    }
+
+    private void compileSpecimenContext(MicroCaseDetailForm form, String sampleItemId) {
+        if (sampleItemId == null) {
+            return;
+        }
+        SampleItem sampleItem = sampleItemService.getData(sampleItemId);
+        if (sampleItem == null) {
+            return;
+        }
+        Sample sample = sampleItem.getSample();
+        if (sample != null) {
+            form.accessionNumber = sample.getAccessionNumber();
+            Patient patient = sampleHumanService.getPatientForSample(sample);
+            if (patient != null) {
+                form.patientId = patient.getId();
+                form.patientName = patientService.getLastFirstName(patient);
+            }
+        }
+        if (sampleItem.getTypeOfSample() != null) {
+            form.specimenType = sampleItem.getTypeOfSample().getDescription();
+        }
     }
 
     void recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy, String note,

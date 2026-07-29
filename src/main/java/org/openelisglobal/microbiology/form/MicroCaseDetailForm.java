@@ -8,6 +8,10 @@ public class MicroCaseDetailForm {
 
     public String id;
     public String sampleItemId;
+    public String patientId;
+    public String patientName;
+    public String accessionNumber;
+    public String specimenType;
     public String workflowType;
     public String stage;
     public String priority;

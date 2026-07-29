@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, InlineNotification, Layer, Tag } from "@carbon/react";
+import {
+  Button,
+  InlineNotification,
+  Layer,
+  Link as CarbonLink,
+  Tag,
+} from "@carbon/react";
 import { useIntl } from "react-intl";
+import { Link as RouterLink } from "react-router-dom";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
 
@@ -8,7 +15,9 @@ const ReportReadinessPanel = ({
   caseId,
   service = MicrobiologyService,
   finalReleaseState = "",
+  patientId,
   onReleased,
+  onProjectionLoaded,
   refreshToken = 0,
 }) => {
   const intl = useIntl();
@@ -34,6 +43,9 @@ const ReportReadinessPanel = ({
       setReadiness(caseReadiness);
       setWhonetReadiness(whonetState);
       setProjection(reportProjection);
+      if (onProjectionLoaded) {
+        onProjectionLoaded(reportProjection?.projectedResultIds || []);
+      }
     });
 
   useEffect(() => {
@@ -42,7 +54,6 @@ const ReportReadinessPanel = ({
     return () => {
       mountedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId, refreshToken]);
 
   const releaseFinal = () => {
@@ -227,6 +238,16 @@ const ReportReadinessPanel = ({
       )}
 
       <div className="microbiology-report-actions">
+        {patientId && (
+          <CarbonLink
+            as={RouterLink}
+            to={`/PatientResults/${encodeURIComponent(patientId)}`}
+          >
+            {intl.formatMessage({
+              id: "microbiology.release.viewPatientResults",
+            })}
+          </CarbonLink>
+        )}
         {finalReleased ? (
           <Tag type="green">
             {intl.formatMessage({ id: "microbiology.release.finalReleased" })}

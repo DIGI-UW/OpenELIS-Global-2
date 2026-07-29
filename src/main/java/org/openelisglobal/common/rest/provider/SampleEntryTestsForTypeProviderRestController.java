@@ -153,7 +153,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         testsMapList.clear();
         for (Test test : tests) {
             testsMapList.add(new TestMap(test.getId(), TestServiceImpl.getUserLocalizedTestName(test),
-                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId())));
+                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId()), test.getCultureWorkflowType()));
         }
         sampleEntryTests.setTests(testsMapList);
     }
@@ -322,10 +322,13 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         boolean userBenchChoice;
 
-        public TestMap(String id, String name, boolean userBenchChoice) {
+        String cultureWorkflowType;
+
+        public TestMap(String id, String name, boolean userBenchChoice, String cultureWorkflowType) {
             this.id = id;
             this.name = name;
             this.userBenchChoice = userBenchChoice;
+            this.cultureWorkflowType = cultureWorkflowType;
         }
 
         public String getId() {
@@ -350,6 +353,14 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         public void setUserBenchChoice(boolean userBenchChoice) {
             this.userBenchChoice = userBenchChoice;
+        }
+
+        public String getCultureWorkflowType() {
+            return cultureWorkflowType;
+        }
+
+        public void setCultureWorkflowType(String cultureWorkflowType) {
+            this.cultureWorkflowType = cultureWorkflowType;
         }
     }
 }

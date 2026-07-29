@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Button, Select, SelectItem, Tag, TextArea } from "@carbon/react";
+import {
+  Button,
+  Select,
+  SelectItem,
+  Tag,
+  TextArea,
+  TextInput,
+} from "@carbon/react";
 import { useIntl } from "react-intl";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 
@@ -32,10 +39,36 @@ const CaseTimelinePanel = ({
   const intl = useIntl();
   const [nextStage, setNextStage] = useState("SETUP_RECORDED");
   const [note, setNote] = useState("");
+  const [media, setMedia] = useState("");
+  const [incubation, setIncubation] = useState("");
+  const [atmosphere, setAtmosphere] = useState("");
 
   const submit = () => {
-    onRecordActivity({ nextStage, note });
+    const setupDetails =
+      nextStage === "SETUP_RECORDED"
+        ? [
+            media &&
+              `${intl.formatMessage({
+                id: "microbiology.case.media",
+              })}: ${media}`,
+            incubation &&
+              `${intl.formatMessage({
+                id: "microbiology.case.incubation",
+              })}: ${incubation}`,
+            atmosphere &&
+              `${intl.formatMessage({
+                id: "microbiology.case.atmosphere",
+              })}: ${atmosphere}`,
+          ].filter(Boolean)
+        : [];
+    onRecordActivity({
+      nextStage,
+      note: [...setupDetails, note].filter(Boolean).join("; "),
+    });
     setNote("");
+    setMedia("");
+    setIncubation("");
+    setAtmosphere("");
   };
   const selectedStageOption =
     STAGE_OPTIONS.find((option) => option.value === nextStage) ||
@@ -78,6 +111,34 @@ const CaseTimelinePanel = ({
               ))}
             </Select>
             <div />
+            {nextStage === "SETUP_RECORDED" && (
+              <>
+                <TextInput
+                  id="microbiology-setup-media"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.case.media",
+                  })}
+                  value={media}
+                  onChange={(event) => setMedia(event.target.value)}
+                />
+                <TextInput
+                  id="microbiology-setup-incubation"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.case.incubation",
+                  })}
+                  value={incubation}
+                  onChange={(event) => setIncubation(event.target.value)}
+                />
+                <TextInput
+                  id="microbiology-setup-atmosphere"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.case.atmosphere",
+                  })}
+                  value={atmosphere}
+                  onChange={(event) => setAtmosphere(event.target.value)}
+                />
+              </>
+            )}
             <div className="microbiology-form-grid__wide">
               <TextArea
                 id="microbiology-activity-note"

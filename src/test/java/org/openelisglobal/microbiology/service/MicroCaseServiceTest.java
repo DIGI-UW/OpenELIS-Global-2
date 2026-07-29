@@ -23,6 +23,13 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroCaseServiceTest {
@@ -39,6 +46,15 @@ public class MicroCaseServiceTest {
     @Mock
     private MicroCaseOrderDetailDAO orderDetailDAO;
 
+    @Mock
+    private SampleItemService sampleItemService;
+
+    @Mock
+    private SampleHumanService sampleHumanService;
+
+    @Mock
+    private PatientService patientService;
+
     @Test
     public void createOrGetCaseReturnsExistingCaseWithoutDuplicateActivity() {
         MicroCase existing = new MicroCase();
@@ -46,7 +62,7 @@ public class MicroCaseServiceTest {
         existing.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         when(caseDAO.getBySampleItemAndWorkflow("1001", MicroWorkflowType.BACTERIOLOGY.name())).thenReturn(existing);
 
-        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO);
+        MicroCaseService service = service();
         MicroCase result = service.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
 
         assertEquals(existing, result);
@@ -56,7 +72,7 @@ public class MicroCaseServiceTest {
 
     @Test
     public void createOrGetCaseCreatesReceivedCaseAndTimelineActivity() {
-        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO);
+        MicroCaseService service = service();
 
         MicroCase result = service.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
 
@@ -84,7 +100,7 @@ public class MicroCaseServiceTest {
         detail.setNumberOfSets(2);
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(detail);
 
-        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO);
+        MicroCaseService service = service();
         MicroCaseDetailForm form = service.getCaseDetail("case-1");
 
         assertNotNull(form.orderDetail);
@@ -101,9 +117,44 @@ public class MicroCaseServiceTest {
         when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(null);
 
-        MicroCaseService service = new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO);
+        MicroCaseService service = service();
         MicroCaseDetailForm form = service.getCaseDetail("case-1");
 
         assertEquals(null, form.orderDetail);
+    }
+
+    @Test
+    public void getCaseDetailCompilesPatientAccessionAndSpecimenContext() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setSampleItemId("1001");
+        Sample sample = new Sample();
+        sample.setAccessionNumber("UATMICRO001");
+        SampleItem sampleItem = new SampleItem();
+        sampleItem.setId("1001");
+        sampleItem.setSample(sample);
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setDescription("Blood");
+        sampleItem.setTypeOfSample(typeOfSample);
+        Patient patient = new Patient();
+        patient.setId("patient-1");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(sampleItemService.getData("1001")).thenReturn(sampleItem);
+        when(sampleHumanService.getPatientForSample(sample)).thenReturn(patient);
+        when(patientService.getLastFirstName(patient)).thenReturn("Microbiology, UAT");
+
+        MicroCaseDetailForm form = service().getCaseDetail("case-1");
+
+        assertEquals("patient-1", form.patientId);
+        assertEquals("Microbiology, UAT", form.patientName);
+        assertEquals("UATMICRO001", form.accessionNumber);
+        assertEquals("Blood", form.specimenType);
+    }
+
+    private MicroCaseService service() {
+        return new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO, sampleItemService,
+                sampleHumanService, patientService);
     }
 }

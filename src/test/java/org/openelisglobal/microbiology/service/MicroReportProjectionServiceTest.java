@@ -179,6 +179,20 @@ public class MicroReportProjectionServiceTest {
         }
     }
 
+    @Test
+    public void previewReturnsExistingProjectedResultIdsForCriticalCommunicationTargeting() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.PRELIM_RELEASED);
+        MicroCaseAnalysis link = link("case-1", "42", "17");
+        link.setProjectedResultId("201");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
+
+        MicroReportProjectionResult result = service.preview("case-1");
+
+        assertEquals(List.of("201"), result.getProjectedResultIds());
+    }
+
     private MicroCase microCase(String id, MicroCaseStage stage) {
         MicroCase microCase = new MicroCase();
         microCase.setId(id);

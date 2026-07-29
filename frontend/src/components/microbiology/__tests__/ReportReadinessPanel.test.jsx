@@ -2,14 +2,17 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import ReportReadinessPanel from "../ReportReadinessPanel";
 import messages from "../../../languages/en.json";
 
-const renderPanel = (service) =>
+const renderPanel = (service, props = {}) =>
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <ReportReadinessPanel caseId="case-1" service={service} />
-    </IntlProvider>,
+    <MemoryRouter>
+      <IntlProvider locale="en" messages={messages}>
+        <ReportReadinessPanel caseId="case-1" service={service} {...props} />
+      </IntlProvider>
+    </MemoryRouter>,
   );
 
 describe("ReportReadinessPanel", () => {
@@ -103,5 +106,38 @@ describe("ReportReadinessPanel", () => {
     expect(
       screen.getByRole("button", { name: "Release final report" }),
     ).toBeDisabled();
+  });
+
+  it("exposes projected result targets and a link to visible patient results", async () => {
+    const onProjectionLoaded = vi.fn();
+    const service = {
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: true,
+        blockers: [],
+      }),
+      getWhonetReadiness: vi.fn().mockResolvedValue({
+        whonetReady: true,
+        blockers: [],
+      }),
+      getReportProjection: vi.fn().mockResolvedValue({
+        reportableContent: true,
+        mappingConfigured: true,
+        content: "Escherichia coli: Ciprofloxacin S",
+        projectedResultIds: ["result-1"],
+      }),
+      releaseFinalReport: vi.fn(),
+    };
+
+    renderPanel(service, {
+      patientId: "patient-1",
+      onProjectionLoaded,
+    });
+
+    await waitFor(() =>
+      expect(onProjectionLoaded).toHaveBeenCalledWith(["result-1"]),
+    );
+    expect(
+      screen.getByRole("link", { name: "View patient results" }),
+    ).toHaveAttribute("href", "/PatientResults/patient-1");
   });
 });

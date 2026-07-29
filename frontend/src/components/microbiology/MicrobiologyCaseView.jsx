@@ -52,6 +52,11 @@ const progressItems = [
   { id: "ast", section: "ast", labelId: "microbiology.progress.ast" },
   { id: "review", section: "ast", labelId: "microbiology.progress.review" },
   {
+    id: "critical-communication",
+    section: "critical-communication",
+    labelId: "microbiology.critical.title",
+  },
+  {
     id: "reports",
     section: "reports",
     labelId: "microbiology.progress.reports",
@@ -121,6 +126,7 @@ const MicrobiologyCaseView = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [readinessRefreshToken, setReadinessRefreshToken] = useState(0);
+  const [projectedResultIds, setProjectedResultIds] = useState([]);
 
   const loadCase = ({ showLoading = true } = {}) => {
     if (showLoading) {
@@ -143,7 +149,10 @@ const MicrobiologyCaseView = ({
   useEffect(() => {
     let active = true;
 
-    service.getCaseDetail(caseId).then((detail) => {
+    Promise.all([
+      service.getCaseDetail(caseId),
+      service.getReportProjection(caseId),
+    ]).then(([detail, projection]) => {
       if (!active) {
         return;
       }
@@ -154,6 +163,7 @@ const MicrobiologyCaseView = ({
         setError("");
         setCaseDetail(detail);
       }
+      setProjectedResultIds(projection?.projectedResultIds || []);
       setLoading(false);
     });
 
@@ -250,6 +260,28 @@ const MicrobiologyCaseView = ({
                   {formatMicrobiologyEnum(caseDetail.workflowType)}
                 </strong>
               </span>
+              {caseDetail.patientName && (
+                <span>
+                  {intl.formatMessage({ id: "microbiology.case.patient" })}:{" "}
+                  <strong>{caseDetail.patientName}</strong>
+                </span>
+              )}
+              {caseDetail.accessionNumber && (
+                <span>
+                  {intl.formatMessage({
+                    id: "microbiology.case.accessionNumber",
+                  })}
+                  : <strong>{caseDetail.accessionNumber}</strong>
+                </span>
+              )}
+              {caseDetail.specimenType && (
+                <span>
+                  {intl.formatMessage({
+                    id: "microbiology.case.specimenType",
+                  })}
+                  : <strong>{caseDetail.specimenType}</strong>
+                </span>
+              )}
             </div>
           </div>
           <Tag type={caseDetail.stage === "FINAL_RELEASED" ? "green" : "blue"}>
@@ -402,6 +434,7 @@ const MicrobiologyCaseView = ({
                   caseId={caseDetail.id}
                   sampleItemId={caseDetail.sampleItemId}
                   isolates={caseDetail.isolates}
+                  projectedResultIds={projectedResultIds}
                   service={service}
                   onCaseUpdated={() => loadCase({ showLoading: false })}
                 />
@@ -417,7 +450,9 @@ const MicrobiologyCaseView = ({
                   caseId={caseDetail.id}
                   service={service}
                   finalReleaseState={caseDetail.stage}
+                  patientId={caseDetail.patientId}
                   onReleased={() => loadCase({ showLoading: false })}
+                  onProjectionLoaded={setProjectedResultIds}
                   refreshToken={readinessRefreshToken}
                 />
               </AccordionItem>
