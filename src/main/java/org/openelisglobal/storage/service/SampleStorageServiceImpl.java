@@ -7,6 +7,7 @@ import java.util.Map;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -61,6 +62,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private InventoryLotService inventoryLotService;
+
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -1441,7 +1445,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     private Integer resolveActingUserId(String sysUserId) {
         if (sysUserId == null || sysUserId.trim().isEmpty()) {
-            return 1; // Default to system user, consistent with the sample-item assign/move gap
+            String contextUserId = userContextHolder.getCurrentSysUserId();
+            if (contextUserId == null || contextUserId.isEmpty()) {
+                contextUserId = userContextHolder.getDaemonSysUserId();
+            }
+            return Integer.valueOf(contextUserId);
         }
         try {
             return Integer.valueOf(sysUserId.trim());
