@@ -247,9 +247,33 @@ test.describe("OGC-782 microbiology MVP", () => {
       );
     });
 
-    await test.step("Complete a Result-target critical communication", async () => {
+    await test.step("Release a preliminary patient report", async () => {
       await demo.step(
         6,
+        "Release the preliminary result into the standard patient report",
+      );
+      await accordionButton(page, "Reports").click();
+      await expect(page).toHaveURL(/section=reports/);
+      await expect(
+        page.getByRole("button", { name: "Release preliminary report" }),
+      ).toBeEnabled({ timeout: LONG_TIMEOUT });
+      await page
+        .getByRole("button", { name: "Release preliminary report" })
+        .click();
+      await expect(
+        page.getByTestId("microbiology-release-state"),
+      ).toContainText("Preliminary Released", { timeout: LONG_TIMEOUT });
+      await captureCard(
+        page,
+        demo,
+        "microbiology-report-card",
+        "ogc-782-08-preliminary-released",
+      );
+    });
+
+    await test.step("Complete a Result-target critical communication", async () => {
+      await demo.step(
+        7,
         "Log, acknowledge, and close a critical communication against the projected result",
       );
       await accordionButton(page, "Critical communication").click();
@@ -288,12 +312,12 @@ test.describe("OGC-782 microbiology MVP", () => {
         page,
         demo,
         "microbiology-critical-card",
-        "ogc-782-08-critical-communication-closed",
+        "ogc-782-09-critical-communication-closed",
       );
     });
 
     await test.step("Release the final report", async () => {
-      await demo.step(7, "Review report readiness and release final report");
+      await demo.step(8, "Review report readiness and release final report");
       await accordionButton(page, "Reports").click();
       await expect(page).toHaveURL(/section=reports/);
       await expect(
@@ -310,7 +334,7 @@ test.describe("OGC-782 microbiology MVP", () => {
         page,
         demo,
         "microbiology-report-card",
-        "ogc-782-09-final-released-readiness",
+        "ogc-782-10-final-released-readiness",
       );
       await expect(page.getByText("Final case is read-only")).toBeVisible();
       await accordionButton(page, "Isolates").click();
@@ -340,7 +364,7 @@ test.describe("OGC-782 microbiology MVP", () => {
       });
 
       await demo.step(
-        8,
+        9,
         "Open the patient results screen and verify the released microbiology result",
       );
       await page.goto(`/PatientResults/${seeded.patientId}`, {
@@ -354,7 +378,7 @@ test.describe("OGC-782 microbiology MVP", () => {
       });
       await expect(page.getByText("Ciprofloxacin (UAT) R")).toBeVisible();
       await expect(page.getByText("Gentamicin (UAT) S")).toBeVisible();
-      await captureViewport(page, demo, "ogc-782-10-patient-results-released");
+      await captureViewport(page, demo, "ogc-782-11-patient-results-released");
       await demo.title(
         "MVP checkpoint complete",
         "Setup, isolate, manual AST, review, final release, and visible patient results were exercised.",
