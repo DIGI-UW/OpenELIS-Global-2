@@ -9,8 +9,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Locale;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,6 +25,9 @@ import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.DefaultConfigurationProperties;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
@@ -42,12 +47,16 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicrobiologyUatScenarioServiceTest {
@@ -103,14 +112,45 @@ public class MicrobiologyUatScenarioServiceTest {
     @Mock
     private MicroOrderRoutingService orderRoutingService;
 
+    @Mock
+    private AutowireCapableBeanFactory beanFactory;
+
+    @Mock
+    private DefaultConfigurationProperties configurationProperties;
+
+    @Mock
+    private MessageSource messageSource;
+
     private MicrobiologyUatScenarioService service;
+    private AutowireCapableBeanFactory previousFactory;
+    private Object previousMessageUtilInstance;
 
     @Before
     public void setUp() {
+        previousFactory = (AutowireCapableBeanFactory) ReflectionTestUtils.getField(SpringContext.class, "factory");
+        previousMessageUtilInstance = ReflectionTestUtils.getField(MessageUtil.class, "instance");
+        ReflectionTestUtils.setField(SpringContext.class, "factory", beanFactory);
+        when(beanFactory.getBean(DefaultConfigurationProperties.class)).thenReturn(configurationProperties);
+        when(configurationProperties.getPropertyValue(any(ConfigurationProperties.Property.class))).thenReturn("X");
+        when(messageSource.getMessage(anyString(), any(), anyString(), any())).thenAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            if ("date.format.formatKey".equals(key)) {
+                return "MM/dd/yyyy";
+            }
+            return invocation.getArgument(2);
+        });
+        MessageUtil.setMessageSource(messageSource);
+
         service = new MicrobiologyUatScenarioService(methodService, sampleService, sampleItemService, patientService,
                 personService, sampleHumanService, typeOfSampleService, testService, testSectionService,
                 localizationService, analyteService, testAnalyteService, analysisService, statusService,
                 configurationService, caseService, orderRoutingService);
+    }
+
+    @After
+    public void tearDown() {
+        ReflectionTestUtils.setField(SpringContext.class, "factory", previousFactory);
+        ReflectionTestUtils.setField(MessageUtil.class, "instance", previousMessageUtilInstance);
     }
 
     @Test
@@ -141,6 +181,34 @@ public class MicrobiologyUatScenarioServiceTest {
         verify(patientService).insert(patientCaptor.capture());
         assertTrue(patientCaptor.getValue().getExternalId().startsWith("UATMICRO-"));
         assertEquals(patientCaptor.getValue().getExternalId(), patientCaptor.getValue().getNationalId());
+        assertEquals(Timestamp.valueOf("1990-03-13 00:00:00"), patientCaptor.getValue().getBirthDate());
+    }
+
+    @Test
+    public void repairsExistingUatPatientMissingRequiredOrderDemographics() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+        Patient existingPatient = new Patient();
+        existingPatient.setId("patient-1");
+        existingPatient.setExternalId("UATMICRO-01C82736AB");
+        when(patientService.getByExternalId(anyString())).thenReturn(existingPatient);
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "WORKLIST";
+        request.scenarioKey = "review-amr-microbiology-mvp";
+
+        service.provision(request, "1");
+
+        verify(patientService).update(existingPatient);
+        assertEquals(Timestamp.valueOf("1990-03-13 00:00:00"), existingPatient.getBirthDate());
+        assertEquals("F", existingPatient.getGender());
+        assertEquals(existingPatient.getExternalId(), existingPatient.getNationalId());
     }
 
     @Test

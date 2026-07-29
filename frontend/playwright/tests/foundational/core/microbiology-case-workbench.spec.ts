@@ -21,7 +21,9 @@ test.describe("Microbiology case workbench", () => {
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     const caseHeader = page.locator("header");
-    await expect(caseHeader.getByText("RECEIVED")).toBeVisible();
+    await expect(
+      caseHeader.locator(".cds--tag__label").filter({ hasText: "Received" }),
+    ).toBeVisible();
 
     await page.getByLabel("Activity note").fill("setup complete");
     await page.getByRole("button", { name: "Start inoculation" }).click();

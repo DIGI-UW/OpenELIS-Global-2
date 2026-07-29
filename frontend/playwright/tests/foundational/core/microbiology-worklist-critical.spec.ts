@@ -1,6 +1,10 @@
 import { test, expect } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
 import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+
+const accordionButton = (page: Page, name: string) =>
+  page.locator(".cds--accordion__heading").filter({ hasText: name });
 
 test.describe("microbiology worklist and critical communication", () => {
   test("worklist contains its wide table on a mobile viewport", async ({
@@ -98,7 +102,7 @@ test.describe("microbiology worklist and critical communication", () => {
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
 
-    await page.getByRole("button", { name: "Critical communication" }).click();
+    await accordionButton(page, "Critical communication").click();
     await expect(page).toHaveURL(
       `/Microbiology/cases/${seeded.caseId}?section=critical-communication`,
     );
@@ -128,7 +132,7 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await page.getByRole("button", { name: "Critical communication" }).click();
+    await accordionButton(page, "Critical communication").click();
     await expect(page).toHaveURL(
       `${scopedCaseUrl}&section=critical-communication`,
     );
@@ -136,7 +140,7 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(
       page.getByTestId("microbiology-critical-status"),
     ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
-    await page.getByRole("button", { name: "Isolates", exact: true }).click();
+    await accordionButton(page, "Isolates").click();
     await expect(page).toHaveURL(`${scopedCaseUrl}&section=isolates`);
     await page
       .getByRole("navigation", { name: "Breadcrumb" })

@@ -66,6 +66,7 @@ public class MicrobiologyUatScenarioService {
     private static final String UAT_SAMPLE_TYPE_DESCRIPTION = "UAT micro specimen";
     private static final String UAT_PATIENT_EXTERNAL_ID_PREFIX = "UATMICRO-";
     private static final String UAT_PATIENT_LAST_NAME = "Microbiology";
+    private static final String UAT_PATIENT_BIRTH_DATE = "1990-03-13 00:00:00";
 
     private final MethodService methodService;
     private final SampleService sampleService;
@@ -206,6 +207,23 @@ public class MicrobiologyUatScenarioService {
         String externalId = UAT_PATIENT_EXTERNAL_ID_PREFIX + suffix;
         Patient patient = patientService.getByExternalId(externalId);
         if (patient != null) {
+            boolean changed = false;
+            if (patient.getBirthDate() == null) {
+                patient.setBirthDate(Timestamp.valueOf(UAT_PATIENT_BIRTH_DATE));
+                changed = true;
+            }
+            if (patient.getGender() == null || patient.getGender().trim().isEmpty()) {
+                patient.setGender("F");
+                changed = true;
+            }
+            if (patient.getNationalId() == null || patient.getNationalId().trim().isEmpty()) {
+                patient.setNationalId(externalId);
+                changed = true;
+            }
+            if (changed) {
+                patient.setSysUserId(performedBy);
+                patientService.update(patient);
+            }
             return patient;
         }
 
@@ -220,6 +238,7 @@ public class MicrobiologyUatScenarioService {
         patient.setExternalId(externalId);
         patient.setNationalId(externalId);
         patient.setGender("F");
+        patient.setBirthDate(Timestamp.valueOf(UAT_PATIENT_BIRTH_DATE));
         patient.setSysUserId(performedBy);
         patientService.insert(patient);
         return patient;

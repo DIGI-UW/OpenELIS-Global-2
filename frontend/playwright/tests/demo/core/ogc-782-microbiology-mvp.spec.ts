@@ -55,6 +55,9 @@ const getCsrfToken = async (page: Page) => {
   return "";
 };
 
+const accordionButton = (page: Page, name: string) =>
+  page.locator(".cds--accordion__heading").filter({ hasText: name });
+
 test.describe("OGC-782 microbiology MVP", () => {
   test("case setup, isolate creation, manual AST, override, and review", async ({
     page,
@@ -234,9 +237,7 @@ test.describe("OGC-782 microbiology MVP", () => {
         6,
         "Log, acknowledge, and close a critical communication against the projected result",
       );
-      await page
-        .getByRole("button", { name: "Critical communication" })
-        .click();
+      await accordionButton(page, "Critical communication").click();
       await page.getByLabel("Critical result target").selectOption("RESULT");
       await expect(page.getByLabel("Target record")).not.toHaveValue("");
       await page
@@ -277,7 +278,7 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Release the final report", async () => {
       await demo.step(7, "Review report readiness and release final report");
-      await page.getByRole("button", { name: "Reports" }).click();
+      await accordionButton(page, "Reports").click();
       await expect(
         page.getByRole("heading", { name: "Report readiness" }),
       ).toBeVisible();
@@ -295,7 +296,7 @@ test.describe("OGC-782 microbiology MVP", () => {
         "ogc-782-09-final-released-readiness",
       );
       await expect(page.getByText("Final case is read-only")).toBeVisible();
-      await page.getByRole("button", { name: "Isolates", exact: true }).click();
+      await accordionButton(page, "Isolates").click();
       await expect(
         page.getByRole("button", { name: "Update identification" }),
       ).toBeDisabled();
