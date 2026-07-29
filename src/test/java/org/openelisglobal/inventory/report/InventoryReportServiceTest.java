@@ -18,7 +18,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.service.InventoryItemTypeService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
@@ -26,7 +25,6 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
-import org.openelisglobal.inventory.valueholder.InventoryItemType;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
@@ -50,8 +48,6 @@ public class InventoryReportServiceTest {
     @Mock
     private InventoryTransactionService inventoryTransactionService;
     @Mock
-    private InventoryItemTypeService inventoryItemTypeService;
-    @Mock
     private SampleStorageService sampleStorageService;
     @Mock
     private SystemUserService systemUserService;
@@ -62,11 +58,6 @@ public class InventoryReportServiceTest {
     @Before
     public void setup() {
         when(sampleStorageService.getLocationsForInventoryLots(anyList())).thenReturn(Map.of());
-        when(inventoryItemTypeService.getByCode(anyString())).thenAnswer(invocation -> {
-            InventoryItemType type = new InventoryItemType();
-            type.setCode(invocation.getArgument(0));
-            return type;
-        });
     }
 
     private InventoryItem item(String id, String name, String itemType, boolean active) {

@@ -30,8 +30,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * <p>
  * Never truncates {@code inventory_item} (shared with other suites via
  * {@code inventory-test-data.xml} fixtures) — only inserts/deletes rows scoped
- * to a unique {@code ITTEST_} code prefix, mirroring
- * {@code InventoryItemTypeRestControllerIT}.
+ * to a unique {@code ITTEST_} code prefix.
  */
 public class InventoryItemRestControllerIT extends BaseWebContextSensitiveTest {
 

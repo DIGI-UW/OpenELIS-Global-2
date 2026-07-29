@@ -27,8 +27,7 @@ import org.openelisglobal.inventory.valueholder.InventoryItem;
 /**
  * OGC-658 Part C — unit coverage for
  * {@code InventoryItemServiceImpl.insert()}'s server-side code
- * generation/collision/truncation, mirroring the Mockito pattern already used
- * for {@code InventoryItemTypeServiceTest}.
+ * generation/collision/truncation.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class InventoryItemServiceCodeGenerationTest {
