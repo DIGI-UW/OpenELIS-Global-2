@@ -1,8 +1,27 @@
 # OGC-782 UAT Review Harness Evidence
 
-> Historical checkpoint. Current deployment, checklist, and fixture provenance
-> are recorded in
-> [live-deployment-2026-07-28.md](live-deployment-2026-07-28.md).
+> Historical checkpoint. Current deployment and fixture provenance are recorded
+> in [live-deployment-2026-07-28.md](live-deployment-2026-07-28.md). The
+> acceptance-scope reconciliation below supersedes the earlier all-required
+> checklist.
+
+## Acceptance-Scope Update - 2026-07-28
+
+The Grist source and live AMR JSON were reconciled after the final MVP scope
+audit. Stable step keys were preserved, so prior answers correctly become stale
+when their instructions change.
+
+- Revision:
+  `cec8626fb1998b8d1e78ae84616b32f006759d3ad7681fe7d2a4c307ce26dc52`
+- Ten steps total: nine required core checks and one optional TB reflection.
+- Added explicit checks for culture-aware order details, setup media/incubation/
+  atmosphere, two visible AST readings, Result-targeted critical communication,
+  visible patient reporting, and final-case mutation locking.
+- TB checks only sibling-record separation and asks for a future-workflow
+  reflection; it does not imply operational TB support.
+- The public `__review/uat-amr.json` endpoint returned `200` with the updated
+  structure. Rendered-overlay verification against the exact deployed app SHA
+  remains a pre-UAT deployment step.
 
 ## Live Contract
 
@@ -16,7 +35,7 @@
 
 ## Checklist
 
-The live checklist contains 10 steps across four sections:
+The July 24 checklist contained 10 steps across four sections:
 
 1. Open the worklist through configured Microbiology navigation.
 2. Preserve workflow and sort state across refresh.
