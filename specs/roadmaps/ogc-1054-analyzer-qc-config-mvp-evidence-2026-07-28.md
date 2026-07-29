@@ -83,11 +83,14 @@ The binary evidence remains outside git as required:
 
 ## Tooling Disposition
 
-- The harness download contains the structured JSON inside the Markdown file
-  but does not emit the documented second `.json` download. The evidence bundle
-  preserves the original and an extracted JSON companion.
-- The review-tooling umbrella seed command used a stale
-  `ANALYZERS_DIR=/opt/openelis-analyzers`; the deployed checkout is
-  `/opt/oe-analyzers`. Acceptance used the existing analyzer seed script on the
-  deployed checkout. These are independently mergeable review-tooling defects,
-  not application-MVP failures.
+- [`openelis-review-tooling` PR #2](https://github.com/DIGI-UW/openelis-review-tooling/pull/2)
+  merged on 2026-07-25. Current `main` uses
+  `ANALYZERS_DIR=/opt/oe-analyzers`; the stale
+  `/opt/openelis-analyzers` value encountered during acceptance was retained
+  host configuration. Acceptance used the seed script from the deployed
+  checkout.
+- The widget intentionally downloads one Markdown file with embedded structured
+  JSON to avoid Chrome's automatic-download permission prompt. The evidence
+  bundle preserves that original report and an extracted JSON companion.
+  Some review-tooling sample/documentation copy still describes a two-file
+  pair, but no unmerged tooling implementation is required for this MVP.

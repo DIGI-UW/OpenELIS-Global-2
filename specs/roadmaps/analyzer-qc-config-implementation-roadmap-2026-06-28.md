@@ -50,18 +50,18 @@ state only.
 
 ## Requirement Matrix
 
-| Requirement                          | Code surface                                                | Automated owner          | Design reference                     | UAT step      | State                            |
-| ------------------------------------ | ----------------------------------------------------------- | ------------------------ | ------------------------------------ | ------------- | -------------------------------- |
-| Searchable shipped-profile catalog   | `AnalyzerRestController`, `AnalyzerTypeManagement`          | JUnit + RTL              | analyzer integration/profile designs | `AN-QC-001`   | Accepted                         |
-| Inline profile-driven creation       | `AnalyzersList`, `AnalyzerForm`                             | JUnit + RTL + Playwright | setup wizard/form patterns           | `AN-QC-002`   | Accepted                         |
-| Deterministic mapping verification   | `FieldMapping`, plugin-config/verification services         | JUnit + RTL + Playwright | mapping/data-table patterns          | `AN-QC-003`   | Accepted                         |
-| Visible connection test              | `AnalyzerForm`, connection endpoint                         | RTL + Playwright         | form/notification patterns           | `AN-QC-004`   | Accepted                         |
-| Catalog-bound qualitative resolution | result-option/pending-value services and panel              | JUnit + RTL + Playwright | result-option designs                | `AN-QC-005`   | Accepted                         |
-| Existing-model QC setup              | rule builder, control lots, readiness services              | JUnit + RTL + Playwright | Westgard/QC designs                  | `AN-QC-006`   | Accepted                         |
-| Explained activation readiness       | verification/readiness services and Review step             | JUnit + RTL + Playwright | status/notification patterns         | `AN-QC-007`   | Accepted                         |
-| Coherent lab-facing review           | four setup routes, `AnalyzerSetupReview`, shared page shell | RTL + Playwright         | Style Guide v2.3                     | `AN-QC-008`   | Accepted                         |
-| Deterministic bridge contract        | bridge registration service                                 | JUnit/contract tests     | ownership contract                   | not human UAT | Accepted                         |
-| Build-bound review provenance        | review-tooling schema v2/build manifest                     | harness tests            | UAT harness contract                 | all           | Accepted with tooling follow-ups |
+| Requirement                          | Code surface                                                | Automated owner          | Design reference                     | UAT step      | State    |
+| ------------------------------------ | ----------------------------------------------------------- | ------------------------ | ------------------------------------ | ------------- | -------- |
+| Searchable shipped-profile catalog   | `AnalyzerRestController`, `AnalyzerTypeManagement`          | JUnit + RTL              | analyzer integration/profile designs | `AN-QC-001`   | Accepted |
+| Inline profile-driven creation       | `AnalyzersList`, `AnalyzerForm`                             | JUnit + RTL + Playwright | setup wizard/form patterns           | `AN-QC-002`   | Accepted |
+| Deterministic mapping verification   | `FieldMapping`, plugin-config/verification services         | JUnit + RTL + Playwright | mapping/data-table patterns          | `AN-QC-003`   | Accepted |
+| Visible connection test              | `AnalyzerForm`, connection endpoint                         | RTL + Playwright         | form/notification patterns           | `AN-QC-004`   | Accepted |
+| Catalog-bound qualitative resolution | result-option/pending-value services and panel              | JUnit + RTL + Playwright | result-option designs                | `AN-QC-005`   | Accepted |
+| Existing-model QC setup              | rule builder, control lots, readiness services              | JUnit + RTL + Playwright | Westgard/QC designs                  | `AN-QC-006`   | Accepted |
+| Explained activation readiness       | verification/readiness services and Review step             | JUnit + RTL + Playwright | status/notification patterns         | `AN-QC-007`   | Accepted |
+| Coherent lab-facing review           | four setup routes, `AnalyzerSetupReview`, shared page shell | RTL + Playwright         | Style Guide v2.3                     | `AN-QC-008`   | Accepted |
+| Deterministic bridge contract        | bridge registration service                                 | JUnit/contract tests     | ownership contract                   | not human UAT | Accepted |
+| Build-bound review provenance        | review-tooling schema v2/build manifest                     | harness tests            | UAT harness contract                 | all           | Accepted |
 
 ## Acceptance Checkpoints
 
