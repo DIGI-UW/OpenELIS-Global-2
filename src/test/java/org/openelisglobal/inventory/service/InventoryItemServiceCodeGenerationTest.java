@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -38,6 +39,9 @@ public class InventoryItemServiceCodeGenerationTest {
     @Mock
     private InventoryLotDAO inventoryLotDAO;
 
+    @Mock
+    private UserContextHolder userContextHolder;
+
     @InjectMocks
     private InventoryItemServiceImpl inventoryItemService;
 
@@ -46,6 +50,7 @@ public class InventoryItemServiceCodeGenerationTest {
     @Before
     public void setup() {
         existingCodes.clear();
+        when(userContextHolder.getCurrentSysUserId()).thenReturn("1");
         when(inventoryItemDAO.insert(any(InventoryItem.class)))
                 .thenAnswer(invocation -> ((InventoryItem) invocation.getArgument(0)).getId());
         when(inventoryItemDAO.getAllMatchingOrdered(anyString(), any(), anyList(), anyBoolean()))

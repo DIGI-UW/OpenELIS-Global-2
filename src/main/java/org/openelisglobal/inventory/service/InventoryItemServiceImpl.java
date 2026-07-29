@@ -100,6 +100,10 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
      * exact fix already) rather than in the DAO, since replicating
      * {@code isAvailableForUse()}'s expiration/status/QC logic correctly in SQL is
      * more error-prone than reusing the one Java implementation.
+     *
+     * <p>
+     * Known trade-off: one lot query per active item (N+1) — fine at current
+     * inventory scale; batch into a single grouped lot query if that changes.
      */
     @Override
     @Transactional(readOnly = true)
