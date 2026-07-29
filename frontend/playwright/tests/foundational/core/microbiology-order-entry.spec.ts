@@ -93,7 +93,7 @@ test.describe("microbiology order entry", () => {
     await expect(page.getByLabel("Patient origin")).toBeVisible();
     await expect(page.getByLabel("Number of sets")).toBeVisible();
     await expect(page.getByLabel("Clinical history")).toBeVisible();
-    await expect(page.getByLabel("Recent antibiotic exposure")).toBeVisible();
+    await expect(page.getByLabel("Antibiotic exposure")).toBeVisible();
     await expect(
       page.getByLabel("Critical notification preference"),
     ).toBeVisible();

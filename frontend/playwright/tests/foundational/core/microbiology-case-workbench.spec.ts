@@ -32,9 +32,11 @@ test.describe("Microbiology case workbench", () => {
     await expect(page).toHaveURL(/section=setup/);
     await page.getByLabel("Activity note").fill("setup complete");
     await page.getByRole("button", { name: "Start inoculation" }).click();
-    await expect(caseHeader.getByText("Setup Recorded")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(
+      caseHeader
+        .locator(".cds--tag__label")
+        .filter({ hasText: "Setup Recorded" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(page.getByText(/setup complete/)).toBeVisible();
 
     await page
