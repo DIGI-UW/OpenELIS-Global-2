@@ -415,7 +415,7 @@ from Piotr's human UAT ruling.
 - [ ] T197 [MVP] Deploy the exact #3789 candidate plus compatible review-tooling revision to `amr.openelis-global.org`; record both SHAs and pass the deployment health/SHA guard.
 - [ ] T198 [MVP] Run registered `core-app`/deployed Playwright pre-UAT journeys for order routing, worklist state, case setup, isolate/AST, critical communication, final lock, and visible patient-report propagation; retain stable screenshots and trace/video evidence.
 - [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target in #3789 until evidence exists.
-- [ ] T200 [Human UAT] Piotr completes all ten Review-overlay steps and records pass/fail/N/A plus notes. Automated execution cannot check off this task.
+- [ ] T200 [Human UAT] Piotr completes all ten Review-overlay steps and records pass/fail/N/A plus notes in `evidence/human-uat-2026-07-29.md`. Automated execution cannot check off this task.
 - [ ] T201 [MVP] Update PR #3789 with final scope, V2 exclusions, exact commits, test/evidence links, UAT revision and rulings, deployment SHAs, and one-shot required-check status.
 
 ## Dependencies & Execution Order
