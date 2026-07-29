@@ -385,15 +385,23 @@ test.describe("OGC-782 microbiology MVP", () => {
         "title",
         /Gentamicin \(UAT\) S/,
       );
-      await releasedResult.hover();
+      const releasedResultTrigger = page.getByRole("button", {
+        name: /ISO-1: Escherichia coli confirmed;.*Ciprofloxacin \(UAT\) R/,
+      });
+      await releasedResultTrigger.click();
       const releasedResultTooltip = page.locator(".cds--popover-content", {
         hasText: "ISO-1: Escherichia coli confirmed",
       });
+      await expect(releasedResultTooltip).toBeVisible();
       await expect(releasedResultTooltip).toContainText(
         "Ciprofloxacin (UAT) R",
       );
       await expect(releasedResultTooltip).toContainText("Gentamicin (UAT) S");
-      await captureViewport(page, demo, "ogc-782-11-patient-results-released");
+      await settleForVideo(demo);
+      await demo.evidence("ogc-782-11-patient-results-released", {
+        fullPage: false,
+      });
+      await demo.pause(3000);
       await demo.title(
         "MVP checkpoint complete",
         "Setup, isolate, manual AST, review, final release, and visible patient results were exercised.",
