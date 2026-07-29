@@ -27,6 +27,12 @@ async function selectSeededPatient(page: Page) {
       )
       .first(),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
+
+  const birthDate = page.locator("input#date-picker-default-id");
+  if ((await birthDate.isVisible()) && !(await birthDate.inputValue()).trim()) {
+    await birthDate.fill("13/03/1990");
+    await birthDate.press("Tab");
+  }
 }
 
 async function openSampleStep(page: Page) {
