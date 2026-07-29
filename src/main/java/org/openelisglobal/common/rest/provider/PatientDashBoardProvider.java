@@ -365,8 +365,9 @@ public class PatientDashBoardProvider {
             case ORDERS_IN_PROGRESS:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-                // Counts the same set as the ORDERS_IN_PROGRESS list (collected, excluding QC,
-                // not restricted by test section) so the tile count matches the list.
+                // Counts the same set as the ORDERS_IN_PROGRESS list (excluding QC, not
+                // restricted by test section, and not gated on collection date) so the tile
+                // count matches the list.
                 metrics.setOrdersInProgress(
                         analysisService.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statusIdList));
                 break;

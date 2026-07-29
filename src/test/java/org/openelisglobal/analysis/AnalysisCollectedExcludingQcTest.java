@@ -2,9 +2,11 @@ package org.openelisglobal.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,16 +24,17 @@ import org.springframework.beans.factory.annotation.Autowired;
  * with three NotStarted analyses:
  *
  * <ul>
- * <li>item 1 — collected client specimen (the only row the collected query
- * keeps)
- * <li>item 2 — uncollected client specimen (collection_date NULL; dropped by
- * the collected query, kept by the plain excluding-Qc query)
- * <li>item 3 — collected QC specimen (dropped by both, via its QC profile)
+ * <li>item 1 — collected client specimen (kept)
+ * <li>item 2 — uncollected client specimen, collection_date NULL (also kept:
+ * SampleAddService only records a collection date when the user supplies one,
+ * so gating the tile on it emptied it for deployments that leave the field
+ * blank)
+ * <li>item 3 — collected QC specimen (dropped, via its QC profile)
  * </ul>
  *
- * The three-way split (baseline 3, excluding-Qc 2, collected-excluding-Qc 1)
- * proves the collected query composes the collection guard on top of the QC
- * exclusion, and that the count stays in step with the list.
+ * Both client analyses survive and only the QC one is dropped, so this query
+ * differs from the plain excluding-Qc pair solely in admitting pool-anchored
+ * vector analyses, and the count stays in step with the list.
  */
 public class AnalysisCollectedExcludingQcTest extends BaseWebContextSensitiveTest {
 
@@ -46,7 +49,7 @@ public class AnalysisCollectedExcludingQcTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void collectedExcludingQc_dropsUncollectedAndQc_keepsOnlyCollectedClient() {
+    public void collectedExcludingQc_dropsQcOnly_keepsCollectedAndUncollectedClient() {
         // Baseline: all three NotStarted analyses, regardless of collection or QC.
         assertEquals("baseline must see all three NotStarted analyses", 3,
                 analysisService.getAnalysesForStatusId(STATUS_NOT_STARTED).size());
@@ -55,21 +58,23 @@ public class AnalysisCollectedExcludingQcTest extends BaseWebContextSensitiveTes
         List<Analysis> excludingQc = analysisService.getAnalysesForStatusIdExcludingQc(STATUS_NOT_STARTED);
         assertEquals("excluding-Qc must keep both client analyses, drop only the QC one", 2, excludingQc.size());
 
-        // Collected + excluding QC: only the collected client analysis (item 1).
-        List<Analysis> collected = analysisService.getCollectedAnalysesForStatusIdExcludingQc(STATUS_NOT_STARTED);
-        assertNotNull(collected);
-        assertEquals("collected-excluding-Qc must keep only the collected client analysis", 1, collected.size());
-        Analysis surviving = collected.get(0);
-        assertEquals("surviving analysis must be analysis 1", "1", surviving.getId());
-        assertEquals("surviving analysis must be on sample item 1", "1", surviving.getSampleItem().getId());
-        assertNotNull("surviving analysis's specimen must be collected", surviving.getSampleItem().getCollectionDate());
+        // Same query used by the tile: both client analyses, QC one dropped. The
+        // uncollected specimen must survive — dropping it emptied the tile for any
+        // deployment that does not record collection dates.
+        List<Analysis> inProgress = analysisService.getCollectedAnalysesForStatusIdExcludingQc(STATUS_NOT_STARTED);
+        assertNotNull(inProgress);
+        assertEquals("must keep both client analyses regardless of collection date", 2, inProgress.size());
+        List<String> ids = inProgress.stream().map(Analysis::getId).sorted().collect(Collectors.toList());
+        assertEquals("surviving analyses must be the two client ones", Arrays.asList("1", "2"), ids);
+        assertTrue("the uncollected client specimen must be included", inProgress.stream()
+                .anyMatch(a -> a.getSampleItem() != null && a.getSampleItem().getCollectionDate() == null));
     }
 
     @Test
     public void countCollectedExcludingQc_staysInStepWithTheList() {
         List<String> statuses = Arrays.asList(STATUS_NOT_STARTED);
-        // The tile count must match its drill-down list: 2 excluding-Qc, 1 collected.
+        // The tile count must match its drill-down list: both client analyses.
         assertEquals(2, analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statuses));
-        assertEquals(1, analysisService.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statuses));
+        assertEquals(2, analysisService.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statuses));
     }
 }

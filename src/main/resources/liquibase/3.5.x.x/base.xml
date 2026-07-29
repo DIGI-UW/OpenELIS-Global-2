@@ -323,6 +323,9 @@
   <include relativeToChangelogFile="true" file="066-sample-type-domain-enum-migration.xml"/>
   <include relativeToChangelogFile="true" file="067-sample-type-disposal-instructions.xml"/>
 
+  <!-- Post-merge: restore develop's "Add Generic Order" rename; de-collide Reports order -->
+  <include relativeToChangelogFile="true" file="068-restore-add-order-menu-labels.xml"/>
+
   <!-- Post-merge: DB default CLINICAL on test_section.domain (matches test.domain) -->
 
 </databaseChangeLog>

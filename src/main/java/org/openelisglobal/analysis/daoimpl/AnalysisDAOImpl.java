@@ -1134,24 +1134,25 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException {
 
         try {
-            // "Collected" spans both anchor kinds (ck_analysis_pool_or_item):
+            // Spans both anchor kinds (ck_analysis_pool_or_item):
             // 1. a.sampleItem — clinical/environmental/post-deconvolution analyses,
-            // collected when the sample_item carries a collectionDate, and gated by
-            // the QC-profile exclusion (which keys on sampleItem.id).
+            // gated only by the QC-profile exclusion (which keys on sampleItem.id).
+            // Deliberately NOT gated on collectionDate: SampleAddService sets it only
+            // when the user supplies one, so requiring it emptied the tile for every
+            // deployment that leaves collection date blank.
             // 2. a.vectorPoolId — pool-anchored vector analyses with a NULL
-            // sampleItem; collected when the pool's sample has any sample_item with
-            // a collectionDate, and excluded when the pool is a QC pool (any member
-            // sample_item flagged BLANK/CONTROL/DUPLICATE), mirroring the vector
-            // surveillance report's QC_EXCLUDE_POOL. The sample-item QC-profile
-            // clause is scoped to branch 1 only: for a pool row a.sampleItem.id is
-            // NULL, and "NULL NOT IN (non-empty)" is NULL (not true), which would
-            // silently drop every pool row the moment any QC profile exists. LEFT
-            // JOIN (not dotted navigation) keeps pool rows in play so the OR EXISTS
-            // branch can admit them.
+            // sampleItem; in play once the pool's sample has a collected sample_item,
+            // and excluded when the pool is a QC pool (any member sample_item flagged
+            // BLANK/CONTROL/DUPLICATE), mirroring the vector surveillance report's
+            // QC_EXCLUDE_POOL. The sample-item QC-profile clause is scoped to branch 1
+            // only: for a pool row a.sampleItem.id is NULL, and "NULL NOT IN
+            // (non-empty)" is NULL (not true), which would silently drop every pool row
+            // the moment any QC profile exists. LEFT JOIN (not dotted navigation) keeps
+            // pool rows in play so the OR EXISTS branch can admit them.
             String sql = "SELECT a FROM Analysis a" //
                     + " LEFT JOIN a.sampleItem si" //
                     + " WHERE a.statusId = :statusId" //
-                    + " AND ((si.collectionDate IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
+                    + " AND ((si.id IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
                     + "  OR " + COLLECTED_POOL_HAS_SAMPLE_ITEM + ")";
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("statusId", statusId);
@@ -2029,12 +2030,13 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
         // Mirrors getCollectedAnalysesForStatusIdExcludingQc exactly so the tile
         // count matches the list — including scoping the QC-profile exclusion to the
-        // sampleItem branch only. See that method for why the OR EXISTS branch and
-        // the branch-scoped QC clause are needed.
+        // sampleItem branch only, and not gating that branch on collectionDate. See
+        // that method for why the OR EXISTS branch and the branch-scoped QC clause
+        // are needed.
         String hql = "SELECT COUNT(*) From Analysis a" //
                 + " LEFT JOIN a.sampleItem si" //
                 + " WHERE a.statusId IN (:analysisStatusList)" //
-                + " AND ((si.collectionDate IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
+                + " AND ((si.id IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
                 + "  OR " + COLLECTED_POOL_HAS_SAMPLE_ITEM + ")";
         try {
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
