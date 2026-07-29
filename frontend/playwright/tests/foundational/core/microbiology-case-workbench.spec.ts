@@ -37,6 +37,12 @@ test.describe("Microbiology case workbench", () => {
         .locator(".cds--tag__label")
         .filter({ hasText: "Setup Recorded" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
+
+    await page
+      .locator(".cds--accordion__heading")
+      .filter({ hasText: "Timeline" })
+      .click();
+    await expect(page).toHaveURL(/section=timeline/);
     await expect(page.getByText(/setup complete/)).toBeVisible();
 
     await page
