@@ -412,173 +412,204 @@ public class LocationProvider implements IResourceProvider {
         return text.trim();
     }
 
-    private Location handleGetLocation(String uuidStr) {
-        if (uuidStr == null || uuidStr.isBlank()) {
-            throw new ResourceNotFoundException("Location UUID cannot be null or blank");
-        }
+    private Location handleGetLocation(String uuidString) {
+        return transformStorageItem(findStorageItem(uuidString));
+    }
 
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(uuidStr);
-        } catch (IllegalArgumentException e) {
-            throw new InvalidRequestException("Invalid UUID format: " + uuidStr);
-        }
+    private Location handleDeleteLocation(String uuidString, String sysUserId) {
+        validateSysUserId(sysUserId);
+
+        StorageItem item = findStorageItem(uuidString);
+        StorageItem updatedItem = deactivateStorageItem(item, sysUserId);
+
+        syncStorageItem(updatedItem);
+        return transformStorageItem(updatedItem);
+    }
+
+    private StorageItem findStorageItem(String uuidString) {
+        UUID uuid = parseUuid(uuidString);
 
         StorageRoom room = transform.getItemByFhirId(uuid, roomService);
         if (room != null) {
-            Location result = transform.transformToFhirLocation(room);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform StorageRoom to FHIR Location");
-            }
-            return result;
+            return new StorageItem(StorageType.ROOM, room);
         }
 
         StorageDevice device = transform.getItemByFhirId(uuid, deviceService);
         if (device != null) {
-            Location result = transform.transformToFhirLocation(device);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform StorageDevice to FHIR Location");
-            }
-            return result;
+            return new StorageItem(StorageType.DEVICE, device);
         }
 
         StorageShelf shelf = transform.getItemByFhirId(uuid, shelfService);
         if (shelf != null) {
-            Location result = transform.transformToFhirLocation(shelf);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform StorageShelf to FHIR Location");
-            }
-            return result;
+            return new StorageItem(StorageType.SHELF, shelf);
         }
 
         StorageRack rack = transform.getItemByFhirId(uuid, rackService);
         if (rack != null) {
-            Location result = transform.transformToFhirLocation(rack);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform StorageRack to FHIR Location");
-            }
-            return result;
+            return new StorageItem(StorageType.RACK, rack);
         }
 
         StorageBox box = transform.getItemByFhirId(uuid, boxService);
         if (box != null) {
-            Location result = transform.transformToFhirLocation(box);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform StorageBox to FHIR Location");
-            }
-            return result;
+            return new StorageItem(StorageType.BOX, box);
         }
 
-        throw new ResourceNotFoundException("No storage location found for UUID: " + uuidStr);
+        throw new ResourceNotFoundException("No storage location found for UUID: " + uuidString);
     }
 
-    private Location handleDeleteLocation(String uuidStr, String sysUserId) throws InvalidRequestException {
-        if (uuidStr == null || uuidStr.isBlank()) {
-            throw new InvalidRequestException("Location UUID cannot be null or blank for deletion");
+    private StorageItem deactivateStorageItem(StorageItem item, String sysUserId) {
+        return switch (item.type()) {
+        case ROOM -> {
+            StorageRoom room = (StorageRoom) item.entity();
+            markInactive(room, sysUserId);
+
+            StorageRoom updated = roomService.update(room);
+            validateUpdatedEntity(updated, "StorageRoom");
+
+            yield new StorageItem(StorageType.ROOM, updated);
+        }
+        case DEVICE -> {
+            StorageDevice device = (StorageDevice) item.entity();
+            markInactive(device, sysUserId);
+
+            StorageDevice updated = deviceService.update(device);
+            validateUpdatedEntity(updated, "StorageDevice");
+
+            yield new StorageItem(StorageType.DEVICE, updated);
+        }
+        case SHELF -> {
+            StorageShelf shelf = (StorageShelf) item.entity();
+            markInactive(shelf, sysUserId);
+
+            StorageShelf updated = shelfService.update(shelf);
+            validateUpdatedEntity(updated, "StorageShelf");
+
+            yield new StorageItem(StorageType.SHELF, updated);
+        }
+        case RACK -> {
+            StorageRack rack = (StorageRack) item.entity();
+            markInactive(rack, sysUserId);
+
+            StorageRack updated = rackService.update(rack);
+            validateUpdatedEntity(updated, "StorageRack");
+
+            yield new StorageItem(StorageType.RACK, updated);
+        }
+        case BOX -> {
+            StorageBox box = (StorageBox) item.entity();
+            markInactive(box, sysUserId);
+
+            StorageBox updated = boxService.update(box);
+            validateUpdatedEntity(updated, "StorageBox");
+
+            yield new StorageItem(StorageType.BOX, updated);
+        }
+        };
+    }
+
+    private void markInactive(StorageRoom room, String sysUserId) {
+        room.setActive(false);
+        room.setSysUserId(sysUserId);
+    }
+
+    private void markInactive(StorageDevice device, String sysUserId) {
+        device.setActive(false);
+        device.setSysUserId(sysUserId);
+    }
+
+    private void markInactive(StorageShelf shelf, String sysUserId) {
+        shelf.setActive(false);
+        shelf.setSysUserId(sysUserId);
+    }
+
+    private void markInactive(StorageRack rack, String sysUserId) {
+        rack.setActive(false);
+        rack.setSysUserId(sysUserId);
+    }
+
+    private void markInactive(StorageBox box, String sysUserId) {
+        box.setActive(false);
+        box.setSysUserId(sysUserId);
+    }
+
+    private void syncStorageItem(StorageItem item) {
+        switch (item.type()) {
+        case ROOM:
+            transform.syncToFhir((StorageRoom) item.entity(), false);
+            break;
+        case DEVICE:
+            transform.syncToFhir((StorageDevice) item.entity(), false);
+            break;
+        case SHELF:
+            transform.syncToFhir((StorageShelf) item.entity(), false);
+            break;
+        case RACK:
+            transform.syncToFhir((StorageRack) item.entity(), false);
+            break;
+        case BOX:
+            transform.syncToFhir((StorageBox) item.entity(), false);
+            break;
+        default:
+            throw new InternalErrorException("Unsupported storage type: " + item.type());
+        }
+    }
+
+    private Location transformStorageItem(StorageItem item) {
+        Location location = switch (item.type()) {
+        case ROOM -> transform.transformToFhirLocation((StorageRoom) item.entity());
+        case DEVICE -> transform.transformToFhirLocation((StorageDevice) item.entity());
+        case SHELF -> transform.transformToFhirLocation((StorageShelf) item.entity());
+        case RACK -> transform.transformToFhirLocation((StorageRack) item.entity());
+        case BOX -> transform.transformToFhirLocation((StorageBox) item.entity());
+        };
+
+        if (location == null) {
+            throw new InternalErrorException(
+                    "Failed to transform " + storageTypeName(item.type()) + " to FHIR Location");
         }
 
+        return location;
+    }
+
+    private UUID parseUuid(String uuidString) {
+        if (uuidString == null || uuidString.isBlank()) {
+            throw new InvalidRequestException("Location UUID cannot be null or blank");
+        }
+
+        try {
+            return UUID.fromString(uuidString);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidRequestException("Invalid UUID format: " + uuidString);
+        }
+    }
+
+    private void validateSysUserId(String sysUserId) {
         if (sysUserId == null || sysUserId.isBlank()) {
             throw new InvalidRequestException("System user ID is required for deletion");
         }
+    }
 
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(uuidStr);
-        } catch (IllegalArgumentException e) {
-            throw new InvalidRequestException("Invalid UUID format: " + uuidStr);
+    private void validateUpdatedEntity(Object entity, String entityName) {
+        if (entity == null) {
+            throw new InternalErrorException("Failed to update " + entityName + " during deletion");
         }
+    }
 
-        StorageRoom room = transform.getItemByFhirId(uuid, roomService);
-        if (room != null) {
-            room.setActive(false);
-            room.setSysUserId(sysUserId);
+    private String storageTypeName(StorageType type) {
+        return switch (type) {
+        case ROOM -> "StorageRoom";
+        case DEVICE -> "StorageDevice";
+        case SHELF -> "StorageShelf";
+        case RACK -> "StorageRack";
+        case BOX -> "StorageBox";
+        };
+    }
 
-            StorageRoom updated = roomService.update(room);
-            if (updated == null) {
-                throw new InternalErrorException("Failed to update StorageRoom during deletion");
-            }
+    private enum StorageType {
+        ROOM, DEVICE, SHELF, RACK, BOX
+    }
 
-            transform.syncToFhir(updated, false);
-            Location result = transform.transformToFhirLocation(updated);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform deleted StorageRoom to FHIR Location");
-            }
-            return result;
-        }
-
-        StorageDevice device = transform.getItemByFhirId(uuid, deviceService);
-        if (device != null) {
-            device.setActive(false);
-            device.setSysUserId(sysUserId);
-
-            StorageDevice updated = deviceService.update(device);
-            if (updated == null) {
-                throw new InternalErrorException("Failed to update StorageDevice during deletion");
-            }
-
-            transform.syncToFhir(updated, false);
-            Location result = transform.transformToFhirLocation(updated);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform deleted StorageDevice to FHIR Location");
-            }
-            return result;
-        }
-
-        StorageShelf shelf = transform.getItemByFhirId(uuid, shelfService);
-        if (shelf != null) {
-            shelf.setActive(false);
-            shelf.setSysUserId(sysUserId);
-
-            StorageShelf updated = shelfService.update(shelf);
-            if (updated == null) {
-                throw new InternalErrorException("Failed to update StorageShelf during deletion");
-            }
-
-            transform.syncToFhir(updated, false);
-            Location result = transform.transformToFhirLocation(updated);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform deleted StorageShelf to FHIR Location");
-            }
-            return result;
-        }
-
-        StorageRack rack = transform.getItemByFhirId(uuid, rackService);
-        if (rack != null) {
-            rack.setActive(false);
-            rack.setSysUserId(sysUserId);
-
-            StorageRack updated = rackService.update(rack);
-            if (updated == null) {
-                throw new InternalErrorException("Failed to update StorageRack during deletion");
-            }
-
-            transform.syncToFhir(updated, false);
-            Location result = transform.transformToFhirLocation(updated);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform deleted StorageRack to FHIR Location");
-            }
-            return result;
-        }
-
-        StorageBox box = transform.getItemByFhirId(uuid, boxService);
-        if (box != null) {
-            box.setActive(false);
-            box.setSysUserId(sysUserId);
-
-            StorageBox updated = boxService.update(box);
-            if (updated == null) {
-                throw new InternalErrorException("Failed to update StorageBox during deletion");
-            }
-
-            transform.syncToFhir(updated, false);
-            Location result = transform.transformToFhirLocation(updated);
-            if (result == null) {
-                throw new InternalErrorException("Failed to transform deleted StorageBox to FHIR Location");
-            }
-            return result;
-        }
-
-        throw new ResourceNotFoundException("No storage location found for UUID: " + uuidStr);
+    private record StorageItem(StorageType type, Object entity) {
     }
 
     private String safeMessage(Exception e) {
