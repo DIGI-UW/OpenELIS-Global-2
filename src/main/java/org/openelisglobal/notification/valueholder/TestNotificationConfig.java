@@ -45,7 +45,6 @@ public class TestNotificationConfig extends NotificationConfig<Test> {
     @Valid
     @ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE, CascadeType.DETACH, CascadeType.REFRESH })
     @JoinColumn(name = "default_payload_template_id", referencedColumnName = "id")
-    @JsonIgnore
     private NotificationPayloadTemplate defaultPayloadTemplate;
 
     // could implement defaults for individual method types and person types types

@@ -12,8 +12,21 @@
 }
 
 .flex {
-  display: flex;
-  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+  column-gap: spacing.$spacing-05;
+  align-items: stretch;
+}
+
+// At tablet width and below the inline TreeView sidebar is replaced by the
+// floating filter button (.floatingTreeButton), leaving the timeline as the
+// only grid child. Without this override the timeline gets pinned to the
+// 14-18rem sidebar column. Below the Carbon `lg` breakpoint, collapse to a
+// single full-width column.
+@media screen and (max-width: 1056px) {
+  .flex {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .resultsHeaderTablet {
@@ -41,13 +54,16 @@
 }
 
 .leftSection {
-  width: 30%;
-  margin-right: spacing.$spacing-05;
+  width: 100%;
+  padding-right: spacing.$spacing-05;
+  border-right: 1px solid $color-gray-30;
+  min-width: 0;
 }
 
 .rightSection,
 .rightSectionHeader {
-  width: 70%;
+  width: 100%;
+  min-width: 0;
 }
 
 .rightSectionHeader {

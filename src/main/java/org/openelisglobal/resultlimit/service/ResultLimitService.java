@@ -19,6 +19,18 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
 
     List<ResultLimit> getAllResultLimitsForTest(String testId) throws LIMSRuntimeException;
 
+    /** OGC-949 M7: reference ranges scoped to a result component. */
+    List<ResultLimit> getResultLimitsByComponentId(String componentId);
+
+    /**
+     * OGC-949 M7: atomically replace a test's reference ranges with {@code desired}
+     * (diff-save). Rows with an id that still exist are updated in place; rows
+     * without an id are inserted (numeric result-type FK resolved here); existing
+     * rows absent from {@code desired} are deleted. Runs in one transaction so a
+     * partial failure rolls the whole set back.
+     */
+    void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId);
+
     ResultLimit getResultLimitById(String resultLimitId) throws LIMSRuntimeException;
 
     String getDisplayAgeRange(ResultLimit resultLimit, String separator);
@@ -35,7 +47,25 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
 
     ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient);
 
+    /**
+     * OGC-1145 Phase 2 — specimen-aware selection: limits scoped to
+     * {@code sampleTypeId} win over shared (null-scope) rows; null sample type
+     * evaluates against the shared set.
+     */
+    ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId);
+
     ResultLimit getResultLimitForTestAndPatient(Test test, Patient patient);
+
+    /**
+     * OGC-1127/OGC-949 — the reference range for a specific result component,
+     * chosen for the patient's age/gender exactly as the test-level selection does
+     * but scoped to the component's own limits. Returns null when the component has
+     * no matching range.
+     */
+    ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient);
+
+    /** Specimen-aware variant of the component selection (OGC-1145 Phase 2). */
+    ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient, String sampleTypeId);
 
     List<IdValuePair> getPredefinedAgeRanges();
 

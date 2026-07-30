@@ -120,6 +120,11 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             // date from input field - try multiple formats
             Date dateOfEvent = parseDate(form.getDateOfEvent());
             Date reportDate = parseDate(form.getReportDate());
+            // Frontend doesn't always send a reportDate; default to today so
+            // we never persist null and break the read paths that format it.
+            if (reportDate == null) {
+                reportDate = new java.sql.Date(System.currentTimeMillis());
+            }
 
             ncEvent.setStatus("Pending");
             ncEvent.setReportDate(reportDate);
@@ -247,8 +252,9 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         form.setNceNumber(System.currentTimeMillis() + "");
         NcEvent event = ncEventService.getMatch("nceNumber", nceNumber).get();
         if (event != null) {
-            form.setReportDate(DateUtil.formatDateAsText(event.getReportDate()));
-            form.setDateOfEvent(DateUtil.formatDateAsText(event.getDateOfEvent()));
+            form.setReportDate(event.getReportDate() != null ? DateUtil.formatDateAsText(event.getReportDate()) : "");
+            form.setDateOfEvent(
+                    event.getDateOfEvent() != null ? DateUtil.formatDateAsText(event.getDateOfEvent()) : "");
             form.setName(event.getName());
             form.setReporterName(event.getNameOfReporter());
             form.setPrescriberName(event.getPrescriberName());

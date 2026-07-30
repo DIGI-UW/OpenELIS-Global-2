@@ -42,6 +42,7 @@ public class DBSearchResultsServiceImpl implements SearchResultsService {
         if (isIdentifierSearch) {
             results = redirectMergedPatientsToPrimary(results);
         }
+        annotateMergeStatus(results);
 
         return results;
     }
@@ -62,8 +63,41 @@ public class DBSearchResultsServiceImpl implements SearchResultsService {
         if (isIdentifierSearch) {
             results = redirectMergedPatientsToPrimary(results);
         }
+        annotateMergeStatus(results);
 
         return results;
+    }
+
+    /**
+     * Stamps the merged flag (and the primary patient's national-id, when
+     * available) onto each result so the frontend can render the "Merged" badge
+     * without doing per-row lookups. Identifier searches already replaced merged
+     * rows with their primary via {@link #redirectMergedPatientsToPrimary}, so
+     * those rows will report isMerged=false here; the flag mainly fires for
+     * name-based searches where the merged row is still visible.
+     */
+    private void annotateMergeStatus(List<PatientSearchResults> results) {
+        if (results == null || results.isEmpty()) {
+            return;
+        }
+        for (PatientSearchResults result : results) {
+            if (GenericValidator.isBlankOrNull(result.getPatientID())) {
+                continue;
+            }
+            Patient patient = patientService.get(result.getPatientID());
+            if (patient == null || !Boolean.TRUE.equals(patient.getIsMerged())) {
+                continue;
+            }
+            result.setIsMerged(true);
+            String primaryId = patient.getMergedIntoPatientId();
+            result.setMergedIntoPatientId(primaryId);
+            if (!GenericValidator.isBlankOrNull(primaryId)) {
+                Patient primary = patientService.get(primaryId);
+                if (primary != null) {
+                    result.setMergedIntoNationalId(primary.getNationalId());
+                }
+            }
+        }
     }
 
     /**

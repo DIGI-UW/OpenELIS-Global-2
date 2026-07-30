@@ -24,6 +24,13 @@ export interface PushConfig {
   simulatorUrl: string;
   /** Mock server template name (e.g., "quantstudio7", "genexpert_astm"). */
   template: string;
+  /**
+   * Provisioned mock analyzer *instance* name (ASTM/HL7 only). Addressing
+   * /simulate by the instance (not the template) makes the mock source the push
+   * from the analyzer's own IP so the bridge identifies it by source IP. Falls
+   * back to `template` when absent.
+   */
+  mockAnalyzerName?: string;
   /** TCP/MLLP destination (ASTM/HL7 only). */
   destination?: string;
   /**

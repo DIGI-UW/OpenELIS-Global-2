@@ -120,6 +120,33 @@ const SampleType = (props) => {
     });
   }
 
+  function handleCollectionMethod(value) {
+    const updated = { ...sampleXml, collectionMethod: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
+  function handleSampleTemperature(value) {
+    const updated = { ...sampleXml, sampleTemperature: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
+  function handleSpecimenOrigin(value) {
+    const updated = { ...sampleXml, specimenOrigin: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
   const handleGpsCoordinatesChange = useCallback(
     (gpsData) => {
       const updatedSampleXml = {
@@ -139,10 +166,24 @@ const SampleType = (props) => {
   );
 
   function handleStorageLocationChange(location, positionCoordinate) {
+    // Derive the deepest assignable level so OrderContext.buildSampleXML can
+    // populate flat storageLocationId / storageLocationType attributes on the
+    // sample XML element. The backend (SampleStorageAssignmentListener) reads
+    // those flat attributes — without them the assignment is silently skipped.
+    let deepestId = null;
+    let deepestType = null;
+    LEVEL_ORDER.forEach((level) => {
+      if (location?.[level]?.id) {
+        deepestId = String(location[level].id);
+        deepestType = level;
+      }
+    });
     setSampleXml({
       ...sampleXml,
       storageLocation: {
         ...location,
+        id: deepestId,
+        type: deepestType,
         positionCoordinate: positionCoordinate || "",
       },
       storagePositionId: location?.position?.id || null,
@@ -490,11 +531,11 @@ const SampleType = (props) => {
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer(
-      "/rest/referral-reasons",
+      "/rest/displayList/REFERRAL_REASONS",
       displayReferralReasonsOptions,
     );
     getFromOpenElisServer(
-      "/rest/referral-organizations",
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
       displayReferralOrgOptions,
     );
     repopulateUI();
@@ -605,6 +646,62 @@ const SampleType = (props) => {
           />
         </div>
 
+        {/* OGC-651 (LO-03-01): specimen detail freetext fields. Casey's
+            UAT validation note named these three as missing on
+            /SamplePatientEntry. Persisted to sample_item via
+            SampleAddService XML attribute parsing. */}
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"collectionMethod_" + index}
+            onChange={(value) => handleCollectionMethod(value)}
+            defaultValue={""}
+            value={sampleXml.collectionMethod || ""}
+            labelText={intl.formatMessage({
+              id: "sample.collection.method",
+              defaultMessage: "Collection Method",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.collection.method.placeholder",
+              defaultMessage: "e.g., venipuncture, capillary, tubing",
+            })}
+            className="inputText"
+          />
+        </div>
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"sampleTemperature_" + index}
+            onChange={(value) => handleSampleTemperature(value)}
+            defaultValue={""}
+            value={sampleXml.sampleTemperature || ""}
+            labelText={intl.formatMessage({
+              id: "sample.temperature",
+              defaultMessage: "Sample Temperature",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.temperature.placeholder",
+              defaultMessage: "e.g., room temp, iced, refrigerated",
+            })}
+            className="inputText"
+          />
+        </div>
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"specimenOrigin_" + index}
+            onChange={(value) => handleSpecimenOrigin(value)}
+            defaultValue={""}
+            value={sampleXml.specimenOrigin || ""}
+            labelText={intl.formatMessage({
+              id: "sample.specimen.origin",
+              defaultMessage: "Specimen Origin (referent lab)",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.specimen.origin.placeholder",
+              defaultMessage: "Referring laboratory name",
+            })}
+            className="inputText"
+          />
+        </div>
+
         {configurationProperties.GPS_ENABLED === "true" && (
           <div className="gpsDiv">
             <GpsCoordinatesCapture
@@ -634,6 +731,9 @@ const SampleType = (props) => {
                     return sel;
                   })()
                 : null
+            }
+            initialPosition={
+              sampleXml?.storageLocation?.positionCoordinate || null
             }
             onChange={(state) => {
               // Adapt new picker shape → legacy sampleXml.storageLocation:

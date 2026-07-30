@@ -146,22 +146,22 @@ public abstract class CIStudyColumnBuilder extends CSVColumnBuilder {
     }
 
     protected void defineBasicColumns() {
-        add("accession_number", "LABNO", NONE);
-        add("status_id", "SAMPLE_STATUS", SAMPLE_STATUS);
-        add("national_id", "SUBJECTNO", NONE);
-        add("project_id", "STUDY", PROJECT);
-        add("external_id", "SUBJECTID", NONE);
-        add("received_date", "DRCPT", DATE_TIME); // reception date
-        add("collection_date", "DINTV", DATE_TIME); // interview date
-        add("organization_code", "CODE_SITE", NONE);
-        add("organization_name", "NAME_SITE", NONE);
-        add("datim_org_code", "CODE_SITE_DATIM", NONE);
-        add("datim_org_name", "NAME_SITE_DATIM", NONE);
-        add("gender", "SEX", GENDER);
-        add("birth_date", "DATEBORN", DATE);
-        add("collection_date", "AGEYEARS", AGE_YEARS);
-        add("collection_date", "AGEMONTHS", AGE_MONTHS);
-        add("collection_date", "AGEWEEKS", AGE_WEEKS);
+        add("accession_number", "Lab No", NONE);
+        add("status_id", "Sample Status", SAMPLE_STATUS);
+        add("national_id", "Subject No", NONE);
+        add("project_id", "Study", PROJECT);
+        add("external_id", "Subject ID", NONE);
+        add("received_date", "Date Received", DATE_TIME);
+        add("collection_date", "Date Collected", DATE_TIME);
+        add("organization_code", "Site Code", NONE);
+        add("organization_name", "Site Name", NONE);
+        add("datim_org_code", "DATIM Site Code", NONE);
+        add("datim_org_name", "DATIM Site Name", NONE);
+        add("gender", "Sex", GENDER);
+        add("birth_date", "Birth Date", DATE);
+        add("collection_date", "Age (Years)", AGE_YEARS);
+        add("collection_date", "Age (Months)", AGE_MONTHS);
+        add("collection_date", "Age (Weeks)", AGE_WEEKS);
     }
 
     // @Override

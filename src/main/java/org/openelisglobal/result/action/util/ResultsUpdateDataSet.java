@@ -78,6 +78,15 @@ public class ResultsUpdateDataSet implements IResultSaveService {
         return modifiedAnalysis;
     }
 
+    public Analysis findModifiedAnalysis(String analysisId) {
+        for (Analysis analysis : modifiedAnalysis) {
+            if (analysis.getId() != null && analysis.getId().equals(analysisId)) {
+                return analysis;
+            }
+        }
+        return null;
+    }
+
     public List<Result> getDeletableResults() {
         return deletableResults;
     }

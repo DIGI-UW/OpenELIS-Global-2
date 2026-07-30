@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 M1 / OGC-937 — Result Components (multi-component foundation)
+    Real targets per data-model.md translation table (research.md R9):
+      1. test_result_component        — NEW; one row per labeled value field; PRIMARY auto-created per test
+      2. result_limits.component_id   — ALTER (FRS alias: test_range)
+      3. test_result.component_id     — ALTER (FRS alias: test_select_list_option)
+      4. test_result_interpretation   — NEW (FRS alias: test_interpretation; no legacy counterpart)
+      5. backfill (041-component-backfill.sql; idempotent; also executed by ComponentBackfillMigrationTest)
+    component_id stays nullable in v1 (new rows from legacy writers); NOT NULL tightening is v2.
+    -->
+
+    <changeSet id="OGC-937-test-result-component-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_result_component">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_result_component"/>
+            </column>
+            <column name="test_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_type" type="VARCHAR(1)"/>
+            <column name="uom_id" type="numeric(10)"/>
+            <column name="significant_digits" type="numeric(10)"/>
+            <column name="default_result" type="VARCHAR(80)"/>
+            <column name="allow_multiple_readings" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <!-- BaseObject @Version maps to last_updated -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="test_result_component"
+            columnNames="test_id, code" constraintName="uq_test_result_component_test_code"/>
+        <addForeignKeyConstraint constraintName="fk_test_result_component_test"
+            baseTableSchemaName="clinlims" baseTableName="test_result_component" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_test_result_component_uom"
+            baseTableSchemaName="clinlims" baseTableName="test_result_component" baseColumnNames="uom_id"
+            referencedTableSchemaName="clinlims" referencedTableName="unit_of_measure" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_result_component"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-937-result-limits-component-id" author="OGC">
+        <addColumn schemaName="clinlims" tableName="result_limits">
+            <column name="component_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_result_limits_component"
+            baseTableSchemaName="clinlims" baseTableName="result_limits" baseColumnNames="component_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component" referencedColumnNames="id"/>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="result_limits" columnName="component_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-937-test-result-component-id" author="OGC">
+        <addColumn schemaName="clinlims" tableName="test_result">
+            <column name="component_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_test_result_component"
+            baseTableSchemaName="clinlims" baseTableName="test_result" baseColumnNames="component_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component" referencedColumnNames="id"/>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_result" columnName="component_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-937-test-result-interpretation-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_result_interpretation">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_result_interpretation"/>
+            </column>
+            <column name="component_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value_match" type="VARCHAR(80)"/>
+            <column name="interpretation_text" type="VARCHAR(255)"/>
+            <column name="severity" type="VARCHAR(20)"/>
+            <column name="color" type="VARCHAR(20)"/>
+            <column name="display_order" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_test_result_interpretation_component"
+            baseTableSchemaName="clinlims" baseTableName="test_result_interpretation" baseColumnNames="component_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_result_interpretation"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-937-component-backfill" author="OGC">
+        <sqlFile path="041-component-backfill.sql" relativeToChangelogFile="true"
+            splitStatements="true" stripComments="true"/>
+        <rollback>
+            <sql>UPDATE clinlims.test_result SET component_id = NULL</sql>
+            <sql>UPDATE clinlims.result_limits SET component_id = NULL</sql>
+            <sql>DELETE FROM clinlims.test_result_component WHERE code = 'PRIMARY'</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

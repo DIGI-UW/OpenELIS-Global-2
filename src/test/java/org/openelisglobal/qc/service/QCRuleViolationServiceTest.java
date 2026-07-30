@@ -46,8 +46,8 @@ public class QCRuleViolationServiceTest {
         testQCResult = new QCResult();
         testQCResult.setId("R1");
         testQCResult.setControlLotId("LOT1");
-        testQCResult.setTestId(100);
-        testQCResult.setInstrumentId(200);
+        testQCResult.setTestId("100");
+        testQCResult.setInstrumentId("200");
         testQCResult.setResultValue(new BigDecimal("115.00"));
         testQCResult.setRunDateTime(new Timestamp(System.currentTimeMillis()));
 
@@ -66,8 +66,8 @@ public class QCRuleViolationServiceTest {
         assertEquals("R1", violation.getTriggeringResultId());
         assertEquals("1₃ₛ", violation.getRuleCode());
         assertEquals("REJECTION", violation.getSeverity());
-        assertEquals(Integer.valueOf(100), violation.getTestId());
-        assertEquals(Integer.valueOf(200), violation.getInstrumentId());
+        assertEquals("100", violation.getTestId());
+        assertEquals("200", violation.getInstrumentId());
         assertEquals("UNRESOLVED", violation.getResolutionStatus());
         assertNotNull(violation.getViolationDateTime());
         assertTrue(violation.getResolutionNotes().contains("Result exceeds 3SD"));
@@ -160,9 +160,9 @@ public class QCRuleViolationServiceTest {
         QCRuleViolation v2 = new QCRuleViolation();
         v2.setId("V2");
 
-        when(violationDAO.findByInstrument(200)).thenReturn(Arrays.asList(v1, v2));
+        when(violationDAO.findByInstrument("200")).thenReturn(Arrays.asList(v1, v2));
 
-        List<QCRuleViolation> results = violationService.findByInstrument(200);
+        List<QCRuleViolation> results = violationService.findByInstrument("200");
 
         assertEquals(2, results.size());
         assertEquals("V1", results.get(0).getId());

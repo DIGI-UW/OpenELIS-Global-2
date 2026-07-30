@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>6</fix.version>
+        <fix.version>11</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -24,12 +24,38 @@
         <hibernate.version>5.6.15.Final</hibernate.version>
         <hibernate-validator.version>8.0.2.Final</hibernate-validator.version>
         <hibernate-search.version>6.1.8.Final</hibernate-search.version>
-        <postgresql.version>42.7.2</postgresql.version>
+        <postgresql.version>42.7.12</postgresql.version>
         <log4j.version>2.17.1</log4j.version>
-        <springframework.version>6.2.17</springframework.version>
+        <springframework.version>6.2.18</springframework.version>
         <springsecurity.version>6.2.8</springsecurity.version>
         <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>jakarta.activation</groupId>
+                <artifactId>jakarta.activation-api</artifactId>
+                <version>2.1.3</version>
+            </dependency>
+            <!-- Exclude old jakarta activation impl that conflicts with angus-activation -->
+            <dependency>
+                <groupId>com.sun.activation</groupId>
+                <artifactId>jakarta.activation</artifactId>
+                <version>2.0.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <!-- Exclude old Jakarta Mail 1.x impl from simple-java-mail/hapi-fhir
+                that conflicts with angus-mail -->
+            <dependency>
+                <groupId>com.sun.mail</groupId>
+                <artifactId>jakarta.mail</artifactId>
+                <version>1.6.5</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.yaml</groupId>
@@ -91,7 +117,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.18.6</version>
+            <version>2.18.9</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -101,7 +127,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.18.6</version>
+            <version>2.18.8</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -274,12 +300,12 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
-            <version>1.79</version>
+            <version>1.84</version>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
-            <version>1.78</version>
+            <version>1.84</version>
         </dependency>
         <dependency>
             <groupId>jakarta.annotation</groupId>
@@ -523,6 +549,12 @@
             <version>${springsecurity.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <version>${springsecurity.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
             <version>${springframework.version}</version>
@@ -629,7 +661,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20230618</version>
+            <version>20231013</version>
         </dependency>
         <dependency>
             <groupId>org.jsoup</groupId>
@@ -920,6 +952,7 @@
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/openelis-analyzer-bridge/**</exclude>
                                 <exclude>tools/analyzer-mock-server/**</exclude>
+                                <exclude>tools/code-qa/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                             </excludes>
@@ -940,9 +973,17 @@
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/openelis-analyzer-bridge/**</exclude>
                                 <exclude>tools/analyzer-mock-server/**</exclude>
+                                <exclude>tools/code-qa/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>
+                                <!-- SpecKit spec artifacts + AI-tooling/skill docs: authored for
+                                    GitHub's lenient renderer; prettier proseWrap=always canonicalizes them destructively
+                                    (trims inline-code padding, fuses table cells, flattens nested checklists).
+                                    Excluded so the formatter stops mangling them. See OGC-285 PR discussion
+                                    / markdown-guardrail follow-up. -->
+                                <exclude>specs/**</exclude>
+                                <exclude>.specify/**</exclude>
                             </excludes>
                             <prettier>
                                 <!-- Formatter that Spotless supports and can format Markdown: https://github.com/diffplug/spotless/tree/main/plugin-maven#prettier
@@ -1002,10 +1043,10 @@
                     </execution>
                     <execution>
                         <id>report</id>
-                        <phase>package</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <phase>package</phase>
                     </execution>
 
                     <!-- Make sure we have at least 70% coverage -->
@@ -1028,7 +1069,7 @@
                             <artifactId>[ artifactId ]</artifactId>
                             <version>[ version ]</version>
                             <type>[ packaging ]</type>
-                            <classifier> [classifier - optional] </classifier>
+                            <classifier>[classifier - optional]</classifier>
                             <overWrite>[ true or false ]</overWrite>
                             <outputDirectory>[ output directory ]</outputDirectory>
                             <destFileName>[ filename ]</destFileName>
@@ -1040,31 +1081,5 @@
 
         </plugins>
     </build>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>jakarta.activation</groupId>
-                <artifactId>jakarta.activation-api</artifactId>
-                <version>2.1.3</version>
-            </dependency>
-            <!-- Exclude old jakarta activation impl that conflicts with angus-activation -->
-            <dependency>
-                <groupId>com.sun.activation</groupId>
-                <artifactId>jakarta.activation</artifactId>
-                <version>2.0.0</version>
-                <scope>provided</scope>
-            </dependency>
-            <!-- Exclude old Jakarta Mail 1.x impl from simple-java-mail/hapi-fhir
-                that conflicts with angus-mail -->
-            <dependency>
-                <groupId>com.sun.mail</groupId>
-                <artifactId>jakarta.mail</artifactId>
-                <version>1.6.5</version>
-                <scope>provided</scope>
-            </dependency>
-        </dependencies>
-
-    </dependencyManagement>
 
 </project>

@@ -113,8 +113,22 @@ export const NCECorrectiveAction = () => {
     }
   };
 
+  const actionLogIsBlank =
+    !formData.actionLog.correctiveAction &&
+    !formData.actionLog.personResponsible &&
+    !formData.dateCompleted &&
+    !formData.actionLog.actionType;
+
+  const actionLogIsComplete =
+    !!formData.actionLog.correctiveAction?.trim() &&
+    !!formData.actionLog.personResponsible?.trim() &&
+    !!formData.dateCompleted &&
+    !!formData.actionLog.actionType?.split(",").filter(Boolean).length;
+
+  const canSubmit = !!submit && (actionLogIsBlank || actionLogIsComplete);
+
   const handleNCEFormSubmit = () => {
-    if (!submit) {
+    if (!canSubmit) {
       return;
     }
 
@@ -124,10 +138,11 @@ export const NCECorrectiveAction = () => {
 
     formData.actionLog.turnAroundTime = turnAroundTime;
 
-    // correctiveAction
     let body = {
       id: data.id,
-      actionLog: [...data["actionLog"], formData["actionLog"]],
+      actionLog: actionLogIsBlank
+        ? data["actionLog"]
+        : [...data["actionLog"], formData["actionLog"]],
 
       dateCompleted: formData[`dateCompleted`] ?? "",
       discussionDate: formData[`discussionDate`] ?? "",
@@ -425,7 +440,7 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.specimens[0].typeOfSample.description}
+                  {data.specimens?.[0]?.typeOfSample?.description || "—"}
                 </div>
               </Column>
               <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
@@ -511,8 +526,9 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.nceCategories.find((obj) => obj.id === data.nceCategory)
-                    ?.name ?? ""}
+                  {data.nceCategories?.find(
+                    (obj) => obj.id === data.nceCategory,
+                  )?.value ?? ""}
                 </div>
               </Column>
 
@@ -523,8 +539,8 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.nceTypes.find((obj) => obj.id === data.nceType)?.name ??
-                    ""}
+                  {data.nceTypes?.find((obj) => obj.id === data.nceType)
+                    ?.value ?? ""}
                 </div>
               </Column>
               <Column lg={16} md={8} sm={4}></Column>
@@ -876,9 +892,18 @@ export const NCECorrectiveAction = () => {
                   </div>
                 )}
 
+                {!!submit && !actionLogIsBlank && !actionLogIsComplete && (
+                  <div style={{ color: "#c62828", margin: "4px 0" }}>
+                    <FormattedMessage
+                      id="nonconform.corrective.requiredFields"
+                      defaultMessage="Fill all corrective-action fields (action, person responsible, date completed, and at least one action type), or leave the row entirely empty."
+                    />
+                  </div>
+                )}
+
                 <Button
                   type="button"
-                  disabled={!submit}
+                  disabled={!canSubmit}
                   onClick={handleNCEFormSubmit}
                   data-testid="nce-submit-button"
                 >

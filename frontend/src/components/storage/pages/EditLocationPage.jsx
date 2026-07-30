@@ -72,6 +72,15 @@ export default function EditLocationPage({ type }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [deviceTypes, setDeviceTypes] = useState([]);
+
+  // Fetch device type list (only for device edits)
+  useEffect(() => {
+    if (type !== "device") return;
+    getFromOpenElisServer("/rest/storage/devices/types", (response) => {
+      if (Array.isArray(response)) setDeviceTypes(response);
+    });
+  }, [type]);
 
   // Fetch current location
   useEffect(() => {
@@ -84,6 +93,7 @@ export default function EditLocationPage({ type }) {
               response[meta.nameField] || response.name || response.label || "",
             code: response.code || "",
             active: response.active !== false,
+            ...(type === "device" ? { type: response.type || "" } : {}),
             ...(meta.parentField
               ? { [meta.parentField]: String(response[meta.parentField] || "") }
               : {}),
@@ -137,6 +147,9 @@ export default function EditLocationPage({ type }) {
     }
     if (type === "room") {
       payload.description = formData.description || null;
+    }
+    if (type === "device") {
+      payload.type = formData.type || null;
     }
 
     try {
@@ -209,7 +222,7 @@ export default function EditLocationPage({ type }) {
 
   if (loading) {
     return (
-      <div className="storage-edit-page">
+      <div className="storage-edit-page pageContent">
         <BreadcrumbNav crumbs={crumbs} />
         <InlineLoading
           description={intl.formatMessage({
@@ -223,7 +236,7 @@ export default function EditLocationPage({ type }) {
 
   if (error && !formData) {
     return (
-      <div className="storage-edit-page">
+      <div className="storage-edit-page pageContent">
         <BreadcrumbNav crumbs={crumbs} />
         <InlineNotification
           kind="error"
@@ -238,7 +251,7 @@ export default function EditLocationPage({ type }) {
   }
 
   return (
-    <div className="storage-edit-page">
+    <div className="storage-edit-page pageContent">
       <BreadcrumbNav crumbs={crumbs} />
       <h1>
         <FormattedMessage
@@ -322,6 +335,25 @@ export default function EditLocationPage({ type }) {
             }
           />
         )}
+        {type === "device" && (
+          <Dropdown
+            id="storage-edit-device-type"
+            titleText={intl.formatMessage({
+              id: "storage.device.type",
+              defaultMessage: "Device type",
+            })}
+            label={intl.formatMessage({
+              id: "storage.picker.select",
+              defaultMessage: "Select device type",
+            })}
+            items={deviceTypes}
+            itemToString={(item) => item || ""}
+            selectedItem={formData.type || null}
+            onChange={({ selectedItem }) =>
+              updateField("type", selectedItem || "")
+            }
+          />
+        )}
         <Checkbox
           id="storage-edit-active"
           labelText={intl.formatMessage({
@@ -337,7 +369,11 @@ export default function EditLocationPage({ type }) {
         <Button kind="secondary" onClick={navigateBack}>
           <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
         </Button>
-        <Button kind="primary" onClick={handleSave} disabled={saving}>
+        <Button
+          kind="primary"
+          onClick={handleSave}
+          disabled={saving || (type === "device" && !formData.type)}
+        >
           <FormattedMessage id="label.save" defaultMessage="Save" />
         </Button>
       </div>

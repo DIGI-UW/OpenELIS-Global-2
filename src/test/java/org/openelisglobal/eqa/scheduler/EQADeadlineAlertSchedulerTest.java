@@ -163,16 +163,17 @@ public class EQADeadlineAlertSchedulerTest {
     }
 
     @Test
-    public void testEscalateUnacknowledgedAlerts_CriticalOpenOver4Hours_CreatesEscalation() {
+    public void testEscalateUnacknowledgedAlerts_CandidateReturned_CreatesEscalation() {
+        // The DB-level filter (status=OPEN, severity=CRITICAL, acknowledgedAt IS NULL,
+        // startTime <= cutoff) lives in AlertDAOImpl.getUnacknowledgedAlertsOlderThan
+        // and is covered by the DAO's own tests. At the scheduler unit-test level we
+        // just verify: given a candidate, the scheduler creates one escalation per row.
         Alert critical = new Alert();
         critical.setId(10L);
-        critical.setStatus(AlertStatus.OPEN);
-        critical.setSeverity(AlertSeverity.CRITICAL);
-        critical.setStartTime(OffsetDateTime.now().minus(5, ChronoUnit.HOURS));
-        critical.setAcknowledgedAt(null);
         critical.setMessage("Test critical alert");
 
-        when(alertService.getAlertsByEntity("SampleEQA", null)).thenReturn(Collections.singletonList(critical));
+        when(alertService.getUnacknowledgedAlertsOlderThan(eq("SampleEQA"), eq(AlertStatus.OPEN),
+                eq(AlertSeverity.CRITICAL), any(OffsetDateTime.class))).thenReturn(Collections.singletonList(critical));
 
         scheduler.escalateUnacknowledgedAlerts();
 
@@ -181,51 +182,14 @@ public class EQADeadlineAlertSchedulerTest {
     }
 
     @Test
-    public void testEscalateUnacknowledgedAlerts_CriticalOpenUnder4Hours_NoEscalation() {
-        Alert recent = new Alert();
-        recent.setId(11L);
-        recent.setStatus(AlertStatus.OPEN);
-        recent.setSeverity(AlertSeverity.CRITICAL);
-        recent.setStartTime(OffsetDateTime.now().minus(2, ChronoUnit.HOURS));
-        recent.setAcknowledgedAt(null);
-        recent.setMessage("Recent critical alert");
-
-        when(alertService.getAlertsByEntity("SampleEQA", null)).thenReturn(Collections.singletonList(recent));
+    public void testEscalateUnacknowledgedAlerts_NoCandidates_NoEscalation() {
+        when(alertService.getUnacknowledgedAlertsOlderThan(eq("SampleEQA"), eq(AlertStatus.OPEN),
+                eq(AlertSeverity.CRITICAL), any(OffsetDateTime.class))).thenReturn(Collections.emptyList());
 
         scheduler.escalateUnacknowledgedAlerts();
 
         verify(alertService, never()).createAlert(any(AlertType.class), anyString(), anyLong(),
                 any(AlertSeverity.class), anyString(), anyString());
-    }
-
-    @Test
-    public void testEscalateUnacknowledgedAlerts_AcknowledgedAlert_NoEscalation() {
-        Alert acknowledged = new Alert();
-        acknowledged.setId(12L);
-        acknowledged.setStatus(AlertStatus.ACKNOWLEDGED);
-        acknowledged.setSeverity(AlertSeverity.CRITICAL);
-        acknowledged.setStartTime(OffsetDateTime.now().minus(5, ChronoUnit.HOURS));
-        acknowledged.setAcknowledgedAt(OffsetDateTime.now().minus(1, ChronoUnit.HOURS));
-        acknowledged.setMessage("Acknowledged critical alert");
-
-        when(alertService.getAlertsByEntity("SampleEQA", null)).thenReturn(Collections.singletonList(acknowledged));
-
-        scheduler.escalateUnacknowledgedAlerts();
-
-        verify(alertService, never()).createAlert(any(AlertType.class), anyString(), anyLong(),
-                any(AlertSeverity.class), anyString(), anyString());
-    }
-
-    @Test
-    public void testEscalateUnacknowledgedAlerts_NullAlertList_NoException() {
-        when(alertService.getAlertsByEntity("SampleEQA", null)).thenReturn(null);
-
-        scheduler.escalateUnacknowledgedAlerts();
-
-        verify(alertService, never()).createAlert(
-                any(AlertType.class), anyString(),
-                anyLong(), any(AlertSeverity.class),
-                anyString(), anyString());
     }
 
     @Test

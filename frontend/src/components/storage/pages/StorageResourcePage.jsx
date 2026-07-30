@@ -123,7 +123,7 @@ export default function StorageResourcePage({
   }, [headers, editHref, isGlobalAdmin, onDeleteRequested]);
 
   return (
-    <div className="storage-resource-page">
+    <div className="storage-resource-page pageContent">
       <BreadcrumbNav crumbs={crumbs} />
       <h1>{heading}</h1>
 

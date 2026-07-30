@@ -39,6 +39,9 @@ public class PatientSearchResults {
     private String contactName;
     private String contactEmail;
     private String contactPhone;
+    private boolean isMerged;
+    private String mergedIntoPatientId;
+    private String mergedIntoNationalId;
 
     public PatientSearchResults() {
     }
@@ -200,6 +203,30 @@ public class PatientSearchResults {
 
     public void setContactPhone(String contactPhone) {
         this.contactPhone = contactPhone;
+    }
+
+    public boolean getIsMerged() {
+        return isMerged;
+    }
+
+    public void setIsMerged(boolean isMerged) {
+        this.isMerged = isMerged;
+    }
+
+    public String getMergedIntoPatientId() {
+        return mergedIntoPatientId;
+    }
+
+    public void setMergedIntoPatientId(String mergedIntoPatientId) {
+        this.mergedIntoPatientId = mergedIntoPatientId;
+    }
+
+    public String getMergedIntoNationalId() {
+        return mergedIntoNationalId;
+    }
+
+    public void setMergedIntoNationalId(String mergedIntoNationalId) {
+        this.mergedIntoNationalId = mergedIntoNationalId;
     }
 
     public String getFormatedBirthDate() {

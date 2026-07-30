@@ -204,7 +204,7 @@ const EditSample = (props) => {
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer(
-      "/rest/test-rejection-reasons",
+      "/rest/displayList/REJECTION_REASONS",
       fetchRejectSampleReasons,
     );
     window.scrollTo(0, 0);
@@ -215,7 +215,7 @@ const EditSample = (props) => {
 
   useEffect(() => {
     getFromOpenElisServer(
-      "/rest/test-rejection-reasons",
+      "/rest/displayList/REJECTION_REASONS",
       fetchRejectSampleReasons,
     );
     window.scrollTo(0, 0);

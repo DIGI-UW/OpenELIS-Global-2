@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Update consent_recorded_by field to store names instead of user IDs.
+         Split into three changesets so partial-failure recovery is straightforward
+         and each step has its own precondition.
+
+         Migration history: 017 (OGC-557) created consent_recorded_by as
+         NUMERIC(10) with FK to system_user(id). 018 retypes it to free-text
+         VARCHAR(255) so the operator can record the recorder's name directly. -->
+
+    <!-- 1) Drop the FK to system_user. -->
+    <changeSet id="OGC-558-2026-04-30-1" author="herbertYiga">
+        <preConditions onFail="MARK_RAN">
+            <foreignKeyConstraintExists
+                schemaName="clinlims"
+                foreignKeyTableName="sample"
+                foreignKeyName="fk_sample_consent_recorded_by"/>
+        </preConditions>
+
+        <dropForeignKeyConstraint schemaName="clinlims" baseTableName="sample"
+                                  constraintName="fk_sample_consent_recorded_by"/>
+
+        <rollback>
+            <addForeignKeyConstraint baseTableSchemaName="clinlims"
+                                     baseTableName="sample"
+                                     baseColumnNames="consent_recorded_by"
+                                     constraintName="fk_sample_consent_recorded_by"
+                                     referencedTableSchemaName="clinlims"
+                                     referencedTableName="system_user"
+                                     referencedColumnNames="id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 2) Change column type NUMERIC(10) -> VARCHAR(255). Idempotent: skipped
+         if the column is already a character type. -->
+    <changeSet id="OGC-558-2026-04-30-2" author="herbertYiga">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="sample" columnName="consent_recorded_by"/>
+            <sqlCheck expectedResult="numeric">
+                SELECT lower(data_type) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                  AND table_name = 'sample'
+                  AND column_name = 'consent_recorded_by'
+            </sqlCheck>
+        </preConditions>
+
+        <modifyDataType schemaName="clinlims" tableName="sample"
+                        columnName="consent_recorded_by" newDataType="VARCHAR(255)"/>
+
+        <!-- Rollback is destructive. Any name written after the migration
+             cannot be coerced back to NUMERIC(10) and is nulled out. -->
+        <rollback>
+            <sql>
+                UPDATE clinlims.sample SET consent_recorded_by = NULL
+                WHERE consent_recorded_by IS NOT NULL
+                  AND consent_recorded_by !~ '^[0-9]+$';
+            </sql>
+            <modifyDataType schemaName="clinlims" tableName="sample"
+                            columnName="consent_recorded_by" newDataType="NUMERIC(10)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 3) Backfill: rows written under 017 hold the numeric system_user.id;
+         replace with the user's display name now that the column is free-text.
+         Regex-guarded so re-running over a partially-backfilled column is safe. -->
+    <changeSet id="OGC-558-2026-04-30-3" author="herbertYiga">
+        <sql>
+            UPDATE clinlims.sample s
+            SET consent_recorded_by = (
+                SELECT TRIM(BOTH FROM (su.first_name || ' ' || su.last_name))
+                FROM clinlims.system_user su
+                WHERE CAST(su.id AS BIGINT) = CAST(s.consent_recorded_by AS BIGINT)
+            )
+            WHERE s.consent_recorded_by IS NOT NULL
+              AND s.consent_recorded_by ~ '^[0-9]+$';
+        </sql>
+
+        <rollback>
+            <!-- Cannot reverse a name -> ID lookup losslessly; leave names in place. -->
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

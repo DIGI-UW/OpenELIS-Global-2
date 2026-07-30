@@ -32,6 +32,10 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/notes.xml");
+        // notes.xml replaces system_user with testUser/anotherUser. Authenticate
+        // as testUser so the fillSysUserIdIfMissing lookup resolves to the
+        // fixture's user (audit rows attribute correctly to a real user).
+        authenticateAs("testUser");
     }
 
     @Test
@@ -171,6 +175,26 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
         List<Note> notes = noteService.getNotesChronologicallyByRefIdAndRefTableAndType("1001", "1", filter);
         assertFalse("Notes should not be empty", notes.isEmpty());
         assertEquals("Note type should match", Note.INTERNAL, notes.get(0).getNoteType());
+    }
+
+    /**
+     * OGC-745: the unconditional-acceptance reason note type must round-trip
+     * through createSavableNote so the result-save flow can persist override
+     * justifications as a queryable note type for supervisor audit review.
+     */
+    @Test
+    public void unconditionalAcceptanceReasonNoteType_isWiredEndToEnd() {
+        assertEquals("Note.UNCONDITIONAL_ACCEPTANCE_REASON must be the unused 'U' single-char code", "U",
+                Note.UNCONDITIONAL_ACCEPTANCE_REASON);
+        assertEquals("NoteType enum must map to Note.UNCONDITIONAL_ACCEPTANCE_REASON",
+                Note.UNCONDITIONAL_ACCEPTANCE_REASON,
+                NoteServiceImpl.NoteType.UNCONDITIONAL_ACCEPTANCE_REASON.getDBCode());
+
+        NoteObject noteObject = createTestNoteObject("1001", "1");
+        Note saved = noteService.createSavableNote(noteObject, NoteServiceImpl.NoteType.UNCONDITIONAL_ACCEPTANCE_REASON,
+                "Retested twice, same result; no result available.", "Result Note", "1");
+        assertEquals("Persisted note_type must be 'U'", Note.UNCONDITIONAL_ACCEPTANCE_REASON, saved.getNoteType());
+        assertEquals("Retested twice, same result; no result available.", saved.getText());
     }
 
     @Test

@@ -12,11 +12,11 @@ import java.util.Map;
  * interpreted and what communication capabilities the analyzer supports.
  *
  * <p>
- * MVP implements {@link #ANALYZER_INITIATED} only (one-way result transport).
- * {@link #LIS_INITIATED} and {@link #BOTH} are planned post-MVP capabilities
- * documented in vendor specs (OGC-327 ORM^O01, OGC-326 QRY^Q02, OGC-336 QBP
- * queries). The field is exposed in the UI so sites can declare their
- * configuration intent even before OE fully supports outbound communication.
+ * All three modes are now functional: {@link #ANALYZER_INITIATED} (analyzer
+ * pushes results, OE/bridge listens), {@link #LIS_INITIATED} (OE dispatches
+ * ORM^O01 orders via the bridge — see
+ * {@link org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService}),
+ * and {@link #BOTH} (concurrent push + dispatch).
  *
  * <p>
  * Stored in the database via {@code @Enumerated(EnumType.STRING)}.
@@ -31,15 +31,19 @@ public enum CommunicationMode {
     ANALYZER_INITIATED("Analyzer → LIS"),
 
     /**
-     * OE/bridge initiates outbound connections to the analyzer. Future: ORM^O01
-     * worklist download (OGC-327), QRY^Q02 order download (OGC-326). Requires
-     * bridge outbound MLLP/ASTM client support.
+     * OE/bridge initiates outbound connections to the analyzer. Implemented for
+     * ORM^O01 via
+     * {@link org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService},
+     * which POSTs a LOINC-coded order to the bridge's {@code /api/orders}; the
+     * bridge translates LOINC → analyzer code and builds the wire message (ASTM via
+     * its forwarder, HL7 via its outbound MLLP client). QRY^Q02 order download
+     * (OGC-326) remains future work.
      */
     LIS_INITIATED("LIS → Analyzer"),
 
     /**
      * Both directions active. Analyzer can push results AND OE can initiate
-     * queries/orders. Requires bridge outbound support.
+     * queries/orders.
      */
     BOTH("Bidirectional");
 

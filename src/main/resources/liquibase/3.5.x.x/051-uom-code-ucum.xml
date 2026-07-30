@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-749 / OGC-963 (FR-29): inline "Add new unit" captures Code + UCUM code
+         in addition to the existing name/description, so unit_of_measure gains two
+         optional columns. -->
+    <changeSet author="openelis" id="uom-add-code-ucum">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="unit_of_measure" columnName="code" />
+            </not>
+        </preConditions>
+        <comment>Add optional code + UCUM code columns to unit_of_measure for the inline unit-create form.</comment>
+        <addColumn schemaName="clinlims" tableName="unit_of_measure">
+            <column name="code" type="varchar(50)" />
+            <column name="ucum_code" type="varchar(50)" />
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -75,14 +75,40 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
+    // OGC-1129 — the result component this staged value belongs to
+    // (test_result_component.id). Null = the test's PRIMARY component.
+    @Column(name = "component_id", length = 36)
+    private String componentId;
+
     @Column(name = "test_result_type", length = 1)
     private String resultType = "N";
 
     @Column(name = "complete_date")
     private Timestamp completeDate;
 
+    // OGC-1145 FR-8: staged row held because its test runs on several sample
+    // types and the message carried no specimen; the review page's chooser
+    // resolves it.
+    public static final String IMPORT_ISSUE_AWAITING_SPECIMEN = "awaiting_specimen";
+
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
+
+    // QC metadata propagated from the analyzer-bridge for control samples.
+    // Transient — only carried in-memory from FHIR ingest
+    // (AnalyzerFhirImportController) through to QCResultProcessingService.
+    // Not persisted on analyzer_results because the matched lot is
+    // already recorded on the qc_result row (control_lot_id FK).
+    // - lotNumber: canonical qc_control_lot.lot_number when the bridge
+    // extracted it (ASTM Q-segment field 3 component 2)
+    // - controlLevel: clinical level identifier (LPC/HPC/CNEG/CPOS/etc.)
+    // — ASTM Q-segment field 3 component 3, OR matched FILE qcRule's
+    // SPECIMEN_ID_PREFIX operand
+    @jakarta.persistence.Transient
+    private String lotNumber;
+
+    @jakarta.persistence.Transient
+    private String controlLevel;
 
     public String getImportIssueReason() {
         return importIssueReason;
@@ -90,6 +116,22 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setImportIssueReason(String importIssueReason) {
         this.importIssueReason = importIssueReason;
+    }
+
+    public String getLotNumber() {
+        return lotNumber;
+    }
+
+    public void setLotNumber(String lotNumber) {
+        this.lotNumber = lotNumber;
+    }
+
+    public String getControlLevel() {
+        return controlLevel;
+    }
+
+    public void setControlLevel(String controlLevel) {
+        this.controlLevel = controlLevel;
     }
 
     public Object clone() throws CloneNotSupportedException {
@@ -186,6 +228,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public String getTestId() {
         return testId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentId() {
+        return componentId;
     }
 
     public void setResultType(String resultType) {

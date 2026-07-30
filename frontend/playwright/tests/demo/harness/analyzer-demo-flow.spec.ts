@@ -284,6 +284,9 @@ test.describe("Madagascar analyzer demo flows", () => {
         pushConfig = {
           ...pushConfig,
           destination: `${scheme}://${bridgeIp}:${port}`,
+          // Address /simulate by the provisioned instance so the push sources
+          // from the analyzer's own IP (the bridge identifies it by source IP).
+          mockAnalyzerName: config.mockAnalyzerName,
         };
       }
 

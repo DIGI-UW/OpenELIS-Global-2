@@ -45,7 +45,7 @@ public interface QCRuleViolationService {
      * @param instrumentId The instrument ID
      * @return List of violations
      */
-    List<QCRuleViolation> findByInstrument(Integer instrumentId);
+    List<QCRuleViolation> findByInstrument(String instrumentId);
 
     /**
      * Get all unresolved violations.
@@ -60,7 +60,7 @@ public interface QCRuleViolationService {
      * @param instrumentId The instrument ID
      * @return List of unresolved violations
      */
-    List<QCRuleViolation> findUnresolvedByInstrument(Integer instrumentId);
+    List<QCRuleViolation> findUnresolvedByInstrument(String instrumentId);
 
     /**
      * Get violations by severity.

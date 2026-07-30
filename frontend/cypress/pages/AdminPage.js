@@ -36,6 +36,14 @@ class AdminPage {
     cy.visit("/MasterListsPage");
   }
 
+  ensureAdminShell() {
+    cy.location("pathname").then((pathname) => {
+      if (!/^\/(MasterListsPage|admin)(\/|$)/.test(pathname)) {
+        cy.visit("/MasterListsPage");
+      }
+    });
+  }
+
   goToProviderManagementPage() {
     cy.get(this.selectors.providerManagement)
       .scrollIntoView()
@@ -73,6 +81,7 @@ class AdminPage {
   }
 
   goToGlobalMenuConfigPage() {
+    this.ensureAdminShell();
     cy.contains(this.selectors.span, "Menu Configuration")
       .scrollIntoView()
       .should("exist")
@@ -88,6 +97,7 @@ class AdminPage {
   }
 
   goToNonConformConfigPage() {
+    this.ensureAdminShell();
     cy.contains("span", "Menu Configuration")
       .scrollIntoView()
       .should("exist")
@@ -101,6 +111,7 @@ class AdminPage {
   }
 
   goToPatientConfigPage() {
+    this.ensureAdminShell();
     cy.contains("span", "Menu Configuration")
       .scrollIntoView()
       .should("exist")
@@ -114,6 +125,7 @@ class AdminPage {
   }
 
   goToStudyConfigPage() {
+    this.ensureAdminShell();
     cy.contains("span", "Menu Configuration")
       .scrollIntoView()
       .should("exist")
@@ -127,6 +139,7 @@ class AdminPage {
   }
 
   goToBillingConfigPage() {
+    this.ensureAdminShell();
     cy.contains("span", "Menu Configuration")
       .scrollIntoView()
       .should("exist")

@@ -132,7 +132,7 @@ const ReportByDate = (props) => {
           getFromOpenElisServer("/rest/test-list", setTempData);
           break;
         case "activityReportByPanel":
-          getFromOpenElisServer("/rest/panels", setTempData);
+          getFromOpenElisServer("/rest/displayList/PANELS", setTempData);
           break;
         case "activityReportByTestSection":
           getFromOpenElisServer(

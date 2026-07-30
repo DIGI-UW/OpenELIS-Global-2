@@ -15,13 +15,16 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.merge.dao.PatientMergeAuditDAO;
 import org.openelisglobal.patient.merge.dto.PatientMergeExecutionResultDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.merge.valueholder.PatientMergeAudit;
+import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.systemuser.dao.SystemUserDAO;
 
 /**
@@ -38,6 +41,15 @@ public class PatientMergeExecutionTest {
 
     @Mock
     private PatientDAO patientDAO;
+
+    @Mock
+    private PatientService patientService;
+
+    @Mock
+    private HistoryService historyService;
+
+    @Mock
+    private ReferenceTablesService referenceTablesService;
 
     @Mock
     private PatientMergeAuditDAO patientMergeAuditDAO;

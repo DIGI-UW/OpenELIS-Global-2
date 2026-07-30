@@ -35,10 +35,7 @@ async function navigateToConfig(page: Page, configName: RegExp) {
     await formEntryMenu.click();
   }
 
-  // Click the <a> element for the config menu item directly — Carbon's
-  // SideNavMenuItem renders as <a> with onClick (no href), so getByRole("link")
-  // doesn't match. Target the <a> tag and filter by text.
-  const menuItem = adminNav.locator("a").filter({ hasText: configName });
+  const menuItem = adminNav.getByRole("link", { name: configName });
   await expect(menuItem).toBeVisible({ timeout: UI_TIMEOUT });
   await menuItem.click();
 }

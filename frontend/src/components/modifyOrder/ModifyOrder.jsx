@@ -16,7 +16,10 @@ import "../addOrder/add-order.scss";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServer, getFromOpenElisServer } from "../utils/Utils";
+import {
+  postToOpenElisServerFullResponse,
+  getFromOpenElisServer,
+} from "../utils/Utils";
 import EditOrderEntryAdditionalQuestions from "./EditOrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "../addOrder/OrderSuccessMessage";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -52,6 +55,8 @@ const ModifyOrder = () => {
     gender: "",
     dob: "",
     nationalId: "",
+    patientId: "",
+    subjectNumber: "",
     accessionNumber: "",
   });
   const [changed, setChanged] = useState({
@@ -121,6 +126,8 @@ const ModifyOrder = () => {
           gender: data.gender || "",
           dob: data.dob || "",
           nationalId: data.nationalId || "",
+          patientId: data.patientId || "",
+          subjectNumber: data.subjectNumber || "",
           accessionNumber: data.accessionNumber || "",
         });
       }
@@ -139,19 +146,33 @@ const ModifyOrder = () => {
     });
   };
 
-  const handlePost = (status) => {
+  // Advance to the success page only after the backend confirms. On 4xx/5xx,
+  // surface the actual reason from the response body (the SampleEdit endpoint
+  // returns {"message":"..."} on errors like "Position B12 is already
+  // occupied") instead of the generic server.error.msg.
+  const handlePost = async (response) => {
     setIsSubmitting(false);
-    if (status === 200) {
+    if (response && response.ok) {
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
       );
-    } else {
-      showAlertMessage(
-        <FormattedMessage id="server.error.msg" />,
-        NotificationKinds.error,
-      );
+      setPage(page + 1);
+      return;
     }
+    let backendMessage;
+    if (response) {
+      try {
+        const body = await response.json();
+        backendMessage = body?.message || body?.error;
+      } catch (_) {
+        // Body wasn't JSON — fall through to the generic key.
+      }
+    }
+    showAlertMessage(
+      backendMessage || <FormattedMessage id="server.error.msg" />,
+      NotificationKinds.error,
+    );
   };
   const handleSubmitOrderForm = (e) => {
     e.preventDefault();
@@ -159,7 +180,6 @@ const ModifyOrder = () => {
       return;
     }
     setIsSubmitting(true);
-    setPage(page + 1);
     orderFormValues.sampleOrderItems.modified = true;
     //remove display Lists rom the form
     orderFormValues.sampleOrderItems.priorityList = [];
@@ -170,8 +190,7 @@ const ModifyOrder = () => {
     orderFormValues.sampleOrderItems.providersList = [];
     orderFormValues.sampleOrderItems.paymentOptions = [];
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    console.log(JSON.stringify(orderFormValues));
-    postToOpenElisServer(
+    postToOpenElisServerFullResponse(
       "/rest/SampleEdit",
       JSON.stringify(orderFormValues),
       handlePost,
@@ -281,6 +300,7 @@ const ModifyOrder = () => {
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <br />
 
       <PatientHeader
         id={patientId}
@@ -288,8 +308,10 @@ const ModifyOrder = () => {
         gender={patientHeaderInfo.gender}
         dob={patientHeaderInfo.dob}
         nationalId={patientHeaderInfo.nationalId}
+        patientId={patientHeaderInfo.patientId}
+        subjectNumber={patientHeaderInfo.subjectNumber}
         accesionNumber={patientHeaderInfo.accessionNumber}
-        className="patient-header3"
+        className="patient-header2"
         isOrderPage={true}
       >
         {" "}

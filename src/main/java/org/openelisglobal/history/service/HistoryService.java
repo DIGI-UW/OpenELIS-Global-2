@@ -13,9 +13,10 @@ public interface HistoryService extends BaseObjectService<History, String> {
     List<History> getHistoryByRefIdAndRefTableId(History history) throws LIMSRuntimeException;
 
     List<History> getSystemEventHistory(Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search, int page, int pageSize)
+            List<String> referenceTableIds, String activity, String search, String referenceId, int page, int pageSize)
             throws LIMSRuntimeException;
 
     long getSystemEventHistoryCount(Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search) throws LIMSRuntimeException;
+            List<String> referenceTableIds, String activity, String search, String referenceId)
+            throws LIMSRuntimeException;
 }

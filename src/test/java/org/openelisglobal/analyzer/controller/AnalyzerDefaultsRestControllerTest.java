@@ -85,7 +85,7 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
         mockMvc.perform(get("/rest/analyzer/defaults/file/quantstudio").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.profileMeta.id").value("quantstudio"))
                 .andExpect(jsonPath("$.protocol.name").value("FILE"))
-                .andExpect(jsonPath("$.configDefaults.fileFormat").value("EXCEL"));
+                .andExpect(jsonPath("$.configDefaults.fileFormat").value("CSV"));
     }
 
     /**

@@ -129,7 +129,7 @@ export default function AddBoxPage() {
   };
 
   return (
-    <div className="storage-add-page">
+    <div className="storage-add-page pageContent">
       <BreadcrumbNav crumbs={crumbs} />
       <h1>
         <FormattedMessage id="storage.add.box" defaultMessage="Add Box" />

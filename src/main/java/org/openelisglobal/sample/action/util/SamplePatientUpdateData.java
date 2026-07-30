@@ -228,6 +228,11 @@ public class SamplePatientUpdateData {
         this.newOrganization = newOrganization;
     }
 
+    public void setCurrentOrganization(Organization currentOrganization) {
+        this.currentOrganization = currentOrganization;
+
+    }
+
     public Organization getCurrentOrganization() {
         return currentOrganization;
     }
@@ -282,28 +287,33 @@ public class SamplePatientUpdateData {
     }
 
     public void validateSample(Errors errors, boolean requireSampleItems) {
+        // OGC-743: surface every validation failure as a field-tagged
+        // rejectValue so the frontend's fieldErrors[] (built by
+        // SamplePatientEntryRestController.buildErrorBody from
+        // BindingResult.getFieldErrors) sees them. Global errors via
+        // errors.reject(...) were dropped from the response body.
+
         // assure accession number - skip validation for updates (sample already exists)
         // When updating, the accession number is already in the database for this
-        // sample,
-        // so checkAccessionNumberValidity would incorrectly return USED_FAIL
+        // sample, so checkAccessionNumberValidity would incorrectly return USED_FAIL
         if (sample == null || sample.getId() == null) {
             IAccessionNumberValidator.ValidationResults result = AccessionNumberUtil
                     .checkAccessionNumberValidity(accessionNumber, null, null, null);
 
             if (result != IAccessionNumberValidator.ValidationResults.SUCCESS) {
                 String message = AccessionNumberUtil.getInvalidMessage(result);
-                errors.reject(message);
+                errors.rejectValue("sampleOrderItems.labNo", "accession.invalid", message);
             }
         }
 
         // assure that there is at least 1 sample (skip for order-entry-only mode)
         if (requireSampleItems && sampleItemsTests.isEmpty()) {
-            errors.reject("errors.no.sample");
+            errors.rejectValue("sampleOrderItems", "errors.no.sample", "errors.no.sample");
         }
 
         // assure that all samples have tests (skip for order-entry-only mode)
         if (requireSampleItems && !allSamplesHaveTests()) {
-            errors.reject("errors.samples.with.no.tests");
+            errors.rejectValue("sampleOrderItems", "errors.samples.with.no.tests", "errors.samples.with.no.tests");
         }
 
         // check patient errors
@@ -929,23 +939,39 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * Update consent fields with proper audit trail. When consent is provided
-     * (true), auto-populate audit fields with current timestamp and user. When
-     * consent is withdrawn (false/null), clear all consent fields. Client-supplied
-     * audit values are ignored for security.
+     * Update consent fields from form data. When consent is provided (true), use
+     * the user-supplied audit fields from the form. When consent is explicitly
+     * withdrawn (false), clear all consent fields. When the form omits the consent
+     * section entirely (consentGiven == null) on an update, preserve the persisted
+     * values rather than wiping the existing consent record.
      */
     private void updateConsentFieldsWithAudit(Sample sample, SampleOrderItem sampleOrder) {
         Boolean consentGiven = sampleOrder.getConsentGiven();
         String consentFormReference = sampleOrder.getConsentFormReference();
+        String consentRecordedAt = sampleOrder.getConsentRecordedAt();
+        String consentRecordedBy = sampleOrder.getConsentRecordedBy();
+
+        // On update, null consentGiven means the form did not include the consent
+        // section; leave the persisted values alone. On a new sample, fall through
+        // and default to "no consent recorded".
+        if (consentGiven == null && sample.getId() != null) {
+            return;
+        }
 
         if (Boolean.TRUE.equals(consentGiven)) {
-            // Consent provided - set fields and audit trail
+            // Consent provided - set fields from form data
             sample.setConsentGiven(true);
             sample.setConsentFormReference(consentFormReference);
 
-            // Auto-populate audit fields (ignore any client-supplied values)
-            sample.setConsentRecordedAt(new java.sql.Timestamp(System.currentTimeMillis()));
-            sample.setConsentRecordedBy(currentUserId);
+            // Use form-supplied audit fields
+            if (consentRecordedAt != null && !consentRecordedAt.trim().isEmpty()) {
+                java.sql.Date parsedDate = DateUtil.convertStringDateToSqlDate(consentRecordedAt);
+                sample.setConsentRecordedAt(new java.sql.Timestamp(parsedDate.getTime()));
+            } else {
+                sample.setConsentRecordedAt(null);
+            }
+
+            sample.setConsentRecordedBy(consentRecordedBy);
         } else {
             // Consent withdrawn or not provided - clear all fields
             sample.setConsentGiven(false);

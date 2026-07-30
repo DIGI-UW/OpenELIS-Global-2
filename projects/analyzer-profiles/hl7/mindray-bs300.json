@@ -3,16 +3,25 @@
   "profileMeta": {
     "id": "mindray-bs300",
     "version": "1.0.0",
-    "displayName": "Mindray BS-300"
+    "displayName": "Mindray BS-300",
+    "confidence": "HIGH"
   },
   "analyzer_name": "Mindray BS-300",
   "manufacturer": "Mindray",
   "category": "CHEMISTRY",
-  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "protocol": {
+    "name": "HL7",
+    "version": "2.3.1"
+  },
   "identifier_pattern": "MINDRAY.*BS.?300|BS300",
-  "transport": ["TCP/IP"],
+  "transport": [
+    "TCP/IP"
+  ],
   "transport_config": {
-    "TCP/IP": { "default_port": 6001, "framing": "MLLP" }
+    "TCP/IP": {
+      "default_port": 6001,
+      "framing": "MLLP"
+    }
   },
   "communication": {
     "mode": "ANALYZER_INITIATED",

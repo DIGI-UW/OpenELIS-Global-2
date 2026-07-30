@@ -100,25 +100,25 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
         // RED instruments first (sorted by ID), then YELLOW, then GREEN
         assertEquals("RED", statuses.get(0).getComplianceColor());
-        assertEquals(Integer.valueOf(100), statuses.get(0).getInstrumentId());
+        assertEquals("100", statuses.get(0).getInstrumentId());
         assertEquals("RED", statuses.get(1).getComplianceColor());
-        assertEquals(Integer.valueOf(600), statuses.get(1).getInstrumentId());
+        assertEquals("600", statuses.get(1).getInstrumentId());
         assertEquals("YELLOW", statuses.get(2).getComplianceColor());
-        assertEquals(Integer.valueOf(200), statuses.get(2).getInstrumentId());
+        assertEquals("200", statuses.get(2).getInstrumentId());
     }
 
     @Test
     public void getAllInstrumentComplianceStatus_aggregatesViolationCounts() {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus();
 
-        InstrumentQCStatus instrument100 = statuses.stream()
-                .filter(s -> Integer.valueOf(100).equals(s.getInstrumentId())).findFirst().orElse(null);
+        InstrumentQCStatus instrument100 = statuses.stream().filter(s -> "100".equals(s.getInstrumentId())).findFirst()
+                .orElse(null);
         assertNotNull(instrument100);
         assertEquals(1, instrument100.getUnresolvedRejections());
         assertEquals(1, instrument100.getUnresolvedWarnings());
 
-        InstrumentQCStatus instrument200 = statuses.stream()
-                .filter(s -> Integer.valueOf(200).equals(s.getInstrumentId())).findFirst().orElse(null);
+        InstrumentQCStatus instrument200 = statuses.stream().filter(s -> "200".equals(s.getInstrumentId())).findFirst()
+                .orElse(null);
         assertNotNull(instrument200);
         assertEquals(0, instrument200.getUnresolvedRejections());
         assertEquals(1, instrument200.getUnresolvedWarnings());
@@ -129,9 +129,9 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus();
 
         // Instrument 300 has ONLY resolved violations — must not appear at all
-        Set<Integer> instrumentIds = statuses.stream().map(InstrumentQCStatus::getInstrumentId)
+        Set<String> instrumentIds = statuses.stream().map(InstrumentQCStatus::getInstrumentId)
                 .collect(Collectors.toSet());
-        assertTrue("Instrument 300 (resolved-only) should not appear", !instrumentIds.contains(300));
+        assertTrue("Instrument 300 (resolved-only) should not appear", !instrumentIds.contains("300"));
 
         // viol-004 is RESOLVED on instrument 100 — should not inflate rejection count
         assertEquals(5, statuses.size());
@@ -141,7 +141,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getInstrumentComplianceStatus_withAnalyzerType_setsNameTypeLocation() {
-        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus(100);
+        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus("100");
 
         assertEquals("Chemistry Analyzer A", instrument100.getInstrumentName());
         assertEquals("Clinical Chemistry", instrument100.getInstrumentType());
@@ -150,7 +150,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getInstrumentComplianceStatus_withoutAnalyzerType_setsNameAndLocation() {
-        InstrumentQCStatus instrument200 = dashboardService.getInstrumentComplianceStatus(200);
+        InstrumentQCStatus instrument200 = dashboardService.getInstrumentComplianceStatus("200");
 
         assertEquals("Standalone Hematology", instrument200.getInstrumentName());
         assertEquals("Hematology Wing", instrument200.getInstrumentLocation());
@@ -163,7 +163,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getInstrumentComplianceStatus_populatesTriggeredRuleDetails() {
-        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus(100);
+        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus("100");
         List<TriggeredRuleDetail> details = instrument100.getTriggeredRuleDetails();
         assertNotNull(details);
         assertEquals(2, details.size());
@@ -186,7 +186,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getInstrumentComplianceStatus_triggeredRulesListMatchesDetails() {
-        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus(100);
+        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus("100");
         assertEquals(instrument100.getTriggeredRuleDetails().size(), instrument100.getTriggeredRules().size());
         assertTrue(instrument100.getTriggeredRules().contains("1_3s"));
         assertTrue(instrument100.getTriggeredRules().contains("2_2s"));
@@ -196,28 +196,28 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getInstrumentComplianceStatus_populatesAnalyteDetailsFromViolatedTests() {
-        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus(100);
+        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus("100");
 
         List<AnalyteDetail> analyteDetails = instrument100.getAnalyteDetails();
         assertNotNull(analyteDetails);
         // Instrument 100 has QC results for test 1 and test 2
         assertEquals(2, analyteDetails.size());
 
-        Set<Integer> testIds = analyteDetails.stream().map(AnalyteDetail::getTestId).collect(Collectors.toSet());
-        assertTrue("Should contain test ID 1 (Glucose)", testIds.contains(1));
-        assertTrue("Should contain test ID 2 (Cholesterol)", testIds.contains(2));
+        Set<String> testIds = analyteDetails.stream().map(AnalyteDetail::getTestId).collect(Collectors.toSet());
+        assertTrue("Should contain test ID 1 (Glucose)", testIds.contains("1"));
+        assertTrue("Should contain test ID 2 (Cholesterol)", testIds.contains("2"));
     }
 
     @Test
     public void getInstrumentComplianceStatus_analyteDetailsContainZScores() {
-        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus(100);
+        InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus("100");
 
         List<AnalyteDetail> analyteDetails = instrument100.getAnalyteDetails();
 
         boolean foundGlucose = false;
         boolean foundCholesterol = false;
         for (AnalyteDetail detail : analyteDetails) {
-            if (Integer.valueOf(1).equals(detail.getTestId())) {
+            if ("1".equals(detail.getTestId())) {
                 assertEquals("Fasting Blood Glucose", detail.getTestName());
                 assertEquals(0, new BigDecimal("4.2000").compareTo(detail.getLatestZScore()));
                 // Verify lastRunTime is a valid ISO instant (not just non-null)
@@ -225,7 +225,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
                 assertNotNull(glucoseRunTime);
                 foundGlucose = true;
             }
-            if (Integer.valueOf(2).equals(detail.getTestId())) {
+            if ("2".equals(detail.getTestId())) {
                 assertEquals("Total Cholesterol", detail.getTestName());
                 assertEquals(0, new BigDecimal("3.0000").compareTo(detail.getLatestZScore()));
                 Instant cholesterolRunTime = Instant.parse(detail.getLastRunTime());
@@ -241,10 +241,10 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getInstrumentComplianceStatus_singleInstrument_returnsCorrectStatus() {
-        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus(100);
+        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus("100");
 
         assertNotNull(status);
-        assertEquals(Integer.valueOf(100), status.getInstrumentId());
+        assertEquals("100", status.getInstrumentId());
         assertEquals("RED", status.getComplianceColor());
         assertEquals(1, status.getUnresolvedRejections());
         assertEquals(1, status.getUnresolvedWarnings());
@@ -253,7 +253,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getInstrumentComplianceStatus_instrumentWithNoViolations_returnsGreen() {
         // Instrument 999 doesn't exist in test data — no violations
-        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus(999);
+        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus("999");
 
         assertNotNull(status);
         assertEquals("GREEN", status.getComplianceColor());
@@ -269,18 +269,18 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus();
 
         // Instrument 400 has QC results but zero violations — should appear as GREEN
-        Set<Integer> instrumentIds = statuses.stream().map(InstrumentQCStatus::getInstrumentId)
+        Set<String> instrumentIds = statuses.stream().map(InstrumentQCStatus::getInstrumentId)
                 .collect(Collectors.toSet());
         assertTrue("Instrument 400 (QC results, no violations) should appear in dashboard",
-                instrumentIds.contains(400));
+                instrumentIds.contains("400"));
     }
 
     @Test
     public void getAllInstrumentComplianceStatus_instrumentWithNoViolations_isGreen() {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus();
 
-        InstrumentQCStatus instrument400 = statuses.stream()
-                .filter(s -> Integer.valueOf(400).equals(s.getInstrumentId())).findFirst().orElse(null);
+        InstrumentQCStatus instrument400 = statuses.stream().filter(s -> "400".equals(s.getInstrumentId())).findFirst()
+                .orElse(null);
         assertNotNull("Instrument 400 should be present", instrument400);
         assertEquals("GREEN", instrument400.getComplianceColor());
         assertEquals(0, instrument400.getUnresolvedRejections());
@@ -297,8 +297,8 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus();
 
         // Instrument 400 has QC result qr-003 (test 1, z-score 0.3) but no violations
-        InstrumentQCStatus instrument400 = statuses.stream()
-                .filter(s -> Integer.valueOf(400).equals(s.getInstrumentId())).findFirst().orElse(null);
+        InstrumentQCStatus instrument400 = statuses.stream().filter(s -> "400".equals(s.getInstrumentId())).findFirst()
+                .orElse(null);
         assertNotNull("Instrument 400 should be present", instrument400);
 
         // analyteDetails should be populated from QC results, not just violations
@@ -306,7 +306,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(analyteDetails);
         assertEquals("Instrument 400 has QC results for test 1 — analyteDetails should contain it", 1,
                 analyteDetails.size());
-        assertEquals(Integer.valueOf(1), analyteDetails.get(0).getTestId());
+        assertEquals("1", analyteDetails.get(0).getTestId());
         assertEquals(0, new java.math.BigDecimal("0.3000").compareTo(analyteDetails.get(0).getLatestZScore()));
     }
 
@@ -315,15 +315,15 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus();
 
         // Instrument 100 has lot-001 (ACTIVE) → activeControlLots should be 1
-        InstrumentQCStatus instrument100 = statuses.stream()
-                .filter(s -> Integer.valueOf(100).equals(s.getInstrumentId())).findFirst().orElse(null);
+        InstrumentQCStatus instrument100 = statuses.stream().filter(s -> "100".equals(s.getInstrumentId())).findFirst()
+                .orElse(null);
         assertNotNull(instrument100);
         assertEquals("Instrument 100 has 1 active control lot", 1, instrument100.getActiveControlLots());
 
         // Instrument 400 shares lot-001 but its QC result references instrument 400
         // — activeControlLots depends on lots assigned to this instrument
-        InstrumentQCStatus instrument400 = statuses.stream()
-                .filter(s -> Integer.valueOf(400).equals(s.getInstrumentId())).findFirst().orElse(null);
+        InstrumentQCStatus instrument400 = statuses.stream().filter(s -> "400".equals(s.getInstrumentId())).findFirst()
+                .orElse(null);
         assertNotNull(instrument400);
         assertEquals("GREEN", instrument400.getComplianceColor());
     }
@@ -393,16 +393,16 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus(startDate, endDate);
 
         // Instrument 100: has unresolved REJECTION → RED regardless of date window
-        InstrumentQCStatus instrument100 = statuses.stream()
-                .filter(s -> Integer.valueOf(100).equals(s.getInstrumentId())).findFirst().orElse(null);
+        InstrumentQCStatus instrument100 = statuses.stream().filter(s -> "100".equals(s.getInstrumentId())).findFirst()
+                .orElse(null);
         assertNotNull(instrument100);
         assertEquals("RED", instrument100.getComplianceColor());
         assertEquals(1, instrument100.getUnresolvedRejections());
         assertEquals(1, instrument100.getUnresolvedWarnings());
 
         // Instrument 400: no violations → GREEN, but has results in window
-        InstrumentQCStatus instrument400 = statuses.stream()
-                .filter(s -> Integer.valueOf(400).equals(s.getInstrumentId())).findFirst().orElse(null);
+        InstrumentQCStatus instrument400 = statuses.stream().filter(s -> "400".equals(s.getInstrumentId())).findFirst()
+                .orElse(null);
         assertNotNull(instrument400);
         assertEquals("GREEN", instrument400.getComplianceColor());
         assertEquals(1, instrument400.getAnalyteDetails().size());
@@ -417,12 +417,12 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void instrumentWithMultipleResultsNoViolations_allFieldsPopulatedCorrectly() {
-        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus(500);
+        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus("500");
 
         assertNotNull(status);
 
         // Instrument metadata
-        assertEquals(Integer.valueOf(500), status.getInstrumentId());
+        assertEquals("500", status.getInstrumentId());
         assertEquals("Coagulation Analyzer", status.getInstrumentName());
         assertEquals("Clinical Chemistry", status.getInstrumentType());
         assertEquals("Coag Lab", status.getInstrumentLocation());
@@ -450,9 +450,9 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(analyteDetails);
         assertEquals(2, analyteDetails.size());
 
-        Set<Integer> testIds = analyteDetails.stream().map(AnalyteDetail::getTestId).collect(Collectors.toSet());
-        assertTrue("Should contain test 1", testIds.contains(1));
-        assertTrue("Should contain test 2", testIds.contains(2));
+        Set<String> testIds = analyteDetails.stream().map(AnalyteDetail::getTestId).collect(Collectors.toSet());
+        assertTrue("Should contain test 1", testIds.contains("1"));
+        assertTrue("Should contain test 2", testIds.contains("2"));
 
         // Verify latest z-scores (latest by run_date_time per test)
         for (AnalyteDetail detail : analyteDetails) {
@@ -460,12 +460,12 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
             Instant runTime = Instant.parse(detail.getLastRunTime());
             assertNotNull(runTime);
 
-            if (Integer.valueOf(1).equals(detail.getTestId())) {
+            if ("1".equals(detail.getTestId())) {
                 assertEquals("Fasting Blood Glucose", detail.getTestName());
                 // qr-500b (2026-02-19 09:00, z=0.2) is newer than qr-500a (2026-02-18 09:00)
                 assertEquals(0, new BigDecimal("0.2000").compareTo(detail.getLatestZScore()));
             }
-            if (Integer.valueOf(2).equals(detail.getTestId())) {
+            if ("2".equals(detail.getTestId())) {
                 assertEquals("Total Cholesterol", detail.getTestName());
                 // qr-500d (2026-02-20 10:00, z=0.1) is newer than qr-500c (2026-02-18 10:00)
                 assertEquals(0, new BigDecimal("0.1000").compareTo(detail.getLatestZScore()));
@@ -485,12 +485,12 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void instrumentWithMultipleResultsAndViolations_allFieldsPopulatedCorrectly() {
-        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus(600);
+        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus("600");
 
         assertNotNull(status);
 
         // Instrument metadata
-        assertEquals(Integer.valueOf(600), status.getInstrumentId());
+        assertEquals("600", status.getInstrumentId());
         assertEquals("Electrolyte Analyzer", status.getInstrumentName());
         assertEquals("Clinical Chemistry", status.getInstrumentType());
         assertEquals("Chemistry Wing", status.getInstrumentLocation());
@@ -531,9 +531,9 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(analyteDetails);
         assertEquals(2, analyteDetails.size());
 
-        Set<Integer> testIds = analyteDetails.stream().map(AnalyteDetail::getTestId).collect(Collectors.toSet());
-        assertTrue("Should contain test 1", testIds.contains(1));
-        assertTrue("Should contain test 2", testIds.contains(2));
+        Set<String> testIds = analyteDetails.stream().map(AnalyteDetail::getTestId).collect(Collectors.toSet());
+        assertTrue("Should contain test 1", testIds.contains("1"));
+        assertTrue("Should contain test 2", testIds.contains("2"));
 
         // Verify latest z-scores
         for (AnalyteDetail detail : analyteDetails) {
@@ -541,12 +541,12 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
             Instant runTime = Instant.parse(detail.getLastRunTime());
             assertNotNull(runTime);
 
-            if (Integer.valueOf(1).equals(detail.getTestId())) {
+            if ("1".equals(detail.getTestId())) {
                 assertEquals("Fasting Blood Glucose", detail.getTestName());
                 // qr-600b (2026-02-19 08:00, z=3.8) is newer than qr-600a (2026-02-17 08:00)
                 assertEquals(0, new BigDecimal("3.8000").compareTo(detail.getLatestZScore()));
             }
-            if (Integer.valueOf(2).equals(detail.getTestId())) {
+            if ("2".equals(detail.getTestId())) {
                 assertEquals("Total Cholesterol", detail.getTestName());
                 // qr-600d (2026-02-20 08:00, z=1.0) is newer than qr-600c (2026-02-18 08:00)
                 assertEquals(0, new BigDecimal("1.0000").compareTo(detail.getLatestZScore()));

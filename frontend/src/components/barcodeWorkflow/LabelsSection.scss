@@ -1,0 +1,44 @@
+@use "@carbon/styles/scss/spacing";
+
+.labels-section__table {
+  margin-bottom: spacing.$spacing-05;
+}
+
+.labels-section__cell {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+  align-items: flex-start;
+}
+
+.labels-section__locked {
+  display: flex;
+  align-items: center;
+  gap: spacing.$spacing-02;
+}
+
+.labels-section__locked-value {
+  font-weight: 600;
+}
+
+.labels-section__lock-trigger {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.labels-section__lock-icon {
+  color: var(--cds-icon-secondary);
+}
+
+.labels-section__source-tag {
+  max-width: 100%;
+}
+
+.labels-section__total {
+  font-weight: 600;
+  margin-top: spacing.$spacing-03;
+}

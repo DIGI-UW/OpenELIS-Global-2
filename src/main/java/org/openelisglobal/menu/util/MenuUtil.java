@@ -80,6 +80,14 @@ public class MenuUtil {
         return root;
     }
 
+    public static List<MenuItem> getUnfilteredMenuTree() {
+        if (root == null) {
+            createTree();
+        }
+
+        return root;
+    }
+
     private static void createTree() {
         List<Menu> menuList = menuService.getAll();
 
@@ -115,13 +123,14 @@ public class MenuUtil {
             if (menu.getParent() == null) {
                 rootWrapper.getChildMenus().add(menuToMenuItemMap.get(menu));
             } else {
-                MenuItem menuItem = menuToMenuItemMap.get(menu.getParent());
+                Menu parent = idToMenuMap.get(menu.getParent().getId());
+                MenuItem menuItem = menuToMenuItemMap.get(parent);
                 if (menuItem == null) {
                     LogEvent.logWarn("MenuUtil", "createTree",
                             "parent menu item is not active so can't attach child node " + menu.getElementId()
                                     + ". Continuing without child node");
                 } else {
-                    menuToMenuItemMap.get(menu.getParent()).getChildMenus().add(menuToMenuItemMap.get(menu));
+                    menuItem.getChildMenus().add(menuToMenuItemMap.get(menu));
                 }
             }
         }

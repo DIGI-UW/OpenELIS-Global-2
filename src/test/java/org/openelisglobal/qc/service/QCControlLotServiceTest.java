@@ -55,7 +55,7 @@ public class QCControlLotServiceTest {
         ReflectionTestUtils.setField(validator, "statisticsDAO", statisticsDAO);
 
         testControlLot = QCControlLotBuilder.create().withId("test-lot-1").withProductName("Hematology Control Level 1")
-                .withLotNumber("LOT-2025-001").withTestId(1).withInstrumentId(1).build();
+                .withLotNumber("LOT-2025-001").withTestId("1").withInstrumentId("1").build();
     }
 
     /**
@@ -189,16 +189,16 @@ public class QCControlLotServiceTest {
         // Arrange
         QCControlLot activeLot1 = QCControlLotBuilder.create().withId("lot-1").asActive().build();
         QCControlLot activeLot2 = QCControlLotBuilder.create().withId("lot-2").asActive().build();
-        when(controlLotDAO.getActiveByTestAndInstrument(1, 1)).thenReturn(Arrays.asList(activeLot1, activeLot2));
+        when(controlLotDAO.getActiveByTestAndInstrument("1", "1")).thenReturn(Arrays.asList(activeLot1, activeLot2));
 
         // Act
-        List<QCControlLot> results = controlLotService.getActiveControlLots(1, 1);
+        List<QCControlLot> results = controlLotService.getActiveControlLots("1", "1");
 
         // Assert — service returns exactly what DAO returns
         assertEquals("Should return 2 lots from DAO", 2, results.size());
         assertEquals("lot-1", results.get(0).getId());
         assertEquals("lot-2", results.get(1).getId());
-        verify(controlLotDAO).getActiveByTestAndInstrument(1, 1);
+        verify(controlLotDAO).getActiveByTestAndInstrument("1", "1");
     }
 
     /**
@@ -257,14 +257,14 @@ public class QCControlLotServiceTest {
         Timestamp pastDate = new Timestamp(System.currentTimeMillis() - 86400000L); // Yesterday
         testControlLot.setStatus("ACTIVE");
         testControlLot.setExpirationDate(pastDate);
-        when(controlLotDAO.getActiveByTestAndInstrument(1, 1)).thenReturn(Arrays.asList(testControlLot));
+        when(controlLotDAO.getActiveByTestAndInstrument("1", "1")).thenReturn(Arrays.asList(testControlLot));
         when(controlLotDAO.update(any(QCControlLot.class))).thenReturn(testControlLot);
 
         // Act
-        controlLotService.checkAndExpireLots(1, 1);
+        controlLotService.checkAndExpireLots("1", "1");
 
         // Assert
-        verify(controlLotDAO, times(1)).getActiveByTestAndInstrument(1, 1);
+        verify(controlLotDAO, times(1)).getActiveByTestAndInstrument("1", "1");
         verify(controlLotDAO, times(1)).update(argThat(lot -> "EXPIRED".equals(lot.getStatus())));
     }
 
@@ -277,11 +277,11 @@ public class QCControlLotServiceTest {
     @Test
     public void testCreateControlLot_ShouldSeedRuleConfigsWhenNoneExist() {
         // Arrange
-        QCControlLot lot = QCControlLotBuilder.create().withId("lot-seed-1").withTestId(5).withInstrumentId(10)
+        QCControlLot lot = QCControlLotBuilder.create().withId("lot-seed-1").withTestId("5").withInstrumentId("10")
                 .withCalculationMethod("INITIAL_RUNS").withInitialRunsCount(20).build();
         when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn("lot-seed-1");
         when(controlLotDAO.get("lot-seed-1")).thenReturn(Optional.of(lot));
-        when(ruleConfigService.findByTestAndInstrument(5, 10)).thenReturn(Arrays.asList());
+        when(ruleConfigService.findByTestAndInstrument("5", "10")).thenReturn(Arrays.asList());
 
         // Act
         QCControlLot result = controlLotService.createControlLot(lot);
@@ -291,8 +291,8 @@ public class QCControlLotServiceTest {
         assertEquals("lot-seed-1", result.getId());
 
         // Assert — should check for existing configs and create defaults
-        verify(ruleConfigService).findByTestAndInstrument(5, 10);
-        verify(ruleConfigService).createDefaultConfig(5, 10);
+        verify(ruleConfigService).findByTestAndInstrument("5", "10");
+        verify(ruleConfigService).createDefaultConfig("5", "10");
     }
 
     /**
@@ -302,7 +302,7 @@ public class QCControlLotServiceTest {
     @Test
     public void testCreateControlLot_ShouldNotReseedRuleConfigsWhenAlreadyExist() {
         // Arrange
-        QCControlLot lot = QCControlLotBuilder.create().withId("lot-seed-2").withTestId(5).withInstrumentId(10)
+        QCControlLot lot = QCControlLotBuilder.create().withId("lot-seed-2").withTestId("5").withInstrumentId("10")
                 .withCalculationMethod("INITIAL_RUNS").withInitialRunsCount(20).build();
         when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn("lot-seed-2");
         when(controlLotDAO.get("lot-seed-2")).thenReturn(Optional.of(lot));
@@ -310,14 +310,14 @@ public class QCControlLotServiceTest {
         // Existing configs already present
         WestgardRuleConfig existingConfig = new WestgardRuleConfig();
         existingConfig.setRuleCode("1₃ₛ");
-        when(ruleConfigService.findByTestAndInstrument(5, 10)).thenReturn(Arrays.asList(existingConfig));
+        when(ruleConfigService.findByTestAndInstrument("5", "10")).thenReturn(Arrays.asList(existingConfig));
 
         // Act
         controlLotService.createControlLot(lot);
 
         // Assert — should check but NOT create
-        verify(ruleConfigService).findByTestAndInstrument(5, 10);
-        verify(ruleConfigService, never()).createDefaultConfig(anyInt(), anyInt());
+        verify(ruleConfigService).findByTestAndInstrument("5", "10");
+        verify(ruleConfigService, never()).createDefaultConfig(anyString(), anyString());
     }
 
 }

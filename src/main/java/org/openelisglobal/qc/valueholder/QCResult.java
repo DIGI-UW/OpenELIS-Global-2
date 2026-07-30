@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
@@ -23,13 +24,18 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "control_lot_id", nullable = false, length = 36)
     private String controlLotId;
 
+    // testId and instrumentId reference Test.id and Analyzer.id (String,
+    // bridged to NUMERIC via LIMSStringNumberUserType). Match that pattern
+    // here — per PR #3112 (OGC-346).
     @NotNull
     @Column(name = "test_id", nullable = false)
-    private Integer testId;
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String testId;
 
     @NotNull
     @Column(name = "instrument_id", nullable = false)
-    private Integer instrumentId;
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String instrumentId;
 
     @NotNull
     @Column(name = "result_value", nullable = false, precision = 15, scale = 5)
@@ -82,19 +88,19 @@ public class QCResult extends BaseObject<String> {
         this.controlLotId = controlLotId;
     }
 
-    public Integer getTestId() {
+    public String getTestId() {
         return testId;
     }
 
-    public void setTestId(Integer testId) {
+    public void setTestId(String testId) {
         this.testId = testId;
     }
 
-    public Integer getInstrumentId() {
+    public String getInstrumentId() {
         return instrumentId;
     }
 
-    public void setInstrumentId(Integer instrumentId) {
+    public void setInstrumentId(String instrumentId) {
         this.instrumentId = instrumentId;
     }
 

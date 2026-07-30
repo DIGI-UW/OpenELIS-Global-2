@@ -31,6 +31,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.common.ITransmissionResponseHandler;
 import org.openelisglobal.dataexchange.common.ReportTransmission;
 import org.openelisglobal.dataexchange.common.ReportTransmission.HTTP_TYPE;
@@ -40,6 +41,7 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.scheduler.service.CronSchedulerService;
 import org.openelisglobal.scheduler.valueholder.CronScheduler;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -125,6 +127,11 @@ public class MalariaSurveilanceJob implements Job {
 
     @Override
     public void execute(JobExecutionContext arg0) throws JobExecutionException {
+        DaemonContextExecutor daemonContextExecutor = SpringContext.getBean(DaemonContextExecutor.class);
+        daemonContextExecutor.executeAsDaemon(() -> executeInternal());
+    }
+
+    private void executeInternal() {
         LogEvent.logInfo(this.getClass().getSimpleName(), "execute",
                 "MalariaSurveilance triggered: " + DateUtil.getCurrentDateAsText("dd-MM-yyyy hh:mm"));
         LogEvent.logInfo("MalariaSurveilance", "execute()",
@@ -274,7 +281,7 @@ public class MalariaSurveilanceJob implements Job {
         private void setJobTimestamp(Timestamp nowTimestamp) {
             CronScheduler gatherScheduler = cronSchedulerService.getCronScheduleByJobName(CRON_MALARIA_SCHEDULER);
             gatherScheduler.setLastRun(nowTimestamp);
-            gatherScheduler.setSysUserId("1");
+            gatherScheduler.setSysUserId(SpringContext.getBean(UserContextHolder.class).requireSysUserId());
 
             try {
                 cronSchedulerService.update(gatherScheduler);

@@ -182,4 +182,13 @@ public class LocalizationServiceTest extends BaseWebContextSensitiveTest {
         Localization loc = new Localization();
         assertEquals("", loc.getLocalizedValue(Locale.CANADA_FRENCH));
     }
+
+    @Test
+    public void getLocalizedValue_doesNotLeakOtherLocaleWhenNeitherRequestedNorEnglishExist() {
+        // OGC-1112 FR-23/24: fallback is locale → English only. A value that exists
+        // solely in another locale must NOT leak into a user's active locale.
+        Localization loc = new Localization();
+        loc.setLocalizedValue(Locale.FRENCH, "Bonjour");
+        assertEquals("", loc.getLocalizedValue(Locale.GERMAN));
+    }
 }

@@ -100,6 +100,16 @@ const SearchForm = (props) => {
   };
 
   useEffect(() => {
+    // OGC-654: server's GET response omits a `note` key on each row.
+    // jpSet (utils/JsonPath.js) silently no-ops when the JSONPath query
+    // returns 0 matches, so handleChange's `jpSet(form, "resultList[N].note", value)`
+    // never reaches the form state when typing into the Notes column. Pre-init
+    // each row's note to "" so the path exists and the mutation succeeds.
+    if (searchResults?.resultList) {
+      for (const row of searchResults.resultList) {
+        if (row && row.note === undefined) row.note = "";
+      }
+    }
     props.setResults(searchResults);
   }, [searchResults]);
 

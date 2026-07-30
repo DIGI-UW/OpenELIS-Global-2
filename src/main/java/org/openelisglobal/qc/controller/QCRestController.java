@@ -77,8 +77,8 @@ public class QCRestController extends BaseRestController {
      * /rest/qc/controlLots?testId={testId}&instrumentId={instrumentId}
      */
     @GetMapping("/controlLots")
-    public ResponseEntity<List<QCControlLot>> getActiveControlLots(@RequestParam Integer testId,
-            @RequestParam Integer instrumentId) {
+    public ResponseEntity<List<QCControlLot>> getActiveControlLots(@RequestParam String testId,
+            @RequestParam String instrumentId) {
         try {
             List<QCControlLot> controlLots = controlLotService.getActiveControlLots(testId, instrumentId);
             return ResponseEntity.ok(controlLots);
@@ -302,8 +302,8 @@ public class QCRestController extends BaseRestController {
      * /rest/qc/ruleConfig?testId={testId}&instrumentId={instrumentId}
      */
     @GetMapping("/ruleConfig")
-    public ResponseEntity<List<WestgardRuleConfig>> getRuleConfigurations(@RequestParam Integer testId,
-            @RequestParam Integer instrumentId) {
+    public ResponseEntity<List<WestgardRuleConfig>> getRuleConfigurations(@RequestParam String testId,
+            @RequestParam String instrumentId) {
         try {
             List<WestgardRuleConfig> configs = ruleConfigService.findByTestAndInstrument(testId, instrumentId);
             return ResponseEntity.ok(configs);
@@ -318,8 +318,8 @@ public class QCRestController extends BaseRestController {
      * /rest/qc/ruleConfig/enabled?testId={testId}&instrumentId={instrumentId}
      */
     @GetMapping("/ruleConfig/enabled")
-    public ResponseEntity<List<WestgardRuleConfig>> getEnabledRuleConfigurations(@RequestParam Integer testId,
-            @RequestParam Integer instrumentId) {
+    public ResponseEntity<List<WestgardRuleConfig>> getEnabledRuleConfigurations(@RequestParam String testId,
+            @RequestParam String instrumentId) {
         try {
             List<WestgardRuleConfig> configs = ruleConfigService.findEnabledByTestAndInstrument(testId, instrumentId);
             return ResponseEntity.ok(configs);
@@ -374,8 +374,8 @@ public class QCRestController extends BaseRestController {
      * /rest/qc/ruleConfig/preset?testId={testId}&instrumentId={instrumentId}&preset={preset}
      */
     @PostMapping("/ruleConfig/preset")
-    public ResponseEntity<Object> applyPresetConfiguration(@RequestParam Integer testId,
-            @RequestParam Integer instrumentId, @RequestParam String preset) {
+    public ResponseEntity<Object> applyPresetConfiguration(@RequestParam String testId,
+            @RequestParam String instrumentId, @RequestParam String preset) {
         try {
             List<WestgardRuleConfig> updatedConfigs = ruleConfigService.applyPreset(testId, instrumentId, preset);
             return ResponseEntity.ok(updatedConfigs);
@@ -394,8 +394,8 @@ public class QCRestController extends BaseRestController {
      * POST /rest/qc/ruleConfig/defaults?testId={testId}&instrumentId={instrumentId}
      */
     @PostMapping("/ruleConfig/defaults")
-    public ResponseEntity<Object> createDefaultRuleConfigurations(@RequestParam Integer testId,
-            @RequestParam Integer instrumentId) {
+    public ResponseEntity<Object> createDefaultRuleConfigurations(@RequestParam String testId,
+            @RequestParam String instrumentId) {
         try {
             // Check if configs already exist
             List<WestgardRuleConfig> existing = ruleConfigService.findByTestAndInstrument(testId, instrumentId);
@@ -419,8 +419,8 @@ public class QCRestController extends BaseRestController {
      * /rest/qc/ruleConfig/validate?testId={testId}&instrumentId={instrumentId}
      */
     @PostMapping("/ruleConfig/validate")
-    public ResponseEntity<Object> validateRuleConfiguration(@RequestParam Integer testId,
-            @RequestParam Integer instrumentId) {
+    public ResponseEntity<Object> validateRuleConfiguration(@RequestParam String testId,
+            @RequestParam String instrumentId) {
         try {
             List<WestgardRuleConfig> configs = ruleConfigService.findByTestAndInstrument(testId, instrumentId);
             ruleConfigService.validateRuleConfig(configs);
@@ -505,7 +505,7 @@ public class QCRestController extends BaseRestController {
      * /rest/qc/dashboard/instruments/{instrumentId}?months=1
      */
     @GetMapping("/dashboard/instruments/{instrumentId}")
-    public ResponseEntity<InstrumentQCStatus> getInstrumentQCStatus(@PathVariable("instrumentId") Integer instrumentId,
+    public ResponseEntity<InstrumentQCStatus> getInstrumentQCStatus(@PathVariable("instrumentId") String instrumentId,
             @RequestParam(value = "months", defaultValue = "1") int months) {
         try {
             Timestamp[] range = computeDateRange(months);

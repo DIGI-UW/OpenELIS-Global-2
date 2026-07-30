@@ -128,9 +128,9 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
         dictionaryService.insert(dict);
 
         List<String> dictTableIds = List.of(dictionaryRefTableId);
-        List<History> results = historyService.getSystemEventHistory(null, null, null, dictTableIds, null, null, 1,
-                100);
-        long count = historyService.getSystemEventHistoryCount(null, null, null, dictTableIds, null, null);
+        List<History> results = historyService.getSystemEventHistory(null, null, null, dictTableIds, null, null, null,
+                1, 100);
+        long count = historyService.getSystemEventHistoryCount(null, null, null, dictTableIds, null, null, null);
 
         assertEquals("Count should match results size", count, results.size());
 
@@ -153,17 +153,17 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
         List<String> dictTableIds = List.of(dictionaryRefTableId);
 
         List<History> matchingResults = historyService.getSystemEventHistory(null, null, "1", dictTableIds, null, null,
-                1, 100);
+                null, 1, 100);
         assertTrue("Should have at least 1 result for user 1", matchingResults.size() >= 1);
         for (History h : matchingResults) {
             assertEquals("All results should be for user 1", "1", h.getSysUserId());
         }
 
-        long matchingCount = historyService.getSystemEventHistoryCount(null, null, "1", dictTableIds, null, null);
+        long matchingCount = historyService.getSystemEventHistoryCount(null, null, "1", dictTableIds, null, null, null);
         assertEquals("Count should match results size", matchingCount, matchingResults.size());
 
         List<History> nonMatchingResults = historyService.getSystemEventHistory(null, null, "9999", dictTableIds, null,
-                null, 1, 100);
+                null, null, 1, 100);
         assertEquals("Should have 0 results for non-existent user", 0, nonMatchingResults.size());
     }
 
@@ -181,13 +181,15 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
         }
 
         List<String> dictTableIds = List.of(dictionaryRefTableId);
-        long totalCount = historyService.getSystemEventHistoryCount(null, null, null, dictTableIds, "I", null);
+        long totalCount = historyService.getSystemEventHistoryCount(null, null, null, dictTableIds, "I", null, null);
         assertTrue("Should have at least 5 insert records", totalCount >= 5);
 
-        List<History> page1 = historyService.getSystemEventHistory(null, null, null, dictTableIds, "I", null, 1, 2);
+        List<History> page1 = historyService.getSystemEventHistory(null, null, null, dictTableIds, "I", null, null, 1,
+                2);
         assertEquals("Page 1 should have 2 results", 2, page1.size());
 
-        List<History> page2 = historyService.getSystemEventHistory(null, null, null, dictTableIds, "I", null, 2, 2);
+        List<History> page2 = historyService.getSystemEventHistory(null, null, null, dictTableIds, "I", null, null, 2,
+                2);
         assertEquals("Page 2 should have 2 results", 2, page2.size());
 
         assertTrue("Pages should have different records", !page1.get(0).getId().equals(page2.get(0).getId()));

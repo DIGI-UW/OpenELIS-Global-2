@@ -167,7 +167,8 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     }
 
     private boolean isRestFullPath() {
-        if (path.startsWith("/rest") || path.startsWith("/Provider")) {
+        if (path.startsWith("/rest") || path.startsWith("/Provider") || path.startsWith("/dbImage")
+                || path.startsWith("/logging")) {
             return true;
         }
         return false;

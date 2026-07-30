@@ -162,9 +162,7 @@ function TestModifyEntry() {
         message: "Form submission failed due to missing data.",
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      return;
     }
     setIsLoading(true);
     postToOpenElisServerJsonResponse(
@@ -177,8 +175,8 @@ function TestModifyEntry() {
   };
 
   const handleTestModifyEntryPostCallBack = (res) => {
+    setIsLoading(false);
     if (res) {
-      setIsLoading(false);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
@@ -188,21 +186,23 @@ function TestModifyEntry() {
         }),
         kind: NotificationKinds.success,
       });
-      setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+
+      const params = new URLSearchParams();
+      if (selectedSampleType && selectedSampleType.trim() !== "") {
+        params.append("sampleType", selectedSampleType);
+      }
+      if (selectedTestSection && selectedTestSection.trim() !== "") {
+        params.append("testSection", selectedTestSection);
+      }
+      handleApiCall(params.toString());
     } else {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
-      setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
+    setNotificationVisible(true);
   };
 
   if (isLoading) {

@@ -5,17 +5,8 @@
     "allowSyntheticDefaultImports": true,
     "jsx": "react",
     "skipLibCheck": true,
-    "moduleResolution": "node",
-    "lib": [
-      "dom",
-      "es5",
-      "scripthost",
-      "es2015",
-      "es2015.promise",
-      "es2016.array.include",
-      "es2018",
-      "es2020"
-    ],
+    "moduleResolution": "bundler",
+    "lib": ["dom", "dom.iterable", "es2021"],
     "resolveJsonModule": true,
     "noEmit": true,
     "target": "esnext"

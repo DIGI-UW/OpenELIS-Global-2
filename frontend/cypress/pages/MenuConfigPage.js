@@ -28,7 +28,17 @@ class MenuConfigPage {
 
   navigateToMainMenu() {
     cy.wait(5000);
-    cy.get(this.selectors.menuButton).click();
+    cy.get("body").then(($body) => {
+      if ($body.find("[data-testid='admin-back-to-main-nav']").length > 0) {
+        cy.get("[data-testid='admin-back-to-main-nav']").click();
+        cy.location("pathname").should("eq", "/Dashboard");
+      }
+    });
+    cy.get("body").then(($body) => {
+      if ($body.find(".cds--side-nav--expanded").length === 0) {
+        cy.get(this.selectors.menuButton).click();
+      }
+    });
   }
 
   turnOffToggleSwitch() {

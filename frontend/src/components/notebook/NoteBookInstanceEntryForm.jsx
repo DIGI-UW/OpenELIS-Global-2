@@ -504,7 +504,7 @@ const NoteBookInstanceEntryForm = () => {
     getFromOpenElisServer("/rest/displayList/ANALYZER_LIST", setAnalyzerList);
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
-    getFromOpenElisServer("/rest/panels", setAllPanels);
+    getFromOpenElisServer("/rest/displayList/PANELS", setAllPanels);
     getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
     getFromOpenElisServer("/rest/notebook/questionnaires", setQuestionnaires);
     return () => {

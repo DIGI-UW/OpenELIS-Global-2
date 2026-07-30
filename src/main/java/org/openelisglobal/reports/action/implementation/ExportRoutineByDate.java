@@ -116,9 +116,6 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
     private void createReportItems() {
         try {
             csvRoutineColumnBuilder = getColumnBuilder();
-            if (selectedLabUnit != null) {
-                csvRoutineColumnBuilder.setSelectedLabUnit(selectedLabUnit);
-            }
             csvRoutineColumnBuilder.buildDataSource();
         } catch (SQLException e) {
             Log.error("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
@@ -174,7 +171,7 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
     }
 
     private RoutineColumnBuilder getColumnBuilder() {
-        return new RoutineColumnBuilder(dateRange);
+        return new RoutineColumnBuilder(dateRange, selectedLabUnit);
     }
 
     /**

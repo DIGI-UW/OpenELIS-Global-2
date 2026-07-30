@@ -34,6 +34,10 @@ public class RoutineColumnBuilder extends CIRoutineColumnBuilder {
         super(dateRange);
     }
 
+    public RoutineColumnBuilder(DateRange dateRange, String selectedLabUnit) {
+        super(dateRange, selectedLabUnit);
+    }
+
     /**
      * @see org.openelisglobal.reports.action.implementation.reportBeans.CIRoutineColumnBuilder#defineAllReportColumns()
      */

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 M1 / OGC-936 — Test Catalog v2.5 foundation: Domain + WHONET reference data
+    Adds:
+      1. test.domain          — CLINICAL / ENVIRONMENTAL / VECTOR (backfilled CLINICAL)
+      2. whonet_antibiotic_codes — seeded reference list for the AMR antibiotic typeahead
+      3. test_amr_config       — per-test WHONET configuration (retained across AMR toggle)
+    NOTE: the AMR flag itself is the EXISTING test.antimicrobial_resistance column
+    (Test.antimicrobialResistance, liquibase 2.8.x.x/add_antimicrobial_resistance_test_column.xml);
+    the v2.5 editor reuses it rather than adding a parallel is_amr_test column (research.md R11).
+    -->
+
+    <!-- 1. Domain attribute on every test (backfill existing rows to CLINICAL) -->
+    <changeSet id="OGC-936-test-domain-column" author="OGC">
+        <addColumn schemaName="clinlims" tableName="test">
+            <column name="domain" type="VARCHAR(20)" defaultValue="CLINICAL">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.test
+            ADD CONSTRAINT test_domain_chk
+            CHECK (domain IN ('CLINICAL', 'ENVIRONMENTAL', 'VECTOR'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.test DROP CONSTRAINT test_domain_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="test" columnName="domain"/>
+        </rollback>
+    </changeSet>
+
+    <!-- AMR flag reuses existing test.antimicrobial_resistance (no new column). -->
+
+    <!-- 2. WHONET antibiotic code reference list (seeded) -->
+    <changeSet id="OGC-936-whonet-antibiotic-codes-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="whonet_antibiotic_codes">
+            <column name="code" type="VARCHAR(20)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_whonet_antibiotic_codes"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="antibiotic_class" type="VARCHAR(255)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <!-- BaseObject @Version maps to last_updated -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="whonet_antibiotic_codes"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 3. Per-test WHONET configuration -->
+    <changeSet id="OGC-936-test-amr-config-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_amr_config">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_amr_config"/>
+            </column>
+            <column name="test_id" type="numeric(10)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_test_amr_config_test"/>
+            </column>
+            <column name="antibiotic_code" type="VARCHAR(20)"/>
+            <column name="antibiotic_class" type="VARCHAR(255)"/>
+            <column name="method" type="VARCHAR(255)"/>
+            <column name="breakpoint" type="VARCHAR(255)"/>
+            <column name="disk_potency" type="VARCHAR(50)"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_test_amr_config_test"
+            baseTableSchemaName="clinlims" baseTableName="test_amr_config" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_amr_config"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -42,7 +42,7 @@ public class LoginUser extends BaseObject<Integer> {
     private Integer id;
 
     @Column(name = "login_name")
-    @Size(max = 20)
+    @Size(max = 30)
     @NotBlank
     @ValidName(nameType = NameType.USERNAME, message = "username is invalid")
     private String loginName;

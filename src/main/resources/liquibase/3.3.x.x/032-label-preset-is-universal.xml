@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-285 FR-014a: universal per-sample presets always emit a Sample Labels
+         column for every sample (test->preset links only OVERRIDE the quantity).
+         Specimen Label is the lone universal system preset at v2; Order is
+         per-order, and Block / Slide / Freezer remain CONTEXTUAL (attach via the
+         M7 sample_type->preset model, FR-014b). Authored as a new changeset (not
+         an edit to 029/030) to preserve changeset checksums on environments that
+         already applied the M2 schema. -->
+
+    <changeSet id="label-preset-is-universal-001" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="label_preset" columnName="is_universal" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Add label_preset.is_universal (FR-014a) — per-sample presets that always emit a column</comment>
+
+        <addColumn tableName="label_preset" schemaName="clinlims">
+            <column name="is_universal" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Invariant: only per-sample presets may be universal (per-order is
+             always-on by scope; universality is meaningless without per-sample). -->
+        <sql>ALTER TABLE clinlims.label_preset
+             ADD CONSTRAINT label_preset_universal_per_sample
+                 CHECK (NOT is_universal OR prints_per_sample);</sql>
+
+        <rollback>
+            <sql>ALTER TABLE clinlims.label_preset DROP CONSTRAINT label_preset_universal_per_sample;</sql>
+            <dropColumn tableName="label_preset" columnName="is_universal" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="label-preset-is-universal-002" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="label_preset" columnName="is_universal" schemaName="clinlims"/>
+        </preConditions>
+        <comment>FR-014a: mark the seeded Specimen Label system preset universal — every sample gets a specimen label; tests only override qty</comment>
+
+        <sql>UPDATE clinlims.label_preset
+             SET is_universal = true, last_updated = CURRENT_TIMESTAMP
+             WHERE is_system = true AND name = 'Specimen Label';</sql>
+
+        <rollback>
+            <sql>UPDATE clinlims.label_preset
+                 SET is_universal = false
+                 WHERE is_system = true AND name = 'Specimen Label';</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

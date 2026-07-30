@@ -43,7 +43,7 @@ const ReferredOut = () => {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/referral-organizations", fetchLocationCodes);
+    getFromOpenElisServer("/rest/displayList/REFERRAL_ORGANIZATIONS", fetchLocationCodes);
     return () => {
       componentMounted.current = false;
     };

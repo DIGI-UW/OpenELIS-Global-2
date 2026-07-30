@@ -18,6 +18,7 @@ import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
@@ -216,8 +217,7 @@ public class PatientManagementController extends BaseController {
 
     private void copyFormBeanToValueHolders(PatientManagementInfo patientInfo, Patient patient)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        PropertyUtils.copyProperties(patient, patientInfo);
-        PropertyUtils.copyProperties(patient.getPerson(), patientInfo);
+        PatientUtil.copyFormBeanToValueHolders(patientInfo, patient);
     }
 
     private void setSystemUserID(PatientManagementInfo patientInfo, Patient patient) {

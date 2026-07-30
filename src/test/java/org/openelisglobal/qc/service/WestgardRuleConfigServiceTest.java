@@ -38,13 +38,13 @@ public class WestgardRuleConfigServiceTest {
     @Before
     public void setUp() {
         // Setup test rules for test ID 1, instrument ID 1
-        rule13s = createRule("1", 1, 1, "1₃ₛ", true, "REJECTION");
-        rule22s = createRule("2", 1, 1, "2₂ₛ", true, "WARNING");
-        ruleR4s = createRule("3", 1, 1, "R₄ₛ", true, "REJECTION");
-        rule41s = createRule("4", 1, 1, "4₁ₛ", false, "REJECTION");
+        rule13s = createRule("1", "1", "1", "1₃ₛ", true, "REJECTION");
+        rule22s = createRule("2", "1", "1", "2₂ₛ", true, "WARNING");
+        ruleR4s = createRule("3", "1", "1", "R₄ₛ", true, "REJECTION");
+        rule41s = createRule("4", "1", "1", "4₁ₛ", false, "REJECTION");
     }
 
-    private WestgardRuleConfig createRule(String id, Integer testId, Integer instrumentId, String ruleCode,
+    private WestgardRuleConfig createRule(String id, String testId, String instrumentId, String ruleCode,
             boolean enabled, String severity) {
         WestgardRuleConfig rule = new WestgardRuleConfig();
         rule.setId(id);
@@ -65,15 +65,15 @@ public class WestgardRuleConfigServiceTest {
     public void testFindByTestAndInstrument_ShouldReturnAllRules() {
         // Arrange
         List<WestgardRuleConfig> allRules = Arrays.asList(rule13s, rule22s, ruleR4s, rule41s);
-        when(ruleConfigDAO.findByTestAndInstrument(1, 1)).thenReturn(allRules);
+        when(ruleConfigDAO.findByTestAndInstrument("1", "1")).thenReturn(allRules);
 
         // Act
-        List<WestgardRuleConfig> result = ruleConfigService.findByTestAndInstrument(1, 1);
+        List<WestgardRuleConfig> result = ruleConfigService.findByTestAndInstrument("1", "1");
 
         // Assert
         assertNotNull("Result should not be null", result);
         assertEquals("Should return all 4 rules", 4, result.size());
-        verify(ruleConfigDAO, times(1)).findByTestAndInstrument(1, 1);
+        verify(ruleConfigDAO, times(1)).findByTestAndInstrument("1", "1");
     }
 
     /**
@@ -83,16 +83,16 @@ public class WestgardRuleConfigServiceTest {
     public void testFindEnabledByTestAndInstrument_ShouldReturnOnlyEnabledRules() {
         // Arrange - 3 enabled rules (4₁ₛ is disabled)
         List<WestgardRuleConfig> enabledRules = Arrays.asList(rule13s, rule22s, ruleR4s);
-        when(ruleConfigDAO.findEnabledByTestAndInstrument(1, 1)).thenReturn(enabledRules);
+        when(ruleConfigDAO.findEnabledByTestAndInstrument("1", "1")).thenReturn(enabledRules);
 
         // Act
-        List<WestgardRuleConfig> result = ruleConfigService.findEnabledByTestAndInstrument(1, 1);
+        List<WestgardRuleConfig> result = ruleConfigService.findEnabledByTestAndInstrument("1", "1");
 
         // Assert
         assertNotNull("Result should not be null", result);
         assertEquals("Should return 3 enabled rules", 3, result.size());
         assertTrue("All returned rules should be enabled", result.stream().allMatch(WestgardRuleConfig::getEnabled));
-        verify(ruleConfigDAO, times(1)).findEnabledByTestAndInstrument(1, 1);
+        verify(ruleConfigDAO, times(1)).findEnabledByTestAndInstrument("1", "1");
     }
 
     /**
@@ -107,7 +107,7 @@ public class WestgardRuleConfigServiceTest {
         // Mock: findByTestAndInstrument returns rules including another enabled
         // rejection
         List<WestgardRuleConfig> allRules = Arrays.asList(rule13s, rule22s, ruleR4s, rule41s);
-        when(ruleConfigDAO.findByTestAndInstrument(1, 1)).thenReturn(allRules);
+        when(ruleConfigDAO.findByTestAndInstrument("1", "1")).thenReturn(allRules);
         when(ruleConfigDAO.update(rule13s)).thenReturn(rule13s);
 
         // Act
@@ -128,11 +128,11 @@ public class WestgardRuleConfigServiceTest {
     public void testApplyPreset_Basic_ShouldEnableOnly13s() {
         // Arrange
         List<WestgardRuleConfig> allRules = Arrays.asList(rule13s, rule22s, ruleR4s, rule41s);
-        when(ruleConfigDAO.findByTestAndInstrument(1, 1)).thenReturn(allRules);
+        when(ruleConfigDAO.findByTestAndInstrument("1", "1")).thenReturn(allRules);
         when(ruleConfigDAO.update(any(WestgardRuleConfig.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        List<WestgardRuleConfig> result = ruleConfigService.applyPreset(1, 1, "BASIC");
+        List<WestgardRuleConfig> result = ruleConfigService.applyPreset("1", "1", "BASIC");
 
         // Assert
         assertNotNull("Result should not be null", result);
@@ -147,7 +147,7 @@ public class WestgardRuleConfigServiceTest {
         assertNotNull("1₃ₛ rule should exist", enabled13s);
         assertTrue("1₃ₛ should be enabled", enabled13s.getEnabled());
 
-        verify(ruleConfigDAO, times(1)).findByTestAndInstrument(1, 1);
+        verify(ruleConfigDAO, times(1)).findByTestAndInstrument("1", "1");
         verify(ruleConfigDAO, times(4)).update(any(WestgardRuleConfig.class));
     }
 
@@ -160,11 +160,11 @@ public class WestgardRuleConfigServiceTest {
     public void testApplyPreset_Standard_ShouldEnableRecommendedRules() {
         // Arrange
         List<WestgardRuleConfig> allRules = Arrays.asList(rule13s, rule22s, ruleR4s, rule41s);
-        when(ruleConfigDAO.findByTestAndInstrument(1, 1)).thenReturn(allRules);
+        when(ruleConfigDAO.findByTestAndInstrument("1", "1")).thenReturn(allRules);
         when(ruleConfigDAO.update(any(WestgardRuleConfig.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        List<WestgardRuleConfig> result = ruleConfigService.applyPreset(1, 1, "STANDARD");
+        List<WestgardRuleConfig> result = ruleConfigService.applyPreset("1", "1", "STANDARD");
 
         // Assert
         assertNotNull("Result should not be null", result);
@@ -181,7 +181,7 @@ public class WestgardRuleConfigServiceTest {
             assertTrue(ruleCode + " should be enabled", rule.getEnabled());
         }
 
-        verify(ruleConfigDAO, times(1)).findByTestAndInstrument(1, 1);
+        verify(ruleConfigDAO, times(1)).findByTestAndInstrument("1", "1");
         verify(ruleConfigDAO, times(4)).update(any(WestgardRuleConfig.class));
     }
 
@@ -193,18 +193,18 @@ public class WestgardRuleConfigServiceTest {
     @Test
     public void testApplyPreset_Comprehensive_ShouldEnableAllRules() {
         // Arrange - Add remaining 4 rules (1₂ₛ, 10ₓ, 3₁ₛ, 7ₜ)
-        WestgardRuleConfig rule12s = createRule("5", 1, 1, "1₂ₛ", false, "WARNING");
-        WestgardRuleConfig rule10x = createRule("6", 1, 1, "10ₓ", false, "WARNING");
-        WestgardRuleConfig rule31s = createRule("7", 1, 1, "3₁ₛ", false, "WARNING");
-        WestgardRuleConfig rule7t = createRule("8", 1, 1, "7ₜ", false, "WARNING");
+        WestgardRuleConfig rule12s = createRule("5", "1", "1", "1₂ₛ", false, "WARNING");
+        WestgardRuleConfig rule10x = createRule("6", "1", "1", "10ₓ", false, "WARNING");
+        WestgardRuleConfig rule31s = createRule("7", "1", "1", "3₁ₛ", false, "WARNING");
+        WestgardRuleConfig rule7t = createRule("8", "1", "1", "7ₜ", false, "WARNING");
 
         List<WestgardRuleConfig> allRules = Arrays.asList(rule13s, rule22s, ruleR4s, rule41s, rule12s, rule10x, rule31s,
                 rule7t);
-        when(ruleConfigDAO.findByTestAndInstrument(1, 1)).thenReturn(allRules);
+        when(ruleConfigDAO.findByTestAndInstrument("1", "1")).thenReturn(allRules);
         when(ruleConfigDAO.update(any(WestgardRuleConfig.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        List<WestgardRuleConfig> result = ruleConfigService.applyPreset(1, 1, "COMPREHENSIVE");
+        List<WestgardRuleConfig> result = ruleConfigService.applyPreset("1", "1", "COMPREHENSIVE");
 
         // Assert
         assertNotNull("Result should not be null", result);
@@ -214,7 +214,7 @@ public class WestgardRuleConfigServiceTest {
         long enabledCount = result.stream().filter(WestgardRuleConfig::getEnabled).count();
         assertEquals("All 8 rules should be enabled", 8, enabledCount);
 
-        verify(ruleConfigDAO, times(1)).findByTestAndInstrument(1, 1);
+        verify(ruleConfigDAO, times(1)).findByTestAndInstrument("1", "1");
         verify(ruleConfigDAO, times(8)).update(any(WestgardRuleConfig.class));
     }
 
@@ -224,7 +224,7 @@ public class WestgardRuleConfigServiceTest {
     @Test(expected = IllegalArgumentException.class)
     public void testApplyPreset_WithInvalidPreset_ShouldThrowException() {
         // Act - should throw IllegalArgumentException before DAO call
-        ruleConfigService.applyPreset(1, 1, "INVALID_PRESET");
+        ruleConfigService.applyPreset("1", "1", "INVALID_PRESET");
     }
 
     /**
@@ -284,7 +284,7 @@ public class WestgardRuleConfigServiceTest {
     @Test(expected = IllegalArgumentException.class)
     public void testValidateRuleConfig_WithInvalidRuleCode_ShouldThrowException() {
         // Arrange - Invalid rule code
-        WestgardRuleConfig invalidRule = createRule("99", 1, 1, "INVALID_CODE", true, "REJECTION");
+        WestgardRuleConfig invalidRule = createRule("99", "1", "1", "INVALID_CODE", true, "REJECTION");
         List<WestgardRuleConfig> configs = Arrays.asList(invalidRule);
 
         // Act - should throw IllegalArgumentException
@@ -311,7 +311,7 @@ public class WestgardRuleConfigServiceTest {
         });
 
         // Act
-        List<WestgardRuleConfig> result = ruleConfigService.createDefaultConfig(1, 1);
+        List<WestgardRuleConfig> result = ruleConfigService.createDefaultConfig("1", "1");
 
         // Assert — all 8 rules created
         assertEquals("Should create 8 rules", 8, result.size());
@@ -319,8 +319,8 @@ public class WestgardRuleConfigServiceTest {
 
         // Assert — correct test/instrument assignment
         for (WestgardRuleConfig config : result) {
-            assertEquals("testId should be 1", Integer.valueOf(1), config.getTestId());
-            assertEquals("instrumentId should be 1", Integer.valueOf(1), config.getInstrumentId());
+            assertEquals("1", config.getTestId());
+            assertEquals("1", config.getInstrumentId());
             assertNotNull("ID should be set", config.getId());
         }
 
@@ -371,7 +371,7 @@ public class WestgardRuleConfigServiceTest {
         });
 
         // Act
-        List<WestgardRuleConfig> result = ruleConfigService.createDefaultConfig(1, 1);
+        List<WestgardRuleConfig> result = ruleConfigService.createDefaultConfig("1", "1");
 
         // Assert — no duplicate rule codes
         long distinctCodes = result.stream().map(WestgardRuleConfig::getRuleCode).distinct().count();
@@ -401,7 +401,7 @@ public class WestgardRuleConfigServiceTest {
         rule22s.setEnabled(true); // Only WARNING rule would remain
 
         List<WestgardRuleConfig> remainingRules = Arrays.asList(rule22s);
-        when(ruleConfigDAO.findByTestAndInstrument(1, 1)).thenReturn(remainingRules);
+        when(ruleConfigDAO.findByTestAndInstrument("1", "1")).thenReturn(remainingRules);
 
         // Act - should throw IllegalArgumentException during validation
         ruleConfigService.updateRuleConfig(rule13s);
@@ -413,14 +413,14 @@ public class WestgardRuleConfigServiceTest {
     @Test
     public void testFindByTestAndInstrument_WithNoRules_ShouldReturnEmptyList() {
         // Arrange
-        when(ruleConfigDAO.findByTestAndInstrument(99, 99)).thenReturn(Arrays.asList());
+        when(ruleConfigDAO.findByTestAndInstrument("99", "99")).thenReturn(Arrays.asList());
 
         // Act
-        List<WestgardRuleConfig> result = ruleConfigService.findByTestAndInstrument(99, 99);
+        List<WestgardRuleConfig> result = ruleConfigService.findByTestAndInstrument("99", "99");
 
         // Assert
         assertNotNull("Result should not be null", result);
         assertEquals("Should return empty list", 0, result.size());
-        verify(ruleConfigDAO, times(1)).findByTestAndInstrument(99, 99);
+        verify(ruleConfigDAO, times(1)).findByTestAndInstrument("99", "99");
     }
 }

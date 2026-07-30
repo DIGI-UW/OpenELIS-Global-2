@@ -16,6 +16,7 @@ public class NCEventServiceImpl extends AuditableBaseObjectServiceImpl<NcEvent, 
 
     public NCEventServiceImpl() {
         super(NcEvent.class);
+        this.auditTrailLog = true;
     }
 
     @Override

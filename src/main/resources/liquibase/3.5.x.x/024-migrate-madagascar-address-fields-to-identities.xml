@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="3.5.0-024-address-hierarchy-identity-types" author="openelisglobal">
+        <comment>Create generic identity types for address hierarchy values before migrating off Madagascar-specific person columns.</comment>
+        <sql>
+            INSERT INTO clinlims.patient_identity_type (id, identity_type, description, lastupdated)
+            SELECT nextval('clinlims.patient_identity_type_seq'), 'ADDRESS_HIERARCHY_0', 'Address hierarchy level 1', now()
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.patient_identity_type WHERE identity_type = 'ADDRESS_HIERARCHY_0'
+            );
+
+            INSERT INTO clinlims.patient_identity_type (id, identity_type, description, lastupdated)
+            SELECT nextval('clinlims.patient_identity_type_seq'), 'ADDRESS_HIERARCHY_3', 'Address hierarchy level 4', now()
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.patient_identity_type WHERE identity_type = 'ADDRESS_HIERARCHY_3'
+            );
+
+            INSERT INTO clinlims.patient_identity_type (id, identity_type, description, lastupdated)
+            SELECT nextval('clinlims.patient_identity_type_seq'), 'ADDRESS_HIERARCHY_4', 'Address hierarchy level 5', now()
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.patient_identity_type WHERE identity_type = 'ADDRESS_HIERARCHY_4'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="3.5.0-024-migrate-person-province-to-address-hierarchy-0" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="person" columnName="province" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Move existing Province values to generic ADDRESS_HIERARCHY_0 patient identities.</comment>
+        <sql>
+            INSERT INTO clinlims.patient_identity (id, identity_type_id, patient_id, identity_data, lastupdated)
+            SELECT nextval('clinlims.patient_identity_seq'), pit.id, p.id, pe.province, now()
+            FROM clinlims.person pe
+            JOIN clinlims.patient p ON p.person_id = pe.id
+            JOIN clinlims.patient_identity_type pit ON pit.identity_type = 'ADDRESS_HIERARCHY_0'
+            WHERE pe.province IS NOT NULL
+              AND pe.province != ''
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM clinlims.patient_identity existing
+                  WHERE existing.patient_id = p.id
+                    AND existing.identity_type_id = pit.id
+              );
+        </sql>
+    </changeSet>
+
+    <changeSet id="3.5.0-024-migrate-person-fokontany-to-address-hierarchy-3" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="person" columnName="fokontany" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Move existing Fokontany values to generic ADDRESS_HIERARCHY_3 patient identities.</comment>
+        <sql>
+            INSERT INTO clinlims.patient_identity (id, identity_type_id, patient_id, identity_data, lastupdated)
+            SELECT nextval('clinlims.patient_identity_seq'), pit.id, p.id, pe.fokontany, now()
+            FROM clinlims.person pe
+            JOIN clinlims.patient p ON p.person_id = pe.id
+            JOIN clinlims.patient_identity_type pit ON pit.identity_type = 'ADDRESS_HIERARCHY_3'
+            WHERE pe.fokontany IS NOT NULL
+              AND pe.fokontany != ''
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM clinlims.patient_identity existing
+                  WHERE existing.patient_id = p.id
+                    AND existing.identity_type_id = pit.id
+              );
+        </sql>
+    </changeSet>
+
+    <changeSet id="3.5.0-024-migrate-person-hamlet-or-lot-to-address-hierarchy-4" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="person" columnName="hamlet_or_lot" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Move existing Hamlet/Lot values to generic ADDRESS_HIERARCHY_4 patient identities.</comment>
+        <sql>
+            INSERT INTO clinlims.patient_identity (id, identity_type_id, patient_id, identity_data, lastupdated)
+            SELECT nextval('clinlims.patient_identity_seq'), pit.id, p.id, pe.hamlet_or_lot, now()
+            FROM clinlims.person pe
+            JOIN clinlims.patient p ON p.person_id = pe.id
+            JOIN clinlims.patient_identity_type pit ON pit.identity_type = 'ADDRESS_HIERARCHY_4'
+            WHERE pe.hamlet_or_lot IS NOT NULL
+              AND pe.hamlet_or_lot != ''
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM clinlims.patient_identity existing
+                  WHERE existing.patient_id = p.id
+                    AND existing.identity_type_id = pit.id
+              );
+        </sql>
+    </changeSet>
+
+    <changeSet id="3.5.0-024-drop-migrated-madagascar-person-address-columns" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="person" columnName="province" schemaName="clinlims"/>
+            <columnExists tableName="person" columnName="fokontany" schemaName="clinlims"/>
+            <columnExists tableName="person" columnName="hamlet_or_lot" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Drop Madagascar-specific person address columns after data has been moved to generic address hierarchy identities.</comment>
+        <sql splitStatements="false">
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM clinlims.person pe
+                    LEFT JOIN clinlims.patient p ON p.person_id = pe.id
+                    WHERE (
+                        pe.province IS NOT NULL AND pe.province != ''
+                        AND (p.id IS NULL OR NOT EXISTS (
+                            SELECT 1
+                            FROM clinlims.patient_identity pi
+                            JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
+                            WHERE pi.patient_id = p.id
+                              AND pit.identity_type = 'ADDRESS_HIERARCHY_0'
+                              AND pi.identity_data = pe.province
+                        ))
+                    ) OR (
+                        pe.fokontany IS NOT NULL AND pe.fokontany != ''
+                        AND (p.id IS NULL OR NOT EXISTS (
+                            SELECT 1
+                            FROM clinlims.patient_identity pi
+                            JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
+                            WHERE pi.patient_id = p.id
+                              AND pit.identity_type = 'ADDRESS_HIERARCHY_3'
+                              AND pi.identity_data = pe.fokontany
+                        ))
+                    ) OR (
+                        pe.hamlet_or_lot IS NOT NULL AND pe.hamlet_or_lot != ''
+                        AND (p.id IS NULL OR NOT EXISTS (
+                            SELECT 1
+                            FROM clinlims.patient_identity pi
+                            JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
+                            WHERE pi.patient_id = p.id
+                              AND pit.identity_type = 'ADDRESS_HIERARCHY_4'
+                              AND pi.identity_data = pe.hamlet_or_lot
+                        ))
+                    )
+                ) THEN
+                    RAISE EXCEPTION 'Cannot drop Madagascar person address columns before all values are migrated';
+                END IF;
+            END $$;
+        </sql>
+        <dropColumn tableName="person" schemaName="clinlims" columnName="province"/>
+        <dropColumn tableName="person" schemaName="clinlims" columnName="fokontany"/>
+        <dropColumn tableName="person" schemaName="clinlims" columnName="hamlet_or_lot"/>
+    </changeSet>
+
+</databaseChangeLog>

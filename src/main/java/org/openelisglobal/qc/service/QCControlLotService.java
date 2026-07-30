@@ -42,7 +42,17 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param instrumentId The instrument ID
      * @return List of active control lots
      */
-    List<QCControlLot> getActiveControlLots(Integer testId, Integer instrumentId);
+    List<QCControlLot> getActiveControlLots(String testId, String instrumentId);
+
+    /**
+     * Get all ACTIVE control lots for an instrument across every test it's mapped
+     * to. Used by bridge registration so the bridge can disambiguate lots embedded
+     * in inbound sample names (FILE) or cross-check Q-segment lots (ASTM).
+     *
+     * @param instrumentId The instrument ID
+     * @return List of active control lots for the instrument
+     */
+    List<QCControlLot> getActiveControlLotsByInstrument(String instrumentId);
 
     /**
      * Get a control lot by its unique lot number.
@@ -59,7 +69,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param testId       The test ID to check
      * @param instrumentId The instrument ID to check
      */
-    void checkAndExpireLots(Integer testId, Integer instrumentId);
+    void checkAndExpireLots(String testId, String instrumentId);
 
     /**
      * Get all control lots regardless of status, test, or instrument.

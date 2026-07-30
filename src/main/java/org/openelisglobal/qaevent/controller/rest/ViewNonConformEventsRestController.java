@@ -106,8 +106,10 @@ public class ViewNonConformEventsRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/rest/viewNonConformEvents", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> postReportNonConformingEvent(@RequestBody NonConformingEventForm form) {
+    public ResponseEntity<?> postReportNonConformingEvent(@RequestBody NonConformingEventForm form,
+            HttpServletRequest request) {
         try {
+            form.setCurrentUserId(getSysUserId(request));
             boolean updated = nonConformingEventWorker.updateFollowUp(form);
             if (updated) {
                 return ResponseEntity.ok().body(Map.of("success", true));

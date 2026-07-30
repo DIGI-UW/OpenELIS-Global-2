@@ -57,7 +57,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
     }
 
     @Override
-    public List<QCResult> findByInstrumentAndDateRange(Integer instrumentId, Timestamp startDate, Timestamp endDate)
+    public List<QCResult> findByInstrumentAndDateRange(String instrumentId, Timestamp startDate, Timestamp endDate)
             throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -118,7 +118,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
     }
 
     @Override
-    public List<QCResult> findLatestByInstrumentAndTest(Integer instrumentId, Integer testId, int limit)
+    public List<QCResult> findLatestByInstrumentAndTest(String instrumentId, String testId, int limit)
             throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -133,10 +133,10 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
     }
 
     @Override
-    public List<Integer> findDistinctInstrumentIds() throws LIMSRuntimeException {
+    public List<String> findDistinctInstrumentIds() throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-            CriteriaQuery<Integer> cq = cb.createQuery(Integer.class);
+            CriteriaQuery<String> cq = cb.createQuery(String.class);
             Root<QCResult> root = cq.from(QCResult.class);
             cq.select(root.get("instrumentId")).distinct(true);
             return entityManager.createQuery(cq).getResultList();

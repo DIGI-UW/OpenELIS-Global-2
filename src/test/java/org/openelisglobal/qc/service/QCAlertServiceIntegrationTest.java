@@ -71,7 +71,7 @@ public class QCAlertServiceIntegrationTest extends BaseWebContextSensitiveTest {
         Thread.sleep(ASYNC_WAIT_MS);
 
         // Verify violations in DB
-        List<QCRuleViolation> violations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> violations = violationDAO.findByInstrument("1");
         assertEquals("Should have 2 violations (1₃ₛ and 1₂ₛ)", 2, violations.size());
 
         // Verify REJECTION violation (1₃ₛ)
@@ -82,8 +82,8 @@ public class QCAlertServiceIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals("REJECTION rule code should be 1₃ₛ", "1₃ₛ", rejection.getRuleCode());
         assertEquals("REJECTION status should be UNRESOLVED", "UNRESOLVED", rejection.getResolutionStatus());
         assertEquals("REJECTION triggering result should match", result.getId(), rejection.getTriggeringResultId());
-        assertEquals("REJECTION instrument should be 1", Integer.valueOf(1), rejection.getInstrumentId());
-        assertEquals("REJECTION test should be 1", Integer.valueOf(1), rejection.getTestId());
+        assertEquals("1", rejection.getInstrumentId());
+        assertEquals("1", rejection.getTestId());
         Timestamp tenSecondsAgo = Timestamp.from(Instant.now().minusSeconds(10));
         assertTrue("REJECTION violation datetime should be recent (within 10s)",
                 rejection.getViolationDateTime().after(tenSecondsAgo));
@@ -148,7 +148,7 @@ public class QCAlertServiceIntegrationTest extends BaseWebContextSensitiveTest {
         Thread.sleep(ASYNC_WAIT_MS);
 
         // Verify: only WARNING violation, no REJECTION
-        List<QCRuleViolation> violations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> violations = violationDAO.findByInstrument("1");
         assertEquals("Should have exactly 1 violation (1₂ₛ only)", 1, violations.size());
 
         QCRuleViolation violation = violations.get(0);
@@ -190,7 +190,7 @@ public class QCAlertServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
         Thread.sleep(ASYNC_WAIT_MS);
 
-        List<QCRuleViolation> preconditionViolations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> preconditionViolations = violationDAO.findByInstrument("1");
         assertEquals("Precondition: pipeline must produce 1 WARNING violation", 1, preconditionViolations.size());
         assertEquals("Precondition: violation should reference the abnormal result", abnormal.getId(),
                 preconditionViolations.get(0).getTriggeringResultId());
@@ -204,7 +204,7 @@ public class QCAlertServiceIntegrationTest extends BaseWebContextSensitiveTest {
         Thread.sleep(ASYNC_WAIT_MS);
 
         // Verify: still only 1 violation (from the precondition abnormal result)
-        List<QCRuleViolation> allViolations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> allViolations = violationDAO.findByInstrument("1");
         assertEquals("Should still have only 1 violation (the precondition one)", 1, allViolations.size());
         assertEquals("The only violation should still be from the abnormal result", abnormal.getId(),
                 allViolations.get(0).getTriggeringResultId());
@@ -240,7 +240,7 @@ public class QCAlertServiceIntegrationTest extends BaseWebContextSensitiveTest {
         Thread.sleep(ASYNC_WAIT_MS);
 
         // Verify: 2 violations (one per result), each WARNING
-        List<QCRuleViolation> violations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> violations = violationDAO.findByInstrument("1");
         assertEquals("Should have 2 violations (one per result)", 2, violations.size());
 
         for (QCRuleViolation v : violations) {
@@ -280,7 +280,7 @@ public class QCAlertServiceIntegrationTest extends BaseWebContextSensitiveTest {
         Thread.sleep(ASYNC_WAIT_MS);
 
         // Find the REJECTION violation
-        List<QCRuleViolation> violations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> violations = violationDAO.findByInstrument("1");
         QCRuleViolation rejection = violations.stream().filter(v -> "REJECTION".equals(v.getSeverity())).findFirst()
                 .orElseThrow(() -> new AssertionError("REJECTION violation not found"));
 

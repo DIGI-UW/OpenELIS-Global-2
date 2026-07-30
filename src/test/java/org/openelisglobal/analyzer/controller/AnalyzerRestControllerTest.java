@@ -22,6 +22,7 @@ import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MvcResult;
@@ -47,6 +48,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * AnalyzerQueryServiceIntegrationTest and related service-layer integration
  * tests running against the openelis-analyzer-mock container.
  */
+@WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
 public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -88,6 +90,33 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(get("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.analyzers").isArray());
+    }
+
+    /**
+     * Test: GET /rest/analyzer/analyzers includes the qcRules + controlLots fields
+     * per analyzer (consumed by the bridge bootstrap to populate its registry). The
+     * fields must always be present (possibly empty) so the bridge can rely on the
+     * contract.
+     */
+    @Test
+    public void testGetAnalyzers_IncludesQcRulesAndControlLotsFields() throws Exception {
+        // Create one analyzer so the response is non-empty
+        String uniqueName = "TEST-Fields-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated());
+
+        // Both fields must appear on every analyzer entry in the response.
+        // qcRules is always emitted (existing FR-15 contract); controlLots is
+        // emitted whenever QCControlLotService is wired AND the analyzer.id is
+        // numeric — both true in the standard webapp deployment.
+        mockMvc.perform(get("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.analyzers").isArray()).andExpect(jsonPath("$.analyzers[0].qcRules").exists())
+                .andExpect(jsonPath("$.analyzers[0].qcRules").isArray())
+                .andExpect(jsonPath("$.analyzers[0].controlLots").exists())
+                .andExpect(jsonPath("$.analyzers[0].controlLots").isArray());
     }
 
     /**

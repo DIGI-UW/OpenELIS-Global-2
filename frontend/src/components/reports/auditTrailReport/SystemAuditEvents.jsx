@@ -17,13 +17,17 @@ import {
   DatePicker,
   DatePickerInput,
   Dropdown,
+  Tag,
   TextInput,
   Loading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
+import SearchPatientForm from "../../patient/SearchPatientForm";
 import "../../Style.css";
+
+const PATIENT_ENTITY_NAME = "PATIENT";
 
 const headers = [
   {
@@ -67,6 +71,10 @@ const SystemAuditEvents = () => {
   const [searchText, setSearchText] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [showPatientSearch, setShowPatientSearch] = useState(false);
+
+  const isPatientEntity = selectedEntityType === PATIENT_ENTITY_NAME;
 
   const allLabel = intl.formatMessage({ id: "systemAudit.filter.all" });
 
@@ -110,6 +118,9 @@ const SystemAuditEvents = () => {
       if (selectedAction) params.set("action", selectedAction);
       if (selectedUser) params.set("userId", selectedUser);
       if (searchText) params.set("search", searchText);
+      if (selectedPatient?.patientPK) {
+        params.set("patientId", selectedPatient.patientPK);
+      }
       return params;
     },
     [
@@ -119,6 +130,7 @@ const SystemAuditEvents = () => {
       selectedAction,
       selectedUser,
       searchText,
+      selectedPatient,
     ],
   );
 
@@ -135,7 +147,19 @@ const SystemAuditEvents = () => {
               const changesObj = e.changes || {};
               const changesStr = Object.keys(changesObj).length > 0
                 ? Object.entries(changesObj)
-                    .map(([k, v]) => `${k}: ${v}`)
+                    .map(([k, v]) => {
+                      if (v && typeof v === "object") {
+                        const oldVal = v.old ?? "";
+                        const newVal = v.new ?? "";
+                        if (!oldVal && !newVal) return null;
+                        if (oldVal && newVal) return `${k}: ${oldVal} → ${newVal}`;
+                        if (newVal) return `${k}: ${newVal}`;
+                        return `${k}: ${oldVal}`;
+                      }
+                      if (!v) return null;
+                      return `${k}: ${v}`;
+                    })
+                    .filter(Boolean)
                     .join(", ")
                 : "";
               return {
@@ -250,15 +274,19 @@ const SystemAuditEvents = () => {
             })}
             items={entityTypes}
             itemToString={(item) => (item ? item.name : "")}
-            onChange={({ selectedItem }) =>
-              setSelectedEntityType(
-                selectedItem
-                  ? selectedItem.name === allLabel
-                    ? ""
-                    : selectedItem.name
-                  : "",
-              )
-            }
+            onChange={({ selectedItem }) => {
+              const newType = selectedItem
+                ? selectedItem.name === allLabel
+                  ? ""
+                  : selectedItem.name
+                : "";
+              setSelectedEntityType(newType);
+              // Switching away from PATIENT clears the selected patient so the
+              // next query is unconstrained.
+              if (newType !== PATIENT_ENTITY_NAME) {
+                setSelectedPatient(null);
+              }
+            }}
             label={intl.formatMessage({ id: "systemAudit.filter.entityType" })}
           />
         </Column>
@@ -303,6 +331,89 @@ const SystemAuditEvents = () => {
           />
         </Column>
       </Grid>
+      {/* Patient picker — only relevant when filtering on the PATIENT entity.
+          A specific patient must be selected before the audit trail can run.
+          Wrapped in a bordered panel so it reads as a distinct sub-section,
+          not as another filter input. */}
+      {isPatientEntity && (
+        <>
+          <br />
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <div className="bordered-section-panel">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <Tag type={selectedPatient?.patientPK ? "blue" : "gray"}>
+                    <FormattedMessage
+                      id="systemAudit.filter.selectedPatient"
+                      defaultMessage="Selected Patient"
+                    />
+                    :{" "}
+                    {selectedPatient?.patientPK
+                      ? [selectedPatient.firstName, selectedPatient.lastName]
+                          .filter(Boolean)
+                          .join(" ") +
+                        (selectedPatient.subjectNumber
+                          ? ` (${selectedPatient.subjectNumber})`
+                          : "")
+                      : intl.formatMessage({
+                          id: "systemAudit.filter.selectedPatient.none",
+                          defaultMessage: "None",
+                        })}
+                  </Tag>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    onClick={() => setShowPatientSearch((prev) => !prev)}
+                  >
+                    {selectedPatient?.patientPK ? (
+                      <FormattedMessage
+                        id="systemAudit.filter.selectAnotherPatient"
+                        defaultMessage="Select Another Patient"
+                      />
+                    ) : (
+                      <FormattedMessage
+                        id="systemAudit.filter.selectPatient"
+                        defaultMessage="Select Patient"
+                      />
+                    )}
+                  </Button>
+                  {selectedPatient?.patientPK && (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedPatient(null);
+                        setShowPatientSearch(false);
+                      }}
+                    >
+                      <FormattedMessage
+                        id="label.button.clear"
+                        defaultMessage="Clear"
+                      />
+                    </Button>
+                  )}
+                </div>
+                {showPatientSearch && (
+                  <div style={{ marginTop: "1rem" }}>
+                    <SearchPatientForm
+                      getSelectedPatient={(patient) => {
+                        setSelectedPatient(patient);
+                        setShowPatientSearch(false);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </Column>
+          </Grid>
+        </>
+      )}
       <br />
       <Grid fullWidth={true}>
         <Column lg={16}>

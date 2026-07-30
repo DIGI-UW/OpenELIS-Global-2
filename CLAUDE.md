@@ -77,6 +77,22 @@ mvn spotless:apply
 cd frontend && npm run format && cd ..
 ```
 
+**Spotless cache caveat:** spotless tracks "already-clean" files in
+`target/spotless-*` and skips re-checking them in subsequent runs. If your IDE
+(or any other tool) auto-reformats a file _after_ spotless cached it as clean,
+local `mvn spotless:apply` / `spotless:check` will silently skip it — but CI
+runs cold (no cache) and **will** flag the violation. Symptom: PR fails on the
+backend `check formatting` step, but local spotless says the tree is clean. Fix:
+clear the cache before re-running.
+
+```bash
+rm -rf target/spotless-* && mvn spotless:apply
+```
+
+(`mvn clean` doesn't always clear the per-formatter caches; `rm -rf` is the
+reliable form. Particularly common on `pom.xml` after IntelliJ auto-formats on
+save.)
+
 ### Constitution Compliance (MANDATORY)
 
 **ALWAYS check [constitution.md](.specify/memory/constitution.md) BEFORE
@@ -169,6 +185,13 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 ---
 
 ## Active Technologies
+
+- Java 21 LTS (Temurin); JavaScript / React 17 + Spring Framework 6.2
+  (Traditional MVC, **not** Spring Boot), Jakarta EE 9 (`jakarta.*`),
+  Hibernate/JPA, `@carbon/react`, React Intl (spec/ogc-949-unified-test-catalog)
+- PostgreSQL 14+ via JPA/Hibernate; schema changes via Liquibase 4.8
+  (`src/main/resources/liquibase/3.5.x.x/`, latest changeset
+  `039-test-method-links.xml`) (spec/ogc-949-unified-test-catalog)
 
 - Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations

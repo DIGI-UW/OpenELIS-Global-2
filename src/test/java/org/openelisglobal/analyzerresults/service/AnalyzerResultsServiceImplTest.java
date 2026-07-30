@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Unit tests for the upsert / dedupe contract in
@@ -92,6 +93,10 @@ public class AnalyzerResultsServiceImplTest {
         when(baseObjectDAO.insert(any(AnalyzerResults.class))).thenReturn("new-id-777");
         when(baseObjectDAO.update(any(AnalyzerResults.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        // These tests cover the upsert/dedupe contract; the inherited audit-emit
+        // path needs a Spring-wired AuditTrailService + DAO.get(id) stubbing that
+        // doesn't apply here. Disable it so save/update stays focused.
+        ReflectionTestUtils.setField(service, "auditTrailLog", false);
     }
 
     // ------------------------------------------------------------------

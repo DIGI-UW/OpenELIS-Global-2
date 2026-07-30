@@ -3,16 +3,25 @@
   "profileMeta": {
     "id": "sysmex-xn",
     "version": "1.2.0",
-    "displayName": "Sysmex XN Series (XN-L, XN-1000)"
+    "displayName": "Sysmex XN Series (XN-L, XN-1000)",
+    "confidence": "HIGH"
   },
   "analyzer_name": "Sysmex XN Series (XN-L, XN-1000)",
   "manufacturer": "Sysmex",
   "category": "HEMATOLOGY",
-  "protocol": { "name": "ASTM", "version": "E1381-02" },
+  "protocol": {
+    "name": "ASTM",
+    "version": "E1381-02"
+  },
   "identifier_pattern": "SYSMEX.*XN-L|XN-1000|XN.*Series",
-  "transport": ["RS-232", "TCP/IP"],
+  "transport": [
+    "RS-232",
+    "TCP/IP"
+  ],
   "transport_config": {
-    "RS-232": { "default_baud_rate": 19200 },
+    "RS-232": {
+      "default_baud_rate": 19200
+    },
     "TCP/IP": {}
   },
   "default_test_mappings": [

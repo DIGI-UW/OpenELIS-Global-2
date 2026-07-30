@@ -1,11 +1,8 @@
 package org.openelisglobal.analyzer.service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.openelisglobal.common.log.LogEvent;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,34 +17,36 @@ public class BridgeRegistrationService {
     @Value("${analyzer.bridge.url:}")
     private String bridgeBaseUrl;
 
-    private final HttpClient httpClient;
+    @Autowired
+    private BridgeHttpClient bridgeHttpClient;
 
-    public BridgeRegistrationService() {
-        HttpClient client;
-        try {
-            javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
-            sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                    return new java.security.cert.X509Certificate[0];
-                }
+    // Optional — null in older deployments without QC rule support; service
+    // exists in current codebase. Autowired to avoid threading qcRules through
+    // every registerFile caller.
+    @Autowired(required = false)
+    private AnalyzerQcRuleService analyzerQcRuleService;
 
-                public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
-                }
+    // Optional — null in older deployments without control-lot support.
+    // Used to publish active lot inventory to the bridge so the bridge can
+    // disambiguate in-message lot encodings (ASTM Q-segment, FILE sample
+    // names containing the lot number).
+    @Autowired(required = false)
+    private org.openelisglobal.qc.service.QCControlLotService qcControlLotService;
 
-                public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
-                }
-            } }, new java.security.SecureRandom());
-            client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).sslContext(sslContext).build();
-        } catch (Exception e) {
-            LogEvent.logWarn(CLASS_NAME, "BridgeRegistrationService",
-                    "SSL context init failed, using default client: " + e.getMessage());
-            client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
-        }
-        this.httpClient = client;
-    }
+    // The analyzer's test_code ↔ LOINC mapping, pushed so the bridge can
+    // translate both directions (inbound code→LOINC, outbound LOINC→code) and
+    // OE2 stays analyzer-agnostic. Sourced from AnalyzerTestMapping (the lab's
+    // configured per-analyzer mapping, seeded from the profile) joined to
+    // Test.loinc — the same LOINC OE2 binds inbound results by.
+    @Autowired(required = false)
+    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
+
+    @Autowired(required = false)
+    private org.openelisglobal.test.service.TestService testService;
 
     /** Register a TCP analyzer (ASTM/HL7) with the bridge. */
-    public boolean registerTcp(String oeAnalyzerId, String name, String ip, Integer port, String protocol) {
+    public boolean registerTcp(String oeAnalyzerId, String name, String ip, Integer port, String protocol,
+            String identifierPattern) {
         if (!isBridgeConfigured()) {
             return false;
         }
@@ -58,6 +57,17 @@ public class BridgeRegistrationService {
             payload.put("sourceId", ip);
             payload.put("name", name);
             payload.put("protocol", protocol != null ? protocol : "ASTM");
+            // The same regex OE uses to identify an inbound message by its sender
+            // (Analyzer.identifierPattern). Letting the bridge corroborate the
+            // connection-source-IP identity against this authoritative pattern —
+            // rather than a name-substring heuristic — keeps the two identity
+            // signals consistent (e.g. ASTM sender "GENEXPERT^GeneXpert^4.6.0").
+            if (identifierPattern != null && !identifierPattern.isBlank()) {
+                payload.put("identifierPattern", identifierPattern);
+            }
+            attachQcRules(payload, oeAnalyzerId);
+            attachControlLots(payload, oeAnalyzerId);
+            attachTestCodeLoinc(payload, oeAnalyzerId);
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -99,6 +109,9 @@ public class BridgeRegistrationService {
             if (testMappings != null && !testMappings.isEmpty()) {
                 payload.put("testMappings", testMappings);
             }
+            attachQcRules(payload, oeAnalyzerId);
+            attachControlLots(payload, oeAnalyzerId);
+            attachTestCodeLoinc(payload, oeAnalyzerId);
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -122,17 +135,15 @@ public class BridgeRegistrationService {
         }
         try {
             String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers";
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint)).GET()
-                    .timeout(Duration.ofSeconds(10)).build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) {
+            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.get(endpoint, Duration.ofSeconds(10));
+            if (response.status != 200) {
                 LogEvent.logWarn(CLASS_NAME, "fetchBridgeState",
-                        "Bridge GET /api/analyzers returned " + response.statusCode());
+                        "Bridge GET /api/analyzers returned " + response.status);
                 return java.util.Collections.emptyList();
             }
             // Response shape: {"<sourceId>": {id, name, expectedProtocol, mappedTestCodes,
             // ...}, ...}
-            java.util.Map<String, Object> raw = objectMapper.readValue(response.body(), java.util.Map.class);
+            java.util.Map<String, Object> raw = objectMapper.readValue(response.body, java.util.Map.class);
             java.util.List<java.util.Map<String, Object>> flat = new java.util.ArrayList<>();
             for (java.util.Map.Entry<String, Object> e : raw.entrySet()) {
                 if (e.getValue() instanceof java.util.Map) {
@@ -174,17 +185,14 @@ public class BridgeRegistrationService {
         try {
             String json = objectMapper.writeValueAsString(payloads);
             String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers/sync";
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint))
-                    .header("Content-Type", "application/json").PUT(HttpRequest.BodyPublishers.ofString(json))
-                    .timeout(Duration.ofSeconds(30)).build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.put(endpoint, json, Duration.ofSeconds(30));
+            if (response.isSuccess()) {
                 LogEvent.logInfo(CLASS_NAME, "syncAll",
-                        "Bridge sync reconciled " + payloads.size() + " analyzers: " + response.body());
+                        "Bridge sync reconciled " + payloads.size() + " analyzers: " + response.body);
                 return true;
             } else {
                 LogEvent.logWarn(CLASS_NAME, "syncAll",
-                        "Bridge PUT /api/analyzers/sync returned " + response.statusCode() + ": " + response.body());
+                        "Bridge PUT /api/analyzers/sync returned " + response.status + ": " + response.body);
                 return false;
             }
         } catch (Exception e) {
@@ -201,16 +209,13 @@ public class BridgeRegistrationService {
 
         try {
             String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers/" + oeAnalyzerId;
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint)).DELETE()
-                    .timeout(Duration.ofSeconds(10)).build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
+            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.delete(endpoint, Duration.ofSeconds(10));
+            if (response.status == 200) {
                 LogEvent.logInfo(CLASS_NAME, "unregister", "Unregistered analyzer " + oeAnalyzerId + " from bridge");
                 return true;
             } else {
                 LogEvent.logWarn(CLASS_NAME, "unregister",
-                        "Bridge unregister returned " + response.statusCode() + " for analyzer " + oeAnalyzerId);
+                        "Bridge unregister returned " + response.status + " for analyzer " + oeAnalyzerId);
                 return false;
             }
         } catch (Exception e) {
@@ -223,17 +228,13 @@ public class BridgeRegistrationService {
     private boolean callRegister(String json, String oeAnalyzerId) {
         try {
             String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers/register";
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint))
-                    .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json))
-                    .timeout(Duration.ofSeconds(10)).build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
+            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.post(endpoint, json, Duration.ofSeconds(10));
+            if (response.status == 200) {
                 LogEvent.logInfo(CLASS_NAME, "callRegister", "Registered analyzer " + oeAnalyzerId + " with bridge");
                 return true;
             } else {
                 LogEvent.logWarn(CLASS_NAME, "callRegister",
-                        "Bridge register returned " + response.statusCode() + ": " + response.body());
+                        "Bridge register returned " + response.status + ": " + response.body);
                 return false;
             }
         } catch (Exception e) {
@@ -250,6 +251,114 @@ public class BridgeRegistrationService {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Attach the analyzer's active QC classification rules (e.g.
+     * {@code SPECIMEN_ID_PREFIX QC} for HL7, {@code FIELD_EQUALS O.12 Q} for ASTM,
+     * {@code SPECIMEN_ID_PREFIX LPC/HPC} for FILE) so the bridge can classify QC vs
+     * patient samples without falling back to its hardcoded default prefix list.
+     *
+     * <p>
+     * Package-private so {@link AnalyzerBridgeStartupRegistrar}'s full-state sync
+     * can reuse the same payload shape — without this the sync would push entries
+     * with no qcRules / controlLots and the bridge would lose its classification +
+     * lot inventory on every restart.
+     */
+    /**
+     * Attach the analyzer's {@code test_code → LOINC} map so the bridge can
+     * translate inbound results (code→LOINC) and outbound orders (LOINC→code).
+     * Built from the lab's configured {@code AnalyzerTestMapping} rows (analyzer
+     * test code → OE2 testId) joined to {@code Test.loinc} — the same LOINC OE2
+     * resolves inbound results by. Always attaches (possibly empty) so a sync
+     * payload can clear stale bridge mappings.
+     */
+    void attachTestCodeLoinc(java.util.Map<String, Object> payload, String oeAnalyzerId) {
+        java.util.Map<String, String> codeToLoinc = new java.util.LinkedHashMap<>();
+        if (analyzerTestMappingService != null && testService != null) {
+            for (org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping m : analyzerTestMappingService
+                    .getAllForAnalyzer(oeAnalyzerId)) {
+                String code = m.getAnalyzerTestName();
+                String testId = m.getTestId();
+                if (code == null || code.isBlank() || testId == null) {
+                    continue;
+                }
+                try {
+                    org.openelisglobal.test.valueholder.Test test = testService.get(testId);
+                    String loinc = test != null ? test.getLoinc() : null;
+                    if (loinc != null && !loinc.isBlank()) {
+                        codeToLoinc.put(code, loinc);
+                    }
+                } catch (Exception e) {
+                    LogEvent.logWarn(CLASS_NAME, "attachTestCodeLoinc",
+                            "Could not resolve LOINC for testId " + testId + ": " + e.getMessage());
+                }
+            }
+        }
+        payload.put("testCodeLoinc", codeToLoinc);
+    }
+
+    void attachQcRules(java.util.Map<String, Object> payload, String oeAnalyzerId) {
+        if (analyzerQcRuleService == null) {
+            return;
+        }
+        // Always attach `qcRules` (empty list when no active rules) so a sync
+        // payload can distinguish "no rules — clear bridge state" from
+        // "field absent — leave bridge state alone". Mirrors attachControlLots.
+        java.util.List<java.util.Map<String, Object>> qcRulesPayload = new java.util.ArrayList<>();
+        java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
+        if (qcRules != null) {
+            for (QcRuleDto r : qcRules) {
+                java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("ruleType", r.ruleType());
+                if (r.targetField() != null) {
+                    m.put("targetField", r.targetField());
+                }
+                m.put("operand", r.operand());
+                qcRulesPayload.add(m);
+            }
+        }
+        payload.put("qcRules", qcRulesPayload);
+    }
+
+    /**
+     * Attach the analyzer's active control lots so the bridge can disambiguate lot
+     * encodings carried in inbound messages — FILE sample names whose sampleId
+     * contains the lot number, ASTM Q-segment field 3 components. Without this the
+     * bridge has no way to surface lot identity, and OE's Tier 1 lot match falls
+     * through to Tier 2/3 (controlLevel match or single-active-lot fallback).
+     */
+    void attachControlLots(java.util.Map<String, Object> payload, String oeAnalyzerId) {
+        // Always attach `controlLots` (empty list when no data) so the bridge
+        // contract is stable — a missing key would let downstream sync logic
+        // treat "absent" as "do not change", which conflicts with the
+        // intended "no active lots, clear them" semantics.
+        java.util.List<java.util.Map<String, Object>> lotsPayload = new java.util.ArrayList<>();
+        if (qcControlLotService != null) {
+            // oeAnalyzerId is a String matching Analyzer.id / QCControlLot.instrumentId
+            // typing — pass through, no parsing needed.
+            if (oeAnalyzerId != null && !oeAnalyzerId.isBlank()) {
+                java.util.List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
+                        .getActiveControlLotsByInstrument(oeAnalyzerId);
+                if (lots != null) {
+                    for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
+                        if (lot.getLotNumber() == null || lot.getLotNumber().isBlank()) {
+                            continue;
+                        }
+                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                        m.put("lotNumber", lot.getLotNumber());
+                        if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
+                            m.put("controlLevel", lot.getControlLevel());
+                        }
+                        if (lot.getTestId() != null) {
+                            m.put("testId", lot.getTestId());
+                        }
+                        lotsPayload.add(m);
+                    }
+                }
+            }
+        }
+        payload.put("controlLots", lotsPayload);
     }
 
 }

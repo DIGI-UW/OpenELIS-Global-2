@@ -1,108 +1,112 @@
 #!/bin/bash
 #
-# run-e2e-like-ci.sh - Run E2E tests EXACTLY like CI does
+# run-e2e-like-ci.sh - Run the Playwright core E2E lane EXACTLY like CI does.
+#
+# CI parity means three things (each was a source of local-only "mystery"
+# failures when it diverged):
+#   1. A FRESH database every run (CI never reuses a volume; dirty-volume
+#      reloads are the only place fixture cleanup FK errors can happen).
+#   2. The workflow's exact fixture command (load-test-fixtures.sh, NOT the
+#      minimal scripts/load-ci-fixtures.sh, which lacks the demo patient and
+#      storage fixtures).
+#   3. The workflow's exact Playwright invocation (core-app + core-demo
+#      projects; workers=1 comes from playwright.config.ts, same as CI).
 #
 # Usage:
-#   ./scripts/run-e2e-like-ci.sh           # Run all tests (fail-fast OFF)
-#   E2E_FAIL_FAST=true ./scripts/run-e2e-like-ci.sh  # Run with fail-fast (dev mode)
-#   ./scripts/run-e2e-like-ci.sh --spec "cypress/e2e/analyzer*.cy.js"  # Run specific tests
+#   ./scripts/run-e2e-like-ci.sh                    # fresh DB + fixtures + core suites
+#   ./scripts/run-e2e-like-ci.sh --keep-db          # skip DB recreate (NOT CI parity;
+#                                                   # dirty-DB runs are unsupported)
+#   ./scripts/run-e2e-like-ci.sh -- --grep "US3"    # args after -- go to playwright
 #
+# The analyzer-harness lane has its own parity runner:
+#   ./projects/analyzer-harness/ci-parity-test.sh
 
-set -e  # Exit on error
+set -e
 
-# Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Running E2E Tests (CI Replication Mode)${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-
-# Get the project root (one directory up from scripts/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# Step 1: Verify Docker containers are running
-echo -e "${YELLOW}[1/5] Checking Docker containers...${NC}"
-if ! docker ps | grep -q "openelisglobal-webapp"; then
-  echo -e "${RED}ERROR: Docker containers not running${NC}"
-  echo "Start containers with:"
-  echo "  docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600"
-  exit 1
-fi
+KEEP_DB=false
+PW_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --keep-db) KEEP_DB=true; shift ;;
+    --) shift; PW_ARGS=("$@"); break ;;
+    *) PW_ARGS+=("$1"); shift ;;
+  esac
+done
 
-if ! docker ps | grep "openelisglobal-database" | grep -q "healthy"; then
-  echo -e "${YELLOW}WARNING: Database not yet healthy, waiting 30 seconds...${NC}"
-  sleep 30
-fi
-echo -e "${GREEN}✓ Containers running${NC}"
+echo -e "${GREEN}=============================================${NC}"
+echo -e "${GREEN}Playwright Core E2E (CI Replication Mode)${NC}"
+echo -e "${GREEN}=============================================${NC}"
 echo ""
 
-# Step 2: Load test fixtures (EXACTLY like CI - same files and ON_ERROR_STOP=on)
-echo -e "${YELLOW}[2/5] Loading test fixtures (CI parity)...${NC}"
-./scripts/load-ci-fixtures.sh -f build.docker-compose.yml
+# Step 1: Fresh stack. CI builds a brand-new database for every run; a reused
+# db-data volume is the one environment CI can never reproduce.
+if [ "$KEEP_DB" = true ]; then
+  echo -e "${YELLOW}[1/4] --keep-db: reusing existing stack/database (NOT CI parity)${NC}"
+  if ! docker ps | grep -q "openelisglobal-webapp"; then
+    echo -e "${RED}ERROR: stack not running. Re-run without --keep-db.${NC}"
+    exit 1
+  fi
+else
+  echo -e "${YELLOW}[1/4] Recreating stack with a FRESH database (like CI)...${NC}"
+  docker compose -f build.docker-compose.yml down -v --remove-orphans
+  docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
+fi
+echo -e "${GREEN}✓ Stack ready${NC}"
+echo ""
+
+# Step 2: Fixtures — the workflow's exact command
+# (.github/workflows/e2e-playwright-reusable.yml, "Load core fixtures").
+echo -e "${YELLOW}[2/4] Loading core fixtures (CI command)...${NC}"
+./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 echo -e "${GREEN}✓ Fixtures loaded${NC}"
 echo ""
 
-# Step 3: Configure fail-fast mode
-echo -e "${YELLOW}[3/5] Checking E2E_FAIL_FAST setting...${NC}"
-if [ "$E2E_FAIL_FAST" = "true" ]; then
-  export CYPRESS_FAIL_FAST_ENABLED=true
-  echo -e "${GREEN}  Fail-fast: ENABLED (will stop on first failure)${NC}"
-else
-  echo -e "${YELLOW}  Fail-fast: DISABLED (will run all tests)${NC}"
-  echo "  Set E2E_FAIL_FAST=true to enable fail-fast"
-fi
-echo ""
-
-# Step 4: Install dependencies (if needed)
-echo -e "${YELLOW}[4/5] Checking frontend dependencies...${NC}"
+# Step 3: Frontend dependencies (lockfile-faithful, like CI).
+echo -e "${YELLOW}[3/4] Checking frontend dependencies...${NC}"
 cd frontend
 if [ ! -d "node_modules" ]; then
-  echo "  Installing dependencies with npm ci (lockfile-faithful, like CI)..."
   if [ -f "package-lock.json" ]; then
+    echo "  Installing with npm ci..."
     npm ci > /dev/null 2>&1
   else
     echo -e "${RED}ERROR: package-lock.json not found in ./frontend${NC}"
-    echo "  Run 'npm install' once and commit the lockfile, then re-run this script."
     exit 1
   fi
 fi
 echo -e "${GREEN}✓ Dependencies ready${NC}"
 echo ""
 
-# Step 5: Run Cypress EXACTLY like CI
-echo -e "${YELLOW}[5/5] Running Cypress E2E tests...${NC}"
-echo "  Command: npx cypress run --browser chrome --headless $@"
+# Step 4: Run the core lane exactly as CI does (same projects, same env;
+# no --shard locally — one machine runs the full set).
+echo -e "${YELLOW}[4/4] Running Playwright core suites...${NC}"
+export BASE_URL="${BASE_URL:-https://localhost}"
+export TEST_USER="${TEST_USER:-admin}"
+export TEST_PASS="${TEST_PASS:-adminADMIN!}"
+CMD=(npm run pw:test -- --project=core-app --project=core-demo)
+CMD+=("${PW_ARGS[@]}")
+printf 'Running: %s\n' "${CMD[*]}"
 echo ""
 
-# Ensure ELECTRON_RUN_AS_NODE doesn't break Cypress (same workaround as npm cy:* scripts)
-unset ELECTRON_RUN_AS_NODE
-
-# Run Cypress directly (not via npm cy:* scripts) to match the CI workflow command
-# and allow arbitrary $@ forwarding without conflicting with script-embedded flags.
-if npx cypress run --browser chrome --headless "$@"; then
+if "${CMD[@]}"; then
   echo ""
-  echo -e "${GREEN}========================================${NC}"
-  echo -e "${GREEN}✓ All E2E tests PASSED${NC}"
-  echo -e "${GREEN}========================================${NC}"
-  exit 0
+  echo -e "${GREEN}=============================================${NC}"
+  echo -e "${GREEN}✓ Core E2E PASSED (CI parity)${NC}"
+  echo -e "${GREEN}=============================================${NC}"
 else
   echo ""
-  echo -e "${RED}========================================${NC}"
-  echo -e "${RED}✗ E2E tests FAILED${NC}"
-  echo -e "${RED}========================================${NC}"
+  echo -e "${RED}=============================================${NC}"
+  echo -e "${RED}✗ Core E2E FAILED${NC}"
+  echo -e "${RED}=============================================${NC}"
   echo ""
-  echo "Screenshots saved to: frontend/cypress/screenshots/"
-  echo ""
-  echo "To debug a specific test:"
-  echo "  ./scripts/run-e2e-like-ci.sh --spec \"cypress/e2e/TESTNAME.cy.js\""
-  echo ""
-  echo "To enable fail-fast (stop on first failure):"
-  echo "  E2E_FAIL_FAST=true ./scripts/run-e2e-like-ci.sh"
+  echo "Report: frontend/playwright-report/  Traces: frontend/test-results/"
   exit 1
 fi

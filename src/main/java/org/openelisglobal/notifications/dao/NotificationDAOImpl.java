@@ -39,7 +39,9 @@ public class NotificationDAOImpl implements NotificationDAO {
         TypedQuery<Notification> query = entityManager.createQuery(
                 "SELECT n FROM Notification n LEFT JOIN FETCH n.user WHERE n.user.id = :userId ORDER BY n.createdDate DESC, n.readAt ASC",
                 Notification.class);
-        query.setParameter("userId", userId);
+        // SystemUser.id is mapped as String, so the parameter must be bound as
+        // String regardless of the Long-typed method argument.
+        query.setParameter("userId", String.valueOf(userId));
         return query.getResultList();
     }
 

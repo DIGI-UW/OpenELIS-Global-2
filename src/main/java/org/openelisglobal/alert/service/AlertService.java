@@ -1,8 +1,10 @@
 package org.openelisglobal.alert.service;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
+import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.service.BaseObjectService;
 
@@ -73,4 +75,13 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @return Count of active alerts
      */
     Long countActiveAlertsForEntity(String entityType, Long entityId);
+
+    /**
+     * Find unacknowledged alerts (status, severity, entity type) whose startTime is
+     * on or before the given cutoff. Used by escalation schedulers to fetch only
+     * the rows that need action — fetching all alerts of a type and filtering in
+     * memory OOMs as the alert table grows.
+     */
+    List<Alert> getUnacknowledgedAlertsOlderThan(String entityType, AlertStatus status, AlertSeverity severity,
+            OffsetDateTime cutoff);
 }

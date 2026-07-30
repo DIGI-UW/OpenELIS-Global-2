@@ -199,6 +199,65 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void importFhirBundle_QCObservationWithLotNumberAndControlLevelExtensions_setsFieldsOnAR() throws Exception {
+        // FHIR extensions on a QC observation must propagate to the staged
+        // AnalyzerResults so QCResultProcessingService can use them for the
+        // Tier 1 (lotNumber) and Tier 2 (controlLevel) lot resolution.
+        String bundleJson = "{" + "\"resourceType\":\"Bundle\",\"type\":\"transaction\",\"entry\":["
+                + "{\"fullUrl\":\"urn:uuid:specimen-1\",\"resource\":{"
+                + "\"resourceType\":\"Specimen\",\"identifier\":[{\"value\":\"QC-RUN-001\"}]" + "}},"
+                + "{\"resource\":{\"resourceType\":\"Observation\","
+                + "\"meta\":{\"tag\":[{\"system\":\"http://openelis-global.org/fhir/tags\",\"code\":\"QC\",\"display\":\"Quality Control\"}]},"
+                + "\"extension\":["
+                + "{\"url\":\"http://openelis-global.org/fhir/qc/lot-number\",\"valueString\":\"LOT-LPC-001\"},"
+                + "{\"url\":\"http://openelis-global.org/fhir/qc/control-level\",\"valueString\":\"LPC\"}" + "],"
+                + "\"specimen\":{\"reference\":\"urn:uuid:specimen-1\"},"
+                + "\"code\":{\"coding\":[{\"code\":\"GLU\"}]}," + "\"valueString\":\"105\"" + "}}" + "]}";
+
+        mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON).content(bundleJson))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.resultsInserted").value(1));
+
+        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+        verify(analyzerResultsService).insertAnalyzerResults(captor.capture(), eq("1"));
+        List<AnalyzerResults> inserted = (List<AnalyzerResults>) captor.getValue();
+        org.junit.Assert.assertEquals(1, inserted.size());
+        AnalyzerResults ar = inserted.get(0);
+        org.junit.Assert.assertTrue("QC tag should map to isControl=true", ar.getIsControl());
+        org.junit.Assert.assertEquals("lot-number extension must populate AR.lotNumber", "LOT-LPC-001",
+                ar.getLotNumber());
+        org.junit.Assert.assertEquals("control-level extension must populate AR.controlLevel", "LPC",
+                ar.getControlLevel());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void importFhirBundle_QCObservationWithoutExtensions_leavesLotAndLevelNull() throws Exception {
+        // Backwards-compat: a QC observation without the new extensions must
+        // not poison AR fields with stale state — both must read null on the
+        // staged record so QCResultProcessingService falls through to Tier 3.
+        String bundleJson = "{" + "\"resourceType\":\"Bundle\",\"type\":\"transaction\",\"entry\":["
+                + "{\"fullUrl\":\"urn:uuid:specimen-1\",\"resource\":{"
+                + "\"resourceType\":\"Specimen\",\"identifier\":[{\"value\":\"QC-RUN-002\"}]" + "}},"
+                + "{\"resource\":{\"resourceType\":\"Observation\","
+                + "\"meta\":{\"tag\":[{\"system\":\"http://openelis-global.org/fhir/tags\",\"code\":\"QC\"}]},"
+                + "\"specimen\":{\"reference\":\"urn:uuid:specimen-1\"},"
+                + "\"code\":{\"coding\":[{\"code\":\"GLU\"}]}," + "\"valueString\":\"100\"" + "}}" + "]}";
+
+        mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON).content(bundleJson))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+
+        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+        verify(analyzerResultsService).insertAnalyzerResults(captor.capture(), eq("1"));
+        List<AnalyzerResults> inserted = (List<AnalyzerResults>) captor.getValue();
+        org.junit.Assert.assertNull("Absent lot-number extension must leave AR.lotNumber null",
+                inserted.get(0).getLotNumber());
+        org.junit.Assert.assertNull("Absent control-level extension must leave AR.controlLevel null",
+                inserted.get(0).getControlLevel());
+    }
+
+    @Test
     public void importFhirBundle_ReusesExistingStubForKnownSourceId() throws Exception {
         // Idempotency: subsequent bundles from the same source hit the fast path
         // via findByDiscoveredSourceId and do NOT create a duplicate stub.

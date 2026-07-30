@@ -43,7 +43,7 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
       if (loaded >= 3) setDataReady(true);
     };
 
-    getFromOpenElisServer("/rest/test-sections", (data) => {
+    getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", (data) => {
       if (data) {
         const items = data.map((ts) => ({
           id: String(ts.id),
@@ -61,7 +61,7 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
       checkReady();
     });
 
-    getFromOpenElisServer("/rest/tests", (data) => {
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (data) => {
       if (data) {
         const items = data.map((t) => ({ id: String(t.id), text: t.value }));
         setTests(items);
@@ -76,7 +76,7 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
       checkReady();
     });
 
-    getFromOpenElisServer("/rest/panels", (data) => {
+    getFromOpenElisServer("/rest/displayList/PANELS", (data) => {
       if (data) {
         const items = data.map((p) => ({ id: String(p.id), text: p.value }));
         setPanels(items);

@@ -4,7 +4,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.barcode.form.LabelRowForm;
@@ -62,23 +61,20 @@ public class BarcodeWorkflowPrintServiceImpl implements BarcodeWorkflowPrintServ
         dialog.setReprintContextToken(accessionNumber);
         dialog.setAllowSkipPrintLater(true);
 
-        Map<String, Integer> printableTypes = new LinkedHashMap<>();
+        List<PrintableLabelOptionForm> printableOptions = new ArrayList<>();
         if (labelsSection != null) {
-            addPositiveTypes(printableTypes, labelsSection.getOrderRow());
-            if (labelsSection.getSampleRows() != null) {
-                for (LabelRowForm row : labelsSection.getSampleRows()) {
-                    addPositiveTypes(printableTypes, row);
+            // orderRow holds whole-accession entries (the order label and
+            // pathology types — block/slide/freezer — that callers route here).
+            addOrderOptions(printableOptions, accessionNumber, labelsSection.getOrderRow());
+            // One specimen entry per sample row, tagged with the row's 1-based
+            // position. Without that suffix, LabelMakerServlet treats
+            // type=specimen as "every sample item" and multiplies the count.
+            List<LabelRowForm> sampleRows = labelsSection.getSampleRows();
+            if (sampleRows != null) {
+                for (int i = 0; i < sampleRows.size(); i++) {
+                    addSampleOptions(printableOptions, accessionNumber, i + 1, sampleRows.get(i));
                 }
             }
-        }
-        List<PrintableLabelOptionForm> printableOptions = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : printableTypes.entrySet()) {
-            PrintableLabelOptionForm option = new PrintableLabelOptionForm();
-            option.setLabelType(entry.getKey());
-            option.setQuantity(entry.getValue());
-            option.setDimensionsMm("");
-            option.setPrintUrl(buildPrintUrl(accessionNumber, entry.getKey()));
-            printableOptions.add(option);
         }
         dialog.setPrintableLabelTypes(printableOptions);
         return dialog;
@@ -88,28 +84,75 @@ public class BarcodeWorkflowPrintServiceImpl implements BarcodeWorkflowPrintServ
         return quantity == null || quantity < 0 ? 0 : quantity;
     }
 
-    private void addPositiveTypes(Map<String, Integer> printableTypes, LabelRowForm row) {
+    private void addOrderOptions(List<PrintableLabelOptionForm> options, String accessionNumber, LabelRowForm row) {
         if (row == null || row.getQuantities() == null) {
             return;
         }
         for (Map.Entry<String, Integer> entry : row.getQuantities().entrySet()) {
-            int normalizedQuantity = normalizeQuantity(entry.getValue());
-            if (normalizedQuantity > 0) {
-                printableTypes.put(entry.getKey(), printableTypes.getOrDefault(entry.getKey(), 0) + normalizedQuantity);
+            int qty = normalizeQuantity(entry.getValue());
+            if (qty <= 0) {
+                continue;
             }
+            PrintableLabelOptionForm option = new PrintableLabelOptionForm();
+            option.setLabelType(entry.getKey());
+            option.setQuantity(qty);
+            option.setDimensionsMm("");
+            option.setPrintUrl(buildPrintUrl(accessionNumber, entry.getKey(), qty));
+            options.add(option);
         }
     }
 
-    private String buildPrintUrl(String accessionNumber, String labelType) {
-        String typeForUrl = labelType;
-        if ("block".equals(labelType)) {
-            typeForUrl = "blockOrder";
-        } else if ("slide".equals(labelType)) {
-            typeForUrl = "slideOrder";
+    private void addSampleOptions(List<PrintableLabelOptionForm> options, String accessionNumber, int sampleNumber,
+            LabelRowForm row) {
+        if (row == null || row.getQuantities() == null) {
+            return;
         }
-        String encodedAccession = URLEncoder.encode(accessionNumber == null ? "" : accessionNumber,
-                StandardCharsets.UTF_8);
-        String encodedType = URLEncoder.encode(typeForUrl == null ? "" : typeForUrl, StandardCharsets.UTF_8);
-        return String.format("/LabelMakerServlet?labNo=%s&type=%s", encodedAccession, encodedType);
+        for (Map.Entry<String, Integer> entry : row.getQuantities().entrySet()) {
+            int qty = normalizeQuantity(entry.getValue());
+            if (qty <= 0) {
+                continue;
+            }
+            PrintableLabelOptionForm option = new PrintableLabelOptionForm();
+            option.setLabelType(entry.getKey());
+            option.setSampleNumber(sampleNumber);
+            option.setQuantity(qty);
+            option.setDimensionsMm("");
+            option.setPrintUrl(buildSpecimenPrintUrl(accessionNumber, entry.getKey(), sampleNumber, qty));
+            options.add(option);
+        }
+    }
+
+    private String buildPrintUrl(String accessionNumber, String labelType, int quantity) {
+        String typeForUrl = mapLabelTypeForUrl(labelType);
+        String encodedAccession = encode(accessionNumber);
+        String encodedType = encode(typeForUrl);
+        return String.format("/LabelMakerServlet?labNo=%s&type=%s&quantity=%d", encodedAccession, encodedType,
+                Math.max(quantity, 1));
+    }
+
+    private String buildSpecimenPrintUrl(String accessionNumber, String labelType, int sampleNumber, int quantity) {
+        String typeForUrl = mapLabelTypeForUrl(labelType);
+        String labNo = (accessionNumber == null ? "" : accessionNumber) + "." + sampleNumber;
+        return String.format("/LabelMakerServlet?labNo=%s&type=%s&quantity=%d", encode(labNo), encode(typeForUrl),
+                Math.max(quantity, 1));
+    }
+
+    private String mapLabelTypeForUrl(String labelType) {
+        // BarcodeLabelMaker.generateLabels only branches on the *Order
+        // variants — passing the bare type silently produces an empty PDF.
+        if ("block".equals(labelType)) {
+            return "blockOrder";
+        }
+        if ("slide".equals(labelType)) {
+            return "slideOrder";
+        }
+        if ("freezer".equals(labelType)) {
+            return "freezerOrder";
+        }
+        return labelType;
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 }

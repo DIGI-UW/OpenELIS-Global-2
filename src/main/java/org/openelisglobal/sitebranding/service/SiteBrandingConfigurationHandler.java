@@ -101,7 +101,6 @@ public class SiteBrandingConfigurationHandler implements DomainConfigurationHand
 
         // Get or create branding entity
         SiteBranding branding = siteBrandingService.getBranding();
-        branding.setSysUserId("1"); // System user for configuration loading
 
         // Process logo files
         processLogoFile(brandingConfig, "headerLogo", branding, LogoType.HEADER);

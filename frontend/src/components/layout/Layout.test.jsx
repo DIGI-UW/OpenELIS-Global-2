@@ -1,10 +1,15 @@
 import React, { useContext } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
+import { vi } from "vitest";
+import Admin from "../admin/Admin";
 import Layout, { ConfigurationContext, NotificationContext } from "./Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import enMessages from "../../languages/en.json";
+import { getFromOpenElisServer } from "../utils/Utils";
 
 /**
  * Integration tests for Layout.js
@@ -26,6 +31,8 @@ vi.mock("../utils/Utils", () => ({
       callback({ releaseNumber: "3.0.0" });
     } else if (url === "/rest/menu") {
       callback([]);
+    } else if (url === "/rest/database-cleaning/status") {
+      callback({ trainingInstallation: false });
     }
   }),
   putToOpenElisServer: vi.fn(),
@@ -48,13 +55,10 @@ const mockUserSessionContextValue = {
 // Test wrapper with all required providers
 const renderWithProviders = (
   ui,
-  {
-    route = "/",
-    userContext = mockUserSessionContextValue,
-    onChangeLanguage = vi.fn(),
-  } = {},
+  { route = "/", userContext = mockUserSessionContextValue } = {},
 ) => {
   const messages = {
+    ...enMessages,
     "header.label.version": "Version",
     "header.label.logout": "Logout",
     "header.label.selectlocale": "Language",
@@ -83,6 +87,8 @@ const renderWithProviders = (
   );
 };
 
+let viewportIsDesktop = true;
+
 describe("Layout", () => {
   beforeAll(() => {
     // Minimal service worker mock to satisfy notification component
@@ -99,10 +105,24 @@ describe("Layout", () => {
         configurable: true,
       });
     }
+    // Viewport-aware matchMedia: useIsDesktop keys off the desktop query.
+    // Tests flip `viewportIsDesktop` before rendering to simulate small screens.
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === "(min-width: 1024px)" && viewportIsDesktop,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    viewportIsDesktop = true;
   });
 
   describe("TwoModeLayout integration", () => {
@@ -184,6 +204,35 @@ describe("Layout", () => {
       expect(screen.getByTestId("config-consumer").textContent).toBe(
         "context-available",
       );
+    });
+
+    test("testLayout_ReloadConfiguration_PerformsOneAuthenticatedFetch", async () => {
+      const ConfigReloader = () => {
+        const config = useContext(ConfigurationContext);
+        return (
+          <button type="button" onClick={() => config.reloadConfiguration()}>
+            Reload configuration
+          </button>
+        );
+      };
+
+      renderWithProviders(
+        <Layout>
+          <ConfigReloader />
+        </Layout>,
+      );
+
+      const configurationFetches = () =>
+        getFromOpenElisServer.mock.calls.filter(
+          ([url]) => url === "/rest/configuration-properties",
+        ).length;
+      const initialFetches = configurationFetches();
+
+      fireEvent.click(screen.getByText("Reload configuration"));
+
+      await waitFor(() => {
+        expect(configurationFetches()).toBe(initialFetches + 1);
+      });
     });
 
     /**
@@ -299,6 +348,221 @@ describe("Layout", () => {
       );
       expect(contentWrapper).toBeTruthy();
       // Note: defaultMode is "lock" for /analyzers
+    });
+
+    test.each([
+      "/admin",
+      "/MasterListsPage",
+      "/MasterListsPage/userManagement",
+    ])("testLayout_AdminRoute_DefaultsToExpandedShellAdminNav_%s", (route) => {
+      const { container } = renderWithProviders(
+        <Layout>
+          <Admin />
+        </Layout>,
+        { route },
+      );
+
+      const contentWrapper = screen.getByTestId("content-wrapper");
+      expect(contentWrapper).toHaveClass("content-nav-locked");
+
+      const sideNavs = container.querySelectorAll(".cds--side-nav");
+      expect(sideNavs).toHaveLength(1);
+      expect(sideNavs[0]).toHaveClass("cds--side-nav--expanded");
+      expect(sideNavs[0]).toHaveClass("admin-shell-side-nav");
+      expect(
+        screen.getByText(enMessages["sidenav.label.admin.testmgt"]),
+      ).toBeInTheDocument();
+    });
+
+    // Stale legacy "close" preference must not hide the desktop nav
+    test("testLayout_AdminRoute_IgnoresStaleClosePreference", async () => {
+      window.localStorage.setItem("adminSideNavMode", "close");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <Admin />
+        </Layout>,
+        { route: "/MasterListsPage/SiteInformationMenu" },
+      );
+
+      await waitFor(() => {
+        const sideNav = container.querySelector(".cds--side-nav");
+        expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      });
+      expect(
+        screen.getByText(enMessages["sidenav.label.admin.testmgt"]),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("responsive viewport behavior", () => {
+    /**
+     * Regression test for the tablet occlusion bug: on a small viewport the
+     * nav must never render persistently over the content — even with a stale
+     * mode preference left in localStorage by an older app version.
+     */
+    test("testLayout_SmallViewport_NavClosedByDefault", () => {
+      viewportIsDesktop = false;
+      window.localStorage.setItem("mainSideNavMode", "lock"); // stale legacy key
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).not.toHaveClass("cds--side-nav--expanded");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+    });
+
+    test("testLayout_SmallViewport_HamburgerTogglesOverlayDrawer", () => {
+      viewportIsDesktop = false;
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      fireEvent.click(container.querySelector("#sidenav-menu-button"));
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      // Overlay drawer (non-persistent), content not pushed
+      expect(sideNav).toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+
+      fireEvent.click(container.querySelector("#sidenav-menu-button"));
+      expect(container.querySelector(".cds--side-nav")).not.toHaveClass(
+        "cds--side-nav--expanded",
+      );
+    });
+
+    test("testLayout_Desktop_NavAlwaysRenderedWithoutHamburger", () => {
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).not.toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).toHaveClass(
+        "content-nav-locked",
+      );
+      // No nav toggle exists on desktop
+      expect(container.querySelector("#sidenav-menu-button")).toBeNull();
+    });
+
+    test("testLayout_SmallViewport_HamburgerRendered", () => {
+      viewportIsDesktop = false;
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      expect(container.querySelector("#sidenav-menu-button")).not.toBeNull();
+    });
+  });
+
+  describe("sidenav pin preference", () => {
+    /**
+     * The desktop nav is pinned by default (persistent, pushing content), but
+     * the pin toggle at the top of the sidenav lets the user unpin it into an
+     * on-demand overlay drawer. The preference persists via localStorage.
+     */
+    test("testLayout_Desktop_PinToggleRendered", () => {
+      renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      expect(screen.getByTestId("sidenav-pin-toggle")).toBeInTheDocument();
+    });
+
+    test("testLayout_SmallViewport_NoPinToggle", () => {
+      viewportIsDesktop = false;
+
+      renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      expect(screen.queryByTestId("sidenav-pin-toggle")).toBeNull();
+    });
+
+    test("testLayout_Desktop_UnpinConvertsNavToOverlayDrawer", () => {
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      fireEvent.click(screen.getByTestId("sidenav-pin-toggle"));
+
+      // Nav stays visible mid-interaction, but as an overlay drawer:
+      // content is no longer pushed and the hamburger appears.
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+      expect(container.querySelector("#sidenav-menu-button")).not.toBeNull();
+      expect(window.localStorage.getItem("sideNavPinned")).toBe("false");
+    });
+
+    test("testLayout_Desktop_UnpinnedPreferenceRestoredOnLoad", () => {
+      window.localStorage.setItem("sideNavPinned", "false");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      // Unpinned desktop behaves like the small-viewport drawer
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).not.toHaveClass("cds--side-nav--expanded");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+
+      fireEvent.click(container.querySelector("#sidenav-menu-button"));
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
+    });
+
+    test("testLayout_Desktop_RepinRestoresPersistentNav", () => {
+      window.localStorage.setItem("sideNavPinned", "false");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      fireEvent.click(screen.getByTestId("sidenav-pin-toggle"));
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).not.toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).toHaveClass(
+        "content-nav-locked",
+      );
+      expect(container.querySelector("#sidenav-menu-button")).toBeNull();
+      expect(window.localStorage.getItem("sideNavPinned")).toBe("true");
     });
   });
 

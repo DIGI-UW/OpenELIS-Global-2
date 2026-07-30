@@ -48,6 +48,7 @@ public class NceAttachmentServiceImpl extends AuditableBaseObjectServiceImpl<Nce
 
     public NceAttachmentServiceImpl() {
         super(NceAttachment.class);
+        this.auditTrailLog = true;
     }
 
     @Override

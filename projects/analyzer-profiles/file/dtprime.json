@@ -1,14 +1,17 @@
 {
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "profileMeta": {
     "id": "dtprime",
     "version": "1.0.0",
     "displayName": "DNA Technology DT-Prime",
+    "confidence": "MEDIUM",
     "manufacturer": "DNA Technology"
   },
   "protocol": {
     "name": "FILE",
     "format": "XML"
   },
+  "category": "MOLECULAR",
   "supported_extensions": [
     ".xml"
   ],
@@ -43,10 +46,30 @@
   "configDefaults": {
     "fileFormat": "XML",
     "qcRules": [
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "C+", "isActive": true, "sortOrder": 1 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "C-", "isActive": true, "sortOrder": 2 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NTC", "isActive": true, "sortOrder": 3 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PTC", "isActive": true, "sortOrder": 4 }
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "C+",
+        "isActive": true,
+        "sortOrder": 1
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "C-",
+        "isActive": true,
+        "sortOrder": 2
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "NTC",
+        "isActive": true,
+        "sortOrder": 3
+      },
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "PTC",
+        "isActive": true,
+        "sortOrder": 4
+      }
     ]
   }
 }

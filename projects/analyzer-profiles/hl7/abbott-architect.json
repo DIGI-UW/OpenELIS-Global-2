@@ -3,17 +3,27 @@
   "profileMeta": {
     "id": "abbott-architect",
     "version": "1.2.0",
-    "displayName": "Abbott Architect"
+    "displayName": "Abbott Architect",
+    "confidence": "LOW"
   },
   "analyzer_name": "Abbott Architect",
   "manufacturer": "Abbott",
   "category": "IMMUNOLOGY",
-  "protocol": { "name": "HL7", "version": "2.5.1" },
+  "protocol": {
+    "name": "HL7",
+    "version": "2.5.1"
+  },
   "identifier_pattern": "ABBOTT|ARCHITECT",
-  "transport": ["RS-232", "TCP/IP"],
+  "transport": [
+    "RS-232",
+    "TCP/IP"
+  ],
   "transport_config": {
     "RS-232": {},
-    "TCP/IP": { "default_port": 5000, "framing": "MLLP" }
+    "TCP/IP": {
+      "default_port": 5000,
+      "framing": "MLLP"
+    }
   },
   "msh3_pattern": "ARCHITECT|ABBOTT",
   "default_test_mappings": [

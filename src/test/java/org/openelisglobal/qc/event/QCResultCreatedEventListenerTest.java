@@ -45,8 +45,8 @@ public class QCResultCreatedEventListenerTest {
         testResult = new QCResult();
         testResult.setId("R1");
         testResult.setControlLotId("LOT1");
-        testResult.setTestId(100);
-        testResult.setInstrumentId(200);
+        testResult.setTestId("100");
+        testResult.setInstrumentId("200");
         testResult.setResultValue(new BigDecimal("115.00"));
         testResult.setRunDateTime(new Timestamp(System.currentTimeMillis()));
 

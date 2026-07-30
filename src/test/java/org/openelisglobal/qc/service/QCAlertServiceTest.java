@@ -49,8 +49,8 @@ public class QCAlertServiceTest {
         rejectionViolation.setId("V1");
         rejectionViolation.setRuleCode("1₃ₛ");
         rejectionViolation.setSeverity("REJECTION");
-        rejectionViolation.setTestId(100);
-        rejectionViolation.setInstrumentId(200);
+        rejectionViolation.setTestId("100");
+        rejectionViolation.setInstrumentId("200");
         rejectionViolation.setViolationDateTime(Timestamp.from(Instant.now()));
         rejectionViolation.setTriggeringResultId("R1");
 
@@ -58,8 +58,8 @@ public class QCAlertServiceTest {
         warningViolation.setId("V2");
         warningViolation.setRuleCode("1₂ₛ");
         warningViolation.setSeverity("WARNING");
-        warningViolation.setTestId(100);
-        warningViolation.setInstrumentId(200);
+        warningViolation.setTestId("100");
+        warningViolation.setInstrumentId("200");
         warningViolation.setViolationDateTime(Timestamp.from(Instant.now()));
         warningViolation.setTriggeringResultId("R2");
     }

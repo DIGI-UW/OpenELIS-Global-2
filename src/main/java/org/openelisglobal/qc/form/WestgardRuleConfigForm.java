@@ -16,10 +16,10 @@ public class WestgardRuleConfigForm extends BaseForm {
 
     // Test and Instrument identifiers
     @NotNull(message = "Test ID is required")
-    private Integer testId;
+    private String testId;
 
     @NotNull(message = "Instrument ID is required")
-    private Integer instrumentId;
+    private String instrumentId;
 
     // Rule configurations
     private List<RuleConfigDTO> ruleConfigs;
@@ -34,19 +34,19 @@ public class WestgardRuleConfigForm extends BaseForm {
         // Default constructor
     }
 
-    public Integer getTestId() {
+    public String getTestId() {
         return testId;
     }
 
-    public void setTestId(Integer testId) {
+    public void setTestId(String testId) {
         this.testId = testId;
     }
 
-    public Integer getInstrumentId() {
+    public String getInstrumentId() {
         return instrumentId;
     }
 
-    public void setInstrumentId(Integer instrumentId) {
+    public void setInstrumentId(String instrumentId) {
         this.instrumentId = instrumentId;
     }
 

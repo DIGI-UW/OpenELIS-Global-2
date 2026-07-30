@@ -79,6 +79,8 @@ import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 // TODO unused
 public class ResultUtil {
@@ -215,12 +217,29 @@ public class ResultUtil {
         return !GenericValidator.isBlankOrNull(item.getForceTechApproval());
     }
 
+    /**
+     * Multi-component analyses post one TestResultItem per component, all sharing
+     * the same analysisId. The same detached Analysis instance must be reused
+     * across those items so the analysis is registered for update (and later
+     * merged) only once per save; merging a second detached copy after the first
+     * merge flushes fails the optimistic lock on lastupdated and rolls back the
+     * whole transaction.
+     */
+    public static Analysis resolveModifiedAnalysis(ResultsUpdateDataSet actionDataSet, String analysisId) {
+        Analysis analysis = actionDataSet.findModifiedAnalysis(analysisId);
+        if (analysis == null) {
+            analysis = analysisService.get(analysisId);
+            actionDataSet.getModifiedAnalysis().add(analysis);
+        }
+        return analysis;
+    }
+
     public static void createAnalysisOnlyUpdates(ResultsUpdateDataSet actionDataSet, HttpServletRequest request) {
         for (TestResultItem testResultItem : actionDataSet.getAnalysisOnlyChangeResults()) {
 
-            Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+            Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setSysUserId(ControllerUtills.getSysUserId(request));
-            analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testResultItem.getTestDate()));
+            analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testResultItem.getTestDate()));
             if (testResultItem.getAnalysisMethod() != null) {
                 analysis.setAnalysisType(testResultItem.getAnalysisMethod());
             }
@@ -233,25 +252,49 @@ public class ResultUtil {
                     analysis.setResultFile(resultFile);
                 }
             }
-            actionDataSet.getModifiedAnalysis().add(analysis);
         }
     }
 
     public static void createResultsFromItems(ResultsUpdateDataSet actionDataSet, boolean supportReferrals,
             boolean alwaysValidate, boolean useTechnicianName, String statusRuleSet, HttpServletRequest request) {
 
+        // OGC-745 follow-up: reject force-acceptance without a justification note
+        // server-side, before any persistence runs. The UI's AcceptUnconditionallyGuard
+        // already enforces a non-blank note, but a scripted / direct API client could
+        // post forceTechApproval=true with a blank forceTechApprovalNote and bypass the
+        // audit_trail invariant otherwise. Fail fast at the BAD_REQUEST level so
+        // partial persistence cannot occur for any item in the batch.
+        for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
+            if (isForcedToAcceptance(testResultItem)
+                    && GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Unconditional acceptance requires a non-blank justification note " + "(testResult["
+                                + testResultItem.getAnalysisId() + "].forceTechApprovalNote).");
+            }
+        }
+
+        Set<String> correctedFlagComputedIds = new HashSet<>();
+
         for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
 
-            Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+            Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
             analysis.setSysUserId(ControllerUtills.getSysUserId(request));
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
-            actionDataSet.getModifiedAnalysis().add(analysis);
 
             actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
                     testResultItem.getNote(), RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+
+            // OGC-745: persist unconditional-acceptance justification as a
+            // distinct note type so supervisor audit review can filter on it.
+            if (ResultUtil.isForcedToAcceptance(testResultItem)
+                    && !GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
+                actionDataSet.addToNoteList(noteService.createSavableNote(analysis,
+                        NoteType.UNCONDITIONAL_ACCEPTANCE_REASON, testResultItem.getForceTechApprovalNote(),
+                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+            }
 
             if (testResultItem.isShadowRejected()) {
                 testResultItem.setResultValue("");
@@ -273,8 +316,13 @@ public class ResultUtil {
             List<Result> results = resultSaveService.createResultsFromTestResultItem(bean,
                     actionDataSet.getDeletableResults());
 
-            analysis.setCorrectedSincePatientReport(
-                    resultSaveService.isUpdatedResult() && analysisService.patientReportHasBeenDone(analysis));
+            boolean correctedSinceReport = resultSaveService.isUpdatedResult()
+                    && analysisService.patientReportHasBeenDone(analysis);
+            if (correctedFlagComputedIds.add(analysis.getId())) {
+                analysis.setCorrectedSincePatientReport(correctedSinceReport);
+            } else if (correctedSinceReport) {
+                analysis.setCorrectedSincePatientReport(true);
+            }
 
             if (analysisService.hasBeenCorrectedSinceLastPatientReport(analysis)) {
                 Note note = noteService.createSavableNote(analysis, NoteType.EXTERNAL,
@@ -506,21 +554,18 @@ public class ResultUtil {
         }
         // analysis.setStartedDateForDisplay(testDate);
 
+        if (!GenericValidator.isBlankOrNull(testDate)) {
+            analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testDate));
+        }
+
         // This needs to be refactored -- part of the logic is in
         // getStatusForTestResult. RetroCI over rides to whatever was set before
         if (statusRuleSet.equals(IActionConstants.STATUS_RULES_RETROCI)) {
             if (!SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)
                     .equals(analysis.getStatusId())) {
-                analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testDate));
                 analysis.setStatusId(
                         SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
             }
-        } else if (SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.Finalized)
-                || SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
-                        AnalysisStatus.TechnicalAcceptance)
-                || (analysis.isReferredOut()
-                        && !GenericValidator.isBlankOrNull(testResultItem.getShadowResultValue()))) {
-            analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testDate));
         }
     }
 

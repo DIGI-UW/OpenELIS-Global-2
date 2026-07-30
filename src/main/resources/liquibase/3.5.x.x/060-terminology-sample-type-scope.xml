@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1145 (FR-11) — terminology mappings become sample-type-keyable NOW so
+    the Phase 2 per-specimen LOINC override lands with no migration:
+    (test_id, component_id, sample_type_id, source, code) where a NULL
+    sample_type_id means the mapping is shared across every sample type the
+    test associates (today's behavior; Phase 1 writes only shared rows).
+    Mirrors the 053 component-scope pattern.
+    -->
+    <changeSet id="OGC-1145-terminology-sample-type-scope" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_terminology_mapping" columnName="sample_type_id"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="test_terminology_mapping">
+            <column name="sample_type_id" type="numeric(10,0)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_test_terminology_mapping_sample_type"
+            baseTableSchemaName="clinlims" baseTableName="test_terminology_mapping" baseColumnNames="sample_type_id"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id"/>
+        <sql>
+            DROP INDEX IF EXISTS clinlims.uq_test_terminology_mapping_test;
+            DROP INDEX IF EXISTS clinlims.uq_test_terminology_mapping_component;
+            CREATE UNIQUE INDEX uq_test_terminology_mapping_test
+                ON clinlims.test_terminology_mapping (test_id, source, code)
+             WHERE component_id IS NULL AND sample_type_id IS NULL;
+            CREATE UNIQUE INDEX uq_test_terminology_mapping_component
+                ON clinlims.test_terminology_mapping (test_id, component_id, source, code)
+             WHERE component_id IS NOT NULL AND sample_type_id IS NULL;
+            CREATE UNIQUE INDEX uq_test_terminology_mapping_sample_type
+                ON clinlims.test_terminology_mapping (test_id, sample_type_id, source, code)
+             WHERE component_id IS NULL AND sample_type_id IS NOT NULL;
+            CREATE UNIQUE INDEX uq_test_terminology_mapping_component_sample_type
+                ON clinlims.test_terminology_mapping (test_id, component_id, sample_type_id, source, code)
+             WHERE component_id IS NOT NULL AND sample_type_id IS NOT NULL;
+        </sql>
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS clinlims.uq_test_terminology_mapping_sample_type;
+                DROP INDEX IF EXISTS clinlims.uq_test_terminology_mapping_component_sample_type;
+                DROP INDEX IF EXISTS clinlims.uq_test_terminology_mapping_test;
+                DROP INDEX IF EXISTS clinlims.uq_test_terminology_mapping_component;
+                CREATE UNIQUE INDEX uq_test_terminology_mapping_test
+                    ON clinlims.test_terminology_mapping (test_id, source, code)
+                 WHERE component_id IS NULL;
+                CREATE UNIQUE INDEX uq_test_terminology_mapping_component
+                    ON clinlims.test_terminology_mapping (test_id, component_id, source, code)
+                 WHERE component_id IS NOT NULL;
+            </sql>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_terminology_mapping"
+                constraintName="fk_test_terminology_mapping_sample_type"/>
+            <dropColumn schemaName="clinlims" tableName="test_terminology_mapping" columnName="sample_type_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

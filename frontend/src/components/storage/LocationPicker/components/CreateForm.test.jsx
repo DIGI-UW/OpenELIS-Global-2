@@ -149,13 +149,17 @@ describe("CreateForm — inline create", () => {
     ).toBeGreaterThanOrEqual(5);
   });
 
-  it("opens an inline-create dialog when 'Add new' for Room is clicked", () => {
+  it("renders the inline-create form when 'Add new' for Room is clicked", () => {
     mockRoomsApi([]);
     renderWithIntl(<CreateForm selection={{}} onLevelChange={vi.fn()} />);
     const addButtons = screen.getAllByRole("button", { name: /add new/i });
     fireEvent.click(addButtons[0]);
-    // Carbon Modal renders role=dialog
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // The form is now rendered inline as a <section role="group"> directly
+    // under the corresponding level row (no nested Carbon Modal — that pattern
+    // had focus-trap conflicts with the outer LocationPickerModal).
+    expect(
+      screen.getByRole("group", { name: /create new room/i }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
   });
 

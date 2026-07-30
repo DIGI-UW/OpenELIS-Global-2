@@ -50,6 +50,9 @@ public class SampleStorageServiceDisposalTest {
     @Mock
     private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
 
+    @Mock
+    private org.openelisglobal.systemuser.service.SystemUserService systemUserService;
+
     @InjectMocks
     private SampleStorageServiceImpl sampleStorageService;
 
@@ -60,6 +63,7 @@ public class SampleStorageServiceDisposalTest {
     private static final String DISPOSED_STATUS_ID = "24";
     private static final String TEST_ACCESSION_NUMBER = "ACC-2024-001";
     private static final String TEST_SAMPLE_ITEM_ID = "123";
+    private static final String TEST_SYS_USER_ID = "42";
 
     @Before
     public void setUp() {
@@ -109,11 +113,16 @@ public class SampleStorageServiceDisposalTest {
 
         // Act
         Map<String, Object> result = sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave",
-                "Test disposal");
+                "Test disposal", TEST_SYS_USER_ID);
 
         // Assert
-        verify(sampleItemDAO).update(testSampleItem);
+        // OGC-738b: must go through sampleItemService.update (audit-emitting path),
+        // not sampleItemDAO.update directly.
+        verify(sampleItemService).update(testSampleItem);
+        verify(sampleItemDAO, never()).update(any(SampleItem.class));
         assertEquals("Status ID should be set to disposed status ID", DISPOSED_STATUS_ID, testSampleItem.getStatusId());
+        assertEquals("sysUserId must be stamped on the item for audit emit", TEST_SYS_USER_ID,
+                testSampleItem.getSysUserId());
         assertEquals(TEST_SAMPLE_ITEM_ID, result.get("sampleItemId"));
         assertEquals("disposed", result.get("status"));
         // Verify no movement record was created (no previous location to track)
@@ -128,7 +137,7 @@ public class SampleStorageServiceDisposalTest {
         when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
         // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null, TEST_SYS_USER_ID);
 
         // Assert - Assignment updated with null location (not deleted) for audit trail
         verify(sampleStorageAssignmentDAO).update(testAssignment);
@@ -138,7 +147,8 @@ public class SampleStorageServiceDisposalTest {
         assertNull("Location Type should be null", testAssignment.getLocationType());
         assertNull("Position Coordinate should be null", testAssignment.getPositionCoordinate());
 
-        verify(sampleItemDAO).update(testSampleItem);
+        verify(sampleItemService).update(testSampleItem);
+        verify(sampleItemDAO, never()).update(any(SampleItem.class));
     }
 
     @Test
@@ -149,7 +159,7 @@ public class SampleStorageServiceDisposalTest {
         when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
         // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes");
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes", TEST_SYS_USER_ID);
 
         // Assert
         verify(sampleStorageMovementDAO).insert(any(SampleStorageMovement.class));
@@ -163,7 +173,7 @@ public class SampleStorageServiceDisposalTest {
         when(statusService.matches(DISPOSED_STATUS_ID, SampleStatus.Disposed)).thenReturn(true);
 
         // Act - should throw LIMSRuntimeException because sample is already disposed
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null, TEST_SYS_USER_ID);
     }
 
     @Test(expected = LIMSRuntimeException.class)
@@ -172,18 +182,48 @@ public class SampleStorageServiceDisposalTest {
         when(sampleItemService.getSampleItemsByExternalID("invalid-id")).thenReturn(java.util.Collections.emptyList());
 
         // Act
-        sampleStorageService.disposeSampleItem("invalid-id", "expired", "autoclave", null);
+        sampleStorageService.disposeSampleItem("invalid-id", "expired", "autoclave", null, TEST_SYS_USER_ID);
     }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_MissingReason_ThrowsException() {
         // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, null, "autoclave", null);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, null, "autoclave", null, TEST_SYS_USER_ID);
     }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_MissingMethod_ThrowsException() {
         // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", null, null);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", null, null, TEST_SYS_USER_ID);
+    }
+
+    /**
+     * OGC-738b: disposal must stamp the acting user's id on the storage-movement
+     * row instead of the previous hardcoded "system user" (id=1).
+     */
+    @Test
+    public void testDisposeSampleItem_MovementUsesActualSysUserId() {
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(testAssignment);
+        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
+
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes",
+                TEST_SYS_USER_ID);
+
+        org.mockito.ArgumentCaptor<SampleStorageMovement> captor = org.mockito.ArgumentCaptor
+                .forClass(SampleStorageMovement.class);
+        verify(sampleStorageMovementDAO).insert(captor.capture());
+        assertEquals("movedByUserId must be the acting sysUserId, not hardcoded 1", Integer.valueOf(TEST_SYS_USER_ID),
+                captor.getValue().getMovedByUserId());
+    }
+
+    /**
+     * OGC-738b: missing sysUserId is a programming error — the controller is
+     * supposed to resolve it via ControllerUtills.getSysUserId. Fail loudly rather
+     * than silently stamping the system user.
+     */
+    @Test(expected = LIMSRuntimeException.class)
+    public void testDisposeSampleItem_MissingSysUserId_ThrowsException() {
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null, null);
     }
 }

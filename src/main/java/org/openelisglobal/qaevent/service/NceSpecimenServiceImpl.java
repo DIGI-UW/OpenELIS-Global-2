@@ -17,6 +17,7 @@ public class NceSpecimenServiceImpl extends AuditableBaseObjectServiceImpl<NceSp
 
     public NceSpecimenServiceImpl() {
         super(NceSpecimen.class);
+        this.auditTrailLog = true;
     }
 
     @Override

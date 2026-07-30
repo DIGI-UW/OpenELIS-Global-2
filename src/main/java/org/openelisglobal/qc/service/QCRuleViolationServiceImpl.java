@@ -118,7 +118,7 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<QCRuleViolation> findByInstrument(Integer instrumentId) {
+    public List<QCRuleViolation> findByInstrument(String instrumentId) {
         return violationDAO.findByInstrument(instrumentId);
     }
 
@@ -130,7 +130,7 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<QCRuleViolation> findUnresolvedByInstrument(Integer instrumentId) {
+    public List<QCRuleViolation> findUnresolvedByInstrument(String instrumentId) {
         return violationDAO.findUnresolvedByInstrument(instrumentId);
     }
 

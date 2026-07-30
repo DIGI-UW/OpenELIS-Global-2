@@ -25,10 +25,10 @@ public class QCViolationForm {
     private String severity;
 
     @NotNull(message = "Instrument ID is required")
-    private Integer instrumentId;
+    private String instrumentId;
 
     @NotNull(message = "Test ID is required")
-    private Integer testId;
+    private String testId;
 
     private String resolutionStatus;
 
@@ -88,19 +88,19 @@ public class QCViolationForm {
         this.severity = severity;
     }
 
-    public Integer getInstrumentId() {
+    public String getInstrumentId() {
         return instrumentId;
     }
 
-    public void setInstrumentId(Integer instrumentId) {
+    public void setInstrumentId(String instrumentId) {
         this.instrumentId = instrumentId;
     }
 
-    public Integer getTestId() {
+    public String getTestId() {
         return testId;
     }
 
-    public void setTestId(Integer testId) {
+    public void setTestId(String testId) {
         this.testId = testId;
     }
 

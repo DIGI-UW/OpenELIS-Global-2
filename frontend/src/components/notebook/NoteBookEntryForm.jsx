@@ -683,7 +683,7 @@ const NoteBookEntryForm = () => {
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
     getFromOpenElisServer("/rest/notebook/questionnaires", setQuestionnaires);
-    getFromOpenElisServer("/rest/panels", setAllPanels);
+    getFromOpenElisServer("/rest/displayList/PANELS", setAllPanels);
     return () => {
       componentMounted.current = false;
     };

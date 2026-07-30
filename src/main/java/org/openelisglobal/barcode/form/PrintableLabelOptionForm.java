@@ -6,6 +6,7 @@ public class PrintableLabelOptionForm {
     private int quantity;
     private String dimensionsMm;
     private String printUrl;
+    private Integer sampleNumber;
 
     public String getLabelType() {
         return labelType;
@@ -37,5 +38,13 @@ public class PrintableLabelOptionForm {
 
     public void setPrintUrl(String printUrl) {
         this.printUrl = printUrl;
+    }
+
+    public Integer getSampleNumber() {
+        return sampleNumber;
+    }
+
+    public void setSampleNumber(Integer sampleNumber) {
+        this.sampleNumber = sampleNumber;
     }
 }

@@ -65,10 +65,6 @@ public abstract class CSVRoutineColumnBuilder {
         return selectedLabUnit;
     }
 
-    public void setSelectedLabUnit(String selectedLabUnit) {
-        this.selectedLabUnit = selectedLabUnit;
-    }
-
     // these are used so we are not passing around strings in the methods that are
     // appended to sql
     // this is to cover any potential sql injection that could be introduced by a
@@ -154,7 +150,22 @@ public abstract class CSVRoutineColumnBuilder {
     @SuppressWarnings("unchecked")
     protected void defineAllTestsAndResults() {
         if (allTests == null) {
-            allTests = testService.getAllOrderBy("description");
+            if (selectedLabUnit != null && !selectedLabUnit.isEmpty()) {
+                List<Test> filtered = new ArrayList<>();
+                for (Test t : testService.getTestsByTestSectionId(selectedLabUnit)) {
+                    if ("Y".equals(t.getIsActive())) {
+                        filtered.add(t);
+                    }
+                }
+                filtered.sort((a, b) -> {
+                    String da = a.getDescription() == null ? "" : a.getDescription();
+                    String db = b.getDescription() == null ? "" : b.getDescription();
+                    return da.compareTo(db);
+                });
+                allTests = filtered;
+            } else {
+                allTests = testService.getAllOrderBy("description");
+            }
         }
         if (testResultsByTestName == null) {
             testResultsByTestName = new HashMap<>();
@@ -537,11 +548,33 @@ public abstract class CSVRoutineColumnBuilder {
         // conclusion.
         // String excludeAnalytes = getExcludedAnalytesSet();
         SQLConstant listName = SQLConstant.RESULT;
+        if (allTests.isEmpty()) {
+            // Postgres crosstab() requires at least one category column. When
+            // the selected unit has no active tests, skip the pivot entirely
+            // and emit a plain sample_item subquery with just the structural
+            // columns the outer join needs (samp_id, sampleItem_id,
+            // sampleItemNo). The export downloads with only demographic
+            // headers, no test result columns.
+            query.append(", \n\n ( SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo "
+                    + "\n FROM sample_item AS si " + "\n ORDER BY si.samp_id, si.id " + "\n) AS " + listName + "\n ");
+            return;
+        }
         query.append(", \n\n ( SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo, " + listName
                 + ".* " + " FROM sample_item AS si JOIN \n ");
         String labUnitFilter = "";
+        String categoryUnitFilter = "";
         if (selectedLabUnit != null && !selectedLabUnit.isEmpty()) {
             labUnitFilter = " AND ts.id = " + selectedLabUnit;
+            // Drive the inner crosstab category SQL from allTests so the row
+            // count cannot drift from the AS-clause column count.
+            StringBuilder ids = new StringBuilder();
+            for (Test t : allTests) {
+                if (ids.length() > 0) {
+                    ids.append(",");
+                }
+                ids.append(t.getId());
+            }
+            categoryUnitFilter = " AND t.id IN (" + ids + ")";
         }
 
         // Begin cross tab / pivot table
@@ -562,7 +595,8 @@ public abstract class CSVRoutineColumnBuilder {
                 // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
                 // + " AND a.test_id = t.id "
                 + labUnitFilter + "\n ORDER BY 1, 2 "
-                + "\n ', 'SELECT t.description FROM test t where t.is_active = ''Y'' ORDER BY 1' ) ");
+                + "\n ', 'SELECT t.description FROM test t where t.is_active = ''Y''" + categoryUnitFilter
+                + " ORDER BY 1' ) ");
         // end of cross tab
 
         // Name the test pivot table columns . We'll name them all after the

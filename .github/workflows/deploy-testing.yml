@@ -1,0 +1,70 @@
+name: Deploy / Testing VM
+
+# Deploys a chosen ref to a host-mounted testing VM (e.g. testing.openelis-global.org)
+# by running the SAME scripts/deploy-to-testing.sh that developers run locally.
+# Manual-only and gated on the commit's backend Checkpoint being green.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or commit SHA to deploy"
+        required: true
+        default: feat/ogc-285-integration
+      host:
+        description: "Target SSH host"
+        required: false
+        default: testing.openelis-global.org
+      require_green:
+        description: "Require the backend Checkpoint to be green for the commit"
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploy-testing-${{ inputs.host }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.ref }} -> ${{ inputs.host }}
+    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target ref
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+          submodules: recursive
+
+      - name: Gate on backend Checkpoint green
+        if: ${{ inputs.require_green }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "Checking backend Checkpoint for $sha"
+          concl=$(gh api "repos/${{ github.repository }}/commits/$sha/check-runs" \
+            --jq '[.check_runs[] | select(.name | test("Checkpoint - Backend"))] | (last // {}) | .conclusion // "missing"')
+          echo "backend Checkpoint conclusion: $concl"
+          if [ "$concl" != "success" ]; then
+            echo "::error::Backend Checkpoint is '$concl' (not success) for $sha — refusing to deploy. Re-run with require_green=false to override."
+            exit 1
+          fi
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.TESTING_VM_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+
+      - name: Deploy (shared script)
+        env:
+          DEPLOY_HOST: ${{ inputs.host }}
+          REMOTE_USER: ${{ vars.TESTING_VM_USER || 'ubuntu' }}
+          SSH_OPTS: "-i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
+        run: ./scripts/deploy-to-testing.sh

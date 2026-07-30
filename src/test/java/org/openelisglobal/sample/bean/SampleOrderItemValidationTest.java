@@ -2,6 +2,9 @@ package org.openelisglobal.sample.bean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
@@ -10,11 +13,17 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import java.lang.reflect.Field;
 import java.util.Set;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
+import org.openelisglobal.spring.util.SpringContext;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
 /**
  * Validation tests for the informed-consent fields on SampleOrderItem.
@@ -29,6 +38,35 @@ import org.openelisglobal.sample.form.SamplePatientEntryForm;
 public class SampleOrderItemValidationTest {
 
     private static Validator validator;
+    private static AutowireCapableBeanFactory savedFactory;
+
+    /**
+     * Bootstrap SpringContext with a Mockito-stub bean factory so DateUtil's static
+     * initializer can resolve ConfigurationProperties without a full Spring
+     * container. Required for @ValidDate (DateConstraintValidator) tests because
+     * DateUtil.<clinit> reads Property.AmbiguousDateHolder.
+     */
+    @BeforeClass
+    public static void bootstrapSpringContextForDateUtil() throws Exception {
+        DefaultConfigurationProperties stub = mock(DefaultConfigurationProperties.class);
+        when(stub.getPropertyValue(any(Property.class))).thenReturn("X");
+        when(stub.getPropertyValue(any(String.class))).thenReturn("X");
+
+        AutowireCapableBeanFactory stubFactory = mock(AutowireCapableBeanFactory.class);
+        when(stubFactory.getBean(DefaultConfigurationProperties.class)).thenReturn(stub);
+
+        Field factoryField = SpringContext.class.getDeclaredField("factory");
+        factoryField.setAccessible(true);
+        savedFactory = (AutowireCapableBeanFactory) factoryField.get(null);
+        factoryField.set(null, stubFactory);
+    }
+
+    @AfterClass
+    public static void restoreSpringContext() throws Exception {
+        Field factoryField = SpringContext.class.getDeclaredField("factory");
+        factoryField.setAccessible(true);
+        factoryField.set(null, savedFactory);
+    }
 
     @BeforeClass
     public static void setUpValidator() {
@@ -154,6 +192,61 @@ public class SampleOrderItemValidationTest {
                 defaultViolations.size());
     }
 
+    // --- consentRecordedBy: @Size(max = 255) -------------------------------
+
+    @Test
+    public void consentRecordedBy_null_passes() {
+        SampleOrderItem item = buildBase();
+        item.setConsentRecordedBy(null);
+        Set<ConstraintViolation<SampleOrderItem>> violations = validator.validateProperty(item, "consentRecordedBy",
+                SamplePatientEntryForm.SamplePatientEntry.class);
+        assertNoViolationsOnProperty(violations, "consentRecordedBy");
+    }
+
+    @Test
+    public void consentRecordedBy_exactly255Chars_passes() {
+        SampleOrderItem item = buildBase();
+        item.setConsentRecordedBy(repeat('A', 255));
+        Set<ConstraintViolation<SampleOrderItem>> violations = validator.validateProperty(item, "consentRecordedBy",
+                SamplePatientEntryForm.SamplePatientEntry.class);
+        assertNoViolationsOnProperty(violations, "consentRecordedBy");
+    }
+
+    @Test
+    public void consentRecordedBy_over255Chars_triggersSizeViolation() {
+        SampleOrderItem item = buildBase();
+        item.setConsentRecordedBy(repeat('A', 256));
+        Set<ConstraintViolation<SampleOrderItem>> violations = validator.validateProperty(item, "consentRecordedBy",
+                SamplePatientEntryForm.SamplePatientEntry.class);
+        assertTrue("Expected a @Size violation for 256-char recorder name",
+                hasViolationOnProperty(violations, "consentRecordedBy"));
+    }
+
+    // --- consentRecordedAt: @ValidDate(relative = PAST) --------------------
+    // DateConstraintValidator depends on DateUtil's static initializer, which
+    // pulls Property.AmbiguousDateHolder out of Spring-backed
+    // ConfigurationProperties. The @BeforeClass setup stubs SpringContext so
+    // these tests can run without a full Spring container.
+
+    @Test
+    public void consentRecordedAt_blank_passes() {
+        SampleOrderItem item = buildBase();
+        item.setConsentRecordedAt("");
+        Set<ConstraintViolation<SampleOrderItem>> violations = validator.validateProperty(item, "consentRecordedAt",
+                SamplePatientEntryForm.SamplePatientEntry.class);
+        assertNoViolationsOnProperty(violations, "consentRecordedAt");
+    }
+
+    @Test
+    public void consentRecordedAt_garbage_triggersValidDateViolation() {
+        SampleOrderItem item = buildBase();
+        item.setConsentRecordedAt("not-a-date");
+        Set<ConstraintViolation<SampleOrderItem>> violations = validator.validateProperty(item, "consentRecordedAt",
+                SamplePatientEntryForm.SamplePatientEntry.class);
+        assertTrue("Expected a @ValidDate violation for malformed date",
+                hasViolationOnProperty(violations, "consentRecordedAt"));
+    }
+
     // --- helpers -----------------------------------------------------------
 
     private static String repeat(char c, int n) {
@@ -186,5 +279,26 @@ public class SampleOrderItemValidationTest {
             }
         }
         assertEquals("Expected no consentFormReference violations for: " + (label == null ? "" : label), 0, count);
+    }
+
+    private static boolean hasViolationOnProperty(Set<ConstraintViolation<SampleOrderItem>> violations,
+            String propertyName) {
+        for (ConstraintViolation<SampleOrderItem> v : violations) {
+            if (v.getPropertyPath().toString().equals(propertyName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void assertNoViolationsOnProperty(Set<ConstraintViolation<SampleOrderItem>> violations,
+            String propertyName) {
+        int count = 0;
+        for (ConstraintViolation<SampleOrderItem> v : violations) {
+            if (v.getPropertyPath().toString().equals(propertyName)) {
+                count++;
+            }
+        }
+        assertEquals("Expected no violations on property: " + propertyName, 0, count);
     }
 }
