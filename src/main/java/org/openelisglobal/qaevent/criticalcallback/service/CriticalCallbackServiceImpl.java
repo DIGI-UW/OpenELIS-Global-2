@@ -22,6 +22,7 @@ import org.openelisglobal.qaevent.qiconfig.dto.ResolvedConfig;
 import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
 import org.openelisglobal.qaevent.qiconfig.valueholder.QiIndicator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,8 +44,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalCallback, String>
         implements CriticalCallbackService {
 
-    // ponytail: 60-min SLA constant; move to config only if a lab asks
-    private static final int SLA_MINUTES = 60;
+    /**
+     * Callback target window, the pass line for the compliance numerator and the
+     * "over target" failure reason. TJC NPSG.02.03.01 makes the lab define this
+     * timeframe rather than fixing 60 minutes. ponytail: property, not a qi_config
+     * column — no per-test-section callback policy to model yet.
+     */
+    @Value("${org.openelisglobal.qi.callback.sla.minutes:60}")
+    private int slaMinutes;
 
     /**
      * Released critical results in the window. Same predicate as the write side's
@@ -108,6 +115,7 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
         CallbackSummaryResponse response = new CallbackSummaryResponse();
         response.setEnabled(config.isEnabled());
         response.setTarget(config.getTarget() == null ? null : config.getTarget().doubleValue());
+        response.setSlaMinutes(slaMinutes);
         if (!config.isEnabled()) {
             // opt-in indicator: labs that never enable it pay zero query cost
             return response;
@@ -119,7 +127,7 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
                         "SELECT COUNT(DISTINCT a.id) AS critical_count," + " COUNT(DISTINCT a.id) FILTER (WHERE "
                                 + CONFIRMED_IN_SLA + ") AS confirmed_count" + CRITICAL_FROM + CRITICAL_WHERE)
                 .setParameter("fromTs", startOf(fromDate)).setParameter("toTs", endOf(toDate))
-                .setParameter("slaMinutes", SLA_MINUTES).uniqueResult();
+                .setParameter("slaMinutes", slaMinutes).uniqueResult();
 
         long critical = ((Number) counts[0]).longValue();
         long confirmed = ((Number) counts[1]).longValue();
@@ -200,7 +208,10 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
 
     /**
      * Design §callback-detail histogram: CONFIRMED results bucketed by minutes from
-     * release (a pre-release call lands in "0-5"), everything else "noAck".
+     * release (a pre-release call lands in "0-5"), everything else "noAck". The
+     * bucket edges are absolute latency, deliberately independent of
+     * {@link #slaMinutes} — the histogram describes how fast calls happened, the
+     * SLA decides which of them passed (see {@link #failureCounts}).
      */
     private static Map<String, Long> ackDistribution(List<CallbackEvent> events) {
         Map<String, Long> buckets = new LinkedHashMap<>();
@@ -227,7 +238,7 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
         if (minutes < 30) {
             return "15-30";
         }
-        if (minutes <= SLA_MINUTES) {
+        if (minutes <= 60) {
             return "30-60";
         }
         return "over60";
@@ -236,7 +247,7 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
     /**
      * Non-compliant results by reason; compliant CONFIRMED-in-SLA rows are omitted.
      */
-    private static Map<String, Long> failureCounts(List<CallbackEvent> events) {
+    private Map<String, Long> failureCounts(List<CallbackEvent> events) {
         Map<String, Long> reasons = new LinkedHashMap<>();
         for (String key : List.of("overTarget", "unableToReach", "noReadback", "noCallback")) {
             reasons.put(key, 0L);
@@ -249,7 +260,7 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
                 reasons.merge("unableToReach", 1L, Long::sum);
             } else if ("REACHED_NO_READBACK".equals(status)) {
                 reasons.merge("noReadback", 1L, Long::sum);
-            } else if (event.getMinutesToCallback() != null && event.getMinutesToCallback() > SLA_MINUTES) {
+            } else if (event.getMinutesToCallback() != null && event.getMinutesToCallback() > slaMinutes) {
                 reasons.merge("overTarget", 1L, Long::sum);
             }
         }

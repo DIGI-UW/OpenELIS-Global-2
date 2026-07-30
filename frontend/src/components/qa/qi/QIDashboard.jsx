@@ -579,7 +579,7 @@ const QIDashboard = () => {
             testId="qi-tile-callback"
             titleKey="qa.qi.dashboard.tile.callback.label"
             tooltipKey="qa.qi.dashboard.tile.callback.tooltip"
-            accent="blue"
+            accent={accentFor(callbackData?.compliancePercent, "CALLBACK")}
             loading={callback.loading}
             primary={
               callbackData?.compliancePercent != null
@@ -588,13 +588,16 @@ const QIDashboard = () => {
             }
             delta={callbackDelta}
             targetLine={
-              callbackData?.target != null
-                ? intl.formatMessage(
-                    { id: "qa.qi.dashboard.tile.callback.target" },
-                    { target: callbackData.target },
+              windowId === "ytd"
+                ? intl.formatMessage({
+                    id: "qa.qi.dashboard.tile.callback.vsPriorPeriod",
+                  })
+                : intl.formatMessage(
+                    { id: "qa.qi.dashboard.tile.callback.vsPriorDays" },
+                    { days: win.days },
                   )
-                : null
             }
+            thresholdLine={thresholdLineFor("CALLBACK")}
             secondary={callbackSecondary}
             message={callbackMessage}
             detailPath="/qa/qi/callback"
