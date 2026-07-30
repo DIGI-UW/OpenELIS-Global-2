@@ -113,6 +113,10 @@
         description="Confirmation requested"
         display_key="referral.reason.confirmation"
         lastupdated="2024-01-01 10:00:00" />
+    <referral_reason id="2" name="New Case"
+        description="Initial consultation"
+        display_key="referral.reason.newcase"
+        lastupdated="2024-07-02 09:15:00" />
 
     <!-- Referral for sample_item 1, already assigned to shipping_box 1 (mirrors
         the state that removeSampleItemFromBox must correctly unassign) -->
