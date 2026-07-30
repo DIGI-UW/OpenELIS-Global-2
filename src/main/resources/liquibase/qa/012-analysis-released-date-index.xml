@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    The released-cohort counterpart to qa/011. Amendment, TAT and Critical
+    Callback all range-scan analysis.released_date, and the QI breach
+    evaluator now polls all of them every two minutes over two windows - so
+    an unindexed released_date is a repeated full-table scan, not a
+    once-per-page-view one. The callback query is the heaviest of the three
+    (analysis JOIN result JOIN result_limits with a numeric-value regex), so
+    it feels this first.
+    -->
+    <changeSet author="openelisglobal" id="qi-callback-001-analysis-released-date-index">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" tableName="analysis" indexName="idx_analysis_released_date"/>
+            </not>
+        </preConditions>
+        <comment>Index analysis.released_date for the released-cohort QI queries</comment>
+        <createIndex schemaName="clinlims" tableName="analysis" indexName="idx_analysis_released_date">
+            <column name="released_date" />
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="analysis" indexName="idx_analysis_released_date" />
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

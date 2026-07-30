@@ -10,7 +10,7 @@ package org.openelisglobal.qaevent.qiconfig.valueholder;
  */
 public enum QiIndicator {
     TAT(Direction.LOWER_BETTER, true), REJECTION(Direction.LOWER_BETTER, true), AMENDMENT(Direction.LOWER_BETTER, true),
-    NCE(Direction.LOWER_BETTER, false), CALLBACK(Direction.HIGHER_BETTER, false);
+    NCE(Direction.LOWER_BETTER, false), CALLBACK(Direction.HIGHER_BETTER, true);
 
     /**
      * Whether a higher metric value is better or worse. Drives threshold ordering
@@ -18,7 +18,8 @@ public enum QiIndicator {
      * thresholds are mean-TAT <b>hours</b> (the metric every TAT surface actually
      * computes), not an on-time compliance % — per-test TAT targets are
      * unpopulated, so a compliance % would be incomputable (C.3 gap #3 decision).
-     * REJECTION/AMENDMENT thresholds are rate percentages.
+     * REJECTION/AMENDMENT thresholds are rate percentages. CALLBACK is the one
+     * HIGHER_BETTER indicator — its metric is read-back compliance %.
      */
     public enum Direction {
         HIGHER_BETTER, LOWER_BETTER

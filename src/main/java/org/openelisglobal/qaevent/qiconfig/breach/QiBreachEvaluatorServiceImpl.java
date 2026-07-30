@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.qaevent.criticalcallback.bean.CallbackSummaryResponse;
+import org.openelisglobal.qaevent.criticalcallback.service.CriticalCallbackService;
 import org.openelisglobal.qaevent.qiconfig.dto.ResolvedConfig;
 import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
 import org.openelisglobal.qaevent.qiconfig.valueholder.QiIndicator;
@@ -23,9 +25,10 @@ import org.springframework.stereotype.Service;
  * OGC-712 — every threshold-bearing indicator is evaluated: AMENDMENT and
  * REJECTION as month-to-date rate percentages, TAT as the month-to-date mean
  * receipt→validation duration in hours (matching its qi_config unit; C.3 gap #3
- * decision). NCE stays out — it is self-referential and ships without numeric
- * thresholds by design. All three are LOWER_BETTER, but the comparison goes
- * through the config's direction so a future flip is config-driven.
+ * decision), CALLBACK as the month-to-date critical read-back compliance
+ * percentage. NCE stays out — it is self-referential and ships without numeric
+ * thresholds by design. CALLBACK is HIGHER_BETTER and the rest LOWER_BETTER;
+ * the comparison goes through the config's direction either way.
  *
  * <p>
  * Each run evaluates two windows: the current month-to-date AND the just-closed
@@ -53,6 +56,8 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
     @Autowired
     private TATReportService tatReportService;
     @Autowired
+    private CriticalCallbackService criticalCallbackService;
+    @Autowired
     private QiBreachNceService qiBreachNceService;
 
     // Fixed-rate poller, same shape as the FHIR task poller
@@ -79,6 +84,7 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
         evaluateSafely("AMENDMENT", () -> evaluateAmendment(from, to, periodKey));
         evaluateSafely("REJECTION", () -> evaluateRejection(from, to, periodKey));
         evaluateSafely("TAT", () -> evaluateTat(from, to, periodKey));
+        evaluateSafely("CALLBACK", () -> evaluateCallback(from, to, periodKey));
     }
 
     private void evaluateSafely(String indicator, Runnable evaluation) {
@@ -127,6 +133,20 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
             return; // nothing validated this period
         }
         checkAndFire(QiIndicator.TAT, summary.getMean(), config, "h", periodKey);
+    }
+
+    private void evaluateCallback(LocalDate from, LocalDate to, String periodKey) {
+        ResolvedConfig config = resolveActionable(QiIndicator.CALLBACK);
+        if (config == null) {
+            return;
+        }
+        // Opt-in indicator: getSummary re-checks enabled and short-circuits, so a
+        // lab that never turns CALLBACK on pays nothing here either.
+        CallbackSummaryResponse summary = criticalCallbackService.getSummary(from, to);
+        if (summary.getCompliancePercent() == null) {
+            return; // no critical results released this period
+        }
+        checkAndFire(QiIndicator.CALLBACK, BigDecimal.valueOf(summary.getCompliancePercent()), config, "%", periodKey);
     }
 
     /** Resolved config, or null when disabled / no action threshold set. */

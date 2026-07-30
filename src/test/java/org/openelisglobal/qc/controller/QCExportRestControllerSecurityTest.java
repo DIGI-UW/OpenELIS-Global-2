@@ -30,6 +30,7 @@ import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -245,6 +246,21 @@ public class QCExportRestControllerSecurityTest extends SecuritySliceMockMvcTest
             http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults())
                     .csrf(csrf -> csrf.disable());
             return http.build();
+        }
+
+        // The controller autowires ConfigurationProperties, whose
+        // DefaultConfigurationProperties gained an @Autowired DaemonContextExecutor
+        // in #3356 — so the slice must supply it (and its @Qualifier
+        // "daemonSysUserId" dependency), as
+        // ConfigurationReloadRestControllerSecurityTest does.
+        @Bean("daemonSysUserId")
+        String daemonSysUserId() {
+            return "1";
+        }
+
+        @Bean
+        DaemonContextExecutor daemonContextExecutor() {
+            return new DaemonContextExecutor();
         }
 
         @Bean

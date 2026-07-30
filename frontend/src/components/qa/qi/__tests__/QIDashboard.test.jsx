@@ -109,8 +109,8 @@ const resolvedConfigs = {
   NCE: { enabled: true, target: null, action: null, direction: "LOWER_BETTER" },
   CALLBACK: {
     enabled: true,
-    target: null,
-    action: null,
+    target: 100,
+    action: 95,
     direction: "HIGHER_BETTER",
   },
 };
@@ -221,6 +221,31 @@ describe("QIDashboard", () => {
     const amendmentTile = screen.getByTestId("qi-tile-amendment");
     expect(amendmentTile.className).toContain("qi-tile--green");
     expect(amendmentTile).toHaveTextContent("Target ≤ 0.5% · action ≥ 2%");
+
+    // Callback is the one HIGHER_BETTER indicator: 100% ≥ target 100% => green,
+    // and the caption flips the comparators.
+    const callbackTile = screen.getByTestId("qi-tile-callback");
+    expect(callbackTile.className).toContain("qi-tile--green");
+    expect(callbackTile).toHaveTextContent("Target ≥ 100% · action ≤ 95%");
+  });
+
+  test("callback tile turns red at or below its action threshold", async () => {
+    mockApis({
+      callbackCurrent: {
+        enabled: true,
+        criticalCount: 10,
+        confirmedCount: 9,
+        compliancePercent: 90.0,
+        target: 100,
+        slaMinutes: 60,
+      },
+    });
+    renderPage();
+
+    const callbackTile = screen.getByTestId("qi-tile-callback");
+    await waitFor(() => expect(callbackTile).toHaveTextContent("90.00%"));
+    // 90% ≤ action 95% => red (HIGHER_BETTER breaches downward)
+    expect(callbackTile.className).toContain("qi-tile--red");
   });
 
   test("amendment tile shows rate, improving delta, and counts", async () => {
