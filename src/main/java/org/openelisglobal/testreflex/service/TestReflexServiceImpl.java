@@ -324,7 +324,6 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         defaultResult.setTestResultType(testService.getResultType(triggerTest));
         defaultResult.setSortOrder("0");
         defaultResult.setIsActive(true);
-        defaultResult.setSysUserId("1");
         return testResultService.save(defaultResult);
     }
 

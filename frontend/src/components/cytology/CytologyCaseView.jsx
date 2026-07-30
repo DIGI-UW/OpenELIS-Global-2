@@ -315,7 +315,7 @@ function CytologyCaseView() {
 
   const setInitialPathologySampleInfo = (e) => {
     if (
-      hasRole(userSessionDetails, "CytoPathologist") &&
+      hasRole(userSessionDetails, "Cytopathologist") &&
       !e.assignedPathologistId &&
       e.status === "READY_FOR_CYTOPATHOLOGIST"
     ) {

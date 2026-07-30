@@ -495,15 +495,6 @@ button {
   display: inline-flex !important;
 }
 
-.cds--side-nav__link a {
-  pointer-events: auto;
-  text-decoration: none !important;
-}
-
-.cds--side-nav__link a:hover {
-  background-color: var(--cds-background, #295785);
-}
-
 .reduced-padding-nav-menu-item > a.cds--side-nav__link {
   padding-left: 1rem !important;
 }
@@ -586,12 +577,35 @@ button {
     width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
 }
 
-/* Responsive: Don't push content on smaller screens */
-@media screen and (max-width: 1056px) {
+/* Don't push content below the desktop breakpoint (must match Layout.jsx) */
+@media screen and (max-width: 1023px) {
   .content-nav-locked {
     margin-left: 0 !important;
     width: 100% !important;
   }
+}
+
+/* Pin/unpin control at the top of the sidenav (desktop only) */
+.sidenav-pin-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.25rem 0.5rem 0;
+}
+
+/* Both sidenavs are white, but only the main nav remaps Carbon's icon tokens
+   (the admin nav hard-codes colors on its own selectors instead), so without
+   this the ghost button inherits the blue header theme's light icon color and
+   renders white-on-white in the admin nav. Match the main nav's icon grey. */
+.sidenav-pin-row .cds--btn--ghost {
+  --cds-icon-primary: #525252;
+  color: #525252;
+}
+
+.sidenav-pin-row .cds--btn--ghost:hover,
+.sidenav-pin-row .cds--btn--ghost:focus {
+  --cds-icon-primary: #161616;
+  color: #161616;
+  background-color: #f4f4f4;
 }
 
 /* Allow sidenav to scroll long menus (e.g. Admin) while hiding scrollbar */
@@ -619,55 +633,8 @@ button {
   line-height: 1.3 !important;
 }
 
-.custom-sidenav-button {
-  box-sizing: border-box;
-  margin: 0;
-  border: 0;
-  cursor: pointer;
-  display: flex;
-  visibility: visible !important;
-  align-items: flex-start;
-  background-color: var(--cds-background-hover, #072655);
-  color: var(--cds-text-secondary, #ffffff);
-  transition:
-    color 110ms,
-    background-color 110ms,
-    outline 110ms;
-  -webkit-user-select: none;
-  user-select: none;
-  width: 100%;
-  white-space: normal;
-  word-wrap: break-word;
-  text-align: left;
-  padding: 0.5rem 1rem;
-  min-height: 2rem;
-  height: auto;
-  pointer-events: auto;
-}
-
-.custom-sidenav-button:hover {
-  background-color: var(--cds-background, #295785);
-}
-
-.cds--side-nav--ux .cds--side-nav__link a {
-  pointer-events: auto;
-  text-decoration: none !important;
-  white-space: normal !important;
-  word-wrap: break-word !important;
-}
-
-.cds--side-nav--ux .cds--side-nav__link a:hover {
-  background-color: var(--cds-background, #295785);
-}
-
 .reduced-padding-nav-menu-item > a.cds--side-nav__link {
   padding-left: 1rem !important;
-}
-
-.reduced-padding-nav-menu-item .custom-sidenav-button {
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
-  margin: 0;
 }
 
 .reduced-padding-nav-menu-item {
@@ -711,6 +678,26 @@ button {
 
 .cds--side-nav::-webkit-scrollbar {
   display: none; /* Chrome/Safari/Edge */
+}
+
+/* Light sidenav: white surface matching the content area, gray text/icons,
+   gray active layer, header-blue active left border. Done via Carbon token
+   overrides so the item/hover/active rules above (which all resolve
+   var(--cds-*)) follow along.
+   Excludes the admin nav, which has its own white theme above. */
+#mainHeader .cds--side-nav:not(.admin-shell-side-nav) {
+  --cds-background: #ffffff;
+  --cds-background-hover: #f4f4f4;
+  --cds-layer-01: #ffffff;
+  --cds-layer-hover-01: #f4f4f4;
+  --cds-layer-selected-01: #e0e0e0;
+  --cds-text-primary: #525252;
+  --cds-text-secondary: #525252;
+  --cds-icon-primary: #525252;
+  --cds-icon-secondary: #525252;
+  --cds-link-primary: #295785; /* active left border = header blue */
+  background-color: var(--cds-background);
+  border-right: 1px solid #e0e0e0;
 }
 
 .admin-shell-side-nav,

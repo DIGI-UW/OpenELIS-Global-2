@@ -32,6 +32,7 @@ how to deploy, installation of software, setup of a bulid server, etc)
 - [Implementation Guide](implementation.md)
 - [Troubleshooting](troubleshooting.md)
 - [Password Management](password.md)
+- [Security Documentation](security/index.md)
 
 ## Upgrades
 

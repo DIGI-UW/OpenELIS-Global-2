@@ -18,6 +18,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.context.support.WithMockUser;
 
 /**
  * Integration test for AnalyzerQueryService.storeFields() method
@@ -30,6 +31,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * This test prevents the loop of deployment failures by catching issues before
  * code is deployed.
  */
+@WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
 public class AnalyzerQueryServiceStoreFieldsIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired

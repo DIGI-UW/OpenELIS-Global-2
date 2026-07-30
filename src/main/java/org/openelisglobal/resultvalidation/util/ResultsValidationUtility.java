@@ -446,8 +446,11 @@ public class ResultsValidationUtility {
         displayTestName = appendComponentLabel(displayTestName, result, test);
         // displayTestName = augmentTestNameWithRange(displayTestName, result);
 
-        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(test,
-                currentPatient);
+        // OGC-1145 Phase 2: the analysis's specimen selects a scoped limit
+        // over the shared set when the test carries per-sample-type overrides.
+        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(
+                test.getId(), currentPatient,
+                analysis.getSampleItem() != null ? analysis.getSampleItem().getTypeOfSampleId() : null);
         ResultValidationItem testItem = new ResultValidationItem();
 
         testItem.setAccessionNumber(accessionNumber);

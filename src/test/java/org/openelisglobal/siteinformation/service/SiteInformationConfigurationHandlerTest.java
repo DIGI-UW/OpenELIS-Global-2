@@ -56,7 +56,8 @@ public class SiteInformationConfigurationHandlerTest {
         assertEquals(4, existing.getGroup());
         assertEquals(false, existing.isEncrypted());
         assertSame(domain, existing.getDomain());
-        assertEquals("1", existing.getSysUserId());
+        // sysUserId is stamped by AuditableBaseObjectServiceImpl on insert/update
+        // (mocked here), not by the handler.
     }
 
     @Test
@@ -80,7 +81,6 @@ public class SiteInformationConfigurationHandlerTest {
         assertEquals("text", inserted.getValueType());
         assertEquals("phone", inserted.getTag());
         assertSame(domain, inserted.getDomain());
-        assertEquals("1", inserted.getSysUserId());
     }
 
     private static ByteArrayInputStream csv(String content) {

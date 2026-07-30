@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
@@ -141,7 +142,7 @@ public class SampleTypeCreateController extends BaseController {
     private TypeOfSample createTypeOfSample(String identifyingName, String userId) {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setDescription(identifyingName);
-        typeOfSample.setDomain("H");
+        typeOfSample.setDomain(Domain.CLINICAL.name());
         typeOfSample.setLocalAbbreviation(
                 identifyingName.length() > 10 ? identifyingName.substring(0, 10) : identifyingName);
         typeOfSample.setIsActive(false);

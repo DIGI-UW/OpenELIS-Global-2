@@ -76,6 +76,11 @@ jobs:
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
+          # actions/checkout@v6 (retagged 2026-07-20) refuses fork-PR checkout in
+          # a workflow_run context. This executor intentionally runs PR specs to
+          # validate them, so opt back in. Follow-up: harden so fork code never
+          # runs with base secrets, then this flag can be removed.
+          allow-unsafe-pr-checkout: true
 
       - name: Restore Playwright browser cache
         id: pw-cache
@@ -135,6 +140,11 @@ jobs:
           ref: ${{ inputs.checkout_ref || github.sha }}
           submodules: recursive
           persist-credentials: false
+          # actions/checkout@v6 (retagged 2026-07-20) refuses fork-PR checkout in
+          # a workflow_run context. This executor intentionally runs PR specs to
+          # validate them, so opt back in. Follow-up: harden so fork code never
+          # runs with base secrets, then this flag can be removed.
+          allow-unsafe-pr-checkout: true
 
       - name: Configure swap for OOM resilience
         run: |
@@ -446,6 +456,11 @@ jobs:
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
+          # actions/checkout@v6 (retagged 2026-07-20) refuses fork-PR checkout in
+          # a workflow_run context. This executor intentionally runs PR specs to
+          # validate them, so opt back in. Follow-up: harden so fork code never
+          # runs with base secrets, then this flag can be removed.
+          allow-unsafe-pr-checkout: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
