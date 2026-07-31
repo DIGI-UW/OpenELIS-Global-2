@@ -56,6 +56,7 @@ public final class ClinicalPatientData {
     private String labOrderType = "";
     private String uom;
     private String alerts;
+    private String rangeStatus;
     private String completeFlag;
     private String orderFinishDate;
     private String panelName;
@@ -126,6 +127,7 @@ public final class ClinicalPatientData {
         labOrderType = data.getLabOrderType();
         uom = data.getUom();
         alerts = data.getAlerts();
+        rangeStatus = data.getRangeStatus();
         completeFlag = data.getCompleteFlag();
         orderFinishDate = data.getOrderFinishDate();
         panelName = data.getPanelName();
@@ -468,6 +470,14 @@ public final class ClinicalPatientData {
 
     public void setAlerts(String alerts) {
         this.alerts = alerts;
+    }
+
+    public String getRangeStatus() {
+        return rangeStatus;
+    }
+
+    public void setRangeStatus(String rangeStatus) {
+        this.rangeStatus = rangeStatus;
     }
 
     public String getPanelName() {
