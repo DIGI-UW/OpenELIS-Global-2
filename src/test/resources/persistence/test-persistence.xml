@@ -35,7 +35,6 @@
         <class>org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling</class>
         <class>org.openelisglobal.testterminology.valueholder.TestTerminologyMapping</class>
-        <class>org.openelisglobal.testvariant.valueholder.TestVariantLink</class>
         <class>org.openelisglobal.testreagentlink.valueholder.TestReagentLink</class>
         <class>org.openelisglobal.testalertrule.valueholder.TestAlertRule</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandlingHistory</class>

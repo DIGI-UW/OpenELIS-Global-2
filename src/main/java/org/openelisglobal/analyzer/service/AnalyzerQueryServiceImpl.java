@@ -520,7 +520,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             }
 
             field.setIsActive(true);
-            field.setSysUserId("1");
 
             logger.info(
                     "[STORE_FIELD] Creating field: id={}, fieldName='{}', astmRef='{}', unit='{}', type='{}', analyzerId={}",

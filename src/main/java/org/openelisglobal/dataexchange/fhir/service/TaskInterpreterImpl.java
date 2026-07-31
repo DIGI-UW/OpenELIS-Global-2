@@ -102,6 +102,9 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     private List<InterpreterResults> results = new ArrayList<>();
     private List<String> unsupportedTests = new ArrayList<>();
     private List<String> unsupportedPanels = new ArrayList<>();
+    // OGC-1145 FR-8: the order's code is specimen-ambiguous and the message
+    // carried no specimen — TaskWorker queues it AwaitingSpecimen, not Entered.
+    private boolean specimenClarificationNeeded = false;
     private ITestIdentityService testIdentityService;
 
     @Override
@@ -113,6 +116,7 @@ public class TaskInterpreterImpl implements TaskInterpreter {
         this.patient = incomingPatient;
 
         this.orderMessage = fhirContext.newJsonParser().encodeResourceToString(task);
+        specimenClarificationNeeded = false;
 
         try {
             messagePatient = createPatientFromFHIR();
@@ -157,6 +161,21 @@ public class TaskInterpreterImpl implements TaskInterpreter {
                 if (!GenericValidator.isBlankOrNull(loincCode)) {
                     tests = testService.getTestsByLoincCode(loincCode);
                     if (tests.size() != 0) {
+                        // OGC-1145 FR-8: when the ServiceRequest carries no
+                        // specimen and the code is specimen-ambiguous (several
+                        // tests, or one test spanning several sample types),
+                        // flag the order for the AwaitingSpecimen hold — the
+                        // accessioner resolves it with the sample-type chooser.
+                        // A specimen-carrying order resolves at accession from
+                        // its Specimen resource (FR-7), so it queues normally.
+                        if (!serviceRequest.hasSpecimen()
+                                && (tests.size() > 1 || testService.getTypeOfSamples(tests.get(0)).size() > 1)) {
+                            specimenClarificationNeeded = true;
+                            LogEvent.logWarn(this.getClass().getSimpleName(), "createTestFromFHIR",
+                                    "LOINC " + loincCode + " is specimen-ambiguous and the order carries no"
+                                            + " specimen; holding SR awaiting specimen: "
+                                            + serviceRequest.getIdElement().getIdPart());
+                        }
                         return tests.get(0);
                     }
                 } else {
@@ -442,5 +461,10 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     @Override
     public Panel getPanel() {
         return panel;
+    }
+
+    @Override
+    public boolean isSpecimenClarificationNeeded() {
+        return specimenClarificationNeeded;
     }
 }

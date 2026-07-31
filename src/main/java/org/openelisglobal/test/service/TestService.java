@@ -94,7 +94,15 @@ public interface TestService extends BaseObjectService<Test, String> {
 
     String getSortOrder(Test test);
 
+    /**
+     * Primary (first-linked) sample type only — a test may associate several
+     * (OGC-1145); use {@link #getTypeOfSamples(Test)} or the specimen-aware lookups
+     * when a specimen is in context.
+     */
     TypeOfSample getTypeOfSample(Test test);
+
+    /** All sample types associated with the test (OGC-1145 m:n model). */
+    List<TypeOfSample> getTypeOfSamples(Test test);
 
     List<Panel> getPanels(Test test);
 

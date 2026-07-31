@@ -11,12 +11,19 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.security.DaemonAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 public class HistoryServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private HistoryService historyService;
+
+    @Autowired
+    @Qualifier("daemonSysUserId")
+    private String daemonSysUserId;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -42,6 +49,26 @@ public class HistoryServiceTest extends BaseWebContextSensitiveTest {
 
         List<History> historyList = historyService.getHistoryByRefIdAndRefTableId("11111", "5");
         Assert.assertEquals(1, historyList.size());
+    }
+
+    @Test
+    public void insert_missingSysUserId_isStampedFromContext() {
+        // HistoryServiceImpl.insert bypasses super and writes straight to the DAO,
+        // so the base guard must stamp sysUserId or the row lands unattributed.
+        SecurityContextHolder.getContext().setAuthentication(new DaemonAuthenticationToken(daemonSysUserId));
+        History history = new History();
+        history.setReferenceId("56789");
+        history.setReferenceTable("5");
+        history.setTimestamp(Timestamp.from(Instant.now()));
+        history.setActivity("I");
+        history.setChanges("stamp test".getBytes());
+        // deliberately no setSysUserId
+
+        historyService.insert(history);
+
+        List<History> persisted = historyService.getHistoryByRefIdAndRefTableId("56789", "5");
+        Assert.assertEquals(1, persisted.size());
+        Assert.assertEquals(daemonSysUserId, persisted.get(0).getSysUserId());
     }
 
     @Test

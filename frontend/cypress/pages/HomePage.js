@@ -76,15 +76,26 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton).click();
+    // Desktop viewports render the nav permanently with no menu button;
+    // only click the hamburger when the nav is actually collapsed.
+    cy.get("body").then(($body) => {
+      if ($body.find(".cds--side-nav--expanded").length === 0) {
+        cy.get(this.selectors.menuButton).click();
+      }
+    });
   }
 
   closeNavigationMenu() {
-    cy.get(this.selectors.menuButton).then(($btn) => {
+    cy.get("body").then(($body) => {
+      const $btn = $body.find(this.selectors.menuButton);
       const ariaLabel = $btn.attr("aria-label");
 
-      // Only click if the current state indicates the menu is open.
-      if (ariaLabel && ariaLabel.toLowerCase().includes("close")) {
+      // Only click if the button exists (small viewports) and the menu is open.
+      if (
+        $btn.length &&
+        ariaLabel &&
+        ariaLabel.toLowerCase().includes("close")
+      ) {
         cy.wrap($btn).click();
       }
     });

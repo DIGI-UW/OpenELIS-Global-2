@@ -2,23 +2,19 @@ import {
   Close,
   Language,
   Logout,
+  Password,
   Notification,
   Search,
   UserAvatarFilledAlt,
   LocationFilled,
   Menu,
   Pin,
+  PinFilled,
 } from "@carbon/icons-react";
-import { Select, SelectItem } from "@carbon/react";
+import { IconButton, Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
 import AdminSideNav from "../admin/AdminSideNav";
-import React, {
-  createRef,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { createRef, useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation, useHistory } from "react-router-dom";
 import { useMenuAutoExpand } from "./useMenuAutoExpand";
@@ -48,14 +44,16 @@ import config from "../../config.json";
 
 function OEHeader({
   onChangeLanguage,
-  mode,
-  isExpanded: _isExpanded,
+  navOpen = true,
+  isDesktop = true,
+  navPinned = true,
+  navPersistent = isDesktop && navPinned,
+  toggleNavPinned,
   toggleSideNav,
-  setMode,
-  SIDENAV_MODES,
-  defaultMode = "close",
+  closeSideNav,
   storageKeyPrefix = "main",
   navContext = "main",
+  showSideNav = true,
 }) {
   const { configurationProperties, enabledLanguages } =
     useContext(ConfigurationContext);
@@ -253,9 +251,10 @@ function OEHeader({
     return () => window.clearTimeout(timer);
   }, []);
 
-  // Click-outside handler: Close nav when in SHOW mode and user clicks outside
+  // Click-outside handler: close the drawer whenever the nav is an overlay
+  // (small viewports, or desktop with the nav unpinned)
   useEffect(() => {
-    if (mode !== SIDENAV_MODES.SHOW) return; // Only active in SHOW mode
+    if (navPersistent || !navOpen) return;
 
     const handleClickOutside = (event) => {
       const sideNav = document.querySelector(".cds--side-nav");
@@ -267,8 +266,7 @@ function OEHeader({
         menuButton &&
         !menuButton.contains(event.target)
       ) {
-        // Click outside in SHOW mode - collapse to CLOSE
-        setMode(SIDENAV_MODES.CLOSE);
+        closeSideNav();
       }
     };
 
@@ -276,7 +274,7 @@ function OEHeader({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [mode, SIDENAV_MODES, setMode]);
+  }, [navPersistent, navOpen, closeSideNav]);
 
   const panelSwitchIcon = () => {
     return userSessionDetails.authenticated ? (
@@ -318,7 +316,6 @@ function OEHeader({
       </>
     );
   };
-  const hideTimerRef = useRef(null);
 
   /**
    * Returns true if ANY child/grandchild matches currentPath.
@@ -425,11 +422,13 @@ function OEHeader({
       return pathOnly;
     };
 
-    const currentPath = normalizePath(location.pathname);
+    // The app serves the dashboard at both "/" and "/Dashboard"
+    const currentPath =
+      location.pathname === "/"
+        ? "/Dashboard"
+        : normalizePath(location.pathname);
     const actionPath = normalizePath(menuItem.menu.actionURL);
     const itemId = menuItem.menu.elementId || "unknown";
-    if (itemId === "menu_billing") {
-    }
 
     const exactMatch = actionPath && currentPath === actionPath;
     const prefixMatch =
@@ -525,10 +524,7 @@ function OEHeader({
       // Instead, use expanded state to show which parent has active children.
       const carbonIsActive = isLeafActive; // Only true if this parent item's own path matches
       // Use controlled expanded prop instead of defaultExpanded to ensure proper collapse behavior
-      const carbonExpanded =
-        !!menuItem.expanded ||
-        hasActiveChild ||
-        (defaultMode === SIDENAV_MODES.LOCK && hasActiveChild);
+      const carbonExpanded = !!menuItem.expanded || hasActiveChild;
       return (
         // Wrapper span with ID for backward compatibility with Cypress selectors (span#menu_xxx)
         <span key={itemId} id={menuItem.menu.elementId}>
@@ -674,35 +670,29 @@ function OEHeader({
           }}
         >
           <Header id="mainHeader" className="mainHeader" aria-label="">
-            {userSessionDetails.authenticated && (
-              <button
-                id="sidenav-menu-button"
-                data-cy="menuButton"
-                className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
-                aria-label={intl.formatMessage({
-                  id:
-                    mode === SIDENAV_MODES.CLOSE
-                      ? "header.icon.menu.open"
-                      : mode === SIDENAV_MODES.SHOW
-                        ? "header.icon.menu.pin"
-                        : "header.icon.menu.close",
-                })}
-                onClick={toggleSideNav}
-                title={intl.formatMessage({
-                  id:
-                    mode === SIDENAV_MODES.CLOSE
-                      ? "header.icon.menu.open"
-                      : mode === SIDENAV_MODES.SHOW
-                        ? "header.icon.menu.pin"
-                        : "header.icon.menu.close",
-                })}
-                type="button"
-              >
-                {mode === SIDENAV_MODES.CLOSE && <Menu size={20} />}
-                {mode === SIDENAV_MODES.SHOW && <Pin size={20} />}
-                {mode === SIDENAV_MODES.LOCK && <Close size={20} />}
-              </button>
-            )}
+            {userSessionDetails.authenticated &&
+              !navPersistent &&
+              showSideNav && (
+                <button
+                  id="sidenav-menu-button"
+                  data-cy="menuButton"
+                  className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
+                  aria-label={intl.formatMessage({
+                    id: navOpen
+                      ? "header.icon.menu.close"
+                      : "header.icon.menu.open",
+                  })}
+                  onClick={toggleSideNav}
+                  title={intl.formatMessage({
+                    id: navOpen
+                      ? "header.icon.menu.close"
+                      : "header.icon.menu.open",
+                  })}
+                  type="button"
+                >
+                  {navOpen ? <Close size={20} /> : <Menu size={20} />}
+                </button>
+              )}
             <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
               <span id="header-logo">{logo()}</span>
               <div className="banner">
@@ -822,14 +812,6 @@ function OEHeader({
                         {userSessionDetails.loginLabUnit}{" "}
                       </li>
                     )}
-                    <li
-                      data-cy="logOut"
-                      className="userDetails clickableUserDetails"
-                      onClick={logout}
-                    >
-                      <Logout style={{ marginRight: "3px" }} />
-                      <FormattedMessage id="header.label.logout" />
-                    </li>
                   </>
                 )}
                 <li className="userDetails">
@@ -854,6 +836,28 @@ function OEHeader({
                     </Select>
                   </Theme>
                 </li>
+                {userSessionDetails.authenticated && (
+                  <>
+                    <li
+                      data-cy="headerChangePassword"
+                      className="userDetails clickableUserDetails"
+                      onClick={() => {
+                        window.location.href = "/ChangePasswordLogin";
+                      }}
+                    >
+                      <Password style={{ marginRight: "3px" }} />
+                      <FormattedMessage id="label.button.changepassword" />
+                    </li>
+                    <li
+                      data-cy="logOut"
+                      className="userDetails clickableUserDetails"
+                      onClick={logout}
+                    >
+                      <Logout style={{ marginRight: "3px" }} />
+                      <FormattedMessage id="header.label.logout" />
+                    </li>
+                  </>
+                )}
                 <li className="userDetails">
                   <label className="cds--label">
                     {" "}
@@ -863,58 +867,44 @@ function OEHeader({
                 </li>
               </ul>
             </HeaderPanel>
-            {userSessionDetails.authenticated && (
+            {userSessionDetails.authenticated && showSideNav && (
               <>
                 <SideNav
                   aria-label="Side navigation"
                   className={
                     navContext === "admin" ? "admin-shell-side-nav" : undefined
                   }
-                  expanded={mode !== SIDENAV_MODES.CLOSE}
-                  isFixedNav={mode === SIDENAV_MODES.LOCK}
-                  // LOCK mode should be persistent; SHOW mode is temporary overlay
-                  isPersistent={mode === SIDENAV_MODES.LOCK}
+                  expanded={navOpen}
+                  // Pinned desktop: always-rendered fixed nav;
+                  // unpinned desktop + small viewports: overlay drawer
+                  isFixedNav={navPersistent}
+                  isPersistent={navPersistent}
                   isChildOfHeader={true}
-                  onMouseEnter={() => {
-                    if (mode === SIDENAV_MODES.SHOW && hideTimerRef.current) {
-                      clearTimeout(hideTimerRef.current);
-                      hideTimerRef.current = null;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (mode === SIDENAV_MODES.SHOW) {
-                      const target = e.relatedTarget;
-                      const navEl = e.currentTarget;
-                      const headerEl = document.getElementById("mainHeader");
-                      const menuButton = document.getElementById(
-                        "sidenav-menu-button",
-                      );
-                      const isNode =
-                        target && typeof target.contains === "function";
-                      if (!isNode) {
-                        return;
-                      }
-                      const insideNav = navEl && navEl.contains(target);
-                      const insideHeader =
-                        headerEl && headerEl.contains(target);
-                      const insideMenuButton =
-                        menuButton && menuButton.contains(target);
-
-                      if (insideNav || insideHeader || insideMenuButton) {
-                        return;
-                      }
-
-                      if (hideTimerRef.current) {
-                        clearTimeout(hideTimerRef.current);
-                      }
-
-                      hideTimerRef.current = setTimeout(() => {
-                        setMode(SIDENAV_MODES.CLOSE);
-                        hideTimerRef.current = null;
-                      }, 350);
-                    }
-                  }}
                 >
+                  {isDesktop && (
+                    <div className="sidenav-pin-row">
+                      <IconButton
+                        id="sidenav-pin-toggle"
+                        data-cy="sidenavPinToggle"
+                        data-testid="sidenav-pin-toggle"
+                        kind="ghost"
+                        size="sm"
+                        align="right"
+                        label={intl.formatMessage({
+                          id: navPinned
+                            ? "header.icon.menu.unpin"
+                            : "header.icon.menu.pin",
+                        })}
+                        onClick={toggleNavPinned}
+                      >
+                        {navPinned ? (
+                          <PinFilled size={16} />
+                        ) : (
+                          <Pin size={16} />
+                        )}
+                      </IconButton>
+                    </div>
+                  )}
                   {navContext === "admin" ? (
                     <AdminSideNav
                       isTrainingInstallation={isTrainingInstallation}

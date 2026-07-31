@@ -47,6 +47,13 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
 
     ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient);
 
+    /**
+     * OGC-1145 Phase 2 — specimen-aware selection: limits scoped to
+     * {@code sampleTypeId} win over shared (null-scope) rows; null sample type
+     * evaluates against the shared set.
+     */
+    ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId);
+
     ResultLimit getResultLimitForTestAndPatient(Test test, Patient patient);
 
     /**
@@ -56,6 +63,9 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * no matching range.
      */
     ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient);
+
+    /** Specimen-aware variant of the component selection (OGC-1145 Phase 2). */
+    ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient, String sampleTypeId);
 
     List<IdValuePair> getPredefinedAgeRanges();
 

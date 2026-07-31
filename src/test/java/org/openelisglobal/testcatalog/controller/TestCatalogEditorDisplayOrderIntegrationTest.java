@@ -186,7 +186,7 @@ public class TestCatalogEditorDisplayOrderIntegrationTest extends BaseWebContext
     @org.junit.Test
     public void listSampleTypes_includesTheSampleType() {
         boolean found = false;
-        for (SampleTypeOption o : controller.listSampleTypes()) {
+        for (SampleTypeOption o : controller.listSampleTypes(null)) {
             if (sampleTypeId.equals(o.id)) {
                 found = true;
             }

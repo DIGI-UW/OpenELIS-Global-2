@@ -2634,7 +2634,25 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Test requestedTest = null;
         if (serviceRequest.hasCode()) {
             List<Test> foundTests = resolveTestsFromServiceRequest(serviceRequest);
-            requestedTest = foundTests.get(0);
+            // OGC-1145: the ServiceRequest's specimen was resolved above —
+            // prefer the candidate test associated with that sample type
+            // instead of first-match, so a shared code (or a test spanning
+            // several specimens) resolves to the specimen the order names
+            if (sampleItem != null && sampleItem.getTypeOfSample() != null && foundTests.size() > 1) {
+                String specimenTypeId = sampleItem.getTypeOfSample().getId();
+                requestedTest = foundTests
+                        .stream().filter(candidate -> typeOfSampleService.getTypeOfSampleForTest(candidate.getId())
+                                .stream().anyMatch(type -> specimenTypeId.equals(type.getId())))
+                        .findFirst().orElse(null);
+                if (requestedTest == null) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "buildSampleEditItems",
+                            "no candidate test for ServiceRequest " + serviceRequest.getIdElement().getIdPart()
+                                    + " matches specimen type " + specimenTypeId + "; falling back to first match");
+                }
+            }
+            if (requestedTest == null) {
+                requestedTest = foundTests.get(0);
+            }
         }
 
         // Build edit item for existing analysis if available
