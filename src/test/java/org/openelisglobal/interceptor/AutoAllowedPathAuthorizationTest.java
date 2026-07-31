@@ -104,7 +104,7 @@ public class AutoAllowedPathAuthorizationTest {
                 paths.add(path);
             }
         }
-        for (Method method : controller.getDeclaredMethods()) {
+        for (Method method : org.springframework.util.ReflectionUtils.getAllDeclaredMethods(controller)) {
             // GetMapping and friends are meta-annotated with @RequestMapping, so the
             // merged lookup resolves their paths too.
             RequestMapping methodMapping = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class);
