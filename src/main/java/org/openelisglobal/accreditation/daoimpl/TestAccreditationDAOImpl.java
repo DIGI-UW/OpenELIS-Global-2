@@ -17,7 +17,7 @@ public class TestAccreditationDAOImpl extends BaseDAOImpl<TestAccreditation, Lon
     }
 
     @Override
-    public List<TestAccreditation> findByTestId(Long testId) {
+    public List<TestAccreditation> findByTestId(String testId) {
         String hql = "FROM TestAccreditation ta " + "LEFT JOIN FETCH ta.accreditingBody "
                 + "WHERE ta.test.id = :testId " + "ORDER BY ta.expiresOn DESC";
         return entityManager.createQuery(hql, TestAccreditation.class).setParameter("testId", testId).getResultList();
@@ -32,7 +32,7 @@ public class TestAccreditationDAOImpl extends BaseDAOImpl<TestAccreditation, Lon
     }
 
     @Override
-    public TestAccreditation findByTestAndBody(Long testId, Long accreditingBodyId) {
+    public TestAccreditation findByTestAndBody(String testId, Long accreditingBodyId) {
         String hql = "FROM TestAccreditation ta " + "LEFT JOIN FETCH ta.test " + "LEFT JOIN FETCH ta.accreditingBody "
                 + "WHERE ta.test.id = :testId AND ta.accreditingBody.id = :bodyId";
         List<TestAccreditation> results = entityManager.createQuery(hql, TestAccreditation.class)
@@ -57,14 +57,14 @@ public class TestAccreditationDAOImpl extends BaseDAOImpl<TestAccreditation, Lon
     }
 
     @Override
-    public long countActiveByTestId(Long testId) {
+    public long countActiveByTestId(String testId) {
         String hql = "SELECT COUNT(ta.id) FROM TestAccreditation ta " + "WHERE ta.test.id = :testId "
                 + "AND ta.expiresOn >= CURRENT_DATE " + "AND ta.accreditingBody.active = true";
         return entityManager.createQuery(hql, Long.class).setParameter("testId", testId).getSingleResult();
     }
 
     @Override
-    public boolean existsByTestAndBody(Long testId, Long accreditingBodyId) {
+    public boolean existsByTestAndBody(String testId, Long accreditingBodyId) {
         String hql = "SELECT COUNT(ta.id) FROM TestAccreditation ta "
                 + "WHERE ta.test.id = :testId AND ta.accreditingBody.id = :bodyId";
         long count = entityManager.createQuery(hql, Long.class).setParameter("testId", testId)
@@ -73,7 +73,7 @@ public class TestAccreditationDAOImpl extends BaseDAOImpl<TestAccreditation, Lon
     }
 
     @Override
-    public List<TestAccreditation> findByFilters(Long testId, Long accreditingBodyId, Long sectionId, String q) {
+    public List<TestAccreditation> findByFilters(String testId, Long accreditingBodyId, Long sectionId, String q) {
         StringBuilder hql = new StringBuilder("FROM TestAccreditation ta " + "LEFT JOIN FETCH ta.test t "
                 + "LEFT JOIN FETCH ta.accreditingBody " + "WHERE 1=1 ");
         if (testId != null)

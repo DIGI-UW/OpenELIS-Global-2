@@ -60,7 +60,9 @@ public class AccreditingBodyServiceImplTest {
         AccreditingBody result = accreditingBodyService.uploadLogo(1L, multipartFile, "user1");
 
         assertNotNull(result.getLogoPath());
-        assertTrue(result.getLogoPath().contains("1_test-logo.png"));
+        String logoPath = result.getLogoPath();
+        assertTrue(logoPath.contains("1_"));
+        assertTrue(logoPath.endsWith("_test-logo.png"));
         verify(multipartFile).transferTo(any(java.io.File.class));
         verify(accreditingBodyDAO).update(testBody);
     }

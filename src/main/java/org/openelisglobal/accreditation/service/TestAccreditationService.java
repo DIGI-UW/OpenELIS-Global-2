@@ -7,19 +7,19 @@ import org.openelisglobal.common.service.BaseObjectService;
 
 public interface TestAccreditationService extends BaseObjectService<TestAccreditation, Long> {
 
-    List<TestAccreditation> getByTestId(Long testId);
+    List<TestAccreditation> getByTestId(String testId);
 
     List<TestAccreditation> getByAccreditingBodyId(Long accreditingBodyId);
 
-    TestAccreditation getByTestAndBody(Long testId, Long accreditingBodyId);
+    TestAccreditation getByTestAndBody(String testId, Long accreditingBodyId);
 
     List<TestAccreditation> getExpiringOnOrBefore(LocalDate date);
 
     List<TestAccreditation> getAllActive();
 
-    boolean existsByTestAndBody(Long testId, Long accreditingBodyId);
+    boolean existsByTestAndBody(String testId, Long accreditingBodyId);
 
     void bulkExtend(List<Long> ids, LocalDate newExpiresOn, String sysUserId);
 
-    List<TestAccreditation> getByFilters(Long testId, Long accreditingBodyId, Long sectionId, String q);
+    List<TestAccreditation> getByFilters(String testId, Long accreditingBodyId, Long sectionId, String q);
 }

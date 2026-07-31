@@ -33,7 +33,7 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public List<TestAccreditation> getByTestId(Long testId) {
+    public List<TestAccreditation> getByTestId(String testId) {
         return baseObjectDAO.findByTestId(testId);
     }
 
@@ -45,7 +45,7 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public TestAccreditation getByTestAndBody(Long testId, Long accreditingBodyId) {
+    public TestAccreditation getByTestAndBody(String testId, Long accreditingBodyId) {
         return baseObjectDAO.findByTestAndBody(testId, accreditingBodyId);
     }
 
@@ -63,14 +63,14 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existsByTestAndBody(Long testId, Long accreditingBodyId) {
+    public boolean existsByTestAndBody(String testId, Long accreditingBodyId) {
         return baseObjectDAO.existsByTestAndBody(testId, accreditingBodyId);
     }
 
     @Override
     @Transactional
     public Long insert(TestAccreditation testAccreditation) {
-        if (baseObjectDAO.existsByTestAndBody(Long.parseLong(testAccreditation.getTest().getId()),
+        if (baseObjectDAO.existsByTestAndBody(testAccreditation.getTest().getId(),
                 testAccreditation.getAccreditingBody().getId())) {
             throw new LIMSDuplicateRecordException(
                     "Duplicate record exists for test id=" + testAccreditation.getTest().getId()
@@ -95,7 +95,7 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public List<TestAccreditation> getByFilters(Long testId, Long accreditingBodyId, Long sectionId, String q) {
+    public List<TestAccreditation> getByFilters(String testId, Long accreditingBodyId, Long sectionId, String q) {
         return baseObjectDAO.findByFilters(testId, accreditingBodyId, sectionId, q);
     }
 

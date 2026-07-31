@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <localization id="9001"
+        description="Accreditation Test Section Name" />
+
+    <organization id="9001"
+        lastupdated="2026-01-01 12:00:00.0" name="Accreditation Test Org"
+        city="Testville" zip_code="00000" short_name="ATO" multiple_unit="N/A"
+        street_address="1 Test St" state="TS"
+        internet_address="www.example.org" clia_num="CLIA00001"
+        pws_id="PWS001" local_abbrev="1" code="ATO001"
+        mls_sentinel_lab_flag="N" />
+
+    <test_section id="9001" name="AccredTestSect"
+        description="Accreditation Test Section" org_id="9001" is_external="N"
+        lastupdated="2026-01-01 12:00:00.0" sort_order="1"
+        name_localization_id="9001" display_key="AccredTestKey1" />
+
+    <test id="9001" description="HIV Rapid Test"
+        lastupdated="2026-01-01 12:00:00" test_section_id="9001"
+        sort_order="1" name="HIV Rapid Test" is_active="Y" orderable="true"
+        guid="accred-test-guid-0001" />
+    <test id="9002" description="CD4 Count"
+        lastupdated="2026-01-01 12:00:00" test_section_id="9001"
+        sort_order="2" name="CD4 Count" is_active="Y" orderable="true"
+        guid="accred-test-guid-0002" />
+    <test id="9003" description="Malaria Smear"
+        lastupdated="2026-01-01 12:00:00" test_section_id="9001"
+        sort_order="3" name="Malaria Smear" is_active="Y" orderable="true"
+        guid="accred-test-guid-0003" />
+
+    <!-- Active body, display_order=1 -->
+    <accrediting_body id="9001" code="ISO15189"
+        name="ISO 15189:2022" logo_visibility_mode="ANY_ACCREDITED_TEST"
+        threshold_pct="80" display_order="1" active="true" sys_user_id="1"
+        last_updated="2026-01-01 12:00:00.0"
+        created_on="2026-01-01 12:00:00.0" updated_on="2026-01-01 12:00:00.0" />
+
+    <!-- Inactive body, display_order=2 -->
+    <accrediting_body id="9002" code="SLIPTA"
+        name="SLIPTA Accreditation" logo_visibility_mode="ANY_ACCREDITED_TEST"
+        threshold_pct="70" display_order="2" active="false" sys_user_id="1"
+        last_updated="2026-01-01 12:00:00.0"
+        created_on="2026-01-01 12:00:00.0" updated_on="2026-01-01 12:00:00.0" />
+
+    <!-- Active body, display_order=0 (should sort first) -->
+    <accrediting_body id="9003" code="CAP"
+        name="CAP Accreditation" logo_visibility_mode="PERCENTAGE"
+        threshold_pct="90" display_order="0" active="true" sys_user_id="1"
+        last_updated="2026-01-01 12:00:00.0"
+        created_on="2026-01-01 12:00:00.0" updated_on="2026-01-01 12:00:00.0" />
+
+    <!-- 9001: HIV Rapid Test x ISO15189, far-future expiry -> active -->
+    <test_accreditation id="9001" test_id="9001"
+        accrediting_body_id="9001" expires_on="2099-01-01" sys_user_id="1"
+        last_updated="2026-01-01 12:00:00.0"
+        created_on="2026-01-01 12:00:00.0" updated_on="2026-01-01 12:00:00.0" />
+
+    <!-- 9002: CD4 Count x ISO15189, past expiry -> expired -->
+    <test_accreditation id="9002" test_id="9002"
+        accrediting_body_id="9001" expires_on="2020-01-01" sys_user_id="1"
+        last_updated="2026-01-01 12:00:00.0"
+        created_on="2026-01-01 12:00:00.0" updated_on="2026-01-01 12:00:00.0" />
+
+    <!-- 9003: HIV Rapid Test x SLIPTA (inactive body), far-future expiry ->
+        should be EXCLUDED from findAllActive because the body is inactive -->
+    <test_accreditation id="9003" test_id="9001"
+        accrediting_body_id="9002" expires_on="2099-01-01" sys_user_id="1"
+        last_updated="2026-01-01 12:00:00.0"
+        created_on="2026-01-01 12:00:00.0" updated_on="2026-01-01 12:00:00.0" />
+
+</dataset>

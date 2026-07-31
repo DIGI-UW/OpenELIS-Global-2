@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("hasRole('ADMIN') and hasAuthority('TEST_CATALOG_MANAGE')")
+@PreAuthorize("hasRole('ADMIN')")
 public class TestAccreditationRestController extends BaseController {
 
     @Autowired
@@ -47,7 +47,7 @@ public class TestAccreditationRestController extends BaseController {
     @GetMapping(value = "/test-accreditations", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getAllTestAccreditations(@RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "bodyId", required = false) Long bodyId,
-            @RequestParam(value = "testId", required = false) Long testId,
+            @RequestParam(value = "testId", required = false) String testId,
             @RequestParam(value = "sectionId", required = false) Long sectionId,
             @RequestParam(value = "q", required = false) String q) {
         try {

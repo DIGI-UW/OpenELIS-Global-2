@@ -36,7 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("hasRole('ADMIN') and hasAuthority('TEST_CATALOG_MANAGE')")
+@PreAuthorize("hasRole('ADMIN')")
 public class AccreditingBodyRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "code", "name", "logoPath", "logoVisibilityMode",
@@ -137,8 +137,7 @@ public class AccreditingBodyRestController extends BaseController {
             try {
                 BufferedImage image = ImageIO.read(file.getInputStream());
                 if (image == null) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body("Invalid or unreadable image file.");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid or unreadable image file.");
                 }
                 if (image.getWidth() < 64 || image.getHeight() < 64) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)

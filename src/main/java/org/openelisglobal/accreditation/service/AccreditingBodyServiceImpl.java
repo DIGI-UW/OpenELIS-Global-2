@@ -160,9 +160,21 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
                 }
             }
 
-            // Generate filename: {id}_{timestamp}_{originalFilename}
-            String filename = id + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            Path filePath = logoDir.resolve(filename);
+            // Sanitize the client-supplied filename: strip any path components so
+            // values like "../../evil.png" can't escape logoDir (path traversal).
+            String originalFilename = file.getOriginalFilename();
+            String safeOriginalFilename = (originalFilename == null) ? "logo"
+                    : Paths.get(originalFilename).getFileName().toString();
+
+            // Generate filename: {id}_{timestamp}_{sanitizedOriginalFilename}
+            String filename = id + "_" + System.currentTimeMillis() + "_" + safeOriginalFilename;
+            Path filePath = logoDir.resolve(filename).normalize();
+
+            // Defense in depth: confirm the resolved path still lives under logoDir.
+            Path normalizedLogoDir = logoDir.toAbsolutePath().normalize();
+            if (!filePath.toAbsolutePath().normalize().startsWith(normalizedLogoDir)) {
+                throw new LIMSRuntimeException("Invalid logo file path");
+            }
 
             // Save file
             file.transferTo(filePath.toFile());

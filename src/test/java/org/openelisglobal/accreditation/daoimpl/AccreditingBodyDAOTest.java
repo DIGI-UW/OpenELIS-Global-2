@@ -1,183 +1,129 @@
 package org.openelisglobal.accreditation.daoimpl;
 
-import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.accreditation.dao.AccreditingBodyDAO;
 import org.openelisglobal.accreditation.valueholder.AccreditingBody;
 import org.openelisglobal.accreditation.valueholder.AccreditingBody.LogoVisibilityMode;
+import org.springframework.beans.factory.annotation.Autowired;
 
-@RunWith(MockitoJUnitRunner.Silent.class)
-public class AccreditingBodyDAOTest {
+public class AccreditingBodyDAOTest extends BaseWebContextSensitiveTest {
 
-    @Mock
-    private EntityManager entityManager;
-
-    @Mock
-    private TypedQuery<AccreditingBody> typedQuery;
-
-    @Mock
-    private TypedQuery<Long> countTypedQuery;
-
-    @InjectMocks
-    private AccreditingBodyDAOImpl accreditingBodyDAO; // Concrete DAO implementation class
-
-    private AccreditingBody testBody1;
-    private AccreditingBody testBody2;
+    @Autowired
+    private AccreditingBodyDAO accreditingBodyDAO;
 
     @Before
-    public void setUp() {
-        testBody1 = new AccreditingBody();
-        testBody1.setId(1L);
-        testBody1.setCode("ISO15189");
-        testBody1.setName("ISO 15189:2022");
-        testBody1.setLogoVisibilityMode(LogoVisibilityMode.ANY_ACCREDITED_TEST);
-        testBody1.setThresholdPct((short) 80);
-        testBody1.setDisplayOrder((short) 1);
-        testBody1.setActive(true);
-        testBody1.setCreatedOn(LocalDateTime.now());
-        testBody1.setUpdatedOn(LocalDateTime.now());
-
-        testBody2 = new AccreditingBody();
-        testBody2.setId(2L);
-        testBody2.setCode("SLIPTA");
-        testBody2.setName("SLIPTA Accreditation");
-        testBody2.setLogoVisibilityMode(LogoVisibilityMode.PERCENTAGE);
-        testBody2.setThresholdPct((short) 70);
-        testBody2.setDisplayOrder((short) 2);
-        testBody2.setActive(true);
-        testBody2.setCreatedOn(LocalDateTime.now());
-        testBody2.setUpdatedOn(LocalDateTime.now());
+    public void init() throws Exception {
+        executeDataSetWithStateManagement("testdata/accreditation.xml");
+        resyncSequence("clinlims.accrediting_body_seq", "clinlims.accrediting_body");
+        resyncSequence("clinlims.test_accreditation_seq", "clinlims.test_accreditation");
     }
 
     @Test
-    public void testSaveAndRetrieve_ShouldPersistAccreditingBody() {
-        accreditingBodyDAO.insert(testBody1);
-        verify(entityManager).persist(testBody1);
-    }
-
-    @Test
-    public void testGet_WithValidId_ReturnsAccreditingBody() {
-        when(entityManager.find(AccreditingBody.class, 1L)).thenReturn(testBody1);
-
-        Optional<AccreditingBody> result = accreditingBodyDAO.get(1L);
-
-        assertTrue(result.isPresent());
-        assertEquals(Long.valueOf(1L), result.get().getId());
-    }
-
-    @Test
-    public void testFindByCode_ShouldReturnBodyWhenCodeExists() {
-        when(entityManager.createQuery(anyString(), eq(AccreditingBody.class))).thenReturn(typedQuery);
-        when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery);
-
-        List<AccreditingBody> list = new ArrayList<>();
-        list.add(testBody1);
-        when(typedQuery.getResultList()).thenReturn(list);
-
+    public void findByCode_shouldReturnBodyWhenCodeExists() {
         AccreditingBody found = accreditingBodyDAO.findByCode("ISO15189");
 
-        assertNotNull(found);
-        assertEquals("ISO15189", found.getCode());
-        assertEquals(Long.valueOf(1L), found.getId());
+        Assert.assertNotNull(found);
+        Assert.assertEquals(Long.valueOf(9001L), found.getId());
+        Assert.assertEquals("ISO 15189:2022", found.getName());
     }
 
     @Test
-    public void testFindByCode_ShouldReturnNullWhenCodeDoesNotExist() {
-        when(entityManager.createQuery(anyString(), eq(AccreditingBody.class))).thenReturn(typedQuery);
-        when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery);
-        when(typedQuery.getResultList()).thenReturn(new ArrayList<>());
-
+    public void findByCode_shouldReturnNullWhenCodeDoesNotExist() {
         AccreditingBody found = accreditingBodyDAO.findByCode("NONEXISTENT");
 
-        assertNull(found);
+        Assert.assertNull(found);
     }
 
     @Test
-    public void testFindAllActive_ShouldReturnOnlyActiveBodies() {
-        when(entityManager.createQuery(anyString(), eq(AccreditingBody.class))).thenReturn(typedQuery);
-
-        testBody2.setActive(false);
-        List<AccreditingBody> activeList = new ArrayList<>();
-        activeList.add(testBody1); // Only testBody1 remains active
-
-        when(typedQuery.getResultList()).thenReturn(activeList);
-
+    public void findAllActive_shouldExcludeInactiveBodies() {
         List<AccreditingBody> activeBodies = accreditingBodyDAO.findAllActive();
 
-        assertNotNull(activeBodies);
-        assertEquals(1, activeBodies.size());
-        assertEquals("ISO15189", activeBodies.get(0).getCode());
+        Assert.assertNotNull(activeBodies);
+        Assert.assertEquals(2, activeBodies.size());
+        Assert.assertTrue(activeBodies.stream().noneMatch(b -> "SLIPTA".equals(b.getCode())));
+        Assert.assertTrue(activeBodies.stream().allMatch(AccreditingBody::getActive));
     }
 
     @Test
-    public void testFindAllOrderedByDisplayOrder_ShouldReturnBodiesInOrder() {
-        when(entityManager.createQuery(anyString(), eq(AccreditingBody.class))).thenReturn(typedQuery);
+    public void findAllActive_shouldOrderByDisplayOrderAscending() {
+        List<AccreditingBody> activeBodies = accreditingBodyDAO.findAllActive();
 
-        // Swap display orders to verify retrieval structure sorting
-        testBody1.setDisplayOrder((short) 2);
-        testBody2.setDisplayOrder((short) 1);
-
-        List<AccreditingBody> orderedList = new ArrayList<>();
-        orderedList.add(testBody2); // display order 1 first
-        orderedList.add(testBody1); // display order 2 second
-
-        when(typedQuery.getResultList()).thenReturn(orderedList);
-
-        List<AccreditingBody> bodies = accreditingBodyDAO.findAllOrderedByDisplayOrder();
-
-        assertNotNull(bodies);
-        assertEquals(2, bodies.size());
-        assertEquals("SLIPTA", bodies.get(0).getCode());
-        assertEquals("ISO15189", bodies.get(1).getCode());
+        Assert.assertEquals("CAP", activeBodies.get(0).getCode()); // display_order 0
+        Assert.assertEquals("ISO15189", activeBodies.get(1).getCode()); // display_order 1
     }
 
     @Test
-    public void testCountTestAccreditationsByBodyId_ShouldReturnCount() {
-        when(entityManager.createQuery(anyString(), eq(Long.class))).thenReturn(countTypedQuery);
-        when(countTypedQuery.setParameter(anyString(), any())).thenReturn(countTypedQuery);
-        when(countTypedQuery.getSingleResult()).thenReturn(0L);
+    public void findAllOrderedByDisplayOrder_shouldIncludeInactiveBodiesToo() {
+        List<AccreditingBody> allBodies = accreditingBodyDAO.findAllOrderedByDisplayOrder();
 
-        long count = accreditingBodyDAO.countTestAccreditationsByBodyId(1L);
-
-        assertEquals(0, count);
+        Assert.assertEquals(3, allBodies.size());
+        Assert.assertEquals("CAP", allBodies.get(0).getCode());
+        Assert.assertEquals("ISO15189", allBodies.get(1).getCode());
+        Assert.assertEquals("SLIPTA", allBodies.get(2).getCode());
     }
 
     @Test
-    public void testUpdate_ShouldModifyExistingBody() {
-        accreditingBodyDAO.update(testBody1);
-        verify(entityManager).merge(testBody1);
+    public void countTestAccreditationsByBodyId_shouldCountLinkedAccreditations() {
+        // ISO15189 (id 9001) has two test_accreditation rows in the fixture
+        long count = accreditingBodyDAO.countTestAccreditationsByBodyId(9001L);
+
+        Assert.assertEquals(2, count);
     }
 
     @Test
-    public void testDelete_ShouldRemoveBody() {
-        accreditingBodyDAO.delete(testBody1);
-        verify(entityManager).remove(testBody1);
+    public void countTestAccreditationsByBodyId_shouldReturnZeroWhenNoneLinked() {
+        // CAP (id 9003) has no test_accreditation rows
+        long count = accreditingBodyDAO.countTestAccreditationsByBodyId(9003L);
+
+        Assert.assertEquals(0, count);
     }
 
     @Test
-    public void testLogoVisibilityModePersistence() {
-        testBody1.setLogoVisibilityMode(LogoVisibilityMode.PERCENTAGE);
-        testBody1.setThresholdPct((short) 50);
+    public void insert_shouldPersistAndBeRetrievableByCode() {
+        AccreditingBody newBody = new AccreditingBody();
+        newBody.setCode("NEWBODY1");
+        newBody.setName("New Accrediting Body");
+        newBody.setLogoVisibilityMode(LogoVisibilityMode.ANY_ACCREDITED_TEST);
+        newBody.setThresholdPct((short) 80);
+        newBody.setDisplayOrder((short) 5);
+        newBody.setActive(true);
+        newBody.setSysUserId(TEST_SYS_USER_ID);
 
-        accreditingBodyDAO.update(testBody1);
-        verify(entityManager).merge(testBody1);
+        accreditingBodyDAO.insert(newBody);
 
-        assertEquals(LogoVisibilityMode.PERCENTAGE, testBody1.getLogoVisibilityMode());
-        assertEquals(Short.valueOf((short) 50), testBody1.getThresholdPct());
+        AccreditingBody reloaded = accreditingBodyDAO.findByCode("NEWBODY1");
+        Assert.assertNotNull(reloaded);
+        Assert.assertEquals("New Accrediting Body", reloaded.getName());
+    }
+
+    @Test
+    public void update_shouldPersistFieldChanges() {
+        Optional<AccreditingBody> existingOpt = accreditingBodyDAO.get(9001L);
+        Assert.assertTrue(existingOpt.isPresent());
+
+        AccreditingBody existing = existingOpt.get();
+        existing.setName("ISO 15189:2022 Renewed");
+        existing.setUpdatedOn(LocalDateTime.now());
+        accreditingBodyDAO.update(existing);
+
+        Optional<AccreditingBody> reloadedOpt = accreditingBodyDAO.get(9001L);
+        Assert.assertTrue(reloadedOpt.isPresent());
+        Assert.assertEquals("ISO 15189:2022 Renewed", reloadedOpt.get().getName());
+    }
+
+    @Test
+    public void logoVisibilityModeAndThresholdPct_shouldPersistTogether() {
+        Optional<AccreditingBody> existingOpt = accreditingBodyDAO.get(9003L); // CAP, PERCENTAGE mode
+        Assert.assertTrue(existingOpt.isPresent());
+
+        AccreditingBody cap = existingOpt.get();
+        Assert.assertEquals(LogoVisibilityMode.PERCENTAGE, cap.getLogoVisibilityMode());
+        Assert.assertEquals(Short.valueOf((short) 90), cap.getThresholdPct());
     }
 }

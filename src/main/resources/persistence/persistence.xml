@@ -144,6 +144,9 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+        <class>org.openelisglobal.accreditation.valueholder.AccreditingBody</class>
+        <class>org.openelisglobal.accreditation.valueholder.TestAccreditation</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

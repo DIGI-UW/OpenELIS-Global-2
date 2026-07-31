@@ -17,19 +17,19 @@ import org.openelisglobal.accreditation.valueholder.TestAccreditation;
 import org.openelisglobal.common.dao.BaseDAO;
 
 public interface TestAccreditationDAO extends BaseDAO<TestAccreditation, Long> {
-    List<TestAccreditation> findByTestId(Long testId);
+    List<TestAccreditation> findByTestId(String testId);
 
     List<TestAccreditation> findByAccreditingBodyId(Long accreditingBodyId);
 
-    TestAccreditation findByTestAndBody(Long testId, Long accreditingBodyId);
+    TestAccreditation findByTestAndBody(String testId, Long accreditingBodyId);
 
     List<TestAccreditation> findExpiringOnOrBefore(LocalDate expirationDate);
 
     List<TestAccreditation> findAllActive();
 
-    long countActiveByTestId(Long testId);
+    long countActiveByTestId(String testId);
 
-    boolean existsByTestAndBody(Long testId, Long accreditingBodyId);
+    boolean existsByTestAndBody(String testId, Long accreditingBodyId);
 
-    List<TestAccreditation> findByFilters(Long testId, Long accreditingBodyId, Long sectionId, String q);
+    List<TestAccreditation> findByFilters(String testId, Long accreditingBodyId, Long sectionId, String q);
 }

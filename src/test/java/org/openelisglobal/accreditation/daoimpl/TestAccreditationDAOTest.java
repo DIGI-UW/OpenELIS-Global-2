@@ -1,184 +1,147 @@
 package org.openelisglobal.accreditation.daoimpl;
 
-import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.accreditation.valueholder.AccreditingBody;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.accreditation.dao.TestAccreditationDAO;
 import org.openelisglobal.accreditation.valueholder.TestAccreditation;
+import org.springframework.beans.factory.annotation.Autowired;
 
-// Use Silent runner to avoid strict stubbing exceptions across varying environments
-@RunWith(MockitoJUnitRunner.Silent.class)
-public class TestAccreditationDAOTest {
+public class TestAccreditationDAOTest extends BaseWebContextSensitiveTest {
 
-    @Mock
-    private EntityManager entityManager;
-
-    @Mock
-    private TypedQuery<TestAccreditation> typedQuery;
-
-    @Mock
-    private TypedQuery<Long> countTypedQuery;
-
-    @InjectMocks
-    private TestAccreditationDAOImpl testAccreditationDAO;
-
-    private TestAccreditation testAccreditation1;
-    private TestAccreditation testAccreditation2;
-    private AccreditingBody accreditingBody;
-    private org.openelisglobal.test.valueholder.Test mockCoreTest1;
-    private org.openelisglobal.test.valueholder.Test mockCoreTest2;
+    @Autowired
+    private TestAccreditationDAO testAccreditationDAO;
 
     @Before
-    public void setUp() {
-        // Set up parent AccreditingBody
-        accreditingBody = new AccreditingBody();
-        accreditingBody.setId(1L);
-        accreditingBody.setCode("ISO15189");
-        accreditingBody.setActive(true);
-
-        mockCoreTest1 = mock(org.openelisglobal.test.valueholder.Test.class);
-        mockCoreTest2 = mock(org.openelisglobal.test.valueholder.Test.class);
-
-        // Set up TestAccreditation fixtures matching entity properties
-        testAccreditation1 = new TestAccreditation();
-        testAccreditation1.setId(100L);
-        testAccreditation1.setAccreditingBody(accreditingBody);
-        testAccreditation1.setTest(mockCoreTest1);
-        testAccreditation1.setExpiresOn(LocalDate.now().plusYears(1));
-        testAccreditation1.setCreatedOn(LocalDateTime.now());
-        testAccreditation1.setUpdatedOn(LocalDateTime.now());
-
-        testAccreditation2 = new TestAccreditation();
-        testAccreditation2.setId(101L);
-        testAccreditation2.setAccreditingBody(accreditingBody);
-        testAccreditation2.setTest(mockCoreTest2);
-        testAccreditation2.setExpiresOn(LocalDate.now().plusYears(1));
-        testAccreditation2.setCreatedOn(LocalDateTime.now());
-        testAccreditation2.setUpdatedOn(LocalDateTime.now());
+    public void init() throws Exception {
+        executeDataSetWithStateManagement("testdata/accreditation.xml");
+        resyncSequence("clinlims.accrediting_body_seq", "clinlims.accrediting_body");
+        resyncSequence("clinlims.test_accreditation_seq", "clinlims.test_accreditation");
     }
 
     @Test
-    public void testInsert_ShouldPersistAccreditation() {
-        testAccreditationDAO.insert(testAccreditation1);
-        verify(entityManager).persist(testAccreditation1);
+    public void findByTestId_shouldReturnAllAccreditationsForThatTest() {
+        // Test 9001 (HIV Rapid Test) has two rows: one per body (ISO15189, SLIPTA)
+        List<TestAccreditation> results = testAccreditationDAO.findByTestId("9001");
+
+        Assert.assertNotNull(results);
+        Assert.assertEquals(2, results.size());
     }
 
     @Test
-    public void testGet_WithValidId_ReturnsAccreditation() {
-        when(entityManager.find(TestAccreditation.class, 100L)).thenReturn(testAccreditation1);
+    public void findByTestId_shouldReturnEmptyForUnaccreditedTest() {
+        // Test 9003 (Malaria Smear) has no accreditation rows
+        List<TestAccreditation> results = testAccreditationDAO.findByTestId("9003");
 
-        Optional<TestAccreditation> result = testAccreditationDAO.get(100L);
-
-        assertTrue(result.isPresent());
-        assertEquals(Long.valueOf(100L), result.get().getId());
+        Assert.assertNotNull(results);
+        Assert.assertTrue(results.isEmpty());
     }
 
     @Test
-    public void testFindByTestId_ShouldReturnAccreditationsForTest() {
-        when(entityManager.createQuery(anyString(), eq(TestAccreditation.class))).thenReturn(typedQuery);
-        when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery);
+    public void findByAccreditingBodyId_shouldReturnAllAccreditationsForThatBody() {
+        // ISO15189 (9001) covers test 9001 (active) and test 9002 (expired)
+        List<TestAccreditation> results = testAccreditationDAO.findByAccreditingBodyId(9001L);
 
-        List<TestAccreditation> list = new ArrayList<>();
-        list.add(testAccreditation1);
-        when(typedQuery.getResultList()).thenReturn(list);
-
-        List<TestAccreditation> results = testAccreditationDAO.findByTestId(55L);
-
-        assertNotNull(results);
-        assertEquals(1, results.size());
-        assertEquals(mockCoreTest1, results.get(0).getTest());
+        Assert.assertNotNull(results);
+        Assert.assertEquals(2, results.size());
     }
 
     @Test
-    public void testFindByTestAndBody_ShouldReturnSpecificAccreditation() {
-        when(entityManager.createQuery(anyString(), eq(TestAccreditation.class))).thenReturn(typedQuery);
-        when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery);
+    public void findByTestAndBody_shouldReturnSpecificAccreditation() {
+        TestAccreditation result = testAccreditationDAO.findByTestAndBody("9001", 9001L);
 
-        List<TestAccreditation> list = new ArrayList<>();
-        list.add(testAccreditation1);
-        when(typedQuery.getResultList()).thenReturn(list);
-
-        TestAccreditation result = testAccreditationDAO.findByTestAndBody(55L, 1L);
-
-        assertNotNull("Result should not be null", result);
-        assertEquals(Long.valueOf(100L), result.getId());
-        assertEquals(mockCoreTest1, result.getTest());
+        Assert.assertNotNull(result);
+        Assert.assertEquals(Long.valueOf(9001L), result.getId());
+        Assert.assertEquals(LocalDate.parse("2099-01-01"), result.getExpiresOn());
     }
 
     @Test
-    public void testFindByTestAndBody_ShouldReturnNullWhenNotExists() {
-        when(entityManager.createQuery(anyString(), eq(TestAccreditation.class))).thenReturn(typedQuery);
-        when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery);
-        when(typedQuery.getResultList()).thenReturn(new ArrayList<>());
+    public void findByTestAndBody_shouldReturnNullWhenNoSuchPairExists() {
+        // Test 9003 has no link to any body
+        TestAccreditation result = testAccreditationDAO.findByTestAndBody("9003", 9001L);
 
-        TestAccreditation result = testAccreditationDAO.findByTestAndBody(999L, 1L);
-
-        assertNull(result);
+        Assert.assertNull(result);
     }
 
     @Test
-    public void testExistsByTestAndBody_ShouldReturnTrueWhenExists() {
-        when(entityManager.createQuery(anyString(), eq(Long.class))).thenReturn(countTypedQuery);
-        when(countTypedQuery.setParameter(anyString(), any())).thenReturn(countTypedQuery);
-        when(countTypedQuery.getSingleResult()).thenReturn(1L);
+    public void findExpiringOnOrBefore_shouldReturnOnlyExpiredOrDueRows() {
+        List<TestAccreditation> expiring = testAccreditationDAO.findExpiringOnOrBefore(LocalDate.now().minusDays(1));
 
-        boolean exists = testAccreditationDAO.existsByTestAndBody(55L, 1L);
-
-        assertTrue(exists);
+        Assert.assertNotNull(expiring);
+        Assert.assertEquals(1, expiring.size());
+        Assert.assertEquals(Long.valueOf(9002L), expiring.get(0).getId());
     }
 
     @Test
-    public void testExistsByTestAndBody_ShouldReturnFalseWhenNotExists() {
-        when(entityManager.createQuery(anyString(), eq(Long.class))).thenReturn(countTypedQuery);
-        when(countTypedQuery.setParameter(anyString(), any())).thenReturn(countTypedQuery);
-        when(countTypedQuery.getSingleResult()).thenReturn(0L);
+    public void findAllActive_shouldExcludeExpiredAndInactiveBodyRows() {
+        // 9001: active body + future expiry -> included
+        // 9002: active body + past expiry -> excluded (expired)
+        // 9003: inactive body + future expiry -> excluded (body inactive)
+        List<TestAccreditation> active = testAccreditationDAO.findAllActive();
 
-        boolean exists = testAccreditationDAO.existsByTestAndBody(999L, 1L);
-
-        assertFalse(exists);
+        Assert.assertNotNull(active);
+        Assert.assertEquals(1, active.size());
+        Assert.assertEquals(Long.valueOf(9001L), active.get(0).getId());
     }
 
     @Test
-    public void testUpdate_ShouldModifyAccreditation() {
-        testAccreditationDAO.update(testAccreditation1);
-        verify(entityManager).merge(testAccreditation1);
+    public void countActiveByTestId_shouldCountOnlyNonExpiredActiveBodyRows() {
+        // Test 9001 has 2 rows: one active (ISO15189), one against inactive SLIPTA
+        long count = testAccreditationDAO.countActiveByTestId("9001");
+
+        Assert.assertEquals(1, count);
     }
 
     @Test
-    public void testDelete_ShouldRemoveAccreditation() {
-        testAccreditationDAO.delete(testAccreditation1);
-        verify(entityManager).remove(testAccreditation1);
+    public void existsByTestAndBody_shouldReturnTrueWhenPairExists() {
+        boolean exists = testAccreditationDAO.existsByTestAndBody("9001", 9001L);
+
+        Assert.assertTrue(exists);
     }
 
     @Test
-    public void testFindByFilters_WithQuery_ShouldSearchInDescriptionAndLocalCode() {
-        when(entityManager.createQuery(anyString(), eq(TestAccreditation.class))).thenReturn(typedQuery);
-        when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery);
+    public void existsByTestAndBody_shouldReturnFalseWhenPairDoesNotExist() {
+        boolean exists = testAccreditationDAO.existsByTestAndBody("9003", 9001L);
 
-        List<TestAccreditation> list = new ArrayList<>();
-        list.add(testAccreditation1);
-        when(typedQuery.getResultList()).thenReturn(list);
+        Assert.assertFalse(exists);
+    }
 
-        List<TestAccreditation> results = testAccreditationDAO.findByFilters(null, null, null, "test-q");
+    @Test
+    public void findByFilters_withBodyIdFilter_shouldReturnOnlyThatBodysAccreditations() {
+        List<TestAccreditation> results = testAccreditationDAO.findByFilters(null, 9001L, null, null);
 
-        assertNotNull(results);
-        assertEquals(1, results.size());
-        verify(typedQuery).setParameter("q", "%test-q%");
+        Assert.assertNotNull(results);
+        Assert.assertEquals(2, results.size());
+        Assert.assertTrue(results.stream().allMatch(ta -> ta.getAccreditingBody().getId().equals(9001L)));
+    }
+
+    @Test
+    public void findByFilters_withTestIdFilter_shouldReturnOnlyThatTestsAccreditations() {
+        List<TestAccreditation> results = testAccreditationDAO.findByFilters("9001", null, null, null);
+
+        Assert.assertNotNull(results);
+        Assert.assertEquals(2, results.size());
+        Assert.assertTrue(results.stream().allMatch(ta -> ta.getTest().getId().equals("9001")));
+    }
+
+    @Test
+    public void findByFilters_withSearchQuery_shouldMatchTestDescription() {
+        // "CD4 Count" (test 9002) matches query "cd4" case-insensitively
+        List<TestAccreditation> results = testAccreditationDAO.findByFilters(null, null, null, "cd4");
+
+        Assert.assertNotNull(results);
+        Assert.assertEquals(1, results.size());
+        Assert.assertEquals(Long.valueOf(9002L), results.get(0).getId());
+    }
+
+    @Test
+    public void findByFilters_withNoMatchingQuery_shouldReturnEmpty() {
+        List<TestAccreditation> results = testAccreditationDAO.findByFilters(null, null, null, "nonexistentquery");
+
+        Assert.assertNotNull(results);
+        Assert.assertTrue(results.isEmpty());
     }
 }
