@@ -169,8 +169,10 @@ const SampleBatchEntrySetup = () => {
     }
   };
 
+  // See AddOrder.loadDepartments: undefined here would throw on the later
+  // .find()/.map() over departments.
   const loadDepartments = (data) => {
-    setDepartments(data);
+    setDepartments(data || []);
   };
 
   const updateFormValues = (updatedValues) => {
