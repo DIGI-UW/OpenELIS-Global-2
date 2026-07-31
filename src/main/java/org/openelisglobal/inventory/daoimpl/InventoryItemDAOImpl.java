@@ -46,11 +46,11 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Transactional(readOnly = true)
     public List<InventoryItem> getByItemType(ItemType itemType) throws LIMSRuntimeException {
         try {
-            String jpql = "SELECT i FROM InventoryItem i " + "WHERE i.itemType = :itemType AND i.isActive = 'Y' "
+            String jpql = "SELECT i FROM InventoryItem i "
+                    + "WHERE i.itemType = :itemType AND i.isActive = 'Y' "
                     + "ORDER BY i.name";
 
             return entityManager.createQuery(jpql, InventoryItem.class)
-                    // use .name() to avoid PostgreSQL varchar/bytea type mismatch
                     .setParameter("itemType", itemType.name()).getResultList();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting inventory items by type", e);
