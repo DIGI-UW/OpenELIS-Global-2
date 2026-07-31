@@ -136,7 +136,7 @@ public class AutoAllowedPathAuthorizationTest {
         }
 
         List<Method> handlers = new ArrayList<>();
-        for (Method method : controller.getDeclaredMethods()) {
+        for (Method method : org.springframework.util.ReflectionUtils.getAllDeclaredMethods(controller)) {
             if (AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class) != null) {
                 handlers.add(method);
             }
