@@ -1,6 +1,5 @@
 package org.openelisglobal.storage.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,14 +75,14 @@ public class SampleStorageRestController extends BaseRestController {
      * Get all SampleItems with storage assignments GET /rest/storage/sample-items
      * Supports filtering by location and status (FR-065) Supports pagination
      * (OGC-150)
-     * 
+     *
      * Response fields: - id: Numeric ID (String representation) - primary
      * identifier - sampleItemId: @deprecated Use 'id' field instead. Kept for
      * backward compatibility. - sampleItemExternalId: External ID - user-friendly
      * identifier (e.g., "EXT-1765401458866") - sampleAccessionNumber: Parent Sample
      * accession number - status: Current status ("active" or "disposed") -
      * location: Hierarchical location path (e.g., "Main Lab > Freezer 1 > Shelf A")
-     * 
+     *
      * @param countOnly If "true", returns metrics only
      * @param location  Optional location filter (hierarchical path substring)
      * @param status    Optional status filter (active, disposed, etc.)
@@ -275,10 +274,10 @@ public class SampleStorageRestController extends BaseRestController {
 
     /**
      * Assign SampleItem to storage position POST /rest/storage/sample-items/assign
-     * 
+     *
      * Accepts: External ID, accession number, or numeric ID (flexible identifier
      * resolution via resolveSampleItem())
-     * 
+     *
      * @param form SampleAssignmentForm containing sampleItemId (flexible
      *             identifier), locationId, locationType, etc.
      * @return Assignment details including hierarchical location path
@@ -546,18 +545,17 @@ public class SampleStorageRestController extends BaseRestController {
     /**
      * Dispose SampleItem POST /rest/storage/sample-items/dispose Marks sample as
      * disposed and clears storage location
-     * 
+     *
      * Accepts: External ID, accession number, or numeric ID (flexible identifier
      * resolution via resolveSampleItem()) Response includes sampleItemId (numeric
      * ID) for consistency with other endpoints.
-     * 
+     *
      * @param form SampleDisposalForm containing sampleItemId (flexible identifier),
      *             reason, method, notes
      * @return Disposal details including previous location and disposal timestamp
      */
     @PostMapping("/dispose")
-    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form) {
         try {
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
@@ -565,10 +563,7 @@ public class SampleStorageRestController extends BaseRestController {
                         form.getMethod());
             }
 
-            // OGC-738b: thread the acting user's id through so the global audit
-            // emission (via SampleItemService.update) and the movement row both
-            // reflect who actually performed the disposal.
-            String sysUserId = ControllerUtills.getSysUserId(request);
+            String sysUserId = ControllerUtills.getSysUserId();
             if (sysUserId == null) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("message", "Authentication required for disposal");
@@ -577,7 +572,7 @@ public class SampleStorageRestController extends BaseRestController {
 
             // Service layer handles all business logic
             Map<String, Object> response = sampleStorageService.disposeSampleItem(form.getSampleItemId(),
-                    form.getReason(), form.getMethod(), form.getNotes(), sysUserId);
+                    form.getReason(), form.getMethod(), form.getNotes());
 
             // Log successful disposal
             if (logger.isInfoEnabled()) {

@@ -16,6 +16,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
@@ -52,6 +53,9 @@ public class SampleStorageServiceDisposalTest {
 
     @Mock
     private org.openelisglobal.systemuser.service.SystemUserService systemUserService;
+
+    @Mock
+    private UserContextHolder userContextHolder;
 
     @InjectMocks
     private SampleStorageServiceImpl sampleStorageService;
@@ -103,6 +107,7 @@ public class SampleStorageServiceDisposalTest {
         // Mock external ID lookup for resolveSampleItem (ID lookup has been removed)
         lenient().when(sampleItemService.getSampleItemsByExternalID(TEST_ACCESSION_NUMBER))
                 .thenReturn(java.util.Collections.singletonList(testSampleItem));
+        lenient().when(userContextHolder.requireSysUserId()).thenReturn(TEST_SYS_USER_ID);
     }
 
     @Test
@@ -113,7 +118,7 @@ public class SampleStorageServiceDisposalTest {
 
         // Act
         Map<String, Object> result = sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave",
-                "Test disposal", TEST_SYS_USER_ID);
+                "Test disposal");
 
         // Assert
         // OGC-738b: must go through sampleItemService.update (audit-emitting path),
@@ -137,12 +142,12 @@ public class SampleStorageServiceDisposalTest {
         when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
         // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null, TEST_SYS_USER_ID);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
 
         // Assert - Assignment updated with null location (not deleted) for audit trail
         verify(sampleStorageAssignmentDAO).update(testAssignment);
         verify(sampleStorageAssignmentDAO, never()).delete(any(SampleStorageAssignment.class));
-        
+
         assertNull("Location ID should be null", testAssignment.getLocationId());
         assertNull("Location Type should be null", testAssignment.getLocationType());
         assertNull("Position Coordinate should be null", testAssignment.getPositionCoordinate());
@@ -159,7 +164,7 @@ public class SampleStorageServiceDisposalTest {
         when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
         // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes", TEST_SYS_USER_ID);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes");
 
         // Assert
         verify(sampleStorageMovementDAO).insert(any(SampleStorageMovement.class));
@@ -173,7 +178,7 @@ public class SampleStorageServiceDisposalTest {
         when(statusService.matches(DISPOSED_STATUS_ID, SampleStatus.Disposed)).thenReturn(true);
 
         // Act - should throw LIMSRuntimeException because sample is already disposed
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null, TEST_SYS_USER_ID);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
     }
 
     @Test(expected = LIMSRuntimeException.class)
@@ -182,19 +187,19 @@ public class SampleStorageServiceDisposalTest {
         when(sampleItemService.getSampleItemsByExternalID("invalid-id")).thenReturn(java.util.Collections.emptyList());
 
         // Act
-        sampleStorageService.disposeSampleItem("invalid-id", "expired", "autoclave", null, TEST_SYS_USER_ID);
+        sampleStorageService.disposeSampleItem("invalid-id", "expired", "autoclave", null);
     }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_MissingReason_ThrowsException() {
         // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, null, "autoclave", null, TEST_SYS_USER_ID);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, null, "autoclave", null);
     }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_MissingMethod_ThrowsException() {
         // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", null, null, TEST_SYS_USER_ID);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", null, null);
     }
 
     /**
@@ -207,8 +212,7 @@ public class SampleStorageServiceDisposalTest {
         when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
         when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes",
-                TEST_SYS_USER_ID);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes");
 
         org.mockito.ArgumentCaptor<SampleStorageMovement> captor = org.mockito.ArgumentCaptor
                 .forClass(SampleStorageMovement.class);
@@ -218,12 +222,14 @@ public class SampleStorageServiceDisposalTest {
     }
 
     /**
-     * OGC-738b: missing sysUserId is a programming error — the controller is
-     * supposed to resolve it via ControllerUtills.getSysUserId. Fail loudly rather
-     * than silently stamping the system user.
+     * OGC-738b: no authenticated user context is a programming/security error —
+     * UserContextHolder.requireSysUserId() fails loudly rather than silently
+     * stamping the system user.
      */
     @Test(expected = LIMSRuntimeException.class)
-    public void testDisposeSampleItem_MissingSysUserId_ThrowsException() {
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null, null);
+    public void testDisposeSampleItem_NoUserContext_ThrowsException() {
+        when(userContextHolder.requireSysUserId())
+                .thenThrow(new LIMSRuntimeException("No user context available"));
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
     }
 }
