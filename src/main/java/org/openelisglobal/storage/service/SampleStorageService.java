@@ -18,7 +18,7 @@ public interface SampleStorageService {
     /**
      * Get all SampleItems with storage assignments and complete hierarchical paths.
      * All relationships are eagerly fetched within the service transaction.
-     * 
+     *
      * @return List of maps, each containing: id, sampleItemId,
      *         sampleAccessionNumber, type, status, location, assignedBy, date
      */
@@ -28,7 +28,7 @@ public interface SampleStorageService {
      * Assign a SampleItem to a location using simplified polymorphic relationship
      * (locationId + locationType). Supports assignment to device, shelf, or rack
      * level with optional text-based position coordinate.
-     * 
+     *
      * @param sampleItemId       SampleItem ID
      * @param locationId         Location ID (device, shelf, or rack ID)
      * @param locationType       Location type: 'device', 'shelf', or 'rack'
@@ -70,8 +70,7 @@ public interface SampleStorageService {
      * OGC-738: previously the disposal hardcoded {@code movedByUserId=1} and called
      * {@code sampleItemDAO.update} directly, bypassing audit emit.
      */
-    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
-            String sysUserId);
+    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes);
 
     /**
      * Record usage against a SampleItem's remaining quantity (OGC-1026, Results
@@ -105,7 +104,7 @@ public interface SampleStorageService {
 
     /**
      * Get storage location for a specific SampleItem
-     * 
+     *
      * @param sampleItemId SampleItem ID
      * @return Map with location details including hierarchicalPath, or empty map if
      *         not assigned

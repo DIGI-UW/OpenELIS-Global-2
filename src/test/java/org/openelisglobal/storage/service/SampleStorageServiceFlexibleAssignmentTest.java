@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
@@ -46,6 +47,9 @@ public class SampleStorageServiceFlexibleAssignmentTest {
 
     @Mock
     private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
+
+    @Mock
+    private UserContextHolder userContextHolder;
 
     @InjectMocks
     private SampleStorageServiceImpl sampleStorageService;
@@ -95,6 +99,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         // Mock external ID lookup for resolveSampleItem (ID lookup has been removed)
         lenient().when(sampleItemService.getSampleItemsByExternalID(TEST_EXTERNAL_ID))
                 .thenReturn(java.util.Collections.singletonList(testSampleItem));
+        lenient().when(userContextHolder.requireSysUserId()).thenReturn("1");
     }
 
     @Test
