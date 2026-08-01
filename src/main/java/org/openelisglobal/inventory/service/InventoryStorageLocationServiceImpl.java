@@ -96,8 +96,7 @@ public class InventoryStorageLocationServiceImpl extends AuditableBaseObjectServ
 
         // Check if any lot is available for use
         for (InventoryLot lot : lots) {
-            // Check for null currentQuantity before evaluation
-            if (lot.getCurrentQuantity() != null && lot.isAvailableForUse()) {
+            if (lot.isAvailableForUse()) {
                 return true;
             }
         }
