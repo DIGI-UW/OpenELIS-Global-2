@@ -6,6 +6,7 @@ import "@carbon/charts/styles.css";
 
 import "./HistoricalTrends.scss";
 import { fetchHistoricalReadings } from "./api";
+import { toDate } from "./shared/timeUtils";
 
 const TIME_RANGE_OPTIONS = [
   "Last 24 Hours",
@@ -32,10 +33,11 @@ const getRangeBoundaries = (timeRange) => {
 };
 
 const formatTrendLabel = (value) => {
-  if (!value) {
+  const date = toDate(value);
+  if (!date) {
     return "—";
   }
-  return new Date(value).toLocaleString([], {
+  return date.toLocaleString([], {
     month: "short",
     day: "numeric",
     hour: "2-digit",
