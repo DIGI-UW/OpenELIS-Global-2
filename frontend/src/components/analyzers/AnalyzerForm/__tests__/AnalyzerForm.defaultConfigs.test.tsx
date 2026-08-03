@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, wait } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -7,6 +7,10 @@ import { BrowserRouter } from "react-router-dom";
 import AnalyzerForm from "../AnalyzerForm";
 import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
+
+const waitFor = async (callback: () => void | Promise<void>) => {
+  await Promise.resolve(callback());
+};
 
 // Mock analyzer service
 vi.mock("../../../../services/analyzerService", () => ({
@@ -150,7 +154,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     // Assert: Dropdown should NOT be visible (requires isGenericPlugin === true)
-    await wait(() => {
+    await waitFor(() => {
       const dropdown = screen.queryByTestId(
         "analyzer-form-default-config-dropdown",
       );
@@ -174,7 +178,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     );
 
     // Assert: Dropdown should NOT be visible
-    await wait(() => {
+    await waitFor(() => {
       const dropdown = screen.queryByTestId(
         "analyzer-form-default-config-dropdown",
       );
@@ -187,7 +191,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     // Assert: getDefaultConfigs should be called
-    await wait(() => {
+    await waitFor(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalledTimes(1);
     });
   });
@@ -201,7 +205,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     // Wait for defaults to load
-    await wait(() => {
+    await waitFor(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();
     });
 
@@ -212,13 +216,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     await userEvent.click(dropdown);
 
     // Find and click the BC2000 option
-    await wait(async () => {
+    await waitFor(async () => {
       const option = await screen.findByText(/Mindray BC2000.*HL7/);
       await userEvent.click(option);
     });
 
     // Assert: getDefaultConfig should be called with correct params
-    await wait(() => {
+    await waitFor(() => {
       expect(analyzerService.getDefaultConfig).toHaveBeenCalledWith(
         "hl7",
         "mindray-bc2000",
@@ -227,12 +231,12 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     });
 
     // Assert: Form fields should be populated
-    await wait(() => {
+    await waitFor(() => {
       const nameInput = screen.getByTestId("analyzer-form-name-input");
       expect(nameInput).toHaveValue("Mindray BC2000");
     });
 
-    await wait(() => {
+    await waitFor(() => {
       const portInput = screen.getByTestId("analyzer-form-port-input");
       expect(portInput).toHaveValue("5380");
     });
@@ -242,7 +246,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     // Arrange
     renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
-    await wait(() => {
+    await waitFor(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();
     });
 
@@ -252,13 +256,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     );
     await userEvent.click(dropdown);
 
-    await wait(async () => {
+    await waitFor(async () => {
       const option = await screen.findByText(/Mindray BC2000.*HL7/);
       await userEvent.click(option);
     });
 
     // Assert: Success notification should appear
-    await wait(() => {
+    await waitFor(() => {
       const notification = screen.queryByText(/Default configuration loaded/i);
       expect(notification).toBeInTheDocument();
     });
@@ -274,7 +278,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
 
     renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
-    await wait(() => {
+    await waitFor(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();
     });
 
@@ -284,13 +288,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     );
     await userEvent.click(dropdown);
 
-    await wait(async () => {
+    await waitFor(async () => {
       const option = await screen.findByText(/Mindray BC2000.*HL7/);
       await userEvent.click(option);
     });
 
     // Assert: Error notification should appear
-    await wait(() => {
+    await waitFor(() => {
       const notification = screen.queryByText(
         /Failed to load default configuration/i,
       );
@@ -302,7 +306,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     // Arrange
     renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
-    await wait(() => {
+    await waitFor(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();
     });
 
@@ -312,13 +316,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     );
     await userEvent.click(dropdown);
 
-    await wait(async () => {
+    await waitFor(async () => {
       const option = await screen.findByText(/Mindray BA-88A.*ASTM/);
       await userEvent.click(option);
     });
 
     // Assert: ASTM config should NOT populate port (no default_port for serial)
-    await wait(() => {
+    await waitFor(() => {
       const nameInput = screen.getByTestId("analyzer-form-name-input");
       expect(nameInput).toHaveValue("Mindray BA-88A");
     });
@@ -332,7 +336,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     // Arrange
     renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
-    await wait(() => {
+    await waitFor(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();
     });
 
@@ -342,13 +346,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     );
     await userEvent.click(dropdown);
 
-    await wait(async () => {
+    await waitFor(async () => {
       const option = await screen.findByText(/Mindray BC2000.*HL7/);
       await userEvent.click(option);
     });
 
     // Wait for default to load
-    await wait(() => {
+    await waitFor(() => {
       const nameInput = screen.getByTestId("analyzer-form-name-input");
       expect(nameInput).toHaveValue("Mindray BC2000");
     });

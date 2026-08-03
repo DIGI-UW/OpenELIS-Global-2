@@ -106,9 +106,7 @@ describe("CopyMappingsModal", () => {
    * When a target analyzer is selected, the copy button should be enabled.
    */
   test("testSelectTarget_EnablesCopyButton", async () => {
-    const { rerender } = renderWithIntl(
-      <CopyMappingsModal {...defaultProps} />,
-    );
+    renderWithIntl(<CopyMappingsModal {...defaultProps} />);
 
     // Wait for modal to render
     await waitFor(() => {

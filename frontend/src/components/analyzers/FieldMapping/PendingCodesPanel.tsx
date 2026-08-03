@@ -24,7 +24,9 @@ const PendingCodesPanel = ({ analyzerId, pendingCodes = [], onUpdated }) => {
           );
           return;
         }
-        onUpdated && onUpdated();
+        if (onUpdated) {
+          onUpdated();
+        }
       },
     );
   };

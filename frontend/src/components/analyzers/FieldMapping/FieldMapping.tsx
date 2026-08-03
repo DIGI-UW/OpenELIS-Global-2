@@ -46,7 +46,7 @@ const FieldMapping = () => {
   const [fields, setFields] = useState([]);
   const [mappings, setMappings] = useState([]);
   const [selectedField, setSelectedField] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [queryModalOpen, setQueryModalOpen] = useState(false);
   const [queryJobId, setQueryJobId] = useState(null);
@@ -76,7 +76,7 @@ const FieldMapping = () => {
             window.scrollTo(0, parseInt(storedScrollY, 10));
           }
         }, 100);
-      } catch (_) {
+      } catch {
         // ignore
       }
     }

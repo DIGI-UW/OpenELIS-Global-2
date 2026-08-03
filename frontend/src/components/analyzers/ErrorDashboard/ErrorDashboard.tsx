@@ -41,15 +41,46 @@ import ErrorDetailsModal from "./ErrorDetailsModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./ErrorDashboard.css";
 
+interface AnalyzerErrorRecord {
+  [key: string]: unknown;
+  id?: string;
+  status?: string;
+  severity?: string;
+  errorType?: string;
+  errorMessage?: string;
+  message?: string;
+  timestamp?: string;
+  createdDate?: string;
+  analyzerName?: string;
+  analyzer?: { id?: string; name?: string };
+  analyzerLogs?: Array<{
+    timestamp?: string;
+    level?: string;
+    message?: string;
+  }>;
+  acknowledgedBy?: string;
+  acknowledgedDate?: string;
+  analyzerId?: string;
+}
+
+interface ErrorFilters {
+  errorType: string;
+  severity: string;
+  analyzer: string;
+  search?: string;
+}
+
 const ErrorDashboard = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const searchTimeoutRef = useRef(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [errors, setErrors] = useState([]);
-  const [filteredErrors, setFilteredErrors] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [, setErrors] = useState<AnalyzerErrorRecord[]>([]);
+  const [filteredErrors, setFilteredErrors] = useState<AnalyzerErrorRecord[]>(
+    [],
+  );
+  const [, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
     errorType: "",
@@ -62,89 +93,94 @@ const ErrorDashboard = () => {
     critical: 0,
     last24Hours: 0,
   });
-  const [selectedError, setSelectedError] = useState(null);
+  const [selectedError, setSelectedError] =
+    useState<AnalyzerErrorRecord | null>(null);
   const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
 
-  const loadErrors = useCallback((searchFilters = {}) => {
-    setLoading(true);
-    // TODO: Replace with actual API endpoint when AnalyzerErrorRestController is implemented
-    // Endpoint will be: GET /rest/analyzer/errors?errorType=...&severity=...&analyzer=...
-    const endpoint = "/rest/analyzer/errors";
-    const params = new URLSearchParams();
+  const loadErrors = useCallback(
+    (searchFilters: Partial<ErrorFilters> = {}) => {
+      setLoading(true);
+      // TODO: Replace with actual API endpoint when AnalyzerErrorRestController is implemented
+      // Endpoint will be: GET /rest/analyzer/errors?errorType=...&severity=...&analyzer=...
+      const endpoint = "/rest/analyzer/errors";
+      const params = new URLSearchParams();
 
-    if (searchFilters.errorType) {
-      params.append("errorType", searchFilters.errorType);
-    }
-    if (searchFilters.severity) {
-      params.append("severity", searchFilters.severity);
-    }
-    if (searchFilters.analyzer) {
-      params.append("analyzer", searchFilters.analyzer);
-    }
-    if (searchFilters.search) {
-      params.append("search", searchFilters.search);
-    }
-
-    const url = params.toString()
-      ? `${endpoint}?${params.toString()}`
-      : endpoint;
-
-    getFromOpenElisServer(url, (data) => {
-      // API returns { data: { content: [...], statistics: {...} }, status: "success" }
-      let errors = [];
-      let statistics = null;
-
-      if (data && data.data) {
-        // Response wrapped in data object
-        if (Array.isArray(data.data.content)) {
-          errors = data.data.content;
-        } else if (Array.isArray(data.data)) {
-          // Fallback: data.data might be the array directly
-          errors = data.data;
-        }
-        if (data.data.statistics) {
-          statistics = data.data.statistics;
-        }
-      } else if (Array.isArray(data)) {
-        // Direct array response (fallback)
-        errors = data;
+      if (searchFilters.errorType) {
+        params.append("errorType", searchFilters.errorType);
+      }
+      if (searchFilters.severity) {
+        params.append("severity", searchFilters.severity);
+      }
+      if (searchFilters.analyzer) {
+        params.append("analyzer", searchFilters.analyzer);
+      }
+      if (searchFilters.search) {
+        params.append("search", searchFilters.search);
       }
 
-      setErrors(errors);
-      setFilteredErrors(errors);
+      const url = params.toString()
+        ? `${endpoint}?${params.toString()}`
+        : endpoint;
 
-      // Use statistics from API if available, otherwise calculate from errors
-      if (statistics) {
-        setStats({
-          total: statistics.totalErrors || errors.length,
-          unacknowledged: statistics.unacknowledged || 0,
-          critical: statistics.critical || 0,
-          last24Hours: statistics.last24Hours || 0,
-        });
-      } else {
-        const now = new Date();
-        const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const unacknowledgedCount = errors.filter(
-          (e) => e.status === "UNACKNOWLEDGED" || e.status === "unacknowledged",
-        ).length;
-        const criticalCount = errors.filter(
-          (e) => e.severity === "CRITICAL" || e.severity === "critical",
-        ).length;
-        const last24HoursCount = errors.filter((e) => {
-          const errorDate = new Date(e.timestamp || e.createdDate);
-          return errorDate >= last24Hours;
-        }).length;
+      getFromOpenElisServer(url, (data) => {
+        // API returns { data: { content: [...], statistics: {...} }, status: "success" }
+        let errors: AnalyzerErrorRecord[] = [];
+        let statistics = null;
 
-        setStats({
-          total: errors.length,
-          unacknowledged: unacknowledgedCount,
-          critical: criticalCount,
-          last24Hours: last24HoursCount,
-        });
-      }
-      setLoading(false);
-    });
-  }, []);
+        if (data && data.data) {
+          // Response wrapped in data object
+          if (Array.isArray(data.data.content)) {
+            errors = data.data.content;
+          } else if (Array.isArray(data.data)) {
+            // Fallback: data.data might be the array directly
+            errors = data.data;
+          }
+          if (data.data.statistics) {
+            statistics = data.data.statistics;
+          }
+        } else if (Array.isArray(data)) {
+          // Direct array response (fallback)
+          errors = data;
+        }
+
+        setErrors(errors);
+        setFilteredErrors(errors);
+
+        // Use statistics from API if available, otherwise calculate from errors
+        if (statistics) {
+          setStats({
+            total: statistics.totalErrors || errors.length,
+            unacknowledged: statistics.unacknowledged || 0,
+            critical: statistics.critical || 0,
+            last24Hours: statistics.last24Hours || 0,
+          });
+        } else {
+          const now = new Date();
+          const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          const unacknowledgedCount = errors.filter(
+            (e) =>
+              e.status === "UNACKNOWLEDGED" || e.status === "unacknowledged",
+          ).length;
+          const criticalCount = errors.filter(
+            (e) => e.severity === "CRITICAL" || e.severity === "critical",
+          ).length;
+          const last24HoursCount = errors.filter((e) => {
+            const errorDate = new Date(e.timestamp || e.createdDate);
+            return errorDate >= last24Hours;
+          }).length;
+
+          setStats({
+            total: errors.length,
+            unacknowledged: unacknowledgedCount,
+            critical: criticalCount,
+            last24Hours: last24HoursCount,
+          });
+        }
+        setLoading(false);
+      });
+    },
+    [],
+  );
 
   // Initial load + restore state from URL/sessionStorage
   useEffect(() => {
@@ -195,7 +231,7 @@ const ErrorDashboard = () => {
     };
   }, [loadErrors, location.search]);
 
-  const handleSearch = (value) => {
+  const handleSearch = (value: string) => {
     setSearchTerm(value);
 
     const params = new URLSearchParams(location.search);
@@ -214,7 +250,7 @@ const ErrorDashboard = () => {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      const searchFilters = { ...filters };
+      const searchFilters: ErrorFilters = { ...filters };
       if (value.trim()) {
         searchFilters.search = value.trim();
       }
@@ -222,7 +258,10 @@ const ErrorDashboard = () => {
     }, 300);
   };
 
-  const handleFilterChange = (filterName, value) => {
+  const handleFilterChange = (
+    filterName: keyof ErrorFilters,
+    value: string,
+  ) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
 
@@ -272,13 +311,13 @@ const ErrorDashboard = () => {
   };
 
   // Handle view error details
-  const handleViewDetails = (error) => {
+  const handleViewDetails = (error: AnalyzerErrorRecord) => {
     setSelectedError(error);
     setErrorDetailsOpen(true);
   };
 
   // Handle acknowledge error
-  const handleAcknowledge = (errorId) => {
+  const handleAcknowledge = (errorId: string) => {
     // Call acknowledge endpoint
     const endpoint = `/rest/analyzer/errors/${errorId}/acknowledge`;
     const payload = JSON.stringify({});
@@ -300,7 +339,7 @@ const ErrorDashboard = () => {
   };
 
   // Format timestamp
-  const formatTimestamp = (timestamp) => {
+  const formatTimestamp = (timestamp?: string) => {
     if (!timestamp) return "-";
     const date = new Date(timestamp);
     return intl.formatDate(date, {
@@ -640,9 +679,9 @@ const ErrorDashboard = () => {
                   </TableHead>
                   <TableBody>
                     {rows.map((row) => {
-                      const error =
-                        row._error ||
-                        filteredErrors.find((e) => e?.id === row?.id);
+                      const error = filteredErrors.find(
+                        (e) => e?.id === row?.id,
+                      );
                       const isAcknowledged =
                         error?.status === "ACKNOWLEDGED" ||
                         error?.status === "acknowledged";
@@ -659,10 +698,10 @@ const ErrorDashboard = () => {
 
                       // Get error type label
                       const errorTypeKey = `analyzer.errorDashboard.errorType.${errorType.toLowerCase()}`;
-                      const errorTypeLabel = intl.formatMessage(
-                        { id: errorTypeKey },
-                        errorType,
-                      );
+                      const errorTypeLabel = intl.formatMessage({
+                        id: errorTypeKey,
+                        defaultMessage: errorType,
+                      });
 
                       return (
                         <TableRow
@@ -673,7 +712,7 @@ const ErrorDashboard = () => {
                           {row.cells.map((cell) => {
                             const headerKey = cell.info.header;
                             let cellContent = cell.value;
-                            let testId = null;
+                            let testId = `error-${headerKey}-${row.id}`;
 
                             if (headerKey === "type") {
                               testId = `error-type-${row.id}`;
@@ -685,10 +724,10 @@ const ErrorDashboard = () => {
                             } else if (headerKey === "severity") {
                               testId = `error-severity-${row.id}`;
                               const severityKey = `analyzer.errorDashboard.severity.${severity.toLowerCase()}`;
-                              const severityLabel = intl.formatMessage(
-                                { id: severityKey },
-                                severity,
-                              );
+                              const severityLabel = intl.formatMessage({
+                                id: severityKey,
+                                defaultMessage: severity,
+                              });
                               cellContent = (
                                 <Tag type={severityColor} data-testid={testId}>
                                   {severityLabel}
@@ -738,8 +777,6 @@ const ErrorDashboard = () => {
                                   )}
                                 </OverflowMenu>
                               ) : null;
-                            } else {
-                              testId = `error-${headerKey}-${row.id}`;
                             }
 
                             return (

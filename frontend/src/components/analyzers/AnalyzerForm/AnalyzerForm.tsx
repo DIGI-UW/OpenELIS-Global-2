@@ -30,17 +30,32 @@ import {
   DEFAULT_COMMUNICATION_MODE,
   resolveAnalyzerApiMessage,
 } from "../constants";
+import type {
+  Analyzer,
+  AnalyzerApiResponse,
+  AnalyzerDefaultConfig,
+  AnalyzerFormErrors,
+  AnalyzerFormValues,
+  AnalyzerNotification,
+  AnalyzerPluginType,
+} from "../analyzerTypes";
 import "./AnalyzerForm.css";
 
-const AnalyzerForm = () => {
+interface AnalyzerFormProps {
+  analyzer?: Analyzer;
+  open?: boolean;
+  onClose?: () => void;
+}
+
+const AnalyzerForm = (_props: AnalyzerFormProps) => {
   const intl = useIntl();
   const history = useHistory();
   const { id: analyzerId } = useParams();
   const isEditMode = !!analyzerId;
-  const [analyzer, setAnalyzer] = useState(null);
+  const [analyzer, setAnalyzer] = useState<Analyzer | null>(null);
   const [loadingAnalyzer, setLoadingAnalyzer] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AnalyzerFormValues>({
     name: "",
     analyzerType: "",
     pluginTypeId: "",
@@ -61,17 +76,22 @@ const AnalyzerForm = () => {
     skipRows: 0,
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<AnalyzerFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
   const [testConnectionModalOpen, setTestConnectionModalOpen] = useState(false);
-  const closeTimeoutRef = useRef(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [defaultConfigs, setDefaultConfigs] = useState([]);
+  const [defaultConfigs, setDefaultConfigs] = useState<AnalyzerDefaultConfig[]>(
+    [],
+  );
   const [loadingDefaults, setLoadingDefaults] = useState(false);
-  const [selectedDefault, setSelectedDefault] = useState(null);
+  const [selectedDefault, setSelectedDefault] =
+    useState<AnalyzerDefaultConfig | null>(null);
 
-  const [pluginTypes, setPluginTypes] = useState([]);
+  const [pluginTypes, setPluginTypes] = useState<AnalyzerPluginType[]>([]);
   const [loadingPluginTypes, setLoadingPluginTypes] = useState(false);
 
   // Analyzer type options (must match DB analyzer_type column values)
@@ -233,7 +253,7 @@ const AnalyzerForm = () => {
     });
   }, []);
 
-  const validateIPAddress = (ip) => {
+  const validateIPAddress = (ip: string) => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (!ipRegex.test(ip)) {
       return intl.formatMessage({
@@ -252,7 +272,10 @@ const AnalyzerForm = () => {
     return null;
   };
 
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = <K extends keyof AnalyzerFormValues>(
+    field: K,
+    value: AnalyzerFormValues[K],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -285,7 +308,9 @@ const AnalyzerForm = () => {
     }));
   };
 
-  const handleDefaultConfigSelect = (defaultItem) => {
+  const handleDefaultConfigSelect = (
+    defaultItem: AnalyzerDefaultConfig | null,
+  ) => {
     if (!defaultItem || !defaultItem.id) {
       return;
     }
@@ -321,7 +346,7 @@ const AnalyzerForm = () => {
         };
 
         // FILE protocol: auto-fill file import fields from profile
-        const fileUpdates = {};
+        const fileUpdates: Partial<AnalyzerFormValues> = {};
         if (protocolUpper === "FILE") {
           const defaults = configData.configDefaults || {};
           const extensions = configData.supported_extensions || [];
@@ -378,7 +403,7 @@ const AnalyzerForm = () => {
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: AnalyzerFormErrors = {};
 
     if (!formData.name.trim()) {
       newErrors.name = intl.formatMessage({
@@ -428,7 +453,7 @@ const AnalyzerForm = () => {
     setNotification(null);
 
     // Parse column mappings JSON for FILE protocol
-    let columnMappingsObj = {};
+    let columnMappingsObj: unknown = {};
     if (isFileProtocol && formData.columnMappings) {
       try {
         columnMappingsObj = JSON.parse(formData.columnMappings);
@@ -469,7 +494,7 @@ const AnalyzerForm = () => {
       }),
     };
 
-    const callback = (response, extraParams) => {
+    const callback = (response: AnalyzerApiResponse) => {
       setIsSubmitting(false);
       if (response.error || response.statusCode >= 400) {
         setNotification({
@@ -498,7 +523,7 @@ const AnalyzerForm = () => {
     };
 
     if (isEditMode) {
-      updateAnalyzer(analyzer.id, submitData, callback);
+      updateAnalyzer(analyzer?.id || analyzerId, submitData, callback);
     } else {
       createAnalyzer(submitData, callback);
     }
@@ -699,7 +724,6 @@ const AnalyzerForm = () => {
               }
               invalid={!!errors.analyzerType}
               invalidText={errors.analyzerType}
-              required
             />
 
             {!isFileProtocol && (
@@ -707,6 +731,10 @@ const AnalyzerForm = () => {
                 id="analyzer-protocol-version"
                 data-testid="analyzer-form-protocol-version-dropdown"
                 titleText={intl.formatMessage({
+                  id: "analyzer.form.protocolVersion",
+                  defaultMessage: "Message Protocol",
+                })}
+                label={intl.formatMessage({
                   id: "analyzer.form.protocolVersion",
                   defaultMessage: "Message Protocol",
                 })}
@@ -733,6 +761,9 @@ const AnalyzerForm = () => {
                 id="analyzer-communication-mode"
                 data-testid="analyzer-form-communication-mode-dropdown"
                 titleText={intl.formatMessage({
+                  id: "analyzer.form.communicationMode",
+                })}
+                label={intl.formatMessage({
                   id: "analyzer.form.communicationMode",
                 })}
                 items={communicationModeItems}
@@ -808,6 +839,10 @@ const AnalyzerForm = () => {
                 id="analyzer-file-format"
                 data-testid="analyzer-form-file-format-dropdown"
                 titleText={intl.formatMessage({
+                  id: "analyzer.form.fileFormat",
+                  defaultMessage: "File Format",
+                })}
+                label={intl.formatMessage({
                   id: "analyzer.form.fileFormat",
                   defaultMessage: "File Format",
                 })}

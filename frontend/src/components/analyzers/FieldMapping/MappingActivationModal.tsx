@@ -27,6 +27,19 @@ import { WarningAlt } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./MappingActivationModal.css";
 
+interface MappingActivationModalProps {
+  open: boolean;
+  onClose: () => void;
+  analyzerName: string;
+  analyzerIsActive?: boolean;
+  onConfirm: () => void;
+  pendingMessagesCount?: number;
+  missingRequired?: string[];
+  concurrentEdit?: boolean;
+  onViewPendingMessages?: () => void;
+  onReloadPage?: () => void;
+}
+
 const MappingActivationModal = ({
   open,
   onClose,
@@ -38,7 +51,7 @@ const MappingActivationModal = ({
   concurrentEdit = false,
   onViewPendingMessages,
   onReloadPage,
-}) => {
+}: MappingActivationModalProps) => {
   const intl = useIntl();
   const [confirmed, setConfirmed] = useState(false);
 

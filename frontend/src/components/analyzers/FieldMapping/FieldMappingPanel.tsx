@@ -110,6 +110,7 @@ const FieldMappingPanel = ({
       _field: field, // Store full field object
     };
   });
+  type FieldMappingRow = (typeof rows)[number];
 
   // Get field type tag color
   const getFieldTypeColor = (fieldType) => {
@@ -150,6 +151,9 @@ const FieldMappingPanel = ({
           <Dropdown
             id="status-filter"
             data-testid="field-mapping-status-filter"
+            titleText={intl.formatMessage({
+              id: "analyzer.fieldMapping.panel.statusFilter.label",
+            })}
             label={intl.formatMessage({
               id: "analyzer.fieldMapping.panel.statusFilter.label",
             })}
@@ -249,10 +253,12 @@ const FieldMappingPanel = ({
               </TableHead>
               <TableBody>
                 {rows.map((row) => {
+                  const mappingRow = row as FieldMappingRow;
                   const field =
-                    row._field || fields.find((f) => f.id === row.id);
+                    mappingRow._field ||
+                    fields.find((f) => f.id === mappingRow.id);
                   const isSelected =
-                    selectedField && selectedField.id === row.id;
+                    selectedField && selectedField.id === mappingRow.id;
 
                   return (
                     <TableRow
@@ -270,8 +276,8 @@ const FieldMappingPanel = ({
 
                         if (headerKey === "fieldName") {
                           testId = `field-name-${row.id}`;
-                          const isUnmapped = !row.hasMapping;
-                          const mapping = row.mapping;
+                          const isUnmapped = !mappingRow.hasMapping;
+                          const mapping = mappingRow.mapping;
                           // Show field name with mapped OpenELIS field below (per Figma design)
                           cellContent = (
                             <div
@@ -319,7 +325,7 @@ const FieldMappingPanel = ({
                           testId = `field-astm-ref-${row.id}`;
                         } else if (headerKey === "type") {
                           testId = `field-type-${row.id}`;
-                          const field = row._field;
+                          const field = mappingRow._field;
                           const isCustomType = cell.value === "CUSTOM";
                           const customFieldType = field?.customFieldType;
 
@@ -355,7 +361,7 @@ const FieldMappingPanel = ({
                           );
                         } else if (headerKey === "unit") {
                           testId = `field-unit-${row.id}`;
-                          const mapping = row.mapping;
+                          const mapping = mappingRow.mapping;
                           const unit = cell.value !== "-" ? cell.value : null;
                           // Show unit with unit mapping below (per Figma design)
                           if (unit && mapping && mapping.unitMapping) {
@@ -392,8 +398,8 @@ const FieldMappingPanel = ({
                           }
                         } else if (headerKey === "action") {
                           testId = `field-action-${row.id}`;
-                          const isMapped = row.hasMapping;
-                          const mapping = row.mapping;
+                          const isMapped = mappingRow.hasMapping;
+                          const mapping = mappingRow.mapping;
 
                           if (!isMapped) {
                             // Unmapped field

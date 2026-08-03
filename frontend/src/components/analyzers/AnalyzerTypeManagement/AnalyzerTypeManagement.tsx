@@ -29,18 +29,47 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import type {
+  AnalyzerApiResponse,
+  AnalyzerNotification,
+} from "../analyzerTypes";
+
+interface AnalyzerTypeRow {
+  id: string | number;
+  name?: string;
+  description?: string;
+  protocol?: string;
+  pluginClassName?: string;
+  identifierPattern?: string;
+  isGenericPlugin?: boolean;
+  pluginLoaded?: boolean;
+  instanceCount?: number;
+  isActive?: boolean;
+}
+
+interface AnalyzerTypeFormValues {
+  name: string;
+  description: string;
+  protocol: string;
+  pluginClassName: string;
+  identifierPattern: string;
+  isGenericPlugin: boolean;
+  isActive: boolean;
+}
 
 const AnalyzerTypeManagement = () => {
   const intl = useIntl();
 
-  const [analyzerTypes, setAnalyzerTypes] = useState([]);
+  const [analyzerTypes, setAnalyzerTypes] = useState<AnalyzerTypeRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
   const [submitting, setSubmitting] = useState(false);
 
-  const emptyForm = {
+  const emptyForm: AnalyzerTypeFormValues = {
     name: "",
     description: "",
     protocol: "ASTM",
@@ -50,7 +79,9 @@ const AnalyzerTypeManagement = () => {
     isActive: true,
   };
   const [formData, setFormData] = useState({ ...emptyForm });
-  const [formErrors, setFormErrors] = useState({});
+  const [formErrors, setFormErrors] = useState<
+    Partial<Record<keyof AnalyzerTypeFormValues, string>>
+  >({});
 
   const protocolOptions = [
     { id: "ASTM", text: "ASTM" },
@@ -136,7 +167,7 @@ const AnalyzerTypeManagement = () => {
   }));
 
   const validateForm = () => {
-    const errors = {};
+    const errors: Partial<Record<keyof AnalyzerTypeFormValues, string>> = {};
     if (!formData.name || !formData.name.trim()) {
       errors.name = intl.formatMessage({
         id: "analyzerType.error.nameRequired",
@@ -163,7 +194,7 @@ const AnalyzerTypeManagement = () => {
     postToOpenElisServerJsonResponse(
       "/rest/analyzer-types",
       payload,
-      (response) => {
+      (response: AnalyzerApiResponse) => {
         setSubmitting(false);
         if (response && response.error) {
           setNotification({
@@ -387,18 +418,16 @@ const AnalyzerTypeManagement = () => {
               }
             />
           </ModalBody>
-          <ModalFooter
-            primaryButtonText={
-              submitting
+          <ModalFooter>
+            <Button kind="secondary" onClick={handleCloseModal}>
+              {intl.formatMessage({ id: "analyzerType.button.cancel" })}
+            </Button>
+            <Button kind="primary" onClick={handleCreate} disabled={submitting}>
+              {submitting
                 ? intl.formatMessage({ id: "analyzerType.button.creating" })
-                : intl.formatMessage({ id: "analyzerType.button.create" })
-            }
-            secondaryButtonText={intl.formatMessage({
-              id: "analyzerType.button.cancel",
-            })}
-            onRequestSubmit={handleCreate}
-            primaryButtonDisabled={submitting}
-          />
+                : intl.formatMessage({ id: "analyzerType.button.create" })}
+            </Button>
+          </ModalFooter>
         </ComposedModal>
       </Column>
     </Grid>
