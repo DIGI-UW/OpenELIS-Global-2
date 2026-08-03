@@ -47,8 +47,6 @@ import CustomFieldTypeManagement from "./CustomFieldTypeManagement";
 import {
   getCustomFieldTypes,
   createCustomFieldType,
-  updateCustomFieldType,
-  deleteCustomFieldType,
 } from "../../../services/analyzerService";
 
 // 9. Messages/translations

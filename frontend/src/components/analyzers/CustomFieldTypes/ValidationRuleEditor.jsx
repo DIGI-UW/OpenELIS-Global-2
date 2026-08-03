@@ -15,10 +15,8 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
-  getValidationRules,
   createValidationRule,
   updateValidationRule,
-  deleteValidationRule,
 } from "../../../services/analyzerService";
 import "./ValidationRuleEditor.css";
 
