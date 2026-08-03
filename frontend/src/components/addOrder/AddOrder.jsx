@@ -525,8 +525,13 @@ const AddOrder = (props) => {
       },
     });
   }
+  // getFromOpenElisServer yields undefined when the response is not JSON — an
+  // authorization redirect to the HTML login/Home page, or the server being
+  // unreachable. Keep the state an array so a failed load degrades to an empty
+  // department list instead of throwing on .map() during render and taking the
+  // whole Sample Entry route down through its error boundary.
   const loadDepartments = (data) => {
-    setDepartments(data);
+    setDepartments(data || []);
   };
 
   function handleLabNo(e, rawVal) {

@@ -437,8 +437,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin"))
                 .exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) -> {
                     String path = request.getRequestURI().substring(request.getContextPath().length());
-                    if (path.startsWith("/rest") || path.startsWith("/Provider")
-                            || path.startsWith("/api/OpenELIS-Global/rest")) {
+                    if (path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")) {
                         response.setStatus(403);
                         response.setContentType("application/json");
                         response.setCharacterEncoding("UTF-8");

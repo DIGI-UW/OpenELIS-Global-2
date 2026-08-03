@@ -952,6 +952,7 @@
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/openelis-analyzer-bridge/**</exclude>
                                 <exclude>tools/analyzer-mock-server/**</exclude>
+                                <exclude>tools/code-qa/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                             </excludes>
@@ -972,6 +973,7 @@
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/openelis-analyzer-bridge/**</exclude>
                                 <exclude>tools/analyzer-mock-server/**</exclude>
+                                <exclude>tools/code-qa/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>
