@@ -113,6 +113,20 @@ Choose command based on `--full-reset` flag:
 
 Report which mode was used.
 
+Then delete the runtime config checksums so the next boot re-imports config and
+CSVs. `ConfigurationInitializationService` writes `*checksum*.properties` files
+into `volume/configuration` at startup and skips re-importing any file whose
+checksum still matches; the files are git-ignored, so `git status` never shows
+them, and they survive `--full-reset` because they live in the host bind mount,
+not the database:
+
+```bash
+find volume/configuration -type f -name "*checksum*.properties" -print -delete | wc -l
+```
+
+Report how many were deleted. Without this step, config and CSV changes are
+silently not re-imported even after a full database reset.
+
 ### 3) Setup Let's Encrypt (checkpoint #3)
 
 **Skip if DOMAIN is `localhost`.**
