@@ -30,7 +30,7 @@ const openRowAction = async (page: Page, rowText: string, action: string) => {
   const row = page.getByRole("row").filter({ hasText: rowText });
   await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
   await row.getByRole("button", { name: "Options" }).click();
-  await page.getByRole("menuitem", { name: action, exact: true }).click();
+  await page.getByRole("menuitem").filter({ hasText: action }).click();
 };
 
 const expectActiveReference = async (
@@ -341,8 +341,12 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
   }) => {
     await seedMicrobiologyReferenceAdmin(page);
     await page.goto("/MasterListsPage", { waitUntil: "domcontentloaded" });
-    await page.getByTestId("microbiology-reference-menu").click();
-    await page.getByTestId("microbiology-reference-breakpoints").click();
+    await page
+      .getByRole("button", { name: "Microbiology reference data", exact: true })
+      .click();
+    await page
+      .getByRole("link", { name: "Breakpoint standards", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/MicrobiologyReference\/breakpoints/);
     await expect(
       page.getByRole("navigation", { name: "Breadcrumb" }),
@@ -351,14 +355,14 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
       page.getByRole("navigation", { name: "Breadcrumb" }),
     ).toContainText("Admin Management");
 
-    for (const section of [
-      "organisms",
-      "antibiotics",
-      "ast-panels",
-      "culture-setups",
-      "breakpoints",
+    for (const [section, label] of [
+      ["organisms", "Organisms"],
+      ["antibiotics", "Antibiotics"],
+      ["ast-panels", "AST panels"],
+      ["culture-setups", "Culture methods"],
+      ["breakpoints", "Breakpoint standards"],
     ]) {
-      await page.getByTestId(`microbiology-reference-${section}`).click();
+      await page.getByRole("link", { name: label, exact: true }).click();
       await expect(page).toHaveURL(
         new RegExp(`/MicrobiologyReference/${section}`),
       );

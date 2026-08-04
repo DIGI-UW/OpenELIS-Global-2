@@ -31,6 +31,7 @@ import {
   getReferenceItem,
   getReferenceOptions,
   getReferencePage,
+  previewBreakpointImport,
   saveBreakpointRule,
   setReferenceActive,
 } from "./api";
@@ -223,6 +224,59 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenCalledWith({ edit: "activate" });
+  });
+
+  it("clears an import preview when Cancel closes the modal", async () => {
+    const user = userEvent.setup();
+    const csv = "publisher,version\nCLSI,SYNTH-UAT";
+    getBreakpointStandards.mockResolvedValue({ rows: [], total: 0 });
+    previewBreakpointImport.mockResolvedValue({
+      previewToken: "preview-1",
+      validRows: 1,
+      skippedRows: 0,
+      unchangedRows: 0,
+      errors: [],
+    });
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState(query);
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return (
+        <BreakpointPage
+          basePath="/MasterListsPage"
+          query={currentQuery}
+          setQuery={setQuery}
+        />
+      );
+    };
+
+    const { container } = renderPage(<Harness />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: messages["microbiology.admin.breakpoints.import"],
+      }),
+    );
+    const file = new File([csv], "synthetic.csv", { type: "text/csv" });
+    if (!file.text) {
+      Object.defineProperty(file, "text", {
+        value: () => Promise.resolve(csv),
+      });
+    }
+    await user.upload(container.querySelector('input[type="file"]'), file);
+    expect(await screen.findByText("1 valid")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: messages["button.cancel"] }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.admin.breakpoints.import"],
+      }),
+    );
+
+    expect(screen.queryByText("1 valid")).not.toBeInTheDocument();
+    expect(container.querySelector('input[type="file"]')).not.toBeNull();
   });
 
   it("loads a directly linked breakpoint correction and saves it as local", async () => {
