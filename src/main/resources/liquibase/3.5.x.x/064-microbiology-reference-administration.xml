@@ -29,6 +29,9 @@
             </column>
             <column name="last_updated_by" type="VARCHAR(20)"/>
         </addColumn>
+        <addColumn schemaName="clinlims" tableName="micro_culture_setup">
+            <column name="last_updated_by" type="VARCHAR(20)"/>
+        </addColumn>
         <rollback>
             <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_organism"
                 constraintName="fk_micro_organism_default_panel"/>
@@ -42,6 +45,7 @@
             <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="notes"/>
             <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="seeded"/>
             <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="last_updated_by"/>
+            <dropColumn schemaName="clinlims" tableName="micro_culture_setup" columnName="last_updated_by"/>
         </rollback>
     </changeSet>
 

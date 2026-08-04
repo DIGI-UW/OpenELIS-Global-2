@@ -8,6 +8,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
+import org.openelisglobal.microbiology.service.MicroReferenceConflictException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,6 +21,18 @@ abstract class MicrobiologyRestControllerSupport extends BaseRestController {
     protected ResponseEntity<Map<String, Object>> handleLockedCase(MicroCaseLockedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
                 "MICROBIOLOGY_CASE_LOCKED", "message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MicroReferenceConflictException.class)
+    protected ResponseEntity<Map<String, Object>> handleReferenceConflict(MicroReferenceConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
+                "MICROBIOLOGY_REFERENCE_CONFLICT", "message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    protected ResponseEntity<Map<String, Object>> handleInvalidReferenceRequest(IllegalArgumentException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("status", HttpStatus.BAD_REQUEST.value(),
+                "error", "MICROBIOLOGY_REFERENCE_INVALID", "message", exception.getMessage()));
     }
 
     protected String authenticatedUserId(HttpServletRequest request) {

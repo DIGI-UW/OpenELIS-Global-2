@@ -16,6 +16,7 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
@@ -43,13 +44,15 @@ public class MicrobiologyReferenceAdminServiceTest {
     private MicroAstPanelAntibioticDAO panelAntibioticDAO;
     @Mock
     private MicroCultureSetupDAO cultureSetupDAO;
+    @Mock
+    private MethodService methodService;
 
     private MicrobiologyReferenceAdminService service;
 
     @Before
     public void setUp() {
         service = new MicrobiologyReferenceAdminServiceImpl(organismDAO, antibioticDAO, panelDAO, panelAntibioticDAO,
-                cultureSetupDAO);
+                cultureSetupDAO, methodService);
     }
 
     @Test

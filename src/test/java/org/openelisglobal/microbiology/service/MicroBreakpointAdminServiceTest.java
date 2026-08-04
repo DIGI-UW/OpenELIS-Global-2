@@ -13,10 +13,12 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointActivationEventDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 
@@ -31,12 +33,17 @@ public class MicroBreakpointAdminServiceTest {
     private MicroBreakpointActivationEventDAO activationEventDAO;
     @Mock
     private MicroAstRunDAO astRunDAO;
+    @Mock
+    private MicroOrganismDAO organismDAO;
+    @Mock
+    private MicroAntibioticDAO antibioticDAO;
 
     private MicroBreakpointAdminService service;
 
     @Before
     public void setUp() {
-        service = new MicroBreakpointAdminServiceImpl(standardDAO, ruleDAO, activationEventDAO, astRunDAO);
+        service = new MicroBreakpointAdminServiceImpl(standardDAO, ruleDAO, activationEventDAO, astRunDAO, organismDAO,
+                antibioticDAO);
     }
 
     @Test

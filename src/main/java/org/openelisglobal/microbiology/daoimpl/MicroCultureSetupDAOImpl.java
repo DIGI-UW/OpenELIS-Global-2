@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.daoimpl;
 
 import java.util.List;
+import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -36,5 +37,16 @@ public class MicroCultureSetupDAOImpl extends BaseDAOImpl<MicroCultureSetup, Str
         query.setParameter("methodId", methodId);
         query.setParameter("workflowType", workflowType);
         return query.uniqueResultOptional().orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MicroCultureSetup> findByMethodAndWorkflowType(String methodId, String workflowType) {
+        Query<MicroCultureSetup> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroCultureSetup c where c.methodId = :methodId" + " and c.workflowType = :workflowType",
+                MicroCultureSetup.class);
+        query.setParameter("methodId", methodId);
+        query.setParameter("workflowType", workflowType);
+        return query.uniqueResultOptional();
     }
 }

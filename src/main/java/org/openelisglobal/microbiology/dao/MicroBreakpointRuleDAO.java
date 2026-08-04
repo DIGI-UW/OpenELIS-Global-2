@@ -15,4 +15,12 @@ public interface MicroBreakpointRuleDAO extends BaseDAO<MicroBreakpointRule, Str
             String antibioticId, String method, String specimenTypeId, String breakpointType);
 
     List<MicroBreakpointRule> getByStandardId(String standardId);
+
+    List<MicroBreakpointRule> search(String standardId, String q, String organism, String antibiotic, String method,
+            String specimenTypeId, int offset, int limit);
+
+    long countSearch(String standardId, String q, String organism, String antibiotic, String method,
+            String specimenTypeId);
+
+    long countByStandardId(String standardId);
 }
