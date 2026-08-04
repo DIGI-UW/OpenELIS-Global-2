@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,6 +34,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicrobiologyReferenceAdminServiceTest {
@@ -48,13 +51,15 @@ public class MicrobiologyReferenceAdminServiceTest {
     private MicroCultureSetupDAO cultureSetupDAO;
     @Mock
     private MethodService methodService;
+    @Mock
+    private TypeOfSampleService typeOfSampleService;
 
     private MicrobiologyReferenceAdminService service;
 
     @Before
     public void setUp() {
         service = new MicrobiologyReferenceAdminServiceImpl(organismDAO, antibioticDAO, panelDAO, panelAntibioticDAO,
-                cultureSetupDAO, methodService);
+                cultureSetupDAO, methodService, typeOfSampleService);
     }
 
     @Test
@@ -110,13 +115,16 @@ public class MicrobiologyReferenceAdminServiceTest {
         existing.setWhonetCode("eco");
         existing.setOrganismGroup("Enterobacterales");
         existing.setIsActive("Y");
-        when(organismDAO.getAll()).thenReturn(List.of(existing));
+        when(organismDAO.search(eq(""), eq("ALL"), isNull(), eq("name"), eq(0), eq(20))).thenReturn(List.of(existing));
+        when(organismDAO.countSearch("", "ALL", null)).thenReturn(1L);
         when(organismDAO.countWorkflowReferences("organism-1")).thenReturn(3L);
 
         MicroReferenceAdminQueryForm query = new MicroReferenceAdminQueryForm();
         MicroOrganismAdminForm result = service.getOrganisms(query).rows.get(0);
 
         assertEquals(3L, result.referenceCount);
+        assertEquals(1L, service.getOrganisms(query).total);
+        verify(organismDAO, never()).getAll();
     }
 
     @Test

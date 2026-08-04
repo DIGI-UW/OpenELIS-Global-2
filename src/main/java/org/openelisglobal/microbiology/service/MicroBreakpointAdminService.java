@@ -10,8 +10,12 @@ public interface MicroBreakpointAdminService {
 
     MicroReferenceAdminPageForm<MicroBreakpointStandardAdminForm> getStandards(MicroReferenceAdminQueryForm query);
 
+    MicroBreakpointStandardAdminForm getStandard(String standardId);
+
     MicroReferenceAdminPageForm<MicroBreakpointRuleAdminForm> getRules(String standardId,
             MicroReferenceAdminQueryForm query);
+
+    MicroBreakpointRuleAdminForm getRule(String standardId, String ruleId);
 
     MicroBreakpointRuleAdminForm saveRule(String standardId, String ruleId, MicroBreakpointRuleAdminForm request,
             String actorId);

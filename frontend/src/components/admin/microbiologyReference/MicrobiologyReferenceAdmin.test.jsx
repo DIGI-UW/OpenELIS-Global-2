@@ -7,7 +7,10 @@ vi.mock("./api", () => ({
   getAstPanel: vi.fn(),
   publishAstPanel: vi.fn(),
   getBreakpointStandards: vi.fn(),
+  getBreakpointStandard: vi.fn(),
   getBreakpointRules: vi.fn(),
+  getBreakpointRule: vi.fn(),
+  saveBreakpointRule: vi.fn(),
   activateBreakpointStandard: vi.fn(),
   archiveBreakpointStandard: vi.fn(),
   previewBreakpointImport: vi.fn(),
@@ -22,10 +25,13 @@ import { BrowserRouter } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import {
   getBreakpointRules,
+  getBreakpointRule,
+  getBreakpointStandard,
   getBreakpointStandards,
   getReferenceItem,
   getReferenceOptions,
   getReferencePage,
+  saveBreakpointRule,
   setReferenceActive,
 } from "./api";
 import AstPanelPage from "./AstPanelPage";
@@ -177,17 +183,12 @@ describe("microbiology reference administration", () => {
   it("renders breakpoint lifecycle detail and opens activation state", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();
-    getBreakpointStandards.mockResolvedValue({
-      rows: [
-        {
-          id: "std-1",
-          authority: "CLSI",
-          version: "SYNTH-2026",
-          lifecycleStatus: "LOADED",
-          ruleCount: 1,
-        },
-      ],
-      total: 1,
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-1",
+      authority: "CLSI",
+      version: "SYNTH-2026",
+      lifecycleStatus: "LOADED",
+      ruleCount: 1,
     });
     getBreakpointRules.mockResolvedValue({
       rows: [
@@ -222,5 +223,66 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenCalledWith({ edit: "activate" });
+  });
+
+  it("loads a directly linked breakpoint correction and saves it as local", async () => {
+    const user = userEvent.setup();
+    const setQuery = vi.fn();
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-1",
+      authority: "CLSI",
+      version: "SYNTH-2026",
+      lifecycleStatus: "LOADED",
+    });
+    getBreakpointRules.mockResolvedValue({ rows: [], total: 0 });
+    getBreakpointRule.mockResolvedValue({
+      id: "rule-1",
+      standardId: "std-1",
+      organismGroup: "Enterobacterales",
+      antibioticId: "cip",
+      method: "MIC",
+      breakpointType: "MIC",
+      susceptibleValue: 1,
+      resistantValue: 4,
+      active: true,
+      locallyCustomized: true,
+    });
+    getReferenceOptions.mockImplementation((resource) => {
+      if (resource === "organism-groups")
+        return Promise.resolve([
+          { id: "Enterobacterales", label: "Enterobacterales" },
+        ]);
+      if (resource === "antibiotics")
+        return Promise.resolve([{ id: "cip", label: "Ciprofloxacin" }]);
+      return Promise.resolve([]);
+    });
+    saveBreakpointRule.mockResolvedValue({ id: "rule-1" });
+
+    renderPage(
+      <BreakpointPage
+        standardId="std-1"
+        basePath="/MasterListsPage"
+        query={{ ...query, edit: "rule:rule-1" }}
+        setQuery={setQuery}
+      />,
+    );
+
+    const notes = await screen.findByLabelText(
+      messages["microbiology.admin.field.notes"],
+    );
+    await user.type(notes, "Local verification");
+    await user.click(
+      screen.getByRole("button", { name: messages["button.save"] }),
+    );
+
+    expect(saveBreakpointRule).toHaveBeenCalledWith(
+      "std-1",
+      expect.objectContaining({
+        id: "rule-1",
+        organismGroup: "Enterobacterales",
+        antibioticId: "cip",
+        notes: "Local verification",
+      }),
+    );
   });
 });

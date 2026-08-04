@@ -8,7 +8,6 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
@@ -31,6 +30,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,32 +49,29 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     @SuppressWarnings("unused")
     private final MicroCultureSetupDAO cultureSetupDAO;
     private final MethodService methodService;
+    private final TypeOfSampleService typeOfSampleService;
 
     public MicrobiologyReferenceAdminServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
-            MicroCultureSetupDAO cultureSetupDAO, MethodService methodService) {
+            MicroCultureSetupDAO cultureSetupDAO, MethodService methodService,
+            TypeOfSampleService typeOfSampleService) {
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
         this.cultureSetupDAO = cultureSetupDAO;
         this.methodService = methodService;
+        this.typeOfSampleService = typeOfSampleService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public MicroReferenceAdminPageForm<MicroOrganismAdminForm> getOrganisms(MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
-        String search = lower(normalized.q);
-        Predicate<MicroOrganism> filter = organism -> matchesStatus(organism.getIsActive(), normalized.status)
-                && matchesCategory(organism.getOrganismGroup(), normalized.category)
-                && (search.isEmpty() || lower(organism.getDisplayName()).contains(search)
-                        || lower(organism.getShortName()).contains(search)
-                        || lower(organism.getWhonetCode()).contains(search));
-        List<MicroOrganismAdminForm> rows = organismDAO.getAll().stream().filter(filter)
-                .sorted(Comparator.comparing(MicroOrganism::getDisplayName, String.CASE_INSENSITIVE_ORDER))
-                .map(this::toOrganismForm).toList();
-        return page(rows, normalized);
+        int offset = (normalized.page - 1) * normalized.pageSize;
+        List<MicroOrganismAdminForm> rows = organismDAO.search(normalized.q, normalized.status, normalized.category,
+                normalized.sort, offset, normalized.pageSize).stream().map(this::toOrganismForm).toList();
+        return page(rows, organismDAO.countSearch(normalized.q, normalized.status, normalized.category), normalized);
     }
 
     @Override
@@ -137,15 +134,10 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     @Transactional(readOnly = true)
     public MicroReferenceAdminPageForm<MicroAntibioticAdminForm> getAntibiotics(MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
-        String search = lower(normalized.q);
-        Predicate<MicroAntibiotic> filter = antibiotic -> matchesStatus(antibiotic.getIsActive(), normalized.status)
-                && matchesCategory(antibiotic.getAntibioticClass(), normalized.category)
-                && (search.isEmpty() || lower(antibiotic.getDisplayName()).contains(search)
-                        || lower(antibiotic.getWhonetCode()).contains(search));
-        List<MicroAntibioticAdminForm> rows = antibioticDAO.getAll().stream().filter(filter)
-                .sorted(Comparator.comparing(MicroAntibiotic::getDisplayName, String.CASE_INSENSITIVE_ORDER))
-                .map(this::toAntibioticForm).toList();
-        return page(rows, normalized);
+        int offset = (normalized.page - 1) * normalized.pageSize;
+        List<MicroAntibioticAdminForm> rows = antibioticDAO.search(normalized.q, normalized.status, normalized.category,
+                normalized.sort, offset, normalized.pageSize).stream().map(this::toAntibioticForm).toList();
+        return page(rows, antibioticDAO.countSearch(normalized.q, normalized.status, normalized.category), normalized);
     }
 
     @Override
@@ -207,16 +199,10 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     @Transactional(readOnly = true)
     public MicroReferenceAdminPageForm<MicroAstPanelAdminForm> getAstPanels(MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
-        String search = lower(normalized.q);
-        List<MicroAstPanelAdminForm> rows = panelDAO.getAll().stream()
-                .filter(panel -> matchesStatus(panel.getIsActive(), normalized.status))
-                .filter(panel -> normalized.workflow == null || normalized.workflow.isBlank()
-                        || normalized.workflow.equals(panel.getWorkflowType()))
-                .filter(panel -> search.isEmpty() || lower(panel.getName()).contains(search))
-                .sorted(Comparator.comparing(MicroAstPanel::getName, String.CASE_INSENSITIVE_ORDER)
-                        .thenComparing(MicroAstPanel::getVersionNumber, Comparator.reverseOrder()))
-                .map(this::toPanelForm).toList();
-        return page(rows, normalized);
+        int offset = (normalized.page - 1) * normalized.pageSize;
+        List<MicroAstPanelAdminForm> rows = panelDAO.search(normalized.q, normalized.status, normalized.workflow,
+                normalized.sort, offset, normalized.pageSize).stream().map(this::toPanelForm).toList();
+        return page(rows, panelDAO.countSearch(normalized.q, normalized.status, normalized.workflow), normalized);
     }
 
     @Override
@@ -275,16 +261,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     public MicroReferenceAdminPageForm<MicroCultureSetupAdminForm> getCultureSetups(
             MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
-        String search = lower(normalized.q);
-        List<MicroCultureSetupAdminForm> rows = cultureSetupDAO.getAll().stream()
-                .filter(setup -> matchesStatus(setup.getIsActive(), normalized.status))
-                .filter(setup -> normalized.workflow == null || normalized.workflow.isBlank()
-                        || normalized.workflow.equalsIgnoreCase(setup.getWorkflowType()))
-                .filter(setup -> search.isEmpty() || lower(setup.getName()).contains(search)
-                        || lower(methodName(setup.getMethodId())).contains(search))
-                .sorted(Comparator.comparing(MicroCultureSetup::getName, String.CASE_INSENSITIVE_ORDER))
+        int offset = (normalized.page - 1) * normalized.pageSize;
+        List<MicroCultureSetupAdminForm> rows = cultureSetupDAO.search(normalized.q, normalized.status,
+                normalized.workflow, normalized.sort, offset, normalized.pageSize).stream()
                 .map(this::toCultureSetupForm).toList();
-        return page(rows, normalized);
+        return page(rows, cultureSetupDAO.countSearch(normalized.q, normalized.status, normalized.workflow),
+                normalized);
     }
 
     @Override
@@ -333,10 +315,28 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                     .sorted(Comparator.comparing(Method::getMethodName, String.CASE_INSENSITIVE_ORDER))
                     .map(method -> option(method.getId(), method.getMethodName(), method.getCode())).toList();
         }
+        if ("organisms".equals(resource)) {
+            return organismDAO.getActiveOrganisms().stream()
+                    .map(organism -> option(organism.getId(), organism.getDisplayName(), organism.getWhonetCode()))
+                    .toList();
+        }
+        if ("organism-groups".equals(resource)) {
+            return organismDAO.getActiveOrganisms().stream().map(MicroOrganism::getOrganismGroup)
+                    .filter(group -> group != null && !group.isBlank()).distinct().sorted(String.CASE_INSENSITIVE_ORDER)
+                    .map(group -> option(group, group, null)).toList();
+        }
+        if ("antibiotics".equals(resource)) {
+            return antibioticDAO.getActiveAntibiotics().stream().map(
+                    antibiotic -> option(antibiotic.getId(), antibiotic.getDisplayName(), antibiotic.getWhonetCode()))
+                    .toList();
+        }
+        if ("specimen-types".equals(resource)) {
+            return typeOfSampleService.getAllTypeOfSamplesSortOrdered().stream().filter(type -> type.getIsActive())
+                    .map(type -> option(type.getId(), type.getLocalizedName(), type.getLocalAbbreviation())).toList();
+        }
         if ("ast-panels".equals(resource)) {
-            return panelDAO.getAll().stream().filter(panel -> "Y".equals(panel.getIsActive()))
+            return panelDAO.search("", "ACTIVE", null, "name", 0, 1000).stream()
                     .filter(panel -> "Y".equals(panel.getIsCurrent()))
-                    .sorted(Comparator.comparing(MicroAstPanel::getName, String.CASE_INSENSITIVE_ORDER))
                     .map(panel -> option(panel.getId(), panel.getName(), "v" + panel.getVersionNumber())).toList();
         }
         throw new IllegalArgumentException("Unsupported option resource: " + resource);
@@ -491,12 +491,10 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         return option;
     }
 
-    private <T> MicroReferenceAdminPageForm<T> page(List<T> all, MicroReferenceAdminQueryForm query) {
-        int from = Math.min((query.page - 1) * query.pageSize, all.size());
-        int to = Math.min(from + query.pageSize, all.size());
+    private <T> MicroReferenceAdminPageForm<T> page(List<T> rows, long total, MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminPageForm<T> page = new MicroReferenceAdminPageForm<>();
-        page.rows = new ArrayList<>(all.subList(from, to));
-        page.total = all.size();
+        page.rows = new ArrayList<>(rows);
+        page.total = total;
         page.page = query.page;
         page.pageSize = query.pageSize;
         return page;
@@ -504,22 +502,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
 
     private MicroReferenceAdminQueryForm normalizeQuery(MicroReferenceAdminQueryForm input) {
         MicroReferenceAdminQueryForm query = input == null ? new MicroReferenceAdminQueryForm() : input;
+        query.q = query.q == null ? "" : query.q.trim();
+        query.status = query.status == null || query.status.isBlank() ? "ALL" : query.status.toUpperCase(Locale.ROOT);
         query.page = Math.max(query.page, 1);
         query.pageSize = Set.of(20, 50, 100).contains(query.pageSize) ? query.pageSize : 20;
+        query.sort = Set.of("name", "name-desc").contains(query.sort) ? query.sort : "name";
         return query;
-    }
-
-    private boolean matchesStatus(String active, String requested) {
-        if (requested == null || requested.isBlank() || "ALL".equalsIgnoreCase(requested)) {
-            return true;
-        }
-        return ("ACTIVE".equalsIgnoreCase(requested) && "Y".equals(active))
-                || ("INACTIVE".equalsIgnoreCase(requested) && "N".equals(active));
-    }
-
-    private boolean matchesCategory(String value, String requested) {
-        return requested == null || requested.isBlank() || "ALL".equalsIgnoreCase(requested)
-                || requested.equalsIgnoreCase(value);
     }
 
     private <T extends org.openelisglobal.common.valueholder.BaseObject<String>> void assertAvailable(Optional<T> match,
@@ -564,7 +552,4 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         return value.trim();
     }
 
-    private String lower(String value) {
-        return value == null ? "" : value.toLowerCase(Locale.ROOT);
-    }
 }

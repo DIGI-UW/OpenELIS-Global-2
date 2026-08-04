@@ -27,17 +27,22 @@ import {
   Tag,
   TextInput,
 } from "@carbon/react";
-import { ArrowLeft, Download, Upload } from "@carbon/icons-react";
+import { Add, ArrowLeft, Download, Upload } from "@carbon/icons-react";
 import { useHistory } from "react-router-dom";
 import { useIntl } from "react-intl";
 import {
   activateBreakpointStandard,
   applyBreakpointImport,
   archiveBreakpointStandard,
+  getBreakpointRule,
   getBreakpointRules,
+  getBreakpointStandard,
   getBreakpointStandards,
+  getReferenceOptions,
   previewBreakpointImport,
+  saveBreakpointRule,
 } from "./api";
+import BreakpointRuleModal from "./BreakpointRuleModal";
 import { buildReferenceQuery } from "./queryState";
 import { sectionPath } from "./sectionConfig";
 
@@ -60,18 +65,30 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   const [effectiveDate, setEffectiveDate] = useState("");
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [ruleDraft, setRuleDraft] = useState(null);
+  const [savingRule, setSavingRule] = useState(false);
+  const [options, setOptions] = useState({
+    organisms: [],
+    organismGroups: [],
+    antibiotics: [],
+    specimenTypes: [],
+  });
+
+  const ruleEditId = query.edit?.startsWith("rule:")
+    ? query.edit.slice("rule:".length)
+    : "";
 
   const load = useCallback(
     async (signal) => {
       setLoading(true);
       setError("");
       try {
-        const standardPage = await getBreakpointStandards(
-          standardId
-            ? "status=ALL&sort=name&page=1&pageSize=100"
-            : buildReferenceQuery(query),
-          signal,
-        );
+        const standardPage = standardId
+          ? {
+              rows: [await getBreakpointStandard(standardId, signal)],
+              total: 1,
+            }
+          : await getBreakpointStandards(buildReferenceQuery(query), signal);
         setStandards(standardPage);
         if (standardId) {
           setRules(
@@ -96,6 +113,47 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
+
+  useEffect(() => {
+    if (!standardId) return undefined;
+    const controller = new AbortController();
+    Promise.all([
+      getReferenceOptions("organisms", controller.signal),
+      getReferenceOptions("organism-groups", controller.signal),
+      getReferenceOptions("antibiotics", controller.signal),
+      getReferenceOptions("specimen-types", controller.signal),
+    ])
+      .then(([organisms, organismGroups, antibiotics, specimenTypes]) =>
+        setOptions({ organisms, organismGroups, antibiotics, specimenTypes }),
+      )
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setError(requestError.message);
+      });
+    return () => controller.abort();
+  }, [standardId]);
+
+  useEffect(() => {
+    if (!ruleEditId) {
+      setRuleDraft(null);
+      return undefined;
+    }
+    if (ruleEditId === "new") {
+      setRuleDraft({});
+      return undefined;
+    }
+    const visibleRule = rules.rows.find((rule) => rule.id === ruleEditId);
+    if (visibleRule) {
+      setRuleDraft(visibleRule);
+      return undefined;
+    }
+    const controller = new AbortController();
+    getBreakpointRule(standardId, ruleEditId, controller.signal)
+      .then(setRuleDraft)
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setError(requestError.message);
+      });
+    return () => controller.abort();
+  }, [ruleEditId, rules.rows, standardId]);
 
   const selectedStandard = standards.rows.find(
     (standard) => standard.id === standardId,
@@ -178,6 +236,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
           id: "microbiology.admin.breakpoints.source",
         }),
       },
+      { key: "actions", header: "" },
     ],
     [intl],
   );
@@ -206,6 +265,22 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
       await load();
     } catch (requestError) {
       setError(requestError.message);
+    }
+  };
+
+  const saveRule = async (rule) => {
+    setSavingRule(true);
+    try {
+      await saveBreakpointRule(standardId, {
+        ...rule,
+        ...(ruleEditId !== "new" ? { id: ruleEditId } : {}),
+      });
+      setQuery({ edit: "" }, { replace: true });
+      await load();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSavingRule(false);
     }
   };
 
@@ -276,6 +351,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
       : rule.seeded
         ? "IMPORTED"
         : "MANUAL",
+    actions: rule.id,
   }));
 
   return (
@@ -310,6 +386,59 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                     })}
                     onChange={(event) => setQuery({ q: event.target.value })}
                   />
+                  <Select
+                    id="microbiology-breakpoint-status"
+                    hideLabel
+                    labelText={intl.formatMessage({
+                      id: "microbiology.admin.status",
+                    })}
+                    value={query.status}
+                    onChange={(event) =>
+                      setQuery({ status: event.target.value })
+                    }
+                  >
+                    <SelectItem
+                      value="ALL"
+                      text={intl.formatMessage({
+                        id: "microbiology.admin.status.all",
+                      })}
+                    />
+                    {[
+                      ["ACTIVE", "active"],
+                      ["LOADED", "loaded"],
+                      ["ARCHIVED", "archived"],
+                    ].map(([value, key]) => (
+                      <SelectItem
+                        key={value}
+                        value={value}
+                        text={intl.formatMessage({
+                          id: `microbiology.admin.breakpoints.status.${key}`,
+                        })}
+                      />
+                    ))}
+                  </Select>
+                  <Select
+                    id="microbiology-breakpoint-sort"
+                    hideLabel
+                    labelText={intl.formatMessage({
+                      id: "microbiology.admin.sort",
+                    })}
+                    value={query.sort}
+                    onChange={(event) => setQuery({ sort: event.target.value })}
+                  >
+                    <SelectItem
+                      value="name"
+                      text={intl.formatMessage({
+                        id: "microbiology.admin.sort.nameAsc",
+                      })}
+                    />
+                    <SelectItem
+                      value="name-desc"
+                      text={intl.formatMessage({
+                        id: "microbiology.admin.sort.nameDesc",
+                      })}
+                    />
+                  </Select>
                   <Button
                     kind="secondary"
                     renderIcon={Upload}
@@ -446,33 +575,128 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                       })}
                       onChange={(event) => setQuery({ q: event.target.value })}
                     />
-                    <Select
-                      id="microbiology-breakpoint-method"
-                      hideLabel
-                      labelText={intl.formatMessage({
-                        id: "microbiology.admin.field.method",
-                      })}
-                      value={query.method}
-                      onChange={(event) =>
-                        setQuery({ method: event.target.value })
-                      }
-                    >
-                      <SelectItem
-                        value=""
-                        text={intl.formatMessage({
-                          id: "microbiology.admin.breakpoints.method.all",
+                    {selectedStandard?.lifecycleStatus !== "ARCHIVED" && (
+                      <Button
+                        renderIcon={Add}
+                        onClick={() => setQuery({ edit: "rule:new" })}
+                      >
+                        {intl.formatMessage({
+                          id: "microbiology.admin.breakpoints.correction.add",
                         })}
-                      />
-                      <SelectItem value="MIC" text="MIC" />
-                      <SelectItem
-                        value="ZONE"
-                        text={intl.formatMessage({
-                          id: "microbiology.admin.breakpoints.method.zone",
-                        })}
-                      />
-                    </Select>
+                      </Button>
+                    )}
                   </TableToolbarContent>
                 </TableToolbar>
+                <div className="microbiology-admin__filters">
+                  <Select
+                    id="microbiology-breakpoint-organism"
+                    labelText={intl.formatMessage({
+                      id: "microbiology.admin.breakpoints.organism",
+                    })}
+                    value={query.organism}
+                    onChange={(event) =>
+                      setQuery({ organism: event.target.value })
+                    }
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "microbiology.admin.filter.all",
+                      })}
+                    />
+                    {options.organismGroups.map((item) => (
+                      <SelectItem
+                        key={`group-${item.id}`}
+                        value={item.id}
+                        text={intl.formatMessage(
+                          {
+                            id: "microbiology.admin.breakpoints.groupOption",
+                          },
+                          { name: item.label },
+                        )}
+                      />
+                    ))}
+                    {options.organisms.map((item) => (
+                      <SelectItem
+                        key={item.id}
+                        value={item.id}
+                        text={item.label}
+                      />
+                    ))}
+                  </Select>
+                  <Select
+                    id="microbiology-breakpoint-antibiotic"
+                    labelText={intl.formatMessage({
+                      id: "microbiology.admin.astPanels.antibiotic",
+                    })}
+                    value={query.antibiotic}
+                    onChange={(event) =>
+                      setQuery({ antibiotic: event.target.value })
+                    }
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "microbiology.admin.filter.all",
+                      })}
+                    />
+                    {options.antibiotics.map((item) => (
+                      <SelectItem
+                        key={item.id}
+                        value={item.id}
+                        text={item.label}
+                      />
+                    ))}
+                  </Select>
+                  <Select
+                    id="microbiology-breakpoint-method"
+                    labelText={intl.formatMessage({
+                      id: "microbiology.admin.field.method",
+                    })}
+                    value={query.method}
+                    onChange={(event) =>
+                      setQuery({ method: event.target.value })
+                    }
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "microbiology.admin.breakpoints.method.all",
+                      })}
+                    />
+                    <SelectItem value="MIC" text="MIC" />
+                    <SelectItem
+                      value="ZONE"
+                      text={intl.formatMessage({
+                        id: "microbiology.admin.breakpoints.method.zone",
+                      })}
+                    />
+                  </Select>
+                  <Select
+                    id="microbiology-breakpoint-specimen"
+                    labelText={intl.formatMessage({
+                      id: "microbiology.admin.breakpoints.specimen",
+                    })}
+                    value={query.specimenTypeId}
+                    onChange={(event) =>
+                      setQuery({ specimenTypeId: event.target.value })
+                    }
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "microbiology.admin.filter.all",
+                      })}
+                    />
+                    {options.specimenTypes.map((item) => (
+                      <SelectItem
+                        key={item.id}
+                        value={item.id}
+                        text={item.label}
+                      />
+                    ))}
+                  </Select>
+                </div>
                 <Table size="lg" useZebraStyles>
                   <TableHead>
                     <TableRow>
@@ -498,6 +722,25 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                                   id: `microbiology.admin.breakpoints.source.${cell.value.toLowerCase()}`,
                                 })}
                               </Tag>
+                            ) : cell.info.header === "actions" ? (
+                              selectedStandard?.lifecycleStatus !==
+                                "ARCHIVED" && (
+                                <OverflowMenu
+                                  flipped
+                                  aria-label={intl.formatMessage({
+                                    id: "microbiology.admin.actions",
+                                  })}
+                                >
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "microbiology.admin.breakpoints.correction.edit",
+                                    })}
+                                    onClick={() =>
+                                      setQuery({ edit: `rule:${row.id}` })
+                                    }
+                                  />
+                                </OverflowMenu>
+                              )
                             ) : (
                               cell.value
                             )}
@@ -521,6 +764,17 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
           </DataTable>
         </>
       )}
+
+      <BreakpointRuleModal
+        value={ruleDraft}
+        organisms={options.organisms}
+        organismGroups={options.organismGroups}
+        antibiotics={options.antibiotics}
+        specimenTypes={options.specimenTypes}
+        saving={savingRule}
+        onClose={() => setQuery({ edit: "" }, { replace: true })}
+        onSave={saveRule}
+      />
 
       <ComposedModal
         open={query.edit === "activate"}
