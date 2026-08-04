@@ -85,6 +85,14 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
         { timeout: LONG_TIMEOUT },
       );
     };
+    const expectInsideViewport = async (locator) => {
+      const box = await locator.boundingBox();
+      const viewport = page.viewportSize();
+      expect(box).not.toBeNull();
+      expect(viewport).not.toBeNull();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+    };
     const surfaces = [
       [
         "/MasterListsPage/MicrobiologyReference/organisms?q=Reference%20organism%20%28UAT%29&status=ALL&sort=name&page=1&pageSize=20",
@@ -110,6 +118,24 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
         await expect(page.getByRole("heading", { name: heading })).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
+        if (testInfo.project.name.endsWith("-mobile")) {
+          await expectInsideViewport(
+            page.getByPlaceholder("Search reference data"),
+          );
+          if (evidenceName === "microbiology-reference-organisms") {
+            await expectInsideViewport(
+              page.getByRole("button", { name: "Add organism" }),
+            );
+          }
+          if (evidenceName === "microbiology-reference-breakpoints") {
+            await expectInsideViewport(
+              page.getByRole("button", { name: "Activate standard" }),
+            );
+            await expectInsideViewport(
+              page.getByRole("button", { name: "Archive standard" }),
+            );
+          }
+        }
         await expectNoWcag21AaViolations(page, testInfo, evidenceName);
       });
     }
