@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +21,7 @@ import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -78,6 +80,39 @@ public class MicroBreakpointAdminServiceTest {
         when(astRunDAO.countUnresolvedByBreakpointStandardId("standard")).thenReturn(2L);
 
         service.archive("standard", "42");
+    }
+
+    @Test
+    public void standardListUsesPagedDaoContract() {
+        MicroBreakpointStandard loaded = standard("standard", "CLSI", "2026", "LOADED");
+        when(standardDAO.search("synthetic", "LOADED", "CLSI", "name", 20, 20)).thenReturn(List.of(loaded));
+        when(standardDAO.countSearch("synthetic", "LOADED", "CLSI")).thenReturn(1L);
+        when(ruleDAO.countByStandardId("standard")).thenReturn(2L);
+
+        org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm query = new org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm();
+        query.q = "synthetic";
+        query.status = "LOADED";
+        query.authority = "CLSI";
+        query.page = 2;
+
+        assertEquals(1L, service.getStandards(query).total);
+        verify(standardDAO, never()).getAll();
+    }
+
+    @Test
+    public void directRuleLookupRequiresTheRequestedStandard() {
+        MicroBreakpointRule rule = new MicroBreakpointRule();
+        rule.setId("rule-1");
+        rule.setStandardId("standard");
+        rule.setOrganismGroup("Enterobacterales");
+        rule.setAntibioticId("cip");
+        rule.setMethod("MIC");
+        rule.setBreakpointType("MIC");
+        rule.setLocallyCustomized(true);
+        when(standardDAO.get("standard")).thenReturn(Optional.of(standard("standard", "CLSI", "2026", "LOADED")));
+        when(ruleDAO.get("rule-1")).thenReturn(Optional.of(rule));
+
+        assertEquals("rule-1", service.getRule("standard", "rule-1").id);
     }
 
     private MicroBreakpointStandard standard(String id, String authority, String version, String status) {

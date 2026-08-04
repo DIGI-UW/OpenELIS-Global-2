@@ -287,6 +287,28 @@ const AstPanelPage = ({ query, setQuery }) => {
                     })}
                   />
                 </Select>
+                <Select
+                  id="microbiology-panel-sort"
+                  hideLabel
+                  labelText={intl.formatMessage({
+                    id: "microbiology.admin.sort",
+                  })}
+                  value={query.sort}
+                  onChange={(event) => setQuery({ sort: event.target.value })}
+                >
+                  <SelectItem
+                    value="name"
+                    text={intl.formatMessage({
+                      id: "microbiology.admin.sort.nameAsc",
+                    })}
+                  />
+                  <SelectItem
+                    value="name-desc"
+                    text={intl.formatMessage({
+                      id: "microbiology.admin.sort.nameDesc",
+                    })}
+                  />
+                </Select>
                 <Button
                   renderIcon={Add}
                   onClick={() => setQuery({ edit: "new" })}

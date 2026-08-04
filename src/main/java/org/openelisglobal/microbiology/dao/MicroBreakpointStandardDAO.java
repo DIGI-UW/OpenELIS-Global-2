@@ -13,4 +13,8 @@ public interface MicroBreakpointStandardDAO extends BaseDAO<MicroBreakpointStand
     Optional<MicroBreakpointStandard> findByAuthorityAndVersion(String authority, String version);
 
     List<MicroBreakpointStandard> getActiveForAuthority(String authority);
+
+    List<MicroBreakpointStandard> search(String q, String status, String authority, String sort, int offset, int limit);
+
+    long countSearch(String q, String status, String authority);
 }

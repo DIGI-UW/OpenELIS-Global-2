@@ -43,10 +43,20 @@ public class MicroBreakpointAdminRestController extends MicrobiologyRestControll
         return ResponseEntity.ok(service.getStandards(query));
     }
 
+    @GetMapping("/standards/{id}")
+    public ResponseEntity<MicroBreakpointStandardAdminForm> getStandard(@PathVariable String id) {
+        return ResponseEntity.ok(service.getStandard(id));
+    }
+
     @GetMapping("/standards/{id}/rules")
     public ResponseEntity<MicroReferenceAdminPageForm<MicroBreakpointRuleAdminForm>> getRules(@PathVariable String id,
             @ModelAttribute MicroReferenceAdminQueryForm query) {
         return ResponseEntity.ok(service.getRules(id, query));
+    }
+
+    @GetMapping("/standards/{id}/rules/{ruleId}")
+    public ResponseEntity<MicroBreakpointRuleAdminForm> getRule(@PathVariable String id, @PathVariable String ruleId) {
+        return ResponseEntity.ok(service.getRule(id, ruleId));
     }
 
     @PostMapping("/standards/{id}/rules")

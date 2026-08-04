@@ -11,4 +11,8 @@ public interface MicroCultureSetupDAO extends BaseDAO<MicroCultureSetup, String>
     MicroCultureSetup getActiveSetupForMethod(String methodId, String workflowType);
 
     Optional<MicroCultureSetup> findByMethodAndWorkflowType(String methodId, String workflowType);
+
+    List<MicroCultureSetup> search(String q, String status, String workflow, String sort, int offset, int limit);
+
+    long countSearch(String q, String status, String workflow);
 }

@@ -51,4 +51,53 @@ public class MicroAntibioticDAOImpl extends BaseDAOImpl<MicroAntibiotic, String>
         query.setParameter("antibioticId", antibioticId);
         return query.uniqueResult();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAntibiotic> search(String q, String status, String category, String sort, int offset, int limit) {
+        Query<MicroAntibiotic> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroAntibiotic a" + searchWhere(q, status, category)
+                        + ("name-desc".equals(sort) ? " order by lower(a.displayName) desc"
+                                : " order by lower(a.displayName) asc"),
+                        MicroAntibiotic.class);
+        setSearchParameters(query, q, status, category);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countSearch(String q, String status, String category) {
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(
+                "select count(a.id) from MicroAntibiotic a" + searchWhere(q, status, category), Long.class);
+        setSearchParameters(query, q, status, category);
+        return query.getSingleResult();
+    }
+
+    private String searchWhere(String q, String status, String category) {
+        StringBuilder hql = new StringBuilder(" where 1 = 1");
+        if (q != null && !q.isBlank()) {
+            hql.append(" and (lower(a.displayName) like :q or lower(a.whonetCode) like :q)");
+        }
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            hql.append(" and a.isActive = :active");
+        }
+        if (category != null && !category.isBlank()) {
+            hql.append(" and lower(a.antibioticClass) = :category");
+        }
+        return hql.toString();
+    }
+
+    private void setSearchParameters(Query<?> query, String q, String status, String category) {
+        if (q != null && !q.isBlank()) {
+            query.setParameter("q", "%" + q.trim().toLowerCase(java.util.Locale.ROOT) + "%");
+        }
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            query.setParameter("active", "ACTIVE".equalsIgnoreCase(status) ? "Y" : "N");
+        }
+        if (category != null && !category.isBlank()) {
+            query.setParameter("category", category.trim().toLowerCase(java.util.Locale.ROOT));
+        }
+    }
 }

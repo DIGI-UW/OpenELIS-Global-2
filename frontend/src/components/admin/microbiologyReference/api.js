@@ -80,10 +80,31 @@ export const getBreakpointStandards = (query, signal) =>
     signal,
   });
 
+export const getBreakpointStandard = (standardId, signal) =>
+  request(
+    `/rest/microbiology/admin/breakpoints/standards/${encodeURIComponent(standardId)}`,
+    { signal },
+  );
+
 export const getBreakpointRules = (standardId, query, signal) =>
   request(
     `/rest/microbiology/admin/breakpoints/standards/${encodeURIComponent(standardId)}/rules?${query}`,
     { signal },
+  );
+
+export const getBreakpointRule = (standardId, ruleId, signal) =>
+  request(
+    `/rest/microbiology/admin/breakpoints/standards/${encodeURIComponent(standardId)}/rules/${encodeURIComponent(ruleId)}`,
+    { signal },
+  );
+
+export const saveBreakpointRule = (standardId, rule) =>
+  request(
+    `/rest/microbiology/admin/breakpoints/standards/${encodeURIComponent(standardId)}/rules${rule.id ? `/${encodeURIComponent(rule.id)}` : ""}`,
+    {
+      method: rule.id ? "PUT" : "POST",
+      body: JSON.stringify(rule),
+    },
   );
 
 export const activateBreakpointStandard = (standardId, effectiveDate) =>

@@ -200,8 +200,8 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
           onClose={() => setNotice("")}
         />
       )}
-      <DataTable rows={tableRows} headers={headers} isSortable>
-        {({ rows, headers: renderedHeaders, getHeaderProps, getRowProps }) => (
+      <DataTable rows={tableRows} headers={headers}>
+        {({ rows, headers: renderedHeaders, getRowProps }) => (
           <TableContainer
             title={intl.formatMessage({ id: definition.title })}
             description={intl.formatMessage({ id: definition.description })}
@@ -244,6 +244,28 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
                     })}
                   />
                 </Select>
+                <Select
+                  id={`microbiology-${definition.resource}-sort`}
+                  hideLabel
+                  labelText={intl.formatMessage({
+                    id: "microbiology.admin.sort",
+                  })}
+                  value={query.sort}
+                  onChange={(event) => setQuery({ sort: event.target.value })}
+                >
+                  <SelectItem
+                    value="name"
+                    text={intl.formatMessage({
+                      id: "microbiology.admin.sort.nameAsc",
+                    })}
+                  />
+                  <SelectItem
+                    value="name-desc"
+                    text={intl.formatMessage({
+                      id: "microbiology.admin.sort.nameDesc",
+                    })}
+                  />
+                </Select>
                 <Button
                   renderIcon={Add}
                   onClick={() => setQuery({ edit: "new" })}
@@ -256,12 +278,7 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
               <TableHead>
                 <TableRow>
                   {renderedHeaders.map((header) => (
-                    <TableHeader
-                      {...getHeaderProps({ header })}
-                      key={header.key}
-                    >
-                      {header.header}
-                    </TableHeader>
+                    <TableHeader key={header.key}>{header.header}</TableHeader>
                   ))}
                 </TableRow>
               </TableHead>

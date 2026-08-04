@@ -2,7 +2,6 @@ package org.openelisglobal.microbiology.service;
 
 import java.sql.Date;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -49,26 +48,18 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
     public MicroReferenceAdminPageForm<MicroBreakpointStandardAdminForm> getStandards(
             MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
-        String search = lower(normalized.q);
-        List<MicroBreakpointStandardAdminForm> rows = standardDAO.getAll().stream()
-                .filter(standard -> normalized.status == null || normalized.status.isBlank()
-                        || "ALL".equalsIgnoreCase(normalized.status)
-                        || normalized.status.equalsIgnoreCase(standard.getLifecycleStatus()))
-                .filter(standard -> normalized.authority == null || normalized.authority.isBlank()
-                        || normalized.authority.equalsIgnoreCase(standard.getAuthority()))
-                .filter(standard -> search.isEmpty() || lower(standard.getAuthority()).contains(search)
-                        || lower(standard.getVersion()).contains(search))
-                .sorted(Comparator.comparing(MicroBreakpointStandard::getAuthority)
-                        .thenComparing(MicroBreakpointStandard::getVersion, Comparator.reverseOrder()))
-                .map(this::toStandardForm).toList();
-        return page(rows, normalized);
+        int offset = (normalized.page - 1) * normalized.pageSize;
+        List<MicroBreakpointStandardAdminForm> rows = standardDAO.search(normalized.q, normalized.status,
+                normalized.authority, normalized.sort, offset, normalized.pageSize).stream().map(this::toStandardForm)
+                .toList();
+        return page(rows, standardDAO.countSearch(normalized.q, normalized.status, normalized.authority), normalized);
     }
 
     @Override
     @Transactional(readOnly = true)
     public MicroReferenceAdminPageForm<MicroBreakpointRuleAdminForm> getRules(String standardId,
             MicroReferenceAdminQueryForm query) {
-        getStandard(standardId);
+        requireStandard(standardId);
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
         int offset = (normalized.page - 1) * normalized.pageSize;
         List<MicroBreakpointRuleAdminForm> rows = ruleDAO.search(standardId, normalized.q, normalized.organism,
@@ -84,11 +75,29 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public MicroBreakpointStandardAdminForm getStandard(String standardId) {
+        return toStandardForm(requireStandard(standardId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroBreakpointRuleAdminForm getRule(String standardId, String ruleId) {
+        requireStandard(standardId);
+        org.openelisglobal.microbiology.valueholder.MicroBreakpointRule rule = ruleDAO.get(ruleId)
+                .orElseThrow(() -> new IllegalArgumentException("Breakpoint rule not found: " + ruleId));
+        if (!standardId.equals(rule.getStandardId())) {
+            throw new IllegalArgumentException("Breakpoint rule does not belong to this standard");
+        }
+        return toRuleForm(rule);
+    }
+
+    @Override
     @Transactional
     public MicroBreakpointRuleAdminForm saveRule(String standardId, String ruleId, MicroBreakpointRuleAdminForm request,
             String actorId) {
         requireActor(actorId);
-        MicroBreakpointStandard standard = getStandard(standardId);
+        MicroBreakpointStandard standard = requireStandard(standardId);
         if ("ARCHIVED".equals(standard.getLifecycleStatus())) {
             throw new MicroReferenceConflictException("Archived breakpoint standards are read-only");
         }
@@ -165,7 +174,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         if (effectiveDate == null) {
             throw new IllegalArgumentException("effectiveDate is required");
         }
-        MicroBreakpointStandard requested = getStandard(standardId);
+        MicroBreakpointStandard requested = requireStandard(standardId);
         if ("ARCHIVED".equals(requested.getLifecycleStatus())) {
             throw new MicroReferenceConflictException("Archived breakpoint standards cannot be activated");
         }
@@ -194,7 +203,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
     @Transactional
     public void archive(String standardId, String actorId) {
         requireActor(actorId);
-        MicroBreakpointStandard standard = getStandard(standardId);
+        MicroBreakpointStandard standard = requireStandard(standardId);
         if ("ACTIVE".equals(standard.getLifecycleStatus())) {
             throw new MicroReferenceConflictException("Activate a replacement before archiving this standard");
         }
@@ -213,7 +222,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         activationEventDAO.insert(event(standardId, "ARCHIVED", standard.getEffectiveDate(), actorId));
     }
 
-    private MicroBreakpointStandard getStandard(String standardId) {
+    private MicroBreakpointStandard requireStandard(String standardId) {
         if (standardId == null || standardId.isBlank()) {
             throw new IllegalArgumentException("standardId is required");
         }
@@ -280,17 +289,18 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
 
     private MicroReferenceAdminQueryForm normalizeQuery(MicroReferenceAdminQueryForm input) {
         MicroReferenceAdminQueryForm query = input == null ? new MicroReferenceAdminQueryForm() : input;
+        query.q = query.q == null ? "" : query.q.trim();
+        query.status = query.status == null || query.status.isBlank() ? "ALL" : query.status.toUpperCase(Locale.ROOT);
         query.page = Math.max(query.page, 1);
         query.pageSize = Set.of(20, 50, 100).contains(query.pageSize) ? query.pageSize : 20;
+        query.sort = Set.of("name", "name-desc").contains(query.sort) ? query.sort : "name";
         return query;
     }
 
-    private <T> MicroReferenceAdminPageForm<T> page(List<T> rows, MicroReferenceAdminQueryForm query) {
-        int from = Math.min((query.page - 1) * query.pageSize, rows.size());
-        int to = Math.min(from + query.pageSize, rows.size());
+    private <T> MicroReferenceAdminPageForm<T> page(List<T> rows, long total, MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminPageForm<T> result = new MicroReferenceAdminPageForm<>();
-        result.rows = new ArrayList<>(rows.subList(from, to));
-        result.total = rows.size();
+        result.rows = new ArrayList<>(rows);
+        result.total = total;
         result.page = query.page;
         result.pageSize = query.pageSize;
         return result;
@@ -308,7 +318,4 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private String lower(String value) {
-        return value == null ? "" : value.toLowerCase(Locale.ROOT);
-    }
 }

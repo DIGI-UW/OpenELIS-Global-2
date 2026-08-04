@@ -18,6 +18,20 @@
     padding-block: $spacing-03;
   }
 
+  &__form-grid,
+  &__filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $spacing-05;
+  }
+
+  &__filters {
+    grid-template-columns: repeat(4, minmax(10rem, 1fr));
+    padding: $spacing-05;
+    background: $layer-01;
+    border-block-end: 1px solid $border-subtle-01;
+  }
+
   &__empty {
     min-block-size: 8rem;
     display: grid;
@@ -87,7 +101,9 @@
 @media (max-width: 42rem) {
   .microbiology-admin {
     &__panel-add,
-    &__panel-row {
+    &__panel-row,
+    &__form-grid,
+    &__filters {
       grid-template-columns: 1fr;
     }
   }

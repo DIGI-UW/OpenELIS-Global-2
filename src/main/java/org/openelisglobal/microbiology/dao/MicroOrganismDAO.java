@@ -13,4 +13,8 @@ public interface MicroOrganismDAO extends BaseDAO<MicroOrganism, String> {
     Optional<MicroOrganism> findByWhonetCodeIgnoreCase(String whonetCode);
 
     long countWorkflowReferences(String organismId);
+
+    List<MicroOrganism> search(String q, String status, String category, String sort, int offset, int limit);
+
+    long countSearch(String q, String status, String category);
 }
