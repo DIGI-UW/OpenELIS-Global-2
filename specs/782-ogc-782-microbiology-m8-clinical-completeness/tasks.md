@@ -87,6 +87,11 @@ each slice. A checked task requires committed evidence, not intent.
 - [x] T052 Reconcile OGC-783/784/790/791 delivery status with product-safe comments; do not close parent epics wholesale.
 - [x] T053a Push the branch and open stacked draft PR #3972 with the exact base, migrations, exclusions, validation, and evidence.
 - [ ] T053b Attach new M8 screenshots/video and update PR #3972 with their links and a current one-shot check state before marking it ready.
+- [x] T054 Verify the remote M2 branch contains the current remote M1 branch with no missing M1 commits.
+- [x] T055 Deploy exact M2 application SHA `cd833663cedb147d534e0eea90b3de7bd3877946` to AMR and provision the property-gated service-layer UAT fixture.
+- [x] T056 Publish milestone-labeled M1 and M2 Grist stories, correct their full-host scope, and verify live checklist revision `14a4359b2187ec1803d55610d48dbc9eac70e4556c879ae31476bf09fcefbbb8` renders 17 steps in the AMR Review overlay.
+- [x] T057 Update and pass the registered `core-live-uat` Playwright contract using Carbon/public accessibility interactions and no arbitrary waits.
+- [ ] T058 Piotr completes Pass/Fail/N/A plus notes for all 16 required M1 and M2 Review-overlay steps; `AMR-21` remains optional.
 
 ## Dependency Notes
 
@@ -94,7 +99,10 @@ each slice. A checked task requires committed evidence, not intent.
 - Slice B depends on #3789's AST/culture workflow and existing Test Catalog and Inventory foundations.
 - Slice C accessibility can begin after Slice A UI stabilizes; final evidence waits for Slice B UI.
 - Performance fixture work can proceed after the Slice A schema is stable but must measure the final Slice B data shape.
-- Human UAT of #3789 remains independent and cannot be replaced by M8 automation.
+- Human UAT cannot be replaced by M8 automation. The live combined checklist
+  now reviews the nine required M1 steps and seven required M2 steps in one
+  ordered session; either milestone can still be ruled on separately from the
+  same downloaded report.
 - T024-T035b lot work remains blocked by the unresolved `PRIMARY / SECONDARY`
   versus `REQUIRED / OPTIONAL / SUBSTITUTE` product-policy contradiction. No
   requirement semantics are inferred from the existing role values.
