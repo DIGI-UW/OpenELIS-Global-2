@@ -18,7 +18,7 @@ each slice. A checked task requires committed evidence, not intent.
 - [x] T008 Add report-projection tests proving amended release creates a new standard Analysis revision and Result without changing the prior finalized Analysis/Result.
 - [x] T009 Add isolate tests proving a reported organism change requires an open amendment and reason and records immutable before/after identification history.
 - [x] T010 Add controller tests for amendment/history endpoints, actor spoof rejection, authorization, validation, and 409 conflict responses.
-- [ ] T011 Add Testcontainers integration tests for unique open amendment, report-version ordering/correction link, append-only identification history, and transaction rollback.
+- [x] T011 Add Testcontainers integration tests for unique open amendment, report-version ordering/correction link, append-only identification history, and transaction rollback.
 - [x] T012 Extend ORM validation with all Slice A mappings.
 
 ## Phase 2 - Amendment lifecycle implementation (Slice A, green)

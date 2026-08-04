@@ -220,6 +220,14 @@ public class MicrobiologyTestFixtures {
             return statusId;
         }
 
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "SAMPLE".equals(status.getStatusType()))
+                .filter(status -> "SampleEntered".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing != null) {
+            statusService.refreshCache();
+            return existing.getId();
+        }
+
         StatusOfSample entered = new StatusOfSample();
         entered.setStatusOfSampleName("SampleEntered");
         entered.setDescription("The sample has been entered into the system");
@@ -227,14 +235,18 @@ public class MicrobiologyTestFixtures {
         entered.setStatusType("SAMPLE");
         entered.setNameKey("status.sample.entered");
         entered.setIsActive(IActionConstants.YES);
-        statusOfSampleService.insert(entered);
+        entered.setSysUserId(defaultUserId());
+        String generatedId = statusOfSampleService.insert(entered);
         statusService.refreshCache();
 
         statusId = statusService.getStatusID(SampleStatus.Entered);
-        if ("-1".equals(statusId)) {
-            throw new IllegalStateException("Unable to provision SampleStatus.Entered for microbiology tests");
+        if (!"-1".equals(statusId)) {
+            return statusId;
         }
-        return statusId;
+        if (generatedId != null && !generatedId.isBlank()) {
+            return generatedId;
+        }
+        throw new IllegalStateException("Unable to provision SampleStatus.Entered for microbiology tests");
     }
 
     public String ensureAnalysisNotStartedStatus() {

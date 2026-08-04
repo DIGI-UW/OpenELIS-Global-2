@@ -45,12 +45,12 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
         MicroCaseServiceImpl.requireText(caseId, "caseId");
         requireReason(reason);
         MicroCase microCase = getCase(caseId);
+        if (amendmentDAO.getOpenByCaseId(caseId) != null) {
+            throw new MicroAmendmentConflictException("AMENDMENT_ALREADY_OPEN");
+        }
         if (!MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())
                 || !MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())) {
             throw new MicroAmendmentConflictException("AMENDMENT_REQUIRES_FINAL_RELEASE");
-        }
-        if (amendmentDAO.getOpenByCaseId(caseId) != null) {
-            throw new MicroAmendmentConflictException("AMENDMENT_ALREADY_OPEN");
         }
 
         reportVersionService.ensureFinalBaseline(microCase);
