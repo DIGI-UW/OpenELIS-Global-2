@@ -82,16 +82,20 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     const closeMobileNavigation = async () => {
       if (!testInfo.project.name.endsWith("-mobile")) return;
       const closeMenu = page.getByRole("button", { name: "Close menu" });
-      if (await closeMenu.isVisible()) await closeMenu.click();
+      await expect(closeMenu).toBeVisible({ timeout: LONG_TIMEOUT });
+      await closeMenu.click();
+      await expect(
+        page.getByRole("button", { name: "Open menu" }),
+      ).toBeVisible();
     };
     const surfaces = [
       [
-        "/MasterListsPage/MicrobiologyReference/organisms?status=ALL&sort=name&page=1&pageSize=20",
+        "/MasterListsPage/MicrobiologyReference/organisms?q=Reference%20organism%20%28UAT%29&status=ALL&sort=name&page=1&pageSize=20",
         "Organisms",
         "microbiology-reference-organisms",
       ],
       [
-        "/MasterListsPage/MicrobiologyReference/ast-panels?status=ALL&sort=name&page=1&pageSize=20",
+        "/MasterListsPage/MicrobiologyReference/ast-panels?q=Gram%20negative%20AST%20panel%20%28UAT%29&status=ALL&sort=name&page=1&pageSize=20",
         "AST panels",
         "microbiology-reference-ast-panels",
       ],
