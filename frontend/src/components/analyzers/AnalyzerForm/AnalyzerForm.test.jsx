@@ -30,10 +30,7 @@ import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import AnalyzerForm from "./AnalyzerForm";
-import {
-  createAnalyzer,
-  updateAnalyzer,
-} from "../../../services/analyzerService";
+import { createAnalyzer } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
 
 // ========== TEST SETUP ==========

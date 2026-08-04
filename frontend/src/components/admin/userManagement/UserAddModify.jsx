@@ -27,7 +27,6 @@ import {
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import CustomDatePicker from "../../common/CustomDatePicker";

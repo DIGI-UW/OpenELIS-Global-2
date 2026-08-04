@@ -1,12 +1,9 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
 import {
   Button,
   ProgressIndicator,
   ProgressStep,
   Stack,
-  Section,
-  Tag,
   Grid,
   Column,
 } from "@carbon/react";

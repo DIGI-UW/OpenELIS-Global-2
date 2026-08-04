@@ -8,7 +8,6 @@ import {
   Grid,
   Column,
   Section,
-  Checkbox,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,

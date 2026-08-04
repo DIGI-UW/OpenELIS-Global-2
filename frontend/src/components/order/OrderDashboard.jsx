@@ -21,9 +21,8 @@ import {
   Pagination,
   ProgressBar,
   Stack,
-  InlineNotification,
 } from "@carbon/react";
-import { Add, Scan } from "@carbon/icons-react";
+import { Add } from "@carbon/icons-react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -43,13 +42,6 @@ import "./order-workflow.scss";
  * - DSH-7/8: Filter dropdowns (Status, date range, Priority)
  * - DSH-9: Pagination (25/50/100 items, default 100)
  */
-
-const ORDER_STEPS = [
-  { key: "enter", label: "Enter" },
-  { key: "collect", label: "Collect" },
-  { key: "label", label: "Label" },
-  { key: "qa", label: "QA" },
-];
 
 const STATUS_OPTIONS = [
   { id: "all", label: "All Statuses" },

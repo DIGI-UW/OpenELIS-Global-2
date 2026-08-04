@@ -128,38 +128,6 @@ export const SampleOrderFormValues = {
   rejectReasonList: null,
 };
 
-export const ReferralItem = {
-  referralId: null,
-  accessionNumber: null,
-  sampleType: null,
-  referringTestName: "",
-  referralResults: "",
-  referralStatus: null,
-  referralDate: null,
-  referrer: "",
-  referredInstituteId: "",
-  referredTestId: "",
-  referredTestIdShadow: null,
-  testSelectionList: null,
-  referredResult: "",
-  referredDictionaryResult: null,
-  referredMultiDictionaryResult: null,
-  referredResultType: "",
-  dictionaryResults: [],
-  referredSendDate: "",
-  referredReportDate: null,
-  pastNotes: null,
-  note: null,
-  additionalTestsXMLWad: null,
-  referralReasonId: "",
-  referralResultId: null,
-  modified: false,
-  additionalTests: null,
-  inLabResultId: null,
-  multiSelectResultValues: null,
-  qualifiedResultValue: null,
-};
-
 export const ModifyOrderFormValues = {
   patientName: "",
   dob: "",
