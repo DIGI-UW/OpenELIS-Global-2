@@ -1,6 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import MicrobiologyCaseView from "../MicrobiologyCaseView";
@@ -80,7 +81,11 @@ const astServiceStubs = {
 const getAccordionButton = (name) => {
   const button = screen
     .getAllByRole("button", { name })
-    .find((candidate) => candidate.closest(".cds--accordion__item"));
+    .find(
+      (candidate) =>
+        candidate.hasAttribute("aria-controls") &&
+        candidate.hasAttribute("aria-expanded"),
+    );
   if (!button) {
     throw new Error(`Accordion section not found: ${name}`);
   }
@@ -89,6 +94,7 @@ const getAccordionButton = (name) => {
 
 describe("MicrobiologyCaseView", () => {
   it("loads case details and records setup activity", async () => {
+    const user = userEvent.setup();
     const service = {
       ...astServiceStubs,
       getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
@@ -112,19 +118,14 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getByText("UATMICRO001")).toBeInTheDocument();
     expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
-    fireEvent.change(screen.getByLabelText("Media or bottle"), {
-      target: { value: "Blood culture bottle" },
-    });
-    fireEvent.change(screen.getByLabelText("Incubation"), {
-      target: { value: "35 C for 24 hours" },
-    });
-    fireEvent.change(screen.getByLabelText("Atmosphere"), {
-      target: { value: "Ambient" },
-    });
-    fireEvent.change(screen.getByLabelText("Activity note"), {
-      target: { value: "setup complete" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Start inoculation" }));
+    await user.type(
+      screen.getByLabelText("Media or bottle"),
+      "Blood culture bottle",
+    );
+    await user.type(screen.getByLabelText("Incubation"), "35 C for 24 hours");
+    await user.type(screen.getByLabelText("Atmosphere"), "Ambient");
+    await user.type(screen.getByLabelText("Activity note"), "setup complete");
+    await user.click(screen.getByRole("button", { name: "Start inoculation" }));
 
     await waitFor(() =>
       expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
@@ -204,6 +205,7 @@ describe("MicrobiologyCaseView", () => {
   });
 
   it("refreshes the case timeline after creating an isolate", async () => {
+    const user = userEvent.setup();
     const refreshedCase = {
       ...caseDetail,
       activities: [
@@ -237,10 +239,11 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByRole("heading", { name: "Microbiology case" }),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Preliminary organism"), {
-      target: { value: "Escherichia coli" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Create isolate" }));
+    await user.type(
+      screen.getByLabelText("Preliminary organism"),
+      "Escherichia coli",
+    );
+    await user.click(screen.getByRole("button", { name: "Create isolate" }));
 
     await waitFor(() =>
       expect(service.createIsolate).toHaveBeenCalledWith({
@@ -259,6 +262,7 @@ describe("MicrobiologyCaseView", () => {
   });
 
   it("keeps worklist context while selecting a case section and returning", async () => {
+    const user = userEvent.setup();
     const service = {
       ...astServiceStubs,
       getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
@@ -272,7 +276,7 @@ describe("MicrobiologyCaseView", () => {
     );
 
     await screen.findByRole("heading", { name: "Microbiology case" });
-    fireEvent.click(getAccordionButton("Isolates"));
+    await user.click(getAccordionButton("Isolates"));
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
@@ -280,7 +284,7 @@ describe("MicrobiologyCaseView", () => {
       ),
     );
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole("link", { name: "Microbiology worklist" }),
     );
     await waitFor(() =>
