@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.daoimpl;
 
+import java.sql.Timestamp;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -55,6 +56,20 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
     public List<MicroCase> getOpenCases() {
         Query<MicroCase> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroCase c where c.closedAt is null order by c.createdAt", MicroCase.class);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCase> getFinalizedBacteriologyByClosedAtRange(Timestamp fromInclusive, Timestamp toExclusive) {
+        Query<MicroCase> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroCase c where c.workflowType = :workflowType"
+                        + " and c.finalReleaseState = :finalReleaseState and c.closedAt >= :fromInclusive"
+                        + " and c.closedAt < :toExclusive order by c.closedAt, c.id", MicroCase.class);
+        query.setParameter("workflowType", "BACTERIOLOGY");
+        query.setParameter("finalReleaseState", "FINAL_RELEASED");
+        query.setParameter("fromInclusive", fromInclusive);
+        query.setParameter("toExclusive", toExclusive);
         return query.list();
     }
 }
