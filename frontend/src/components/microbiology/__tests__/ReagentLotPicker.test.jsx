@@ -30,7 +30,7 @@ const requirements = [
       },
       {
         id: 7,
-        lotNumber: "MEDIA-FIFO",
+        lotNumber: "MEDIA-FEFO",
         effectiveExpirationDate: "2026-09-01T00:00:00Z",
         currentQuantity: 10,
         qcStatus: "PASSED",
@@ -76,7 +76,7 @@ describe("ReagentLotPicker", () => {
     expect(screen.getByLabelText(/MEDIA-EXPIRED/)).toBeDisabled();
     expect(screen.getByText("Blocked: Expired")).toBeInTheDocument();
     expect(screen.getByText("FEFO - use first")).toBeInTheDocument();
-    expect(screen.getByLabelText(/MEDIA-FIFO/)).toBeEnabled();
+    expect(screen.getByLabelText(/MEDIA-FEFO/)).toBeEnabled();
     expect(screen.getByLabelText(/MEDIA-LATER/)).toBeEnabled();
   });
 
@@ -85,7 +85,7 @@ describe("ReagentLotPicker", () => {
     const onChange = vi.fn();
     renderPicker({ onChange });
 
-    await user.click(screen.getByLabelText(/MEDIA-FIFO/));
+    await user.click(screen.getByLabelText(/MEDIA-FEFO/));
 
     expect(onChange).toHaveBeenCalledWith({
       analysisId: "41",

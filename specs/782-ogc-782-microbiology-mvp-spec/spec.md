@@ -340,10 +340,12 @@ PR #3789:
 
 Follow-up status: branch
 `feat/782-ogc-782-microbiology-m8-clinical-completeness` implements and
-qualifies V2-001 plus the repeat/retest AST portion of V2-002. Reagent/card-lot
-linkage remains unresolved and unimplemented. This status note does not change
-PR #3789's historical MVP acceptance boundary; none of the follow-up behavior
-is claimed as part of that milestone until its own branch is merged.
+qualifies V2-001 plus repeat/retest AST and policy-neutral reagent/card-lot
+traceability from V2-002. The required/optional/substitute policy remains open
+because existing Test Catalog roles cannot safely supply it. This status note
+does not change PR #3789's historical MVP acceptance boundary; none of the
+follow-up behavior is claimed as part of that milestone until its own branch is
+merged.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 

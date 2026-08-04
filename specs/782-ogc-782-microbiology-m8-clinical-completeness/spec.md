@@ -3,7 +3,8 @@
 **Feature branch**: `feat/782-ogc-782-microbiology-m8-clinical-completeness`  
 **Parent feature**: OGC-782 routine bacteriology MVP  
 **Related product work**: OGC-783, OGC-784, OGC-790, OGC-791  
-**Status**: Implementation in progress; reagent-lot slice blocked on product ruling
+**Status**: Implementation in progress; base lot traceability implemented,
+requiredness policy awaiting product ruling
 **Created**: 2026-08-03
 
 ## Purpose
@@ -61,12 +62,15 @@ implementation leakage, contradictions, or engineering decisions.
 ### Delivery Status
 
 Amendment/re-identification history, repeat/retest AST, accessibility
-qualification, and measured capacity are implemented and evidenced on the M8
-branch. Reagent/card-lot traceability remains in scope but is not implemented:
-the source artifacts conflict on whether existing `PRIMARY / SECONDARY` Test
-Catalog roles represent the requiredness policy described as
-`REQUIRED / OPTIONAL / SUBSTITUTE`. The product contract does not infer that
-mapping. Full M8 acceptance therefore remains open.
+qualification, measured capacity, and policy-neutral reagent/card-lot
+traceability are implemented and evidenced on the M8 branch. Bench users can
+choose eligible lots, see FEFO guidance and named ineligibility reasons, and
+review the exact culture or AST action that consumed each lot. The source
+artifacts still conflict on whether existing `PRIMARY / SECONDARY` Test Catalog
+roles represent the requiredness policy described as
+`REQUIRED / OPTIONAL / SUBSTITUTE`. The implementation does not infer that
+mapping, so mandatory/optional/substitute enforcement and full US4 acceptance
+remain open.
 
 ## User Stories and Acceptance Scenarios
 
@@ -243,7 +247,7 @@ readable evidence tied to a commit and environment description.
   report versions, re-identification history, and the post-release lock.
 - **SC-002**: The repeat-AST journey proves two distinct attempts and an
   explicit reportable-attempt decision.
-- **SC-003**: The reagent journey proves FIFO lot choice, invalid-lot rejection,
+- **SC-003**: The reagent journey proves FEFO lot choice, invalid-lot rejection,
   persisted traceability, and historical display.
 - **SC-004**: The registered accessibility suite reports zero detectable WCAG
   2.1 AA violations on every named Microbiology state and the keyboard journey

@@ -37,34 +37,34 @@ each slice. A checked task requires committed evidence, not intent.
 ## Phase 3 - Repeat AST and lot traceability tests (Slice B, red)
 
 - [x] T023 Add service tests for original/repeat/retest creation, required source/reason, immutable prior run, and reportable-run selection blockers.
-- [ ] T024 Add lot-query tests for Test Catalog linkage semantics, FIFO ordering, QC/status/expiry/quantity eligibility, and historical inclusion.
+- [x] T024 Add lot-query tests for Test Catalog role preservation, FEFO ordering, QC/status/expiry/quantity eligibility, and historical inclusion.
 - [ ] T025 Add stale-lot integration test proving server-side save rejection after an eligible lot becomes invalid.
 - [ ] T026 Add Inventory integration tests proving culture/AST usage is recorded once, linked to the bench action, decrements through shared behavior, and is transactionally rolled back on failure.
-- [ ] T027 Add controller tests proving actor derivation, validation, authorization, and named invalid-lot errors.
-- [ ] T028 Extend ORM validation for Slice B mappings.
+- [x] T027 Add controller tests proving actor derivation, validation, and named invalid-lot errors; existing microbiology authorization remains authoritative.
+- [x] T028 Extend ORM validation for Slice B mappings.
 
 ## Phase 4 - Repeat AST and lot traceability implementation (Slice B, green)
 
 - [x] T029a Add Liquibase `061` AST-attempt metadata beyond the Slice A lifecycle link, with rollback.
-- [ ] T029b Add culture/AST-to-Inventory-usage linkage with rollback; do not recreate reagent, lot, or usage tables.
+- [x] T029b Add culture/AST-to-Inventory-usage linkage with rollback; do not recreate reagent, lot, or usage tables.
 - [x] T030 Implement repeat/retest run creation and explicit reportable-run selection.
-- [ ] T031 Implement reusable lot query/validation and usage orchestration over existing Test Catalog and Inventory services.
-- [ ] T032 Add shared Carbon lot picker and wire it into culture setup and AST setup without duplicating host logic.
+- [x] T031 Implement reusable lot query/validation and usage orchestration over existing Test Catalog and Inventory services.
+- [x] T032 Add shared Carbon lot picker and wire it into culture setup and AST setup without duplicating host logic.
 - [x] T033a Render attempt relationships and reportable selection in the case workbench with text-plus-color status.
-- [ ] T033b Render historical lots in the case workbench with text-plus-color status.
+- [x] T033b Render historical lots in the case workbench with text-plus-color status.
 - [x] T034a Add focused Vitest tests for repeat AST behavior.
-- [ ] T034b Add focused Vitest tests for lot picker behavior.
+- [x] T034b Add focused Vitest tests for lot picker behavior.
 - [x] T035a Add a registered Playwright journey for repeat AST and explicit reportable-run selection.
-- [ ] T035b Extend the registered Playwright journey with FIFO lot selection, invalid-lot rejection, persisted usage, and historical lot display.
-- [ ] T036 Run Slice B backend/frontend formatting and focused validation; commit as one reviewable checkpoint.
+- [x] T035b Add a registered Playwright journey with FEFO lot selection, invalid-lot blocking, persisted usage, and historical lot display.
+- [x] T036 Run Slice B backend/frontend formatting and focused validation; commit as reviewable checkpoints `307a9b3de` and `554063fc8`.
 
 ## Phase 5 - Accessibility qualification (Slice C)
 
 - [x] T037 Add the reviewed current `@axe-core/playwright` version and register focused desktop/mobile Microbiology accessibility test projects.
 - [x] T038a Add stable axe checks for worklist, case overview, isolate, AST, critical communication, reporting, and amendment states.
-- [ ] T038b Add the stable axe check for the lot-picker state after lot policy is resolved.
+- [x] T038b Add the stable axe check for the policy-neutral lot-picker state.
 - [x] T039a Add a keyboard-only Playwright journey through filtering, case navigation, isolate/AST entry, and amendment release.
-- [ ] T039b Extend the keyboard-only journey through lot selection after lot policy is resolved.
+- [x] T039b Extend the keyboard-only journey through lot selection using the Carbon radio interaction.
 - [x] T040 Fix detected semantic, labeling, status, focus, and contrast defects using Carbon patterns; add Vitest regressions at the owning component level.
 - [x] T041 Record desktop/mobile screenshots and machine-readable axe output tied to the commit.
 
@@ -89,9 +89,9 @@ each slice. A checked task requires committed evidence, not intent.
 - [ ] T053b Attach new M8 screenshots/video and update PR #3972 with their links and a current one-shot check state before marking it ready.
 - [x] T054 Verify the remote M2 branch contains the current remote M1 branch with no missing M1 commits.
 - [x] T055 Deploy exact M2 application SHA `cd833663cedb147d534e0eea90b3de7bd3877946` to AMR and provision the property-gated service-layer UAT fixture.
-- [x] T056 Publish milestone-labeled M1 and M2 Grist stories, correct their full-host scope, and verify live checklist revision `14a4359b2187ec1803d55610d48dbc9eac70e4556c879ae31476bf09fcefbbb8` renders 17 steps in the AMR Review overlay.
+- [x] T056 Publish milestone-labeled M1 and M2 Grist stories, preserve their full-host scope, and verify live checklist revision `00242ff2e232998d6bab03844de68975a8dd6ef4117fd81eb51af997db4d5afe` serves nine stories and 20 steps: 19 required plus optional `AMR-21`.
 - [x] T057 Update and pass the registered `core-live-uat` Playwright contract using Carbon/public accessibility interactions and no arbitrary waits.
-- [ ] T058 Piotr completes Pass/Fail/N/A plus notes for all 16 required M1 and M2 Review-overlay steps; `AMR-21` remains optional.
+- [ ] T058 Piotr completes Pass/Fail/N/A plus notes for all 19 required M1 and M2 Review-overlay steps; `AMR-21` remains optional.
 
 ## Dependency Notes
 
@@ -100,12 +100,14 @@ each slice. A checked task requires committed evidence, not intent.
 - Slice C accessibility can begin after Slice A UI stabilizes; final evidence waits for Slice B UI.
 - Performance fixture work can proceed after the Slice A schema is stable but must measure the final Slice B data shape.
 - Human UAT cannot be replaced by M8 automation. The live combined checklist
-  now reviews the nine required M1 steps and seven required M2 steps in one
+  now reviews the nine required M1 steps and ten required M2 steps in one
   ordered session; either milestone can still be ruled on separately from the
   same downloaded report.
-- T024-T035b lot work remains blocked by the unresolved `PRIMARY / SECONDARY`
-  versus `REQUIRED / OPTIONAL / SUBSTITUTE` product-policy contradiction. No
-  requirement semantics are inferred from the existing role values.
+- Mandatory/optional/substitute lot enforcement remains blocked by the
+  unresolved `PRIMARY / SECONDARY` versus
+  `REQUIRED / OPTIONAL / SUBSTITUTE` product-policy contradiction. T024-T039b
+  now cover the policy-neutral behavior; no requirement semantics are inferred
+  from the existing role values.
 - T049 remains open only for the repository-wide TypeScript check. Spotless,
   Prettier, Playwright lint, the production build, `git diff --check`, and all
   M8-owned TypeScript files pass. The same broad TypeScript 6 baseline failure

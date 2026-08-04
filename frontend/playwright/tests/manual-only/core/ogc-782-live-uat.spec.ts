@@ -19,6 +19,9 @@ const EXPECTED_STEP_KEYS = [
   "AMR-26",
   "AMR-27",
   "AMR-28",
+  "AMR-29",
+  "AMR-30",
+  "AMR-31",
 ];
 
 type UatStep = { key: string; required: boolean };
@@ -75,6 +78,11 @@ const EXPECTED_STORIES = [
     title: "M2 - Review the workflow by keyboard",
     version: "1.0",
   },
+  {
+    key: "AMR-S09",
+    title: "M2 - Trace bench consumable lots",
+    version: "1.0",
+  },
 ];
 
 const EXPECTED_REQUIRED_STEP_KEYS = [
@@ -94,10 +102,13 @@ const EXPECTED_REQUIRED_STEP_KEYS = [
   "AMR-26",
   "AMR-27",
   "AMR-28",
+  "AMR-29",
+  "AMR-30",
+  "AMR-31",
 ];
 
 const EXPECTED_CHECKLIST_REVISION =
-  "14a4359b2187ec1803d55610d48dbc9eac70e4556c879ae31476bf09fcefbbb8";
+  "00242ff2e232998d6bab03844de68975a8dd6ef4117fd81eb51af997db4d5afe";
 
 test.describe("OGC-782 live AMR UAT", () => {
   test("binds the review overlay to the deployed feature and verifies stable navigation", async ({
@@ -170,6 +181,12 @@ test.describe("OGC-782 live AMR UAT", () => {
       await expect(
         widget.getByText(
           "From the final-released bacteriology case, open Amendments, enter a reason that describes the correction, and open the amendment.",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        widget.getByText(
+          "In Setup, inspect the culture-media lots before selecting one.",
           { exact: true },
         ),
       ).toBeVisible();
