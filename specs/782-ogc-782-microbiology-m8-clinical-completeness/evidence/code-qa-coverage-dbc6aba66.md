@@ -10,7 +10,7 @@
 | ------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Integration               | `MicroAmendmentIntegrationTest`, `MicroAstIntegrationTest`, qualification integration, ORM bootstrap | Included in 84/84 focused backend pass | Real Liquibase mappings, report-version persistence, history relationships, rollback, and AST attempt storage   |
 | Unit/controller           | Amendment, AST, projection, release, mutation, worklist, actor/error tests                           | Included in 84/84 focused backend pass | Lifecycle branches, named blockers, authenticated actor mapping, and response contracts                         |
-| Component                 | Amendment, AST, isolate, worklist Carbon tests                                                       | 20/20 focused pass                     | Rendered state, enabled/disabled controls, incremental typing, native selection, focus, and service integration |
+| Component                 | Amendment, AST, isolate, worklist Carbon tests                                                       | 27/27 focused pass                     | Rendered state, enabled/disabled controls, incremental typing, native selection, focus, and service integration |
 | E2E                       | Amendment, repeat AST, keyboard, workbench, critical/worklist journeys                               | Green on isolated `cc8c-ogc782` stack  | Assembled clinical outcomes, patient-result propagation, canonical URLs, Carbon interaction, and final relock   |
 | Accessibility/performance | 14 axe scans; API/browser/query-plan qualification                                                   | Pass                                   | Detectable WCAG 2.1 AA defects and measured workload budgets                                                    |
 
@@ -78,3 +78,6 @@ the real persistence path; it is not an assert-on-mock-return test.
   no lot implementation has been written.
 - Frontend percentage coverage is not claimed because this repo has no enabled
   Vitest coverage provider. Component and E2E outcomes are reported directly.
+- The repository-wide TypeScript 6 check remains red on pre-existing project
+  debt, including on the dedicated modernization branch. M8-owned TypeScript
+  errors are resolved and documented in `final-local-validation-6c9d267a7.md`.

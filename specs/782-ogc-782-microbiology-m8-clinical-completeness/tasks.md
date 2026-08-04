@@ -80,7 +80,7 @@ each slice. A checked task requires committed evidence, not intent.
 
 ## Phase 7 - Completion and artifact reconciliation
 
-- [ ] T048 Run all focused JUnit, Testcontainers, ORM, Liquibase, Vitest, Playwright, axe, and qualification commands named in evidence.
+- [x] T048 Run all focused JUnit, Testcontainers, ORM, Liquibase, Vitest, Playwright, axe, and qualification commands named in evidence.
 - [ ] T049 Run Spotless, Prettier, source lint, typecheck, and `git diff --check`.
 - [x] T050 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence reviews; resolve actionable findings.
 - [x] T051 Update the M8 spec/plan/tasks and the original MVP V2 list without changing #3789's historical acceptance claims.
@@ -97,3 +97,7 @@ each slice. A checked task requires committed evidence, not intent.
 - T024-T035b lot work remains blocked by the unresolved `PRIMARY / SECONDARY`
   versus `REQUIRED / OPTIONAL / SUBSTITUTE` product-policy contradiction. No
   requirement semantics are inferred from the existing role values.
+- T049 remains open only for the repository-wide TypeScript check. Spotless,
+  Prettier, Playwright lint, the production build, `git diff --check`, and all
+  M8-owned TypeScript files pass. The same broad TypeScript 6 baseline failure
+  reproduces on `codex/typescript-6-typecheck` at `49714eb84`.
