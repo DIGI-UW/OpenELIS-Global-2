@@ -17,6 +17,7 @@ const attachScreenshot = async (
   testInfo: TestInfo,
   name: string,
 ) => {
+  await page.evaluate(() => window.scrollTo(0, 0));
   await testInfo.attach(name, {
     body: await page.screenshot({ fullPage: true }),
     contentType: "image/png",
@@ -78,7 +79,11 @@ test.describe("Microbiology reagent and card lot traceability", () => {
         name: /UAT-MICRO-CARD-FEFO/,
       });
       await expect(card).toBeEnabled({ timeout: LONG_TIMEOUT });
-      await expect(page.getByText("Secondary", { exact: true })).toBeVisible();
+      await expect(
+        page
+          .getByTestId("microbiology-ast-card")
+          .getByText("Secondary", { exact: true }),
+      ).toBeVisible();
       await chooseCarbonRadio(card);
       await page.getByRole("button", { name: "Start AST run" }).click();
 
