@@ -97,7 +97,7 @@ test.describe("OGC-782 M3 reference administration demo", () => {
         name: "Filter table",
       });
       await expect(panelSearch).toBeVisible({ timeout: LONG_TIMEOUT });
-      await panelSearch.fill("Gram negative");
+      await panelSearch.fill("Gram negative AST panel (UAT)");
       const currentRow = page
         .getByRole("row")
         .filter({ hasText: "Gram negative AST panel (UAT)" })
@@ -134,6 +134,9 @@ test.describe("OGC-782 M3 reference administration demo", () => {
           .filter({ hasText: `v${originalVersion + 1}` })
           .filter({ hasText: "Current" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await page
+        .getByRole("heading", { name: "Microbiology reference data" })
+        .scrollIntoViewIfNeeded();
       await demo.evidence("ogc-782-m3-04-panel-version-published");
       await demo.pause(2500);
     });
@@ -184,7 +187,7 @@ test.describe("OGC-782 M3 reference administration demo", () => {
       await importDialog
         .getByRole("button", { name: "Apply valid rows" })
         .click();
-      await expect(importDialog.getByText(/1 (unchanged|valid)/)).toBeVisible({
+      await expect(importDialog.getByText("1 imported")).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
       await demo.evidence("ogc-782-m3-07-breakpoint-import-applied", {

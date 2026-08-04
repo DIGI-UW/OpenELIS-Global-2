@@ -349,8 +349,8 @@ describe("microbiology reference administration", () => {
       previewToken: "preview-1",
       validRows: 1,
       skippedRows: 0,
-      unchangedRows: 1,
-      importedRows: 0,
+      unchangedRows: 0,
+      importedRows: 1,
       errors: [],
     });
 
@@ -386,7 +386,7 @@ describe("microbiology reference administration", () => {
         name: messages["microbiology.admin.breakpoints.applyValid"],
       }),
     );
-    expect(await screen.findByText("1 unchanged")).toBeInTheDocument();
+    expect(await screen.findByText("1 imported")).toBeInTheDocument();
     expect(applyBreakpointImport).toHaveBeenCalledWith("preview-1");
 
     await user.click(
