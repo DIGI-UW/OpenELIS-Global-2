@@ -1,6 +1,6 @@
 # M8 final local validation
 
-- Commit under test: `6c9d267a7`
+- Commit under test: `5203e1fdb`
 - Stack: isolated `cc8c-ogc782` Docker Compose project
 - Base URL: `https://127.0.0.1:48444`
 - Result: **implemented slices pass; full M8 remains blocked on lot policy**
@@ -9,9 +9,9 @@
 
 | Level | Result |
 | --- | --- |
-| Focused JUnit, ORM, Testcontainers, API qualification | 85/85 passed |
+| Focused JUnit, ORM, Testcontainers, fixture, API qualification | 99/99 passed |
 | Liquibase full update, M8 rollback, and reapply | 1/1 passed within the backend set |
-| Carbon component tests | 27/27 passed |
+| Changed Carbon component tests | 55/55 passed |
 | Core clinical and Carbon Playwright journeys | 6/6 passed |
 | Desktop/mobile accessibility and keyboard Playwright | 8/8 passed; 14 axe scans reported zero WCAG 2.1 AA violations |
 | Browser performance Playwright | 2/2 passed |
@@ -34,9 +34,15 @@ isolates and 80 AST readings. Two warm-ups preceded ten measured iterations.
 
 | Operation | Budget | p95 | Result |
 | --- | ---: | ---: | --- |
-| Worklist initial render | 2000 ms | 210.3 ms | PASS |
-| Dense case initial render | 1000 ms | 206.5 ms | PASS |
-| Worklist page interaction | 300 ms | 71.3 ms | PASS |
+| Worklist initial render | 2000 ms | 230.8 ms | PASS |
+| Dense case initial render | 1000 ms | 217.1 ms | PASS |
+| Worklist page interaction | 300 ms | 73.0 ms | PASS |
+
+The M7 base was synchronized before this run. The merge exposed a test-order
+dependency in workflow status setup; all required statuses are now established
+through `StatusOfSampleService` at each integration/qualification fixture
+entry point. The focused suite proves the scenarios remain green without SQL,
+fixed primary keys, DAO bypass, or reliance on another test running first.
 
 ## Flagged validation issue
 
@@ -46,8 +52,8 @@ modernization. The same broad failure reproduces on the dedicated
 test globals, untyped JSX imports, existing service callback contracts, and
 Vite configuration typing.
 
-All errors in M8-owned Microbiology and qualification files were resolved in
-`6c9d267a7`: Playwright 1.58 reduced-motion configuration now uses
+All errors in M8-owned Microbiology and qualification files were resolved by
+`5203e1fdb`: Playwright 1.58 reduced-motion configuration uses
 `contextOptions`, animation readiness uses `Animation.pending`, live UAT JSON
 has explicit types, and `MicrobiologyRoutes.js` has a declaration contract.
 The project-wide baseline remains separate work and prevents marking T049
