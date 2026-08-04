@@ -1,6 +1,12 @@
 import { Page, TestInfo } from "@playwright/test";
 import { isVideoProject } from "./video-pause";
 
+export type TitleCardOptions = {
+  eyebrow?: string;
+  accent?: string;
+  align?: "left" | "center";
+};
+
 /**
  * Injects a full-screen title card overlay into the browser viewport.
  * Since Playwright records the viewport, these appear as title/transition
@@ -16,11 +22,12 @@ export async function showTitleCard(
   subtitle?: string,
   durationMs = 3000,
   testInfo?: TestInfo,
+  options: TitleCardOptions = {},
 ) {
   if (testInfo && !isVideoProject(testInfo)) return;
 
   await page.evaluate(
-    ({ title, subtitle }) => {
+    ({ title, subtitle, eyebrow, accent, align }) => {
       const overlay = document.createElement("div");
       overlay.id = "e2e-title-card";
       Object.assign(overlay.style, {
@@ -29,36 +36,60 @@ export async function showTitleCard(
         zIndex: "99999",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
+        alignItems: align === "center" ? "center" : "flex-start",
         justifyContent: "center",
         background: "#161616",
         color: "#f4f4f4",
         fontFamily: "'IBM Plex Sans', Arial, sans-serif",
+        borderLeft: `6px solid ${accent}`,
+        boxSizing: "border-box",
+        padding: "0 64px",
       });
+      if (eyebrow) {
+        const eyebrowText = document.createElement("p");
+        eyebrowText.textContent = eyebrow;
+        Object.assign(eyebrowText.style, {
+          fontSize: "0.95rem",
+          fontWeight: "600",
+          color: accent,
+          margin: "0 0 0.75rem",
+          textAlign: align,
+        });
+        overlay.appendChild(eyebrowText);
+      }
       const h1 = document.createElement("h1");
       h1.textContent = title;
       Object.assign(h1.style, {
-        fontSize: "2.5rem",
+        fontSize: "2rem",
         fontWeight: "600",
-        marginBottom: "0.5rem",
-        textAlign: "center",
-        padding: "0 2rem",
+        lineHeight: "1.2",
+        margin: "0",
+        maxWidth: "680px",
+        textAlign: align,
       });
       overlay.appendChild(h1);
       if (subtitle) {
         const p = document.createElement("p");
         p.textContent = subtitle;
         Object.assign(p.style, {
-          fontSize: "1.2rem",
+          fontSize: "1rem",
+          lineHeight: "1.5",
           color: "#a8a8a8",
-          textAlign: "center",
-          padding: "0 2rem",
+          margin: "0.75rem 0 0",
+          maxWidth: "680px",
+          textAlign: align,
         });
         overlay.appendChild(p);
       }
       document.body.appendChild(overlay);
     },
-    { title, subtitle },
+    {
+      title,
+      subtitle,
+      eyebrow: options.eyebrow,
+      accent: options.accent ?? "#0f62fe",
+      align: options.align ?? "left",
+    },
   );
   await page.waitForTimeout(durationMs);
   await page.evaluate(() =>

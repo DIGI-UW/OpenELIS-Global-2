@@ -64,3 +64,6 @@
       registered live UAT contract and M3 Playwright journey.
 - [x] T040 Update the PR, Jira, roadmap, UAT revision, screenshots, and external
       walkthrough/contact-sheet links without claiming human acceptance.
+- [ ] T041 Piotr completes Pass/Fail/N/A plus notes for the 13 required M3 steps
+      in the live combined Review overlay. Automated Playwright and published
+      evidence do not satisfy this acceptance task.

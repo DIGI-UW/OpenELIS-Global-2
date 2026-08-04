@@ -22,7 +22,9 @@ current M3 branch.
 
 No unresolved product contradiction remains in the M3 acceptance boundary.
 Breakpoint content remains synthetic; WHONET export, subscriptions, expert rules,
-and operational TB remain explicitly excluded.
+and operational TB remain explicitly excluded. The M-02 mock's `Export CSV`
+action is absent from the M3 product contract and UAT, so it is recorded in
+`mock-comparison.md` as a later product-scope ruling rather than silently claimed.
 
 ## Meaningful test coverage
 
@@ -62,17 +64,24 @@ Verdict: **lean for the required full-stack workflow**.
 
 ## Evidence readiness
 
-- App SHA: `7416a1626ccd0dade98aa6b010f91b56c226e4f4`
-- Review harness SHA: `e51654ec980a36c899ea169630b6f3a4552ff9fe`
-- Deployment: `20260804T193243Z-7416a1626ccd`, ready with health and smoke
+- Automated runtime/evidence SHA:
+  `7416a1626ccd0dade98aa6b010f91b56c226e4f4`.
+- Ready target app SHA: `fe7ca789f4f9026e6a679e496a06c3e860da8c12`;
+  commits after the runtime evidence only reconcile tests, presentation, and
+  specification artifacts.
+- Review harness SHA: `72eb003155db91f08a90d5e853e7811f86d3c642`.
+- Deployment: `20260804T200840Z-fe7ca789f4f9`, ready with health and smoke
   verification passed; `/` and `/Microbiology/worklist` returned HTTP 200.
 - Grist revision: `c3a490ab422180d87ada093cf05a2cc727413a01bc6234c3217fb99c466e7c3c`
   with 33 steps, 32 required, and one optional TB reflection.
 - External evidence:
-  `/Users/pmanko/.codex/visualizations/2026/08/04/019fca12-4b0c-71d0-a37e-8493de64fee5/ogc-782-m3-evidence-7416a162/walkthrough/`
+  - [Paced MP4](https://amr.openelis-global.org/__review/evidence/ogc-782/m3/7416a162/walkthrough.mp4)
+  - [Screenshot contact sheet](https://amr.openelis-global.org/__review/evidence/ogc-782/m3/7416a162/contact-sheet.png)
+  - [Video-frame contact sheet](https://amr.openelis-global.org/__review/evidence/ogc-782/m3/7416a162/video-contact-sheet.png)
+  - [Complete bundle](https://amr.openelis-global.org/__review/evidence/ogc-782/m3/7416a162/walkthrough.zip)
 
-The M-01/M-02 comparison found no product contradiction in the delivered M3
-workflow. The implementation intentionally uses the native config-driven
+The detailed `mock-comparison.md` review found no product contradiction in the
+delivered M3 workflow. The implementation intentionally uses the native config-driven
 OpenELIS Admin sidenav, shell, breadcrumbs, and Carbon tabs instead of treating
 the mock's internal navigation as an implementation contract. The resulting
 workflow preserves the mock's vocabulary, panel-versioning, breakpoint, and

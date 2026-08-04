@@ -2,7 +2,8 @@
 
 **Feature Branch**: `feat/782-ogc-782-microbiology-m9-reference-mapping-admin`
 **Created**: 2026-08-04
-**Status**: In progress
+**Status**: Implemented and deployed; automated validation complete; human UAT
+pending
 **Parent**: OGC-782
 **Primary Jira**: OGC-786, OGC-787
 

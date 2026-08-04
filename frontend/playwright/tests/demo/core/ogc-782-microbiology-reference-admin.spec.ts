@@ -23,16 +23,21 @@ test.describe("OGC-782 M3 reference administration demo", () => {
     const demo = createDemoPresentation(page, testInfo);
     const seeded = await seedMicrobiologyReferenceAdmin(page);
 
-    await demo.title(
-      "OGC-782 Microbiology M3",
-      "Reference vocabularies, versioned AST panels, and safe breakpoint administration",
-    );
+    await demo.chapter({
+      eyebrow: "OGC-782 M3",
+      title: "Reference and breakpoint administration",
+      subtitle:
+        "Organism vocabularies, immutable AST panels, and guarded breakpoint imports",
+    });
 
     await test.step("Reach organism administration through Admin navigation", async () => {
-      await demo.step(
-        1,
-        "Open Microbiology reference data from the configuration-driven Admin navigation",
-      );
+      await demo.chapter({
+        eyebrow: "Story 1",
+        title: "Maintain reference vocabularies",
+        subtitle:
+          "Reach the catalog through Admin navigation and preserve bookmarkable list state",
+        accent: "#24a148",
+      });
       await page.goto("/MasterListsPage", { waitUntil: "domcontentloaded" });
       await page
         .getByRole("button", {
@@ -60,10 +65,7 @@ test.describe("OGC-782 M3 reference administration demo", () => {
     });
 
     await test.step("Edit service-created vocabulary", async () => {
-      await demo.step(
-        2,
-        "Edit the synthetic organism while preserving the bookmarkable list state",
-      );
+      await demo.scene("Edit the synthetic organism");
       const row = page
         .getByRole("row")
         .filter({ hasText: "Reference organism (UAT)" });
@@ -88,10 +90,13 @@ test.describe("OGC-782 M3 reference administration demo", () => {
     });
 
     await test.step("Publish an immutable AST panel version", async () => {
-      await demo.step(
-        3,
-        "Publish a new AST panel version without changing historical runs",
-      );
+      await demo.chapter({
+        eyebrow: "Story 2",
+        title: "Publish an immutable AST panel version",
+        subtitle:
+          "Create a new current version while historical AST runs keep their original panel",
+        accent: "#ff832b",
+      });
       await page.getByRole("link", { name: "AST panels", exact: true }).click();
       const panelSearch = page.getByRole("searchbox", {
         name: "Filter table",
@@ -141,11 +146,14 @@ test.describe("OGC-782 M3 reference administration demo", () => {
       await demo.pause(2500);
     });
 
-    await test.step("Inspect and import synthetic breakpoint data", async () => {
-      await demo.step(
-        4,
-        "Inspect a loaded standard, then preview a mixed-validity synthetic import",
-      );
+    await test.step("Inspect synthetic breakpoint lifecycle", async () => {
+      await demo.chapter({
+        eyebrow: "Story 3",
+        title: "Inspect breakpoint catalog lifecycle",
+        subtitle:
+          "Review a loaded standard and the exact rules available for new AST work",
+        accent: "#8a3ffc",
+      });
       await page.goto(
         `${ADMIN_BASE}/breakpoints/${seeded.loadedBreakpointStandardId}?${canonicalQuery({ method: "MIC" })}`,
         { waitUntil: "domcontentloaded" },
@@ -156,7 +164,17 @@ test.describe("OGC-782 M3 reference administration demo", () => {
       await expect(page.getByRole("table")).toContainText("UAT_SYNTHETIC");
       await demo.evidence("ogc-782-m3-05-breakpoint-standard-detail");
       await demo.pause(2500);
+    });
 
+    await test.step("Import synthetic breakpoint data safely", async () => {
+      await demo.chapter({
+        eyebrow: "Story 4",
+        title: "Import breakpoint updates safely",
+        subtitle:
+          "Preview mixed-validity rows, preserve actionable errors, and apply only valid data",
+        accent: "#ee5396",
+      });
+      await demo.scene("Preview a guarded CSV import");
       await page.getByRole("button", { name: "Back to standards" }).click();
       const importVersion = `SYNTH-DEMO-${randomUUID()
         .slice(0, 8)
@@ -196,10 +214,12 @@ test.describe("OGC-782 M3 reference administration demo", () => {
       await demo.pause(2500);
     });
 
-    await demo.title(
-      "M3 checkpoint complete",
-      "Reference edits, immutable panel publication, and guarded breakpoint import were exercised on the deployed feature.",
-      4000,
-    );
+    await demo.chapter({
+      eyebrow: "Evidence complete",
+      title: "Automated M3 journeys passed",
+      subtitle:
+        "Reference edits, panel versioning, and guarded imports passed; human Review-overlay rulings remain separate.",
+      durationMs: 4000,
+    });
   });
 });
