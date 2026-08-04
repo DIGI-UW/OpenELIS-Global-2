@@ -19,8 +19,14 @@ public interface MicroAstService {
      */
     MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String performedBy);
 
+    MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId,
+            List<MicroLotSelection> lotSelections, String performedBy);
+
     MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
             MicroAstMethod method, String performedBy);
+
+    MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
+            MicroAstMethod method, List<MicroLotSelection> lotSelections, String performedBy);
 
     MicroAstReading recordReading(String runId, String antibioticId, MicroAstMethod method, BigDecimal rawValue,
             String performedBy);

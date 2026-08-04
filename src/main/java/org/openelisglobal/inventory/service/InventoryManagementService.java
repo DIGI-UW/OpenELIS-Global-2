@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.util.List;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.inventory.valueholder.InventoryUsage;
 
 public interface InventoryManagementService {
 
@@ -17,6 +18,12 @@ public interface InventoryManagementService {
      * @return List of lots consumed with quantities
      */
     List<ConsumptionRecord> consumeInventoryFEFO(Long itemId, Double quantityNeeded, Long testResultId, Long analysisId,
+            String sysUserId);
+
+    /**
+     * Revalidates and consumes exactly the selected lot in one transaction.
+     */
+    InventoryUsage consumeSelectedLot(Long lotId, Double quantityNeeded, Long testResultId, Long analysisId,
             String sysUserId);
 
     /**

@@ -399,4 +399,7 @@
   <!-- OGC-782 M8: repeat/retest AST provenance and reportable selection -->
   <include relativeToChangelogFile="true" file="061-microbiology-ast-attempts.xml"/>
 
+  <!-- OGC-782 M8: link shared Inventory usage to culture and AST bench actions -->
+  <include relativeToChangelogFile="true" file="062-microbiology-inventory-usage-link.xml"/>
+
 </databaseChangeLog>

@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.daoimpl;
 
+import jakarta.persistence.LockModeType;
 import java.sql.Timestamp;
 import java.util.List;
 import org.hibernate.Session;
@@ -19,6 +20,15 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     public InventoryLotDAOImpl() {
         super(InventoryLot.class);
+    }
+
+    @Override
+    public InventoryLot getForUpdate(Long lotId) throws LIMSRuntimeException {
+        try {
+            return entityManager.find(InventoryLot.class, lotId, LockModeType.PESSIMISTIC_WRITE);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error locking inventory lot for update", e);
+        }
     }
 
     @Override

@@ -7,7 +7,8 @@ import {
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 async function tabTo(page: Page, target: Locator, maxTabs = 120) {
-  const candidate = target.first();
+  await expect(target).toHaveCount(1);
+  const candidate = target;
   await expect(candidate).toBeVisible({ timeout: LONG_TIMEOUT });
   for (let index = 0; index < maxTabs; index += 1) {
     await page.keyboard.press("Tab");
@@ -111,6 +112,13 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await tabTo(page, astPanel);
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/section=ast/);
+
+      const cardLot = page.getByRole("radio", {
+        name: /UAT-MICRO-CARD-FEFO/,
+      });
+      await tabTo(page, cardLot);
+      await page.keyboard.press("Space");
+      await expect(cardLot).toBeChecked();
 
       const startRun = page.getByRole("button", { name: "Start AST run" });
       await expect(startRun).toBeEnabled({ timeout: LONG_TIMEOUT });

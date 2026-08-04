@@ -68,6 +68,10 @@ const astServiceStubs = {
     content: "Escherichia coli: Ciprofloxacin S",
     projectedResultIds: ["result-1"],
   }),
+  getReagentLotOverview: vi.fn().mockResolvedValue({
+    requirements: [],
+    usages: [],
+  }),
   releasePreliminaryReport: vi.fn(),
   releaseFinalReport: vi.fn(),
   getCaseAmendments: vi.fn().mockResolvedValue([]),
@@ -95,9 +99,36 @@ const getAccordionButton = (name) => {
 describe("MicrobiologyCaseView", () => {
   it("loads case details and records setup activity", async () => {
     const user = userEvent.setup();
+    const requirement = {
+      analysisId: "41",
+      testId: "22",
+      testName: "Blood culture",
+      linkId: "link-1",
+      reagentId: 13,
+      reagentName: "Blood agar",
+      usageType: "PRIMARY",
+      quantityPerTest: 1,
+      quantityUnit: "plate",
+      lots: [
+        {
+          id: 7,
+          lotNumber: "MEDIA-FIFO",
+          effectiveExpirationDate: "2026-09-01T00:00:00Z",
+          currentQuantity: 10,
+          qcStatus: "PASSED",
+          status: "ACTIVE",
+          available: true,
+          fefoRecommended: true,
+        },
+      ],
+    };
     const service = {
       ...astServiceStubs,
       getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      getReagentLotOverview: vi.fn().mockResolvedValue({
+        requirements: [requirement],
+        usages: [],
+      }),
       recordCaseActivity: vi.fn().mockResolvedValue({
         ...caseDetail,
         stage: "SETUP_RECORDED",
@@ -125,12 +156,20 @@ describe("MicrobiologyCaseView", () => {
     await user.type(screen.getByLabelText("Incubation"), "35 C for 24 hours");
     await user.type(screen.getByLabelText("Atmosphere"), "Ambient");
     await user.type(screen.getByLabelText("Activity note"), "setup complete");
+    await user.click(screen.getByLabelText(/MEDIA-FIFO/));
     await user.click(screen.getByRole("button", { name: "Start inoculation" }));
 
     await waitFor(() =>
       expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
         nextStage: "SETUP_RECORDED",
         note: "Media or bottle: Blood culture bottle; Incubation: 35 C for 24 hours; Atmosphere: Ambient; setup complete",
+        lotSelections: [
+          {
+            analysisId: "41",
+            testReagentLinkId: "link-1",
+            lotId: 7,
+          },
+        ],
       }),
     );
     await waitFor(() =>

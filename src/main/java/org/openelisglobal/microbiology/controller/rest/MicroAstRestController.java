@@ -49,17 +49,27 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request,
             HttpServletRequest httpRequest) {
+        if (request.lotSelections == null || request.lotSelections.isEmpty()) {
+            return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
+                    request.breakpointStandardId, authenticatedUserId(httpRequest))));
+        }
         return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
-                request.breakpointStandardId, authenticatedUserId(httpRequest))));
+                request.breakpointStandardId, lotSelections(request.lotSelections), authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{sourceRunId}/attempts")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRepeatRun(@PathVariable String sourceRunId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
+        if (request.lotSelections == null || request.lotSelections.isEmpty()) {
+            return ResponseEntity.ok(
+                    toRunForm(astService.startRepeatRun(sourceRunId, MicroAstAttemptType.valueOf(request.attemptType),
+                            request.reason, MicroAstMethod.valueOf(request.method), authenticatedUserId(httpRequest))));
+        }
         return ResponseEntity
                 .ok(toRunForm(astService.startRepeatRun(sourceRunId, MicroAstAttemptType.valueOf(request.attemptType),
-                        request.reason, MicroAstMethod.valueOf(request.method), authenticatedUserId(httpRequest))));
+                        request.reason, MicroAstMethod.valueOf(request.method), lotSelections(request.lotSelections),
+                        authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{runId}/readings")

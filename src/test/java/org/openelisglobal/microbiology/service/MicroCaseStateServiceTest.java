@@ -32,12 +32,15 @@ public class MicroCaseStateServiceTest {
     @Mock
     private MicroIsolateDAO isolateDAO;
 
+    @Mock
+    private MicroReagentLotService reagentLotService;
+
     private MicroCaseStateService service;
     private MicroCase microCase;
 
     @Before
     public void setUp() {
-        service = new MicroCaseStateServiceImpl(caseDAO, activityDAO);
+        service = new MicroCaseStateServiceImpl(caseDAO, activityDAO, reagentLotService);
         microCase = new MicroCase();
         microCase.setId("case-1");
         microCase.setStage(MicroCaseStage.RECEIVED.name());

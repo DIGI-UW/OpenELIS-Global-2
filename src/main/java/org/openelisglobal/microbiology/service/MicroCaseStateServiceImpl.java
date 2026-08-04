@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
@@ -10,6 +11,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,15 +40,25 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
 
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
+    private final MicroReagentLotService reagentLotService;
 
-    public MicroCaseStateServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO) {
+    public MicroCaseStateServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
+            MicroReagentLotService reagentLotService) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
+        this.reagentLotService = reagentLotService;
     }
 
     @Override
     @Transactional
     public MicroCase advanceStage(String caseId, MicroCaseStage nextStage, String performedBy, String note) {
+        return advanceStage(caseId, nextStage, performedBy, note, List.of());
+    }
+
+    @Override
+    @Transactional
+    public MicroCase advanceStage(String caseId, MicroCaseStage nextStage, String performedBy, String note,
+            List<MicroLotSelection> lotSelections) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
         if (nextStage == null) {
             throw new IllegalArgumentException("nextStage is required");
@@ -57,15 +69,20 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
         if (!ALLOWED_TRANSITIONS.getOrDefault(currentStage, EnumSet.noneOf(MicroCaseStage.class)).contains(nextStage)) {
             throw new IllegalArgumentException("Invalid microbiology case stage transition");
         }
+        if (lotSelections != null && !lotSelections.isEmpty() && !MicroCaseStage.SETUP_RECORDED.equals(nextStage)) {
+            throw new IllegalArgumentException("MICROBIOLOGY_LOTS_ONLY_ALLOWED_DURING_SETUP");
+        }
         microCase.setStage(nextStage.name());
         MicroCase updated = caseDAO.update(microCase);
-        recordActivity(caseId, MicroCaseActivityType.STAGE_CHANGED, performedBy, note,
+        MicroCaseActivity activity = recordActivity(caseId, MicroCaseActivityType.STAGE_CHANGED, performedBy, note,
                 "{\"from\":\"" + currentStage.name() + "\",\"to\":\"" + nextStage.name() + "\"}");
+        reagentLotService.recordSelections(caseId, MicroInventoryUsageContext.CULTURE_SETUP, activity.getId(),
+                lotSelections, performedBy);
         return updated;
     }
 
-    private void recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy, String note,
-            String structuredData) {
+    private MicroCaseActivity recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy,
+            String note, String structuredData) {
         MicroCaseActivity activity = new MicroCaseActivity();
         activity.setCaseId(caseId);
         activity.setActivityType(activityType.name());
@@ -74,5 +91,6 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
         activity.setNote(note);
         activity.setStructuredData(structuredData);
         activityDAO.insert(activity);
+        return activity;
     }
 }

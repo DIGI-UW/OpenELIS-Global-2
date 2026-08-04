@@ -1,8 +1,12 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
+import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -26,5 +30,14 @@ abstract class MicrobiologyRestControllerSupport extends BaseRestController {
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException(fieldName + " is invalid");
         }
+    }
+
+    protected List<MicroLotSelection> lotSelections(List<MicroLotSelectionRequestForm> requests) {
+        if (requests == null) {
+            return Collections.emptyList();
+        }
+        return requests.stream()
+                .map(request -> new MicroLotSelection(request.analysisId, request.testReagentLinkId, request.lotId))
+                .toList();
     }
 }

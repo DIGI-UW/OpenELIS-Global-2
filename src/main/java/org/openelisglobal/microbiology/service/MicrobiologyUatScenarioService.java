@@ -15,6 +15,14 @@ import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.inventory.service.InventoryItemService;
+import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.service.InventoryManagementService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
+import org.openelisglobal.inventory.valueholder.InventoryItem;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
@@ -44,6 +52,8 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
+import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -73,6 +83,8 @@ public class MicrobiologyUatScenarioService {
     private static final String UAT_PATIENT_EXTERNAL_ID_PREFIX = "UATMICRO-";
     private static final String UAT_PATIENT_LAST_NAME = "Microbiology";
     private static final String UAT_PATIENT_BIRTH_DATE = "1990-03-13 00:00:00";
+    private static final String UAT_MEDIA_NAME = "UAT microbiology blood agar";
+    private static final String UAT_AST_CARD_NAME = "UAT microbiology AST card";
 
     private final MethodService methodService;
     private final SampleService sampleService;
@@ -93,6 +105,10 @@ public class MicrobiologyUatScenarioService {
     private final MicrobiologyConfigurationService configurationService;
     private final MicroCaseService caseService;
     private final MicroOrderRoutingService orderRoutingService;
+    private final InventoryItemService inventoryItemService;
+    private final InventoryLotService inventoryLotService;
+    private final InventoryManagementService inventoryManagementService;
+    private final TestReagentLinkService testReagentLinkService;
 
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, PatientService patientService, PersonService personService,
@@ -102,7 +118,9 @@ public class MicrobiologyUatScenarioService {
             AnalyteService analyteService, TestAnalyteService testAnalyteService, AnalysisService analysisService,
             TestResultService testResultService, IStatusService statusService,
             MicrobiologyConfigurationService configurationService, MicroCaseService caseService,
-            MicroOrderRoutingService orderRoutingService) {
+            MicroOrderRoutingService orderRoutingService, InventoryItemService inventoryItemService,
+            InventoryLotService inventoryLotService, InventoryManagementService inventoryManagementService,
+            TestReagentLinkService testReagentLinkService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -122,6 +140,10 @@ public class MicrobiologyUatScenarioService {
         this.configurationService = configurationService;
         this.caseService = caseService;
         this.orderRoutingService = orderRoutingService;
+        this.inventoryItemService = inventoryItemService;
+        this.inventoryLotService = inventoryLotService;
+        this.inventoryManagementService = inventoryManagementService;
+        this.testReagentLinkService = testReagentLinkService;
     }
 
     @Transactional
@@ -151,6 +173,7 @@ public class MicrobiologyUatScenarioService {
         ensureSampleType(sampleItem, performedBy);
         Method method = getOrCreateUatMethod(performedBy);
         Test test = getOrCreateUatTest(method, performedBy);
+        ensureInventoryTraceability(test, performedBy);
         ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
         ensureRemarkTestResult(test, performedBy);
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
@@ -175,6 +198,85 @@ public class MicrobiologyUatScenarioService {
         form.analysisId = analysis.getId();
         form.reportableTestAnalyteId = reportableTestAnalyte.getId();
         return form;
+    }
+
+    private void ensureInventoryTraceability(Test test, String performedBy) {
+        InventoryItem media = getOrCreateInventoryItem(UAT_MEDIA_NAME, ItemType.REAGENT, "plate", performedBy);
+        InventoryItem astCard = getOrCreateInventoryItem(UAT_AST_CARD_NAME, ItemType.CARTRIDGE, "card", performedBy);
+        getOrCreateReagentLink(test, media, "PRIMARY", "plate", performedBy);
+        getOrCreateReagentLink(test, astCard, "SECONDARY", "card", performedBy);
+
+        ensureLot(media, "UAT-MICRO-MEDIA-EXPIRED", -1, 10.0, performedBy);
+        ensureLot(media, "UAT-MICRO-MEDIA-FEFO", 30, 20.0, performedBy);
+        ensureLot(media, "UAT-MICRO-MEDIA-LATER", 90, 20.0, performedBy);
+        ensureLot(astCard, "UAT-MICRO-CARD-FEFO", 45, 10.0, performedBy);
+        ensureLot(astCard, "UAT-MICRO-CARD-LATER", 120, 10.0, performedBy);
+    }
+
+    private InventoryItem getOrCreateInventoryItem(String name, ItemType itemType, String units, String performedBy) {
+        InventoryItem item = inventoryItemService.searchByName(name).stream()
+                .filter(candidate -> name.equals(candidate.getName())).findFirst().orElse(null);
+        if (item == null) {
+            item = new InventoryItem();
+            item.setFhirUuid(UUID.randomUUID());
+            item.setName(name);
+            item.setDescription("Property-gated microbiology UAT traceability fixture");
+            item.setItemType(itemType);
+            item.setCategory("Microbiology UAT");
+            item.setUnits(units);
+            item.setQuantityPerUnit(1);
+            item.setLowStockThreshold(1);
+            item.setExpirationAlertDays(30);
+            item.setIsActive(IActionConstants.YES);
+            item.setSysUserId(performedBy);
+            inventoryItemService.insert(item);
+        }
+        return item;
+    }
+
+    private void getOrCreateReagentLink(Test test, InventoryItem item, String role, String unit, String performedBy) {
+        TestReagentLink link = testReagentLinkService.getByTestIdAndReagentId(test.getId(), item.getId());
+        boolean created = link == null;
+        if (created) {
+            link = new TestReagentLink();
+            link.setTestId(test.getId());
+            link.setReagentId(item.getId());
+        }
+        link.setUsageType(role);
+        link.setQuantityPerTest(BigDecimal.ONE);
+        link.setQuantityUnit(unit);
+        link.setSysUserId(performedBy);
+        if (created) {
+            testReagentLinkService.insert(link);
+        } else {
+            testReagentLinkService.update(link);
+        }
+    }
+
+    private void ensureLot(InventoryItem item, String lotNumber, int expiresInDays, double quantity,
+            String performedBy) {
+        InventoryLot lot = inventoryLotService.getByLotNumber(lotNumber);
+        Timestamp expiration = Timestamp.from(Instant.now().plusSeconds(expiresInDays * 86_400L));
+        if (lot == null) {
+            lot = new InventoryLot();
+            lot.setInventoryItem(item);
+            lot.setLotNumber(lotNumber);
+            lot.setExpirationDate(expiration);
+            lot.setInitialQuantity(quantity);
+            lot.setCurrentQuantity(quantity);
+            lot.setQcStatus(QCStatus.PASSED);
+            lot.setStatus(LotStatus.ACTIVE);
+            inventoryManagementService.receiveInventory(lot, performedBy);
+            return;
+        }
+        lot.setExpirationDate(expiration);
+        lot.setStatus(LotStatus.ACTIVE);
+        lot.setQcStatus(QCStatus.PASSED);
+        if (lot.getCurrentQuantity() == null || lot.getCurrentQuantity() < quantity) {
+            lot.setCurrentQuantity(quantity);
+        }
+        lot.setSysUserId(performedBy);
+        inventoryLotService.update(lot);
     }
 
     private Sample createSample(String accessionNumber, String performedBy) {

@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 
 public interface InventoryUsageService extends BaseObjectService<InventoryUsage, Long> {
@@ -38,5 +39,9 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
      * @return The created usage record
      */
     InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, Long testResultId, Long analysisId,
+            String sysUserId);
+
+    /** Records usage for an already validated, managed lot. */
+    InventoryUsage recordUsage(InventoryLot lot, Double quantityUsed, Long testResultId, Long analysisId,
             String sysUserId);
 }

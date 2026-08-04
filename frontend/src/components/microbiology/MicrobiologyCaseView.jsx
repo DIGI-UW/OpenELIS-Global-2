@@ -144,6 +144,25 @@ const MicrobiologyCaseView = ({
   const [error, setError] = useState("");
   const [readinessRefreshToken, setReadinessRefreshToken] = useState(0);
   const [projectedResultIds, setProjectedResultIds] = useState([]);
+  const [reagentOverview, setReagentOverview] = useState({
+    requirements: [],
+    usages: [],
+  });
+  const [actionError, setActionError] = useState("");
+
+  const loadReagentOverview = () => {
+    if (!service.getReagentLotOverview) {
+      return Promise.resolve();
+    }
+    return service.getReagentLotOverview(caseId).then((overview) => {
+      if (overview && !overview.status && !overview.error) {
+        setReagentOverview({
+          requirements: overview.requirements || [],
+          usages: overview.usages || [],
+        });
+      }
+    });
+  };
 
   const loadCase = ({ showLoading = true } = {}) => {
     if (showLoading) {
@@ -169,7 +188,10 @@ const MicrobiologyCaseView = ({
     Promise.all([
       service.getCaseDetail(caseId),
       service.getReportProjection(caseId),
-    ]).then(([detail, projection]) => {
+      service.getReagentLotOverview
+        ? service.getReagentLotOverview(caseId)
+        : Promise.resolve({ requirements: [], usages: [] }),
+    ]).then(([detail, projection, overview]) => {
       if (!active) {
         return;
       }
@@ -181,6 +203,10 @@ const MicrobiologyCaseView = ({
         setCaseDetail(detail);
       }
       setProjectedResultIds(projection?.projectedResultIds || []);
+      setReagentOverview({
+        requirements: overview?.requirements || [],
+        usages: overview?.usages || [],
+      });
       setLoading(false);
     });
 
@@ -197,10 +223,22 @@ const MicrobiologyCaseView = ({
 
   const recordActivity = (payload) => {
     setSaving(true);
-    service.recordCaseActivity(caseId, payload).then((detail) => {
-      setCaseDetail(detail);
-      setSaving(false);
-    });
+    setActionError("");
+    return service
+      .recordCaseActivity(caseId, payload)
+      .then((detail) => {
+        if (!detail || detail.error || detail.statusCode >= 400) {
+          throw new Error(
+            formatMicrobiologyEnum(detail?.message || detail?.error),
+          );
+        }
+        setCaseDetail(detail);
+        return loadReagentOverview();
+      })
+      .catch((activityError) => {
+        setActionError(activityError?.message || String(activityError));
+      })
+      .finally(() => setSaving(false));
   };
 
   const createIsolate = (payload) => {
@@ -346,6 +384,18 @@ const MicrobiologyCaseView = ({
           />
         )}
 
+        {actionError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.case.actionError",
+            })}
+            subtitle={actionError}
+          />
+        )}
+
         <div className="microbiology-workbench__layout">
           <aside
             className="microbiology-workbench__rail"
@@ -431,6 +481,8 @@ const MicrobiologyCaseView = ({
                   saving={saving}
                   setupSectionId="microbiology-setup"
                   showTimeline={false}
+                  reagentRequirements={reagentOverview.requirements}
+                  reagentUsages={reagentOverview.usages}
                 />
               </AccordionItem>
               <AccordionItem
@@ -477,10 +529,15 @@ const MicrobiologyCaseView = ({
                   isolates={caseDetail.isolates}
                   service={service}
                   saving={saving}
-                  onAstUpdated={() =>
-                    setReadinessRefreshToken((currentValue) => currentValue + 1)
-                  }
+                  onAstUpdated={() => {
+                    setReadinessRefreshToken(
+                      (currentValue) => currentValue + 1,
+                    );
+                    loadReagentOverview();
+                  }}
                   readOnly={finalReleased}
+                  reagentRequirements={reagentOverview.requirements}
+                  reagentUsages={reagentOverview.usages}
                 />
               </AccordionItem>
               <AccordionItem

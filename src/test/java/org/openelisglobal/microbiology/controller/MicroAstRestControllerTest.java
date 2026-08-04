@@ -15,7 +15,9 @@ import org.openelisglobal.microbiology.form.MicroAstOverrideRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
+import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
+import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
@@ -93,6 +95,29 @@ public class MicroAstRestControllerTest {
 
         assertEquals("isAuthenticated()", repeat.value());
         assertEquals("isAuthenticated()", selection.value());
+    }
+
+    @Test
+    public void astSetupPassesLotSelectionsWithAuthenticatedActor() {
+        MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        MicroAstRunRequestForm request = new MicroAstRunRequestForm();
+        request.isolateId = "isolate-1";
+        request.panelId = "panel-1";
+        request.breakpointStandardId = "standard-1";
+        MicroLotSelectionRequestForm selection = new MicroLotSelectionRequestForm();
+        selection.analysisId = "41";
+        selection.testReagentLinkId = "link-1";
+        selection.lotId = 7L;
+        request.lotSelections.add(selection);
+        when(service.startRun("isolate-1", "panel-1", "standard-1",
+                java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42")).thenReturn(run);
+
+        new MicroAstRestController(service).startRun(request, requestFor("42"));
+
+        verify(service).startRun("isolate-1", "panel-1", "standard-1",
+                java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42");
     }
 
     private MockHttpServletRequest requestFor(String userId) {

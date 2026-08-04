@@ -297,6 +297,79 @@
   margin: 0;
 }
 
+.microbiology-reagent-lots {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.microbiology-reagent-lots h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.microbiology-reagent-lots__requirement {
+  background: var(--cds-layer-01);
+  border-left: 0.25rem solid var(--cds-border-interactive);
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.microbiology-reagent-lots__heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.microbiology-reagent-lots__heading strong,
+.microbiology-reagent-lots__heading span {
+  display: block;
+}
+
+.microbiology-reagent-lots__heading span,
+.microbiology-reagent-lots__quantity,
+.microbiology-reagent-lots__empty {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+}
+
+.microbiology-reagent-lots__quantity,
+.microbiology-reagent-lots__empty {
+  margin: 0;
+}
+
+.microbiology-reagent-lots__option {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.5rem 0;
+}
+
+.microbiology-reagent-lots__option:last-child {
+  border-bottom: 0;
+}
+
+.microbiology-reagent-lots__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.microbiology-reagent-usage {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.microbiology-reagent-usage .cds--data-table-content {
+  min-width: 42rem;
+}
+
 .microbiology-readiness-list {
   display: grid;
   gap: 0.5rem;
@@ -455,5 +528,13 @@
   .microbiology-amendment-history,
   .microbiology-form-grid--three {
     grid-template-columns: 1fr;
+  }
+
+  .microbiology-reagent-lots__option {
+    grid-template-columns: 1fr;
+  }
+
+  .microbiology-reagent-lots__tags {
+    justify-content: flex-start;
   }
 }

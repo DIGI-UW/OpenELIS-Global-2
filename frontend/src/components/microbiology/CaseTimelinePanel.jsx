@@ -9,6 +9,8 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import ReagentLotPicker from "./ReagentLotPicker";
+import ReagentUsageHistory from "./ReagentUsageHistory";
 
 const STAGE_OPTIONS = [
   {
@@ -35,6 +37,8 @@ const CaseTimelinePanel = ({
   timelineSectionId,
   showSetup = true,
   showTimeline = true,
+  reagentRequirements = [],
+  reagentUsages = [],
 }) => {
   const intl = useIntl();
   const [nextStage, setNextStage] = useState("SETUP_RECORDED");
@@ -42,6 +46,15 @@ const CaseTimelinePanel = ({
   const [media, setMedia] = useState("");
   const [incubation, setIncubation] = useState("");
   const [atmosphere, setAtmosphere] = useState("");
+  const [selectedLots, setSelectedLots] = useState({});
+
+  const selectLot = (selection) => {
+    const selectionKey = `${selection.analysisId}:${selection.testReagentLinkId}`;
+    setSelectedLots((current) => ({
+      ...current,
+      [selectionKey]: selection,
+    }));
+  };
 
   const submit = () => {
     const setupDetails =
@@ -61,14 +74,20 @@ const CaseTimelinePanel = ({
               })}: ${atmosphere}`,
           ].filter(Boolean)
         : [];
-    onRecordActivity({
+    const payload = {
       nextStage,
       note: [...setupDetails, note].filter(Boolean).join("; "),
-    });
+    };
+    const lotSelections = Object.values(selectedLots);
+    if (nextStage === "SETUP_RECORDED" && lotSelections.length > 0) {
+      payload.lotSelections = lotSelections;
+    }
+    onRecordActivity(payload);
     setNote("");
     setMedia("");
     setIncubation("");
     setAtmosphere("");
+    setSelectedLots({});
   };
   const selectedStageOption =
     STAGE_OPTIONS.find((option) => option.value === nextStage) ||
@@ -137,6 +156,15 @@ const CaseTimelinePanel = ({
                   value={atmosphere}
                   onChange={(event) => setAtmosphere(event.target.value)}
                 />
+                <div className="microbiology-form-grid__wide">
+                  <ReagentLotPicker
+                    id="microbiology-culture-lots"
+                    requirements={reagentRequirements}
+                    selectedLots={selectedLots}
+                    onChange={selectLot}
+                    disabled={saving}
+                  />
+                </div>
               </>
             )}
             <div className="microbiology-form-grid__wide">
@@ -153,6 +181,13 @@ const CaseTimelinePanel = ({
               <Button onClick={submit} disabled={saving}>
                 {intl.formatMessage({ id: selectedStageOption.labelId })}
               </Button>
+            </div>
+            <div className="microbiology-form-grid__wide">
+              <ReagentUsageHistory
+                usages={reagentUsages.filter(
+                  (usage) => usage.usageContext === "CULTURE_SETUP",
+                )}
+              />
             </div>
           </div>
         </section>
