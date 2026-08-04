@@ -32,6 +32,8 @@ import {
   getReferenceItem,
   getReferenceOptions,
   getReferencePage,
+  getAstPanel,
+  publishAstPanel,
   previewBreakpointImport,
   saveBreakpointRule,
   setReferenceActive,
@@ -138,6 +140,87 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenCalledWith({ edit: "new" });
+  });
+
+  it("renders the refreshed AST panel rows after publishing a version", async () => {
+    const user = userEvent.setup();
+    let published = false;
+    const antibiotic = {
+      id: "cip",
+      displayName: "Ciprofloxacin",
+      whonetCode: "CIP",
+      active: true,
+    };
+    const version = (id, versionNumber, current) => ({
+      id,
+      logicalKey: "panel-logical-key",
+      name: "Gram negative panel",
+      workflowType: "BACTERIOLOGY",
+      versionNumber,
+      current,
+      active: true,
+      antibiotics: [
+        {
+          id: `panel-row-${versionNumber}`,
+          antibioticId: antibiotic.id,
+          antibioticName: antibiotic.displayName,
+          whonetCode: antibiotic.whonetCode,
+          tier: 1,
+          reportBehavior: "ALWAYS",
+        },
+      ],
+    });
+    const firstVersion = version("panel-v1", 1, true);
+    const historicalVersion = version("panel-v1", 1, false);
+    const secondVersion = version("panel-v2", 2, true);
+
+    getReferencePage.mockImplementation((resource) => {
+      if (resource === "antibiotics") {
+        return Promise.resolve({ rows: [antibiotic], total: 1 });
+      }
+      return Promise.resolve({
+        rows: published ? [secondVersion, historicalVersion] : [firstVersion],
+        total: published ? 2 : 1,
+      });
+    });
+    getAstPanel.mockResolvedValue(firstVersion);
+    publishAstPanel.mockImplementation(() => {
+      published = true;
+      return Promise.resolve(secondVersion);
+    });
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState({
+        ...query,
+        edit: firstVersion.id,
+      });
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return <AstPanelPage query={currentQuery} setQuery={setQuery} />;
+    };
+
+    renderPage(<Harness />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+
+    expect(
+      await screen.findByRole("row", {
+        name: /Gram negative panel.*v2.*Current.*Active/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("row", {
+        name: /Gram negative panel.*v1.*Historical.*Active/,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("requires impact confirmation before deactivating a referenced organism", async () => {

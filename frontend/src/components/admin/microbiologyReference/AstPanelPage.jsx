@@ -132,8 +132,8 @@ const AstPanelPage = ({ query, setQuery }) => {
     name: panel.name,
     workflowType: panel.workflowType,
     version: `v${panel.versionNumber}`,
-    status: panel.current ? "CURRENT" : "HISTORICAL",
-    actions: panel.id,
+    status: { current: panel.current, active: panel.active },
+    actions: { id: panel.id, current: panel.current },
   }));
 
   const updateDraft = (updates) =>
@@ -329,53 +329,50 @@ const AstPanelPage = ({ query, setQuery }) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {tableRows.map((row) => {
-                  const source = page.rows.find((panel) => panel.id === row.id);
-                  return (
-                    <TableRow {...getRowProps({ row })} key={row.id}>
-                      {row.cells.map((cell) => (
-                        <TableCell key={cell.id}>
-                          {cell.info.header === "status" ? (
-                            <div className="microbiology-admin__tag-stack">
-                              <Tag type={source.current ? "blue" : "gray"}>
-                                {intl.formatMessage({
-                                  id: source.current
-                                    ? "microbiology.admin.astPanels.current"
-                                    : "microbiology.admin.astPanels.historical",
-                                })}
-                              </Tag>
-                              <Tag type={source.active ? "green" : "red"}>
-                                {intl.formatMessage({
-                                  id: source.active
-                                    ? "microbiology.admin.status.active"
-                                    : "microbiology.admin.status.inactive",
-                                })}
-                              </Tag>
-                            </div>
-                          ) : cell.info.header === "actions" ? (
-                            <OverflowMenu
-                              flipped
-                              aria-label={intl.formatMessage({
-                                id: "microbiology.admin.actions",
+                {tableRows.map((row) => (
+                  <TableRow {...getRowProps({ row })} key={row.id}>
+                    {row.cells.map((cell) => (
+                      <TableCell key={cell.id}>
+                        {cell.info.header === "status" ? (
+                          <div className="microbiology-admin__tag-stack">
+                            <Tag type={cell.value.current ? "blue" : "gray"}>
+                              {intl.formatMessage({
+                                id: cell.value.current
+                                  ? "microbiology.admin.astPanels.current"
+                                  : "microbiology.admin.astPanels.historical",
                               })}
-                            >
-                              <OverflowMenuItem
-                                itemText={intl.formatMessage({
-                                  id: source.current
-                                    ? "microbiology.admin.astPanels.publishVersion"
-                                    : "microbiology.admin.astPanels.viewVersion",
-                                })}
-                                onClick={() => setQuery({ edit: source.id })}
-                              />
-                            </OverflowMenu>
-                          ) : (
-                            cell.value || "—"
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  );
-                })}
+                            </Tag>
+                            <Tag type={cell.value.active ? "green" : "red"}>
+                              {intl.formatMessage({
+                                id: cell.value.active
+                                  ? "microbiology.admin.status.active"
+                                  : "microbiology.admin.status.inactive",
+                              })}
+                            </Tag>
+                          </div>
+                        ) : cell.info.header === "actions" ? (
+                          <OverflowMenu
+                            flipped
+                            aria-label={intl.formatMessage({
+                              id: "microbiology.admin.actions",
+                            })}
+                          >
+                            <OverflowMenuItem
+                              itemText={intl.formatMessage({
+                                id: cell.value.current
+                                  ? "microbiology.admin.astPanels.publishVersion"
+                                  : "microbiology.admin.astPanels.viewVersion",
+                              })}
+                              onClick={() => setQuery({ edit: cell.value.id })}
+                            />
+                          </OverflowMenu>
+                        ) : (
+                          cell.value || "—"
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
             <Pagination
