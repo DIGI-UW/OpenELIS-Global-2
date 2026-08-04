@@ -134,6 +134,27 @@ public class MicroWorklistServiceTest {
     }
 
     @Test
+    public void allSentinelsPreserveTheUnfilteredCanonicalWorklist() {
+        MicroCase bacteriology = microCase("case-bac", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.RECEIVED, "ROUTINE");
+        when(caseDAO.getOpenCases()).thenReturn(List.of(bacteriology));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(bacteriology));
+        when(isolateDAO.getByCaseIds(List.of("case-bac"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-bac"))).thenReturn(List.of());
+
+        MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        query.workflow = "ALL";
+        query.stage = "ALL";
+        query.urgency = "ALL";
+        query.due = "ALL";
+
+        MicroWorklistPageForm page = service.getWorklistPage(query);
+
+        assertEquals(1, page.total);
+        assertEquals("case-bac", page.rows.get(0).caseId);
+    }
+
+    @Test
     public void worklistSummarizesActionQueuesIndependentlyOfStageAndDueFilters() {
         MicroCase incubating = microCase("case-incubating", "sample-1", MicroWorkflowType.BACTERIOLOGY,
                 MicroCaseStage.INCUBATING, "ROUTINE");
