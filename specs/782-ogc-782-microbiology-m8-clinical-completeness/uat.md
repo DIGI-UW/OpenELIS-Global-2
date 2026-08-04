@@ -1,19 +1,24 @@
-# OGC-782 M1 + M2 Live UAT Contract
+# OGC-782 M1 + M2 UAT Contract In The Combined Review
 
 ## Review Target
 
 - Site: `https://amr.openelis-global.org`
 - Review overlay: the `Review` button on the AMR site
-- App branch: `feat/782-ogc-782-microbiology-m8-clinical-completeness`
-- Deployed app SHA: `8be8cd2011c3cca67ca9d95fc2996dabba986c4a`
-- Deployment ID: `20260804T075735Z-8be8cd2011c3`
-- Schema/app checkpoint: `40566083060ff9c5769c2cfc06be1852ad5b44c6`
-  (`20260804T074616Z-40566083060f`)
-- Review-tooling SHA: `3d52ac103853e349df017828689b788880631d21`
+- M2 source branch: `feat/782-ogc-782-microbiology-m8-clinical-completeness`
+- M2 source SHA: `0d963f3fe925c3d2bc90818e109ce4aafb030031`
+- Current combined app branch:
+  `feat/782-ogc-782-microbiology-m9-reference-mapping-admin`
+- Current combined app target: `fe7ca789f4f9026e6a679e496a06c3e860da8c12`
+- Current deployment ID: `20260804T200840Z-fe7ca789f4f9`
+- Review-tooling SHA: `72eb003155db91f08a90d5e853e7811f86d3c642`
 - Checklist revision:
-  `00242ff2e232998d6bab03844de68975a8dd6ef4117fd81eb51af997db4d5afe`
-- Automated live precheck: 2/2 passed
-- Deployed lot journey: 2/2 passed; desktop screenshots inspected
+  `c3a490ab422180d87ada093cf05a2cc727413a01bc6234c3217fb99c466e7c3c`
+- Combined inventory: 13 stories, 33 steps, 32 required, 1 optional
+- M2 exact-target live precheck: 2/2 passed
+- M2 deployed lot journey: 2/2 passed; desktop screenshots inspected
+- M2 visual evidence:
+  [44.2-second MP4](https://amr.openelis-global.org/__review/evidence/ogc-782/m2/0d963f3f/walkthrough.mp4),
+  [reviewed contact sheet](https://amr.openelis-global.org/__review/evidence/ogc-782/m2/0d963f3f/contact-sheet.png)
 - Human UAT: pending
 
 M1 and M2 are reviewed as one ordered clinical journey. Complete the M1 steps
@@ -36,11 +41,11 @@ Pass/Fail/N/A rulings.
 | `AMR-S08` Review the workflow by keyboard            | M2        | `AMR-28`                             | -              |
 | `AMR-S09` Trace bench consumable lots                | M2        | `AMR-29`, `AMR-30`, `AMR-31`         | -              |
 
-The acceptance gate is 19 required steps. `AMR-21` is an optional TB
-reflection and cannot block M1 or M2 acceptance. `AMR-29` and `AMR-30` qualify
-policy-neutral traceability only, as does `AMR-31`: `PRIMARY / SECONDARY`
-remains visible catalog role metadata and is not interpreted as
-mandatory/optional/substitute policy.
+The live combined overlay now includes M3, but the M1/M2 acceptance gate remains
+these 19 required steps. `AMR-21` is an optional TB reflection and cannot block
+M1 or M2 acceptance. `AMR-29` and `AMR-30` qualify policy-neutral traceability
+only, as does `AMR-31`: `PRIMARY / SECONDARY` remains visible catalog role
+metadata and is not interpreted as mandatory/optional/substitute policy.
 
 ## Fixture
 
@@ -61,7 +66,7 @@ test contract.
 
 ## Reviewer Ruling
 
-Piotr records Pass, Fail, or N/A and notes in the live Review overlay for all
-19 required steps. A failed step must identify the observed behavior and the
-expected behavior. The downloaded Markdown/JSON report is the acceptance
-record and is attached to PR #3972 or linked from this directory.
+Piotr records Pass, Fail, or N/A and notes in the live combined Review overlay
+for the 19 M1/M2 required steps. A failed step must identify the observed
+behavior and the expected behavior. The downloaded Markdown/JSON report is the
+acceptance record and is attached to PR #3972 or linked from this directory.
