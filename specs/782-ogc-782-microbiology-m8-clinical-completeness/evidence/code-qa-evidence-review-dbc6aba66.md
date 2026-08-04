@@ -18,14 +18,14 @@
 
 External visual artifacts remain under:
 
-`/Users/pmanko/.codex/visualizations/2026/08/04/019fca12-4b0c-71d0-a37e-8493de64fee5/ogc-782-m8/`
+`/Users/pmanko/.codex/visualizations/2026/08/04/019fca12-4b0c-71d0-a37e-8493de64fee5/ogc-782-m8-evidence/`
 
 ## Boundaries
 
 - Media binaries remain outside git as required by `code-qa`.
 - The existing clinical journeys are deterministic proof, not human UAT.
-- A narrated M8 MP4/contact sheet belongs in T053 when the review surface is
-  prepared. It must identify the exact app commit and may not imply lot
-  traceability is present.
+- The M8 MP4/contact sheet was generated and visually inspected. T053b remains
+  open until those files are attached to the review surface; the evidence does
+  not imply lot traceability is present.
 - No full-M8 bundle can claim SC-003 or the lot-picker accessibility state until
   the product policy contradiction is resolved and implemented.

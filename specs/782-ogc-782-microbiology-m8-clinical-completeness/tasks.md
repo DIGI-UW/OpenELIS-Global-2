@@ -104,4 +104,6 @@ each slice. A checked task requires committed evidence, not intent.
   reproduces on `codex/typescript-6-typecheck` at `49714eb84`.
 - T053b does not reuse the M7 MVP walkthrough as proof of the new amendment and
   repeat-AST workflows. PR #3972 remains draft until M8-specific visual
-  evidence is attached.
+  evidence is attached. The 44.2-second M8 MP4 and reviewed contact sheet were
+  generated outside git on 2026-08-03; attachment remains open because the
+  available GitHub browser session is not authenticated.
