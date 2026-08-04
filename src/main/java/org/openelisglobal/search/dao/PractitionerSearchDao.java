@@ -1,4 +1,4 @@
-package org.openelisglobal.search.service.dao;
+package org.openelisglobal.search.dao;
 
 import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;

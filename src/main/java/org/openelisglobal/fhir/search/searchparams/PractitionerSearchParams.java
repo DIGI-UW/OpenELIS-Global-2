@@ -78,21 +78,6 @@ public class PractitionerSearchParams extends BaseSearchParam {
         return map;
     }
 
-    private void addBaseSearchParameters(SearchParameterMap map) {
-
-        if (getId() != null) {
-            map.addParameter(FhirConstants.ID_PROPERTY, getId());
-        }
-
-        if (getIdentifier() != null) {
-            map.addParameter(FhirConstants.IDENTIFIER_SEARCH_HANDLER, getIdentifier());
-        }
-
-        if (getLastUpdated() != null) {
-            map.addParameter(FhirConstants.LAST_UPDATED_PROPERTY, getLastUpdated());
-        }
-    }
-
     private void addPractitionerSearchParameters(SearchParameterMap map) {
 
         /*

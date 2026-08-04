@@ -4,6 +4,7 @@ import ca.uhn.fhir.rest.api.SortSpec;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import java.io.Serializable;
+import org.openelisglobal.fhir.FhirConstants;
 
 /**
  * Base class for common FHIR search parameters.
@@ -45,6 +46,21 @@ public abstract class BaseSearchParam implements Serializable {
         this.identifier = identifier;
         this.lastUpdated = lastUpdated;
         this.sort = sort;
+    }
+
+    protected void addBaseSearchParameters(SearchParameterMap map) {
+
+        if (getId() != null) {
+            map.addParameter(FhirConstants.ID_PROPERTY, getId());
+        }
+
+        if (getIdentifier() != null) {
+            map.addParameter(FhirConstants.IDENTIFIER_SEARCH_HANDLER, getIdentifier());
+        }
+
+        if (getLastUpdated() != null) {
+            map.addParameter(FhirConstants.LAST_UPDATED_PROPERTY, getLastUpdated());
+        }
     }
 
     /**

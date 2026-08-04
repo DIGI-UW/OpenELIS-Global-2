@@ -4,7 +4,8 @@ import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.fhir.search.bundleProviders.PractitionerBundleProvider;
 import org.openelisglobal.fhir.search.searchparams.PractitionerSearchParams;
-import org.openelisglobal.search.service.dao.PractitionerSearchDao;
+import org.openelisglobal.search.dao.PractitionerSearchDao;
+import org.openelisglobal.search.dao.ServiceRequestSearchDao;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,22 +14,26 @@ import org.springframework.transaction.annotation.Transactional;
 public class PractitionerSearchService {
 
     private final PractitionerSearchDao practitionerSearchDao;
+
+    private final SampleHumanSearchDao sampleHumanSearchDao;
+
+    private final ServiceRequestSearchDao serviceRequestSearchDao;
+
     private final FhirTransformService fhirTransformService;
 
     public PractitionerSearchService(PractitionerSearchDao practitionerSearchDao,
+            SampleHumanSearchDao sampleHumanSearchDao, ServiceRequestSearchDao serviceRequestSearchDao,
             FhirTransformService fhirTransformService) {
 
         this.practitionerSearchDao = practitionerSearchDao;
+        this.sampleHumanSearchDao = sampleHumanSearchDao;
+        this.serviceRequestSearchDao = serviceRequestSearchDao;
         this.fhirTransformService = fhirTransformService;
     }
 
-    /**
-     * Returns a lazy DAO-backed bundle provider.
-     *
-     * Practitioner entities are loaded only when HAPI requests a result page.
-     */
     public IBundleProvider searchPractitioners(PractitionerSearchParams params) {
 
-        return new PractitionerBundleProvider(params, practitionerSearchDao, fhirTransformService);
+        return new PractitionerBundleProvider(params, practitionerSearchDao, sampleHumanSearchDao,
+                serviceRequestSearchDao, fhirTransformService);
     }
 }
