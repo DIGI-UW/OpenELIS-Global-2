@@ -74,7 +74,8 @@ each slice. A checked task requires committed evidence, not intent.
 - [x] T043 Add cleanup and isolation tests proving qualification data cannot leak across tests or ordinary deployments.
 - [x] T044 Add API measurements for worklist load/search, case load, isolate save, AST save, and timeline save with fixed warm-up/iteration/p95 rules.
 - [ ] T045 Add browser measurements for initial worklist, case render, and filter/page interaction using stable app-ready marks.
-- [ ] T046 Inspect query plans and add indexes only where evidence demonstrates need; any index receives Liquibase update/rollback validation.
+- [x] T046a Remove the evidenced worklist N+1 relationship loading and verify existing foreign-key indexes cover the new batch predicates; do not add a speculative migration.
+- [ ] T046b Capture formal query-plan evidence; add an index only where the plan demonstrates need and validate any resulting Liquibase update/rollback.
 - [ ] T047 Emit JSON and Markdown evidence containing raw samples, percentiles, environment, data volume, commit, and pass/fail.
 
 ## Phase 7 - Completion and artifact reconciliation
