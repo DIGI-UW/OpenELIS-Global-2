@@ -278,6 +278,49 @@ describe("AstEntryPanel", () => {
     ).toBeDisabled();
   });
 
+  it("keeps earlier culture usage visible with AST usage", async () => {
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "Gram negative panel" }]),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+    };
+
+    renderPanel(service, {
+      reagentUsages: [
+        {
+          id: "culture-usage",
+          usageContext: "CULTURE_SETUP",
+          reagentName: "Blood agar",
+          lotNumber: "MEDIA-FEFO",
+          quantityUsed: 1,
+          quantityUnit: "plate",
+          currentLotStatus: "ACTIVE",
+        },
+        {
+          id: "ast-usage",
+          usageContext: "AST_SETUP",
+          reagentName: "AST card",
+          lotNumber: "CARD-FEFO",
+          quantityUsed: 1,
+          quantityUnit: "card",
+          currentLotStatus: "ACTIVE",
+        },
+      ],
+    });
+
+    expect(await screen.findByText("MEDIA-FEFO")).toBeInTheDocument();
+    expect(screen.getByText("Culture setup")).toBeInTheDocument();
+    expect(screen.getByText("CARD-FEFO")).toBeInTheDocument();
+    expect(screen.getByText("AST setup")).toBeInTheDocument();
+  });
+
   it("starts a repeat attempt from a reviewed run with a required reason", async () => {
     const user = userEvent.setup();
     const repeatRun = {

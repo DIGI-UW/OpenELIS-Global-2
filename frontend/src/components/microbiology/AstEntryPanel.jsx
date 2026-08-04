@@ -647,11 +647,7 @@ const AstEntryPanel = ({
                 ) : null}
               </div>
             ) : null}
-            <ReagentUsageHistory
-              usages={reagentUsages.filter(
-                (usage) => usage.usageContext === "AST_SETUP",
-              )}
-            />
+            <ReagentUsageHistory usages={reagentUsages} />
           </>
         )}
       </div>

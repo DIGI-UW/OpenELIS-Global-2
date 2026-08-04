@@ -99,6 +99,8 @@ test.describe("Microbiology reagent and card lot traceability", () => {
         timeout: LONG_TIMEOUT,
       });
       await expect(usageTable).toContainText("AST setup");
+      await expect(usageTable).toContainText("UAT-MICRO-MEDIA-FEFO");
+      await expect(usageTable).toContainText("Culture setup");
       await attachScreenshot(page, testInfo, "ast-card-lot-provenance");
     });
   });
