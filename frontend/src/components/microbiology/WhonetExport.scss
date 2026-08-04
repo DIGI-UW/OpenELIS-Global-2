@@ -1,0 +1,185 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/theme" as *;
+
+.whonet-export {
+  min-inline-size: 0;
+  padding-block-end: $spacing-09;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    gap: $spacing-05;
+    padding-block: $spacing-06;
+    border-block-end: 1px solid $border-subtle-01;
+
+    h1,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      margin-block-end: $spacing-03;
+    }
+
+    p:last-child {
+      max-inline-size: 48rem;
+      color: $text-secondary;
+    }
+  }
+
+  &__eyebrow {
+    margin-block-end: $spacing-03 !important;
+    color: $text-secondary;
+  }
+
+  .cds--progress {
+    max-inline-size: 48rem;
+    margin-block: $spacing-06;
+    overflow-x: auto;
+  }
+
+  &__configure {
+    padding: $spacing-05;
+    border-block-start: 1px solid $border-subtle-01;
+    border-block-end: 1px solid $border-subtle-01;
+  }
+
+  &__section-heading {
+    margin-block-end: $spacing-05;
+
+    h2,
+    p {
+      margin: 0;
+    }
+
+    p {
+      margin-block-start: $spacing-02;
+      color: $text-secondary;
+    }
+
+    &--split {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: $spacing-05;
+    }
+  }
+
+  &__controls {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: $spacing-05;
+
+    .cds--date-picker,
+    .cds--date-picker-container,
+    .cds--date-picker-input__wrapper,
+    .cds--date-picker__input {
+      inline-size: 100%;
+    }
+  }
+
+  &__configure-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-block-start: $spacing-05;
+  }
+
+  &__preview {
+    display: grid;
+    gap: $spacing-05;
+    margin-block-start: $spacing-07;
+  }
+
+  &__metrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px;
+    background: $border-subtle-01;
+  }
+
+  &__metric {
+    display: grid;
+    min-block-size: 6rem;
+    align-content: center;
+    gap: $spacing-02;
+
+    strong {
+      font-size: 2rem;
+      font-weight: 400;
+      line-height: 1;
+    }
+
+    span {
+      color: $text-secondary;
+    }
+  }
+
+  &__warnings {
+    display: grid;
+    gap: $spacing-03;
+
+    h3 {
+      margin: 0;
+    }
+  }
+
+  &__warning {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: $spacing-04;
+    min-block-size: 4rem;
+    padding: $spacing-04;
+    background: $layer-accent-01;
+    border-inline-start: 3px solid $support-warning;
+
+    p {
+      margin: $spacing-02 0 0;
+      color: $text-secondary;
+    }
+  }
+
+  &__table-scroll {
+    min-inline-size: 0;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 66rem) {
+  .whonet-export {
+    &__controls {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    &__metrics {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 42rem) {
+  .whonet-export {
+    &__controls,
+    &__metrics {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &__section-heading--split {
+      flex-direction: column;
+    }
+
+    &__section-heading--split .cds--btn,
+    &__configure-actions .cds--btn {
+      inline-size: 100%;
+      max-inline-size: none;
+    }
+
+    &__warning {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    &__warning .cds--link {
+      grid-column: 2;
+    }
+  }
+}

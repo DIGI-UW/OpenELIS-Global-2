@@ -20,11 +20,11 @@
 
 ## Phase 3 - Frontend
 
-- [ ] T013 Add failing canonical-query tests for `from`, `to`, `significance`, `dedup`, `step`, `page`, and `pageSize`.
-- [ ] T014 Add failing RTL tests using Carbon roles/labels for configure, preview, repair, pagination, and download.
-- [ ] T015 Build the Carbon WHONET page, API adapter, route, breadcrumb path, and config-backed sidenav item.
-- [ ] T016 Add English React Intl source strings only.
-- [ ] T017 Add explicit return context to M3 mapping repair links without breaking existing reference URLs.
+- [x] T013 Add failing canonical-query tests for `from`, `to`, `significance`, `dedup`, `step`, `page`, and `pageSize`.
+- [x] T014 Add failing RTL tests using Carbon roles/labels for configure, preview, repair, pagination, and download.
+- [x] T015 Build the Carbon WHONET page, API adapter, route, breadcrumb path, and config-backed sidenav item.
+- [x] T016 Add English React Intl source strings only.
+- [x] T017 Open exact M3 mapping records while retaining preview context in browser history.
 
 ## Phase 4 - E2E, UAT, And Evidence
 
