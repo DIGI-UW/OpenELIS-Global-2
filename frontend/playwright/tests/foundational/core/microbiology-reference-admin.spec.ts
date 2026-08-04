@@ -332,6 +332,10 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
         mimeType: "text/csv",
         buffer: Buffer.from(csv),
       });
+      await expect(page.getByText("1 valid")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await page.getByRole("button", { name: "Apply valid rows" }).click();
       await expect(page.getByText("0 valid")).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
