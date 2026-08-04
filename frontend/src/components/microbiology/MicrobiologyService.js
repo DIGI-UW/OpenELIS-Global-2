@@ -87,6 +87,15 @@ export const startAstRun = (payload) =>
     );
   });
 
+export const startRepeatAstRun = (sourceRunId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${encodeURIComponent(sourceRunId)}/attempts`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
 export const recordAstReading = (runId, payload) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
@@ -115,6 +124,15 @@ export const reviewAstRun = (runId) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
       `/rest/microbiology/ast/runs/${runId}/review`,
+      JSON.stringify({}),
+      resolve,
+    );
+  });
+
+export const selectReportableAstRun = (runId) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${encodeURIComponent(runId)}/reportable`,
       JSON.stringify({}),
       resolve,
     );

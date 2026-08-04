@@ -46,7 +46,7 @@ each slice. A checked task requires committed evidence, not intent.
 ## Phase 4 - Repeat AST and lot traceability implementation (Slice B, green)
 
 - [ ] T029 Add Liquibase `061` AST-attempt metadata beyond the Slice A lifecycle link and culture/AST-to-Inventory-usage linkage with rollback; do not recreate reagent, lot, or usage tables.
-- [ ] T030 Implement repeat/retest run creation and explicit reportable-run selection.
+- [x] T030 Implement repeat/retest run creation and explicit reportable-run selection.
 - [ ] T031 Implement reusable lot query/validation and usage orchestration over existing Test Catalog and Inventory services.
 - [ ] T032 Add shared Carbon lot picker and wire it into culture setup and AST setup without duplicating host logic.
 - [ ] T033 Render attempt relationships, reportable selection, and historical lots in the case workbench with text-plus-color status.

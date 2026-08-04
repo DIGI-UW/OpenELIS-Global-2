@@ -15,6 +15,7 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
 import org.openelisglobal.microbiology.controller.rest.MicrobiologyRestExceptionHandler;
 import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
+import org.openelisglobal.microbiology.service.MicroAstConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
@@ -48,6 +49,16 @@ public class MicrobiologyRestExceptionHandlerTest {
         assertEquals("MICROBIOLOGY_AMENDMENT_CONFLICT", conflict.getBody().get("error"));
         assertEquals(400, validation.getStatusCode().value());
         assertEquals("MICROBIOLOGY_VALIDATION_ERROR", validation.getBody().get("error"));
+    }
+
+    @Test
+    public void astConflictReturnsNamedConflict() {
+        ResponseEntity<Map<String, Object>> response = new MicrobiologyRestExceptionHandler()
+                .handleAstConflict(new MicroAstConflictException("AST_ATTEMPT_ALREADY_IN_PROGRESS"));
+
+        assertEquals(409, response.getStatusCode().value());
+        assertEquals("MICROBIOLOGY_AST_CONFLICT", response.getBody().get("error"));
+        assertEquals("AST_ATTEMPT_ALREADY_IN_PROGRESS", response.getBody().get("message"));
     }
 
     @Test

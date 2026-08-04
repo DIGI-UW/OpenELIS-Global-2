@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
+import { vi } from "vitest";
 import AstEntryPanel from "../AstEntryPanel";
 import messages from "../../../languages/en.json";
 
@@ -51,6 +52,27 @@ const runWithOverride = {
 const reviewedRun = {
   ...runWithOverride,
   status: "REVIEWED",
+  attemptType: "ORIGINAL",
+  method: "MIC",
+  reportable: true,
+};
+
+const reviewedRepeatRun = {
+  ...reviewedRun,
+  id: "run-2",
+  attemptType: "REPEAT",
+  sourceRunId: "run-1",
+  attemptReason: "Control failed",
+  method: "ZONE",
+  reportable: false,
+  readings: [
+    {
+      id: "reading-3",
+      interpretation: "RESISTANT",
+      method: "ZONE",
+      rawValue: 12,
+    },
+  ],
 };
 
 const renderPanel = (service, props = {}) =>
@@ -136,12 +158,14 @@ describe("AstEntryPanel", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Start AST run" }));
 
-    expect(service.startAstRun).toHaveBeenCalledWith({
-      isolateId: "iso-1",
-      panelId: "panel-1",
-      breakpointStandardId: "std-eucast",
-    });
-    expect(await screen.findByText("In Progress")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(service.startAstRun).toHaveBeenCalledWith({
+        isolateId: "iso-1",
+        panelId: "panel-1",
+        breakpointStandardId: "std-eucast",
+      }),
+    );
+    expect((await screen.findAllByText("In Progress"))[0]).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Record AST reading" }));
 
     expect(
@@ -165,7 +189,7 @@ describe("AstEntryPanel", () => {
     expect(await screen.findByText(/RESISTANT/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Review AST run" }));
 
-    expect(await screen.findByText("Reviewed")).toBeInTheDocument();
+    expect((await screen.findAllByText("Reviewed"))[0]).toBeInTheDocument();
     expect(screen.getByText("Final release ready")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Start AST run" }),
@@ -205,5 +229,142 @@ describe("AstEntryPanel", () => {
     expect(
       await screen.findByRole("button", { name: "Start AST run" }),
     ).toBeDisabled();
+  });
+
+  it("starts a repeat attempt from a reviewed run with a required reason", async () => {
+    const repeatRun = {
+      ...reviewedRepeatRun,
+      attemptType: "RETEST",
+      status: "IN_PROGRESS",
+      readings: [],
+    };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "Gram negative panel" }]),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValueOnce([reviewedRun])
+        .mockResolvedValueOnce([reviewedRun, repeatRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: true,
+        blockers: [],
+      }),
+      startRepeatAstRun: vi.fn().mockResolvedValue(repeatRun),
+    };
+
+    renderPanel(service);
+
+    expect(await screen.findByText("Original")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start repeat attempt" }),
+    ).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Reason for repeat or retest"), {
+      target: { value: "Control failed" },
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "Retest" }));
+    fireEvent.change(screen.getByLabelText("Attempt method"), {
+      target: { value: "ZONE" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Start retest attempt" }),
+    );
+
+    await waitFor(() =>
+      expect(service.startRepeatAstRun).toHaveBeenCalledWith("run-1", {
+        attemptType: "RETEST",
+        reason: "Control failed",
+        method: "ZONE",
+      }),
+    );
+    expect(await screen.findByText("Retest")).toBeInTheDocument();
+  });
+
+  it("shows attempt relationships and requires an explicit reportable selection", async () => {
+    const noSelectionOriginal = { ...reviewedRun, reportable: false };
+    const selectedRepeat = { ...reviewedRepeatRun, reportable: true };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "Gram negative panel" }]),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValueOnce([noSelectionOriginal, reviewedRepeatRun])
+        .mockResolvedValueOnce([noSelectionOriginal, selectedRepeat]),
+      getCaseReadiness: vi
+        .fn()
+        .mockResolvedValueOnce({
+          finalReleaseReady: false,
+          blockers: ["REPORTABLE_AST_RUN_REQUIRED"],
+        })
+        .mockResolvedValueOnce({
+          finalReleaseReady: true,
+          blockers: [],
+        }),
+      selectReportableAstRun: vi.fn().mockResolvedValue(selectedRepeat),
+    };
+
+    renderPanel(service);
+
+    expect((await screen.findAllByText("Repeat"))[0]).toBeInTheDocument();
+    expect(screen.getByText("Control failed")).toBeInTheDocument();
+    expect(screen.getAllByText("Attempt 1")).toHaveLength(2);
+    expect(screen.getByText("Reportable AST Run Required")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Use attempt 2 for reporting" }),
+    );
+
+    await waitFor(() =>
+      expect(service.selectReportableAstRun).toHaveBeenCalledWith("run-2"),
+    );
+    expect(await screen.findByText("Included in report")).toBeInTheDocument();
+  });
+
+  it("surfaces named AST conflicts returned by the service", async () => {
+    const service = {
+      getAstPanels: vi.fn().mockResolvedValue([]),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValue([
+          { ...reviewedRun, reportable: false },
+          reviewedRepeatRun,
+        ]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["REPORTABLE_AST_RUN_REQUIRED"],
+      }),
+      selectReportableAstRun: vi.fn().mockResolvedValue({
+        status: 409,
+        error: "MICROBIOLOGY_AST_CONFLICT",
+        message: "AST_ATTEMPT_ALREADY_IN_PROGRESS",
+      }),
+    };
+
+    renderPanel(service);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Use attempt 2 for reporting",
+      }),
+    );
+
+    expect(
+      await screen.findByText("AST action could not be completed"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("AST Attempt Already In Progress"),
+    ).toBeInTheDocument();
   });
 });

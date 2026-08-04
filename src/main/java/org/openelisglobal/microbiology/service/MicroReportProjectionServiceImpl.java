@@ -279,7 +279,7 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
         }
         List<MicroAstRun> selected = reviewed.stream().filter(MicroAstRun::isReportable).toList();
         if (selected.size() != 1) {
-            throw new IllegalStateException("REPORTABLE_AST_RUN_REQUIRED");
+            throw new MicroAstConflictException("REPORTABLE_AST_RUN_REQUIRED");
         }
         return selected;
     }

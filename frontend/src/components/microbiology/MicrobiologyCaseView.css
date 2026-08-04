@@ -258,6 +258,45 @@
   text-transform: uppercase;
 }
 
+.microbiology-ast-attempts {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.microbiology-ast-attempts .cds--data-table-content {
+  overflow: visible;
+}
+
+.microbiology-ast-attempts td:first-child {
+  min-width: 9rem;
+}
+
+.microbiology-ast-attempts td:first-child strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.microbiology-ast-attempts__actions {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 10rem;
+}
+
+.microbiology-ast-repeat-form {
+  border-top: 1px solid var(--cds-border-subtle);
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+}
+
+.microbiology-ast-repeat-form h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
 .microbiology-readiness-list {
   display: grid;
   gap: 0.5rem;

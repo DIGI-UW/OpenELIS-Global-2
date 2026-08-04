@@ -248,6 +248,28 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void repeatRunRejectsASecondInProgressAttempt() {
+        MicroIsolate isolate = isolate();
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        MicroAstRun source = reviewedRun("run-1");
+        MicroAstRun inProgress = new MicroAstRun();
+        inProgress.setId("run-2");
+        inProgress.setIsolateId("iso-1");
+        inProgress.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(source));
+        when(runDAO.getByIsolateId("iso-1")).thenReturn(List.of(source, inProgress));
+
+        try {
+            service.startRepeatRun("run-1", MicroAstAttemptType.REPEAT, "Discordant result", MicroAstMethod.MIC, "7");
+            fail("Expected one in-progress AST attempt per isolate");
+        } catch (MicroAstConflictException expected) {
+            assertEquals("AST_ATTEMPT_ALREADY_IN_PROGRESS", expected.getMessage());
+        }
+
+        verify(runDAO, never()).insert(any(MicroAstRun.class));
+    }
+
+    @Test
     public void secondReviewedAttemptRequiresExplicitReportableSelection() {
         MicroIsolate isolate = isolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
