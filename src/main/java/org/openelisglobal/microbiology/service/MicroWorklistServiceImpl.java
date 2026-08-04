@@ -131,10 +131,10 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         if (query == null) {
             return normalized;
         }
-        normalized.workflow = text(query.workflow);
-        normalized.stage = text(query.stage);
-        normalized.urgency = text(query.urgency);
-        normalized.due = text(query.due);
+        normalized.workflow = filterText(query.workflow);
+        normalized.stage = filterText(query.stage);
+        normalized.urgency = filterText(query.urgency);
+        normalized.due = filterText(query.due);
         normalized.q = text(query.q);
         normalized.sort = query.sort != null && List.of("priority", "newest", "workflow").contains(query.sort)
                 ? query.sort
@@ -181,6 +181,11 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
     private String text(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String filterText(String value) {
+        String normalized = text(value);
+        return "ALL".equalsIgnoreCase(normalized) ? "" : normalized;
     }
 
     private String safe(String value) {
