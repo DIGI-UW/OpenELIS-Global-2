@@ -4,7 +4,9 @@ import { seedReviewedMicrobiologyCase } from "../../../helpers/seed-microbiology
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const accordionButton = (page: Page, name: string) =>
-  page.getByRole("button", { name, exact: true });
+  page
+    .getByTestId("microbiology-case-view")
+    .getByRole("button", { name, exact: true });
 
 const attachScreenshot = async (
   page: Page,
@@ -104,7 +106,9 @@ test.describe("Microbiology repeat AST attempts", () => {
         timeout: LONG_TIMEOUT,
       });
       await expect(
-        page.getByText("Final release ready", { exact: true }),
+        page
+          .getByTestId("microbiology-ast-card")
+          .getByText("Final release ready", { exact: true }),
       ).toBeVisible();
       await attachScreenshot(page, testInfo, "repeat-ast-reportable-selection");
     });

@@ -4,7 +4,9 @@ import { seedFinalizedMicrobiologyCase } from "../../../helpers/seed-microbiolog
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const accordionButton = (page: Page, name: string) =>
-  page.getByRole("button", { name, exact: true });
+  page
+    .getByTestId("microbiology-case-view")
+    .getByRole("button", { name, exact: true });
 
 const attachScreenshot = async (
   page: Page,
