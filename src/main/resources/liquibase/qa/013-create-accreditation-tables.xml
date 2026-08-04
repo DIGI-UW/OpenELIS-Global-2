@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-686 [QA-D.1] Test Accreditation — accrediting bodies + per-test enrollment.
+
+    Data model decision (D.0): a real accreditation certificate carries ONE
+    expiry for the whole accredited scope, and mid-cycle scope extensions inherit
+    it. So `expires_on` lives on `accrediting_body`, and `test_accreditation` is a
+    membership row: which tests fall under which body, with an optional
+    `effective_from` recording when a test entered scope. There is deliberately
+    NO per-row expiry and NO per-row certificate number — renewal is one UPDATE
+    on the body, not N.
+
+    Conventions copied from qa/007 (qi_config), the closest audited precedent:
+      * BIGINT sequence PK — the generic audit trail keys history.reference_id as
+        numeric, so an audited entity must not use a UUID/varchar id.
+      * `lastupdated` (DB-filled, DEFAULT now()) and the BaseObject @Version
+        column `last_updated` are two distinct columns. Do not collapse them.
+      * No sys_user_id column: BaseObject maps sysUserId @Transient and the
+        actor is recorded in the audit history row (as qi_config does).
+
+    Logo storage reuses the existing clinlims.image table (bytes in the DB) —
+    the same store Report.createReportParameters() already streams into
+    JasperReports for headerLeftImage/headerRightImage. Filesystem paths are not
+    an option here: the Jasper `imagesPath` resolves inside the exploded WAR and
+    is destroyed on redeploy.
+    -->
+
+    <changeSet author="openelisglobal" id="accreditation-001-create-accrediting-body">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="accrediting_body" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Accrediting bodies the lab holds, with report-logo visibility rules</comment>
+        <createSequence sequenceName="accrediting_body_id_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="accrediting_body">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_accrediting_body"/>
+            </column>
+            <!-- Short code, e.g. ISO15189 / SANAS. Immutable after create (enforced
+                 in the service); uniqueness enforced here. -->
+            <column name="code" type="VARCHAR(16)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_accrediting_body_code"/>
+            </column>
+            <column name="name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- FK to clinlims.image(id); NULL = no logo uploaded yet, in which
+                 case the body still contributes to the report notes line. -->
+            <column name="logo_image_id" type="numeric"/>
+            <!-- Certificate expiry for the whole accredited scope (D.0). -->
+            <column name="expires_on" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="logo_visibility_mode" type="VARCHAR(32)" defaultValue="ANY_ACCREDITED_TEST">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Always stored (default 80) but ignored at render time when the mode
+                 is ANY_ACCREDITED_TEST, so toggling the mode never loses state. -->
+            <column name="threshold_pct" type="SMALLINT" defaultValueNumeric="80">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Ascending order for side-by-side logos; ties break on code. -->
+            <column name="display_order" type="SMALLINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <sql>
+            ALTER TABLE clinlims.accrediting_body
+            ADD CONSTRAINT accrediting_body_visibility_mode_chk
+            CHECK (logo_visibility_mode IN ('ANY_ACCREDITED_TEST', 'PERCENTAGE'))
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.accrediting_body
+            ADD CONSTRAINT accrediting_body_threshold_chk
+            CHECK (threshold_pct >= 0 AND threshold_pct &lt;= 100)
+        </sql>
+
+        <addForeignKeyConstraint
+            constraintName="fk_accrediting_body_logo_image"
+            baseTableSchemaName="clinlims" baseTableName="accrediting_body" baseColumnNames="logo_image_id"
+            referencedTableSchemaName="clinlims" referencedTableName="image" referencedColumnNames="id"/>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="accrediting_body"/>
+            <dropSequence sequenceName="accrediting_body_id_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="accreditation-002-create-test-accreditation">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="test_accreditation" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Membership: which tests are accredited under which body</comment>
+        <createSequence sequenceName="test_accreditation_id_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="test_accreditation">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_accreditation"/>
+            </column>
+            <!-- clinlims.test.id is numeric(10) (Test.hbm.xml maps it to String via
+                 LIMSStringNumberUserType) — NOT varchar. -->
+            <column name="test_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="accrediting_body_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <!-- When this test entered the body's scope. Provenance only: expiry
+                 comes from the body (D.0). NULL for tests enrolled at setup. -->
+            <column name="effective_from" type="DATE"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <!-- Tests are soft-deleted via is_active in practice, so CASCADE here is
+             belt-and-braces for a hard delete rather than a routine path. -->
+        <addForeignKeyConstraint
+            constraintName="fk_test_accreditation_test"
+            baseTableSchemaName="clinlims" baseTableName="test_accreditation" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <!-- No onDelete: the default RESTRICT is what makes FR-6's "cannot delete a
+             body while tests reference it" true at the DB level. -->
+        <addForeignKeyConstraint
+            constraintName="fk_test_accreditation_body"
+            baseTableSchemaName="clinlims" baseTableName="test_accreditation" baseColumnNames="accrediting_body_id"
+            referencedTableSchemaName="clinlims" referencedTableName="accrediting_body" referencedColumnNames="id"/>
+
+        <addUniqueConstraint
+            schemaName="clinlims" tableName="test_accreditation"
+            columnNames="test_id, accrediting_body_id"
+            constraintName="uq_test_accreditation_test_body"/>
+
+        <!-- Access paths: by body (bodies page enrolled-count, drill-through) and
+             by test (report resolver, ?testId deep link). -->
+        <createIndex schemaName="clinlims" tableName="test_accreditation" indexName="idx_test_accreditation_body">
+            <column name="accrediting_body_id"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="test_accreditation" indexName="idx_test_accreditation_test">
+            <column name="test_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_accreditation"/>
+            <dropSequence sequenceName="test_accreditation_id_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Register both tables for audit-trail history. AuditTrailServiceImpl.saveHistory
+         THROWS (rolling back the write) when a table has no reference_tables row, so
+         this must land with the tables, not later. -->
+    <changeSet author="openelisglobal" id="accreditation-003-register-audit-ref-tables">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'accrediting_body'</sqlCheck>
+        </preConditions>
+        <comment>Register accrediting_body + test_accreditation for audit history</comment>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="accrediting_body"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="test_accreditation"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) IN ('accrediting_body', 'test_accreditation')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- NOTE: the "Accreditation Status" sidenav row deliberately does NOT live here.
+         GET /rest/menu is not permission-filtered, so a menu row is visible to every
+         authenticated user the moment it exists. Shipping it with this schema-only
+         story put an item in the QMS pillar that rendered as the raw i18n key (no
+         en.json entry yet) and 404'd on click (no route, no component yet).
+         The menu row, the sideNav.label.qa.qms.accreditation key and the App.jsx
+         route belong together with the page in D.2. -->
+
+</databaseChangeLog>
