@@ -325,11 +325,11 @@
 }
 
 .microbiology-reagent-lots__heading strong,
-.microbiology-reagent-lots__heading span {
+.microbiology-reagent-lots__test-name {
   display: block;
 }
 
-.microbiology-reagent-lots__heading span,
+.microbiology-reagent-lots__test-name,
 .microbiology-reagent-lots__quantity,
 .microbiology-reagent-lots__empty {
   color: var(--cds-text-secondary);

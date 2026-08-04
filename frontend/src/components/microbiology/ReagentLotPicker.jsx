@@ -53,7 +53,9 @@ const ReagentLotPicker = ({
             <div className="microbiology-reagent-lots__heading">
               <div>
                 <strong>{requirement.reagentName}</strong>
-                <span>{requirement.testName}</span>
+                <span className="microbiology-reagent-lots__test-name">
+                  {requirement.testName}
+                </span>
               </div>
               {requirement.usageType ? (
                 <Tag type="cool-gray">

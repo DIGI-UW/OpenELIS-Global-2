@@ -72,6 +72,9 @@ describe("ReagentLotPicker", () => {
     renderPicker();
 
     expect(screen.getByText("Blood agar")).toBeInTheDocument();
+    expect(screen.getByText("Blood culture")).toHaveClass(
+      "microbiology-reagent-lots__test-name",
+    );
     expect(screen.getByText("Primary")).toBeInTheDocument();
     expect(screen.getByLabelText(/MEDIA-EXPIRED/)).toBeDisabled();
     expect(screen.getByText("Blocked: Expired")).toBeInTheDocument();
