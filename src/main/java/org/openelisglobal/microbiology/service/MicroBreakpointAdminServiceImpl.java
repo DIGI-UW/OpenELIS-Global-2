@@ -1,11 +1,22 @@
 package org.openelisglobal.microbiology.service;
 
 import java.sql.Date;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
+import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointActivationEventDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm;
+import org.openelisglobal.microbiology.form.MicroBreakpointStandardAdminForm;
+import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
+import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.springframework.stereotype.Service;
@@ -19,13 +30,132 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
     private final MicroBreakpointRuleDAO ruleDAO;
     private final MicroBreakpointActivationEventDAO activationEventDAO;
     private final MicroAstRunDAO astRunDAO;
+    private final MicroOrganismDAO organismDAO;
+    private final MicroAntibioticDAO antibioticDAO;
 
     public MicroBreakpointAdminServiceImpl(MicroBreakpointStandardDAO standardDAO, MicroBreakpointRuleDAO ruleDAO,
-            MicroBreakpointActivationEventDAO activationEventDAO, MicroAstRunDAO astRunDAO) {
+            MicroBreakpointActivationEventDAO activationEventDAO, MicroAstRunDAO astRunDAO,
+            MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO) {
         this.standardDAO = standardDAO;
         this.ruleDAO = ruleDAO;
         this.activationEventDAO = activationEventDAO;
         this.astRunDAO = astRunDAO;
+        this.organismDAO = organismDAO;
+        this.antibioticDAO = antibioticDAO;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroReferenceAdminPageForm<MicroBreakpointStandardAdminForm> getStandards(
+            MicroReferenceAdminQueryForm query) {
+        MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
+        String search = lower(normalized.q);
+        List<MicroBreakpointStandardAdminForm> rows = standardDAO.getAll().stream()
+                .filter(standard -> normalized.status == null || normalized.status.isBlank()
+                        || "ALL".equalsIgnoreCase(normalized.status)
+                        || normalized.status.equalsIgnoreCase(standard.getLifecycleStatus()))
+                .filter(standard -> normalized.authority == null || normalized.authority.isBlank()
+                        || normalized.authority.equalsIgnoreCase(standard.getAuthority()))
+                .filter(standard -> search.isEmpty() || lower(standard.getAuthority()).contains(search)
+                        || lower(standard.getVersion()).contains(search))
+                .sorted(Comparator.comparing(MicroBreakpointStandard::getAuthority)
+                        .thenComparing(MicroBreakpointStandard::getVersion, Comparator.reverseOrder()))
+                .map(this::toStandardForm).toList();
+        return page(rows, normalized);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroReferenceAdminPageForm<MicroBreakpointRuleAdminForm> getRules(String standardId,
+            MicroReferenceAdminQueryForm query) {
+        getStandard(standardId);
+        MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
+        int offset = (normalized.page - 1) * normalized.pageSize;
+        List<MicroBreakpointRuleAdminForm> rows = ruleDAO.search(standardId, normalized.q, normalized.organism,
+                normalized.antibiotic, normalized.method, normalized.specimenTypeId, offset, normalized.pageSize)
+                .stream().map(this::toRuleForm).toList();
+        MicroReferenceAdminPageForm<MicroBreakpointRuleAdminForm> page = new MicroReferenceAdminPageForm<>();
+        page.rows = new ArrayList<>(rows);
+        page.total = ruleDAO.countSearch(standardId, normalized.q, normalized.organism, normalized.antibiotic,
+                normalized.method, normalized.specimenTypeId);
+        page.page = normalized.page;
+        page.pageSize = normalized.pageSize;
+        return page;
+    }
+
+    @Override
+    @Transactional
+    public MicroBreakpointRuleAdminForm saveRule(String standardId, String ruleId, MicroBreakpointRuleAdminForm request,
+            String actorId) {
+        requireActor(actorId);
+        MicroBreakpointStandard standard = getStandard(standardId);
+        if ("ARCHIVED".equals(standard.getLifecycleStatus())) {
+            throw new MicroReferenceConflictException("Archived breakpoint standards are read-only");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Breakpoint rule is required");
+        }
+        String organismId = trimToNull(request.organismId);
+        String organismGroup = trimToNull(request.organismGroup);
+        if ((organismId == null) == (organismGroup == null)) {
+            throw new IllegalArgumentException("Specify exactly one organism or organism group");
+        }
+        if (organismId != null && organismDAO.get(organismId).isEmpty()) {
+            throw new IllegalArgumentException("Organism not found: " + organismId);
+        }
+        String antibioticId = required(request.antibioticId, "antibioticId");
+        if (antibioticDAO.get(antibioticId).isEmpty()) {
+            throw new IllegalArgumentException("Antibiotic not found: " + antibioticId);
+        }
+        String method = required(request.method, "method").toUpperCase(Locale.ROOT);
+        if (!Set.of("MIC", "ZONE").contains(method)) {
+            throw new IllegalArgumentException("method must be MIC or ZONE");
+        }
+        String breakpointType = required(request.breakpointType, "breakpointType").toUpperCase(Locale.ROOT);
+        if (!Set.of("MIC", "ZONE").contains(breakpointType)) {
+            throw new IllegalArgumentException("breakpointType must be MIC or ZONE");
+        }
+        if (request.susceptibleValue == null && request.intermediateLowerValue == null
+                && request.intermediateUpperValue == null && request.resistantValue == null) {
+            throw new IllegalArgumentException("At least one breakpoint threshold is required");
+        }
+        String specimenTypeId = trimToNull(request.specimenTypeId);
+        Optional<org.openelisglobal.microbiology.valueholder.MicroBreakpointRule> duplicate = ruleDAO.findByNaturalKey(
+                standardId, organismId, organismGroup, antibioticId, method, specimenTypeId, breakpointType);
+        if (duplicate.isPresent() && !duplicate.get().getId().equals(ruleId)) {
+            throw new MicroReferenceConflictException("A breakpoint rule already exists for this context");
+        }
+        org.openelisglobal.microbiology.valueholder.MicroBreakpointRule rule = ruleId == null
+                ? new org.openelisglobal.microbiology.valueholder.MicroBreakpointRule()
+                : ruleDAO.get(ruleId)
+                        .orElseThrow(() -> new IllegalArgumentException("Breakpoint rule not found: " + ruleId));
+        if (ruleId != null && !standardId.equals(rule.getStandardId())) {
+            throw new IllegalArgumentException("Breakpoint rule does not belong to this standard");
+        }
+        rule.setStandardId(standardId);
+        rule.setOrganismId(organismId);
+        rule.setOrganismGroup(organismGroup);
+        rule.setAntibioticId(antibioticId);
+        rule.setMethod(method);
+        rule.setSpecimenTypeId(specimenTypeId);
+        rule.setBreakpointType(breakpointType);
+        rule.setSusceptibleValue(request.susceptibleValue);
+        rule.setIntermediateLowerValue(request.intermediateLowerValue);
+        rule.setIntermediateUpperValue(request.intermediateUpperValue);
+        rule.setResistantValue(request.resistantValue);
+        rule.setUnits(trimToNull(request.units));
+        rule.setNotes(trimToNull(request.notes));
+        rule.setIsActive(request.active ? "Y" : "N");
+        rule.setSeeded(false);
+        rule.setLocallyCustomized(true);
+        rule.setSourceRowHash(null);
+        rule.setLastUpdatedBy(actorId);
+        if (ruleId == null) {
+            ruleDAO.insert(rule);
+        } else {
+            ruleDAO.update(rule);
+        }
+        return toRuleForm(rule);
     }
 
     @Override
@@ -104,5 +234,81 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         if (actorId == null || actorId.isBlank()) {
             throw new IllegalArgumentException("authenticated actor is required");
         }
+    }
+
+    private MicroBreakpointStandardAdminForm toStandardForm(MicroBreakpointStandard standard) {
+        MicroBreakpointStandardAdminForm form = new MicroBreakpointStandardAdminForm();
+        form.id = standard.getId();
+        form.authority = standard.getAuthority();
+        form.version = standard.getVersion();
+        form.lifecycleStatus = standard.getLifecycleStatus();
+        form.effectiveDate = standard.getEffectiveDate() == null ? null : standard.getEffectiveDate().toString();
+        form.ruleCount = ruleDAO.countByStandardId(standard.getId());
+        form.unresolvedRunCount = astRunDAO.countUnresolvedByBreakpointStandardId(standard.getId());
+        return form;
+    }
+
+    private MicroBreakpointRuleAdminForm toRuleForm(
+            org.openelisglobal.microbiology.valueholder.MicroBreakpointRule rule) {
+        MicroBreakpointRuleAdminForm form = new MicroBreakpointRuleAdminForm();
+        form.id = rule.getId();
+        form.standardId = rule.getStandardId();
+        form.organismId = rule.getOrganismId();
+        form.organismGroup = rule.getOrganismGroup();
+        if (rule.getOrganismId() != null) {
+            organismDAO.get(rule.getOrganismId()).ifPresent(organism -> form.organismName = organism.getDisplayName());
+        }
+        form.antibioticId = rule.getAntibioticId();
+        antibioticDAO.get(rule.getAntibioticId()).ifPresent(antibiotic -> {
+            form.antibioticName = antibiotic.getDisplayName();
+            form.antibioticCode = antibiotic.getWhonetCode();
+        });
+        form.method = rule.getMethod();
+        form.specimenTypeId = rule.getSpecimenTypeId();
+        form.breakpointType = rule.getBreakpointType();
+        form.susceptibleValue = rule.getSusceptibleValue();
+        form.intermediateLowerValue = rule.getIntermediateLowerValue();
+        form.intermediateUpperValue = rule.getIntermediateUpperValue();
+        form.resistantValue = rule.getResistantValue();
+        form.units = rule.getUnits();
+        form.notes = rule.getNotes();
+        form.active = "Y".equals(rule.getIsActive());
+        form.seeded = rule.isSeeded();
+        form.locallyCustomized = rule.isLocallyCustomized();
+        return form;
+    }
+
+    private MicroReferenceAdminQueryForm normalizeQuery(MicroReferenceAdminQueryForm input) {
+        MicroReferenceAdminQueryForm query = input == null ? new MicroReferenceAdminQueryForm() : input;
+        query.page = Math.max(query.page, 1);
+        query.pageSize = Set.of(20, 50, 100).contains(query.pageSize) ? query.pageSize : 20;
+        return query;
+    }
+
+    private <T> MicroReferenceAdminPageForm<T> page(List<T> rows, MicroReferenceAdminQueryForm query) {
+        int from = Math.min((query.page - 1) * query.pageSize, rows.size());
+        int to = Math.min(from + query.pageSize, rows.size());
+        MicroReferenceAdminPageForm<T> result = new MicroReferenceAdminPageForm<>();
+        result.rows = new ArrayList<>(rows.subList(from, to));
+        result.total = rows.size();
+        result.page = query.page;
+        result.pageSize = query.pageSize;
+        return result;
+    }
+
+    private String required(String value, String field) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
+            throw new IllegalArgumentException(field + " is required");
+        }
+        return normalized;
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String lower(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 }

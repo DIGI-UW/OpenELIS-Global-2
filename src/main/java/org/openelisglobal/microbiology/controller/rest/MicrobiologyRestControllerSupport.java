@@ -12,7 +12,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 /** Shared authenticated-actor lookup for microbiology write endpoints. */
 abstract class MicrobiologyRestControllerSupport extends BaseRestController {
-
     protected String authenticatedUserId(HttpServletRequest request) {
         String userId = getSysUserId(request);
         if (userId == null || userId.trim().isEmpty()) {

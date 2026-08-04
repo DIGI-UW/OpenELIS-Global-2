@@ -86,4 +86,82 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("standardId", standardId);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroBreakpointRule> search(String standardId, String q, String organism, String antibiotic,
+            String method, String specimenTypeId, int offset, int limit) {
+        Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroBreakpointRule r" + searchWhere(q, organism, antibiotic, method, specimenTypeId)
+                        + " order by r.organismGroup, r.organismId, r.antibioticId, r.method",
+                MicroBreakpointRule.class);
+        setSearchParameters(query, standardId, q, organism, antibiotic, method, specimenTypeId);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countSearch(String standardId, String q, String organism, String antibiotic, String method,
+            String specimenTypeId) {
+        Query<Long> query = entityManager.unwrap(Session.class)
+                .createQuery("select count(r.id) from MicroBreakpointRule r"
+                        + searchWhere(q, organism, antibiotic, method, specimenTypeId), Long.class);
+        setSearchParameters(query, standardId, q, organism, antibiotic, method, specimenTypeId);
+        return query.getSingleResult();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByStandardId(String standardId) {
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(
+                "select count(r.id) from MicroBreakpointRule r where r.standardId = :standardId", Long.class);
+        query.setParameter("standardId", standardId);
+        return query.getSingleResult();
+    }
+
+    private String searchWhere(String q, String organism, String antibiotic, String method, String specimenTypeId) {
+        StringBuilder hql = new StringBuilder(" where r.standardId = :standardId");
+        if (q != null && !q.isBlank()) {
+            hql.append(" and (lower(coalesce(r.organismGroup, '')) like :q")
+                    .append(" or exists (select o.id from MicroOrganism o where o.id = r.organismId")
+                    .append(" and lower(o.displayName) like :q)")
+                    .append(" or exists (select a.id from MicroAntibiotic a where a.id = r.antibioticId")
+                    .append(" and (lower(a.displayName) like :q or lower(a.whonetCode) like :q)))");
+        }
+        if (organism != null && !organism.isBlank()) {
+            hql.append(" and (r.organismId = :organism or r.organismGroup = :organism)");
+        }
+        if (antibiotic != null && !antibiotic.isBlank()) {
+            hql.append(" and r.antibioticId = :antibiotic");
+        }
+        if (method != null && !method.isBlank()) {
+            hql.append(" and r.method = :method");
+        }
+        if (specimenTypeId != null && !specimenTypeId.isBlank()) {
+            hql.append(" and r.specimenTypeId = :specimenTypeId");
+        }
+        return hql.toString();
+    }
+
+    private void setSearchParameters(Query<?> query, String standardId, String q, String organism, String antibiotic,
+            String method, String specimenTypeId) {
+        query.setParameter("standardId", standardId);
+        if (q != null && !q.isBlank()) {
+            query.setParameter("q", "%" + q.trim().toLowerCase(java.util.Locale.ROOT) + "%");
+        }
+        if (organism != null && !organism.isBlank()) {
+            query.setParameter("organism", organism);
+        }
+        if (antibiotic != null && !antibiotic.isBlank()) {
+            query.setParameter("antibiotic", antibiotic);
+        }
+        if (method != null && !method.isBlank()) {
+            query.setParameter("method", method);
+        }
+        if (specimenTypeId != null && !specimenTypeId.isBlank()) {
+            query.setParameter("specimenTypeId", specimenTypeId);
+        }
+    }
 }

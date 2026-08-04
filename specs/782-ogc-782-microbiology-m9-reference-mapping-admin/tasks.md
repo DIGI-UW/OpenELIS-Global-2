@@ -12,22 +12,22 @@
   standard per publisher and historical-run preservation.
 - [ ] T007 Add failing CSV preview/apply tests for mixed-validity rows,
   idempotency, local customization protection, and transaction rollback.
-- [ ] T008 Add failing controller tests for admin authorization and
+- [x] T008 Add failing controller tests for admin authorization and
   authenticated-actor derivation.
 - [ ] T009 Extend ORM and Liquibase update/rollback tests before implementation.
 
 ## Phase 2 - Backend
 
-- [ ] T010 Add the M9 Liquibase changelog with rollback for accepted model fields,
+- [x] T010 Add the M9 Liquibase changelog with rollback for accepted model fields,
   panel versions, breakpoint lifecycle/import metadata, and activation audit.
-- [ ] T011 Extend existing valueholders and add activation-event valueholder.
+- [x] T011 Extend existing valueholders and add activation-event valueholder.
 - [ ] T012 Add typed DAO queries and natural-key/reference-impact checks.
-- [ ] T013 Implement compiled admin list/detail DTOs and query forms.
-- [ ] T014 Implement `MicrobiologyReferenceAdminService` validation and writes.
-- [ ] T015 Implement immutable AST panel version publication.
-- [ ] T016 Implement breakpoint activation and archive safeguards.
+- [x] T013 Implement compiled admin list/detail DTOs and query forms.
+- [x] T014 Implement `MicrobiologyReferenceAdminService` validation and writes.
+- [x] T015 Implement immutable AST panel version publication.
+- [x] T016 Implement breakpoint activation and archive safeguards.
 - [ ] T017 Implement CSV preview, failed-row download, and valid-row application.
-- [ ] T018 Add admin REST contracts; preserve existing workflow lookup contracts.
+- [x] T018 Add admin REST contracts; preserve existing workflow lookup contracts.
 - [ ] T019 Extend service-created UAT fixtures with synthetic M3 records.
 
 ## Phase 3 - Carbon Administration UI
