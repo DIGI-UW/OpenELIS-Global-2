@@ -149,6 +149,24 @@ describe("BasicInfoSection domain-switch modal", () => {
     expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).active).toBe(false);
   });
 
+  // Activation sets orderable server-side, so deactivating has to clear it —
+  // otherwise the test is left at active=false, orderable=true, which reads as
+  // orderable in the editor while Add Order ignores it.
+  it("clears orderable when the test is deactivated", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    expect(screen.getByRole("switch", { name: /Orderable/ })).toBeChecked();
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    expect(screen.getByRole("switch", { name: /Orderable/ })).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    expect(body.active).toBe(false);
+    expect(body.orderable).toBe(false);
+  });
+
   it("activating with coverage gaps requires acknowledgment (the safety gate)", async () => {
     // Load the test INACTIVE so toggling Active on triggers the activation gate.
     getFromOpenElisServer.mockImplementation((url, cb) => {

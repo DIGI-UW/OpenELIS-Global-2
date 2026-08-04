@@ -535,6 +535,115 @@ describe("SampleResultsSection", () => {
     expect(savedPayload().components[0].uomId).toBe("42");
   });
 
+  it("shows only the empty state — no bare column-header band — when a component has no interpretations (OGC-1153)", async () => {
+    const noInterpretations = {
+      testId: "7",
+      components: [
+        {
+          id: "C1",
+          code: "GLU",
+          label: "Glucose",
+          displayOrder: 1,
+          // Numeric so the select-list options table is not disclosed and the
+          // interpretations table is the only table this component can render.
+          resultType: "N",
+          options: [],
+          interpretations: [],
+        },
+      ],
+    };
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(noInterpretations));
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("GLU");
+
+    expect(
+      screen.getByText(
+        messages["label.testCatalog.sampleResults.interpretations.empty"],
+      ),
+    ).toBeInTheDocument();
+    // Column headings with nothing beneath them read as broken layout.
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.sampleResults.interp.valueMatch"],
+      ),
+    ).not.toBeInTheDocument();
+    expect(container.querySelectorAll("table")).toHaveLength(0);
+    // Suppressing the table must not take the add affordance with it.
+    expect(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.addInterpretation"],
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows only the empty state for a select-list component with no options (OGC-1153)", async () => {
+    const noOptions = {
+      testId: "7",
+      components: [
+        {
+          id: "C1",
+          code: "ABO",
+          label: "Blood group",
+          displayOrder: 1,
+          // Dictionary type discloses the options table; no options and no
+          // interpretations means neither table should render.
+          resultType: "D",
+          options: [],
+          interpretations: [],
+        },
+      ],
+    };
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(noOptions));
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("ABO");
+
+    expect(
+      screen.getByText(
+        messages["label.testCatalog.sampleResults.options.empty"],
+      ),
+    ).toBeInTheDocument();
+    // The orphan four-column heading band this ticket reported must be gone.
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.sampleResults.option.value"],
+      ),
+    ).not.toBeInTheDocument();
+    expect(container.querySelectorAll("table")).toHaveLength(0);
+    // Suppressing the table must not take the add affordance with it.
+    expect(
+      container.querySelector('[data-testid="add-custom-option-0"]'),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the interpretations table and no empty state once an interpretation exists (OGC-1153)", async () => {
+    const { container } = renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    expect(
+      screen.getByText(
+        messages["label.testCatalog.sampleResults.interp.valueMatch"],
+      ),
+    ).toBeInTheDocument();
+    expect(container.querySelector("#int-match-0-0")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.sampleResults.interpretations.empty"],
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("copies sample-results configuration from another test", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url === "/rest/test-list") {

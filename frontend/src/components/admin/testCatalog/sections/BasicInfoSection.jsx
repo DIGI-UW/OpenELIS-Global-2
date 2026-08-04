@@ -339,7 +339,14 @@ const BasicInfoSection = ({ testId }) => {
         } else if (res && !res.error) {
           setAckModalOpen(false);
           setCoverageReport(null);
-          update({ active: true });
+          // Activation also makes the test orderable, so take both flags from the
+          // response rather than assuming.
+          update({
+            active: res.active !== undefined ? res.active : true,
+            ...(res.orderable !== undefined
+              ? { orderable: res.orderable }
+              : {}),
+          });
           setNotificationVisible(true);
           addNotification({
             kind: "success",
@@ -645,7 +652,8 @@ const BasicInfoSection = ({ testId }) => {
           if (checked && !form.active) {
             handleActivate(null);
           } else {
-            update({ active: checked });
+            // Activation sets orderable, so deactivation clears it again.
+            update({ active: checked, orderable: false });
           }
         }}
       />
