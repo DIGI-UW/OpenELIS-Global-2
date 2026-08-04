@@ -14,6 +14,27 @@
 | E2E                       | Amendment, repeat AST, keyboard, workbench, critical/worklist journeys                               | Green on isolated `cc8c-ogc782` stack  | Assembled clinical outcomes, patient-result propagation, canonical URLs, Carbon interaction, and final relock   |
 | Accessibility/performance | 14 axe scans; API/browser/query-plan qualification                                                   | Pass                                   | Detectable WCAG 2.1 AA defects and measured workload budgets                                                    |
 
+## Migration Reversibility
+
+`MicrobiologyM8LiquibaseRollbackTest` starts a disposable PostgreSQL 14.4
+database, applies the repository's full root changelog, and verifies the M8
+schema. It then loads a test-only changelog containing the canonical `060` and
+`061` paths, rolls back exactly those two changesets, verifies that all M8
+tables and columns are absent, reapplies them, and verifies that the schema is
+restored.
+
+```text
+mvn -Dtest=MicrobiologyM8LiquibaseRollbackTest \
+  -Dsurefire.failIfNoSpecifiedTests=false test
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+The first harness attempt intentionally exposed a Liquibase path-identity
+problem when the entire `3.5.x.x/base.xml` was loaded from a different root.
+The final guard scopes validation to the two canonical M8 changeset paths and
+does not alter or clear historical checksums.
+
 ## Focused JaCoCo
 
 The clean focused run executed 84 backend tests and generated JaCoCo at

@@ -32,7 +32,7 @@ each slice. A checked task requires committed evidence, not intent.
 - [x] T019 Add Carbon amendment/history UI in the case workbench with canonical `section=amendment` state and React Intl strings.
 - [x] T020 Add focused Vitest tests for amendment reason, history, focus management, errors, and relock behavior.
 - [x] T021 Add registered Playwright amendment journey proving original/amended patient-report content and post-release lock.
-- [ ] T022 Run Slice A backend/frontend formatting and focused validation; commit as one reviewable checkpoint.
+- [x] T022 Run Slice A backend/frontend formatting and focused validation; commit as one reviewable checkpoint.
 
 ## Phase 3 - Repeat AST and lot traceability tests (Slice B, red)
 
