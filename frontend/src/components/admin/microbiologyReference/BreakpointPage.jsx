@@ -326,6 +326,11 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     URL.revokeObjectURL(href);
   };
 
+  const closeImport = () => {
+    setImportPreview(null);
+    setQuery({ edit: "" }, { replace: true });
+  };
+
   if (loading && standards.rows.length === 0) {
     return <Loading withOverlay={false} />;
   }
@@ -839,16 +844,13 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
       <ComposedModal
         open={query.edit === "import"}
         size="lg"
-        onClose={() => {
-          setImportPreview(null);
-          setQuery({ edit: "" }, { replace: true });
-        }}
+        onClose={closeImport}
       >
         <ModalHeader
           title={intl.formatMessage({
             id: "microbiology.admin.breakpoints.import",
           })}
-          closeModal={() => setQuery({ edit: "" }, { replace: true })}
+          closeModal={closeImport}
         />
         <ModalBody>
           {!importPreview && (
@@ -926,7 +928,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
             importing
           }
           onRequestSubmit={applyImport}
-          onRequestClose={() => setQuery({ edit: "" }, { replace: true })}
+          onRequestClose={closeImport}
         />
       </ComposedModal>
     </div>
