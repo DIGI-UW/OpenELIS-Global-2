@@ -21,9 +21,19 @@ public class MicroAstPanelDAOImpl extends BaseDAOImpl<MicroAstPanel, String> imp
     @Transactional(readOnly = true)
     public List<MicroAstPanel> getActivePanelsByWorkflowType(String workflowType) {
         Query<MicroAstPanel> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroAstPanel p where p.isActive = 'Y' and p.workflowType = :workflowType" + " order by p.name",
+                "from MicroAstPanel p where p.isActive = 'Y' and p.isCurrent = 'Y' and p.workflowType = :workflowType"
+                        + " order by p.name",
                 MicroAstPanel.class);
         query.setParameter("workflowType", workflowType);
         return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroAstPanel findCurrentByLogicalKey(String logicalKey) {
+        Query<MicroAstPanel> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroAstPanel p where p.logicalKey = :logicalKey and p.isCurrent = 'Y'", MicroAstPanel.class);
+        query.setParameter("logicalKey", logicalKey);
+        return query.uniqueResultOptional().orElse(null);
     }
 }

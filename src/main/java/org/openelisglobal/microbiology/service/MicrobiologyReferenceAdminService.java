@@ -1,0 +1,30 @@
+package org.openelisglobal.microbiology.service;
+
+import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
+import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
+import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
+import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
+
+public interface MicrobiologyReferenceAdminService {
+
+    MicroReferenceAdminPageForm<MicroOrganismAdminForm> getOrganisms(MicroReferenceAdminQueryForm query);
+
+    MicroOrganismAdminForm saveOrganism(String id, MicroOrganismAdminForm request, String actorId);
+
+    MicroOrganismAdminForm setOrganismActive(String id, boolean active, String actorId);
+
+    MicroReferenceAdminPageForm<MicroAntibioticAdminForm> getAntibiotics(MicroReferenceAdminQueryForm query);
+
+    MicroAntibioticAdminForm saveAntibiotic(String id, MicroAntibioticAdminForm request, String actorId);
+
+    MicroAntibioticAdminForm setAntibioticActive(String id, boolean active, String actorId);
+
+    MicroReferenceAdminPageForm<MicroAstPanelAdminForm> getAstPanels(MicroReferenceAdminQueryForm query);
+
+    MicroAstPanelAdminForm getAstPanel(String id);
+
+    MicroAstPanelAdminForm createPanel(MicroAstPanelAdminForm request, String actorId);
+
+    MicroAstPanelAdminForm publishPanelVersion(String currentPanelId, MicroAstPanelAdminForm request, String actorId);
+}

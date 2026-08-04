@@ -6,4 +6,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 
 public interface MicroAstPanelDAO extends BaseDAO<MicroAstPanel, String> {
     List<MicroAstPanel> getActivePanelsByWorkflowType(String workflowType);
+
+    MicroAstPanel findCurrentByLogicalKey(String logicalKey);
 }

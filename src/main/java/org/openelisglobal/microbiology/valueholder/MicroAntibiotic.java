@@ -26,6 +26,18 @@ public class MicroAntibiotic extends BaseObject<String> {
     @Column(name = "antibiotic_class", length = 255)
     private String antibioticClass;
 
+    @Column(name = "route", length = 20)
+    private String route;
+
+    @Column(name = "notes")
+    private String notes;
+
+    @Column(name = "seeded", nullable = false)
+    private boolean seeded;
+
+    @Column(name = "last_updated_by", length = 20)
+    private String lastUpdatedBy;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -61,6 +73,38 @@ public class MicroAntibiotic extends BaseObject<String> {
 
     public void setAntibioticClass(String antibioticClass) {
         this.antibioticClass = antibioticClass;
+    }
+
+    public String getRoute() {
+        return route;
+    }
+
+    public void setRoute(String route) {
+        this.route = route;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public boolean isSeeded() {
+        return seeded;
+    }
+
+    public void setSeeded(boolean seeded) {
+        this.seeded = seeded;
+    }
+
+    public String getLastUpdatedBy() {
+        return lastUpdatedBy;
+    }
+
+    public void setLastUpdatedBy(String lastUpdatedBy) {
+        this.lastUpdatedBy = lastUpdatedBy;
     }
 
     public String getIsActive() {
