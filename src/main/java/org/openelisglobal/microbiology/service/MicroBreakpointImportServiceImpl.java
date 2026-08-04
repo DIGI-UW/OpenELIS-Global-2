@@ -62,7 +62,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         ImportPreview parsed = parse(csv);
         String token = UUID.randomUUID().toString();
         previews.put(token, parsed);
-        return toForm(token, parsed, 0, 0);
+        return toForm(token, parsed, parsed.validRows.size(), 0, 0);
     }
 
     @Override
@@ -105,7 +105,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             }
             imported++;
         }
-        return toForm(previewToken, preview, imported, unchanged);
+        return toForm(previewToken, preview, imported + unchanged, imported, unchanged);
     }
 
     private ImportPreview parse(String csv) {
@@ -213,11 +213,12 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         return rule;
     }
 
-    private MicroBreakpointImportPreviewForm toForm(String token, ImportPreview preview, int imported, int unchanged) {
+    private MicroBreakpointImportPreviewForm toForm(String token, ImportPreview preview, int validRows, int imported,
+            int unchanged) {
         MicroBreakpointImportPreviewForm form = new MicroBreakpointImportPreviewForm();
         form.previewToken = token;
         form.totalRows = preview.totalRows;
-        form.validRows = preview.validRows.size();
+        form.validRows = validRows;
         form.skippedRows = preview.errors.size();
         form.importedRows = imported;
         form.unchangedRows = unchanged;

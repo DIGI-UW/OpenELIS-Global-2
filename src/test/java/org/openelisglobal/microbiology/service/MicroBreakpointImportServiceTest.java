@@ -90,6 +90,7 @@ public class MicroBreakpointImportServiceTest {
         verify(ruleDAO).insert(ruleCaptor.capture());
         assertTrue(ruleCaptor.getValue().isSeeded());
         assertFalse(ruleCaptor.getValue().isLocallyCustomized());
+        assertEquals(1, applied.validRows);
         assertEquals(1, applied.importedRows);
         assertEquals(2, applied.skippedRows);
 
@@ -99,6 +100,7 @@ public class MicroBreakpointImportServiceTest {
                 .thenReturn(Optional.of(ruleCaptor.getValue()));
         MicroBreakpointImportPreviewForm retry = service.preview(CSV);
         MicroBreakpointImportPreviewForm retried = service.apply(retry.previewToken, "42");
+        assertEquals(1, retried.validRows);
         assertEquals(0, retried.importedRows);
         assertEquals(1, retried.unchangedRows);
     }
@@ -120,6 +122,7 @@ public class MicroBreakpointImportServiceTest {
         MicroBreakpointImportPreviewForm applied = service.apply(preview.previewToken, "42");
 
         assertEquals(0, applied.importedRows);
+        assertEquals(0, applied.validRows);
         assertEquals(3, applied.skippedRows);
         assertTrue(applied.errors.stream().anyMatch(error -> error.message.contains("locally customized")));
         verify(ruleDAO, never()).insert(org.mockito.ArgumentMatchers.any());
