@@ -4,7 +4,9 @@ import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const accordionButton = (page: Page, name: string) =>
-  page.locator(".cds--accordion__heading").filter({ hasText: name });
+  page
+    .getByTestId("microbiology-case-view")
+    .getByRole("button", { name, exact: true });
 
 test.describe("microbiology worklist and critical communication", () => {
   test("worklist contains its wide table on a mobile viewport", async ({
@@ -66,7 +68,10 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(microbiologyMenu).toBeVisible({ timeout: LONG_TIMEOUT });
     await microbiologyMenu.click();
 
-    const worklistLink = page.locator("#menu_microbiology_worklist_nav");
+    const worklistLink = page.getByRole("link", {
+      name: "Microbiology worklist",
+      exact: true,
+    });
     await expect(worklistLink).toHaveAttribute(
       "href",
       "/Microbiology/worklist",
@@ -85,13 +90,11 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(page.getByTestId("content-wrapper")).toHaveClass(
       /content-nav-locked/,
     );
-    await page
-      .locator("#microbiology-worklist-workflow-filter")
-      .selectOption("BACTERIOLOGY");
+    await page.getByLabel("Workflow").selectOption("BACTERIOLOGY");
     await expect(page).toHaveURL(
       /\/Microbiology\/worklist\?workflow=BACTERIOLOGY$/,
     );
-    await page.locator("#microbiology-worklist-sort").selectOption("newest");
+    await page.getByLabel("Sort").selectOption("newest");
     await expect(page).toHaveURL(
       /\/Microbiology\/worklist\?workflow=BACTERIOLOGY&sort=newest$/,
     );

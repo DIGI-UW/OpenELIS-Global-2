@@ -104,7 +104,10 @@ test.describe("OGC-782 live AMR UAT", () => {
       });
       await expect(microbiologyMenu).toBeVisible({ timeout: LONG_TIMEOUT });
       await microbiologyMenu.click();
-      const worklistLink = page.locator("#menu_microbiology_worklist_nav");
+      const worklistLink = page.getByRole("link", {
+        name: "Microbiology worklist",
+        exact: true,
+      });
       await expect(worklistLink).toHaveAttribute(
         "href",
         "/Microbiology/worklist",
@@ -120,20 +123,14 @@ test.describe("OGC-782 live AMR UAT", () => {
     });
 
     await test.step("Preserve worklist state in the canonical URL", async () => {
-      await page
-        .locator("#microbiology-worklist-workflow-filter")
-        .selectOption("BACTERIOLOGY");
-      await page.locator("#microbiology-worklist-sort").selectOption("newest");
+      await page.getByLabel("Workflow").selectOption("BACTERIOLOGY");
+      await page.getByLabel("Sort").selectOption("newest");
       await expect(page).toHaveURL(
         /\/Microbiology\/worklist\?workflow=BACTERIOLOGY&sort=newest$/,
       );
       await page.reload({ waitUntil: "domcontentloaded" });
-      await expect(
-        page.locator("#microbiology-worklist-workflow-filter"),
-      ).toHaveValue("BACTERIOLOGY");
-      await expect(page.locator("#microbiology-worklist-sort")).toHaveValue(
-        "newest",
-      );
+      await expect(page.getByLabel("Workflow")).toHaveValue("BACTERIOLOGY");
+      await expect(page.getByLabel("Sort")).toHaveValue("newest");
       await testInfo.attach("amr-filtered-worklist", {
         body: await page.screenshot(),
         contentType: "image/png",

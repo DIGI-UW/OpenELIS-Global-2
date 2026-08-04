@@ -56,10 +56,12 @@ const getCsrfToken = async (page: Page) => {
 };
 
 const accordionButton = (page: Page, name: string) =>
-  page.locator(".cds--accordion__heading").filter({ hasText: name });
+  page
+    .getByTestId("microbiology-case-view")
+    .getByRole("button", { name, exact: true });
 
 const caseStatusTag = (page: Page, name: string) =>
-  page.locator("header .cds--tag__label").filter({ hasText: name });
+  page.locator("header").getByTitle(name);
 
 test.describe("OGC-782 microbiology MVP", () => {
   test("case setup, isolate creation, manual AST, override, and review", async ({
