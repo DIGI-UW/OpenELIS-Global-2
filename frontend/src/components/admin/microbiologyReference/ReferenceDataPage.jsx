@@ -34,7 +34,7 @@ import {
   saveReference,
   setReferenceActive,
 } from "./api";
-import { buildReferenceQuery } from "./queryState";
+import { buildReferenceRequestQuery } from "./queryState";
 import ReferenceEditModal from "./ReferenceEditModal";
 
 const ReferenceDataPage = ({ definition, query, setQuery }) => {
@@ -49,16 +49,13 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
   const deactivationId = query.edit?.startsWith("deactivate:")
     ? query.edit.slice("deactivate:".length)
     : "";
+  const requestQuery = buildReferenceRequestQuery(query);
 
   const load = useCallback(
     (signal) => {
       setLoading(true);
       setError("");
-      return getReferencePage(
-        definition.resource,
-        buildReferenceQuery(query),
-        signal,
-      )
+      return getReferencePage(definition.resource, requestQuery, signal)
         .then((response) => setPage(response))
         .catch((requestError) => {
           if (requestError.name !== "AbortError")
@@ -66,7 +63,7 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
         })
         .finally(() => setLoading(false));
     },
-    [definition.resource, query],
+    [definition.resource, requestQuery],
   );
 
   useEffect(() => {

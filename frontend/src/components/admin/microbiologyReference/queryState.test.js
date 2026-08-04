@@ -1,5 +1,6 @@
 import {
   buildReferenceQuery,
+  buildReferenceRequestQuery,
   parseReferenceQuery,
   updateReferenceQuery,
   validStatusesForSection,
@@ -51,5 +52,16 @@ describe("microbiology reference query state", () => {
     expect(
       updateReferenceQuery({ page: 4, edit: "" }, { edit: "organism-1" }),
     ).toEqual({ page: 4, edit: "organism-1" });
+  });
+
+  it("excludes linkable editor state from collection requests", () => {
+    expect(
+      buildReferenceRequestQuery({
+        q: "coli",
+        edit: "organism-1",
+        page: 4,
+        pageSize: 50,
+      }),
+    ).toBe("q=coli&status=ALL&sort=name&page=4&pageSize=50");
   });
 });
