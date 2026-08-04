@@ -58,5 +58,6 @@ The test verifies:
 
 At this checkpoint, all ten Grist rows were optional and nested routes produced
 route-relative service-worker requests. The current deployment evidence
-supersedes both observations: all ten steps are required, and service-worker
-registration is rooted at the application origin.
+supersedes both observations: nine core steps are required, the shared-specimen
+TB reflection is optional, and service-worker registration is rooted at the
+application origin.

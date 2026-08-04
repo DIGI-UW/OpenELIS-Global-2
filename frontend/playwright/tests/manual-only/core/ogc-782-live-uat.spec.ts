@@ -7,12 +7,27 @@ const EXPECTED_STEP_KEYS = [
   "AMR-3",
   "AMR-4",
   "AMR-5",
-  "AMR-16",
   "AMR-6",
   "AMR-7",
+  "AMR-16",
   "AMR-20",
   "AMR-21",
 ];
+
+const EXPECTED_REQUIRED_STEP_KEYS = [
+  "AMR-1",
+  "AMR-2",
+  "AMR-3",
+  "AMR-4",
+  "AMR-5",
+  "AMR-6",
+  "AMR-7",
+  "AMR-16",
+  "AMR-20",
+];
+
+const EXPECTED_CHECKLIST_REVISION =
+  "fc9d65e109d3e6863d75b9c66ef7f2f41480bf626d458c11bb59ad55ae5bc0fe";
 
 test.describe("OGC-782 live AMR UAT", () => {
   test("binds the review overlay to the deployed feature and verifies stable navigation", async ({
@@ -49,7 +64,13 @@ test.describe("OGC-782 live AMR UAT", () => {
       const steps = checklist.sections.flatMap((section) => section.steps);
       expect(steps.map((step) => step.key)).toEqual(EXPECTED_STEP_KEYS);
       expect(new Set(steps.map((step) => step.key)).size).toBe(steps.length);
-      expect(checklist.checklistRevision).toMatch(/^[0-9a-f]{64}$/);
+      expect(
+        steps.filter((step) => step.required).map((step) => step.key),
+      ).toEqual(EXPECTED_REQUIRED_STEP_KEYS);
+      expect(
+        steps.filter((step) => !step.required).map((step) => step.key),
+      ).toEqual(["AMR-21"]);
+      expect(checklist.checklistRevision).toBe(EXPECTED_CHECKLIST_REVISION);
     });
 
     await test.step("Verify the injected review overlay", async () => {

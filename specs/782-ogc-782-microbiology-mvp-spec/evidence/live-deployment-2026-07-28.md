@@ -53,11 +53,14 @@ Primary case:
 
 ## Grist And Review Overlay
 
+The checklist contract below was reverified from the public live JSON on
+2026-08-03. This does not change the historical application deployment SHA.
+
 - Checklist: `Microbiology MVP - review`
 - Structure: four stories, ten steps
 - Policy: steps 1-9 required; step 10, shared-specimen TB reflection, optional
 - Checklist revision:
-  `cec8626fb1998b8d1e78ae84616b32f006759d3ad7681fe7d2a4c307ce26dc52`
+  `fc9d65e109d3e6863d75b9c66ef7f2f41480bf626d458c11bb59ad55ae5bc0fe`
 - Live source: `grist-live`
 - The rendered overlay reported
   `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness @

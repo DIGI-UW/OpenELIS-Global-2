@@ -5,15 +5,18 @@
 > acceptance-scope reconciliation below supersedes the earlier all-required
 > checklist.
 
-## Acceptance-Scope Update - 2026-07-28
+## Current Acceptance Contract - 2026-08-03
 
-The Grist source and live AMR JSON were reconciled after the final MVP scope
+The public live AMR JSON was reverified directly after the final MVP scope
 audit. Stable step keys were preserved, so prior answers correctly become stale
 when their instructions change.
 
 - Revision:
-  `cec8626fb1998b8d1e78ae84616b32f006759d3ad7681fe7d2a4c307ce26dc52`
+  `fc9d65e109d3e6863d75b9c66ef7f2f41480bf626d458c11bb59ad55ae5bc0fe`
 - Ten steps total: nine required core checks and one optional TB reflection.
+- Required keys: `AMR-1`, `AMR-2`, `AMR-3`, `AMR-4`, `AMR-5`, `AMR-6`,
+  `AMR-7`, `AMR-16`, and `AMR-20`.
+- Optional non-blocking key: `AMR-21`.
 - Added explicit checks for culture-aware order details, setup media/incubation/
   atmosphere, two visible AST readings, Result-targeted critical communication,
   visible patient reporting, and final-case mutation locking.
@@ -114,5 +117,6 @@ and MP4 video, the Playwright HTML report, and a machine-readable manifest.
 
 At this checkpoint, all ten Grist rows had `required=false` and nested routes
 emitted route-relative service-worker noise. Both observations are superseded
-by the current deployment evidence linked above: all ten steps are now required,
-and service-worker registration is rooted at the application origin.
+by the current deployment evidence linked above: nine core steps are required,
+the shared-specimen TB reflection is optional, and service-worker registration
+is rooted at the application origin.
