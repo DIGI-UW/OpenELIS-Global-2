@@ -15,6 +15,7 @@ export interface SeededMicrobiologyCase {
   astPanelId?: string;
   activeBreakpointStandardId?: string;
   loadedBreakpointStandardId?: string;
+  unmappedOrganismId?: string;
   methodId?: string;
 }
 
@@ -37,9 +38,17 @@ export interface SeededMicrobiologyReferenceAdmin extends SeededMicrobiologyCase
   methodId: string;
 }
 
+export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyReferenceAdmin {
+  unmappedOrganismId: string;
+  mappedIsolateId: string;
+  unmappedIsolateId: string;
+  mappedAstRunId: string;
+  unmappedAstRunId: string;
+}
+
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
-type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST" | "M3";
+type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST" | "M3" | "M4";
 
 interface MicrobiologyReferenceOption {
   id: string;
@@ -130,6 +139,147 @@ export async function seedMicrobiologyReferenceAdmin(
     }
   }
   return seeded as SeededMicrobiologyReferenceAdmin;
+}
+
+async function createReviewedAstIsolate(
+  page: Page,
+  seeded: SeededMicrobiologyReferenceAdmin,
+  organismId: string,
+  isolateLabel: string,
+  organismText: string,
+  antibiotics: MicrobiologyReferenceOption[],
+) {
+  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
+  const isolate = await requireJsonResponse<{ id: string }>(
+    `Create ${isolateLabel}`,
+    await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
+      headers,
+      data: {
+        caseId: seeded.caseId,
+        isolateLabel,
+        organismId,
+        preliminaryOrganismText: organismText,
+        significance: "CLINICALLY_SIGNIFICANT",
+      },
+    }),
+  );
+  await requireJsonResponse(
+    `Confirm ${isolateLabel}`,
+    await page.request.put(
+      `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
+      {
+        headers,
+        data: {
+          organismId,
+          preliminaryOrganismText: organismText,
+          significance: "CLINICALLY_SIGNIFICANT",
+          identificationStatus: "CONFIRMED",
+        },
+      },
+    ),
+  );
+  const run = await requireJsonResponse<{ id: string }>(
+    `Start ${isolateLabel} AST run`,
+    await page.request.post(`${API_PREFIX}/rest/microbiology/ast/runs`, {
+      headers,
+      data: {
+        isolateId: isolate.id,
+        panelId: seeded.astPanelId,
+        breakpointStandardId: seeded.activeBreakpointStandardId,
+      },
+    }),
+  );
+  for (const antibiotic of antibiotics) {
+    await requireJsonResponse(
+      `Record ${isolateLabel} ${antibiotic.code}`,
+      await page.request.post(
+        `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/readings`,
+        {
+          headers,
+          data: {
+            antibioticId: antibiotic.id,
+            method: "MIC",
+            rawValue: antibiotic.code === "CIPUAT" ? 4 : 32,
+          },
+        },
+      ),
+    );
+  }
+  await requireJsonResponse(
+    `Review ${isolateLabel} AST run`,
+    await page.request.post(
+      `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/review`,
+      { headers, data: {} },
+    ),
+  );
+  return { isolateId: isolate.id, astRunId: run.id };
+}
+
+export async function seedMicrobiologyWhonetExport(
+  page: Page,
+): Promise<SeededMicrobiologyWhonetExport> {
+  const seeded = await provisionMicrobiologyScenario(page, "M4");
+  const required = [
+    "organismId",
+    "unmappedOrganismId",
+    "antibioticId",
+    "astPanelId",
+    "activeBreakpointStandardId",
+    "loadedBreakpointStandardId",
+    "methodId",
+  ] as const;
+  for (const field of required) {
+    if (!seeded[field]) {
+      throw new Error(`Microbiology M4 scenario is missing ${field}`);
+    }
+  }
+  const reference = seeded as SeededMicrobiologyReferenceAdmin & {
+    unmappedOrganismId: string;
+  };
+  const antibiotics = (
+    await requireJsonResponse<MicrobiologyReferenceOption[]>(
+      "Load M4 antibiotics",
+      await page.request.get(
+        `${API_PREFIX}/rest/microbiology/reference/antibiotics`,
+      ),
+    )
+  ).filter((candidate) => ["CIPUAT", "GENUAT"].includes(candidate.code));
+  if (antibiotics.length !== 2) {
+    throw new Error("Microbiology M4 scenario requires CIPUAT and GENUAT");
+  }
+
+  const mapped = await createReviewedAstIsolate(
+    page,
+    reference,
+    reference.organismId,
+    "WHONET-MAPPED",
+    "Reference organism (UAT)",
+    antibiotics,
+  );
+  const unmapped = await createReviewedAstIsolate(
+    page,
+    reference,
+    reference.unmappedOrganismId,
+    "WHONET-UNMAPPED",
+    "WHONET mapping pending (UAT)",
+    antibiotics,
+  );
+  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
+  await requireJsonResponse(
+    "Release M4 case for WHONET export",
+    await page.request.post(
+      `${API_PREFIX}/rest/microbiology/cases/${reference.caseId}/release/final`,
+      { headers, data: {} },
+    ),
+  );
+
+  return {
+    ...reference,
+    mappedIsolateId: mapped.isolateId,
+    unmappedIsolateId: unmapped.isolateId,
+    mappedAstRunId: mapped.astRunId,
+    unmappedAstRunId: unmapped.astRunId,
+  };
 }
 
 export async function seedMicrobiologyWorklistCases(

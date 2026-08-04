@@ -42,6 +42,7 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -82,6 +83,7 @@ public class MicrobiologyUatScenarioService {
     private static final String BACTERIOLOGY = MicroWorkflowType.BACTERIOLOGY.name();
     private static final String WORKLIST_SCENARIO = "WORKLIST";
     private static final String REFERENCE_ADMIN_SCENARIO = "M3";
+    private static final String WHONET_EXPORT_SCENARIO = "M4";
     private static final String UAT_METHOD_NAME = "UAT micro culture";
     private static final String UAT_METHOD_DESCRIPTION = "UAT microbiology culture method";
     private static final String UAT_TEST_DESCRIPTION = "UAT microbiology culture";
@@ -184,8 +186,11 @@ public class MicrobiologyUatScenarioService {
         Patient patient = getOrCreateUatPatient(suffix, performedBy);
         ensurePatientLink(sample, patient, performedBy);
         AstReferenceData astReferenceData = createAstReferenceData(performedBy);
-        ReferenceAdminData referenceAdminData = REFERENCE_ADMIN_SCENARIO.equals(scenario)
+        ReferenceAdminData referenceAdminData = isReferenceScenario(scenario)
                 ? createReferenceAdminData(astReferenceData, performedBy)
+                : null;
+        MicroOrganism unmappedOrganism = WHONET_EXPORT_SCENARIO.equals(scenario)
+                ? getOrCreateUnmappedReferenceOrganism(performedBy)
                 : null;
 
         ensureSampleType(sampleItem, performedBy);
@@ -223,7 +228,12 @@ public class MicrobiologyUatScenarioService {
             form.activeBreakpointStandardId = referenceAdminData.activeStandardId();
             form.loadedBreakpointStandardId = referenceAdminData.loadedStandardId();
         }
+        form.unmappedOrganismId = unmappedOrganism == null ? null : unmappedOrganism.getId();
         return form;
+    }
+
+    private boolean isReferenceScenario(String scenario) {
+        return REFERENCE_ADMIN_SCENARIO.equals(scenario) || WHONET_EXPORT_SCENARIO.equals(scenario);
     }
 
     private void ensureInventoryTraceability(Test test, String performedBy) {
@@ -471,6 +481,31 @@ public class MicrobiologyUatScenarioService {
         organism.notes = "Synthetic UAT reference only; not clinical guidance";
         organism.active = true;
         return referenceAdminService.saveOrganism(organism.id, organism, performedBy);
+    }
+
+    private MicroOrganism getOrCreateUnmappedReferenceOrganism(String performedBy) {
+        String displayName = "WHONET mapping pending (UAT)";
+        MicroReferenceAdminQueryForm query = new MicroReferenceAdminQueryForm();
+        query.q = displayName;
+        MicroOrganismAdminForm existing = referenceAdminService.getOrganisms(query).rows.stream()
+                .filter(candidate -> displayName.equals(candidate.displayName)).findFirst().orElse(null);
+        if (existing != null) {
+            MicroOrganism organism = new MicroOrganism();
+            organism.setId(existing.id);
+            organism.setDisplayName(existing.displayName);
+            organism.setWhonetCode(existing.whonetCode);
+            return organism;
+        }
+
+        MicroOrganism organism = new MicroOrganism();
+        organism.setDisplayName(displayName);
+        organism.setShortName("UAT mapping pending");
+        organism.setOrganismGroup("UAT_SYNTHETIC");
+        organism.setGramStain("GRAM_NEGATIVE");
+        organism.setInitialSignificance("POSSIBLE");
+        organism.setNotes("Synthetic UAT reference intentionally missing a WHONET code");
+        organism.setLastUpdatedBy(performedBy);
+        return configurationService.createOrganism(organism);
     }
 
     private MicroAntibioticAdminForm getOrCreateReferenceAntibiotic(String performedBy) {
@@ -755,8 +790,8 @@ public class MicrobiologyUatScenarioService {
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
         if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
-                && !REFERENCE_ADMIN_SCENARIO.equals(normalized)) {
-            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, or M3");
+                && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)) {
+            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, M3, or M4");
         }
         return normalized;
     }

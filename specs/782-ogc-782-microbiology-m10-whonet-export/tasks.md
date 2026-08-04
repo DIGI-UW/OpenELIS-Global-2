@@ -16,7 +16,7 @@
 - [x] T009 Extend `WHONetReportService` with preview and generate behavior.
 - [x] T010 Reuse the existing CSV row/builder contract for microbiology rows.
 - [x] T011 Add authenticated preview/generate REST endpoints and structured errors.
-- [ ] T012 Extend service-created UAT data so M4 has mapped and unmapped finalized cases without SQL or fixed persisted IDs.
+- [x] T012 Extend service-created UAT data so M4 has mapped and unmapped finalized cases without SQL or fixed persisted IDs.
 
 ## Phase 3 - Frontend
 
@@ -28,7 +28,7 @@
 
 ## Phase 4 - E2E, UAT, And Evidence
 
-- [ ] T018 Add a focused Playwright `core-app` journey with role/label interactions and download assertions; use no arbitrary waits.
+- [x] T018 Add a focused Playwright `core-app` journey with role/label interactions and download assertions; use no arbitrary waits.
 - [ ] T019 Add M4 Grist UAT stories while retaining all required M1-M3 stories.
 - [ ] T020 Verify the live UAT JSON revision after deployment.
 - [ ] T021 Capture stable desktop/mobile Configure and Preview screenshots and compare them with M-09.
