@@ -12,7 +12,7 @@
       standard per publisher and historical-run preservation.
 - [x] T007 Add failing CSV preview/apply tests for mixed-validity rows,
       idempotency, and local customization protection.
-- [ ] T007A Execute the PostgreSQL transaction-rollback proof in a Docker-capable
+- [x] T007A Execute the PostgreSQL transaction-rollback proof in a Docker-capable
       environment.
 - [x] T008 Add failing controller tests for admin authorization and
       authenticated-actor derivation.
@@ -50,17 +50,17 @@
 ## Phase 4 - E2E, UAT, and Publication
 
 - [x] T030 Register focused Playwright `core-app` projects/tests before browser runs.
-- [ ] T031 Prove organism/antibiotic edits and deactivation behavior.
-- [ ] T032 Prove AST panel versioning and historical-run preservation.
-- [ ] T033 Prove breakpoint activation and mixed-validity import.
-- [ ] T034 Prove canonical URL reload, Back/Forward, sidenav, and breadcrumbs.
+- [x] T031 Prove organism/antibiotic edits and deactivation behavior.
+- [x] T032 Prove AST panel versioning and historical-run preservation.
+- [x] T033 Prove breakpoint activation and mixed-validity import.
+- [x] T034 Prove canonical URL reload, Back/Forward, sidenav, and breadcrumbs.
 - [x] T035 Publish M3 Grist stories while retaining all M1/M2 stories.
-- [ ] T036 Run focused backend, ORM, migration, component, Playwright, formatting,
+- [x] T036 Run focused backend, ORM, migration, component, Playwright, formatting,
       and `git diff --check` validation.
-- [ ] T037 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence
+- [x] T037 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence
       reviews and record outputs.
 - [x] T038 Commit and push coherent checkpoints promptly; open the stacked draft PR.
-- [ ] T039 Deploy the exact M3 SHA to AMR, verify app/schema metadata, and rerun the
+- [x] T039 Deploy the exact M3 SHA to AMR, verify app/schema metadata, and rerun the
       registered live UAT contract and M3 Playwright journey.
-- [ ] T040 Update the PR, Jira, roadmap, UAT revision, screenshots, and external
+- [x] T040 Update the PR, Jira, roadmap, UAT revision, screenshots, and external
       walkthrough/contact-sheet links without claiming human acceptance.
