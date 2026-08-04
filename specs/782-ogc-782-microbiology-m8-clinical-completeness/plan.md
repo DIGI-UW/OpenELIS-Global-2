@@ -43,6 +43,11 @@ Add three append-oriented concepts:
 3. An isolate-identification event containing before/after values, reason,
    actor/time, and optional amendment association.
 
+Report versions retain their standard Analysis/Result sources through
+normalized append-only source links, not delimited identifiers. AST runs
+created during an amendment carry the lifecycle association needed to cancel
+draft runs without changing a previously reviewed run.
+
 Services enforce one open amendment, permission-independent business guards,
 server-derived actors, and final locking outside an active amendment. Opening
 an amendment captures a baseline report version when a legacy final case does
@@ -50,13 +55,15 @@ not already have one. Amended release creates a new Analysis revision and
 Result through existing services, appends the report version, and locks again.
 
 Schema change: one Liquibase file with rollback for the amendment, report
-version, and identification-event records. No route/UI/test migration.
+version/source, identification-event records, and the narrow AST amendment
+association. No route/UI/test migration.
 
 ### Slice B - Repeat AST and reagent/card-lot traceability
 
-Extend an AST run with attempt type, source run, reason, run-level method, and a
-reportable-selection flag. A repeat/retest creates a new run; old readings are
-never copied as mutable rows or overwritten.
+Extend an AST run beyond its Slice A lifecycle association with attempt type,
+source run, reason, run-level method, and a reportable-selection flag. A
+repeat/retest creates a new run; old readings are never copied as mutable rows
+or overwritten.
 
 Create a shared lot-query/validation service over existing Test Catalog and
 Inventory services. Add narrow linkage records from a culture setup or AST run
@@ -132,4 +139,3 @@ not be retargeted directly to the unmerged spec branch as a way to bypass the
 MVP acceptance gate. The first review checkpoint is Slice A with focused tests;
 Slices B and C may be split into follow-up PRs if review size exceeds a
 coherent validation milestone.
-

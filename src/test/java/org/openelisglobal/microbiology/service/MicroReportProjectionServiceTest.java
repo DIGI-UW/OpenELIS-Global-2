@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +43,7 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationSta
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -142,6 +144,56 @@ public class MicroReportProjectionServiceTest {
         verify(caseAnalysisDAO).update(link);
         verify(analysis).setStatusId("6");
         verify(analysisService).update(analysis);
+    }
+
+    @Test
+    public void amendedProjectionCreatesNewAnalysisRevisionAndPreservesPriorResult() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.AMENDED);
+        MicroCaseAnalysis link = link("case-1", "42", "17");
+        link.setProjectedResultId("201");
+        org.openelisglobal.test.valueholder.Test analysisTest = new org.openelisglobal.test.valueholder.Test();
+        analysisTest.setId("test-1");
+        SampleItem sampleItem = new SampleItem();
+        sampleItem.setId("sample-item-1");
+        Analysis original = new Analysis();
+        original.setId("42");
+        original.setTest(analysisTest);
+        original.setSampleItem(sampleItem);
+        original.setRevision("0");
+        Analysis revised = mock(Analysis.class);
+        TestAnalyte testAnalyte = reportableTestAnalyte("17", "test-1");
+        TestResult reportTestResult = reportTestResult(analysisTest);
+
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate("iso-1")));
+        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(reviewedRun("run-1", "iso-1")));
+        when(readingDAO.getByRunId("run-1")).thenReturn(List.of(reading("amp", MicroAstInterpretation.RESISTANT)));
+        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Klebsiella pneumoniae")));
+        when(antibioticDAO.get("amp")).thenReturn(Optional.of(antibiotic("amp", "Ampicillin")));
+        when(analysisService.get("42")).thenReturn(original);
+        when(analysisService.buildAnalysis(analysisTest, sampleItem)).thenReturn(revised);
+        when(analysisService.insert(revised)).thenReturn("43");
+        when(revised.getId()).thenReturn("43");
+        when(revised.getTest()).thenReturn(analysisTest);
+        when(analysisService.get("43")).thenReturn(revised);
+        when(testAnalyteService.get("17")).thenReturn(testAnalyte);
+        when(testResultService.getAllActiveTestResultsPerTest(analysisTest)).thenReturn(List.of(reportTestResult));
+        when(resultService.insert(any(Result.class))).thenAnswer(invocation -> {
+            Result result = invocation.getArgument(0);
+            result.setId("202");
+            return "202";
+        });
+        when(statusService.getStatusID(AnalysisStatus.Finalized)).thenReturn("6");
+
+        MicroReportProjectionResult result = service.releaseAmended("case-1", "9");
+
+        assertEquals(List.of("202"), result.getProjectedResultIds());
+        verify(revised).setRevision("1");
+        assertEquals("43", link.getAnalysisId());
+        assertEquals("202", link.getProjectedResultId());
+        verify(resultService, never()).update(any(Result.class));
+        verify(caseAnalysisDAO).update(link);
     }
 
     @Test

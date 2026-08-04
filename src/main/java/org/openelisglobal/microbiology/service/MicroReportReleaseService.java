@@ -7,4 +7,6 @@ public interface MicroReportReleaseService {
     MicroCase releasePreliminary(String caseId, String performedBy);
 
     MicroCase releaseFinal(String caseId, String performedBy);
+
+    MicroCase releaseAmended(String caseId, String performedBy);
 }

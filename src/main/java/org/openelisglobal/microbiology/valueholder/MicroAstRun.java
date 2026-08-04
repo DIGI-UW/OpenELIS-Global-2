@@ -27,6 +27,9 @@ public class MicroAstRun extends BaseObject<String> {
     @Column(name = "breakpoint_standard_id", length = 36)
     private String breakpointStandardId;
 
+    @Column(name = "amendment_id", length = 36)
+    private String amendmentId;
+
     @Column(name = "status", nullable = false, length = 40)
     private String status = MicroAstRunStatus.IN_PROGRESS.name();
 
@@ -74,6 +77,14 @@ public class MicroAstRun extends BaseObject<String> {
 
     public void setBreakpointStandardId(String breakpointStandardId) {
         this.breakpointStandardId = breakpointStandardId;
+    }
+
+    public String getAmendmentId() {
+        return amendmentId;
+    }
+
+    public void setAmendmentId(String amendmentId) {
+        this.amendmentId = amendmentId;
     }
 
     public String getStatus() {

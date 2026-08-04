@@ -55,6 +55,11 @@
   projection link to the new revision while retaining the old standard records.
 - Record typed isolate identification events with before/after values and also
   project a readable entry into the existing case timeline.
+- Cancelling an amendment reverses its identification drafts, marks AST runs
+  created within it cancelled, publishes no report version, and relocks the
+  case. Existing reviewed AST runs cannot be edited during an amendment.
+- Store report source Analysis/Result references as normalized immutable links,
+  not delimited identifiers.
 
 ### Repeat AST
 
@@ -83,16 +88,12 @@
 
 ## Open Product Questions That Do Not Block Slice A
 
-1. Whether a cancelled amendment must retain its unreported draft values for
-   supervisor review or only its reason/audit trail. Default: retain lifecycle
-   audit, do not expose discarded draft values as a report version.
-2. When multiple reviewed AST attempts exist, whether selecting one attempt or
+1. When multiple reviewed AST attempts exist, whether selecting one attempt or
    composing selected readings across attempts is required. Default: select one
    reportable run per isolate; cross-run composition is later work.
-3. Whether pending-QC reagent lots are blocked or supervisor-overridable. The
+2. Whether pending-QC reagent lots are blocked or supervisor-overridable. The
    current Inventory domain treats only QC-passed lots as available. Default:
    block pending/failed/quarantined lots until a product ruling expands policy.
-4. The authoritative baseline hardware for formal performance acceptance.
+3. The authoritative baseline hardware for formal performance acceptance.
    Default: record the actual CI/demo environment and treat thresholds as
    qualification evidence, not a universal capacity guarantee.
-

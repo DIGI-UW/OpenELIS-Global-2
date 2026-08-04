@@ -11,5 +11,7 @@ public interface MicroReportProjectionService {
 
     MicroReportProjectionResult releaseFinal(String caseId, String performedBy);
 
+    MicroReportProjectionResult releaseAmended(String caseId, String performedBy);
+
     MicroReportProjectionResult preview(String caseId);
 }

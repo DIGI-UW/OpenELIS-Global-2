@@ -21,6 +21,7 @@ import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
+import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -174,7 +175,8 @@ public class MicroCaseRestControllerTest {
         request.preliminaryOrganismText = "Escherichia coli";
         request.significance = MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name();
 
-        ResponseEntity<MicroIsolateForm> response = new MicroIsolateRestController(isolateService)
+        ResponseEntity<MicroIsolateForm> response = new MicroIsolateRestController(isolateService,
+                org.mockito.Mockito.mock(MicroIdentificationHistoryService.class))
                 .createIsolate(request, requestFor("42"));
 
         assertEquals(200, response.getStatusCode().value());

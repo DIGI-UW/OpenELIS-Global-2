@@ -50,6 +50,13 @@ public class MicroReportReleaseRestController extends MicrobiologyRestController
         return ResponseEntity.ok(toForm(releaseService.releaseFinal(caseId, authenticatedUserId(httpRequest))));
     }
 
+    @PostMapping("/amended")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS')")
+    public ResponseEntity<MicroReportReleaseForm> releaseAmended(@PathVariable String caseId,
+            @RequestBody MicroReportReleaseRequestForm request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(toForm(releaseService.releaseAmended(caseId, authenticatedUserId(httpRequest))));
+    }
+
     private MicroReportReleaseForm toForm(MicroCase microCase) {
         MicroReportReleaseForm form = new MicroReportReleaseForm();
         form.caseId = microCase.getId();
