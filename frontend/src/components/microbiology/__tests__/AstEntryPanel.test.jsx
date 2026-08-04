@@ -1,6 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import AstEntryPanel from "../AstEntryPanel";
@@ -91,6 +92,7 @@ const renderPanel = (service, props = {}) =>
 
 describe("AstEntryPanel", () => {
   it("records, overrides, and reviews a manual AST run", async () => {
+    const user = userEvent.setup();
     const service = {
       getAstPanels: vi.fn().mockResolvedValue([
         {
@@ -153,10 +155,11 @@ describe("AstEntryPanel", () => {
         screen.getByRole("button", { name: "Start AST run" }),
       ).not.toBeDisabled(),
     );
-    fireEvent.change(screen.getByLabelText("Breakpoint standard"), {
-      target: { value: "std-eucast" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Start AST run" }));
+    await user.selectOptions(
+      screen.getByLabelText("Breakpoint standard"),
+      "std-eucast",
+    );
+    await user.click(screen.getByRole("button", { name: "Start AST run" }));
 
     await waitFor(() =>
       expect(service.startAstRun).toHaveBeenCalledWith({
@@ -166,7 +169,9 @@ describe("AstEntryPanel", () => {
       }),
     );
     expect((await screen.findAllByText("In Progress"))[0]).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Record AST reading" }));
+    await user.click(
+      screen.getByRole("button", { name: "Record AST reading" }),
+    );
 
     expect(
       await screen.findByText(
@@ -181,13 +186,18 @@ describe("AstEntryPanel", () => {
     expect(
       screen.getAllByTestId("microbiology-ast-reading-row")[1],
     ).toHaveTextContent("INTERMEDIATE");
-    fireEvent.change(screen.getByLabelText("Override reason"), {
-      target: { value: "mixed growth confirmed on repeat" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Apply override" }));
+    await user.type(
+      screen.getByLabelText("Override reason"),
+      "mixed growth confirmed on repeat",
+    );
+    await user.click(screen.getByRole("button", { name: "Apply override" }));
 
-    expect(await screen.findByText(/RESISTANT/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Review AST run" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId("microbiology-ast-reading-row")[0],
+      ).toHaveTextContent("RESISTANT"),
+    );
+    await user.click(screen.getByRole("button", { name: "Review AST run" }));
 
     expect((await screen.findAllByText("Reviewed"))[0]).toBeInTheDocument();
     expect(screen.getByText("Final release ready")).toBeInTheDocument();
@@ -232,6 +242,7 @@ describe("AstEntryPanel", () => {
   });
 
   it("starts a repeat attempt from a reviewed run with a required reason", async () => {
+    const user = userEvent.setup();
     const repeatRun = {
       ...reviewedRepeatRun,
       attemptType: "RETEST",
@@ -264,14 +275,13 @@ describe("AstEntryPanel", () => {
       screen.getByRole("button", { name: "Start repeat attempt" }),
     ).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Reason for repeat or retest"), {
-      target: { value: "Control failed" },
-    });
-    fireEvent.click(screen.getByRole("radio", { name: "Retest" }));
-    fireEvent.change(screen.getByLabelText("Attempt method"), {
-      target: { value: "ZONE" },
-    });
-    fireEvent.click(
+    await user.type(
+      screen.getByLabelText("Reason for repeat or retest"),
+      "Control failed",
+    );
+    await user.click(screen.getByRole("radio", { name: "Retest" }));
+    await user.selectOptions(screen.getByLabelText("Attempt method"), "ZONE");
+    await user.click(
       screen.getByRole("button", { name: "Start retest attempt" }),
     );
 
@@ -286,6 +296,7 @@ describe("AstEntryPanel", () => {
   });
 
   it("shows attempt relationships and requires an explicit reportable selection", async () => {
+    const user = userEvent.setup();
     const noSelectionOriginal = { ...reviewedRun, reportable: false };
     const selectedRepeat = { ...reviewedRepeatRun, reportable: true };
     const service = {
@@ -320,7 +331,7 @@ describe("AstEntryPanel", () => {
     expect(screen.getAllByText("Attempt 1")).toHaveLength(2);
     expect(screen.getByText("Reportable AST Run Required")).toBeInTheDocument();
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole("button", { name: "Use attempt 2 for reporting" }),
     );
 
@@ -331,6 +342,7 @@ describe("AstEntryPanel", () => {
   });
 
   it("surfaces named AST conflicts returned by the service", async () => {
+    const user = userEvent.setup();
     const service = {
       getAstPanels: vi.fn().mockResolvedValue([]),
       getAntibiotics: vi.fn().mockResolvedValue([]),
@@ -354,7 +366,7 @@ describe("AstEntryPanel", () => {
 
     renderPanel(service);
 
-    fireEvent.click(
+    await user.click(
       await screen.findByRole("button", {
         name: "Use attempt 2 for reporting",
       }),
