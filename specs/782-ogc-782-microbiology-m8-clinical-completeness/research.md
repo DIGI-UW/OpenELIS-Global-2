@@ -39,6 +39,7 @@
 | OGC-865/867/868 | Jira-state contradiction | Superseded children are Done while the parent is Backlog and the shared picker/wiring remains absent. | Only delivered outcomes count. | Do not infer M-12 completion from child status. OGC-866 remains the closest active outcome contract. |
 | M-12 v3 | Implementation leakage | It names component props, tables, and exact storage behavior as feature requirements. | One consistent lot-selection workflow is reused at culture and AST setup, with FIFO and eligibility rules. | Choose interfaces that match current Inventory/Test Catalog services and preserve transaction boundaries. |
 | M-12 v3 vs repo | Engineering decision needed | `InventoryUsage` can reference an analysis/result, but does not identify the culture setup or AST run where a lot was consumed. | Historical case review must show which bench action used each lot. | Add narrow linkage from the bench action to shared Inventory usage rather than adding another lot/usage store. |
+| OGC-784 vs repo | Real contradiction | OGC-784 names `REQUIRED / OPTIONAL / SUBSTITUTE` reagent-link semantics, while the implemented Test Catalog foundation stores `PRIMARY / SECONDARY`; M8 excludes reagent-link authoring changes. | Required selections must block and optional selections must not, but product role and requirement are separate concepts. | Do not infer requirement from `PRIMARY / SECONDARY`. Repeat AST can proceed; lot enforcement needs a product ruling and a separately recorded Test Catalog compatibility decision. |
 | OGC-782 MVP | Engineering decision needed | Final locking is present; amendment semantics and standard-report revision behavior are not. | A correction must preserve the original report and publish a distinguishable amended version. | Add explicit amendment/report-version orchestration while keeping the standard Analysis/Result reporting path authoritative. |
 
 ## Engineering Decisions
@@ -97,3 +98,9 @@
 3. The authoritative baseline hardware for formal performance acceptance.
    Default: record the actual CI/demo environment and treat thresholds as
    qualification evidence, not a universal capacity guarantee.
+4. How existing `PRIMARY / SECONDARY` Test Catalog reagent links acquire the
+   required/optional behavior named by OGC-784. No default is safe: treating
+   all primary links as required changes current workflows, while treating all
+   existing links as optional cannot satisfy required-lot blocking. This blocks
+   lot-policy implementation, but not repeat AST, accessibility, or the
+   qualification harness.

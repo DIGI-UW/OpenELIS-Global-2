@@ -96,14 +96,27 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
         MicroCaseAmendment amendment = requireOpenAmendment(caseId);
         identificationHistoryService.revertAmendment(amendment.getId(), reason.trim(), performedBy);
         for (MicroAstRun run : astRunDAO.getByAmendmentId(amendment.getId())) {
+            run.setReportable(false);
             run.setStatus(MicroAstRunStatus.CANCELLED.name());
             astRunDAO.update(run);
+            restoreSourceSelection(run);
         }
         close(amendment, MicroCaseAmendmentStatus.CANCELLED, reason.trim(), performedBy);
         relock(microCase, performedBy);
         recordActivity(caseId, MicroCaseActivityType.AMENDMENT_CANCELLED, performedBy,
                 "Amendment " + amendment.getSequenceNumber() + " cancelled", amendment.getId());
         return amendment;
+    }
+
+    private void restoreSourceSelection(MicroAstRun run) {
+        if (run.getSourceRunId() == null || run.getSourceRunId().trim().isEmpty()) {
+            return;
+        }
+        MicroAstRun source = astRunDAO.get(run.getSourceRunId()).orElse(null);
+        if (source != null && MicroAstRunStatus.REVIEWED.name().equals(source.getStatus()) && !source.isReportable()) {
+            source.setReportable(true);
+            astRunDAO.update(source);
+        }
     }
 
     @Override

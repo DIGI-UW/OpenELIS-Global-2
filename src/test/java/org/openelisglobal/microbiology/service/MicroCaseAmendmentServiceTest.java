@@ -19,6 +19,8 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
@@ -156,12 +158,27 @@ public class MicroCaseAmendmentServiceTest {
         when(amendmentDAO.getOpenByCaseId("case-1")).thenReturn(amendment);
         when(amendmentDAO.update(amendment)).thenReturn(amendment);
         when(caseDAO.update(microCase)).thenReturn(microCase);
+        MicroAstRun source = new MicroAstRun();
+        source.setId("run-1");
+        source.setStatus(MicroAstRunStatus.REVIEWED.name());
+        source.setReportable(false);
+        MicroAstRun repeat = new MicroAstRun();
+        repeat.setId("run-2");
+        repeat.setSourceRunId("run-1");
+        repeat.setReportable(true);
+        when(astRunDAO.getByAmendmentId("amendment-2")).thenReturn(List.of(repeat));
+        when(astRunDAO.get("run-1")).thenReturn(Optional.of(source));
 
         MicroCaseAmendment cancelled = service.cancelAmendment("case-1", "Correction no longer required", "9");
 
         assertEquals(MicroCaseAmendmentStatus.CANCELLED.name(), cancelled.getStatus());
         assertEquals("Correction no longer required", cancelled.getClosingReason());
         assertEquals(MicroCaseStage.FINAL_RELEASED.name(), microCase.getStage());
+        assertEquals(true, source.isReportable());
+        assertEquals(false, repeat.isReportable());
+        assertEquals(MicroAstRunStatus.CANCELLED.name(), repeat.getStatus());
+        verify(astRunDAO).update(source);
+        verify(astRunDAO).update(repeat);
         verify(identificationHistoryService).revertAmendment("amendment-2", "Correction no longer required", "9");
         verify(reportVersionService, never()).recordAmendedFinal(any(MicroCaseAmendment.class),
                 any(MicroReportProjectionResult.class), any(String.class));
