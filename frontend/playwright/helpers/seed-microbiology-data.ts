@@ -105,7 +105,7 @@ export async function seedMicrobiologyWorklistCases(
   }
   const cases: SeededMicrobiologyCase[] = [];
   for (let index = 0; index < count; index += 1) {
-    cases.push(await seedMicrobiologyMvpCase(page));
+    cases.push(await seedMicrobiologyWorklistCase(page));
   }
   return cases;
 }
