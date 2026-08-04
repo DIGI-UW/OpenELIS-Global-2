@@ -189,7 +189,7 @@ public class MicrobiologyUatScenarioService {
                 ? createReferenceAdminData(astReferenceData, performedBy)
                 : null;
         MicroOrganism unmappedOrganism = WHONET_EXPORT_SCENARIO.equals(scenario)
-                ? getOrCreateUnmappedReferenceOrganism(performedBy)
+                ? getOrCreateUnmappedReferenceOrganism(suffix, performedBy)
                 : null;
 
         ensureSampleType(sampleItem, performedBy);
@@ -483,8 +483,8 @@ public class MicrobiologyUatScenarioService {
         return referenceAdminService.saveOrganism(organism.id, organism, performedBy);
     }
 
-    private MicroOrganism getOrCreateUnmappedReferenceOrganism(String performedBy) {
-        String displayName = "WHONET mapping pending (UAT)";
+    private MicroOrganism getOrCreateUnmappedReferenceOrganism(String suffix, String performedBy) {
+        String displayName = "WHONET mapping pending (UAT " + suffix + ")";
         MicroReferenceAdminQueryForm query = new MicroReferenceAdminQueryForm();
         query.q = displayName;
         MicroOrganismAdminForm existing = referenceAdminService.getOrganisms(query).rows.stream()
