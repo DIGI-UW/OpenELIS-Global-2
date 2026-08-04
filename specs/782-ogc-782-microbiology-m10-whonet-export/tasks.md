@@ -4,18 +4,18 @@
 
 - [x] T001 Ground scope in OGC-794/878/880, Confluence v2.1, M-09, and M3 repo state.
 - [x] T002 Record implementation leakage, contradictions, defaults, and deferred decisions.
-- [ ] T003 Add failing dataset tests for final date selection, significance, de-duplication, used-set mappings, and multiple AST readings.
-- [ ] T004 Add failing report tests for CSV escaping, blocked generation, audit fingerprint, and authenticated actor.
-- [ ] T005 Add failing controller tests for preview, download headers, authorization, and invalid input.
-- [ ] T006 Add failing Liquibase update/rollback and ORM registration tests.
+- [x] T003 Add failing dataset tests for final date selection, significance, de-duplication, used-set mappings, and multiple AST readings.
+- [x] T004 Add failing report tests for CSV escaping, blocked generation, audit fingerprint, and authenticated actor.
+- [x] T005 Add failing controller tests for preview, download headers, authorization, and invalid input.
+- [x] T006 Add failing Liquibase update/rollback and ORM registration tests.
 
 ## Phase 2 - Backend
 
-- [ ] T007 Add export-run audit migration, entity, DAO, and persistence registration.
-- [ ] T008 Add a bulk finalized-case query and microbiology WHONET dataset compiler.
-- [ ] T009 Extend `WHONetReportService` with preview, generate, and recent-run behavior.
-- [ ] T010 Reuse the existing CSV row/builder contract for microbiology rows.
-- [ ] T011 Add authenticated preview/generate REST endpoints and structured errors.
+- [x] T007 Add export-run audit migration, entity, DAO, and persistence registration.
+- [x] T008 Add a bulk finalized-case query and microbiology WHONET dataset compiler.
+- [x] T009 Extend `WHONetReportService` with preview and generate behavior.
+- [x] T010 Reuse the existing CSV row/builder contract for microbiology rows.
+- [x] T011 Add authenticated preview/generate REST endpoints and structured errors.
 - [ ] T012 Extend service-created UAT data so M4 has mapped and unmapped finalized cases without SQL or fixed persisted IDs.
 
 ## Phase 3 - Frontend
@@ -40,4 +40,3 @@
 - [ ] T024 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence checks.
 - [ ] T025 Synchronize the parent roadmap/spec status without overclaiming deferred M-09 scope.
 - [ ] T026 Commit, push, open the stacked draft PR against M3, and publish exact evidence and check state.
-

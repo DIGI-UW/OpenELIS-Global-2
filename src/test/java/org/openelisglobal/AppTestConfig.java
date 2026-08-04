@@ -38,6 +38,7 @@ import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
+import org.openelisglobal.reports.service.WHONetReportService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
@@ -139,6 +140,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TestNotificationServiceImpl.class) })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
+
+    @Bean
+    @Profile("test")
+    public WHONetReportService whonetReportService() {
+        return mock(WHONetReportService.class);
+    }
 
     @Bean
     @Profile("test")

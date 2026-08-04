@@ -7,4 +7,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 public interface MicroAstReadingDAO extends BaseDAO<MicroAstReading, String> {
 
     List<MicroAstReading> getByRunId(String runId);
+
+    List<MicroAstReading> getByRunIds(List<String> runIds);
 }

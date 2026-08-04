@@ -30,6 +30,7 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEve
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersionSource;
+import org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
@@ -68,6 +69,7 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroReportVersion.class));
         assertNotNull(metamodel.entity(MicroReportVersionSource.class));
         assertNotNull(metamodel.entity(MicroInventoryUsageLink.class));
+        assertNotNull(metamodel.entity(MicroWhonetExportRun.class));
     }
 
     @Test

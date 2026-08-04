@@ -9,6 +9,7 @@ import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.service.MicroReferenceConflictException;
+import org.openelisglobal.microbiology.service.MicroWhonetExportBlockedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -27,6 +28,13 @@ abstract class MicrobiologyRestControllerSupport extends BaseRestController {
     protected ResponseEntity<Map<String, Object>> handleReferenceConflict(MicroReferenceConflictException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
                 "MICROBIOLOGY_REFERENCE_CONFLICT", "message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MicroWhonetExportBlockedException.class)
+    protected ResponseEntity<Map<String, Object>> handleWhonetExportBlocked(
+            MicroWhonetExportBlockedException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
+                "MICROBIOLOGY_WHONET_EXPORT_BLOCKED", "message", exception.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

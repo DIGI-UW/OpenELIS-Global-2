@@ -60,6 +60,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroReportVersion</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroReportVersionSource</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
