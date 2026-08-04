@@ -75,12 +75,17 @@ import ExternalConnectionMenu from "./externalConnections/ExternalConnectionMenu
 import ExternalConnectionAddModify from "./externalConnections/ExternalConnectionAddModify";
 import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import AdminDashboard from "./AdminDashboard";
+import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
 
 function Admin() {
   const { path } = useRouteMatch();
 
   return (
     <Switch>
+      <Route
+        path={`${path}/MicrobiologyReference/:section/:detailId?`}
+        component={MicrobiologyReferenceAdmin}
+      />
       <Route
         path={`${path}/calendarManagement`}
         component={CalendarManagement}

@@ -24,6 +24,7 @@ import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
+import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
@@ -74,6 +75,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                 .sorted(Comparator.comparing(MicroOrganism::getDisplayName, String.CASE_INSENSITIVE_ORDER))
                 .map(this::toOrganismForm).toList();
         return page(rows, normalized);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroOrganismAdminForm getOrganism(String id) {
+        return toOrganismForm(
+                organismDAO.get(id).orElseThrow(() -> new IllegalArgumentException("Organism not found: " + id)));
     }
 
     @Override
@@ -141,6 +149,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public MicroAntibioticAdminForm getAntibiotic(String id) {
+        return toAntibioticForm(
+                antibioticDAO.get(id).orElseThrow(() -> new IllegalArgumentException("Antibiotic not found: " + id)));
+    }
+
+    @Override
     @Transactional
     public MicroAntibioticAdminForm saveAntibiotic(String id, MicroAntibioticAdminForm request, String actorId) {
         requireActor(actorId);
@@ -202,6 +217,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                         .thenComparing(MicroAstPanel::getVersionNumber, Comparator.reverseOrder()))
                 .map(this::toPanelForm).toList();
         return page(rows, normalized);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroCultureSetupAdminForm getCultureSetup(String id) {
+        return toCultureSetupForm(cultureSetupDAO.get(id)
+                .orElseThrow(() -> new IllegalArgumentException("Culture setup not found: " + id)));
     }
 
     @Override
@@ -303,6 +325,23 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         return toCultureSetupForm(setup);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroReferenceOptionForm> getOptions(String resource) {
+        if ("methods".equals(resource)) {
+            return methodService.getAllActiveMethods().stream()
+                    .sorted(Comparator.comparing(Method::getMethodName, String.CASE_INSENSITIVE_ORDER))
+                    .map(method -> option(method.getId(), method.getMethodName(), method.getCode())).toList();
+        }
+        if ("ast-panels".equals(resource)) {
+            return panelDAO.getAll().stream().filter(panel -> "Y".equals(panel.getIsActive()))
+                    .filter(panel -> "Y".equals(panel.getIsCurrent()))
+                    .sorted(Comparator.comparing(MicroAstPanel::getName, String.CASE_INSENSITIVE_ORDER))
+                    .map(panel -> option(panel.getId(), panel.getName(), "v" + panel.getVersionNumber())).toList();
+        }
+        throw new IllegalArgumentException("Unsupported option resource: " + resource);
+    }
+
     private void applyPanel(MicroAstPanel panel, MicroAstPanelAdminForm request, String actorId) {
         if (request == null) {
             throw new IllegalArgumentException("AST panel is required");
@@ -375,6 +414,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.notes = organism.getNotes();
         form.active = "Y".equals(organism.getIsActive());
         form.seeded = organism.isSeeded();
+        form.referenceCount = organismDAO.countWorkflowReferences(organism.getId());
         return form;
     }
 
@@ -388,6 +428,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.notes = antibiotic.getNotes();
         form.active = "Y".equals(antibiotic.getIsActive());
         form.seeded = antibiotic.isSeeded();
+        form.referenceCount = antibioticDAO.countWorkflowReferences(antibiotic.getId());
         return form;
     }
 
@@ -440,6 +481,14 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private String methodName(String methodId) {
         Method method = methodService.findById(methodId);
         return method == null ? null : method.getMethodName();
+    }
+
+    private MicroReferenceOptionForm option(String id, String label, String code) {
+        MicroReferenceOptionForm option = new MicroReferenceOptionForm();
+        option.id = id;
+        option.label = label;
+        option.code = code;
+        return option;
     }
 
     private <T> MicroReferenceAdminPageForm<T> page(List<T> all, MicroReferenceAdminQueryForm query) {

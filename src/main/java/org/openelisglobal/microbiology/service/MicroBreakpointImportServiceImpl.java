@@ -92,7 +92,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                     row.organismGroup, row.antibioticId, row.method, row.specimenTypeId, row.breakpointType);
             if (existingRule.isPresent() && existingRule.get().isLocallyCustomized()) {
                 preview.errors.add(error(row.rowNumber,
-                        "A locally customized breakpoint exists for this organism, antibiotic, and method"));
+                        "A locally customized breakpoint exists for this organism, antibiotic, and method",
+                        row.sourceRow));
                 continue;
             }
             MicroBreakpointRule rule = toRule(row, standard.getId(), actorId);
@@ -118,7 +119,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 try {
                     preview.validRows.add(parseRow(record));
                 } catch (IllegalArgumentException exception) {
-                    preview.errors.add(error((int) record.getRecordNumber() + 1, exception.getMessage()));
+                    preview.errors.add(error((int) record.getRecordNumber() + 1, exception.getMessage(),
+                            CSVFormat.DEFAULT.format(record.values())));
                 }
             }
             return preview;
@@ -130,6 +132,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
     private ImportRow parseRow(CSVRecord record) {
         ImportRow row = new ImportRow();
         row.rowNumber = (int) record.getRecordNumber() + 1;
+        row.sourceRow = CSVFormat.DEFAULT.format(record.values());
         row.authority = required(record, "publisher").toUpperCase(Locale.ROOT);
         if (!AUTHORITIES.contains(row.authority)) {
             throw new IllegalArgumentException("Unsupported publisher: " + row.authority);
@@ -269,10 +272,11 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         }
     }
 
-    private MicroBreakpointImportErrorForm error(int rowNumber, String message) {
+    private MicroBreakpointImportErrorForm error(int rowNumber, String message, String sourceRow) {
         MicroBreakpointImportErrorForm error = new MicroBreakpointImportErrorForm();
         error.rowNumber = rowNumber;
         error.message = message;
+        error.sourceRow = sourceRow;
         return error;
     }
 
@@ -310,5 +314,6 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         private BigDecimal resistantValue;
         private String units;
         private String sourceHash;
+        private String sourceRow;
     }
 }
