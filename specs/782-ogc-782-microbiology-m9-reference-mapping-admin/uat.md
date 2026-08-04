@@ -43,3 +43,17 @@ remain Pass / Fail / N/A with notes; automation is pre-UAT evidence only.
 
 All M3 steps are required for M3 acceptance. They do not change the requiredness
 of existing M1/M2 steps or the optional shared-specimen TB reflection.
+
+## Published Checklist
+
+- Instance: `amr`
+- Title: `Microbiology M1 + M2 + M3 - review`
+- Revision: `c3a490ab422180d87ada093cf05a2cc727413a01bc6234c3217fb99c466e7c3c`
+- Inventory: 13 stories, 33 steps, 32 required, 1 optional
+- M3 keys: `AMR-S10` through `AMR-S13`; `AMR-32` through `AMR-44`
+- Verified live on both the public Grist JSON and
+  `amr.openelis-global.org/__review/uat-amr.json`.
+
+Publication proves that reviewers can see the contract. It does not constitute
+human acceptance; all M3 reviewer marks remain pending until recorded in the
+overlay.

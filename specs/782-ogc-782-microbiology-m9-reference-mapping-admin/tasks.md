@@ -6,22 +6,22 @@
 - [x] T002 Reconcile Jira, openelis-work, and current repo state in `research.md`.
 - [x] T003 Lock behavior-only acceptance criteria in `spec.md`.
 - [x] T004 Add failing service tests for organism/antibiotic validation, uniqueness,
-  deactivation impact, and reactivation.
+      deactivation impact, and reactivation.
 - [x] T005 Add failing service/integration tests for immutable AST panel versions.
 - [x] T006 Add failing breakpoint lifecycle/activation tests, including one active
-  standard per publisher and historical-run preservation.
+      standard per publisher and historical-run preservation.
 - [x] T007 Add failing CSV preview/apply tests for mixed-validity rows,
-  idempotency, and local customization protection.
+      idempotency, and local customization protection.
 - [ ] T007A Execute the PostgreSQL transaction-rollback proof in a Docker-capable
-  environment.
+      environment.
 - [x] T008 Add failing controller tests for admin authorization and
-  authenticated-actor derivation.
+      authenticated-actor derivation.
 - [x] T009 Extend ORM and Liquibase update/rollback tests before implementation.
 
 ## Phase 2 - Backend
 
 - [x] T010 Add the M9 Liquibase changelog with rollback for accepted model fields,
-  panel versions, breakpoint lifecycle/import metadata, and activation audit.
+      panel versions, breakpoint lifecycle/import metadata, and activation audit.
 - [x] T011 Extend existing valueholders and add activation-event valueholder.
 - [x] T012 Add typed DAO queries and natural-key/reference-impact checks.
 - [x] T013 Implement compiled admin list/detail DTOs and query forms.
@@ -40,9 +40,9 @@
 - [x] T023 Build organism and antibiotic list/edit/deactivate workflows.
 - [x] T024 Build versioned AST panel editor with ordered tier/report behavior.
 - [x] T025 Build culture-Method configuration surface without a duplicate Method
-  vocabulary.
+      vocabulary.
 - [x] T026 Build breakpoint standard list, rule detail, local-correction,
-  activation, and archive UI.
+      activation, and archive UI.
 - [x] T027 Build CSV preview/results/error-download UI.
 - [x] T028 Add linkable PageBreadCrumb paths and canonical URL preservation.
 - [ ] T029 Add English i18n keys and focused component/accessibility tests.
@@ -54,13 +54,13 @@
 - [ ] T032 Prove AST panel versioning and historical-run preservation.
 - [ ] T033 Prove breakpoint activation and mixed-validity import.
 - [ ] T034 Prove canonical URL reload, Back/Forward, sidenav, and breadcrumbs.
-- [ ] T035 Publish M3 Grist stories while retaining all M1/M2 stories.
+- [x] T035 Publish M3 Grist stories while retaining all M1/M2 stories.
 - [ ] T036 Run focused backend, ORM, migration, component, Playwright, formatting,
-  and `git diff --check` validation.
+      and `git diff --check` validation.
 - [ ] T037 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence
-  reviews and record outputs.
-- [ ] T038 Commit and push coherent checkpoints promptly; open the stacked draft PR.
+      reviews and record outputs.
+- [x] T038 Commit and push coherent checkpoints promptly; open the stacked draft PR.
 - [ ] T039 Deploy the exact M3 SHA to AMR, verify app/schema metadata, and rerun the
-  registered live UAT contract and M3 Playwright journey.
+      registered live UAT contract and M3 Playwright journey.
 - [ ] T040 Update the PR, Jira, roadmap, UAT revision, screenshots, and external
-  walkthrough/contact-sheet links without claiming human acceptance.
+      walkthrough/contact-sheet links without claiming human acceptance.
