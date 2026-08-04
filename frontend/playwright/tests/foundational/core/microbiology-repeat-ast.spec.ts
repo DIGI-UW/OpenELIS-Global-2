@@ -4,7 +4,7 @@ import { seedReviewedMicrobiologyCase } from "../../../helpers/seed-microbiology
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const accordionButton = (page: Page, name: string) =>
-  page.locator(".cds--accordion__heading").filter({ hasText: name });
+  page.getByRole("button", { name, exact: true });
 
 const attachScreenshot = async (
   page: Page,
@@ -47,7 +47,9 @@ test.describe("Microbiology repeat AST attempts", () => {
     });
 
     await test.step("Start a reasoned retest from the original", async () => {
-      await page.getByRole("radio", { name: "Retest" }).check();
+      const retestOption = page.getByRole("radio", { name: "Retest" });
+      await retestOption.press("Space");
+      await expect(retestOption).toBeChecked();
       await page
         .getByLabel("Reason for repeat or retest")
         .fill("Control failure required a fresh inoculum");

@@ -4,7 +4,7 @@ import { seedFinalizedMicrobiologyCase } from "../../../helpers/seed-microbiolog
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const accordionButton = (page: Page, name: string) =>
-  page.locator(".cds--accordion__heading").filter({ hasText: name });
+  page.getByRole("button", { name, exact: true });
 
 const attachScreenshot = async (
   page: Page,
@@ -88,9 +88,11 @@ test.describe("Microbiology final-report amendments", () => {
       });
       await expect(page.getByText("Identification history")).toBeVisible();
       await expect(
-        page.getByText(
-          "Escherichia coli to Klebsiella pneumoniae: MALDI-TOF repeat corrected the organism",
-        ),
+        page
+          .getByTestId("microbiology-isolates-card")
+          .getByText(
+            "Escherichia coli to Klebsiella pneumoniae: MALDI-TOF repeat corrected the organism",
+          ),
       ).toBeVisible();
     });
 
