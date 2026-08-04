@@ -106,7 +106,15 @@ readings. It passed all budgets: worklist initial-render p95 218.2 ms, dense-cas
 initial-render p95 220.9 ms, and Carbon page-interaction p95 58.2 ms. The raw
 samples, percentile method, environment, data volume, and pass/fail results are
 retained in `evidence/browser-performance-local-18e78c75c.*`. Formal query-plan
-review remains open as T046b.
+review at commit `6d6aa2e6e` measured the exact DAO query shapes against 409
+open cases. All five plans completed in 0.023-0.201 ms with zero shared reads
+and zero temporary I/O. PostgreSQL selected in-memory sequential scans because
+the batches covered nearly all rows in the small qualification tables. This is
+consistent with the passing API and browser budgets and does not justify an
+additional index migration. The critical-communication table was empty during
+capture; the catalog confirms its existing `case_id` index, but its zero-row
+plan is not evidence for populated-table selectivity. Details are retained in
+`evidence/query-plan-local-6d6aa2e6e.*`.
 
 Accessibility qualification at commit
 `0248ae2e6920f8c573ea966ea4919567f07b4454` passed eight Playwright tests. The
