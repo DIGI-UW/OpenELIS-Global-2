@@ -3,7 +3,9 @@
 **Date**: 2026-08-03  
 **Repo base**: `6aafb05a9345525e04a0749e01ba09a3e41b5c2d`
 
-## Current Repository State
+## Baseline Repository State
+
+The following observations describe the branch base before M8 implementation:
 
 - Final microbiology cases are mutation-locked by
   `MicroCaseMutationGuard`; no amendment lifecycle exists.
@@ -96,8 +98,38 @@ loading at commit `053f11ff0` reduced worklist-load p95 from 117.622 ms to
 119.081 ms to 3.628 ms. Existing foreign-key indexes cover the batch predicates,
 so no speculative index migration was added. Raw samples and environment data
 for both runs are retained under `evidence/`; these are developer baselines, not
-universal capacity claims. Browser-visible timing and formal query-plan review
-remain open.
+universal capacity claims.
+
+Browser qualification at commit `18e78c75c8ff88ba4d10851bcf88e701420b2c48`
+used 200 active worklist cases and one dense case with five isolates and 80 AST
+readings. It passed all budgets: worklist initial-render p95 218.2 ms, dense-case
+initial-render p95 220.9 ms, and Carbon page-interaction p95 58.2 ms. The raw
+samples, percentile method, environment, data volume, and pass/fail results are
+retained in `evidence/browser-performance-local-18e78c75c.*`. Formal query-plan
+review remains open as T046b.
+
+Accessibility qualification at commit
+`0248ae2e6920f8c573ea966ea4919567f07b4454` passed eight Playwright tests. The
+suite retained 14 standalone axe JSON results and 14 matching screenshots for
+seven Microbiology surfaces on desktop and mobile; all 14 scans reported zero
+WCAG 2.1 AA violations. Remediation included valid Carbon sidenav list
+semantics, named focusable horizontal-scroll regions, stable worklist search
+during URL-driven revalidation, and component-level regressions. The external
+artifact path and command are recorded in `evidence/accessibility-local-0248ae2e.md`.
+
+The deterministic browser journeys found two integration defects that panel
+unit tests had not exposed. Commit `50daa1855` added repeat-run creation and
+reportable selection to the shared `MicrobiologyService` contract. Commit
+`4cfa4b7ae` made unresolved multi-attempt report preview non-reportable instead
+of returning HTTP 500, while release remains blocked by
+`REPORTABLE_AST_RUN_REQUIRED`. Commit `6901174fc` verified amendment, repeat
+AST, and keyboard-only workflows with case-scoped Carbon role/label
+interactions. These journeys contain no arbitrary waits, sleeps, forced clicks,
+or private Carbon class selectors.
+
+The local console baseline still includes the pre-existing optional
+`/rest/notification/pnconfig` 404 and self-signed-certificate/service-worker
+warnings. Neither warning changed the tested Microbiology behavior.
 
 ## Open Product Questions That Do Not Block Slice A
 

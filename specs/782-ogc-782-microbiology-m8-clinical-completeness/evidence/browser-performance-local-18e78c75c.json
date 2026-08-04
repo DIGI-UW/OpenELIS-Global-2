@@ -1,0 +1,88 @@
+{
+  "commit": "18e78c75c8ff88ba4d10851bcf88e701420b2c48",
+  "environment": {
+    "browser": "chromium",
+    "browserVersion": "145.0.7632.6",
+    "node": "v22.23.2",
+    "platform": "darwin-arm64",
+    "viewport": "1280x720",
+    "baseUrl": "https://127.0.0.1:48444"
+  },
+  "dataVolume": {
+    "worklistCases": 200,
+    "denseCaseIsolates": 5,
+    "denseCaseReadings": 80
+  },
+  "measurements": [
+    {
+      "name": "worklist-initial-render",
+      "thresholdMs": 2000,
+      "warmupIterations": 2,
+      "measuredIterations": 10,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [
+        217.29999995231628,
+        209.79999995231628,
+        204.89999997615814,
+        207.40000009536743,
+        211,
+        218.19999992847443,
+        208.60000002384186,
+        205.80000007152557,
+        208.29999995231628,
+        216.89999997615814
+      ],
+      "p50Ms": 208.60000002384186,
+      "p95Ms": 218.19999992847443,
+      "maxMs": 218.19999992847443,
+      "passed": true
+    },
+    {
+      "name": "dense-case-initial-render",
+      "thresholdMs": 1000,
+      "warmupIterations": 2,
+      "measuredIterations": 10,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [
+        204.5,
+        201.89999997615814,
+        198.79999995231628,
+        202,
+        200,
+        200.60000002384186,
+        220.90000009536743,
+        202.60000002384186,
+        206.19999992847443,
+        211.5
+      ],
+      "p50Ms": 202,
+      "p95Ms": 220.90000009536743,
+      "maxMs": 220.90000009536743,
+      "passed": true
+    },
+    {
+      "name": "worklist-page-interaction",
+      "thresholdMs": 300,
+      "warmupIterations": 2,
+      "measuredIterations": 10,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [
+        55.799999952316284,
+        56.5,
+        54.799999952316284,
+        53,
+        56.200000047683716,
+        58.199999928474426,
+        56,
+        53.39999997615814,
+        57.699999928474426,
+        55.800000071525574
+      ],
+      "p50Ms": 55.800000071525574,
+      "p95Ms": 58.199999928474426,
+      "maxMs": 58.199999928474426,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

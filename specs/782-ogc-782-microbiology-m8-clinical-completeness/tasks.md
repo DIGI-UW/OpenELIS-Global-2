@@ -31,7 +31,7 @@ each slice. A checked task requires committed evidence, not intent.
 - [x] T018 Add REST forms/controllers with server-derived actors and stable blocker codes.
 - [x] T019 Add Carbon amendment/history UI in the case workbench with canonical `section=amendment` state and React Intl strings.
 - [x] T020 Add focused Vitest tests for amendment reason, history, focus management, errors, and relock behavior.
-- [ ] T021 Add registered Playwright amendment journey proving original/amended patient-report content and post-release lock.
+- [x] T021 Add registered Playwright amendment journey proving original/amended patient-report content and post-release lock.
 - [ ] T022 Run Slice A backend/frontend formatting and focused validation; commit as one reviewable checkpoint.
 
 ## Phase 3 - Repeat AST and lot traceability tests (Slice B, red)
@@ -65,18 +65,18 @@ each slice. A checked task requires committed evidence, not intent.
 - [ ] T038b Add the stable axe check for the lot-picker state after lot policy is resolved.
 - [x] T039a Add a keyboard-only Playwright journey through filtering, case navigation, isolate/AST entry, and amendment release.
 - [ ] T039b Extend the keyboard-only journey through lot selection after lot policy is resolved.
-- [ ] T040 Fix detected semantic, labeling, status, focus, and contrast defects using Carbon patterns; add Vitest regressions at the owning component level.
-- [ ] T041 Record desktop/mobile screenshots and machine-readable axe output tied to the commit.
+- [x] T040 Fix detected semantic, labeling, status, focus, and contrast defects using Carbon patterns; add Vitest regressions at the owning component level.
+- [x] T041 Record desktop/mobile screenshots and machine-readable axe output tied to the commit.
 
 ## Phase 6 - Scale and performance qualification (Slice C)
 
 - [x] T042 Add property-gated service-layer qualification builders for 200 worklist cases and one dense case with 5 isolates, 80 readings, and at least 30 events; no SQL, fixed IDs, DAO bypass, or production endpoint.
 - [x] T043 Add cleanup and isolation tests proving qualification data cannot leak across tests or ordinary deployments.
 - [x] T044 Add API measurements for worklist load/search, case load, isolate save, AST save, and timeline save with fixed warm-up/iteration/p95 rules.
-- [ ] T045 Add browser measurements for initial worklist, case render, and filter/page interaction using stable app-ready marks.
+- [x] T045 Add browser measurements for initial worklist, case render, and filter/page interaction using stable app-ready marks.
 - [x] T046a Remove the evidenced worklist N+1 relationship loading and verify existing foreign-key indexes cover the new batch predicates; do not add a speculative migration.
 - [ ] T046b Capture formal query-plan evidence; add an index only where the plan demonstrates need and validate any resulting Liquibase update/rollback.
-- [ ] T047 Emit JSON and Markdown evidence containing raw samples, percentiles, environment, data volume, commit, and pass/fail.
+- [x] T047 Emit JSON and Markdown evidence containing raw samples, percentiles, environment, data volume, commit, and pass/fail.
 
 ## Phase 7 - Completion and artifact reconciliation
 
@@ -94,3 +94,6 @@ each slice. A checked task requires committed evidence, not intent.
 - Slice C accessibility can begin after Slice A UI stabilizes; final evidence waits for Slice B UI.
 - Performance fixture work can proceed after the Slice A schema is stable but must measure the final Slice B data shape.
 - Human UAT of #3789 remains independent and cannot be replaced by M8 automation.
+- T024-T035b lot work remains blocked by the unresolved `PRIMARY / SECONDARY`
+  versus `REQUIRED / OPTIONAL / SUBSTITUTE` product-policy contradiction. No
+  requirement semantics are inferred from the existing role values.
