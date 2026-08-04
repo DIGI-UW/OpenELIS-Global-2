@@ -122,6 +122,9 @@ test.describe("OGC-782 live AMR UAT", () => {
         "EXPECTED_APP_SHA is required so live UAT cannot pass against an unintended build.",
       );
     }
+    const expectedScope = process.env.EXPECTED_APP_SCOPE || "app";
+    const expectedSchemaAffecting =
+      (process.env.EXPECTED_SCHEMA_AFFECTING || "true") === "true";
 
     await test.step("Verify deployment and live UAT contracts", async () => {
       const targetResponse = await request.get("/__review/target.json");
@@ -132,8 +135,8 @@ test.describe("OGC-782 live AMR UAT", () => {
         state: "ready",
         appSha: expectedAppSha,
         appBranch: "feat/782-ogc-782-microbiology-m8-clinical-completeness",
-        scope: "app",
-        schemaAffecting: true,
+        scope: expectedScope,
+        schemaAffecting: expectedSchemaAffecting,
       });
       expect(target.verification.health).toBe("passed");
       expect(target.verification.smoke).toBe("passed");

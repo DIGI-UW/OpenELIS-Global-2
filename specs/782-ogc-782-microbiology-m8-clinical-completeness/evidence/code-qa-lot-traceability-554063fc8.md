@@ -3,8 +3,8 @@
 - Feature commit: `554063fc8`
 - Baseline deployment commit: `cd833663c`
 - `DIGI-UW/code-qa`: `30528d176bd128b4765242d130f38ca9fb85d7b8`
-- Verdict: **aligned and lean for policy-neutral traceability; two integration
-  guards and one product ruling remain open**
+- Verdict: **aligned and lean for policy-neutral traceability; one product
+  ruling and one administration compatibility decision remain open**
 
 ## Alignment
 
@@ -31,9 +31,13 @@ Layer-correct guards also cover:
 - Vitest and Testing Library for rendered Carbon state and ordinary user input.
 - Playwright for the assembled authenticated culture and AST workflow.
 
-The test set is not inflated to claim missing behavior. T025's stale-lot race is
-not yet represented at the real-database level, and T026's rollback-on-forced-
-failure path remains absent.
+`MicroReagentLotTransactionIntegrationTest` closes the two prior integration
+gaps at `87177aee2`: one test invalidates a previously eligible lot and proves
+server-side rejection without bench mutation; the other forces a provenance
+foreign-key failure after consumption is staged and proves the full transaction
+rolls back. A screenshot review then exposed a presentation defect that hid the
+earlier culture row in the AST surface. `8be8cd201` adds a component inversion
+guard and a tightened Playwright assertion before removing that filter.
 
 ## Simplicity
 
