@@ -1,9 +1,13 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
+import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,5 +28,14 @@ abstract class MicrobiologyRestControllerSupport extends BaseRestController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated system user is required");
         }
         return userId;
+    }
+
+    protected List<MicroLotSelection> lotSelections(List<MicroLotSelectionRequestForm> requests) {
+        if (requests == null) {
+            return Collections.emptyList();
+        }
+        return requests.stream()
+                .map(request -> new MicroLotSelection(request.analysisId, request.testReagentLinkId, request.lotId))
+                .toList();
     }
 }

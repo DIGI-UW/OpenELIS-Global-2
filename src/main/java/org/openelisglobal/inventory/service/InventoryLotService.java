@@ -9,6 +9,9 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 public interface InventoryLotService extends BaseObjectService<InventoryLot, Long> {
 
+    /** Locks and returns a lot for an atomic eligibility check and consumption. */
+    InventoryLot getForUpdate(Long lotId);
+
     /**
      * Get available lots for an item sorted by FEFO (First Expired, First Out)
      * Returns lots that are: - ACTIVE or IN_USE status - QC PASSED - Have quantity

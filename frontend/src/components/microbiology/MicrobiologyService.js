@@ -18,6 +18,14 @@ export const recordCaseActivity = (caseId, payload) =>
     );
   });
 
+export const getReagentLotOverview = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/reagent-lots`,
+      resolve,
+    );
+  });
+
 export const createIsolate = (payload) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
@@ -322,6 +330,7 @@ export const getWhonetReadiness = (caseId) =>
 const MicrobiologyService = {
   getCaseDetail,
   recordCaseActivity,
+  getReagentLotOverview,
   createIsolate,
   updateIsolateIdentification,
   getAstPanels,

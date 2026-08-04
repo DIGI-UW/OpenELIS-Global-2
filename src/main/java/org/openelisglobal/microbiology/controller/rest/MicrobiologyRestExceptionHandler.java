@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import java.util.Map;
+import org.openelisglobal.inventory.service.InventoryLotUnavailableException;
 import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
 import org.openelisglobal.microbiology.service.MicroAstConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
@@ -34,5 +35,11 @@ public class MicrobiologyRestExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleLockedCase(MicroCaseLockedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
                 "MICROBIOLOGY_CASE_LOCKED", "message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InventoryLotUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnavailableLot(InventoryLotUnavailableException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
+                "MICROBIOLOGY_LOT_CONFLICT", "message", exception.getCode(), "lotNumber", exception.getLotNumber()));
     }
 }

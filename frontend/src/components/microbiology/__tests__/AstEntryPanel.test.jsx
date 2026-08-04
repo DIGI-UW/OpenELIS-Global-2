@@ -76,6 +76,31 @@ const reviewedRepeatRun = {
   ],
 };
 
+const reagentRequirements = [
+  {
+    analysisId: "41",
+    testId: "22",
+    testName: "Blood culture",
+    linkId: "link-1",
+    reagentName: "AST card",
+    usageType: "SECONDARY",
+    quantityPerTest: 1,
+    quantityUnit: "card",
+    lots: [
+      {
+        id: 17,
+        lotNumber: "AST-FIFO",
+        effectiveExpirationDate: "2026-10-01T00:00:00Z",
+        currentQuantity: 8,
+        status: "ACTIVE",
+        qcStatus: "PASSED",
+        available: true,
+        fefoRecommended: true,
+      },
+    ],
+  },
+];
+
 const renderPanel = (service, props = {}) =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -147,7 +172,7 @@ describe("AstEntryPanel", () => {
       reviewAstRun: vi.fn().mockResolvedValue(reviewedRun),
     };
 
-    renderPanel(service);
+    renderPanel(service, { reagentRequirements });
 
     expect(await screen.findByText("Manual AST")).toBeInTheDocument();
     await waitFor(() =>
@@ -159,6 +184,7 @@ describe("AstEntryPanel", () => {
       screen.getByLabelText("Breakpoint standard"),
       "std-eucast",
     );
+    await user.click(screen.getByLabelText(/AST-FIFO/));
     await user.click(screen.getByRole("button", { name: "Start AST run" }));
 
     await waitFor(() =>
@@ -166,6 +192,13 @@ describe("AstEntryPanel", () => {
         isolateId: "iso-1",
         panelId: "panel-1",
         breakpointStandardId: "std-eucast",
+        lotSelections: [
+          {
+            analysisId: "41",
+            testReagentLinkId: "link-1",
+            lotId: 17,
+          },
+        ],
       }),
     );
     expect((await screen.findAllByText("In Progress"))[0]).toBeInTheDocument();

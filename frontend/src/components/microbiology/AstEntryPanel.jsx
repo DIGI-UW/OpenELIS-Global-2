@@ -13,6 +13,8 @@ import {
 import { useIntl } from "react-intl";
 import AstAttemptTable from "./AstAttemptTable";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import ReagentLotPicker from "./ReagentLotPicker";
+import ReagentUsageHistory from "./ReagentUsageHistory";
 
 const METHOD_OPTIONS = ["MIC", "ZONE"];
 const OVERRIDE_OPTIONS = ["SUSCEPTIBLE", "INTERMEDIATE", "RESISTANT"];
@@ -25,6 +27,8 @@ const AstEntryPanel = ({
   saving: caseSaving,
   onAstUpdated,
   readOnly = false,
+  reagentRequirements = [],
+  reagentUsages = [],
 }) => {
   const intl = useIntl();
   const [selectedIsolateId, setSelectedIsolateId] = useState("");
@@ -48,6 +52,7 @@ const AstEntryPanel = ({
   const [readiness, setReadiness] = useState(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [selectedLots, setSelectedLots] = useState({});
 
   const activeIsolateId = selectedIsolateId || isolates[0]?.id || "";
 
@@ -116,6 +121,15 @@ const AstEntryPanel = ({
   const isReviewed = currentRun?.status === "REVIEWED";
   const hasInProgressRun = runs.some((run) => run.status === "IN_PROGRESS");
   const effectiveAttemptMethod = attemptMethod || currentRun?.method || "MIC";
+  const lotSelections = Object.values(selectedLots);
+
+  const selectLot = (selection) => {
+    const selectionKey = `${selection.analysisId}:${selection.testReagentLinkId}`;
+    setSelectedLots((current) => ({
+      ...current,
+      [selectionKey]: selection,
+    }));
+  };
 
   const viewRun = (runId) => {
     setSelectedRunId(runId);
@@ -159,10 +173,12 @@ const AstEntryPanel = ({
         isolateId: activeIsolateId,
         panelId: selectedPanelId,
         breakpointStandardId: selectedStandardId,
+        ...(lotSelections.length > 0 ? { lotSelections } : {}),
       }),
     ).then((run) => {
       if (run) {
         setSelectedRunId(run.id);
+        setSelectedLots({});
       }
     });
 
@@ -172,11 +188,13 @@ const AstEntryPanel = ({
         attemptType,
         reason: attemptReason,
         method: effectiveAttemptMethod,
+        ...(lotSelections.length > 0 ? { lotSelections } : {}),
       }),
     ).then((run) => {
       if (run) {
         setSelectedRunId(run.id);
         setAttemptReason("");
+        setSelectedLots({});
       }
     });
 
@@ -321,6 +339,15 @@ const AstEntryPanel = ({
                 >
                   {intl.formatMessage({ id: "microbiology.ast.startRun" })}
                 </Button>
+              </div>
+              <div className="microbiology-form-grid__wide">
+                <ReagentLotPicker
+                  id="microbiology-ast-lots"
+                  requirements={reagentRequirements}
+                  selectedLots={selectedLots}
+                  onChange={selectLot}
+                  disabled={busy || readOnly}
+                />
               </div>
             </div>
             {runs.length > 0 ? (
@@ -611,6 +638,11 @@ const AstEntryPanel = ({
                 ) : null}
               </div>
             ) : null}
+            <ReagentUsageHistory
+              usages={reagentUsages.filter(
+                (usage) => usage.usageContext === "AST_SETUP",
+              )}
+            />
           </>
         )}
       </div>

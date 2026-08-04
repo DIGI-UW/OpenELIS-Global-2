@@ -22,6 +22,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,10 +41,12 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroBreakpointService breakpointService;
     private final MicroAstInterpretationService interpretationService;
     private final MicroCaseAmendmentDAO amendmentDAO;
+    private final MicroReagentLotService reagentLotService;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
-            MicroAstInterpretationService interpretationService, MicroCaseAmendmentDAO amendmentDAO) {
+            MicroAstInterpretationService interpretationService, MicroCaseAmendmentDAO amendmentDAO,
+            MicroReagentLotService reagentLotService) {
         this.runDAO = runDAO;
         this.readingDAO = readingDAO;
         this.isolateDAO = isolateDAO;
@@ -52,6 +55,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         this.breakpointService = breakpointService;
         this.interpretationService = interpretationService;
         this.amendmentDAO = amendmentDAO;
+        this.reagentLotService = reagentLotService;
     }
 
     @Override
@@ -63,6 +67,13 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Override
     @Transactional
     public MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String performedBy) {
+        return startRun(isolateId, panelId, breakpointStandardId, List.of(), performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId,
+            List<MicroLotSelection> lotSelections, String performedBy) {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
@@ -82,6 +93,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         runDAO.insert(run);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CREATED, performedBy, "AST run created",
                 "{\"astRunId\":\"" + run.getId() + "\"}");
+        reagentLotService.recordSelections(isolate.getCaseId(), MicroInventoryUsageContext.AST_SETUP, run.getId(),
+                lotSelections, performedBy);
         return run;
     }
 
@@ -89,6 +102,13 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Transactional
     public MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
             MicroAstMethod method, String performedBy) {
+        return startRepeatRun(sourceRunId, attemptType, reason, method, List.of(), performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
+            MicroAstMethod method, List<MicroLotSelection> lotSelections, String performedBy) {
         MicroCaseServiceImpl.requireText(sourceRunId, "sourceRunId");
         if (attemptType == null || MicroAstAttemptType.ORIGINAL.equals(attemptType)) {
             throw new IllegalArgumentException("AST_REPEAT_OR_RETEST_REQUIRED");
@@ -128,6 +148,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CREATED, performedBy,
                 attemptType.name() + " AST run created",
                 "{\"astRunId\":\"" + run.getId() + "\",\"sourceRunId\":\"" + source.getId() + "\"}");
+        reagentLotService.recordSelections(isolate.getCaseId(), MicroInventoryUsageContext.AST_SETUP, run.getId(),
+                lotSelections, performedBy);
         return run;
     }
 

@@ -23,6 +23,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
@@ -64,6 +65,7 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroCaseOrderDetail.class));
         assertNotNull(metamodel.entity(MicroReportVersion.class));
         assertNotNull(metamodel.entity(MicroReportVersionSource.class));
+        assertNotNull(metamodel.entity(MicroInventoryUsageLink.class));
     }
 
     @Test

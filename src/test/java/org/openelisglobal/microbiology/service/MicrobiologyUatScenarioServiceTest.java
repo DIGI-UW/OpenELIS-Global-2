@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +29,11 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.inventory.service.InventoryItemService;
+import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.service.InventoryManagementService;
+import org.openelisglobal.inventory.valueholder.InventoryItem;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
@@ -53,6 +59,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
+import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -124,6 +132,18 @@ public class MicrobiologyUatScenarioServiceTest {
     private MicroOrderRoutingService orderRoutingService;
 
     @Mock
+    private InventoryItemService inventoryItemService;
+
+    @Mock
+    private InventoryLotService inventoryLotService;
+
+    @Mock
+    private InventoryManagementService inventoryManagementService;
+
+    @Mock
+    private TestReagentLinkService testReagentLinkService;
+
+    @Mock
     private AutowireCapableBeanFactory beanFactory;
 
     @Mock
@@ -151,11 +171,17 @@ public class MicrobiologyUatScenarioServiceTest {
             return invocation.getArgument(2);
         });
         MessageUtil.setMessageSource(messageSource);
+        doAnswer(invocation -> {
+            InventoryItem item = invocation.getArgument(0);
+            item.setId("UAT microbiology blood agar".equals(item.getName()) ? 13L : 14L);
+            return null;
+        }).when(inventoryItemService).insert(any(InventoryItem.class));
 
         service = new MicrobiologyUatScenarioService(methodService, sampleService, sampleItemService, patientService,
                 personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
                 testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
-                testResultService, statusService, configurationService, caseService, orderRoutingService);
+                testResultService, statusService, configurationService, caseService, orderRoutingService,
+                inventoryItemService, inventoryLotService, inventoryManagementService, testReagentLinkService);
     }
 
     @After
@@ -208,6 +234,38 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals(test, testResultCaptor.getValue().getTest());
         assertEquals("R", testResultCaptor.getValue().getTestResultType());
         assertTrue(testResultCaptor.getValue().getIsActive());
+    }
+
+    @Test
+    public void provisionsReusableLotTraceabilityFixturesThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "MVP";
+        request.scenarioKey = "playwright-lot-traceability";
+
+        service.provision(request, "1");
+
+        ArgumentCaptor<InventoryItem> itemCaptor = ArgumentCaptor.forClass(InventoryItem.class);
+        verify(inventoryItemService, times(2)).insert(itemCaptor.capture());
+        assertEquals("UAT microbiology blood agar", itemCaptor.getAllValues().get(0).getName());
+        assertEquals("UAT microbiology AST card", itemCaptor.getAllValues().get(1).getName());
+        ArgumentCaptor<TestReagentLink> linkCaptor = ArgumentCaptor.forClass(TestReagentLink.class);
+        verify(testReagentLinkService, times(2)).insert(linkCaptor.capture());
+        assertEquals("PRIMARY", linkCaptor.getAllValues().get(0).getUsageType());
+        assertEquals("SECONDARY", linkCaptor.getAllValues().get(1).getUsageType());
+        ArgumentCaptor<InventoryLot> lotCaptor = ArgumentCaptor.forClass(InventoryLot.class);
+        verify(inventoryManagementService, times(5)).receiveInventory(lotCaptor.capture(), anyString());
+        assertEquals("UAT-MICRO-MEDIA-EXPIRED", lotCaptor.getAllValues().get(0).getLotNumber());
+        assertTrue(lotCaptor.getAllValues().get(0).isExpired());
+        assertEquals("UAT-MICRO-MEDIA-FEFO", lotCaptor.getAllValues().get(1).getLotNumber());
     }
 
     @Test

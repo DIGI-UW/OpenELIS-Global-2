@@ -71,12 +71,15 @@ public class MicroAstServiceTest {
     @Mock
     private MicroCaseAmendmentDAO amendmentDAO;
 
+    @Mock
+    private MicroReagentLotService reagentLotService;
+
     private MicroAstService service;
 
     @Before
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
-                interpretationService, amendmentDAO);
+                interpretationService, amendmentDAO, reagentLotService);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
     }
 

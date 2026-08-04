@@ -29,7 +29,10 @@ import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioRequestForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroBreakpointService;
 import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
+import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
+import org.openelisglobal.microbiology.service.MicroLotSelection;
+import org.openelisglobal.microbiology.service.MicroReagentLotService;
 import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
 import org.openelisglobal.microbiology.service.MicrobiologyUatScenarioService;
@@ -41,6 +44,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
@@ -92,6 +96,12 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
 
     @Autowired
     private MicroCaseAnalysisService caseAnalysisService;
+
+    @Autowired
+    private MicroCaseStateService caseStateService;
+
+    @Autowired
+    private MicroReagentLotService reagentLotService;
 
     @Autowired
     private SampleService sampleService;
@@ -200,6 +210,48 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
                 .filter(antibiotic -> "GENUAT".equals(antibiotic.getWhonetCode())).count());
         assertEquals(1L, referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
                 .filter(panel -> "Gram negative AST panel (UAT)".equals(panel.getName())).count());
+    }
+
+    @Test
+    public void uatLotSelectionsConsumeExactLotsAndRetainBenchProvenance() {
+        String performedBy = fixtures.defaultUserId();
+        MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(scenarioRequest("MVP"), performedBy);
+        var requirements = reagentLotService.getRequirements(scenario.caseId);
+        assertEquals(2, requirements.size());
+        var media = requirements.stream().filter(requirement -> "PRIMARY".equals(requirement.usageType)).findFirst()
+                .orElseThrow();
+        var astCard = requirements.stream().filter(requirement -> "SECONDARY".equals(requirement.usageType)).findFirst()
+                .orElseThrow();
+        var selectedMedia = media.lots.stream().filter(lot -> "UAT-MICRO-MEDIA-FEFO".equals(lot.lotNumber)).findFirst()
+                .orElseThrow();
+        var selectedCard = astCard.lots.stream().filter(lot -> "UAT-MICRO-CARD-FEFO".equals(lot.lotNumber)).findFirst()
+                .orElseThrow();
+        assertTrue(selectedMedia.available);
+        assertTrue(selectedMedia.fefoRecommended);
+        assertTrue(selectedCard.available);
+        double mediaQuantity = selectedMedia.currentQuantity;
+        double cardQuantity = selectedCard.currentQuantity;
+
+        caseStateService.advanceStage(scenario.caseId, MicroCaseStage.SETUP_RECORDED, performedBy,
+                "Service-created lot traceability integration",
+                List.of(new MicroLotSelection(scenario.analysisId, media.linkId, selectedMedia.id),
+                        new MicroLotSelection(scenario.analysisId, astCard.linkId, selectedCard.id)));
+
+        var refreshed = reagentLotService.getRequirements(scenario.caseId);
+        assertEquals(mediaQuantity - 1.0,
+                refreshed.stream().filter(requirement -> media.linkId.equals(requirement.linkId)).findFirst()
+                        .orElseThrow().lots.stream().filter(lot -> selectedMedia.id.equals(lot.id)).findFirst()
+                        .orElseThrow().currentQuantity,
+                0.001);
+        assertEquals(cardQuantity - 1.0,
+                refreshed.stream().filter(requirement -> astCard.linkId.equals(requirement.linkId)).findFirst()
+                        .orElseThrow().lots.stream().filter(lot -> selectedCard.id.equals(lot.id)).findFirst()
+                        .orElseThrow().currentQuantity,
+                0.001);
+        var history = reagentLotService.getUsageHistory(scenario.caseId);
+        assertEquals(2, history.size());
+        assertTrue(history.stream().allMatch(usage -> "CULTURE_SETUP".equals(usage.usageContext)));
+        assertTrue(history.stream().allMatch(usage -> usage.actionId != null));
     }
 
     @Test
