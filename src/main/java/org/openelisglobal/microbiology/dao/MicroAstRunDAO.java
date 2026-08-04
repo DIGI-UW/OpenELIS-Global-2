@@ -8,5 +8,7 @@ public interface MicroAstRunDAO extends BaseDAO<MicroAstRun, String> {
 
     List<MicroAstRun> getByIsolateId(String isolateId);
 
+    List<MicroAstRun> getByIsolateIds(List<String> isolateIds);
+
     List<MicroAstRun> getByAmendmentId(String amendmentId);
 }

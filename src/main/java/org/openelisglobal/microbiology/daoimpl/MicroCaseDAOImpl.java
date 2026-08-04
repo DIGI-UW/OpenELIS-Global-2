@@ -39,6 +39,19 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
 
     @Override
     @Transactional(readOnly = true)
+    public List<MicroCase> getBySampleItemIds(List<String> sampleItemIds) {
+        if (sampleItemIds == null || sampleItemIds.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroCase> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroCase c where c.sampleItemId in (:sampleItemIds)"
+                        + " order by c.sampleItemId, c.workflowType", MicroCase.class);
+        query.setParameterList("sampleItemIds", sampleItemIds);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MicroCase> getOpenCases() {
         Query<MicroCase> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroCase c where c.closedAt is null order by c.createdAt", MicroCase.class);

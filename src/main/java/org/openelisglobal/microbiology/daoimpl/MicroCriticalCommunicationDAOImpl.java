@@ -30,6 +30,19 @@ public class MicroCriticalCommunicationDAOImpl extends BaseDAOImpl<MicroCritical
 
     @Override
     @Transactional(readOnly = true)
+    public List<MicroCriticalCommunication> getByCaseIds(List<String> caseIds) {
+        if (caseIds == null || caseIds.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroCriticalCommunication> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroCriticalCommunication c where c.caseId in (:caseIds)"
+                        + " order by c.caseId, c.communicatedAt", MicroCriticalCommunication.class);
+        query.setParameterList("caseIds", caseIds);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public MicroCriticalCommunication getByAlertId(Long alertId) {
         if (alertId == null) {
             return null;
