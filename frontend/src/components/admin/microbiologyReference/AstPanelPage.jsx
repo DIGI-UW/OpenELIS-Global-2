@@ -31,7 +31,7 @@ import {
 import { Add, ArrowDown, ArrowUp, TrashCan } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { getAstPanel, getReferencePage, publishAstPanel } from "./api";
-import { buildReferenceQuery } from "./queryState";
+import { buildReferenceRequestQuery } from "./queryState";
 
 const emptyPanel = {
   name: "",
@@ -52,13 +52,14 @@ const AstPanelPage = ({ query, setQuery }) => {
   const [saving, setSaving] = useState(false);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [error, setError] = useState("");
+  const requestQuery = buildReferenceRequestQuery(query);
 
   const load = useCallback(
     async (signal) => {
       setLoading(true);
       try {
         const [panels, antibioticPage] = await Promise.all([
-          getReferencePage("ast-panels", buildReferenceQuery(query), signal),
+          getReferencePage("ast-panels", requestQuery, signal),
           getReferencePage(
             "antibiotics",
             "status=ACTIVE&sort=name&page=1&pageSize=100",
@@ -74,7 +75,7 @@ const AstPanelPage = ({ query, setQuery }) => {
         setLoading(false);
       }
     },
-    [query],
+    [requestQuery],
   );
 
   useEffect(() => {

@@ -43,7 +43,7 @@ import {
   saveBreakpointRule,
 } from "./api";
 import BreakpointRuleModal from "./BreakpointRuleModal";
-import { buildReferenceQuery } from "./queryState";
+import { buildReferenceQuery, buildReferenceRequestQuery } from "./queryState";
 import { sectionPath } from "./sectionConfig";
 
 const tagType = (status) => {
@@ -77,6 +77,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   const ruleEditId = query.edit?.startsWith("rule:")
     ? query.edit.slice("rule:".length)
     : "";
+  const requestQuery = buildReferenceRequestQuery(query);
 
   const load = useCallback(
     async (signal) => {
@@ -88,16 +89,10 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
               rows: [await getBreakpointStandard(standardId, signal)],
               total: 1,
             }
-          : await getBreakpointStandards(buildReferenceQuery(query), signal);
+          : await getBreakpointStandards(requestQuery, signal);
         setStandards(standardPage);
         if (standardId) {
-          setRules(
-            await getBreakpointRules(
-              standardId,
-              buildReferenceQuery(query),
-              signal,
-            ),
-          );
+          setRules(await getBreakpointRules(standardId, requestQuery, signal));
         }
       } catch (requestError) {
         if (requestError.name !== "AbortError") setError(requestError.message);
@@ -105,7 +100,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
         setLoading(false);
       }
     },
-    [query, standardId],
+    [requestQuery, standardId],
   );
 
   useEffect(() => {

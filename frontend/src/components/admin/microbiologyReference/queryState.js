@@ -69,6 +69,9 @@ export const buildReferenceQuery = (query) => {
   return params.toString();
 };
 
+export const buildReferenceRequestQuery = (query) =>
+  buildReferenceQuery({ ...query, edit: "" });
+
 export const updateReferenceQuery = (current, updates) => {
   const next = { ...current, ...updates };
   const changedFilter = Object.keys(updates).some(
