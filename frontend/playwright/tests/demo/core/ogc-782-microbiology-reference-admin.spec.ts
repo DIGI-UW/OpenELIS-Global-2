@@ -127,17 +127,17 @@ test.describe("OGC-782 M3 reference administration demo", () => {
       await confirmation
         .getByRole("button", { name: "Publish new version" })
         .click();
-      await expect(
-        page
-          .getByRole("row")
-          .filter({ hasText: "Gram negative AST panel (UAT)" })
-          .filter({ hasText: `v${originalVersion + 1}` })
-          .filter({ hasText: "Current" }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await page
-        .getByRole("heading", { name: "Microbiology reference data" })
-        .scrollIntoViewIfNeeded();
-      await demo.evidence("ogc-782-m3-04-panel-version-published");
+      const publishedRow = page
+        .getByRole("row")
+        .filter({ hasText: "Gram negative AST panel (UAT)" })
+        .filter({ hasText: `v${originalVersion + 1}` })
+        .filter({ hasText: "Current" });
+      await expect(publishedRow).toBeVisible({ timeout: LONG_TIMEOUT });
+      await publishedRow.scrollIntoViewIfNeeded();
+      await demo.scene(`Published v${originalVersion + 1} is current`);
+      await demo.evidence("ogc-782-m3-04-panel-version-published", {
+        locator: publishedRow,
+      });
       await demo.pause(2500);
     });
 
