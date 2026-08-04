@@ -212,5 +212,6 @@
 
   <!-- OGC-782 M8: link shared Inventory usage to culture and AST bench actions -->
   <include relativeToChangelogFile="true" file="062-microbiology-inventory-usage-link.xml"/>
+  <include relativeToChangelogFile="true" file="063-microbiology-inventory-usage-version.xml"/>
 
 </databaseChangeLog>

@@ -40,7 +40,7 @@ public class MicrobiologyM8LiquibaseRollbackTest {
                 assertM8SchemaPresent(connection);
 
                 Liquibase m8Changelog = new Liquibase("liquibase/microbiology-m8-rollback.xml", resources, database);
-                m8Changelog.rollback(3, "test");
+                m8Changelog.rollback(4, "test");
                 assertM8SchemaAbsent(connection);
 
                 m8Changelog.update(new Contexts("test"));
@@ -57,6 +57,7 @@ public class MicrobiologyM8LiquibaseRollbackTest {
         assertTrue(columnExists(connection, "micro_ast_run", "attempt_type"));
         assertTrue(columnExists(connection, "micro_ast_run", "reportable"));
         assertTrue(tableExists(connection, "micro_inventory_usage_link"));
+        assertTrue(columnExists(connection, "micro_inventory_usage_link", "last_updated"));
     }
 
     private void assertM8SchemaAbsent(Connection connection) throws Exception {
