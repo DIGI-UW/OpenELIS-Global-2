@@ -32,6 +32,24 @@ public class MicroOrganism extends BaseObject<String> {
     @Column(name = "organism_group", length = 100)
     private String organismGroup;
 
+    @Column(name = "gram_stain", length = 20)
+    private String gramStain;
+
+    @Column(name = "initial_significance", length = 20)
+    private String initialSignificance;
+
+    @Column(name = "default_ast_panel_id", length = 36)
+    private String defaultAstPanelId;
+
+    @Column(name = "notes")
+    private String notes;
+
+    @Column(name = "seeded", nullable = false)
+    private boolean seeded;
+
+    @Column(name = "last_updated_by", length = 20)
+    private String lastUpdatedBy;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -83,6 +101,54 @@ public class MicroOrganism extends BaseObject<String> {
 
     public void setOrganismGroup(String organismGroup) {
         this.organismGroup = organismGroup;
+    }
+
+    public String getGramStain() {
+        return gramStain;
+    }
+
+    public void setGramStain(String gramStain) {
+        this.gramStain = gramStain;
+    }
+
+    public String getInitialSignificance() {
+        return initialSignificance;
+    }
+
+    public void setInitialSignificance(String initialSignificance) {
+        this.initialSignificance = initialSignificance;
+    }
+
+    public String getDefaultAstPanelId() {
+        return defaultAstPanelId;
+    }
+
+    public void setDefaultAstPanelId(String defaultAstPanelId) {
+        this.defaultAstPanelId = defaultAstPanelId;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public boolean isSeeded() {
+        return seeded;
+    }
+
+    public void setSeeded(boolean seeded) {
+        this.seeded = seeded;
+    }
+
+    public String getLastUpdatedBy() {
+        return lastUpdatedBy;
+    }
+
+    public void setLastUpdatedBy(String lastUpdatedBy) {
+        this.lastUpdatedBy = lastUpdatedBy;
     }
 
     public String getIsActive() {

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-m9-reference-admin-metadata" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_organism">
+            <column name="gram_stain" type="VARCHAR(20)"/>
+            <column name="initial_significance" type="VARCHAR(20)"/>
+            <column name="default_ast_panel_id" type="VARCHAR(36)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="seeded" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated_by" type="VARCHAR(20)"/>
+        </addColumn>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_organism_default_panel"
+            baseTableSchemaName="clinlims" baseTableName="micro_organism" baseColumnNames="default_ast_panel_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_panel" referencedColumnNames="id"/>
+
+        <addColumn schemaName="clinlims" tableName="micro_antibiotic">
+            <column name="route" type="VARCHAR(20)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="seeded" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated_by" type="VARCHAR(20)"/>
+        </addColumn>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_organism"
+                constraintName="fk_micro_organism_default_panel"/>
+            <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="gram_stain"/>
+            <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="initial_significance"/>
+            <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="default_ast_panel_id"/>
+            <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="notes"/>
+            <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="seeded"/>
+            <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="last_updated_by"/>
+            <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="route"/>
+            <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="notes"/>
+            <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="seeded"/>
+            <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="last_updated_by"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-m9-versioned-ast-panels" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_ast_panel">
+            <column name="logical_key" type="VARCHAR(36)"/>
+            <column name="version_number" type="INTEGER" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_current" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="supersedes_panel_id" type="VARCHAR(36)"/>
+            <column name="published_at" type="TIMESTAMP"/>
+            <column name="published_by" type="VARCHAR(20)"/>
+        </addColumn>
+        <sql>
+            UPDATE clinlims.micro_ast_panel
+            SET logical_key = id
+            WHERE logical_key IS NULL
+        </sql>
+        <addNotNullConstraint schemaName="clinlims" tableName="micro_ast_panel"
+            columnName="logical_key" columnDataType="VARCHAR(36)"/>
+        <addUniqueConstraint schemaName="clinlims" tableName="micro_ast_panel"
+            columnNames="logical_key, version_number" constraintName="uq_micro_ast_panel_logical_version"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_panel_supersedes"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_panel" baseColumnNames="supersedes_panel_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_panel" referencedColumnNames="id"/>
+        <addColumn schemaName="clinlims" tableName="micro_ast_panel_antibiotic">
+            <column name="tier" type="INTEGER" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="report_behavior" type="VARCHAR(30)" defaultValue="ALWAYS">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_panel_antibiotic
+            ADD CONSTRAINT micro_ast_panel_antibiotic_tier_chk CHECK (tier BETWEEN 1 AND 3)
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_panel_antibiotic
+            ADD CONSTRAINT micro_ast_panel_antibiotic_report_chk
+            CHECK (report_behavior IN ('ALWAYS', 'CASCADE', 'SUPPRESS_UNLESS_RESISTANT'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.micro_ast_panel_antibiotic DROP CONSTRAINT micro_ast_panel_antibiotic_report_chk</sql>
+            <sql>ALTER TABLE clinlims.micro_ast_panel_antibiotic DROP CONSTRAINT micro_ast_panel_antibiotic_tier_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel_antibiotic" columnName="report_behavior"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel_antibiotic" columnName="tier"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_panel"
+                constraintName="fk_micro_ast_panel_supersedes"/>
+            <dropUniqueConstraint schemaName="clinlims" tableName="micro_ast_panel"
+                constraintName="uq_micro_ast_panel_logical_version"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="published_by"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="published_at"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="supersedes_panel_id"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="is_current"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="version_number"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="logical_key"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-m9-breakpoint-lifecycle-import" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_breakpoint_standard">
+            <column name="lifecycle_status" type="VARCHAR(20)" defaultValue="LOADED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated_by" type="VARCHAR(20)"/>
+        </addColumn>
+        <sql>
+            WITH ranked AS (
+                SELECT id, ROW_NUMBER() OVER (
+                    PARTITION BY authority
+                    ORDER BY effective_date DESC NULLS LAST, version DESC, id
+                ) AS authority_rank
+                FROM clinlims.micro_breakpoint_standard
+                WHERE is_active = 'Y'
+            )
+            UPDATE clinlims.micro_breakpoint_standard standard
+            SET lifecycle_status = CASE WHEN ranked.authority_rank = 1 THEN 'ACTIVE' ELSE 'LOADED' END
+            FROM ranked
+            WHERE standard.id = ranked.id
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_breakpoint_standard
+            ADD CONSTRAINT micro_breakpoint_standard_lifecycle_chk
+            CHECK (lifecycle_status IN ('ACTIVE', 'LOADED', 'ARCHIVED'))
+        </sql>
+
+        <addColumn schemaName="clinlims" tableName="micro_breakpoint_rule">
+            <column name="units" type="VARCHAR(40)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="seeded" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="locally_customized" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_row_hash" type="VARCHAR(64)"/>
+            <column name="last_updated_by" type="VARCHAR(20)"/>
+        </addColumn>
+        <createIndex schemaName="clinlims" tableName="micro_breakpoint_rule"
+            indexName="idx_micro_breakpoint_rule_source_hash">
+            <column name="source_row_hash"/>
+        </createIndex>
+
+        <createTable schemaName="clinlims" tableName="micro_breakpoint_activation_event">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_micro_breakpoint_activation_event"/>
+            </column>
+            <column name="standard_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_date" type="DATE"/>
+            <column name="actor_id" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="occurred_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_breakpoint_activation_standard"
+            baseTableSchemaName="clinlims" baseTableName="micro_breakpoint_activation_event"
+            baseColumnNames="standard_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_breakpoint_standard"
+            referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE clinlims.micro_breakpoint_activation_event
+            ADD CONSTRAINT micro_breakpoint_activation_action_chk
+            CHECK (action IN ('ACTIVATED', 'DEACTIVATED', 'ARCHIVED'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.micro_breakpoint_activation_event DROP CONSTRAINT micro_breakpoint_activation_action_chk</sql>
+            <dropTable schemaName="clinlims" tableName="micro_breakpoint_activation_event"/>
+            <dropIndex schemaName="clinlims" tableName="micro_breakpoint_rule"
+                indexName="idx_micro_breakpoint_rule_source_hash"/>
+            <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="last_updated_by"/>
+            <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="source_row_hash"/>
+            <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="locally_customized"/>
+            <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="seeded"/>
+            <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="notes"/>
+            <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="units"/>
+            <sql>ALTER TABLE clinlims.micro_breakpoint_standard DROP CONSTRAINT micro_breakpoint_standard_lifecycle_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="micro_breakpoint_standard" columnName="last_updated_by"/>
+            <dropColumn schemaName="clinlims" tableName="micro_breakpoint_standard" columnName="lifecycle_status"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

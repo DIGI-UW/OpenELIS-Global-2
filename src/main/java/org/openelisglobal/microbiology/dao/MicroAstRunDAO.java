@@ -11,4 +11,6 @@ public interface MicroAstRunDAO extends BaseDAO<MicroAstRun, String> {
     List<MicroAstRun> getByIsolateIds(List<String> isolateIds);
 
     List<MicroAstRun> getByAmendmentId(String amendmentId);
+
+    long countUnresolvedByBreakpointStandardId(String breakpointStandardId);
 }

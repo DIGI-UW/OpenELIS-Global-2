@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.dao;
 
 import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 
@@ -8,4 +9,8 @@ public interface MicroBreakpointStandardDAO extends BaseDAO<MicroBreakpointStand
     MicroBreakpointStandard getActiveStandard(String authority, String version);
 
     List<MicroBreakpointStandard> getActiveStandards();
+
+    Optional<MicroBreakpointStandard> findByAuthorityAndVersion(String authority, String version);
+
+    List<MicroBreakpointStandard> getActiveForAuthority(String authority);
 }

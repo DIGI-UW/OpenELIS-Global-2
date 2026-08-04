@@ -30,6 +30,12 @@ public class MicroBreakpointStandard extends BaseObject<String> {
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
+    @Column(name = "lifecycle_status", nullable = false, length = 20)
+    private String lifecycleStatus = "LOADED";
+
+    @Column(name = "last_updated_by", length = 20)
+    private String lastUpdatedBy;
+
     @Override
     public String getId() {
         return id;
@@ -70,5 +76,21 @@ public class MicroBreakpointStandard extends BaseObject<String> {
 
     public void setIsActive(String isActive) {
         this.isActive = isActive;
+    }
+
+    public String getLifecycleStatus() {
+        return lifecycleStatus;
+    }
+
+    public void setLifecycleStatus(String lifecycleStatus) {
+        this.lifecycleStatus = lifecycleStatus;
+    }
+
+    public String getLastUpdatedBy() {
+        return lastUpdatedBy;
+    }
+
+    public void setLastUpdatedBy(String lastUpdatedBy) {
+        this.lastUpdatedBy = lastUpdatedBy;
     }
 }

@@ -214,4 +214,7 @@
   <include relativeToChangelogFile="true" file="062-microbiology-inventory-usage-link.xml"/>
   <include relativeToChangelogFile="true" file="063-microbiology-inventory-usage-version.xml"/>
 
+  <!-- OGC-782 M9: microbiology reference and breakpoint administration -->
+  <include relativeToChangelogFile="true" file="064-microbiology-reference-administration.xml"/>
+
 </databaseChangeLog>
