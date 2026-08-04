@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
@@ -26,6 +27,7 @@ import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
@@ -98,6 +100,35 @@ public class MicrobiologyReferenceAdminServiceTest {
         assertEquals(3L, result.referenceCount);
         verify(organismDAO).update(existing);
         verify(organismDAO, never()).delete(any());
+    }
+
+    @Test
+    public void organismListCompilesReferenceImpactForConfirmation() {
+        MicroOrganism existing = new MicroOrganism();
+        existing.setId("organism-1");
+        existing.setDisplayName("Escherichia coli");
+        existing.setWhonetCode("eco");
+        existing.setOrganismGroup("Enterobacterales");
+        existing.setIsActive("Y");
+        when(organismDAO.getAll()).thenReturn(List.of(existing));
+        when(organismDAO.countWorkflowReferences("organism-1")).thenReturn(3L);
+
+        MicroReferenceAdminQueryForm query = new MicroReferenceAdminQueryForm();
+        MicroOrganismAdminForm result = service.getOrganisms(query).rows.get(0);
+
+        assertEquals(3L, result.referenceCount);
+    }
+
+    @Test
+    public void methodOptionsComeFromExistingActiveMethodVocabulary() {
+        Method culture = new Method();
+        culture.setId("method-1");
+        culture.setMethodName("Routine culture");
+        culture.setCode("CULT");
+        when(methodService.getAllActiveMethods()).thenReturn(List.of(culture));
+
+        assertEquals("method-1", service.getOptions("methods").get(0).id);
+        assertEquals("Routine culture", service.getOptions("methods").get(0).label);
     }
 
     @Test

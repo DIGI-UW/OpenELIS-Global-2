@@ -1,12 +1,14 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
+import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceAdminService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,6 +40,11 @@ public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestCo
         return ResponseEntity.ok(service.getOrganisms(query));
     }
 
+    @GetMapping("/organisms/{id}")
+    public ResponseEntity<MicroOrganismAdminForm> getOrganism(@PathVariable String id) {
+        return ResponseEntity.ok(service.getOrganism(id));
+    }
+
     @PostMapping("/organisms")
     public ResponseEntity<MicroOrganismAdminForm> createOrganism(HttpServletRequest request,
             @RequestBody MicroOrganismAdminForm organism) {
@@ -60,6 +67,11 @@ public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestCo
     public ResponseEntity<MicroReferenceAdminPageForm<MicroAntibioticAdminForm>> getAntibiotics(
             @ModelAttribute MicroReferenceAdminQueryForm query) {
         return ResponseEntity.ok(service.getAntibiotics(query));
+    }
+
+    @GetMapping("/antibiotics/{id}")
+    public ResponseEntity<MicroAntibioticAdminForm> getAntibiotic(@PathVariable String id) {
+        return ResponseEntity.ok(service.getAntibiotic(id));
     }
 
     @PostMapping("/antibiotics")
@@ -109,6 +121,11 @@ public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestCo
         return ResponseEntity.ok(service.getCultureSetups(query));
     }
 
+    @GetMapping("/culture-setups/{id}")
+    public ResponseEntity<MicroCultureSetupAdminForm> getCultureSetup(@PathVariable String id) {
+        return ResponseEntity.ok(service.getCultureSetup(id));
+    }
+
     @PostMapping("/culture-setups")
     public ResponseEntity<MicroCultureSetupAdminForm> createCultureSetup(HttpServletRequest request,
             @RequestBody MicroCultureSetupAdminForm setup) {
@@ -119,5 +136,10 @@ public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestCo
     public ResponseEntity<MicroCultureSetupAdminForm> updateCultureSetup(@PathVariable String id,
             HttpServletRequest request, @RequestBody MicroCultureSetupAdminForm setup) {
         return ResponseEntity.ok(service.saveCultureSetup(id, setup, authenticatedUserId(request)));
+    }
+
+    @GetMapping("/options/{resource}")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getOptions(@PathVariable String resource) {
+        return ResponseEntity.ok(service.getOptions(resource));
     }
 }

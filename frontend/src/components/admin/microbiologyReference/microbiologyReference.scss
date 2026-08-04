@@ -1,0 +1,94 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/theme" as *;
+
+.microbiology-admin {
+  padding-block-end: $spacing-09;
+
+  h1 {
+    margin-block: $spacing-05;
+  }
+
+  &__page {
+    margin-block-start: $spacing-06;
+  }
+
+  &__form {
+    display: grid;
+    gap: $spacing-05;
+    padding-block: $spacing-03;
+  }
+
+  &__empty {
+    min-block-size: 8rem;
+    display: grid;
+    place-items: center;
+    color: $text-secondary;
+    background: $layer-01;
+  }
+
+  &__panel-add {
+    display: grid;
+    grid-template-columns: minmax(16rem, 1fr) auto;
+    align-items: end;
+    gap: $spacing-04;
+  }
+
+  &__panel-rows {
+    display: grid;
+    gap: 1px;
+    background: $border-subtle-01;
+  }
+
+  &__panel-row {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1fr) 7rem minmax(12rem, 1fr) auto;
+    align-items: end;
+    gap: $spacing-04;
+    padding: $spacing-04;
+    background: $layer-01;
+  }
+
+  &__row-actions {
+    display: flex;
+    min-block-size: 3rem;
+    align-items: center;
+  }
+
+  &__detail-actions,
+  &__standard-heading,
+  &__import-counts {
+    display: flex;
+    align-items: center;
+    gap: $spacing-04;
+  }
+
+  &__detail-actions {
+    justify-content: flex-end;
+    margin-block-end: $spacing-04;
+  }
+
+  &__detail-actions > :first-child {
+    margin-inline-end: auto;
+  }
+
+  &__standard-heading {
+    justify-content: space-between;
+    padding: $spacing-05;
+    background: $layer-01;
+    border-block-end: 1px solid $border-subtle-01;
+  }
+
+  &__import-result {
+    display: grid;
+    gap: $spacing-04;
+  }
+}
+
+@media (max-width: 42rem) {
+  .microbiology-admin {
+    &__panel-add,
+    &__panel-row {
+      grid-template-columns: 1fr;
+    }
+  }
+}
