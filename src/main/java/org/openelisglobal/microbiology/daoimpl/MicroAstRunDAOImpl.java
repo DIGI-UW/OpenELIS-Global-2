@@ -21,7 +21,7 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
     @Transactional(readOnly = true)
     public List<MicroAstRun> getByIsolateId(String isolateId) {
         Query<MicroAstRun> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroAstRun r where r.isolateId = :isolateId order by r.startedAt", MicroAstRun.class);
+                "from MicroAstRun r where r.isolateId = :isolateId order by r.startedAt, r.id", MicroAstRun.class);
         query.setParameter("isolateId", isolateId);
         return query.list();
     }
