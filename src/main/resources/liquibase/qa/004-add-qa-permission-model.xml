@@ -258,4 +258,57 @@
         </rollback>
     </changeSet>
 
+    <!-- OGC-686 [QA-D.1]: Accreditation Status lives in the QMS pillar, so READS
+         ride the existing qa.view.qms permission (no new view scope). Editing
+         accrediting bodies and test enrollments is a distinct, narrower right, so
+         it gets its own module rather than reusing hasRole('ADMIN') — the FRS's
+         `TEST_CATALOG_MANAGE` does not exist anywhere in this codebase, and the
+         /admin shell it assumed is GLOBAL_ADMIN-only, which would lock out the
+         QA Officer the feature is written for. -->
+    <changeSet author="openelisglobal" id="qa-032-add-qa-manage-accreditation-module">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.manage.accreditation'</sqlCheck>
+        </preConditions>
+        <comment>Register the qa.manage.accreditation permission key</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="qa.manage.accreditation"/>
+            <column name="description" value="Manage accrediting bodies and per-test accreditation enrollment (Accreditation Status)"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="N"/>
+            <column name="has_update_flag" value="N"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_module" schemaName="clinlims">
+                <where>name = 'qa.manage.accreditation'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-033-grant-qa-manage-accreditation">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.manage.accreditation'</sqlCheck>
+        </preConditions>
+        <comment>Grant qa.manage.accreditation to QA Officer and Global Administrator</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_module
+                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM clinlims.system_role r, clinlims.system_module m
+            WHERE r.name IN ('QA Officer', 'Global Administrator') AND m.name = 'qa.manage.accreditation'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.system_role_module srm
+                  WHERE srm.system_role_id = r.id AND srm.system_module_id = m.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'qa.manage.accreditation');
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

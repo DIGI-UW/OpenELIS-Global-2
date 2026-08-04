@@ -59,4 +59,7 @@
 
   <!-- QA Phase C.4 — index for the released-cohort QI queries (polled) -->
   <include file="liquibase/qa/012-analysis-released-date-index.xml" />
+
+  <!-- QA Phase D.1 — OGC-686: accrediting bodies + per-test accreditation -->
+  <include file="liquibase/qa/013-create-accreditation-tables.xml" />
 </databaseChangeLog>
