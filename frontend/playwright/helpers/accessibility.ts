@@ -9,6 +9,31 @@ export async function expectNoWcag21AaViolations(
   testInfo: TestInfo,
   surfaceName: string,
 ) {
+  await page.evaluate(async () => {
+    await document.fonts?.ready;
+    for (let pass = 0; pass < 4; pass += 1) {
+      const finiteAnimations = document.getAnimations().filter((animation) => {
+        const endTime = animation.effect?.getComputedTiming().endTime;
+        return (
+          (animation.playState === "pending" ||
+            animation.playState === "running") &&
+          typeof endTime === "number" &&
+          Number.isFinite(endTime)
+        );
+      });
+      if (finiteAnimations.length === 0) {
+        break;
+      }
+      await Promise.all(
+        finiteAnimations.map((animation) =>
+          animation.finished.catch(() => undefined),
+        ),
+      );
+    }
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+  });
   const results = await new AxeBuilder({ page })
     .withTags(WCAG_21_AA_TAGS)
     .analyze();

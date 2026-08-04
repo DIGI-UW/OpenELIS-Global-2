@@ -34,7 +34,12 @@ const AstAttemptTable = ({
     );
 
   return (
-    <TableContainer title={title} className="microbiology-ast-attempts">
+    <TableContainer
+      title={title}
+      className="microbiology-ast-attempts"
+      tabIndex={0}
+      aria-label={title}
+    >
       <Table size="sm" aria-label={title}>
         <TableHead>
           <TableRow>
