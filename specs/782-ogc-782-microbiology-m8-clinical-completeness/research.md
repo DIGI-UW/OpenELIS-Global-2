@@ -89,10 +89,15 @@
   samples plus p50/p95/max and environment metadata.
 
 Initial local API qualification at commit `035d85195` passed all seven budgets
-with the service-created 200-case and 5-isolate/80-reading workloads. The raw
-samples and environment are retained under `evidence/`; this is a developer
-baseline, not a universal capacity claim. Browser-visible timing, persistent-run
-cleanup, and formal query-plan review remain open.
+with the service-created 200-case and 5-isolate/80-reading workloads, but it
+exposed per-case relationship lookups in the worklist. Batch relationship
+loading at commit `053f11ff0` reduced worklist-load p95 from 117.622 ms to
+5.349 ms, search from 115.746 ms to 3.763 ms, and filtered-page load from
+119.081 ms to 3.628 ms. Existing foreign-key indexes cover the batch predicates,
+so no speculative index migration was added. Raw samples and environment data
+for both runs are retained under `evidence/`; these are developer baselines, not
+universal capacity claims. Browser-visible timing and formal query-plan review
+remain open.
 
 ## Open Product Questions That Do Not Block Slice A
 

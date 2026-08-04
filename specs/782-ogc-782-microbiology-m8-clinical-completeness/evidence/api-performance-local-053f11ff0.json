@@ -1,0 +1,106 @@
+{
+  "commit": "053f11ff0",
+  "environment": {
+    "spring": "6.2.17",
+    "processors": "18",
+    "java": "21.0.5",
+    "architecture": "aarch64",
+    "os": "Mac OS X 26.5.2",
+    "httpHarness": "Spring MockMvc",
+    "maxHeapBytes": "17179869184",
+    "database": "14.4 (Debian 14.4-1.pgdg110+1)"
+  },
+  "dataVolume": {
+    "denseCaseIsolates": 5,
+    "denseCaseTimelineEvents": 91,
+    "worklistCases": 200,
+    "denseCaseReadings": 80
+  },
+  "measurements": [
+    {
+      "name": "worklist-load",
+      "thresholdMs": 2000.0,
+      "warmupIterations": 5,
+      "measuredIterations": 20,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [4.457584, 4.575917, 5.513791, 4.545375, 5.348709, 4.516417, 4.408583, 4.142083, 4.371375, 4.621583, 4.817458, 4.174458, 3.708542, 3.98575, 3.684208, 3.542459, 3.813417, 3.729042, 3.656042, 3.596667],
+      "p50Ms": 4.174458,
+      "p95Ms": 5.348709,
+      "maxMs": 5.513791,
+      "passed": true
+    },
+    {
+      "name": "worklist-search",
+      "thresholdMs": 500.0,
+      "warmupIterations": 5,
+      "measuredIterations": 20,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [3.4065, 3.76325, 3.763292, 3.515375, 3.267417, 3.304875, 3.351125, 3.148542, 3.224791, 3.293625, 3.176917, 3.221375, 3.235125, 3.134708, 3.164458, 3.005417, 3.093042, 3.605208, 3.164542, 3.225791],
+      "p50Ms": 3.225791,
+      "p95Ms": 3.76325,
+      "maxMs": 3.763292,
+      "passed": true
+    },
+    {
+      "name": "worklist-filter-page",
+      "thresholdMs": 300.0,
+      "warmupIterations": 5,
+      "measuredIterations": 20,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [3.239084, 3.183625, 3.628416, 3.409417, 3.280792, 3.322708, 3.293042, 3.4585, 4.319958, 3.353625, 3.133041, 3.267542, 3.31925, 3.39025, 3.247917, 3.22775, 3.100334, 3.151, 3.1855, 3.310292],
+      "p50Ms": 3.280792,
+      "p95Ms": 3.628416,
+      "maxMs": 4.319958,
+      "passed": true
+    },
+    {
+      "name": "case-load",
+      "thresholdMs": 1000.0,
+      "warmupIterations": 5,
+      "measuredIterations": 20,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [4.461208, 4.386125, 4.366208, 3.970792, 4.23175, 4.775584, 3.954042, 3.563542, 3.586166, 3.892791, 3.520208, 3.8605, 3.858667, 3.564583, 3.625375, 3.748666, 3.441375, 3.468667, 3.513917, 3.157833],
+      "p50Ms": 3.748666,
+      "p95Ms": 4.461208,
+      "maxMs": 4.775584,
+      "passed": true
+    },
+    {
+      "name": "isolate-save",
+      "thresholdMs": 500.0,
+      "warmupIterations": 5,
+      "measuredIterations": 20,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [1.149625, 1.145917, 1.144334, 1.120916, 1.499292, 1.216667, 1.163791, 1.195666, 1.149458, 1.121291, 1.097541, 1.01625, 1.008833, 1.0765, 1.001958, 0.976334, 1.073292, 1.018084, 0.876542, 1.066833],
+      "p50Ms": 1.097541,
+      "p95Ms": 1.216667,
+      "maxMs": 1.499292,
+      "passed": true
+    },
+    {
+      "name": "ast-reading-save",
+      "thresholdMs": 500.0,
+      "warmupIterations": 5,
+      "measuredIterations": 20,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [1.936875, 1.863833, 2.003375, 2.304833, 2.067666, 2.248292, 1.960791, 2.129125, 2.074375, 1.875334, 1.835083, 1.720834, 1.776917, 1.609125, 1.688, 1.967333, 2.875459, 2.245541, 1.949042, 1.708291],
+      "p50Ms": 1.949042,
+      "p95Ms": 2.304833,
+      "maxMs": 2.875459,
+      "passed": true
+    },
+    {
+      "name": "timeline-save",
+      "thresholdMs": 500.0,
+      "warmupIterations": 5,
+      "measuredIterations": 20,
+      "percentileMethod": "nearest-rank-ceiling",
+      "rawSamplesMs": [2.665667, 2.574167, 2.529542, 2.607875, 2.548375, 2.684083, 2.578, 2.512208, 2.851125, 2.534375, 2.688875, 2.883, 2.901375, 2.989209, 8.329291, 3.808459, 3.538959, 3.264375, 3.105458, 2.896125],
+      "p50Ms": 2.688875,
+      "p95Ms": 3.808459,
+      "maxMs": 8.329291,
+      "passed": true
+    }
+  ],
+  "passed": true
+}
