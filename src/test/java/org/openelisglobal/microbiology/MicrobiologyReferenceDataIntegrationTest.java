@@ -136,6 +136,9 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        fixtures.ensureSampleEnteredStatus();
+        fixtures.ensureAnalysisNotStartedStatus();
+        fixtures.ensureAnalysisFinalizedStatus();
         methodId = fixtures.firstMethodId();
         referenceData = fixtures.createReferenceData(methodId);
     }

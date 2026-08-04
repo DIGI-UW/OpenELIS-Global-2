@@ -196,12 +196,12 @@ public class StatusOfSampleDAOImpl extends BaseDAOImpl<StatusOfSample, String> i
 
             List<StatusOfSample> list;
 
-            // not case sensitive hemolysis and Hemolysis are considered
-            // duplicates
-            String sql = "from StatusOfSample t where trim(lower(t.code)) = :param and trim(lower(t.statusType)) ="
+            // Codes use a numeric Hibernate type, so compare them directly rather than
+            // applying text functions that PostgreSQL cannot evaluate for numeric columns.
+            String sql = "from StatusOfSample t where t.code = :param and trim(lower(t.statusType)) ="
                     + " :param2 and t.id != :param3";
             Query<StatusOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, StatusOfSample.class);
-            query.setParameter("param", statusOfSample.getCode().toLowerCase().trim());
+            query.setParameter("param", statusOfSample.getCode().trim());
             query.setParameter("param2", statusOfSample.getStatusType().toLowerCase().trim());
 
             // initialize with 0 (for new records where no id has been generated
