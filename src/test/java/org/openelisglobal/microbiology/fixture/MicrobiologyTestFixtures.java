@@ -14,6 +14,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
@@ -73,8 +74,19 @@ public class MicrobiologyTestFixtures {
     }
 
     public String firstMethodId() {
-        return first(methodService.getAllActiveMethods(), "No active method is available for microbiology tests")
-                .getId();
+        List<Method> methods = methodService.getAllActiveMethods();
+        if (methods != null && !methods.isEmpty()) {
+            return methods.get(0).getId();
+        }
+
+        Method method = new Method();
+        method.setMethodName("Microbiology test");
+        method.setDescription("Service-created microbiology integration test method");
+        method.setCode("MCR" + uniqueSuffix());
+        method.setActiveBeginDate(new Date(System.currentTimeMillis()));
+        method.setIsActive(IActionConstants.YES);
+        method.setSysUserId(defaultUserId());
+        return methodService.insert(method);
     }
 
     public SampleItem createSampleWithSampleItem(String accessionPrefix) {

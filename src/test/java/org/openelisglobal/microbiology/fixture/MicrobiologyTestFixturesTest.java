@@ -18,12 +18,14 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
 import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -124,5 +126,27 @@ public class MicrobiologyTestFixturesTest {
         assertEquals("ANALYSIS", statusCaptor.getValue().getStatusType());
         assertEquals("900", statusCaptor.getValue().getCode());
         verify(statusService).refreshCache();
+    }
+
+    @Test
+    public void provisionsMethodThroughServiceWhenNoActiveMethodExists() {
+        when(methodService.getAllActiveMethods()).thenReturn(List.of());
+        when(methodService.insert(any(Method.class))).thenReturn("55");
+        when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
+
+        assertEquals("55", fixtures.firstMethodId());
+
+        ArgumentCaptor<Method> methodCaptor = ArgumentCaptor.forClass(Method.class);
+        verify(methodService).insert(methodCaptor.capture());
+        assertEquals("Microbiology test", methodCaptor.getValue().getMethodName());
+        assertEquals("Y", methodCaptor.getValue().getIsActive());
+        assertEquals("7", methodCaptor.getValue().getSysUserId());
+    }
+
+    private SystemUser systemUser(String id) {
+        SystemUser user = new SystemUser();
+        user.setId(id);
+        user.setIsActive("Y");
+        return user;
     }
 }
