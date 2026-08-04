@@ -504,6 +504,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         MicroReferenceAdminQueryForm query = input == null ? new MicroReferenceAdminQueryForm() : input;
         query.q = query.q == null ? "" : query.q.trim();
         query.status = query.status == null || query.status.isBlank() ? "ALL" : query.status.toUpperCase(Locale.ROOT);
+        query.status = Set.of("ALL", "ACTIVE", "INACTIVE").contains(query.status) ? query.status : "ALL";
         query.page = Math.max(query.page, 1);
         query.pageSize = Set.of(20, 50, 100).contains(query.pageSize) ? query.pageSize : 20;
         query.sort = Set.of("name", "name-desc").contains(query.sort) ? query.sort : "name";

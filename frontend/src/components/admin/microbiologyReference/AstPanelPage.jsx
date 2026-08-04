@@ -335,13 +335,22 @@ const AstPanelPage = ({ query, setQuery }) => {
                       {row.cells.map((cell) => (
                         <TableCell key={cell.id}>
                           {cell.info.header === "status" ? (
-                            <Tag type={source.current ? "green" : "gray"}>
-                              {intl.formatMessage({
-                                id: source.current
-                                  ? "microbiology.admin.astPanels.current"
-                                  : "microbiology.admin.astPanels.historical",
-                              })}
-                            </Tag>
+                            <div className="microbiology-admin__tag-stack">
+                              <Tag type={source.current ? "blue" : "gray"}>
+                                {intl.formatMessage({
+                                  id: source.current
+                                    ? "microbiology.admin.astPanels.current"
+                                    : "microbiology.admin.astPanels.historical",
+                                })}
+                              </Tag>
+                              <Tag type={source.active ? "green" : "red"}>
+                                {intl.formatMessage({
+                                  id: source.active
+                                    ? "microbiology.admin.status.active"
+                                    : "microbiology.admin.status.inactive",
+                                })}
+                              </Tag>
+                            </div>
                           ) : cell.info.header === "actions" ? (
                             <OverflowMenu
                               flipped

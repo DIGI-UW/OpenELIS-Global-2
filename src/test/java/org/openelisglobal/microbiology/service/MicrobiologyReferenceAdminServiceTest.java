@@ -128,6 +128,17 @@ public class MicrobiologyReferenceAdminServiceTest {
     }
 
     @Test
+    public void organismListNormalizesUnsupportedStatusBeforeDaoQuery() {
+        MicroReferenceAdminQueryForm query = new MicroReferenceAdminQueryForm();
+        query.status = "LOADED";
+
+        service.getOrganisms(query);
+
+        verify(organismDAO).search("", "ALL", null, "name", 0, 20);
+        verify(organismDAO).countSearch("", "ALL", null);
+    }
+
+    @Test
     public void methodOptionsComeFromExistingActiveMethodVocabulary() {
         Method culture = new Method();
         culture.setId("method-1");

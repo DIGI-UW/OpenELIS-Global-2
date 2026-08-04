@@ -2,6 +2,7 @@ import {
   buildReferenceQuery,
   parseReferenceQuery,
   updateReferenceQuery,
+  validStatusesForSection,
 } from "./queryState";
 
 describe("microbiology reference query state", () => {
@@ -14,10 +15,29 @@ describe("microbiology reference query state", () => {
     );
   });
 
-  it("normalizes invalid paging values", () => {
-    const parsed = parseReferenceQuery("?page=0&pageSize=999");
+  it("normalizes invalid paging, status, and sort values", () => {
+    const parsed = parseReferenceQuery(
+      "?page=0&pageSize=999&status=UNKNOWN&sort=unsafe",
+    );
     expect(parsed.page).toBe(1);
     expect(parsed.pageSize).toBe(20);
+    expect(parsed.status).toBe("ALL");
+    expect(parsed.sort).toBe("name");
+  });
+
+  it("accepts lifecycle statuses only for breakpoint pages", () => {
+    expect(
+      parseReferenceQuery(
+        "?status=LOADED",
+        validStatusesForSection("breakpoints"),
+      ).status,
+    ).toBe("LOADED");
+    expect(
+      parseReferenceQuery(
+        "?status=LOADED",
+        validStatusesForSection("organisms"),
+      ).status,
+    ).toBe("ALL");
   });
 
   it("resets the page when a filter changes", () => {
@@ -25,5 +45,11 @@ describe("microbiology reference query state", () => {
       page: 1,
       q: "eco",
     });
+  });
+
+  it("preserves paging when linkable editor state changes", () => {
+    expect(
+      updateReferenceQuery({ page: 4, edit: "" }, { edit: "organism-1" }),
+    ).toEqual({ page: 4, edit: "organism-1" });
   });
 });

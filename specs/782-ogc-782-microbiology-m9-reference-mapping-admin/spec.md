@@ -35,7 +35,7 @@ single, current vocabulary.
 1. Searching or filtering either vocabulary changes the bookmarkable page state
    and a reload produces the same rows.
 2. Saving rejects missing names, invalid or duplicate WHONET codes, and names
-   that duplicate an active entry.
+   that duplicate an existing entry.
 3. Deactivation explains the downstream effect, removes the entry from new
    workflow selections, and preserves historical cases and results.
 4. Re-activation restores the entry to new workflow selections.

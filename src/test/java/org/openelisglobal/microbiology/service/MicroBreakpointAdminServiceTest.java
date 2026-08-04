@@ -100,6 +100,17 @@ public class MicroBreakpointAdminServiceTest {
     }
 
     @Test
+    public void standardListNormalizesUnsupportedStatusBeforeDaoQuery() {
+        org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm query = new org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm();
+        query.status = "INACTIVE";
+
+        service.getStandards(query);
+
+        verify(standardDAO).search("", "ALL", null, "name", 0, 20);
+        verify(standardDAO).countSearch("", "ALL", null);
+    }
+
+    @Test
     public void directRuleLookupRequiresTheRequestedStandard() {
         MicroBreakpointRule rule = new MicroBreakpointRule();
         rule.setId("rule-1");

@@ -35,7 +35,7 @@ const MicrobiologyReferenceAdmin = () => {
   const history = useHistory();
   const { section, detailId } = useParams();
   const { url } = useRouteMatch();
-  const { query, setQuery } = useReferenceQuery();
+  const { query, setQuery } = useReferenceQuery(section);
 
   if (!isKnownSection(section)) {
     const basePath = url.split("/MicrobiologyReference")[0];
