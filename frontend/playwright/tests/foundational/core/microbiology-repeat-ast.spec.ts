@@ -83,9 +83,11 @@ test.describe("Microbiology repeat AST attempts", () => {
       ).toContainText("RESISTANT", { timeout: LONG_TIMEOUT });
       await page.getByRole("button", { name: "Review AST run" }).click();
 
-      await expect(page.getByText("Reportable AST Run Required")).toBeVisible({
-        timeout: LONG_TIMEOUT,
-      });
+      await expect(
+        page
+          .getByTestId("microbiology-ast-card")
+          .getByText("Reportable AST Run Required"),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
       const original = page
         .getByTestId("microbiology-ast-attempt-row")
         .filter({ hasText: "Original" });
