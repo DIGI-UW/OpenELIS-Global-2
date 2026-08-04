@@ -38,8 +38,8 @@ each slice. A checked task requires committed evidence, not intent.
 
 - [x] T023 Add service tests for original/repeat/retest creation, required source/reason, immutable prior run, and reportable-run selection blockers.
 - [x] T024 Add lot-query tests for Test Catalog role preservation, FEFO ordering, QC/status/expiry/quantity eligibility, and historical inclusion.
-- [ ] T025 Add stale-lot integration test proving server-side save rejection after an eligible lot becomes invalid.
-- [ ] T026 Add Inventory integration tests proving culture/AST usage is recorded once, linked to the bench action, decrements through shared behavior, and is transactionally rolled back on failure.
+- [x] T025 Add a PostgreSQL-backed stale-lot test proving server-side save rejection after an eligible lot becomes invalid, with no case-stage, quantity, usage, or history mutation.
+- [x] T026 Add Inventory integration tests proving culture/AST usage is recorded once, linked to the bench action, decrements through shared behavior, and rolls back quantity, transaction, usage, and provenance together on downstream failure (`87177aee2`).
 - [x] T027 Add controller tests proving actor derivation, validation, and named invalid-lot errors; existing microbiology authorization remains authoritative.
 - [x] T028 Extend ORM validation for Slice B mappings.
 
@@ -88,9 +88,9 @@ each slice. A checked task requires committed evidence, not intent.
 - [x] T053a Push the branch and open stacked draft PR #3972 with the exact base, migrations, exclusions, validation, and evidence.
 - [ ] T053b Attach new M8 screenshots/video and update PR #3972 with their links and a current one-shot check state before marking it ready.
 - [x] T054 Verify the remote M2 branch contains the current remote M1 branch with no missing M1 commits.
-- [x] T055 Deploy exact M2 application SHA `cd833663cedb147d534e0eea90b3de7bd3877946` to AMR and provision the property-gated service-layer UAT fixture.
+- [x] T055 Deploy the M2 schema/app checkpoint `40566083060ff9c5769c2cfc06be1852ad5b44c6`, provision the property-gated service-layer UAT fixture, then deploy the screenshot-driven frontend correction at exact target SHA `8be8cd2011c3cca67ca9d95fc2996dabba986c4a`.
 - [x] T056 Publish milestone-labeled M1 and M2 Grist stories, preserve their full-host scope, and verify live checklist revision `00242ff2e232998d6bab03844de68975a8dd6ef4117fd81eb51af997db4d5afe` serves nine stories and 20 steps: 19 required plus optional `AMR-21`.
-- [x] T057 Update and pass the registered `core-live-uat` Playwright contract using Carbon/public accessibility interactions and no arbitrary waits.
+- [x] T057 Update and pass the registered `core-live-uat` Playwright contract using explicit deployment scope/schema metadata, Carbon/public accessibility interactions, and no arbitrary waits.
 - [ ] T058 Piotr completes Pass/Fail/N/A plus notes for all 19 required M1 and M2 Review-overlay steps; `AMR-21` remains optional.
 
 ## Dependency Notes

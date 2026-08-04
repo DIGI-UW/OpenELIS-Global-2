@@ -24,10 +24,10 @@
 | Level | Result | Guard |
 | --- | --- | --- |
 | Service/controller | Passed | FEFO, eligibility reasons, exact-lot revalidation, role preservation, actor mapping, and response contracts |
-| ORM and real-database integration | Passed | Mapping bootstrap plus exact decrement and culture/AST provenance through the service-created UAT scenario |
+| ORM and real-database integration | Passed | Mapping bootstrap, exact decrement and culture/AST provenance, stale-lot rejection, and atomic rollback after a forced provenance failure |
 | Liquibase | 1/1 passed | Full update, rollback of four M8 changesets, absence check, and reapply |
-| Carbon component | Passed | Eligibility and role rendering, ordinary radio interaction, typed payload, and retained usage history |
-| Foundational Playwright | 2/2 passed | Authenticated desktop/mobile culture and AST lot journey with visible persisted provenance |
+| Carbon component | Passed | Eligibility and role rendering, ordinary radio interaction, typed payload, and retained cross-stage usage history |
+| Foundational Playwright | 2/2 passed | Authenticated culture and AST lot journey with both usages visible in the final AST review state |
 | Accessibility | 4/4 passed | Desktop/mobile lot-picker scans with zero detected violations |
 | Keyboard | 2/2 passed | Carbon radio selection through focus and `Space`, with no forced clicks or arbitrary waits |
 
@@ -51,13 +51,18 @@ evidence is not committed.
 - Product must define required/optional/substitute policy independently of the
   existing `PRIMARY / SECONDARY` catalog role. Full US4 requiredness acceptance
   remains open.
-- T025 still needs a real-database stale-lot rejection test. Current rejection
-  guards are service tests around the row-locked selection path.
-- T026 still needs a forced downstream-failure integration test proving the
-  lot decrement and usage link roll back together. The successful real-database
-  path is covered.
 - AST cards use Inventory `CARTRIDGE`; current Test Catalog authoring may expose
   only `REAGENT`. This is an administration-surface compatibility decision, not
   a reason to duplicate Inventory data.
 - PR #3840 changes `InventoryItem` identifier typing and may require a rebase
   adjustment if it lands before M2.
+
+## Post-checkpoint guards
+
+- `87177aee2` adds real-PostgreSQL stale-selection and forced downstream-failure
+  tests. The latter flushes an invalid bench provenance link after consumption
+  is staged, then proves quantity, Inventory transaction, Inventory usage, and
+  Microbiology linkage all rolled back.
+- `8be8cd201` fixes a screenshot-discovered UI defect where the AST history
+  filtered out the earlier culture usage. The component guard was observed red
+  before the fix; the tightened Playwright journey now requires both rows.

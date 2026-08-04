@@ -5,12 +5,15 @@
 - Site: `https://amr.openelis-global.org`
 - Review overlay: the `Review` button on the AMR site
 - App branch: `feat/782-ogc-782-microbiology-m8-clinical-completeness`
-- Deployed app SHA: `cd833663cedb147d534e0eea90b3de7bd3877946`
-- Deployment ID: `20260804T054912Z-cd833663cedb`
+- Deployed app SHA: `8be8cd2011c3cca67ca9d95fc2996dabba986c4a`
+- Deployment ID: `20260804T075735Z-8be8cd2011c3`
+- Schema/app checkpoint: `40566083060ff9c5769c2cfc06be1852ad5b44c6`
+  (`20260804T074616Z-40566083060f`)
 - Review-tooling SHA: `3d52ac103853e349df017828689b788880631d21`
 - Checklist revision:
   `00242ff2e232998d6bab03844de68975a8dd6ef4117fd81eb51af997db4d5afe`
-- Automated live precheck: passed
+- Automated live precheck: 2/2 passed
+- Deployed lot journey: 2/2 passed; desktop screenshots inspected
 - Human UAT: pending
 
 M1 and M2 are reviewed as one ordered clinical journey. Complete the M1 steps
