@@ -88,6 +88,12 @@
 - Measure server/API and browser-visible budgets separately; emit raw iteration
   samples plus p50/p95/max and environment metadata.
 
+Initial local API qualification at commit `035d85195` passed all seven budgets
+with the service-created 200-case and 5-isolate/80-reading workloads. The raw
+samples and environment are retained under `evidence/`; this is a developer
+baseline, not a universal capacity claim. Browser-visible timing, persistent-run
+cleanup, and formal query-plan review remain open.
+
 ## Open Product Questions That Do Not Block Slice A
 
 1. When multiple reviewed AST attempts exist, whether selecting one attempt or
