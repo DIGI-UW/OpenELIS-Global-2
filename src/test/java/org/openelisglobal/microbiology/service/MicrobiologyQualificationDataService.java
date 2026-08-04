@@ -16,12 +16,11 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-/** Builds repeatable qualification workloads through application services. */
-@Service
+/**
+ * Test-support builder for repeatable qualification workloads through
+ * application services.
+ */
 public class MicrobiologyQualificationDataService {
 
     private static final int MAX_WORKLIST_CASES = 500;
@@ -41,8 +40,7 @@ public class MicrobiologyQualificationDataService {
     public MicrobiologyQualificationDataService(MicrobiologyUatScenarioService scenarioService,
             MicrobiologyReferenceService referenceService, MicroBreakpointService breakpointService,
             MicrobiologyConfigurationService configurationService, MicroIsolateService isolateService,
-            MicroAstService astService, MicroCaseService caseService,
-            @Value("${org.openelisglobal.qualification.microbiology.enabled:false}") boolean enabled) {
+            MicroAstService astService, MicroCaseService caseService, boolean enabled) {
         this.scenarioService = scenarioService;
         this.referenceService = referenceService;
         this.breakpointService = breakpointService;
@@ -53,7 +51,6 @@ public class MicrobiologyQualificationDataService {
         this.enabled = enabled;
     }
 
-    @Transactional
     public WorklistDataset buildWorklist(String runKey, int caseCount, String performedBy) {
         requireEnabled();
         String normalizedRunKey = requireRunKey(runKey);
@@ -73,7 +70,6 @@ public class MicrobiologyQualificationDataService {
         return new WorklistDataset(normalizedRunKey, List.copyOf(scenarioKeys), List.copyOf(caseIds));
     }
 
-    @Transactional
     public DenseCaseDataset buildDenseCase(String runKey, String performedBy) {
         requireEnabled();
         String normalizedRunKey = requireRunKey(runKey);
