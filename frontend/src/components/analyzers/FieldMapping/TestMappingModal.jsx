@@ -21,7 +21,6 @@ import {
   Button,
   TextArea,
   Checkbox,
-  DataTable,
   TableContainer,
   Table,
   TableHead,
@@ -32,7 +31,6 @@ import {
   InlineNotification,
   Loading,
   CodeSnippet,
-  CodeSnippetSkeleton,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";

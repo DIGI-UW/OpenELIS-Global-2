@@ -39,6 +39,7 @@ import {
 } from "./api";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
+import { toDate, formatDuration } from "./shared/timeUtils";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
@@ -70,10 +71,8 @@ const AUDIT_HEADERS = [
 ];
 
 const formatDateTime = (value) => {
-  if (!value) {
-    return "—";
-  }
-  return new Date(value).toLocaleString();
+  const date = toDate(value);
+  return date ? date.toLocaleString() : "—";
 };
 
 const formatTemperature = (value) => {
@@ -131,14 +130,6 @@ const toIsoString = (value) => {
   }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
-};
-
-const formatDuration = (seconds) => {
-  if (seconds == null) {
-    return "—";
-  }
-  const minutes = Math.max(1, Math.round(seconds / 60));
-  return `${minutes} minutes`;
 };
 
 const formatActionLabel = (value) => {

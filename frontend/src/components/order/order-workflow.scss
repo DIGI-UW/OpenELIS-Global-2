@@ -13,9 +13,7 @@
    CSS Custom Properties (OpenELIS theme)
    ========================================================================== */
 :root {
-  --oe-navy: #1a2744;
   --oe-teal: #5bc0be;
-  --oe-teal-light: #e8f7f6;
 }
 
 /* ==========================================================================
@@ -316,37 +314,6 @@
   }
 }
 
-/* Legacy OrderSummaryCard styling */
-.order-summary-card {
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-
-  .order-summary-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-
-    h4 {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 600;
-    }
-  }
-
-  .cds--structured-list {
-    margin-bottom: 0;
-
-    .cds--structured-list-row {
-      border-bottom: none;
-    }
-
-    .cds--structured-list-td {
-      padding: 0.25rem 0.5rem;
-    }
-  }
-}
-
 /* ==========================================================================
    Content Section
    ========================================================================== */
@@ -402,27 +369,6 @@
 /* ==========================================================================
    Step-Specific Styles
    ========================================================================== */
-
-/* Label & Store Step */
-.label-store-tile {
-  padding: 1.5rem;
-
-  h4 {
-    margin-bottom: 1rem;
-    color: var(--cds-text-secondary);
-    font-weight: 400;
-  }
-
-  .label-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-
-    .cds--btn {
-      min-height: 32px; /* WCAG touch target */
-    }
-  }
-}
 
 /* Print Labels Section */
 .print-labels-section {
@@ -491,52 +437,8 @@
     }
   }
 
-  .quick-assign-section {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background-color: var(--cds-layer-02);
-    border-radius: 4px;
-
-    h6 {
-      margin: 0 0 0.25rem 0;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
-
-    .helper-text {
-      margin: 0 0 0.5rem 0;
-      font-size: 0.75rem;
-      color: var(--cds-text-secondary);
-    }
-  }
-
-  .form-field {
-    margin-bottom: 1rem;
-
-    .required-label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
-  }
-
-  .location-button {
-    margin-top: 1.5rem;
-  }
-
   .condition-notes-section {
     margin-top: 1.5rem;
-  }
-
-  .storage-info-text {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    font-size: 0.875rem;
-    color: var(--cds-text-secondary);
-    background-color: var(--cds-layer-02);
-    border-radius: 4px;
-    border-left: 4px solid var(--cds-support-info);
   }
 }
 
@@ -792,11 +694,6 @@
 }
 
 /* Sample & Test Section */
-.sample-test-section {
-  .sample-info-notification {
-    margin-bottom: 1.5rem;
-  }
-}
 
 .sample-card {
   margin-bottom: 1.5rem;
@@ -875,20 +772,6 @@
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: var(--cds-text-secondary);
-}
-
-.test-pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--cds-border-subtle);
-
-  .pagination-info {
-    font-size: 0.75rem;
-    color: var(--cds-text-secondary);
-  }
 }
 
 .no-items-message,
@@ -1287,86 +1170,6 @@
 }
 
 /* ==========================================================================
-   Location Section (Environmental Workflow)
-   ========================================================================== */
-.location-section {
-  .location-search-grid {
-    margin-bottom: 1rem;
-  }
-
-  .selected-address-display {
-    margin: 1rem 0 1.5rem 0;
-    padding: 1rem;
-    background-color: var(--cds-layer-02);
-    border-radius: 4px;
-    border-left: 4px solid var(--cds-support-success);
-
-    .selected-address-label {
-      margin-bottom: 0.5rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--cds-text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .selected-address-tags {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem;
-
-      .address-level-tag {
-        .tag-level-name {
-          font-weight: 600;
-          margin-right: 0.25rem;
-        }
-      }
-
-      .clear-address-button {
-        margin-left: 0.5rem;
-      }
-    }
-  }
-
-  .location-hierarchy-grid {
-    margin-bottom: 1.5rem;
-  }
-
-  .gps-section {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--cds-border-subtle);
-
-    .gps-button-column {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      gap: 0.5rem;
-
-      .cds--btn {
-        margin-top: 1.5rem;
-        min-height: 32px;
-      }
-
-      .gps-error {
-        margin: 0;
-        font-size: 0.75rem;
-        color: var(--cds-support-error);
-      }
-    }
-  }
-
-  .location-helper {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background-color: var(--cds-layer-02);
-    border-radius: 4px;
-    border-left: 4px solid var(--cds-support-info);
-  }
-}
-
-/* ==========================================================================
    Print Styles
    ========================================================================== */
 @media print {
@@ -1394,17 +1197,4 @@
     opacity: 1;
     pointer-events: auto;
   }
-}
-
-/* ==========================================================================
-   Consent Accordion Section (OGC-557)
-   ==========================================================================
-   Carbon Accordion + Tile handle most container styling. Only the audit
-   heading label needs a small helper class.
-   ========================================================================== */
-.consent-audit-heading {
-  margin: 0 0 0.5rem 0;
-  font-size: var(--cds-label-01-font-size, 0.75rem);
-  font-weight: var(--cds-label-01-font-weight, 400);
-  color: var(--cds-text-secondary);
 }
