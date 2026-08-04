@@ -45,13 +45,17 @@ each slice. A checked task requires committed evidence, not intent.
 
 ## Phase 4 - Repeat AST and lot traceability implementation (Slice B, green)
 
-- [ ] T029 Add Liquibase `061` AST-attempt metadata beyond the Slice A lifecycle link and culture/AST-to-Inventory-usage linkage with rollback; do not recreate reagent, lot, or usage tables.
+- [x] T029a Add Liquibase `061` AST-attempt metadata beyond the Slice A lifecycle link, with rollback.
+- [ ] T029b Add culture/AST-to-Inventory-usage linkage with rollback; do not recreate reagent, lot, or usage tables.
 - [x] T030 Implement repeat/retest run creation and explicit reportable-run selection.
 - [ ] T031 Implement reusable lot query/validation and usage orchestration over existing Test Catalog and Inventory services.
 - [ ] T032 Add shared Carbon lot picker and wire it into culture setup and AST setup without duplicating host logic.
-- [ ] T033 Render attempt relationships, reportable selection, and historical lots in the case workbench with text-plus-color status.
-- [ ] T034 Add focused Vitest tests for repeat AST and lot picker behavior.
-- [ ] T035 Add registered Playwright journey for repeat AST, FIFO selection, invalid-lot rejection, persisted usage, and historical lot display.
+- [x] T033a Render attempt relationships and reportable selection in the case workbench with text-plus-color status.
+- [ ] T033b Render historical lots in the case workbench with text-plus-color status.
+- [x] T034a Add focused Vitest tests for repeat AST behavior.
+- [ ] T034b Add focused Vitest tests for lot picker behavior.
+- [x] T035a Add a registered Playwright journey for repeat AST and explicit reportable-run selection.
+- [ ] T035b Extend the registered Playwright journey with FIFO lot selection, invalid-lot rejection, persisted usage, and historical lot display.
 - [ ] T036 Run Slice B backend/frontend formatting and focused validation; commit as one reviewable checkpoint.
 
 ## Phase 5 - Accessibility qualification (Slice C)
