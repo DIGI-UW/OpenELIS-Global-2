@@ -67,7 +67,6 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
-        requireNoInProgressAttempt(isolateId);
         MicroAstRun run = new MicroAstRun();
         run.setIsolateId(isolateId);
         run.setPanelId(panelId);
@@ -106,7 +105,6 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroIsolate isolate = isolateDAO.get(source.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
-        requireNoInProgressAttempt(isolate.getId());
         if (isAmendmentInProgress(microCase) && !source.isReportable()) {
             throw new MicroAstConflictException("AST_AMENDMENT_SOURCE_MUST_BE_REPORTABLE");
         }
@@ -283,14 +281,6 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         if (!run.getMethod().equals(method.name())) {
             throw new MicroAstConflictException("AST_RUN_METHOD_MISMATCH");
-        }
-    }
-
-    private void requireNoInProgressAttempt(String isolateId) {
-        boolean inProgress = runDAO.getByIsolateId(isolateId).stream()
-                .anyMatch(run -> MicroAstRunStatus.IN_PROGRESS.name().equals(run.getStatus()));
-        if (inProgress) {
-            throw new MicroAstConflictException("AST_ATTEMPT_ALREADY_IN_PROGRESS");
         }
     }
 

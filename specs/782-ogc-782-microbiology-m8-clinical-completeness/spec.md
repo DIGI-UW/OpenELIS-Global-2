@@ -192,8 +192,8 @@ readable evidence tied to a commit and environment description.
 **Acceptance scenarios**:
 
 1. A 200-case worklist loads in under 2 seconds.
-2. A case containing 5 isolates, 80 AST readings, and 30 timeline events loads
-   in under 1 second.
+2. A case containing 5 isolates, 80 AST readings, and at least 30 timeline
+   events loads in under 1 second.
 3. Worklist search returns in under 500 ms and a filter/page change completes
    in under 300 ms at the defined dataset size.
 4. Saving an isolate, an AST reading, or a timeline event completes in under
@@ -253,4 +253,3 @@ readable evidence tied to a commit and environment description.
   modules. Microbiology consumes those capabilities at bench-work time.
 - Product mockups and design documents guide workflow intent but do not dictate
   storage, routes, services, or component structure.
-

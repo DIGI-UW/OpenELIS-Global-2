@@ -70,7 +70,7 @@ each slice. A checked task requires committed evidence, not intent.
 
 ## Phase 6 - Scale and performance qualification (Slice C)
 
-- [ ] T042 Add property-gated service-layer qualification builders for 200 worklist cases and one dense case with 5 isolates, 80 readings, and 30 events; no SQL, fixed IDs, DAO bypass, or production endpoint.
+- [x] T042 Add property-gated service-layer qualification builders for 200 worklist cases and one dense case with 5 isolates, 80 readings, and at least 30 events; no SQL, fixed IDs, DAO bypass, or production endpoint.
 - [ ] T043 Add cleanup and isolation tests proving qualification data cannot leak across tests or ordinary deployments.
 - [ ] T044 Add API measurements for worklist load/search, case load, isolate save, AST save, and timeline save with fixed warm-up/iteration/p95 rules.
 - [ ] T045 Add browser measurements for initial worklist, case render, and filter/page interaction using stable app-ready marks.
