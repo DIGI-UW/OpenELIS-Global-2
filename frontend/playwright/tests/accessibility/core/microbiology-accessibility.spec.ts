@@ -79,14 +79,11 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     page,
   }, testInfo) => {
     const seeded = await seedMicrobiologyReferenceAdmin(page);
-    const closeMobileNavigation = async () => {
+    const expectMobileNavigationClosed = async () => {
       if (!testInfo.project.name.endsWith("-mobile")) return;
-      const closeMenu = page.getByRole("button", { name: "Close menu" });
-      await expect(closeMenu).toBeVisible({ timeout: LONG_TIMEOUT });
-      await closeMenu.click();
-      await expect(
-        page.getByRole("button", { name: "Open menu" }),
-      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible(
+        { timeout: LONG_TIMEOUT },
+      );
     };
     const surfaces = [
       [
@@ -109,7 +106,7 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     for (const [route, heading, evidenceName] of surfaces) {
       await test.step(`Scan ${heading}`, async () => {
         await page.goto(route, { waitUntil: "domcontentloaded" });
-        await closeMobileNavigation();
+        await expectMobileNavigationClosed();
         await expect(page.getByRole("heading", { name: heading })).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
