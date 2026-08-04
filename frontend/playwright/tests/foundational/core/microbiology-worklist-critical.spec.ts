@@ -1,4 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
 import { Sidenav } from "../../../fixtures/sidenav";
 import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -12,6 +13,11 @@ const openCaseSection = async (page: Page, name: string, section: string) => {
     .poll(() => new URL(page.url()).searchParams.get("section"))
     .toBe(section);
 };
+
+const accordionButton = (page: Page, name: string) =>
+  page
+    .getByTestId("microbiology-case-view")
+    .getByRole("button", { name, exact: true });
 
 test.describe("microbiology worklist and critical communication", () => {
   test("worklist contains its wide table on a mobile viewport", async ({
@@ -90,13 +96,11 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(page.getByTestId("content-wrapper")).toHaveClass(
       /content-nav-locked/,
     );
-    await page
-      .locator("#microbiology-worklist-workflow-filter")
-      .selectOption("BACTERIOLOGY");
+    await page.getByLabel("Workflow").selectOption("BACTERIOLOGY");
     await expect(page).toHaveURL(
       /\/Microbiology\/worklist\?workflow=BACTERIOLOGY$/,
     );
-    await page.locator("#microbiology-worklist-sort").selectOption("newest");
+    await page.getByLabel("Sort").selectOption("newest");
     await expect(page).toHaveURL(
       /\/Microbiology\/worklist\?workflow=BACTERIOLOGY&sort=newest$/,
     );

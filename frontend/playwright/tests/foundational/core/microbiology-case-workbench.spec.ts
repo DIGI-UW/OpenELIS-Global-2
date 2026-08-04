@@ -21,33 +21,27 @@ test.describe("Microbiology case workbench", () => {
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     const caseHeader = page.locator("header");
-    await expect(
-      caseHeader.locator(".cds--tag__label").filter({ hasText: "Received" }),
-    ).toBeVisible();
+    const caseView = page.getByTestId("microbiology-case-view");
+    await expect(caseHeader.getByTitle("Received")).toBeVisible();
 
-    await page
-      .locator(".cds--accordion__heading")
-      .filter({ hasText: "Inoculation" })
+    await caseView
+      .getByRole("button", { name: "Inoculation", exact: true })
       .click();
     await expect(page).toHaveURL(/section=setup/);
     await page.getByLabel("Activity note").fill("setup complete");
     await page.getByRole("button", { name: "Start inoculation" }).click();
-    await expect(
-      caseHeader
-        .locator(".cds--tag__label")
-        .filter({ hasText: "Setup Recorded" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(caseHeader.getByTitle("Setup Recorded")).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
 
-    await page
-      .locator(".cds--accordion__heading")
-      .filter({ hasText: "Timeline" })
+    await caseView
+      .getByRole("button", { name: "Timeline", exact: true })
       .click();
     await expect(page).toHaveURL(/section=timeline/);
     await expect(page.getByText(/setup complete/)).toBeVisible();
 
-    await page
-      .locator(".cds--accordion__heading")
-      .filter({ hasText: "Isolates" })
+    await caseView
+      .getByRole("button", { name: "Isolates", exact: true })
       .click();
     await expect(page).toHaveURL(/section=isolates/);
     await page.getByLabel("Preliminary organism").fill("Escherichia coli");
@@ -56,9 +50,8 @@ test.describe("Microbiology case workbench", () => {
       timeout: LONG_TIMEOUT,
     });
 
-    await page
-      .locator(".cds--accordion__heading")
-      .filter({ hasText: "Timeline" })
+    await caseView
+      .getByRole("button", { name: "Timeline", exact: true })
       .click();
     await expect(page).toHaveURL(/section=timeline/);
     await expect(page.getByText(/Isolate Created/)).toBeVisible();
