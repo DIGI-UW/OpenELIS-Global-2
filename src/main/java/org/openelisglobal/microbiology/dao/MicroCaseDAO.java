@@ -10,5 +10,7 @@ public interface MicroCaseDAO extends BaseDAO<MicroCase, String> {
 
     List<MicroCase> getBySampleItem(String sampleItemId);
 
+    List<MicroCase> getBySampleItemIds(List<String> sampleItemIds);
+
     List<MicroCase> getOpenCases();
 }

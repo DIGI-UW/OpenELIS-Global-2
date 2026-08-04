@@ -2,6 +2,9 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -58,18 +61,16 @@ public class MicroWorklistServiceTest {
         MicroCase siblingCase = microCase("case-tb", "sample-1", MicroWorkflowType.MYCOBACTERIOLOGY_TB,
                 MicroCaseStage.RECEIVED, "ROUTINE");
         MicroIsolate isolate = significantIsolate("iso-1");
+        isolate.setCaseId("case-ast");
         MicroAstRun run = new MicroAstRun();
+        run.setIsolateId("iso-1");
         run.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
         when(caseDAO.getOpenCases()).thenReturn(List.of(setupCase, astCase, siblingCase));
-        when(caseDAO.getBySampleItem("sample-1")).thenReturn(List.of(astCase, siblingCase));
-        when(caseDAO.getBySampleItem("sample-2")).thenReturn(List.of(setupCase));
-        when(isolateDAO.getByCaseId("case-ast")).thenReturn(List.of(isolate));
-        when(isolateDAO.getByCaseId("case-setup")).thenReturn(List.of());
-        when(isolateDAO.getByCaseId("case-tb")).thenReturn(List.of());
-        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
-        when(communicationDAO.getByCaseId("case-ast")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-setup")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-tb")).thenReturn(List.of());
+        when(caseDAO.getBySampleItemIds(List.of("sample-2", "sample-1")))
+                .thenReturn(List.of(setupCase, astCase, siblingCase));
+        when(isolateDAO.getByCaseIds(List.of("case-setup", "case-ast", "case-tb"))).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateIds(List.of("iso-1"))).thenReturn(List.of(run));
+        when(communicationDAO.getByCaseIds(List.of("case-setup", "case-ast", "case-tb"))).thenReturn(List.of());
 
         List<MicroWorklistRowForm> rows = service.getWorklistPage(new MicroWorklistQueryForm()).rows;
 
@@ -78,6 +79,13 @@ public class MicroWorklistServiceTest {
         assertEquals("HIGH", rows.get(0).urgency);
         assertTrue(rows.get(0).siblingWorkflows.contains(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name()));
         assertEquals("SETUP", rows.get(1).dueAction);
+        verify(isolateDAO).getByCaseIds(List.of("case-setup", "case-ast", "case-tb"));
+        verify(astRunDAO).getByIsolateIds(List.of("iso-1"));
+        verify(communicationDAO).getByCaseIds(List.of("case-setup", "case-ast", "case-tb"));
+        verify(caseDAO, never()).getBySampleItem(anyString());
+        verify(isolateDAO, never()).getByCaseId(anyString());
+        verify(astRunDAO, never()).getByIsolateId(anyString());
+        verify(communicationDAO, never()).getByCaseId(anyString());
     }
 
     @Test
@@ -85,12 +93,13 @@ public class MicroWorklistServiceTest {
         MicroCase microCase = microCase("case-1", "sample-1", MicroWorkflowType.BACTERIOLOGY,
                 MicroCaseStage.SETUP_RECORDED, "ROUTINE");
         MicroCriticalCommunication communication = new MicroCriticalCommunication();
+        communication.setCaseId("case-1");
         communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.OPEN.name());
         communication.setFollowUpNeeded(true);
         when(caseDAO.getOpenCases()).thenReturn(List.of(microCase));
-        when(caseDAO.getBySampleItem("sample-1")).thenReturn(List.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of(communication));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(microCase));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(communication));
 
         MicroWorklistRowForm row = service.getWorklistPage(new MicroWorklistQueryForm()).rows.get(0);
 
@@ -105,12 +114,9 @@ public class MicroWorklistServiceTest {
         MicroCase tb = microCase("case-tb", "sample-2", MicroWorkflowType.MYCOBACTERIOLOGY_TB, MicroCaseStage.RECEIVED,
                 "ROUTINE");
         when(caseDAO.getOpenCases()).thenReturn(List.of(bacteriology, tb));
-        when(caseDAO.getBySampleItem("sample-1")).thenReturn(List.of(bacteriology));
-        when(caseDAO.getBySampleItem("sample-2")).thenReturn(List.of(tb));
-        when(isolateDAO.getByCaseId("case-bac")).thenReturn(List.of());
-        when(isolateDAO.getByCaseId("case-tb")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-bac")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-tb")).thenReturn(List.of());
+        when(caseDAO.getBySampleItemIds(List.of("sample-1", "sample-2"))).thenReturn(List.of(bacteriology, tb));
+        when(isolateDAO.getByCaseIds(List.of("case-bac", "case-tb"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-bac", "case-tb"))).thenReturn(List.of());
 
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
         query.workflow = MicroWorkflowType.BACTERIOLOGY.name();
@@ -138,26 +144,23 @@ public class MicroWorklistServiceTest {
         MicroCase readyForReview = microCase("case-ready", "sample-4", MicroWorkflowType.BACTERIOLOGY,
                 MicroCaseStage.REVIEW_READY, "ROUTINE");
         MicroIsolate astIsolate = significantIsolate("iso-ast");
+        astIsolate.setCaseId("case-ast");
         MicroAstRun astRun = new MicroAstRun();
+        astRun.setIsolateId("iso-ast");
         astRun.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
         MicroIsolate reviewedIsolate = new MicroIsolate();
         reviewedIsolate.setId("iso-reviewed");
+        reviewedIsolate.setCaseId("case-ready");
         reviewedIsolate.setSignificance(MicroIsolateSignificance.NORMAL_FLORA.name());
 
         when(caseDAO.getOpenCases()).thenReturn(List.of(incubating, growth, astReview, readyForReview));
-        for (MicroCase microCase : List.of(incubating, growth, astReview, readyForReview)) {
-            when(caseDAO.getBySampleItem(microCase.getSampleItemId())).thenReturn(List.of(microCase));
-        }
-        when(isolateDAO.getByCaseId("case-incubating")).thenReturn(List.of());
-        when(isolateDAO.getByCaseId("case-growth")).thenReturn(List.of());
-        when(isolateDAO.getByCaseId("case-ast")).thenReturn(List.of(astIsolate));
-        when(isolateDAO.getByCaseId("case-ready")).thenReturn(List.of(reviewedIsolate));
-        when(astRunDAO.getByIsolateId("iso-ast")).thenReturn(List.of(astRun));
-        when(astRunDAO.getByIsolateId("iso-reviewed")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-incubating")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-growth")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-ast")).thenReturn(List.of());
-        when(communicationDAO.getByCaseId("case-ready")).thenReturn(List.of());
+        when(caseDAO.getBySampleItemIds(List.of("sample-1", "sample-2", "sample-3", "sample-4")))
+                .thenReturn(List.of(incubating, growth, astReview, readyForReview));
+        when(isolateDAO.getByCaseIds(List.of("case-incubating", "case-growth", "case-ast", "case-ready")))
+                .thenReturn(List.of(astIsolate, reviewedIsolate));
+        when(astRunDAO.getByIsolateIds(List.of("iso-ast", "iso-reviewed"))).thenReturn(List.of(astRun));
+        when(communicationDAO.getByCaseIds(List.of("case-incubating", "case-growth", "case-ast", "case-ready")))
+                .thenReturn(List.of());
 
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
         query.stage = MicroCaseStage.INCUBATING.name();

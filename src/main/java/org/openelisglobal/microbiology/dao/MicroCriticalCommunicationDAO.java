@@ -8,5 +8,7 @@ public interface MicroCriticalCommunicationDAO extends BaseDAO<MicroCriticalComm
 
     List<MicroCriticalCommunication> getByCaseId(String caseId);
 
+    List<MicroCriticalCommunication> getByCaseIds(List<String> caseIds);
+
     MicroCriticalCommunication getByAlertId(Long alertId);
 }

@@ -25,4 +25,17 @@ public class MicroIsolateDAOImpl extends BaseDAOImpl<MicroIsolate, String> imple
         query.setParameter("caseId", caseId);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroIsolate> getByCaseIds(List<String> caseIds) {
+        if (caseIds == null || caseIds.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroIsolate> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroIsolate i where i.caseId in (:caseIds) order by i.caseId, i.isolateLabel",
+                MicroIsolate.class);
+        query.setParameterList("caseIds", caseIds);
+        return query.list();
+    }
 }
