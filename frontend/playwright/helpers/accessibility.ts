@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect } from "@playwright/test";
+import { writeFile } from "fs/promises";
 import type { Page, TestInfo } from "@playwright/test";
 
 const WCAG_21_AA_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -51,13 +52,22 @@ export async function expectNoWcag21AaViolations(
     })),
     incomplete: results.incomplete,
   };
+  const safeSurfaceName = surfaceName.replace(/[^a-z0-9-]+/gi, "-");
+  const jsonPath = testInfo.outputPath(`axe-${safeSurfaceName}.json`);
+  const screenshotPath = testInfo.outputPath(
+    `screenshot-${safeSurfaceName}.png`,
+  );
+  await Promise.all([
+    writeFile(jsonPath, `${JSON.stringify(evidence, null, 2)}\n`),
+    page.screenshot({ path: screenshotPath, fullPage: true }),
+  ]);
 
   await testInfo.attach(`axe-${surfaceName}`, {
-    body: JSON.stringify(evidence, null, 2),
+    path: jsonPath,
     contentType: "application/json",
   });
   await testInfo.attach(`screenshot-${surfaceName}`, {
-    body: await page.screenshot({ fullPage: true }),
+    path: screenshotPath,
     contentType: "image/png",
   });
 
