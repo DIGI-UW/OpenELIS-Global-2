@@ -7,12 +7,9 @@ import {
   TextArea,
   Select,
   SelectItem,
-  MultiSelect,
-  FileUploader,
   FilterableMultiSelect,
   Grid,
   Column,
-  InlineLoading,
   Section,
   Heading,
   Tile,
@@ -22,9 +19,6 @@ import {
   FileUploaderItem,
   Loading,
   Tag,
-  Tabs,
-  TabList,
-  Tab,
   Accordion,
   AccordionItem,
   ContentSwitcher,
@@ -39,13 +33,7 @@ import {
   TableRow,
   Pagination,
 } from "@carbon/react";
-import {
-  Launch,
-  Subtract,
-  ArrowLeft,
-  ArrowRight,
-  Checkmark,
-} from "@carbon/react/icons";
+import { Launch, Checkmark } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -58,7 +46,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   postToOpenElisServer,
-  hasRole,
   toBase64,
 } from "../utils/Utils";
 import { Add } from "@carbon/icons-react";

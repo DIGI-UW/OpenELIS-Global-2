@@ -23,7 +23,7 @@ import {
   Grid,
   Column,
 } from "@carbon/react";
-import { Add, Edit, TrashCan } from "@carbon/icons-react";
+import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
   getCustomFieldTypes,
