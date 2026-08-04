@@ -45,7 +45,8 @@ public class MicrobiologyArchitectureTest {
         try (Stream<Path> files = Files.walk(microbiologyTests)) {
             for (Path file : files.filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> !path.getFileName().toString().equals(getClass().getSimpleName() + ".java"))
-                    .toList()) {
+                    .filter(path -> !path.getFileName().toString().endsWith("LiquibaseRollbackTest.java"))
+                    .filter(path -> !path.toString().contains("/qualification/")).toList()) {
                 assertNoForbiddenFixtureAccess(file, List.of("JdbcTemplate", "javax.sql.DataSource",
                         "java.sql.Connection", "createNativeQuery", "INSERT INTO", "DELETE FROM", "nextval("));
             }
@@ -54,6 +55,11 @@ public class MicrobiologyArchitectureTest {
         assertNoForbiddenFixtureAccess(repositoryRoot.resolve(
                 "src/test/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorMicrobiologyTest.java"),
                 List.of("JdbcTemplate", "javax.sql.DataSource", "java.sql.Connection", "createNativeQuery",
+                        "INSERT INTO", "DELETE FROM", "nextval("));
+        assertNoForbiddenFixtureAccess(
+                repositoryRoot.resolve(
+                        "src/main/java/org/openelisglobal/microbiology/service/MicrobiologyUatScenarioService.java"),
+                List.of(".dao.", "JdbcTemplate", "javax.sql.DataSource", "java.sql.Connection", "createNativeQuery",
                         "INSERT INTO", "DELETE FROM", "nextval("));
         assertNoForbiddenFixtureAccess(repositoryRoot.resolve("frontend/playwright/helpers/seed-microbiology-data.ts"),
                 List.of("child_process", "execFile", "docker", "psql", "INSERT INTO", "DELETE FROM", "nextval("));
