@@ -27,6 +27,7 @@ import {
   sectionPath,
 } from "./sectionConfig";
 import { useReferenceQuery } from "./useReferenceQuery";
+import { buildReferenceQuery } from "./queryState";
 import "./microbiologyReference.scss";
 
 const MicrobiologyReferenceAdmin = () => {
@@ -55,6 +56,10 @@ const MicrobiologyReferenceAdmin = () => {
     {
       label: "microbiology.admin.title",
       link: sectionPath(basePath, DEFAULT_MICROBIOLOGY_REFERENCE_SECTION),
+    },
+    {
+      label: MICROBIOLOGY_REFERENCE_SECTIONS[selectedIndex].label,
+      link: `${sectionPath(basePath, section)}?${buildReferenceQuery(query)}`,
       isCurrentPage: !detailId,
     },
   ];

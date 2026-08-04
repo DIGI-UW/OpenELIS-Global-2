@@ -10,6 +10,12 @@ export interface SeededMicrobiologyCase {
   patientId: string;
   analysisId: string;
   siblingCaseId?: string;
+  organismId?: string;
+  antibioticId?: string;
+  astPanelId?: string;
+  activeBreakpointStandardId?: string;
+  loadedBreakpointStandardId?: string;
+  methodId?: string;
 }
 
 export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {
@@ -22,9 +28,18 @@ export interface SeededDenseMicrobiologyCase extends SeededMicrobiologyCase {
   astReadingCount: number;
 }
 
+export interface SeededMicrobiologyReferenceAdmin extends SeededMicrobiologyCase {
+  organismId: string;
+  antibioticId: string;
+  astPanelId: string;
+  activeBreakpointStandardId: string;
+  loadedBreakpointStandardId: string;
+  methodId: string;
+}
+
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
-type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST";
+type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST" | "M3";
 
 interface MicrobiologyReferenceOption {
   id: string;
@@ -75,6 +90,7 @@ async function provisionMicrobiologyScenario(
     patientId: body.patientId,
     analysisId: body.analysisId,
     siblingCaseId: body.siblingCaseId,
+    ...body,
   };
 }
 
@@ -94,6 +110,26 @@ export function seedMicrobiologyWorklistCase(
   page: Page,
 ): Promise<SeededMicrobiologyCase> {
   return provisionMicrobiologyScenario(page, "WORKLIST");
+}
+
+export async function seedMicrobiologyReferenceAdmin(
+  page: Page,
+): Promise<SeededMicrobiologyReferenceAdmin> {
+  const seeded = await provisionMicrobiologyScenario(page, "M3");
+  const required = [
+    "organismId",
+    "antibioticId",
+    "astPanelId",
+    "activeBreakpointStandardId",
+    "loadedBreakpointStandardId",
+    "methodId",
+  ] as const;
+  for (const field of required) {
+    if (!seeded[field]) {
+      throw new Error(`Microbiology M3 scenario is missing ${field}`);
+    }
+  }
+  return seeded as SeededMicrobiologyReferenceAdmin;
 }
 
 export async function seedMicrobiologyWorklistCases(
