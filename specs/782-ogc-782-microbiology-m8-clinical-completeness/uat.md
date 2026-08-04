@@ -9,7 +9,7 @@
 - Deployment ID: `20260804T054912Z-cd833663cedb`
 - Review-tooling SHA: `3d52ac103853e349df017828689b788880631d21`
 - Checklist revision:
-  `14a4359b2187ec1803d55610d48dbc9eac70e4556c879ae31476bf09fcefbbb8`
+  `00242ff2e232998d6bab03844de68975a8dd6ef4117fd81eb51af997db4d5afe`
 - Automated live precheck: passed
 - Human UAT: pending
 
@@ -31,11 +31,13 @@ Pass/Fail/N/A rulings.
 | `AMR-S06` Preserve repeat and retest AST attempts    | M2        | `AMR-24`, `AMR-25`                   | -              |
 | `AMR-S07` Release and verify corrected results       | M2        | `AMR-26`, `AMR-27`                   | -              |
 | `AMR-S08` Review the workflow by keyboard            | M2        | `AMR-28`                             | -              |
+| `AMR-S09` Trace bench consumable lots                | M2        | `AMR-29`, `AMR-30`, `AMR-31`         | -              |
 
-The acceptance gate is 16 required steps. `AMR-21` is an optional TB
-reflection and cannot block M1 or M2 acceptance. Reagent/card-lot traceability
-is not in this deployment because its product-policy contradiction remains
-unresolved.
+The acceptance gate is 19 required steps. `AMR-21` is an optional TB
+reflection and cannot block M1 or M2 acceptance. `AMR-29` and `AMR-30` qualify
+policy-neutral traceability only, as does `AMR-31`: `PRIMARY / SECONDARY`
+remains visible catalog role metadata and is not interpreted as
+mandatory/optional/substitute policy.
 
 ## Fixture
 
@@ -50,10 +52,13 @@ bypass, or a production fixture endpoint.
 
 The worklist is the supported entry point; case identifiers are recorded here
 for evidence and diagnosis, not embedded in application or Playwright logic.
+The fixture also creates expired and eligible culture-media lots plus eligible
+AST-card lots through Inventory services; no lot identifier is fixed in a UI or
+test contract.
 
 ## Reviewer Ruling
 
 Piotr records Pass, Fail, or N/A and notes in the live Review overlay for all
-16 required steps. A failed step must identify the observed behavior and the
+19 required steps. A failed step must identify the observed behavior and the
 expected behavior. The downloaded Markdown/JSON report is the acceptance
 record and is attached to PR #3972 or linked from this directory.

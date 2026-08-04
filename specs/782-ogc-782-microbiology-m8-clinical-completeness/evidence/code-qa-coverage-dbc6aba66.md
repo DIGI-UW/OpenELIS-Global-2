@@ -1,5 +1,9 @@
 # Code QA: Meaningful Test Coverage
 
+> Historical checkpoint at `dbc6aba66`. The current lot-traceability review at
+> `554063fc8` is recorded in `code-qa-lot-traceability-554063fc8.md` and
+> supersedes the lot-specific gap below.
+
 - Feature commit: `dbc6aba66`
 - `DIGI-UW/code-qa`: `30528d176bd128b4765242d130f38ca9fb85d7b8`
 - Verdict: **meaningful coverage for completed slices; lot slice unimplemented**

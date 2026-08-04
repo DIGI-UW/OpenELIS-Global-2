@@ -1,5 +1,9 @@
 # M8 final local validation
 
+> Historical checkpoint at `5203e1fdb`. Policy-neutral lot traceability was
+> implemented afterward and is validated in
+> `lot-traceability-local-554063fc8.md`.
+
 - Commit under test: `5203e1fdb`
 - Stack: isolated `cc8c-ogc782` Docker Compose project
 - Base URL: `https://127.0.0.1:48444`

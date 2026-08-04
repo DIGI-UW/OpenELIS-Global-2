@@ -1,5 +1,9 @@
 # Code QA: Spec-Code Alignment
 
+> Historical checkpoint at `dbc6aba66`. The current lot-traceability review at
+> `554063fc8` is recorded in `code-qa-lot-traceability-554063fc8.md` and
+> supersedes the lot-specific findings below.
+
 - Feature commit: `dbc6aba66`
 - Baseline: `6aafb05a9345525e04a0749e01ba09a3e41b5c2d`
 - `DIGI-UW/code-qa`: `30528d176bd128b4765242d130f38ca9fb85d7b8`

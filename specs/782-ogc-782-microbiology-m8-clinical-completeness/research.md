@@ -30,6 +30,13 @@ The following observations describe the branch base before M8 implementation:
 - The MVP task ledger names a performance follow-up but contains no repeatable
   200-case qualification fixture or percentile evidence.
 
+The observations above are the pre-M8 baseline. At commit `554063fc8`, the M8
+branch now reuses Test Catalog links and shared Inventory services to show
+eligible and ineligible lots, recommend the first eligible lot by FEFO, consume
+an explicitly selected lot under a row lock, and retain culture/AST bench
+provenance. Catalog role remains display-only; it is not treated as
+requiredness.
+
 ## Source Health Findings
 
 | Artifact        | Classification                       | Finding                                                                                                                                                                                                                      | Product-safe interpretation                                                                                               | Engineering consequence                                                                                                                                                            |
@@ -39,7 +46,7 @@ The following observations describe the branch base before M8 implementation:
 | M-NFR NFR-03    | Implementation leakage               | It prescribes specific audit tables and columns.                                                                                                                                                                             | Users need immutable, attributable before/after history.                                                                  | Reuse existing case activity/audit patterns and add typed records only where queryable clinical history requires them.                                                             |
 | OGC-784 epic    | Stale scope / implementation leakage | Its description still claims ownership of reagent-link schema/admin surfaces even though current M-12 v3 narrows scope to shared picker and wiring.                                                                          | Bench users choose valid lots and results remain traceable.                                                               | Consume existing `test_reagent_link` and Inventory services; do not recreate catalog/inventory ownership.                                                                          |
 | OGC-865/867/868 | Jira-state contradiction             | Superseded children are Done while the parent is Backlog and the shared picker/wiring remains absent.                                                                                                                        | Only delivered outcomes count.                                                                                            | Do not infer M-12 completion from child status. OGC-866 remains the closest active outcome contract.                                                                               |
-| M-12 v3         | Implementation leakage               | It names component props, tables, and exact storage behavior as feature requirements.                                                                                                                                        | One consistent lot-selection workflow is reused at culture and AST setup, with FIFO and eligibility rules.                | Choose interfaces that match current Inventory/Test Catalog services and preserve transaction boundaries.                                                                          |
+| M-12 v3         | Implementation leakage               | It names component props, tables, and exact storage behavior as feature requirements.                                                                                                                                        | One consistent lot-selection workflow is reused at culture and AST setup, with FEFO and eligibility rules.                | Choose interfaces that match current Inventory/Test Catalog services and preserve transaction boundaries.                                                                          |
 | M-12 v3 vs repo | Engineering decision needed          | `InventoryUsage` can reference an analysis/result, but does not identify the culture setup or AST run where a lot was consumed.                                                                                              | Historical case review must show which bench action used each lot.                                                        | Add narrow linkage from the bench action to shared Inventory usage rather than adding another lot/usage store.                                                                     |
 | OGC-784 vs repo | Real contradiction                   | OGC-784 names `REQUIRED / OPTIONAL / SUBSTITUTE` reagent-link semantics, while the implemented Test Catalog foundation stores `PRIMARY / SECONDARY`; M8 excludes reagent-link authoring changes.                             | Required selections must block and optional selections must not, but product role and requirement are separate concepts.  | Do not infer requirement from `PRIMARY / SECONDARY`. Repeat AST can proceed; lot enforcement needs a product ruling and a separately recorded Test Catalog compatibility decision. |
 | M8 US6 vs repo  | Real contradiction                   | The initial workload named exactly 30 timeline events alongside 5 isolates and 80 AST readings, but service-layer AST entry correctly writes one immutable activity per reading, so that case necessarily exceeds 30 events. | The benchmark must represent normal audited behavior and cannot delete or bypass valid history to hit an exact row count. | Treat 30 as a minimum workload: qualify 5 isolates, 80 readings, and at least 30 timeline events.                                                                                  |
@@ -80,6 +87,9 @@ The following observations describe the branch base before M8 implementation:
   is recorded. UI filtering is not the security or integrity boundary.
 - Add only the minimum linkage needed to associate shared Inventory usage with
   a culture setup or AST run.
+- Preserve `PRIMARY / SECONDARY` as catalog-role metadata and keep lot selection
+  optional until a distinct requirement policy is approved. This permits
+  traceability without silently changing existing order or bench workflows.
 
 ### Accessibility and performance
 
@@ -163,5 +173,6 @@ simplicity, and evidence reports are retained under `evidence/code-qa-*`.
    required/optional behavior named by OGC-784. No default is safe: treating
    all primary links as required changes current workflows, while treating all
    existing links as optional cannot satisfy required-lot blocking. This blocks
-   lot-policy implementation, but not repeat AST, accessibility, or the
-   qualification harness.
+   mandatory/optional/substitute enforcement. It does not block the implemented
+   policy-neutral picker, exact-lot validation and consumption, provenance,
+   repeat AST, accessibility, or the qualification harness.

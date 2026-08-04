@@ -9,7 +9,9 @@ const accordionButton = (page: Page, name: string) =>
     .getByRole("button", { name, exact: true });
 
 const chooseCarbonRadio = async (radio: ReturnType<Page["getByRole"]>) => {
-  await radio.locator("xpath=..").locator("label").click();
+  await radio.focus();
+  await radio.press("Space");
+  await expect(radio).toBeChecked();
 };
 
 const attachScreenshot = async (
