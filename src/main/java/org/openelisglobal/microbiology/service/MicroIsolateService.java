@@ -14,5 +14,9 @@ public interface MicroIsolateService {
             MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
             String performedBy);
 
+    MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
+            MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus, String reason,
+            String performedBy);
+
     List<MicroIsolate> getIsolatesForCase(String caseId);
 }

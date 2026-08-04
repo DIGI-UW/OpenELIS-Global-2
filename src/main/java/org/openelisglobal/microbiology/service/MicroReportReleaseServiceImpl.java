@@ -22,15 +22,20 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     private final MicroCaseReadinessService readinessService;
     private final MicroCriticalCommunicationDAO communicationDAO;
     private final MicroReportProjectionService reportProjectionService;
+    private final MicroReportVersionService reportVersionService;
+    private final MicroCaseAmendmentService amendmentService;
 
     public MicroReportReleaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
             MicroCaseReadinessService readinessService, MicroCriticalCommunicationDAO communicationDAO,
-            MicroReportProjectionService reportProjectionService) {
+            MicroReportProjectionService reportProjectionService, MicroReportVersionService reportVersionService,
+            MicroCaseAmendmentService amendmentService) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.readinessService = readinessService;
         this.communicationDAO = communicationDAO;
         this.reportProjectionService = reportProjectionService;
+        this.reportVersionService = reportVersionService;
+        this.amendmentService = amendmentService;
     }
 
     @Override
@@ -57,7 +62,7 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         if (hasOpenCriticalFollowUp(caseId)) {
             throw new IllegalStateException("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
         }
-        reportProjectionService.releaseFinal(caseId, performedBy);
+        MicroReportProjectionResult projection = reportProjectionService.releaseFinal(caseId, performedBy);
         // Readiness (isolate + AST review + critical follow-up state), not the raw
         // culture stage, is the release gate: nothing in the isolate/AST flow
         // advances stage through the intermediate culture stages, so a
@@ -68,8 +73,24 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         microCase.setClosedAt(MicroCaseServiceImpl.now());
         microCase.setClosedBy(performedBy);
         MicroCase updated = caseDAO.update(microCase);
+        reportVersionService.recordInitialFinal(caseId, projection, performedBy);
         recordActivity(caseId, MicroCaseActivityType.FINAL_REPORT_RELEASED, performedBy, "Final report released");
         return updated;
+    }
+
+    @Override
+    @Transactional
+    public MicroCase releaseAmended(String caseId, String performedBy) {
+        MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
+        if (!readiness.finalReleaseReady) {
+            throw new IllegalStateException("Amended release is blocked: " + String.join(", ", readiness.blockers));
+        }
+        if (hasOpenCriticalFollowUp(caseId)) {
+            throw new IllegalStateException("Amended release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
+        }
+        MicroReportProjectionResult projection = reportProjectionService.releaseAmended(caseId, performedBy);
+        amendmentService.completeAmendment(caseId, projection, performedBy);
+        return getCase(caseId);
     }
 
     private MicroCase getCase(String caseId) {

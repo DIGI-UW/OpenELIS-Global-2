@@ -17,6 +17,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
@@ -25,6 +26,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
@@ -59,12 +61,15 @@ public class MicroAstServiceTest {
     @Mock
     private MicroAstInterpretationService interpretationService;
 
+    @Mock
+    private MicroCaseAmendmentDAO amendmentDAO;
+
     private MicroAstService service;
 
     @Before
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
-                interpretationService);
+                interpretationService, amendmentDAO);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
     }
 
@@ -156,6 +161,37 @@ public class MicroAstServiceTest {
         when(caseDAO.get("case-1")).thenReturn(Optional.of(finalCase));
 
         service.startRun("iso-1", "panel-1", "1");
+    }
+
+    @Test
+    public void amendmentRunIsLinkedAndPriorRunCannotBeChanged() {
+        MicroCase amendmentCase = mutableCase();
+        amendmentCase.setStage(MicroCaseStage.AMENDED.name());
+        amendmentCase.setFinalReleaseState(MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name());
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(amendmentCase));
+        MicroCaseAmendment amendment = new MicroCaseAmendment();
+        amendment.setId("amendment-1");
+        amendment.setCaseId("case-1");
+        when(amendmentDAO.getOpenByCaseId("case-1")).thenReturn(amendment);
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+
+        MicroAstRun amendmentRun = service.startRun("iso-1", "panel-1", "1");
+
+        assertEquals("amendment-1", amendmentRun.getAmendmentId());
+
+        MicroAstRun priorRun = new MicroAstRun();
+        priorRun.setId("run-prior");
+        priorRun.setIsolateId("iso-1");
+        when(runDAO.get("run-prior")).thenReturn(Optional.of(priorRun));
+        try {
+            service.reviewRun("run-prior", "1");
+            org.junit.Assert.fail("Expected amendment to require a new AST run");
+        } catch (MicroAmendmentConflictException expected) {
+            assertEquals("AMENDMENT_NEW_AST_RUN_REQUIRED", expected.getMessage());
+        }
     }
 
     private MicroCase mutableCase() {

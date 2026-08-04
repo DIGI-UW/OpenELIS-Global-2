@@ -9,26 +9,26 @@ each slice. A checked task requires committed evidence, not intent.
 - [x] T002 Create branch `feat/782-ogc-782-microbiology-m8-clinical-completeness`.
 - [x] T003 Reconcile OGC-783/784/790/791, current OpenELIS Work sources, and repo state in `research.md`.
 - [x] T004 Define behavior-only acceptance criteria in `spec.md` and keep engineering decisions in `plan.md`.
-- [ ] T005 Run SpecKit cross-artifact analysis and resolve every ERROR before production edits.
+- [x] T005 Run SpecKit cross-artifact analysis and resolve every ERROR before the first Slice A commit.
 
 ## Phase 1 - Amendment lifecycle tests (Slice A, red)
 
-- [ ] T006 Add JUnit 4 service tests: only final cases can open amendments, reason required, one open amendment, authenticated actor retained, and non-amendment writes remain locked.
-- [ ] T007 Add service tests for release and cancellation: original version preserved, amended version appended, case relocked, named blockers returned.
-- [ ] T008 Add report-projection tests proving amended release creates a new standard Analysis revision and Result without changing the prior finalized Analysis/Result.
-- [ ] T009 Add isolate tests proving a reported organism change requires an open amendment and reason and records immutable before/after identification history.
-- [ ] T010 Add controller tests for amendment/history endpoints, actor spoof rejection, authorization, validation, and 409 conflict responses.
+- [x] T006 Add JUnit 4 service tests: only final cases can open amendments, reason required, one open amendment, authenticated actor retained, and non-amendment writes remain locked.
+- [x] T007 Add service tests for release and cancellation: original version preserved, amended version appended, case relocked, named blockers returned.
+- [x] T008 Add report-projection tests proving amended release creates a new standard Analysis revision and Result without changing the prior finalized Analysis/Result.
+- [x] T009 Add isolate tests proving a reported organism change requires an open amendment and reason and records immutable before/after identification history.
+- [x] T010 Add controller tests for amendment/history endpoints, actor spoof rejection, authorization, validation, and 409 conflict responses.
 - [ ] T011 Add Testcontainers integration tests for unique open amendment, report-version ordering/correction link, append-only identification history, and transaction rollback.
-- [ ] T012 Extend ORM validation with all Slice A mappings.
+- [x] T012 Extend ORM validation with all Slice A mappings.
 
 ## Phase 2 - Amendment lifecycle implementation (Slice A, green)
 
-- [ ] T013 Add Liquibase `060` amendment/report-version/identification-history schema with constraints, indexes, and rollback; include it in the versioned base changelog.
-- [ ] T014 Add amendment, report-version, and identification-event valueholders plus DAO/service layers.
-- [ ] T015 Replace the absolute final mutation guard with an active-amendment-aware service guard while preserving the named lock outside an amendment.
-- [ ] T016 Orchestrate baseline capture, new Analysis revision/Result creation, amended release, cancellation, and final relock through services.
-- [ ] T017 Require and persist re-identification reason and before/after values; project a readable event into the existing case timeline.
-- [ ] T018 Add REST forms/controllers with server-derived actors and stable blocker codes.
+- [x] T013 Add Liquibase `060` amendment/report-version/identification-history schema with constraints, indexes, and rollback; include it in the versioned base changelog.
+- [x] T014 Add amendment, report-version, and identification-event valueholders plus DAO/service layers.
+- [x] T015 Replace the absolute final mutation guard with an active-amendment-aware service guard while preserving the named lock outside an amendment.
+- [x] T016 Orchestrate baseline capture, new Analysis revision/Result creation, amended release, cancellation, and final relock through services.
+- [x] T017 Require and persist re-identification reason and before/after values; project a readable event into the existing case timeline.
+- [x] T018 Add REST forms/controllers with server-derived actors and stable blocker codes.
 - [ ] T019 Add Carbon amendment/history UI in the case workbench with canonical `section=amendment` state and React Intl strings.
 - [ ] T020 Add focused Vitest tests for amendment reason, history, focus management, errors, and relock behavior.
 - [ ] T021 Add registered Playwright amendment journey proving original/amended patient-report content and post-release lock.
@@ -45,7 +45,7 @@ each slice. A checked task requires committed evidence, not intent.
 
 ## Phase 4 - Repeat AST and lot traceability implementation (Slice B, green)
 
-- [ ] T029 Add Liquibase `061` AST-attempt metadata and culture/AST-to-Inventory-usage linkage with rollback; do not recreate reagent, lot, or usage tables.
+- [ ] T029 Add Liquibase `061` AST-attempt metadata beyond the Slice A lifecycle link and culture/AST-to-Inventory-usage linkage with rollback; do not recreate reagent, lot, or usage tables.
 - [ ] T030 Implement repeat/retest run creation and explicit reportable-run selection.
 - [ ] T031 Implement reusable lot query/validation and usage orchestration over existing Test Catalog and Inventory services.
 - [ ] T032 Add shared Carbon lot picker and wire it into culture setup and AST setup without duplicating host logic.
@@ -87,4 +87,3 @@ each slice. A checked task requires committed evidence, not intent.
 - Slice C accessibility can begin after Slice A UI stabilizes; final evidence waits for Slice B UI.
 - Performance fixture work can proceed after the Slice A schema is stable but must measure the final Slice B data shape.
 - Human UAT of #3789 remains independent and cannot be replaced by M8 automation.
-
