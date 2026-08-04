@@ -115,13 +115,6 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   }, [load]);
 
   useEffect(() => {
-    if (query.edit !== "import") {
-      setImportPreview(null);
-      setImporting(false);
-    }
-  }, [query.edit]);
-
-  useEffect(() => {
     if (!standardId) return undefined;
     const controller = new AbortController();
     Promise.all([
@@ -338,6 +331,12 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     setQuery({ edit: "" }, { replace: true });
   };
 
+  const openImport = () => {
+    setImportPreview(null);
+    setImporting(false);
+    setQuery({ edit: "import" });
+  };
+
   if (loading && standards.rows.length === 0) {
     return <Loading withOverlay={false} />;
   }
@@ -454,7 +453,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                   <Button
                     kind="secondary"
                     renderIcon={Upload}
-                    onClick={() => setQuery({ edit: "import" })}
+                    onClick={openImport}
                   >
                     {intl.formatMessage({
                       id: "microbiology.admin.breakpoints.import",
