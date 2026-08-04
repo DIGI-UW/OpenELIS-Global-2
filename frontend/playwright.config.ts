@@ -112,7 +112,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
-        reducedMotion: "reduce",
+        contextOptions: { reducedMotion: "reduce" },
         serviceWorkers: "block",
       },
       dependencies: ["setup"],
@@ -124,7 +124,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
-        reducedMotion: "reduce",
+        contextOptions: { reducedMotion: "reduce" },
         serviceWorkers: "block",
       },
       dependencies: ["setup"],
@@ -137,7 +137,7 @@ export default defineConfig({
       use: {
         ...devices["Pixel 5"],
         storageState: "playwright/.auth/user.json",
-        reducedMotion: "reduce",
+        contextOptions: { reducedMotion: "reduce" },
         serviceWorkers: "block",
       },
       dependencies: ["setup"],
@@ -149,7 +149,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
-        reducedMotion: "reduce",
+        contextOptions: { reducedMotion: "reduce" },
         serviceWorkers: "block",
       },
       dependencies: ["setup"],

@@ -16,8 +16,7 @@ export async function expectNoWcag21AaViolations(
       const finiteAnimations = document.getAnimations().filter((animation) => {
         const endTime = animation.effect?.getComputedTiming().endTime;
         return (
-          (animation.playState === "pending" ||
-            animation.playState === "running") &&
+          (animation.pending || animation.playState === "running") &&
           typeof endTime === "number" &&
           Number.isFinite(endTime)
         );

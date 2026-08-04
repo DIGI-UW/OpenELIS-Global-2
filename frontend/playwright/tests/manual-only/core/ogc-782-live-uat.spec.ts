@@ -29,6 +29,13 @@ const EXPECTED_REQUIRED_STEP_KEYS = [
 const EXPECTED_CHECKLIST_REVISION =
   "fc9d65e109d3e6863d75b9c66ef7f2f41480bf626d458c11bb59ad55ae5bc0fe";
 
+type UatStep = { key: string; required: boolean };
+type UatSection = { steps: UatStep[] };
+type UatChecklist = {
+  sections: UatSection[];
+  checklistRevision: string;
+};
+
 test.describe("OGC-782 live AMR UAT", () => {
   test("binds the review overlay to the deployed feature and verifies stable navigation", async ({
     page,
@@ -55,7 +62,7 @@ test.describe("OGC-782 live AMR UAT", () => {
 
       const checklistResponse = await request.get("/__review/uat-amr.json");
       expect(checklistResponse.ok()).toBeTruthy();
-      const checklist = await checklistResponse.json();
+      const checklist = (await checklistResponse.json()) as UatChecklist;
       expect(checklist).toMatchObject({
         schemaVersion: 2,
         instance: "amr",
