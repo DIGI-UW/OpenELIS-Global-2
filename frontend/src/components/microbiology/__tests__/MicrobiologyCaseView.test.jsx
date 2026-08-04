@@ -69,6 +69,12 @@ const astServiceStubs = {
   }),
   releasePreliminaryReport: vi.fn(),
   releaseFinalReport: vi.fn(),
+  getCaseAmendments: vi.fn().mockResolvedValue([]),
+  getCaseReportVersions: vi.fn().mockResolvedValue([]),
+  openCaseAmendment: vi.fn(),
+  cancelCaseAmendment: vi.fn(),
+  releaseAmendedReport: vi.fn(),
+  getIdentificationHistory: vi.fn().mockResolvedValue([]),
 };
 
 const getAccordionButton = (name) => {
@@ -168,6 +174,33 @@ describe("MicrobiologyCaseView", () => {
       "aria-expanded",
       "true",
     );
+  });
+
+  it("opens amendment history from its canonical section URL", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        stage: "FINAL_RELEASED",
+        finalReleaseState: "FINAL_RELEASED",
+      }),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=amendment");
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=amendment",
+    );
+    expect(getAccordionButton("Amendments")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Open amendment" }),
+    ).toBeDisabled();
   });
 
   it("refreshes the case timeline after creating an isolate", async () => {

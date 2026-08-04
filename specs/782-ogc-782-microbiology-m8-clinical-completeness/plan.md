@@ -90,7 +90,7 @@ only if query-plan and measurement evidence demonstrates a data-model need.
 
 ## API and URL Behavior
 
-- Case detail remains canonical at `/Microbiology/case/:caseId`.
+- Case detail remains canonical at `/Microbiology/cases/:caseId`.
 - Focused case state uses the existing `section` query parameter.
 - Amendment selection/history uses stable query state under the case URL; no
   separate duplicate case page is introduced.

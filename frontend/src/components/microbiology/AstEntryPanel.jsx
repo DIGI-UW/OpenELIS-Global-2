@@ -21,6 +21,7 @@ const AstEntryPanel = ({
   service,
   saving: caseSaving,
   onAstUpdated,
+  readOnly = false,
 }) => {
   const intl = useIntl();
   const [selectedIsolateId, setSelectedIsolateId] = useState("");
@@ -255,6 +256,7 @@ const AstEntryPanel = ({
                   onClick={startRun}
                   disabled={
                     busy ||
+                    readOnly ||
                     !!currentRun ||
                     !selectedIsolateId ||
                     !selectedPanelId
@@ -309,6 +311,7 @@ const AstEntryPanel = ({
                     onClick={recordReading}
                     disabled={
                       busy ||
+                      readOnly ||
                       isReviewed ||
                       !selectedAntibioticId ||
                       !rawValue.trim()
@@ -431,7 +434,10 @@ const AstEntryPanel = ({
                           kind="secondary"
                           onClick={overrideReading}
                           disabled={
-                            busy || isReviewed || !overrideReason.trim()
+                            busy ||
+                            readOnly ||
+                            isReviewed ||
+                            !overrideReason.trim()
                           }
                         >
                           {intl.formatMessage({
@@ -445,7 +451,12 @@ const AstEntryPanel = ({
                 <Button
                   kind="primary"
                   onClick={reviewRun}
-                  disabled={busy || isReviewed || !currentRun.readings?.length}
+                  disabled={
+                    busy ||
+                    readOnly ||
+                    isReviewed ||
+                    !currentRun.readings?.length
+                  }
                 >
                   {intl.formatMessage({ id: "microbiology.ast.reviewRun" })}
                 </Button>
