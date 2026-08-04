@@ -79,6 +79,11 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     page,
   }, testInfo) => {
     const seeded = await seedMicrobiologyReferenceAdmin(page);
+    const closeMobileNavigation = async () => {
+      if (!testInfo.project.name.endsWith("-mobile")) return;
+      const closeMenu = page.getByRole("button", { name: "Close menu" });
+      if (await closeMenu.isVisible()) await closeMenu.click();
+    };
     const surfaces = [
       [
         "/MasterListsPage/MicrobiologyReference/organisms?status=ALL&sort=name&page=1&pageSize=20",
@@ -100,6 +105,7 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     for (const [route, heading, evidenceName] of surfaces) {
       await test.step(`Scan ${heading}`, async () => {
         await page.goto(route, { waitUntil: "domcontentloaded" });
+        await closeMobileNavigation();
         await expect(page.getByRole("heading", { name: heading })).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
