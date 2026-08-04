@@ -262,6 +262,35 @@ public class MicroReportProjectionServiceTest {
     }
 
     @Test
+    public void multipleReviewedAttemptsRequireOneSelectionAndProjectOnlyThatRun() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.REVIEW_READY);
+        MicroIsolate isolate = isolate("iso-1");
+        MicroAstRun original = reviewedRun("run-1", "iso-1");
+        MicroAstRun repeat = reviewedRun("run-2", "iso-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
+        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Escherichia coli")));
+
+        try {
+            service.preview("case-1");
+            fail("Expected an explicit reportable AST attempt");
+        } catch (IllegalStateException expected) {
+            assertEquals("REPORTABLE_AST_RUN_REQUIRED", expected.getMessage());
+        }
+
+        repeat.setReportable(true);
+        when(readingDAO.getByRunId("run-2")).thenReturn(List.of(reading("cip", MicroAstInterpretation.SUSCEPTIBLE)));
+        when(antibioticDAO.get("cip")).thenReturn(Optional.of(antibiotic("cip", "Ciprofloxacin")));
+
+        MicroReportProjectionResult projection = service.preview("case-1");
+
+        assertEquals("Isolate A: Escherichia coli; Ciprofloxacin S", projection.getContent());
+        verify(readingDAO, never()).getByRunId("run-1");
+    }
+
+    @Test
     public void previewReturnsExistingProjectedResultIdsForCriticalCommunicationTargeting() {
         MicroCase microCase = microCase("case-1", MicroCaseStage.PRELIM_RELEASED);
         MicroCaseAnalysis link = link("case-1", "42", "17");

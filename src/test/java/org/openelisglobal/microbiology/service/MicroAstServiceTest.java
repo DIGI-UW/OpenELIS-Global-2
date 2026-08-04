@@ -1,7 +1,9 @@
 package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -9,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,9 +25,11 @@ import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -205,6 +210,134 @@ public class MicroAstServiceTest {
         } catch (MicroAmendmentConflictException expected) {
             assertEquals("AMENDMENT_NEW_AST_RUN_REQUIRED", expected.getMessage());
         }
+    }
+
+    @Test
+    public void repeatRunRequiresReviewedSourceAndReasonAndPreservesProvenance() {
+        MicroIsolate isolate = isolate();
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        MicroAstRun source = reviewedRun("run-1");
+        source.setPanelId("panel-1");
+        source.setBreakpointStandardId("standard-1");
+        source.setReportable(true);
+        when(runDAO.get("run-1")).thenReturn(Optional.of(source));
+
+        MicroAstRun repeat = service.startRepeatRun("run-1", MicroAstAttemptType.REPEAT,
+                "  Discordant automated result  ", MicroAstMethod.MIC, "7");
+
+        assertEquals("run-1", repeat.getSourceRunId());
+        assertEquals(MicroAstAttemptType.REPEAT.name(), repeat.getAttemptType());
+        assertEquals("Discordant automated result", repeat.getAttemptReason());
+        assertEquals(MicroAstMethod.MIC.name(), repeat.getMethod());
+        assertEquals("panel-1", repeat.getPanelId());
+        assertEquals("standard-1", repeat.getBreakpointStandardId());
+        assertFalse(repeat.isReportable());
+        assertEquals(MicroAstRunStatus.REVIEWED.name(), source.getStatus());
+        assertTrue(source.isReportable());
+        verify(runDAO).insert(repeat);
+        verify(runDAO, never()).update(source);
+    }
+
+    @Test
+    public void repeatRunRejectsMissingReasonAndUnreviewedSource() {
+        try {
+            service.startRepeatRun("run-1", MicroAstAttemptType.REPEAT, " ", MicroAstMethod.MIC, "7");
+            fail("Expected a repeat reason");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("AST_ATTEMPT_REASON_REQUIRED", expected.getMessage());
+        }
+
+        MicroAstRun unreviewed = reviewedRun("run-2");
+        unreviewed.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
+        when(runDAO.get("run-2")).thenReturn(Optional.of(unreviewed));
+        try {
+            service.startRepeatRun("run-2", MicroAstAttemptType.RETEST, "Control failed", MicroAstMethod.ZONE, "7");
+            fail("Expected a reviewed source run");
+        } catch (IllegalStateException expected) {
+            assertEquals("AST_SOURCE_RUN_REVIEW_REQUIRED", expected.getMessage());
+        }
+    }
+
+    @Test
+    public void secondReviewedAttemptRequiresExplicitReportableSelection() {
+        MicroIsolate isolate = isolate();
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        MicroAstRun original = reviewedRun("run-1");
+        original.setReportable(true);
+        MicroAstRun repeat = new MicroAstRun();
+        repeat.setId("run-2");
+        repeat.setIsolateId("iso-1");
+        repeat.setAttemptType(MicroAstAttemptType.REPEAT.name());
+        when(runDAO.get("run-2")).thenReturn(Optional.of(repeat));
+        when(runDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
+        when(runDAO.update(any(MicroAstRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reviewRun("run-2", "7");
+
+        assertFalse(original.isReportable());
+        assertFalse(repeat.isReportable());
+        verify(runDAO).update(original);
+        assertEquals(MicroAstRunStatus.REVIEWED.name(), repeat.getStatus());
+    }
+
+    @Test
+    public void selectingReportableAttemptClearsSiblingSelection() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate()));
+        MicroAstRun original = reviewedRun("run-1");
+        original.setReportable(false);
+        MicroAstRun repeat = reviewedRun("run-2");
+        repeat.setReportable(true);
+        when(runDAO.get("run-1")).thenReturn(Optional.of(original));
+        when(runDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
+        when(runDAO.update(any(MicroAstRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MicroAstRun selected = service.selectReportableRun("run-1", "7");
+
+        assertFalse(repeat.isReportable());
+        assertTrue(selected.isReportable());
+        verify(runDAO).update(original);
+        verify(runDAO).update(repeat);
+    }
+
+    @Test
+    public void firstReadingSnapshotsRunMethodAndMixedMethodsAreRejected() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(runDAO.update(run)).thenReturn(run);
+        MicroIsolate isolate = isolate();
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        MicroBreakpointStandard standard = new MicroBreakpointStandard();
+        standard.setId("clsi-std");
+        when(breakpointService.getActiveStandard("CLSI", "2026")).thenReturn(standard);
+        when(interpretationService.interpret(any(), any(), any())).thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
+
+        service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "7");
+
+        assertEquals(MicroAstMethod.MIC.name(), run.getMethod());
+        verify(runDAO).update(run);
+        try {
+            service.recordReading("run-1", "abx-2", MicroAstMethod.ZONE, new BigDecimal("20"), "7");
+            fail("Expected one method per AST attempt");
+        } catch (IllegalStateException expected) {
+            assertEquals("AST_RUN_METHOD_MISMATCH", expected.getMessage());
+        }
+    }
+
+    private MicroIsolate isolate() {
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        return isolate;
+    }
+
+    private MicroAstRun reviewedRun(String id) {
+        MicroAstRun run = new MicroAstRun();
+        run.setId(id);
+        run.setIsolateId("iso-1");
+        run.setStatus(MicroAstRunStatus.REVIEWED.name());
+        return run;
     }
 
     private MicroCase mutableCase() {

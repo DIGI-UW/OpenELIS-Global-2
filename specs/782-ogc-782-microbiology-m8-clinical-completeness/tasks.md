@@ -36,7 +36,7 @@ each slice. A checked task requires committed evidence, not intent.
 
 ## Phase 3 - Repeat AST and lot traceability tests (Slice B, red)
 
-- [ ] T023 Add service tests for original/repeat/retest creation, required source/reason, immutable prior run, and reportable-run selection blockers.
+- [x] T023 Add service tests for original/repeat/retest creation, required source/reason, immutable prior run, and reportable-run selection blockers.
 - [ ] T024 Add lot-query tests for Test Catalog linkage semantics, FIFO ordering, QC/status/expiry/quantity eligibility, and historical inclusion.
 - [ ] T025 Add stale-lot integration test proving server-side save rejection after an eligible lot becomes invalid.
 - [ ] T026 Add Inventory integration tests proving culture/AST usage is recorded once, linked to the bench action, decrements through shared behavior, and is transactionally rolled back on failure.

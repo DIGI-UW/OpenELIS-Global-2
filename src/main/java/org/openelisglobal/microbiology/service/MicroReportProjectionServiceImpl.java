@@ -257,10 +257,7 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
                 continue;
             }
             StringJoiner readings = new StringJoiner(", ");
-            for (MicroAstRun run : astRunDAO.getByIsolateId(isolate.getId())) {
-                if (!MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
-                    continue;
-                }
+            for (MicroAstRun run : reportableRuns(isolate.getId())) {
                 for (MicroAstReading reading : readingDAO.getByRunId(run.getId())) {
                     readings.add(antibioticName(reading.getAntibioticId()) + " " + interpretation(reading));
                 }
@@ -272,6 +269,19 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
             isolates.add(value);
         }
         return isolates.toString();
+    }
+
+    private List<MicroAstRun> reportableRuns(String isolateId) {
+        List<MicroAstRun> reviewed = astRunDAO.getByIsolateId(isolateId).stream()
+                .filter(run -> MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())).toList();
+        if (reviewed.size() <= 1) {
+            return reviewed;
+        }
+        List<MicroAstRun> selected = reviewed.stream().filter(MicroAstRun::isReportable).toList();
+        if (selected.size() != 1) {
+            throw new IllegalStateException("REPORTABLE_AST_RUN_REQUIRED");
+        }
+        return selected;
     }
 
     private String identificationFor(MicroIsolate isolate) {

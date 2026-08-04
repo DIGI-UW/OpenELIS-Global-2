@@ -96,6 +96,28 @@ public class MicroCaseReadinessServiceTest {
     }
 
     @Test
+    public void multipleReviewedAttemptsRequireExactlyOneReportableSelection() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        MicroIsolate isolate = significantIsolate();
+        MicroAstRun original = reviewedRun(false);
+        MicroAstRun repeat = reviewedRun(false);
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
+
+        MicroCaseReadinessForm blocked = service.getReadiness("case-1");
+
+        assertFalse(blocked.finalReleaseReady);
+        assertTrue(blocked.blockers.contains("REPORTABLE_AST_RUN_REQUIRED"));
+
+        repeat.setReportable(true);
+        MicroCaseReadinessForm ready = service.getReadiness("case-1");
+        assertTrue(ready.finalReleaseReady);
+    }
+
+    @Test
     public void noGrowthReadyAllowsFinalReleaseWithoutAnIsolate() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
@@ -136,5 +158,12 @@ public class MicroCaseReadinessServiceTest {
         isolate.setId("iso-1");
         isolate.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
         return isolate;
+    }
+
+    private MicroAstRun reviewedRun(boolean reportable) {
+        MicroAstRun run = new MicroAstRun();
+        run.setStatus(MicroAstRunStatus.REVIEWED.name());
+        run.setReportable(reportable);
+        return run;
     }
 }
