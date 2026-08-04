@@ -273,9 +273,14 @@ public class MicroReportProjectionServiceTest {
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
         when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Escherichia coli")));
 
+        MicroReportProjectionResult unresolvedPreview = service.preview("case-1");
+
+        assertFalse(unresolvedPreview.hasReportableContent());
+        assertEquals("", unresolvedPreview.getContent());
+
         try {
-            service.preview("case-1");
-            fail("Expected an explicit reportable AST attempt");
+            service.releaseFinal("case-1", "9");
+            fail("Expected an explicit reportable AST attempt before release");
         } catch (IllegalStateException expected) {
             assertEquals("REPORTABLE_AST_RUN_REQUIRED", expected.getMessage());
         }

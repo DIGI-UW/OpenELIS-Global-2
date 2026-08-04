@@ -125,17 +125,36 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     @Override
     @Transactional(readOnly = true)
     public MicroReportProjectionResult preview(String caseId) {
-        ProjectionInput input = projectionInput(caseId);
+        MicroCase microCase = getCase(caseId);
+        ProjectionInput input;
+        try {
+            input = projectionInput(microCase);
+        } catch (MicroAstConflictException conflict) {
+            if (!"REPORTABLE_AST_RUN_REQUIRED".equals(conflict.getMessage())) {
+                throw conflict;
+            }
+            input = projectionInput(microCase, "");
+        }
         List<String> projectedResultIds = input.links().stream().map(MicroCaseAnalysis::getProjectedResultId)
                 .filter(this::hasText).toList();
         return new MicroReportProjectionResult(input.content(), input.mappingConfigured(), projectedResultIds);
     }
 
     private ProjectionInput projectionInput(String caseId) {
+        return projectionInput(getCase(caseId));
+    }
+
+    private MicroCase getCase(String caseId) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
-        MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
-        String content = buildContent(microCase);
-        List<MicroCaseAnalysis> links = caseAnalysisDAO.getByCaseId(caseId);
+        return caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+    }
+
+    private ProjectionInput projectionInput(MicroCase microCase) {
+        return projectionInput(microCase, buildContent(microCase));
+    }
+
+    private ProjectionInput projectionInput(MicroCase microCase, String content) {
+        List<MicroCaseAnalysis> links = caseAnalysisDAO.getByCaseId(microCase.getId());
         boolean mappingConfigured = !links.isEmpty() && links.stream().allMatch(this::hasReportConfiguration);
         return new ProjectionInput(content, links, mappingConfigured);
     }
