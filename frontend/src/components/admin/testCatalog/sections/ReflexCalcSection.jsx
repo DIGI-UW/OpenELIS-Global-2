@@ -187,9 +187,7 @@ const ReflexCalcSection = ({ testId }) => {
           <strong>
             <FormattedMessage id="label.testCatalog.reflexCalc.calc.feedsInto" />
           </strong>
-          {/* Empty states use the same InlineNotification treatment as the
-              Reflex Tests block above so the panel is internally consistent
-              (OGC-1153). */}
+          {/* Same InlineNotification treatment as the Reflex Tests block above. */}
           {data.feedsInto.length === 0 ? (
             <InlineNotification
               kind="info"

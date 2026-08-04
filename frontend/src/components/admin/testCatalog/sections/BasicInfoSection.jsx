@@ -339,9 +339,8 @@ const BasicInfoSection = ({ testId }) => {
         } else if (res && !res.error) {
           setAckModalOpen(false);
           setCoverageReport(null);
-          // OGC-1153: activation also makes the test orderable (Active ⇒ orderable
-          // per the FRS lifecycle). Take both flags from the response so the form
-          // shows the server's actual state instead of needing a reload.
+          // Activation also makes the test orderable, so take both flags from the
+          // response rather than assuming.
           update({
             active: res.active !== undefined ? res.active : true,
             ...(res.orderable !== undefined
@@ -653,7 +652,8 @@ const BasicInfoSection = ({ testId }) => {
           if (checked && !form.active) {
             handleActivate(null);
           } else {
-            update({ active: checked });
+            // Activation sets orderable, so deactivation clears it again.
+            update({ active: checked, orderable: false });
           }
         }}
       />

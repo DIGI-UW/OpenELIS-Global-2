@@ -919,9 +919,8 @@ const SampleResultsSection = ({ testId }) => {
                     >
                       <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder.helper" />
                     </p>
-                    {/* OGC-1153: render the empty state OR the table, never both —
-                        an unconditional TableHead leaves a band of column headings
-                        with nothing beneath it, which reads as broken layout. */}
+                    {/* Empty state or table, never both: an unconditional
+                        TableHead leaves column headings with no rows under them. */}
                     {(c.options || []).length === 0 ? (
                       <InlineNotification
                         kind="info"
@@ -1046,9 +1045,8 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
                     </h6>
-                    {/* Empty state and the editor table are mutually exclusive:
-                        a column-header band with no rows under it reads as
-                        broken layout (OGC-1153). */}
+                    {/* Empty state and table are mutually exclusive: a column-header
+                        band with no rows under it reads as broken layout. */}
                     {(c.interpretations || []).length === 0 ? (
                       <InlineNotification
                         kind="info"

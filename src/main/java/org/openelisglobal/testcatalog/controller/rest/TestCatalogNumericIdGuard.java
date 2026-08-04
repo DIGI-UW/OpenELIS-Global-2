@@ -11,47 +11,27 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * OGC-1153 — one guard for the whole {@code /rest/test-catalog} URL space:
- * answers 404 when a numeric entity id in the path is not actually numeric,
- * instead of letting the value reach Hibernate and escape as a 500.
+ * Answers 404 when a numeric entity id in a {@code /rest/test-catalog} path is
+ * not actually numeric, instead of letting the value reach Hibernate and escape
+ * as a 500: catalog id columns are {@code NUMERIC(10)} bound through
+ * {@code LIMSStringNumberUserType}, which does a bare {@code Integer.parseInt},
+ * and the resulting {@code NumberFormatException} is rendered as 500 by
+ * {@code ControllerSetup}. 404 matches what a well-formed but absent id already
+ * returns, so the SPA keeps one "no such test" branch.
  *
  * <p>
- * Root cause: every catalog id column is {@code NUMERIC(10)} bound through
- * {@code LIMSStringNumberUserType}, whose {@code nullSafeSet} does a bare
- * {@code Integer.parseInt}. The handlers take the id as a {@code String} and
- * pass it straight to {@code TestService.getTestById} (HQL
- * {@code where t.id = :id}), so {@code /tests/notanumber/basic-info} threw
- * {@code NumberFormatException} out of the DAO — {@code getTestById} only
- * catches {@code HibernateException}. {@code ControllerSetup}, an
- * {@code @Order(HIGHEST_PRECEDENCE)} {@code @ControllerAdvice} mapping
- * {@code RuntimeException}, then rendered it as 500.
- *
- * <p>
- * 404 rather than 400 because that is already the answer for a well-formed but
- * absent id ({@code /tests/999999}, {@code /tests/-1}), so the SPA keeps one
- * uniform "no such test" branch.
- *
- * <p>
- * An interceptor keyed on the URL — not a per-handler guard, a {@code @Pattern}
- * on each path variable, or a package-scoped {@code @ControllerAdvice} —
- * because the defect belongs to the URL space, not to a Java package: six
- * controllers serve {@code /rest/test-catalog/**} and two of them
- * ({@code testreagentlink}, {@code testalertrule}) live outside
+ * Keyed on the URL rather than per handler because the defect belongs to the
+ * URL space: two of the six controllers serving this prefix live outside
  * {@code org.openelisglobal.testcatalog}, so a package-scoped advice would miss
- * them. An exception-mapping advice could not work here at all —
- * {@code ControllerSetup} sits at {@code HIGHEST_PRECEDENCE} and
- * {@code ExceptionHandlerExceptionResolver} takes the first advice bean that
- * matches, so a later advice never sees the exception. A new endpoint anywhere
- * under this prefix that takes one of {@link #NUMERIC_ID_PATH_VARIABLES} is
- * covered with no action from its author; the guard registers itself, so it
- * cannot be half-wired.
+ * them, and an exception-mapping advice can never run — {@code ControllerSetup}
+ * sits at {@code HIGHEST_PRECEDENCE} and wins. The guard registers itself, so a
+ * new endpoint taking one of {@link #NUMERIC_ID_PATH_VARIABLES} is covered with
+ * no action from its author.
  *
  * <p>
- * The set of guarded names is explicit and must stay that way: ids in this URL
- * space are not uniformly numeric — {@code test_alert_rule.id} is a 36-char
- * UUID, as are result-component ids — so a blanket "every {@code *Id} must be
- * digits" rule would break them. Add a name here when a new endpoint introduces
- * another {@code NUMERIC(10)}-backed id;
+ * The guarded names are explicit because ids here are not uniformly numeric —
+ * {@code test_alert_rule.id} and result-component ids are UUIDs. Add a name
+ * when a new endpoint introduces another {@code NUMERIC(10)} id;
  * {@code TestCatalogNumericIdGuardTest.everyCatalogPathVariableIsClassified}
  * fails until an unclassified one is triaged.
  */

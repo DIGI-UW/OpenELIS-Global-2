@@ -79,13 +79,10 @@ public class TestCatalogActivationRestController {
      * before, widened with the test's resulting lifecycle state.
      *
      * <p>
-     * OGC-1153 — activation also flips {@code orderable} (see
-     * {@link #activateTest}), which the old bare-coverage-report body never
-     * mentioned, so a client could only learn about it by reloading. Extending
-     * {@link RangeCoverageValidationService.CoverageReport} keeps the success body
-     * a strict superset of the old one: {@code male} / {@code female} stay at the
-     * top level, so no existing reader breaks. The 409 gap body is still the plain
-     * report — that flow is unchanged.
+     * Extending {@link RangeCoverageValidationService.CoverageReport} keeps the
+     * success body a strict superset of the old one — {@code male} / {@code female}
+     * stay at the top level, so no existing reader breaks. The 409 gap body is
+     * still the plain report.
      */
     public static class ActivationResult extends RangeCoverageValidationService.CoverageReport {
         public String testId;
@@ -168,20 +165,15 @@ public class TestCatalogActivationRestController {
      *
      * <p>
      * <b>Activation sets {@code orderable} as well as {@code is_active}</b>, by
-     * design: the FRS lifecycle is "Active ⇒ orderable &amp; importable", and Add
+     * design: the FRS lifecycle is "Active ⇒ orderable &amp; importable" and Add
      * Order filters on {@code is_active='Y' AND orderable=true}, so flipping only
-     * {@code is_active} left the test invisible to order entry (OGC-1116). The
-     * coupling is deliberately one-way — deactivating through Basic Info clears
-     * {@code is_active} only, and an {@code active=false, orderable=true} row is
-     * inert because the order-picker query requires both (OGC-1153; do not "fix"
-     * this by dropping the {@code setOrderable} below).
+     * {@code is_active} left the test invisible to order entry (OGC-1116).
      *
      * <p>
      * The 200 body is an {@link ActivationResult}: the coverage report plus the
      * resulting {@code active} / {@code orderable} flags, so a client learns about
-     * the {@code orderable} change from the response instead of having to reload
-     * (OGC-1153). The 409 gap body stays the bare coverage report the
-     * {@code gapsAcknowledged} re-POST flow expects.
+     * the {@code orderable} change without reloading. The 409 gap body stays the
+     * bare coverage report the {@code gapsAcknowledged} re-POST flow expects.
      */
     @PostMapping(value = "/tests/{testId}/activate", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> activateTest(@PathVariable String testId,

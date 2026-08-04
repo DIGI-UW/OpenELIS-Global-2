@@ -24,13 +24,11 @@ export const toDays = (value, unit) => {
  * Format a day count in the most readable unit (<60d → days, <2y → months, else
  * years).
  *
- * OGC-1153: an open-ended coverage bound is not a number. The backend reports a
- * trailing coverage gap as `new AgeInterval(coveredTo, POSITIVE_INFINITY)` and
- * Jackson serialises a non-finite double as the quoted string "Infinity"
- * (QUOTE_NON_NUMERIC_NUMBERS), so both the string and a real ±Infinity have to be
- * recognised here — otherwise the arithmetic below renders "Infinity years" into
- * the coverage-gap dialog. Non-finite bounds get a directional open-ended label
- * so `{from} – {to}` still reads correctly; unparseable input renders as nothing.
+ * An open-ended bound is not a number: a trailing coverage gap arrives as
+ * `AgeInterval(coveredTo, POSITIVE_INFINITY)`, which Jackson serialises as the
+ * quoted string "Infinity", so both that and a real ±Infinity are handled here and
+ * rendered as a directional open-ended label. Unparseable input renders as
+ * nothing.
  */
 export const formatAgeDays = (days, intl) => {
   if (days === null || days === undefined) {

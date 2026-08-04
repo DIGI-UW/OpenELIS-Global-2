@@ -34,18 +34,88 @@ test.describe("OGC-1153 Test Catalog Editor", () => {
     await expect(locale).toHaveValue(new RegExp(`^${htmlLang.split("-")[0]}`));
   });
 
-  // Issue 1a — saving happened on blur with no Save control and no auto-save
-  // claim, so an administrator could not tell whether an edit was kept.
-  test("localization section states that fields save automatically", async ({
+  // Issue 1a — the section had no Save control at all: edits went out on blur, so
+  // an administrator could neither commit deliberately nor tell what was kept.
+  // This walks the whole contract, ending with a reload — the only assertion that
+  // proves the edit reached the database rather than just the component state.
+  test("localization edits are committed by an explicit Save and survive a reload", async ({
     page,
   }) => {
     await page.goto(editorUrl("localization"), {
       waitUntil: "domcontentloaded",
     });
+    await page.waitForLoadState("networkidle");
 
     const section = page.getByTestId("localization-section");
     await expect(section).toBeVisible();
-    await expect(section).toContainText(/saved automatically/i);
+    const save = section.getByRole("button", { name: "Save", exact: true });
+    const field = page.locator("#localization-input-reportingName");
+
+    // Nothing to commit yet.
+    await expect(save).toBeVisible();
+    await expect(save).toBeDisabled();
+
+    // Edit a non-English locale when the instance has one, so the round trip
+    // cannot disturb the English names the rest of the suite reads.
+    const locale = page.locator("#localization-locale");
+    const codes = await locale
+      .locator("option")
+      .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+    const target = codes.find((c) => !c.startsWith("en")) || codes[0];
+    await locale.selectOption(target);
+
+    const original = await field.inputValue();
+    const edited = `OGC-1153 e2e ${target}`;
+
+    await field.fill(edited);
+    await expect(save).toBeEnabled();
+    await expect(section).toContainText(/unsaved/i);
+
+    await save.click();
+    await expect(section).toContainText(/saved/i);
+    await expect(save).toBeDisabled();
+
+    // The real proof: it is still there after a full reload.
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    await locale.selectOption(target);
+    await expect(field).toHaveValue(edited);
+
+    // Put the record back the way it was found.
+    await field.fill(original);
+    await save.click();
+    await expect(section).toContainText(/saved/i);
+  });
+
+  // Issue 1a, inverted — a blur must not write anything on its own.
+  test("leaving a localization field does not save it", async ({ page }) => {
+    await page.goto(editorUrl("localization"), {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForLoadState("networkidle");
+
+    const section = page.getByTestId("localization-section");
+    const field = page.locator("#localization-input-reportingName");
+    await expect(field).toBeVisible();
+
+    const writes: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "PUT" && r.url().includes("/localizations/")) {
+        writes.push(r.url());
+      }
+    });
+
+    await field.fill("OGC-1153 blur must not persist");
+    await page.locator("#localization-input-name").click();
+    await expect(section).toContainText(/unsaved/i);
+    expect(writes, "a blur must not issue a write").toEqual([]);
+
+    // Discarding leaves the stored value untouched.
+    await section.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(
+      section.getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+    expect(writes).toEqual([]);
   });
 
   // Issue 2 — the empty state rendered twice: an inline notification AND a
