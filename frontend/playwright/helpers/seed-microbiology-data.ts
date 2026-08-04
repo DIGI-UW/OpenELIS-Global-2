@@ -12,10 +12,12 @@ export interface SeededMicrobiologyCase {
   siblingCaseId?: string;
 }
 
-export interface SeededFinalMicrobiologyCase extends SeededMicrobiologyCase {
+export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {
   isolateId: string;
   astRunId: string;
 }
+
+export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
 type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST";
 
@@ -103,13 +105,13 @@ async function requireJsonResponse<T>(
 }
 
 /**
- * Creates a final, reportable bacteriology case through authenticated HTTP
+ * Creates a reviewed, reportable bacteriology case through authenticated HTTP
  * endpoints. Every persisted record is therefore created by application
  * services, with server-generated identifiers and normal validation/auditing.
  */
-export async function seedFinalizedMicrobiologyCase(
+export async function seedReviewedMicrobiologyCase(
   page: Page,
-): Promise<SeededFinalMicrobiologyCase> {
+): Promise<SeededReviewedMicrobiologyCase> {
   const seeded = await seedMicrobiologyMvpCase(page);
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
 
@@ -205,6 +207,15 @@ export async function seedFinalizedMicrobiologyCase(
       { headers, data: {} },
     ),
   );
+
+  return { ...seeded, isolateId: isolate.id, astRunId: run.id };
+}
+
+export async function seedFinalizedMicrobiologyCase(
+  page: Page,
+): Promise<SeededFinalMicrobiologyCase> {
+  const seeded = await seedReviewedMicrobiologyCase(page);
+  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
   await requireJsonResponse(
     "Release final microbiology report",
     await page.request.post(
@@ -213,5 +224,5 @@ export async function seedFinalizedMicrobiologyCase(
     ),
   );
 
-  return { ...seeded, isolateId: isolate.id, astRunId: run.id };
+  return seeded;
 }
