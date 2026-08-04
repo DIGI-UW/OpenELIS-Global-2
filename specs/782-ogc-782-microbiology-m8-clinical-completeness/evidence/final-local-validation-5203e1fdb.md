@@ -27,6 +27,23 @@ forced clicks, or private Carbon class selectors. Component tests use
 `user-event`, including `selectOptions` for Carbon native selects and ordinary
 click/type interactions for controls.
 
+## Visual evidence packaging
+
+The two passing clinical Playwright journeys were packaged outside git into a
+44.2-second, 800x450 H.264 MP4 with story cards and slower playback. Blank
+startup frames were removed from the presentation copy without changing test
+synchronization. Twelve representative frames and the final contact sheet were
+visually inspected for meaningful state, clipping, overlap, and report output.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `ogc-782-m8-clinical-completeness.mp4` | `788687a9766a7015679522835a2d78aae5cd077620f3d20120ca2c3f7ac1cc58` |
+| `ogc-782-m8-contact-sheet.png` | `674be53b94bf628cec9cf8d2706bce238944e87fe289e681c5e13b033393d7b2` |
+
+The binaries remain outside git. PR attachment is still required before T053b
+can close; the available GitHub browser session was unauthenticated during this
+run, so no upload is claimed.
+
 ## Current browser performance
 
 The disposable workload contained 200 worklist cases and one dense case with 5
