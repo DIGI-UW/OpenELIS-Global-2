@@ -4,6 +4,7 @@ import {
   MICROBIOLOGY_CASE_READY_MARK,
   MICROBIOLOGY_WORKLIST_READY_MARK,
 } from "../../../../src/components/microbiology/MicrobiologyPerformance";
+import { parseMicrobiologyWorklistSearch } from "../../../../src/components/microbiology/MicrobiologyRoutes";
 import {
   seedDenseMicrobiologyCase,
   seedMicrobiologyWorklistCases,
@@ -99,17 +100,20 @@ test.describe("Microbiology browser performance qualification", () => {
         async (iteration, warmup) => {
           const operationIndex = warmup ? iteration : WARMUPS + iteration;
           const nextPage = operationIndex % 2 === 0;
+          const expectedPage = nextPage ? 2 : 1;
           await page.evaluate(
             (markName) => performance.clearMarks(markName),
             MICROBIOLOGY_WORKLIST_READY_MARK,
           );
           const startedAt = await page.evaluate(() => performance.now());
-          await page
-            .getByLabel(nextPage ? "Next page" : "Previous page")
-            .click();
-          await expect(page).toHaveURL(
-            new RegExp(`(?:\\?|&)page=${nextPage ? 2 : 1}(?:&|$)`),
-          );
+          await Promise.all([
+            page.waitForURL(
+              (url) =>
+                parseMicrobiologyWorklistSearch(url.search).page ===
+                expectedPage,
+            ),
+            page.getByLabel(nextPage ? "Next page" : "Previous page").click(),
+          ]);
           const readyAt = await waitForReadyMark(
             page,
             MICROBIOLOGY_WORKLIST_READY_MARK,
