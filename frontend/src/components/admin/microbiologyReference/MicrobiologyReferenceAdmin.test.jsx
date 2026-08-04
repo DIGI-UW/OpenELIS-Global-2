@@ -24,6 +24,7 @@ import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import {
+  applyBreakpointImport,
   getBreakpointRules,
   getBreakpointRule,
   getBreakpointStandard,
@@ -226,7 +227,7 @@ describe("microbiology reference administration", () => {
     expect(setQuery).toHaveBeenCalledWith({ edit: "activate" });
   });
 
-  it("clears an import preview when Cancel closes the modal", async () => {
+  it("clears an applied import preview when Cancel closes the modal", async () => {
     const user = userEvent.setup();
     const csv = "publisher,version\nCLSI,SYNTH-UAT";
     getBreakpointStandards.mockResolvedValue({ rows: [], total: 0 });
@@ -235,6 +236,14 @@ describe("microbiology reference administration", () => {
       validRows: 1,
       skippedRows: 0,
       unchangedRows: 0,
+      errors: [],
+    });
+    applyBreakpointImport.mockResolvedValue({
+      previewToken: "preview-1",
+      validRows: 1,
+      skippedRows: 0,
+      unchangedRows: 1,
+      importedRows: 0,
       errors: [],
     });
 
@@ -265,6 +274,13 @@ describe("microbiology reference administration", () => {
     }
     await user.upload(container.querySelector('input[type="file"]'), file);
     expect(await screen.findByText("1 valid")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.admin.breakpoints.applyValid"],
+      }),
+    );
+    expect(await screen.findByText("1 unchanged")).toBeInTheDocument();
+    expect(applyBreakpointImport).toHaveBeenCalledWith("preview-1");
 
     await user.click(
       screen.getByRole("button", { name: messages["button.cancel"] }),
