@@ -82,8 +82,8 @@ each slice. A checked task requires committed evidence, not intent.
 
 - [ ] T048 Run all focused JUnit, Testcontainers, ORM, Liquibase, Vitest, Playwright, axe, and qualification commands named in evidence.
 - [ ] T049 Run Spotless, Prettier, source lint, typecheck, and `git diff --check`.
-- [ ] T050 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence reviews; resolve actionable findings.
-- [ ] T051 Update the M8 spec/plan/tasks and the original MVP V2 list without changing #3789's historical acceptance claims.
+- [x] T050 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence reviews; resolve actionable findings.
+- [x] T051 Update the M8 spec/plan/tasks and the original MVP V2 list without changing #3789's historical acceptance claims.
 - [ ] T052 Reconcile OGC-783/784/790/791 delivery status with product-safe comments; do not close parent epics wholesale.
 - [ ] T053 Push the branch and open/update the stacked PR with exact base, migrations, exclusions, test commands, screenshots, video, evidence, and current one-shot check state.
 

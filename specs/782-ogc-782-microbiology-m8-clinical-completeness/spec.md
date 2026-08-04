@@ -3,7 +3,7 @@
 **Feature branch**: `feat/782-ogc-782-microbiology-m8-clinical-completeness`  
 **Parent feature**: OGC-782 routine bacteriology MVP  
 **Related product work**: OGC-783, OGC-784, OGC-790, OGC-791  
-**Status**: Draft for implementation  
+**Status**: Implementation in progress; reagent-lot slice blocked on product ruling
 **Created**: 2026-08-03
 
 ## Purpose
@@ -57,6 +57,16 @@ implementation leakage, contradictions, or engineering decisions.
 - Reagent inventory administration or Test Catalog reagent-link authoring
 - A new browser-support policy for OpenELIS as a whole
 - Rewriting the existing Inventory or Test Catalog modules
+
+### Delivery Status
+
+Amendment/re-identification history, repeat/retest AST, accessibility
+qualification, and measured capacity are implemented and evidenced on the M8
+branch. Reagent/card-lot traceability remains in scope but is not implemented:
+the source artifacts conflict on whether existing `PRIMARY / SECONDARY` Test
+Catalog roles represent the requiredness policy described as
+`REQUIRED / OPTIONAL / SUBSTITUTE`. The product contract does not infer that
+mapping. Full M8 acceptance therefore remains open.
 
 ## User Stories and Acceptance Scenarios
 

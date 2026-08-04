@@ -49,7 +49,7 @@ binding product requirements.
 ## Interpretation Rules for Planning
 
 - This spec defines product behavior and acceptance expectations.
-- Detailed M-* source files provide workflow detail and mockup context, but
+- Detailed M-\* source files provide workflow detail and mockup context, but
   implementation-heavy language in them must be filtered through the local
   engineering crosswalk.
 - Planning and tasks may choose table names, service boundaries, API shapes,
@@ -338,6 +338,13 @@ PR #3789:
 - **V2-005**: Review analyzer-ingested AST results with mandatory human review
   before final reporting.
 
+Follow-up status: branch
+`feat/782-ogc-782-microbiology-m8-clinical-completeness` implements and
+qualifies V2-001 plus the repeat/retest AST portion of V2-002. Reagent/card-lot
+linkage remains unresolved and unimplemented. This status note does not change
+PR #3789's historical MVP acceptance boundary; none of the follow-up behavior
+is claimed as part of that milestone until its own branch is merged.
+
 ### Constitution Compliance Requirements (OpenELIS Global)
 
 - **CR-001**: UI components MUST use Carbon Design System v1.15+ exclusively.
@@ -415,9 +422,10 @@ shape during planning.
   filtered view, open a case, refresh either page, and return without losing
   the relevant worklist or case-section context.
 
-The source M-NFR target for a 200-item worklist and sub-second read p95 remains
-unverified performance-qualification work. PR #3789 must not claim that target
-until a repeatable service-created data set and measurements exist.
+PR #3789 did not claim the source M-NFR 200-item worklist and sub-second read
+p95 target. The later M8 branch now carries repeatable service-created API and
+browser measurements for that target; those follow-up results do not alter the
+MVP PR's historical evidence.
 
 ## Planning Notes
 
