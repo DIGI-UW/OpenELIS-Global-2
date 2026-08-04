@@ -29,8 +29,8 @@ each slice. A checked task requires committed evidence, not intent.
 - [x] T016 Orchestrate baseline capture, new Analysis revision/Result creation, amended release, cancellation, and final relock through services.
 - [x] T017 Require and persist re-identification reason and before/after values; project a readable event into the existing case timeline.
 - [x] T018 Add REST forms/controllers with server-derived actors and stable blocker codes.
-- [ ] T019 Add Carbon amendment/history UI in the case workbench with canonical `section=amendment` state and React Intl strings.
-- [ ] T020 Add focused Vitest tests for amendment reason, history, focus management, errors, and relock behavior.
+- [x] T019 Add Carbon amendment/history UI in the case workbench with canonical `section=amendment` state and React Intl strings.
+- [x] T020 Add focused Vitest tests for amendment reason, history, focus management, errors, and relock behavior.
 - [ ] T021 Add registered Playwright amendment journey proving original/amended patient-report content and post-release lock.
 - [ ] T022 Run Slice A backend/frontend formatting and focused validation; commit as one reviewable checkpoint.
 

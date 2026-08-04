@@ -12,6 +12,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation, useParams } from "react-router-dom";
+import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
 import AstEntryPanel from "./AstEntryPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
@@ -61,6 +62,11 @@ const progressItems = [
     section: "reports",
     labelId: "microbiology.progress.reports",
   },
+  {
+    id: "amendment",
+    section: "amendment",
+    labelId: "microbiology.amendment.title",
+  },
 ];
 
 const hasActivity = (caseDetail, activityType) =>
@@ -88,11 +94,18 @@ const getProgressStatus = (caseDetail, itemId) => {
     review:
       astReviewed || noGrowthReady ? "done" : hasIsolate ? "todo" : "todo",
     reports: finalReleased ? "done" : astReviewed ? "current" : "todo",
+    amendment:
+      caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS"
+        ? "current"
+        : "todo",
   };
   return statusByItem[itemId] || "todo";
 };
 
 const getNextStepMessageId = (caseDetail) => {
+  if (caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS") {
+    return "microbiology.next.completeAmendment";
+  }
   if (caseDetail.stage === "FINAL_RELEASED") {
     return "microbiology.next.finalReleased";
   }
@@ -132,7 +145,7 @@ const MicrobiologyCaseView = ({
     if (showLoading) {
       setLoading(true);
     }
-    service.getCaseDetail(caseId).then((detail) => {
+    return service.getCaseDetail(caseId).then((detail) => {
       if (!detail || detail.status) {
         setError(intl.formatMessage({ id: "microbiology.case.loadError" }));
         setCaseDetail(null);
@@ -223,7 +236,11 @@ const MicrobiologyCaseView = ({
     );
   }
 
-  const finalReleased = caseDetail.stage === "FINAL_RELEASED";
+  const finalReleased =
+    caseDetail.finalReleaseState === "FINAL_RELEASED" ||
+    caseDetail.stage === "FINAL_RELEASED";
+  const amendmentOpen =
+    caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS";
 
   return (
     <main
@@ -301,6 +318,20 @@ const MicrobiologyCaseView = ({
             })}
             subtitle={intl.formatMessage({
               id: "microbiology.case.finalLocked.message",
+            })}
+          />
+        )}
+
+        {amendmentOpen && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.amendment.inProgress.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "microbiology.amendment.inProgress.message",
             })}
           />
         )}
@@ -421,6 +452,7 @@ const MicrobiologyCaseView = ({
                   onUpdateIdentification={updateIdentification}
                   saving={saving}
                   readOnly={finalReleased}
+                  amendmentOpen={amendmentOpen}
                   service={service}
                 />
               </AccordionItem>
@@ -438,6 +470,7 @@ const MicrobiologyCaseView = ({
                   onAstUpdated={() =>
                     setReadinessRefreshToken((currentValue) => currentValue + 1)
                   }
+                  readOnly={finalReleased}
                 />
               </AccordionItem>
               <AccordionItem
@@ -466,11 +499,31 @@ const MicrobiologyCaseView = ({
                 <ReportReadinessPanel
                   caseId={caseDetail.id}
                   service={service}
-                  finalReleaseState={caseDetail.stage}
+                  finalReleaseState={
+                    caseDetail.finalReleaseState || caseDetail.stage
+                  }
+                  amendmentOpen={amendmentOpen}
                   patientId={caseDetail.patientId}
                   onReleased={() => loadCase({ showLoading: false })}
                   onProjectionLoaded={setProjectedResultIds}
                   refreshToken={readinessRefreshToken}
+                />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.amendment.title",
+                })}
+                open={focusedSection === "amendment"}
+                onHeadingClick={() => selectSection("amendment")}
+              >
+                <AmendmentHistoryPanel
+                  caseId={caseDetail.id}
+                  finalReleaseState={
+                    caseDetail.finalReleaseState || caseDetail.stage
+                  }
+                  service={service}
+                  active={focusedSection === "amendment"}
+                  onCaseUpdated={() => loadCase({ showLoading: false })}
                 />
               </AccordionItem>
             </Accordion>

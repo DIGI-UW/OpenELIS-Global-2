@@ -66,4 +66,13 @@ describe("MicrobiologyRoutes", () => {
       section: "isolates",
     });
   });
+
+  it("keeps the amendment workflow addressable in the case URL", () => {
+    expect(getMicrobiologyCaseUrl("case-1", { section: "amendment" })).toBe(
+      "/Microbiology/cases/case-1?section=amendment",
+    );
+    expect(parseMicrobiologyCaseSearch("?section=amendment").section).toBe(
+      "amendment",
+    );
+  });
 });
