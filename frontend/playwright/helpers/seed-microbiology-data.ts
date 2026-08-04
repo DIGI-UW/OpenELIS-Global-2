@@ -17,6 +17,11 @@ export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {
   astRunId: string;
 }
 
+export interface SeededDenseMicrobiologyCase extends SeededMicrobiologyCase {
+  isolateIds: string[];
+  astReadingCount: number;
+}
+
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
 type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST";
@@ -89,6 +94,22 @@ export function seedMicrobiologyWorklistCase(
   page: Page,
 ): Promise<SeededMicrobiologyCase> {
   return provisionMicrobiologyScenario(page, "WORKLIST");
+}
+
+export async function seedMicrobiologyWorklistCases(
+  page: Page,
+  count = 200,
+): Promise<SeededMicrobiologyCase[]> {
+  if (!Number.isInteger(count) || count < 1 || count > 500) {
+    throw new Error(
+      "Microbiology worklist seed count must be between 1 and 500",
+    );
+  }
+  const cases: SeededMicrobiologyCase[] = [];
+  for (let index = 0; index < count; index += 1) {
+    cases.push(await seedMicrobiologyMvpCase(page));
+  }
+  return cases;
 }
 
 async function requireJsonResponse<T>(
@@ -209,6 +230,94 @@ export async function seedReviewedMicrobiologyCase(
   );
 
   return { ...seeded, isolateId: isolate.id, astRunId: run.id };
+}
+
+export async function seedDenseMicrobiologyCase(
+  page: Page,
+): Promise<SeededDenseMicrobiologyCase> {
+  const seeded = await seedMicrobiologyMvpCase(page);
+  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
+  const [panels, standards, antibiotics] = await Promise.all([
+    requireJsonResponse<MicrobiologyReferenceOption[]>(
+      "Load AST panels",
+      await page.request.get(
+        `${API_PREFIX}/rest/microbiology/reference/ast-panels?workflowType=BACTERIOLOGY`,
+      ),
+    ),
+    requireJsonResponse<MicrobiologyReferenceOption[]>(
+      "Load breakpoint standards",
+      await page.request.get(
+        `${API_PREFIX}/rest/microbiology/reference/breakpoint-standards`,
+      ),
+    ),
+    requireJsonResponse<MicrobiologyReferenceOption[]>(
+      "Load antibiotics",
+      await page.request.get(
+        `${API_PREFIX}/rest/microbiology/reference/antibiotics`,
+      ),
+    ),
+  ]);
+  const panel = panels.find(
+    (candidate) => candidate.label === "Gram negative AST panel (UAT)",
+  );
+  const standard = standards.find(
+    (candidate) => candidate.label === "CLSI 2026",
+  );
+  const readingAntibiotics = antibiotics.filter((candidate) =>
+    ["CIPUAT", "GENUAT"].includes(candidate.code),
+  );
+  if (!panel || !standard || readingAntibiotics.length !== 2) {
+    throw new Error("Microbiology UAT AST reference data is incomplete");
+  }
+
+  const isolateIds: string[] = [];
+  let astReadingCount = 0;
+  for (let isolateIndex = 1; isolateIndex <= 5; isolateIndex += 1) {
+    const isolate = await requireJsonResponse<{ id: string }>(
+      "Create dense-case isolate",
+      await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
+        headers,
+        data: {
+          caseId: seeded.caseId,
+          isolateLabel: `QISO-${isolateIndex}`,
+          preliminaryOrganismText: `Qualification organism ${isolateIndex}`,
+          significance: "CLINICALLY_SIGNIFICANT",
+        },
+      }),
+    );
+    isolateIds.push(isolate.id);
+    for (let runIndex = 0; runIndex < 8; runIndex += 1) {
+      const run = await requireJsonResponse<{ id: string }>(
+        "Start dense-case AST run",
+        await page.request.post(`${API_PREFIX}/rest/microbiology/ast/runs`, {
+          headers,
+          data: {
+            isolateId: isolate.id,
+            panelId: panel.id,
+            breakpointStandardId: standard.id,
+          },
+        }),
+      );
+      for (const [readingIndex, antibiotic] of readingAntibiotics.entries()) {
+        await requireJsonResponse(
+          "Record dense-case AST reading",
+          await page.request.post(
+            `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/readings`,
+            {
+              headers,
+              data: {
+                antibioticId: antibiotic.id,
+                method: "MIC",
+                rawValue: readingIndex === 0 ? 4 : 32,
+              },
+            },
+          ),
+        );
+        astReadingCount += 1;
+      }
+    }
+  }
+  return { ...seeded, isolateIds, astReadingCount };
 }
 
 export async function seedFinalizedMicrobiologyCase(

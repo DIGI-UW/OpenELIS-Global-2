@@ -35,6 +35,10 @@ import {
   MICROBIOLOGY_WORKLIST_PAGE_SIZES,
   parseMicrobiologyWorklistSearch,
 } from "./MicrobiologyRoutes";
+import {
+  markMicrobiologyReady,
+  MICROBIOLOGY_WORKLIST_READY_MARK,
+} from "./MicrobiologyPerformance";
 import MicrobiologyService from "./MicrobiologyService";
 import "./MicrobiologyWorklist.css";
 
@@ -184,6 +188,12 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
       active = false;
     };
   }, [location.search, service]);
+
+  useEffect(() => {
+    if (!loading && !hasLoadError) {
+      markMicrobiologyReady(MICROBIOLOGY_WORKLIST_READY_MARK);
+    }
+  }, [hasLoadError, loading, location.search, worklist]);
 
   const updateFilters = (changes, resetPage = true) => {
     const nextState = {
