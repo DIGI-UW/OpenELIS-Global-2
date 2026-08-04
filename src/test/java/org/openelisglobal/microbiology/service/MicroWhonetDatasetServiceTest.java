@@ -75,8 +75,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
         MicroAstRun run = reviewedRun("run-1", "isolate-1");
-        MicroAstReading cip = reading("reading-1", "run-1", "antibiotic-1", "S");
-        MicroAstReading gen = reading("reading-2", "run-1", "antibiotic-2", "R");
+        MicroAstReading cip = reading("reading-1", "run-1", "antibiotic-1", "SUSCEPTIBLE");
+        MicroAstReading gen = reading("reading-2", "run-1", "antibiotic-2", "RESISTANT");
 
         when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
                 .thenReturn(List.of(microCase));
@@ -100,7 +100,9 @@ public class MicroWhonetDatasetServiceTest {
         assertEquals(2, preview.exportedRows);
         assertEquals(2, preview.rows.size());
         assertEquals("CIP", preview.rows.get(0).antibioticCode);
+        assertEquals("S", preview.rows.get(0).interpretation);
         assertEquals("GEN", preview.rows.get(1).antibioticCode);
+        assertEquals("R", preview.rows.get(1).interpretation);
         assertTrue(preview.canGenerate);
         assertTrue(preview.warnings.isEmpty());
     }

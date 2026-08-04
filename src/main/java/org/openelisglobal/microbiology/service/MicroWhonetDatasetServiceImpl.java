@@ -142,9 +142,9 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                             antibiotic.map(MicroAntibiotic::getDisplayName).orElse(reading.getAntibioticId()), 1);
                     continue;
                 }
-                String interpretation = hasText(reading.getOverrideInterpretation())
-                        ? reading.getOverrideInterpretation()
-                        : reading.getInterpretation();
+                String interpretation = toWhonetInterpretation(
+                        hasText(reading.getOverrideInterpretation()) ? reading.getOverrideInterpretation()
+                                : reading.getInterpretation());
                 exportRows.add(toWhonetRow(candidate, organism.get(), antibiotic.get(), reading, interpretation));
                 previewRows.add(toPreviewRow(candidate, organism.get(), antibiotic.get(), reading, interpretation));
             }
@@ -296,6 +296,18 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
     private boolean isReportableReviewed(MicroAstRun run) {
         return run.isReportable() && MicroAstRunStatus.REVIEWED.name().equals(run.getStatus());
+    }
+
+    private String toWhonetInterpretation(String interpretation) {
+        if (interpretation == null) {
+            return "";
+        }
+        return switch (interpretation) {
+        case "SUSCEPTIBLE" -> "S";
+        case "INTERMEDIATE" -> "I";
+        case "RESISTANT" -> "R";
+        default -> interpretation;
+        };
     }
 
     private <T> Optional<T> optionalReference(String id, Function<String, Optional<T>> loader) {

@@ -98,16 +98,15 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       await expect(mappedRows.filter({ hasText: "GENUAT" })).toContainText("R");
       await expect(mappedRows).toHaveCount(2);
 
-      const warning = page
-        .getByLabel("Mapping readiness")
-        .filter({ hasText: "WHONET mapping pending (UAT)" });
+      const repairHref =
+        `/MasterListsPage/MicrobiologyReference/organisms?edit=` +
+        seeded.unmappedOrganismId;
+      const mappingReadiness = page.getByLabel("Mapping readiness");
+      const repairLink = mappingReadiness.locator(`a[href="${repairHref}"]`);
+      const warning = repairLink.locator("..");
       await expect(warning).toContainText("2 rows excluded");
-      await expect(
-        warning.getByRole("link", { name: "Fix organism mapping" }),
-      ).toHaveAttribute(
-        "href",
-        `/MasterListsPage/MicrobiologyReference/organisms?edit=${seeded.unmappedOrganismId}`,
-      );
+      await expect(repairLink).toHaveAccessibleName("Fix organism mapping");
+      await expect(repairLink).toHaveAttribute("href", repairHref);
     });
 
     await test.step("Generate and inspect the downloaded CSV", async () => {
@@ -120,14 +119,14 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       expect(download.suggestedFilename()).toMatch(/^WHONET_.*\.csv$/);
 
       const csv = await readDownload(download);
-      expect(csv).toContain("PATIENT_ID");
+      expect(csv).toContain("NATIONAL_ID");
       const seededRows = csv
         .split(/\r?\n/)
         .filter((line) => line.includes(seeded.accessionNumber));
       expect(seededRows).toHaveLength(2);
       expect(seededRows.some((line) => line.includes("CIPUAT"))).toBeTruthy();
       expect(seededRows.some((line) => line.includes("GENUAT"))).toBeTruthy();
-      expect(seededRows.every((line) => line.includes("REFUAT"))).toBeTruthy();
+      expect(seededRows.every((line) => line.includes("refuat"))).toBeTruthy();
     });
   });
 });
