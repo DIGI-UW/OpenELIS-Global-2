@@ -9,6 +9,23 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
+import type { AnalyzerApiResponse, AnalyzerField } from "../types";
+
+interface QueryStatus {
+  state: string;
+  progress: number;
+  logs: string[];
+  fields?: AnalyzerField[];
+  error?: string;
+}
+
+interface QueryStatusModalProps {
+  open: boolean;
+  onClose?: () => void;
+  analyzerId: string;
+  jobId?: string | null;
+  onCompleted?: (data: QueryStatus) => void;
+}
 
 export default function QueryStatusModal({
   open,
@@ -16,14 +33,14 @@ export default function QueryStatusModal({
   analyzerId,
   jobId,
   onCompleted,
-}) {
+}: QueryStatusModalProps) {
   const intl = useIntl();
-  const [status, setStatus] = useState({
+  const [status, setStatus] = useState<QueryStatus>({
     state: "pending",
     progress: 0,
     logs: [],
   });
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completedRef = useRef(false); // Track if onCompleted has been called
 
   useEffect(() => {
@@ -36,14 +53,19 @@ export default function QueryStatusModal({
     completedRef.current = false;
 
     const poll = () => {
-      analyzerService.getQueryStatus(analyzerId, jobId, (data) => {
-        setStatus(data || { state: "pending", progress: 0, logs: [] });
+      analyzerService.getQueryStatus(analyzerId, jobId || "", (data) => {
+        const queryStatus = (data as AnalyzerApiResponse & QueryStatus) || {
+          state: "pending",
+          progress: 0,
+          logs: [],
+        };
+        setStatus(queryStatus);
         if (
-          data &&
-          (data.state === "completed" ||
-            data.state === "failed" ||
-            data.state === "cancelled" ||
-            data.state === "not_found")
+          queryStatus &&
+          (queryStatus.state === "completed" ||
+            queryStatus.state === "failed" ||
+            queryStatus.state === "cancelled" ||
+            queryStatus.state === "not_found")
         ) {
           if (timerRef.current) {
             clearInterval(timerRef.current);
@@ -51,12 +73,12 @@ export default function QueryStatusModal({
           }
           // Only call onCompleted once
           if (
-            data.state === "completed" &&
+            queryStatus.state === "completed" &&
             typeof onCompleted === "function" &&
             !completedRef.current
           ) {
             completedRef.current = true;
-            onCompleted(data);
+            onCompleted(queryStatus);
           }
         }
       });
@@ -77,10 +99,12 @@ export default function QueryStatusModal({
       timerRef.current = null;
     }
     // Remove focus from any button before closing to prevent aria-hidden warning
-    if (document.activeElement && document.activeElement.blur) {
+    if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    onClose && onClose();
+    if (onClose) {
+      onClose();
+    }
   };
 
   return (

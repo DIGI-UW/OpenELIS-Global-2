@@ -31,17 +31,65 @@ import {
   DEFAULT_COMMUNICATION_MODE,
   resolveAnalyzerApiMessage,
 } from "../constants";
+import type {
+  Analyzer,
+  AnalyzerApiResponse,
+  AnalyzerDefaultConfig,
+  AnalyzerNotification,
+  AnalyzerProtocol,
+  AnalyzerType,
+} from "../types";
 import "./AnalyzerForm.css";
+
+interface AnalyzerFormRouteParams {
+  id?: string;
+}
+
+interface AnalyzerFormData {
+  name: string;
+  analyzerType: string;
+  pluginTypeId: string;
+  ipAddress: string;
+  port: string;
+  protocolVersion: string;
+  communicationMode: string;
+  testUnitIds: Array<string | number>;
+  status: string;
+  identifierPattern: string;
+  importDirectory: string;
+  fileFormat: string;
+  filePattern: string;
+  columnMappings: string;
+  delimiter: string;
+  hasHeader: boolean;
+  skipRows: number;
+}
+
+type AnalyzerFormErrors = Partial<Record<keyof AnalyzerFormData, string>>;
+
+interface SelectOption {
+  id: string;
+  text: string;
+}
+
+interface FileUpdates {
+  fileFormat?: string;
+  filePattern?: string;
+  delimiter?: string;
+  hasHeader?: boolean;
+  skipRows?: number;
+  columnMappings?: string;
+}
 
 const AnalyzerForm = () => {
   const intl = useIntl();
   const history = useHistory();
-  const { id: analyzerId } = useParams();
+  const { id: analyzerId } = useParams<AnalyzerFormRouteParams>();
   const isEditMode = !!analyzerId;
-  const [analyzer, setAnalyzer] = useState(null);
+  const [analyzer, setAnalyzer] = useState<Analyzer | null>(null);
   const [loadingAnalyzer, setLoadingAnalyzer] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AnalyzerFormData>({
     name: "",
     analyzerType: "",
     pluginTypeId: "",
@@ -62,21 +110,26 @@ const AnalyzerForm = () => {
     skipRows: 0,
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<AnalyzerFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
   const [testConnectionModalOpen, setTestConnectionModalOpen] = useState(false);
-  const closeTimeoutRef = useRef(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [defaultConfigs, setDefaultConfigs] = useState([]);
+  const [defaultConfigs, setDefaultConfigs] = useState<AnalyzerDefaultConfig[]>(
+    [],
+  );
   const [loadingDefaults, setLoadingDefaults] = useState(false);
-  const [selectedDefault, setSelectedDefault] = useState(null);
+  const [selectedDefault, setSelectedDefault] =
+    useState<AnalyzerDefaultConfig | null>(null);
 
-  const [pluginTypes, setPluginTypes] = useState([]);
+  const [pluginTypes, setPluginTypes] = useState<AnalyzerType[]>([]);
   const [loadingPluginTypes, setLoadingPluginTypes] = useState(false);
 
   // Analyzer type options (must match DB analyzer_type column values)
-  const analyzerTypeOptions = [
+  const analyzerTypeOptions: SelectOption[] = [
     { id: "HEMATOLOGY", text: "Hematology" },
     { id: "CHEMISTRY", text: "Chemistry" },
     { id: "IMMUNOLOGY", text: "Immunology" },
@@ -125,7 +178,8 @@ const AnalyzerForm = () => {
       setLoadingAnalyzer(true);
       getAnalyzer(analyzerId, (data) => {
         setLoadingAnalyzer(false);
-        const a = data?.analyzers?.[0] || data;
+        const a = ((data as { analyzers?: Analyzer[] })?.analyzers?.[0] ||
+          data) as Analyzer;
         setAnalyzer(a);
         setFormData({
           name: a.name || "",
@@ -178,7 +232,7 @@ const AnalyzerForm = () => {
     getAnalyzerTypes({ active: true }, (data) => {
       setLoadingPluginTypes(false);
       if (Array.isArray(data) && data.length > 0) {
-        setPluginTypes(data);
+        setPluginTypes(data as AnalyzerType[]);
       } else {
         setPluginTypes([]);
       }
@@ -192,16 +246,17 @@ const AnalyzerForm = () => {
   const isFileProtocol = selectedPluginType?.protocol?.toUpperCase() === "FILE";
 
   const sortedPluginTypes = useMemo(() => {
-    const protocolOrder = { ASTM: 0, HL7: 1, FILE: 2 };
+    const protocolOrder: Record<string, number> = { ASTM: 0, HL7: 1, FILE: 2 };
     return [...pluginTypes].sort((a, b) => {
       if (a.isGenericPlugin !== b.isGenericPlugin)
         return b.isGenericPlugin ? 1 : -1;
       if (a.isGenericPlugin && b.isGenericPlugin) {
         return (
-          (protocolOrder[a.protocol] ?? 99) - (protocolOrder[b.protocol] ?? 99)
+          (protocolOrder[String(a.protocol ?? "")] ?? 99) -
+          (protocolOrder[String(b.protocol ?? "")] ?? 99)
         );
       }
-      return a.name.localeCompare(b.name);
+      return (a.name || "").localeCompare(b.name || "");
     });
   }, [pluginTypes]);
 
@@ -227,14 +282,14 @@ const AnalyzerForm = () => {
     getDefaultConfigs((data) => {
       setLoadingDefaults(false);
       if (Array.isArray(data)) {
-        setDefaultConfigs(data);
+        setDefaultConfigs(data as AnalyzerDefaultConfig[]);
       } else {
         setDefaultConfigs([]);
       }
     });
   }, []);
 
-  const validateIPAddress = (ip) => {
+  const validateIPAddress = (ip: string) => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (!ipRegex.test(ip)) {
       return intl.formatMessage({
@@ -253,7 +308,10 @@ const AnalyzerForm = () => {
     return null;
   };
 
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = (
+    field: keyof AnalyzerFormData,
+    value: AnalyzerFormData[keyof AnalyzerFormData],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -276,17 +334,21 @@ const AnalyzerForm = () => {
     EXCEL: "*.{xls,xlsx}",
   };
 
-  const handleFileFormatChange = (format) => {
+  const handleFileFormatChange = (format: string) => {
     setFormData((prev) => ({
       ...prev,
       fileFormat: format,
-      filePattern: FILE_FORMAT_PATTERNS[format] || prev.filePattern,
+      filePattern:
+        FILE_FORMAT_PATTERNS[format as keyof typeof FILE_FORMAT_PATTERNS] ||
+        prev.filePattern,
       delimiter:
         format === "TSV" ? "\t" : format === "CSV" ? "," : prev.delimiter,
     }));
   };
 
-  const handleDefaultConfigSelect = (defaultItem) => {
+  const handleDefaultConfigSelect = (
+    defaultItem?: AnalyzerDefaultConfig | null,
+  ) => {
     if (!defaultItem || !defaultItem.id) {
       return;
     }
@@ -299,7 +361,7 @@ const AnalyzerForm = () => {
     getDefaultConfig(protocol, name, (configData) => {
       if (configData && !configData.error) {
         // Set plugin/protocol-level fields only — NOT instance-level (name, port, IP)
-        const protocolUpper = protocol.toUpperCase();
+        const protocolUpper = protocol.toUpperCase() as AnalyzerProtocol;
         // Auto-resolve pluginTypeId from config protocol
         const matchingPluginType = pluginTypes.find(
           (t) =>
@@ -322,17 +384,20 @@ const AnalyzerForm = () => {
         };
 
         // FILE protocol: auto-fill file import fields from profile
-        const fileUpdates = {};
+        const fileUpdates: FileUpdates = {};
         if (protocolUpper === "FILE") {
           const defaults = configData.configDefaults || {};
           const extensions = configData.supported_extensions || [];
-          const format =
-            defaults.fileFormat || configData.protocol?.format || "CSV";
+          const protocolConfig =
+            typeof configData.protocol === "object" ? configData.protocol : {};
+          const format = defaults.fileFormat || protocolConfig.format || "CSV";
           fileUpdates.fileFormat = format;
           fileUpdates.filePattern =
             extensions.length > 0
               ? `*{${extensions.join(",")}}`
-              : FILE_FORMAT_PATTERNS[format] || "*.csv";
+              : FILE_FORMAT_PATTERNS[
+                  format as keyof typeof FILE_FORMAT_PATTERNS
+                ] || "*.csv";
           fileUpdates.delimiter =
             defaults.delimiter ||
             (format === "CSV" ? "," : format === "TSV" ? "\t" : ",");
@@ -379,7 +444,7 @@ const AnalyzerForm = () => {
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: AnalyzerFormErrors = {};
 
     if (!formData.name.trim()) {
       newErrors.name = intl.formatMessage({
@@ -429,7 +494,7 @@ const AnalyzerForm = () => {
     setNotification(null);
 
     // Parse column mappings JSON for FILE protocol
-    let columnMappingsObj = {};
+    let columnMappingsObj: Record<string, unknown> = {};
     if (isFileProtocol && formData.columnMappings) {
       try {
         columnMappingsObj = JSON.parse(formData.columnMappings);
@@ -470,7 +535,7 @@ const AnalyzerForm = () => {
       }),
     };
 
-    const callback = (response, extraParams) => {
+    const callback = (response: AnalyzerApiResponse) => {
       setIsSubmitting(false);
       if (response.error || response.statusCode >= 400) {
         setNotification({

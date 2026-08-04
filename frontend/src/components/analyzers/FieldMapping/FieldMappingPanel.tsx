@@ -21,7 +21,19 @@ import {
 } from "@carbon/react";
 import { WarningAltFilled } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import type { AnalyzerField, AnalyzerMapping } from "../types";
 import "./FieldMappingPanel.css";
+
+interface FieldMappingPanelProps {
+  fields: AnalyzerField[];
+  selectedField: AnalyzerField | null;
+  onFieldSelect: (field: AnalyzerField) => void;
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  mappings: AnalyzerMapping[];
+}
+
+type MappingStatusFilter = "all" | "mapped" | "unmapped" | "draft" | "active";
 
 const FieldMappingPanel = ({
   fields,
@@ -30,9 +42,9 @@ const FieldMappingPanel = ({
   searchTerm,
   onSearchChange,
   mappings,
-}) => {
+}: FieldMappingPanelProps) => {
   const intl = useIntl();
-  const [statusFilter, setStatusFilter] = useState("all"); // "all", "mapped", "unmapped", "draft", "active"
+  const [statusFilter, setStatusFilter] = useState<MappingStatusFilter>("all");
 
   // Table headers
   const headers = [
@@ -112,7 +124,7 @@ const FieldMappingPanel = ({
   });
 
   // Get field type tag color
-  const getFieldTypeColor = (fieldType) => {
+  const getFieldTypeColor = (fieldType: string) => {
     const colorMap = {
       NUMERIC: "blue",
       QUALITATIVE: "purple",
@@ -223,7 +235,7 @@ const FieldMappingPanel = ({
             }
             onChange={({ selectedItem }) => {
               if (selectedItem) {
-                setStatusFilter(selectedItem.id);
+                setStatusFilter(selectedItem.id as MappingStatusFilter);
               }
             }}
             size="lg"

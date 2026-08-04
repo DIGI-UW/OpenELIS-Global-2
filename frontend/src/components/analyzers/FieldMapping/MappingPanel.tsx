@@ -21,7 +21,38 @@ import OpenELISFieldSelector from "./OpenELISFieldSelector";
 import MappingActivationModal from "./MappingActivationModal";
 import MappingRetirementModal from "./MappingRetirementModal";
 import { validateFieldValue } from "../../../services/analyzerService";
+import type {
+  AnalyzerApiResponse,
+  AnalyzerField,
+  AnalyzerMapping,
+} from "../types";
 import "./MappingPanel.css";
+
+interface MappingFormData {
+  analyzerFieldId?: string;
+  openelisFieldId: string;
+  openelisFieldType: string;
+  mappingType: string;
+  isRequired: boolean;
+  isActive: boolean;
+}
+
+interface MappingPanelProps {
+  field: AnalyzerField;
+  mapping?: AnalyzerMapping | null;
+  onCreateMapping: (mappingData: AnalyzerMapping) => void;
+  onUpdateMapping: (mappingId?: string, mappingData?: AnalyzerMapping) => void;
+  onRetireMapping?: (mappingId?: string, retirementReason?: string) => void;
+  analyzerName: string;
+  analyzerIsActive?: boolean;
+  pendingMessagesCount?: number;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  message: string;
+  errors?: string[];
+}
 
 const MappingPanel = ({
   field,
@@ -32,13 +63,14 @@ const MappingPanel = ({
   analyzerName,
   analyzerIsActive = false,
   pendingMessagesCount = 0,
-}) => {
+}: MappingPanelProps) => {
   const intl = useIntl();
   const [editMode, setEditMode] = useState(!mapping);
   const [showActivationModal, setShowActivationModal] = useState(false);
   const [showRetirementModal, setShowRetirementModal] = useState(false);
-  const [pendingMappingData, setPendingMappingData] = useState(null);
-  const [formData, setFormData] = useState({
+  const [pendingMappingData, setPendingMappingData] =
+    useState<AnalyzerMapping | null>(null);
+  const [formData, setFormData] = useState<MappingFormData>({
     openelisFieldId: mapping?.openelisFieldId || "",
     openelisFieldType: mapping?.openelisFieldType || "",
     mappingType: mapping?.mappingType || "DIRECT",
@@ -46,12 +78,13 @@ const MappingPanel = ({
     isActive: mapping?.isActive !== undefined ? mapping.isActive : false, // Default to draft
   });
 
-  const [validationRules, setValidationRules] = useState(
-    mapping?.validationRules || [],
-  );
+  const [validationRules, setValidationRules] = useState<
+    NonNullable<AnalyzerMapping["validationRules"]>
+  >(mapping?.validationRules || []);
   const [testValue, setTestValue] = useState("");
-  const [validationResult, setValidationResult] = useState(null);
-  const [validationErrors, setValidationErrors] = useState([]);
+  const [validationResult, setValidationResult] =
+    useState<ValidationResult | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (field?.fieldType === "CUSTOM" && mapping?.validationRules) {
@@ -61,7 +94,10 @@ const MappingPanel = ({
     }
   }, [field?.fieldType, mapping?.validationRules]);
 
-  const handleFieldChange = (fieldName, value) => {
+  const handleFieldChange = (
+    fieldName: keyof MappingFormData,
+    value: MappingFormData[keyof MappingFormData],
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [fieldName]: value,
@@ -157,7 +193,7 @@ const MappingPanel = ({
     setShowRetirementModal(true);
   };
 
-  const handleRetirementConfirm = (retirementReason) => {
+  const handleRetirementConfirm = (retirementReason: string) => {
     if (onRetireMapping && mapping) {
       onRetireMapping(mapping.id, retirementReason);
     }
@@ -380,7 +416,12 @@ const MappingPanel = ({
                         analyzerId,
                         field.id,
                         testValue,
-                        (result, extraParams) => {
+                        (
+                          result: AnalyzerApiResponse & {
+                            isValid?: boolean;
+                            errors?: string[];
+                          },
+                        ) => {
                           if (result && !result.error) {
                             setValidationResult({
                               isValid: result.isValid,
@@ -508,7 +549,10 @@ const MappingPanel = ({
               </div>
             </>
           ) : (
-            <p>No mapping exists for this field. Click "Edit" to create one.</p>
+            <p>
+              No mapping exists for this field. Click &quot;Edit&quot; to create
+              one.
+            </p>
           )}
         </div>
       )}

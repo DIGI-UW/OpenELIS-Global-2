@@ -26,13 +26,20 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import "./MappingRetirementModal.css";
 
+interface MappingRetirementModalProps {
+  open: boolean;
+  onClose?: () => void;
+  mappingName?: string;
+  pendingMessagesCount?: number;
+  onConfirm?: (retirementReason: string) => void;
+}
+
 const MappingRetirementModal = ({
   open,
   onClose,
-  mappingName,
   pendingMessagesCount = 0,
   onConfirm,
-}) => {
+}: MappingRetirementModalProps) => {
   const intl = useIntl();
   const [retirementReason, setRetirementReason] = useState("");
   const [characterCount, setCharacterCount] = useState(0);
@@ -46,7 +53,9 @@ const MappingRetirementModal = ({
     }
   }, [open]);
 
-  const handleReasonChange = (event) => {
+  const handleReasonChange = (
+    event: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
     const value = event.target.value;
     if (value.length <= maxReasonLength) {
       setRetirementReason(value);

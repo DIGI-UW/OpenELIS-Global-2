@@ -52,7 +52,6 @@ describe("AnalyzerForm", () => {
 
   test("testSubmitForm_WithValidData_CallsAPI", async () => {
     // Arrange
-    const mockCallback = vi.fn();
     createAnalyzer.mockImplementation((data, callback) => {
       callback({ id: "1", ...data }, null);
     });
@@ -176,6 +175,8 @@ describe("AnalyzerForm", () => {
     await userEvent.click(testButton);
 
     // Assert: Verify test connection modal opens
-    await screen.findByTestId("test-connection-modal", {}, { timeout: 2000 });
+    expect(
+      await screen.findByTestId("test-connection-modal", {}, { timeout: 2000 }),
+    ).toBeTruthy();
   });
 });

@@ -30,18 +30,45 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import type {
+  AnalyzerApiResponse,
+  AnalyzerNotification,
+  AnalyzerProtocol,
+  AnalyzerType,
+} from "../types";
+
+interface AnalyzerTypeFormData {
+  name: string;
+  description: string;
+  protocol: AnalyzerProtocol;
+  pluginClassName: string;
+  identifierPattern: string;
+  isGenericPlugin: boolean;
+  isActive: boolean;
+}
+
+type AnalyzerTypeFormErrors = Partial<
+  Record<keyof AnalyzerTypeFormData, string>
+>;
+
+interface ProtocolOption {
+  id: AnalyzerProtocol;
+  text: string;
+}
 
 const AnalyzerTypeManagement = () => {
   const intl = useIntl();
 
-  const [analyzerTypes, setAnalyzerTypes] = useState([]);
+  const [analyzerTypes, setAnalyzerTypes] = useState<AnalyzerType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
   const [submitting, setSubmitting] = useState(false);
 
-  const emptyForm = {
+  const emptyForm: AnalyzerTypeFormData = {
     name: "",
     description: "",
     protocol: "ASTM",
@@ -50,10 +77,12 @@ const AnalyzerTypeManagement = () => {
     isGenericPlugin: false,
     isActive: true,
   };
-  const [formData, setFormData] = useState({ ...emptyForm });
-  const [formErrors, setFormErrors] = useState({});
+  const [formData, setFormData] = useState<AnalyzerTypeFormData>({
+    ...emptyForm,
+  });
+  const [formErrors, setFormErrors] = useState<AnalyzerTypeFormErrors>({});
 
-  const protocolOptions = [
+  const protocolOptions: ProtocolOption[] = [
     { id: "ASTM", text: "ASTM" },
     { id: "HL7", text: "HL7" },
     { id: "FILE", text: "FILE" },
@@ -61,9 +90,9 @@ const AnalyzerTypeManagement = () => {
 
   const loadAnalyzerTypes = useCallback(() => {
     setLoading(true);
-    getFromOpenElisServer("/rest/analyzer-types", (data) => {
+    getFromOpenElisServer("/rest/analyzer-types", (data: unknown) => {
       const list = Array.isArray(data) ? data : [];
-      setAnalyzerTypes(list);
+      setAnalyzerTypes(list as AnalyzerType[]);
       setLoading(false);
     });
   }, []);
@@ -137,7 +166,7 @@ const AnalyzerTypeManagement = () => {
   }));
 
   const validateForm = () => {
-    const errors = {};
+    const errors: AnalyzerTypeFormErrors = {};
     if (!formData.name || !formData.name.trim()) {
       errors.name = intl.formatMessage({
         id: "analyzerType.error.nameRequired",
@@ -164,7 +193,7 @@ const AnalyzerTypeManagement = () => {
     postToOpenElisServerJsonResponse(
       "/rest/analyzer-types",
       payload,
-      (response) => {
+      (response: AnalyzerApiResponse) => {
         setSubmitting(false);
         if (response && response.error) {
           setNotification({

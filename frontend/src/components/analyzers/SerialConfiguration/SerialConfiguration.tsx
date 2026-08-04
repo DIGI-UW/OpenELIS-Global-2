@@ -26,8 +26,35 @@ import {
   connectSerialPort,
   disconnectSerialPort,
   getSerialPortStatus,
+  type SerialApiResponse,
+  type SerialPortConfiguration,
 } from "../../../services/serialService";
 import "./SerialConfiguration.css";
+
+interface SerialConfigurationProps {
+  analyzerId?: string | number;
+  configuration?: SerialPortConfiguration | null;
+  open: boolean;
+  onClose: () => void;
+  onSave?: (configuration: SerialApiResponse) => void;
+}
+
+type SerialFormData = Required<
+  Pick<
+    SerialPortConfiguration,
+    "portName" | "baudRate" | "dataBits" | "parity" | "flowControl" | "active"
+  >
+> & {
+  analyzerId: string | number | null;
+  stopBits: string;
+};
+
+type SerialFormErrors = Partial<Record<keyof SerialFormData, string>>;
+
+interface SelectOption {
+  id: string;
+  text: string;
+}
 
 const SerialConfiguration = ({
   analyzerId,
@@ -35,11 +62,11 @@ const SerialConfiguration = ({
   open,
   onClose,
   onSave,
-}) => {
+}: SerialConfigurationProps) => {
   const intl = useIntl();
   const isEditMode = !!configuration;
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SerialFormData>({
     analyzerId: analyzerId || null,
     portName: "",
     baudRate: 9600,
@@ -50,20 +77,24 @@ const SerialConfiguration = ({
     active: true,
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<SerialFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState(null);
+  const [notification, setNotification] = useState<{
+    kind: "error" | "success";
+    title: string;
+    subtitle?: string;
+  } | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
   // Stop bits options
-  const stopBitsOptions = [
+  const stopBitsOptions: SelectOption[] = [
     { id: "ONE", text: "1" },
     { id: "ONE_POINT_FIVE", text: "1.5" },
     { id: "TWO", text: "2" },
   ];
 
   // Parity options
-  const parityOptions = [
+  const parityOptions: SelectOption[] = [
     {
       id: "NONE",
       text: intl.formatMessage({ id: "serial.config.parity.none" }),
@@ -84,7 +115,7 @@ const SerialConfiguration = ({
   ];
 
   // Flow control options
-  const flowControlOptions = [
+  const flowControlOptions: SelectOption[] = [
     {
       id: "NONE",
       text: intl.formatMessage({ id: "serial.config.flowControl.none" }),
@@ -129,15 +160,18 @@ const SerialConfiguration = ({
     setConnectionStatus(null);
   }, [configuration, analyzerId, open]);
 
-  const loadConnectionStatus = (configId) => {
+  const loadConnectionStatus = (configId: string) => {
     getSerialPortStatus(configId, (data) => {
       if (data && data.status) {
-        setConnectionStatus(data.status);
+        setConnectionStatus(String(data.status));
       }
     });
   };
 
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = (
+    field: keyof SerialFormData,
+    value: SerialFormData[keyof SerialFormData],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -149,7 +183,7 @@ const SerialConfiguration = ({
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: SerialFormErrors = {};
 
     if (!formData.analyzerId) {
       newErrors.analyzerId = intl.formatMessage({
@@ -187,7 +221,7 @@ const SerialConfiguration = ({
     setIsSubmitting(true);
     setNotification(null);
 
-    const callback = (response, extraParams) => {
+    const callback = (response: SerialApiResponse) => {
       setIsSubmitting(false);
       if (response.error) {
         setNotification({

@@ -20,9 +20,22 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
+import type { AnalyzerErrorRecord } from "../types";
 import "./ErrorDetailsModal.css";
 
-const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
+interface ErrorDetailsModalProps {
+  error: AnalyzerErrorRecord | null;
+  open: boolean;
+  onClose?: () => void;
+  onAcknowledge: (errorId?: string) => void;
+}
+
+const ErrorDetailsModal = ({
+  error,
+  open,
+  onClose,
+  onAcknowledge,
+}: ErrorDetailsModalProps) => {
   const intl = useIntl();
   const history = useHistory();
   const [logsExpanded, setLogsExpanded] = useState(false);
@@ -35,7 +48,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
   const errorType = error.errorType || "MAPPING";
 
   // Format timestamp
-  const formatTimestamp = (timestamp) => {
+  const formatTimestamp = (timestamp?: string) => {
     if (!timestamp) return "-";
     const date = new Date(timestamp);
     return intl.formatDate(date, {
@@ -75,10 +88,12 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
 
   const handleClose = () => {
     // Remove focus from any button before closing to prevent aria-hidden warning
-    if (document.activeElement && document.activeElement.blur) {
+    if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    onClose && onClose();
+    if (onClose) {
+      onClose();
+    }
   };
 
   return (

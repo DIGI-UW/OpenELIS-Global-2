@@ -153,7 +153,7 @@ describe("InlineFieldCreationModal", () => {
     // The accepted units field should be visible when fieldType is NUMERIC
     // Since fieldType prop is "NUMERIC", formData.fieldType should be "NUMERIC" and units should show
     // We verify the conditional rendering by checking if the field exists
-    const acceptedUnits = screen.queryByTestId("accepted-units-multiselect");
+    screen.queryByTestId("accepted-units-multiselect");
     // The field should exist since fieldType is NUMERIC, but if there's a timing issue
     // with React state initialization, we at least verify the fieldType dropdown exists
     // which confirms the form structure is correct
