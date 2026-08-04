@@ -60,9 +60,11 @@ each slice. A checked task requires committed evidence, not intent.
 
 ## Phase 5 - Accessibility qualification (Slice C)
 
-- [ ] T037 Add the reviewed current `@axe-core/playwright` version and register a focused Microbiology accessibility test project.
-- [ ] T038 Add stable axe checks for worklist, case overview, isolate, AST, critical communication, reporting, amendment, and lot-picker states.
-- [ ] T039 Add keyboard-only Playwright journey through filtering, case navigation, isolate/AST entry, lot selection, and amendment release.
+- [x] T037 Add the reviewed current `@axe-core/playwright` version and register focused desktop/mobile Microbiology accessibility test projects.
+- [x] T038a Add stable axe checks for worklist, case overview, isolate, AST, critical communication, reporting, and amendment states.
+- [ ] T038b Add the stable axe check for the lot-picker state after lot policy is resolved.
+- [x] T039a Add a keyboard-only Playwright journey through filtering, case navigation, isolate/AST entry, and amendment release.
+- [ ] T039b Extend the keyboard-only journey through lot selection after lot policy is resolved.
 - [ ] T040 Fix detected semantic, labeling, status, focus, and contrast defects using Carbon patterns; add Vitest regressions at the owning component level.
 - [ ] T041 Record desktop/mobile screenshots and machine-readable axe output tied to the commit.
 

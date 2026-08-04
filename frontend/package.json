@@ -66,6 +66,7 @@
     "pw:guard": "node scripts/pw-bucket-guard.mjs",
     "pw:test:harness": "playwright test --project=harness-demo --workers=1",
     "pw:test:core-foundational": "playwright test --project=core-app",
+    "pw:test:microbiology-accessibility": "playwright test --project=core-accessibility --project=core-accessibility-mobile",
     "pw:test:harness-foundational": "playwright test --project=harness-foundational --workers=1",
     "pw:test:harness-manual-only": "playwright test --project=harness-manual-only --workers=1",
     "pw:test:core-demo": "playwright test --project=core-demo",
@@ -81,6 +82,7 @@
     "pw:test:video": "npm run pw:test:harness-demo-video"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
     "@testing-library/dom": "^8.20.1",
