@@ -86,6 +86,10 @@ test.describe("Microbiology browser performance qualification", () => {
 
     await page.goto(WORKLIST_URL, { waitUntil: "domcontentloaded" });
     await waitForReadyMark(page, MICROBIOLOGY_WORKLIST_READY_MARK);
+    await expect(
+      page.getByLabel("Next page"),
+      "The 200-case qualification workload must produce a second page",
+    ).toBeEnabled();
     measurements.push(
       await measureBrowserOperation(
         "worklist-page-interaction",
