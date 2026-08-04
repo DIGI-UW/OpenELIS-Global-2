@@ -45,7 +45,7 @@
       activation, and archive UI.
 - [x] T027 Build CSV preview/results/error-download UI.
 - [x] T028 Add linkable PageBreadCrumb paths and canonical URL preservation.
-- [ ] T029 Add English i18n keys and focused component/accessibility tests.
+- [x] T029 Add English i18n keys and focused component/accessibility tests.
 
 ## Phase 4 - E2E, UAT, and Publication
 

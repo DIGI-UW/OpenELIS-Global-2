@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import {
   seedFinalizedMicrobiologyCase,
+  seedMicrobiologyReferenceAdmin,
   seedMicrobiologyWorklistCase,
   seedReviewedMicrobiologyCase,
 } from "../../../helpers/seed-microbiology-data";
@@ -72,5 +73,38 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
       { timeout: LONG_TIMEOUT },
     );
     await expectNoWcag21AaViolations(page, testInfo, "microbiology-amendment");
+  });
+
+  test("reference and breakpoint administration", async ({
+    page,
+  }, testInfo) => {
+    const seeded = await seedMicrobiologyReferenceAdmin(page);
+    const surfaces = [
+      [
+        "/MasterListsPage/MicrobiologyReference/organisms?status=ALL&sort=name&page=1&pageSize=20",
+        "Organisms",
+        "microbiology-reference-organisms",
+      ],
+      [
+        "/MasterListsPage/MicrobiologyReference/ast-panels?status=ALL&sort=name&page=1&pageSize=20",
+        "AST panels",
+        "microbiology-reference-ast-panels",
+      ],
+      [
+        `/MasterListsPage/MicrobiologyReference/breakpoints/${seeded.loadedBreakpointStandardId}?status=ALL&sort=name&page=1&pageSize=20`,
+        "CLSI SYNTH-UAT-LOADED",
+        "microbiology-reference-breakpoints",
+      ],
+    ] as const;
+
+    for (const [route, heading, evidenceName] of surfaces) {
+      await test.step(`Scan ${heading}`, async () => {
+        await page.goto(route, { waitUntil: "domcontentloaded" });
+        await expect(page.getByRole("heading", { name: heading })).toBeVisible({
+          timeout: LONG_TIMEOUT,
+        });
+        await expectNoWcag21AaViolations(page, testInfo, evidenceName);
+      });
+    }
   });
 });
