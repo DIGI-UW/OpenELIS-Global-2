@@ -79,11 +79,13 @@ Add `@axe-core/playwright` to frontend development dependencies and register a
 focused Microbiology accessibility project/test set. Pair automated checks with
 a keyboard-only workflow because axe cannot prove interaction completeness.
 
-Add a property-gated qualification service under test/support ownership that
-creates the 200-case and dense-case datasets through services. Add API/browser
-measurements with warm-up, fixed iteration counts, p50/p95/max calculation, and
-JSON/Markdown evidence generation. Qualification data is never available from
-a production controller.
+Add an explicitly enabled qualification builder under test/support ownership
+that creates the 200-case and dense-case datasets through application services.
+The builder stays in test source and is not packaged into the WAR. Add
+API/browser measurements with warm-up, fixed iteration counts, p50/p95/max
+calculation, and JSON/Markdown evidence generation. Browser qualification uses
+the existing property-gated UAT scenario endpoint on a disposable stack;
+qualification data is never available from an ordinary deployment.
 
 Qualification runs that commit their fixtures are supported only on a
 disposable stack/database and require an explicit environment guard. Teardown
