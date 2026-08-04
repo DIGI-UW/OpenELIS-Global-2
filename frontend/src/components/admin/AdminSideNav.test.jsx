@@ -28,6 +28,7 @@ import { IntlProvider } from "react-intl";
 import AdminSideNav from "./AdminSideNav";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
+import { MICROBIOLOGY_REFERENCE_SECTIONS } from "./microbiologyReference/sectionConfig";
 import messages from "../../languages/en.json";
 
 const renderNav = () =>
@@ -40,6 +41,27 @@ const renderNav = () =>
 beforeEach(() => vi.clearAllMocks());
 
 describe("AdminSideNav — Test Catalog Management entry", () => {
+  it("builds every microbiology reference route from shared section config", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/MicrobiologyReference/organisms",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    MICROBIOLOGY_REFERENCE_SECTIONS.forEach(({ key }) => {
+      expect(
+        container
+          .querySelector(`[data-testid="microbiology-reference-${key}"]`)
+          .getAttribute("href"),
+      ).toBe(`/MasterListsPage/MicrobiologyReference/${key}`);
+    });
+    expect(
+      container
+        .querySelector('[data-testid="microbiology-reference-organisms"]')
+        .getAttribute("aria-current"),
+    ).toBe("page");
+  });
+
   it("lists all 9 sections but DISABLED (not navigable) off an editor route", () => {
     mockLocation = { pathname: "/MasterListsPage/reflex", search: "" };
     const { container } = renderNav();

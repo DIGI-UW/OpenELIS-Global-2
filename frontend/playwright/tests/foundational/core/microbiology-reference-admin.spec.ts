@@ -1,0 +1,329 @@
+import type { Page } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
+import {
+  seedMicrobiologyReferenceAdmin,
+  seedReviewedMicrobiologyCase,
+} from "../../../helpers/seed-microbiology-data";
+import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+
+const ADMIN_BASE = "/MasterListsPage/MicrobiologyReference";
+const API_BASE = "/api/OpenELIS-Global/rest/microbiology";
+
+const canonicalQuery = (values: Record<string, string> = {}) => {
+  const params = new URLSearchParams({
+    status: "ALL",
+    sort: "name",
+    page: "1",
+    pageSize: "20",
+    ...values,
+  });
+  return params.toString();
+};
+
+const expectQuery = async (page: Page, key: string, value: string) => {
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get(key))
+    .toBe(value);
+};
+
+const openRowAction = async (page: Page, rowText: string, action: string) => {
+  const row = page.getByRole("row").filter({ hasText: rowText });
+  await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+  await row.getByRole("button", { name: "Options" }).click();
+  await page.getByRole("menuitem", { name: action, exact: true }).click();
+};
+
+const expectActiveReference = async (
+  page: Page,
+  resource: "organisms" | "antibiotics",
+  id: string,
+  active: boolean,
+) => {
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(
+        `${API_BASE}/reference/${resource}`,
+      );
+      expect(response.ok()).toBeTruthy();
+      const options = (await response.json()) as Array<{ id: string }>;
+      return options.some((option) => option.id === id);
+    })
+    .toBe(active);
+};
+
+test.describe("OGC-782 M3 microbiology reference administration", () => {
+  test("edits and safely deactivates service-created vocabulary", async ({
+    page,
+  }) => {
+    const seeded = await seedMicrobiologyReferenceAdmin(page);
+
+    await test.step("Reload canonical organism search state", async () => {
+      await page.goto(
+        `${ADMIN_BASE}/organisms?${canonicalQuery({ q: "Reference organism (UAT)" })}`,
+        { waitUntil: "domcontentloaded" },
+      );
+      await expect(
+        page.getByRole("heading", { name: "Microbiology reference data" }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(
+        page.getByRole("row").filter({ hasText: "Reference organism (UAT)" }),
+      ).toBeVisible();
+      await expectQuery(page, "q", "Reference organism (UAT)");
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expect(
+        page.getByRole("row").filter({ hasText: "Reference organism (UAT)" }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+    });
+
+    await test.step("Edit and confirm organism deactivation impact", async () => {
+      await openRowAction(page, "Reference organism (UAT)", "Edit");
+      await expectQuery(page, "edit", seeded.organismId);
+      const organismDialog = page.getByRole("dialog");
+      await organismDialog
+        .getByLabel("Notes")
+        .fill("Synthetic UAT vocabulary reviewed in M3");
+      await organismDialog.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("Reference saved")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+
+      await openRowAction(page, "Reference organism (UAT)", "Deactivate");
+      await expectQuery(page, "edit", `deactivate:${seeded.organismId}`);
+      const impactDialog = page.getByRole("dialog");
+      await expect(
+        impactDialog.getByRole("heading", {
+          name: "Review deactivation impact",
+        }),
+      ).toBeVisible();
+      await expect(impactDialog).toContainText(
+        "prevents new selection but preserves those historical references",
+      );
+      await impactDialog.getByRole("button", { name: /Deactivate$/ }).click();
+      await expectActiveReference(page, "organisms", seeded.organismId, false);
+
+      await openRowAction(page, "Reference organism (UAT)", "Reactivate");
+      await expectActiveReference(page, "organisms", seeded.organismId, true);
+    });
+
+    await test.step("Repeat the guarded workflow for an antibiotic", async () => {
+      await page.goto(
+        `${ADMIN_BASE}/antibiotics?${canonicalQuery({ q: "REFUAT" })}`,
+        { waitUntil: "domcontentloaded" },
+      );
+      await openRowAction(page, "Reference antibiotic (UAT)", "Edit");
+      const antibioticDialog = page.getByRole("dialog");
+      await antibioticDialog
+        .getByLabel("Notes")
+        .fill("Synthetic UAT antibiotic reviewed in M3");
+      await antibioticDialog.getByRole("button", { name: "Save" }).click();
+      await openRowAction(page, "Reference antibiotic (UAT)", "Deactivate");
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: /Deactivate$/ })
+        .click();
+      await expectActiveReference(
+        page,
+        "antibiotics",
+        seeded.antibioticId,
+        false,
+      );
+      await openRowAction(page, "Reference antibiotic (UAT)", "Reactivate");
+      await expectActiveReference(
+        page,
+        "antibiotics",
+        seeded.antibioticId,
+        true,
+      );
+    });
+  });
+
+  test("publishes an immutable AST panel version", async ({ page }) => {
+    const seeded = await seedMicrobiologyReferenceAdmin(page);
+    const reviewed = await seedReviewedMicrobiologyCase(page);
+    const originalRunsResponse = await page.request.get(
+      `${API_BASE}/ast/runs?isolateId=${encodeURIComponent(reviewed.isolateId)}`,
+    );
+    expect(originalRunsResponse.ok()).toBeTruthy();
+    const originalRuns = (await originalRunsResponse.json()) as Array<{
+      id: string;
+      panelId: string;
+    }>;
+    const originalRun = originalRuns.find(
+      (run) => run.id === reviewed.astRunId,
+    );
+    expect(originalRun?.panelId).toBe(seeded.astPanelId);
+
+    await page.goto(
+      `${ADMIN_BASE}/ast-panels?${canonicalQuery({ q: "Gram negative AST panel (UAT)" })}`,
+      { waitUntil: "domcontentloaded" },
+    );
+    const currentRow = page
+      .getByRole("row")
+      .filter({ hasText: "Gram negative AST panel (UAT)" })
+      .filter({ hasText: "Current" });
+    await expect(currentRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    const versionText = await currentRow.getByRole("cell").nth(2).innerText();
+    const originalVersion = Number(versionText.replace(/^v/, ""));
+    await currentRow.getByRole("button", { name: "Options" }).click();
+    await page.getByRole("menuitem", { name: "Publish new version" }).click();
+    await expectQuery(page, "edit", seeded.astPanelId);
+    const editor = page.getByRole("dialog");
+    await expect(
+      editor.getByText(/Saving creates a new panel version/),
+    ).toBeVisible();
+    await editor.getByLabel("Tier").first().selectOption("2");
+    await editor.getByRole("button", { name: "Publish new version" }).click();
+    const confirmation = page.getByRole("dialog");
+    await expect(
+      confirmation.getByRole("heading", {
+        name: "Confirm panel publication",
+      }),
+    ).toBeVisible();
+    await confirmation
+      .getByRole("button", { name: "Publish new version" })
+      .click();
+
+    await expect(
+      page
+        .getByRole("row")
+        .filter({ hasText: "Gram negative AST panel (UAT)" })
+        .filter({ hasText: `v${originalVersion + 1}` })
+        .filter({ hasText: "Current" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    const preservedRunsResponse = await page.request.get(
+      `${API_BASE}/ast/runs?isolateId=${encodeURIComponent(reviewed.isolateId)}`,
+    );
+    const preservedRuns = (await preservedRunsResponse.json()) as Array<{
+      id: string;
+      panelId: string;
+    }>;
+    expect(
+      preservedRuns.find((run) => run.id === reviewed.astRunId)?.panelId,
+    ).toBe(seeded.astPanelId);
+  });
+
+  test("activates a loaded standard without changing reviewed AST history", async ({
+    page,
+  }) => {
+    const seeded = await seedMicrobiologyReferenceAdmin(page);
+    const reviewed = await seedReviewedMicrobiologyCase(page);
+
+    await page.goto(
+      `${ADMIN_BASE}/breakpoints/${seeded.loadedBreakpointStandardId}?${canonicalQuery({ method: "MIC" })}`,
+      { waitUntil: "domcontentloaded" },
+    );
+    await expect(
+      page.getByRole("heading", { name: "CLSI SYNTH-UAT-LOADED" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page.getByRole("table")).toContainText("UAT_SYNTHETIC");
+    await expect(page.getByRole("table")).toContainText(
+      "Reference antibiotic (UAT)",
+    );
+    await expectQuery(page, "method", "MIC");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("table")).toContainText("UAT_SYNTHETIC", {
+      timeout: LONG_TIMEOUT,
+    });
+
+    await page.getByRole("button", { name: "Activate standard" }).click();
+    const activationDialog = page.getByRole("dialog");
+    await activationDialog
+      .getByLabel("Effective date")
+      .fill(new Date().toISOString().slice(0, 10));
+    await activationDialog
+      .getByRole("button", { name: "Activate standard" })
+      .click();
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+
+    const runsResponse = await page.request.get(
+      `${API_BASE}/ast/runs?isolateId=${encodeURIComponent(reviewed.isolateId)}`,
+    );
+    expect(runsResponse.ok()).toBeTruthy();
+    const runs = (await runsResponse.json()) as Array<{
+      id: string;
+      breakpointStandardId: string;
+    }>;
+    expect(
+      runs.find((run) => run.id === reviewed.astRunId)?.breakpointStandardId,
+    ).toBe(seeded.activeBreakpointStandardId);
+  });
+
+  test("previews, applies, downloads, and idempotently reimports mixed CSV", async ({
+    page,
+  }) => {
+    await seedMicrobiologyReferenceAdmin(page);
+    const csv = [
+      "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units",
+      "CLSI,SYNTH-UAT-MIXED,group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L",
+      "CLSI,SYNTH-UAT-MIXED,Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L",
+      "CLSI,SYNTH-UAT-MIXED,group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,synthetic-mg/L",
+    ].join("\n");
+
+    const openImport = async () => {
+      await page.getByRole("button", { name: "Import CSV" }).click();
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "synthetic-breakpoints.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(csv),
+      });
+      await expect(page.getByText("1 valid")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(page.getByText("2 skipped")).toBeVisible();
+      await expect(page.getByText(/Unknown organism/)).toBeVisible();
+      await expect(page.getByText(/Invalid decimal/)).toBeVisible();
+    };
+
+    await page.goto(`${ADMIN_BASE}/breakpoints?${canonicalQuery()}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await openImport();
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download rejected rows" }).click();
+    await expect((await download).suggestedFilename()).toBe(
+      "breakpoint-import-rejected.csv",
+    );
+    await page.getByRole("button", { name: "Apply valid rows" }).click();
+    await expect(page.getByText(/1 (unchanged|valid)/)).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    await page.getByRole("button", { name: "Cancel" }).click();
+
+    await openImport();
+    await page.getByRole("button", { name: "Apply valid rows" }).click();
+    await expect(page.getByText("1 unchanged")).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+  });
+
+  test("reaches each section through config-driven navigation and breadcrumbs", async ({
+    page,
+  }) => {
+    await seedMicrobiologyReferenceAdmin(page);
+    await page.goto("/MasterListsPage", { waitUntil: "domcontentloaded" });
+    await page.getByTestId("microbiology-reference-menu").click();
+    await page.getByTestId("microbiology-reference-breakpoints").click();
+    await expect(page).toHaveURL(/\/MicrobiologyReference\/breakpoints/);
+    await expect(
+      page.getByRole("navigation", { name: "Breadcrumb" }),
+    ).toContainText("Home");
+    await expect(
+      page.getByRole("navigation", { name: "Breadcrumb" }),
+    ).toContainText("Admin Management");
+
+    for (const section of [
+      "organisms",
+      "antibiotics",
+      "ast-panels",
+      "culture-setups",
+      "breakpoints",
+    ]) {
+      await page.getByTestId(`microbiology-reference-${section}`).click();
+      await expect(page).toHaveURL(
+        new RegExp(`/MicrobiologyReference/${section}`),
+      );
+    }
+  });
+});

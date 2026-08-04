@@ -12,4 +12,10 @@ public class MicrobiologyUatScenarioForm {
     public String siblingCaseId;
     public String analysisId;
     public String reportableTestAnalyteId;
+    public String organismId;
+    public String antibioticId;
+    public String astPanelId;
+    public String activeBreakpointStandardId;
+    public String loadedBreakpointStandardId;
+    public String methodId;
 }
