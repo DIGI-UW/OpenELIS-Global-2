@@ -13,6 +13,10 @@ current M3 branch.
 | Opening a linkable editor reset list pagination.                                                                    | Code defect           | Fixed in `queryState.js`; `edit` now preserves page state and has a focused regression test.                                           |
 | Unsupported status values could remain in the URL while the server applied `ALL`.                                   | Code defect           | Fixed with section-aware client canonicalization and server status whitelists.                                                         |
 | A current but inactive AST panel displayed a green `Current` tag.                                                   | Code defect           | Current/historical and active/inactive are now rendered as separate Carbon tags in `AstPanelPage.jsx`.                                 |
+| Carbon table rows briefly mixed refreshed source data with the prior normalized row model.                         | Runtime defect        | Cell values now carry their complete render data; a component regression proves publication can refresh without dereferencing a missing row. |
+| `MicroBreakpointActivationEvent` was omitted from explicit runtime/test persistence registration.                  | ORM defect            | Registered the entity in both persistence units; exact-SHA remote ORM validation now passes.                                            |
+| A broad reagent-lot `span` selector leaked secondary text color into Carbon definition tooltips on mobile.         | Accessibility defect  | Scoped the selector to the test-name label; the formerly failing Pixel 5 AST scan and the complete desktop/mobile suite now pass.       |
+| Applied breakpoint imports disabled the action but did not expose `importedRows` to the user.                       | UX defect             | Added an explicit Carbon `1 imported` status tag with component and Playwright assertions.                                               |
 | The product spec limited duplicate-name rejection to active entries while persistence enforces identity uniqueness. | Product wording drift | `spec.md` now says duplicate existing entries are rejected.                                                                            |
 | Local correction protection had service coverage but no assembled user-story proof.                                 | Evidence gap          | The M3 Playwright import story now edits an imported rule, verifies `Local correction`, and verifies a matching re-import is rejected. |
 
@@ -26,16 +30,20 @@ and operational TB remain explicitly excluded.
 | ---------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Service          | `MicrobiologyReferenceAdminServiceTest`, `MicroBreakpointAdminServiceTest`, and `MicroBreakpointImportServiceTest` | Real normalization, versioning, actor, and import decisions are asserted on produced values or captured entities. Mockito does not claim to prove HQL or schema behavior. |
 | Architecture/ORM | `MicrobiologyArchitectureTest` and `MicrobiologyOrmValidationTest`                                                 | Guards service-only fixture construction and entity mapping. Mock-local IDs in unit tests are not persisted fixture seeds.                                                |
-| Migration        | `MicrobiologyM9LiquibaseRollbackTest`                                                                              | Correct level and authored against PostgreSQL, but not yet executed because local Docker is unavailable. This remains blocking task T007A.                                |
+| Migration        | `MicrobiologyM9LiquibaseRollbackTest`                                                                              | PostgreSQL update and transaction rollback proof passed in a Docker-capable environment.                                                |
 | Component/query  | `MicrobiologyReferenceAdmin.test.jsx` and `queryState.test.js`                                                     | Covers rendering, direct-link rule editing, invalid URL normalization, and editor-state preservation. The new URL tests would fail against the pre-fix implementation.    |
-| E2E              | `microbiology-reference-admin.spec.ts`                                                                             | Uses Carbon roles/labels and observable state; no arbitrary waits. Live execution remains pending exact-SHA deployment.                                                   |
+| E2E              | `microbiology-reference-admin.spec.ts`                                                                             | Uses Carbon roles/labels and observable state; no arbitrary waits. All five foundational stories and the paced deployed walkthrough pass. |
 
-Local predeployment results:
+Final automated results:
 
-- Backend: 16 focused JUnit tests passed.
-- Frontend: 11 focused Vitest tests passed.
+- Backend: 21 focused JUnit 4 tests passed.
+- Remote exact-SHA ORM: 2 tests passed against the deployed checkout.
+- Frontend: 33 focused Vitest tests passed; the final import/tooltip slice passed
+  12 tests after the last UI corrections.
 - Production frontend build passed with only repository-baseline warnings.
-- Playwright registration passed: setup plus five M3 stories.
+- Final deployed foundational Playwright: 6/6 passed.
+- Final deployed desktop/mobile accessibility: 9/9 passed.
+- Final paced video project: 2/2 passed, including authentication setup.
 
 ## Simplicity review
 
@@ -54,14 +62,25 @@ Verdict: **lean for the required full-stack workflow**.
 
 ## Evidence readiness
 
-The committed test and UAT contracts are ready, but media evidence must come from
-the deployed exact SHA. Before acceptance, the remaining evidence gate is:
+- App SHA: `7416a1626ccd0dade98aa6b010f91b56c226e4f4`
+- Review harness SHA: `e51654ec980a36c899ea169630b6f3a4552ff9fe`
+- Deployment: `20260804T193243Z-7416a1626ccd`, ready with health and smoke
+  verification passed; `/` and `/Microbiology/worklist` returned HTTP 200.
+- Grist revision: `c3a490ab422180d87ada093cf05a2cc727413a01bc6234c3217fb99c466e7c3c`
+  with 33 steps, 32 required, and one optional TB reflection.
+- External evidence:
+  `/Users/pmanko/.codex/visualizations/2026/08/04/019fca12-4b0c-71d0-a37e-8493de64fee5/ogc-782-m3-evidence-7416a162/walkthrough/`
 
-1. execute PostgreSQL migration update and rollback proof;
-2. deploy the final pushed SHA and verify app/schema metadata;
-3. run focused Playwright and accessibility projects against AMR;
-4. inspect stable desktop/mobile screenshots against M-01/M-02 workflow intent;
-5. create the external MP4/screenshot bundle and link it from the PR without
-   committing binaries.
+The M-01/M-02 comparison found no product contradiction in the delivered M3
+workflow. The implementation intentionally uses the native config-driven
+OpenELIS Admin sidenav, shell, breadcrumbs, and Carbon tabs instead of treating
+the mock's internal navigation as an implementation contract. The resulting
+workflow preserves the mock's vocabulary, panel-versioning, breakpoint, and
+import intent while remaining usable at mobile widths.
 
-This report is a predeployment gate, not a claim that live or human UAT has passed.
+Two nonblocking evidence risks remain visible. The long-lived AMR database
+retains service-created synthetic panel history, so broad searches accumulate
+review records; the final evidence targets the exact newly published row without
+deleting history. Playwright also observes the repository's existing unnamed
+404 asset request, but no M3 API request fails. Neither is counted as human UAT.
+All reviewer Pass/Fail/N/A marks remain pending in the live overlay.
