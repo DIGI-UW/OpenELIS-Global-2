@@ -77,6 +77,29 @@ describe("ReflexCalcSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the calculation empty states as inline notifications, not bare text (OGC-1153)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({ reflexRules: [], calculatedBy: [], feedsInto: [] }),
+    );
+    const { container } = renderSection();
+
+    // Each calculation direction has its own message, and both must be
+    // notifications rather than the bare unstyled <p> this ticket reported.
+    for (const key of [
+      "label.testCatalog.reflexCalc.calc.feedsInto.empty",
+      "label.testCatalog.reflexCalc.calc.calculatedBy.empty",
+    ]) {
+      const el = await screen.findByText(messages[key]);
+      expect(el.closest(".cds--inline-notification")).not.toBeNull();
+    }
+    // Three empty states in the panel, one treatment.
+    expect(
+      container.querySelectorAll(".cds--inline-notification"),
+    ).toHaveLength(3);
+    // The old treatment was a <p> with no class; assert it is gone.
+    expect(container.querySelectorAll("p:not([class])")).toHaveLength(0);
+  });
+
   it("shows an error state when the fetch fails", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => cb(undefined));
     renderSection();

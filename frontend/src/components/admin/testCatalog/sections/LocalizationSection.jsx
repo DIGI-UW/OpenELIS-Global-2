@@ -17,6 +17,34 @@ import {
 
 const FALLBACK_LOCALE = "en";
 
+/** Base language subtag of a locale code, tolerating both `fr_FR` and `fr-FR`. */
+const baseLanguage = (code) =>
+  String(code || "")
+    .toLowerCase()
+    .split(/[-_]/)[0];
+
+/**
+ * OGC-1153: pick the locale the picker opens on. The session locale wins so the
+ * admin lands on the record they are actually reading (an exact match first, then
+ * the same language in another region, e.g. session `en-GB` → supported `en`);
+ * only when the session locale is not supported does the configured fallback —
+ * then the first entry — take over.
+ */
+const resolveInitialLocale = (list, sessionLocale) => {
+  const exact = list.find((l) => l.localeCode === sessionLocale);
+  if (exact) {
+    return exact.localeCode;
+  }
+  const sameLanguage = list.find(
+    (l) => baseLanguage(l.localeCode) === baseLanguage(sessionLocale),
+  );
+  if (sameLanguage) {
+    return sameLanguage.localeCode;
+  }
+  const fallback = list.find((l) => l.fallback);
+  return (fallback || list[0]).localeCode;
+};
+
 /**
  * OGC-949 / OGC-767 — Localization section. Edits a test's name / reporting-name
  * translations in-context. These live in the generic `localization` tables (the
@@ -24,9 +52,11 @@ const FALLBACK_LOCALE = "en";
  * /rest/localizations/{id} endpoints; the editor controller only bridges
  * testId → the backing localization ids. No per-test translation store.
  *
- * For the chosen locale each field shows its value with a fallback indicator
- * when the value is coming from English rather than a locale-specific
- * translation, and saves on blur.
+ * The picker opens on the session locale so the admin knows which record they are
+ * looking at. For the chosen locale each field shows its value with a fallback
+ * indicator when the value is coming from English rather than a locale-specific
+ * translation, and saves on blur — which the section says explicitly, since there
+ * is no Save control to imply it.
  */
 const LocalizationSection = ({ testId }) => {
   const intl = useIntl();
@@ -40,18 +70,17 @@ const LocalizationSection = ({ testId }) => {
   const [error, setError] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  // Resolve the active supported locales once, defaulting the picker to the
-  // first non-fallback locale (so an admin lands on something to translate).
+  // Resolve the active supported locales, defaulting the picker to the locale the
+  // session is running in (see resolveInitialLocale).
   useEffect(() => {
     getFromOpenElisServer("/rest/supportedlocales/active", (res) => {
       const list = Array.isArray(res) ? res : [];
       setLocales(list);
       if (list.length > 0) {
-        const target = list.find((l) => !l.fallback) || list[0];
-        setLocale(target.localeCode);
+        setLocale(resolveInitialLocale(list, intl.locale));
       }
     });
-  }, []);
+  }, [intl.locale]);
 
   // Load the test's localization refs, then hydrate each one's translations.
   const load = useCallback(() => {
@@ -198,8 +227,11 @@ const LocalizationSection = ({ testId }) => {
         />
       )}
 
+      {/* OGC-1153: there is no Save button — the fields persist on blur — so the
+          section states that outright, the way the Display Order section does. */}
       <p>
-        {intl.formatMessage({ id: "label.testCatalog.localization.intro" })}
+        {intl.formatMessage({ id: "label.testCatalog.localization.intro" })}{" "}
+        {intl.formatMessage({ id: "label.testCatalog.localization.autoSave" })}
       </p>
 
       {fields.length === 0 ? (

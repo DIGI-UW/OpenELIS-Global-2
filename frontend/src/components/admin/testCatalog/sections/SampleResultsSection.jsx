@@ -919,7 +919,10 @@ const SampleResultsSection = ({ testId }) => {
                     >
                       <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder.helper" />
                     </p>
-                    {(c.options || []).length === 0 && (
+                    {/* OGC-1153: render the empty state OR the table, never both —
+                        an unconditional TableHead leaves a band of column headings
+                        with nothing beneath it, which reads as broken layout. */}
+                    {(c.options || []).length === 0 ? (
                       <InlineNotification
                         kind="info"
                         lowContrast
@@ -928,86 +931,87 @@ const SampleResultsSection = ({ testId }) => {
                           id: "label.testCatalog.sampleResults.options.empty",
                         })}
                       />
-                    )}
-                    <Table size="sm">
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.value" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {(c.options || []).map((o, oi) => (
-                          <TableRow key={o.id || `opt-${oi}`}>
-                            <TableCell>
-                              {o.valueName ? (
-                                // Dictionary-backed option: show the entry name, not the
-                                // raw dictionary id stored in `value`.
-                                o.valueName
-                              ) : (
+                    ) : (
+                      <Table size="sm">
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.value" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                            </TableHeader>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(c.options || []).map((o, oi) => (
+                            <TableRow key={o.id || `opt-${oi}`}>
+                              <TableCell>
+                                {o.valueName ? (
+                                  // Dictionary-backed option: show the entry name, not the
+                                  // raw dictionary id stored in `value`.
+                                  o.valueName
+                                ) : (
+                                  <TextInput
+                                    id={`opt-value-${ci}-${oi}`}
+                                    labelText=""
+                                    value={o.value || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "options", oi, {
+                                        value: e.target.value,
+                                      })
+                                    }
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell>
                                 <TextInput
-                                  id={`opt-value-${ci}-${oi}`}
+                                  id={`opt-order-${ci}-${oi}`}
+                                  type="number"
                                   labelText=""
-                                  value={o.value || ""}
+                                  value={o.sortOrder ?? ""}
                                   onChange={(e) =>
                                     patchChild(ci, "options", oi, {
-                                      value: e.target.value,
+                                      sortOrder: e.target.value,
                                     })
                                   }
                                 />
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <TextInput
-                                id={`opt-order-${ci}-${oi}`}
-                                type="number"
-                                labelText=""
-                                value={o.sortOrder ?? ""}
-                                onChange={(e) =>
-                                  patchChild(ci, "options", oi, {
-                                    sortOrder: e.target.value,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Checkbox
-                                id={`opt-normal-${ci}-${oi}`}
-                                labelText=""
-                                checked={!!o.normal}
-                                onChange={(_e, { checked }) =>
-                                  patchChild(ci, "options", oi, {
-                                    normal: checked,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                kind="ghost"
-                                size="sm"
-                                hasIconOnly
-                                renderIcon={TrashCan}
-                                iconDescription={intl.formatMessage({
-                                  id: "label.testCatalog.sampleResults.removeOption",
-                                })}
-                                onClick={() => removeChild(ci, "options", oi)}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                              </TableCell>
+                              <TableCell>
+                                <Checkbox
+                                  id={`opt-normal-${ci}-${oi}`}
+                                  labelText=""
+                                  checked={!!o.normal}
+                                  onChange={(_e, { checked }) =>
+                                    patchChild(ci, "options", oi, {
+                                      normal: checked,
+                                    })
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={TrashCan}
+                                  iconDescription={intl.formatMessage({
+                                    id: "label.testCatalog.sampleResults.removeOption",
+                                  })}
+                                  onClick={() => removeChild(ci, "options", oi)}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
                     <ComboBox
                       key={`opt-add-${ci}-${optionComboReset[ci] || 0}`}
                       id={`opt-add-${ci}`}
@@ -1042,7 +1046,10 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
                     </h6>
-                    {(c.interpretations || []).length === 0 && (
+                    {/* Empty state and the editor table are mutually exclusive:
+                        a column-header band with no rows under it reads as
+                        broken layout (OGC-1153). */}
+                    {(c.interpretations || []).length === 0 ? (
                       <InlineNotification
                         kind="info"
                         lowContrast
@@ -1051,124 +1058,127 @@ const SampleResultsSection = ({ testId }) => {
                           id: "label.testCatalog.sampleResults.interpretations.empty",
                         })}
                       />
-                    )}
-                    <Table size="sm">
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.valueMatch" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.text" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.severity" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {(c.interpretations || []).map((it, ii) => (
-                          <TableRow key={it.id || `int-${ii}`}>
-                            <TableCell>
-                              {/* Value field adapts to the result type (FR-32):
-                                  select-list components pick a configured option;
-                                  numeric uses a free-text pattern (>N, N-M, exact). */}
-                              {["D", "M", "C"].includes(c.resultType) ? (
-                                <Select
-                                  id={`int-match-${ci}-${ii}`}
-                                  labelText=""
-                                  value={it.valueMatch || ""}
-                                  onChange={(e) =>
-                                    patchChild(ci, "interpretations", ii, {
-                                      valueMatch: e.target.value,
-                                    })
-                                  }
-                                >
-                                  <SelectItem
-                                    value=""
-                                    text={intl.formatMessage({
-                                      id: "label.testCatalog.sampleResults.interp.selectValue",
-                                    })}
-                                  />
-                                  {(c.options || []).map((o, oi) => (
+                    ) : (
+                      <Table size="sm">
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.valueMatch" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.text" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.severity" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                            </TableHeader>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(c.interpretations || []).map((it, ii) => (
+                            <TableRow key={it.id || `int-${ii}`}>
+                              <TableCell>
+                                {/* Value field adapts to the result type (FR-32):
+                                    select-list components pick a configured option;
+                                    numeric uses a free-text pattern (>N, N-M, exact). */}
+                                {["D", "M", "C"].includes(c.resultType) ? (
+                                  <Select
+                                    id={`int-match-${ci}-${ii}`}
+                                    labelText=""
+                                    value={it.valueMatch || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "interpretations", ii, {
+                                        valueMatch: e.target.value,
+                                      })
+                                    }
+                                  >
                                     <SelectItem
-                                      key={o.id || oi}
-                                      value={o.value}
-                                      text={o.valueName || o.value}
+                                      value=""
+                                      text={intl.formatMessage({
+                                        id: "label.testCatalog.sampleResults.interp.selectValue",
+                                      })}
                                     />
-                                  ))}
-                                </Select>
-                              ) : (
+                                    {(c.options || []).map((o, oi) => (
+                                      <SelectItem
+                                        key={o.id || oi}
+                                        value={o.value}
+                                        text={o.valueName || o.value}
+                                      />
+                                    ))}
+                                  </Select>
+                                ) : (
+                                  <TextInput
+                                    id={`int-match-${ci}-${ii}`}
+                                    labelText=""
+                                    placeholder={intl.formatMessage({
+                                      id: "label.testCatalog.sampleResults.interp.numericHint",
+                                    })}
+                                    value={it.valueMatch || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "interpretations", ii, {
+                                        valueMatch: e.target.value,
+                                      })
+                                    }
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell>
                                 <TextInput
-                                  id={`int-match-${ci}-${ii}`}
+                                  id={`int-text-${ci}-${ii}`}
                                   labelText=""
-                                  placeholder={intl.formatMessage({
-                                    id: "label.testCatalog.sampleResults.interp.numericHint",
-                                  })}
-                                  value={it.valueMatch || ""}
+                                  value={it.text || ""}
                                   onChange={(e) =>
                                     patchChild(ci, "interpretations", ii, {
-                                      valueMatch: e.target.value,
+                                      text: e.target.value,
                                     })
                                   }
                                 />
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <TextInput
-                                id={`int-text-${ci}-${ii}`}
-                                labelText=""
-                                value={it.text || ""}
-                                onChange={(e) =>
-                                  patchChild(ci, "interpretations", ii, {
-                                    text: e.target.value,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                id={`int-sev-${ci}-${ii}`}
-                                labelText=""
-                                value={it.severity || "NORMAL"}
-                                onChange={(e) =>
-                                  patchChild(ci, "interpretations", ii, {
-                                    severity: e.target.value,
-                                  })
-                                }
-                              >
-                                {["NORMAL", "ABNORMAL", "CRITICAL"].map((s) => (
-                                  <SelectItem
-                                    key={s}
-                                    value={s}
-                                    text={intl.formatMessage({
-                                      id: `label.testCatalog.sampleResults.severity.${s}`,
-                                    })}
-                                  />
-                                ))}
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                kind="ghost"
-                                size="sm"
-                                hasIconOnly
-                                renderIcon={TrashCan}
-                                iconDescription={intl.formatMessage({
-                                  id: "label.testCatalog.sampleResults.removeInterpretation",
-                                })}
-                                onClick={() =>
-                                  removeChild(ci, "interpretations", ii)
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  id={`int-sev-${ci}-${ii}`}
+                                  labelText=""
+                                  value={it.severity || "NORMAL"}
+                                  onChange={(e) =>
+                                    patchChild(ci, "interpretations", ii, {
+                                      severity: e.target.value,
+                                    })
+                                  }
+                                >
+                                  {["NORMAL", "ABNORMAL", "CRITICAL"].map(
+                                    (s) => (
+                                      <SelectItem
+                                        key={s}
+                                        value={s}
+                                        text={intl.formatMessage({
+                                          id: `label.testCatalog.sampleResults.severity.${s}`,
+                                        })}
+                                      />
+                                    ),
+                                  )}
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={TrashCan}
+                                  iconDescription={intl.formatMessage({
+                                    id: "label.testCatalog.sampleResults.removeInterpretation",
+                                  })}
+                                  onClick={() =>
+                                    removeChild(ci, "interpretations", ii)
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
                     <Button
                       kind="ghost"
                       size="sm"
