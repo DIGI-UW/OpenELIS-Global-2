@@ -80,9 +80,10 @@ test.describe("Microbiology keyboard-only workflow", () => {
     });
 
     await test.step("Create an isolate and record AST with the keyboard", async () => {
-      const isolatesPanel = page
-        .locator(".cds--accordion__heading")
-        .filter({ hasText: "Isolates" });
+      const isolatesPanel = page.getByRole("button", {
+        name: "Isolates",
+        exact: true,
+      });
       await tabTo(page, isolatesPanel);
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/section=isolates/);
@@ -99,9 +100,10 @@ test.describe("Microbiology keyboard-only workflow", () => {
         timeout: LONG_TIMEOUT,
       });
 
-      const astPanel = page
-        .locator(".cds--accordion__heading")
-        .filter({ hasText: "Manual AST" });
+      const astPanel = page.getByRole("button", {
+        name: "Manual AST",
+        exact: true,
+      });
       await tabTo(page, astPanel);
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/section=ast/);
