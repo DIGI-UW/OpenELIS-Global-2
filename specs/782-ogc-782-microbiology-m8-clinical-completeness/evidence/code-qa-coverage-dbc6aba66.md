@@ -80,4 +80,4 @@ the real persistence path; it is not an assert-on-mock-return test.
   Vitest coverage provider. Component and E2E outcomes are reported directly.
 - The repository-wide TypeScript 6 check remains red on pre-existing project
   debt, including on the dedicated modernization branch. M8-owned TypeScript
-  errors are resolved and documented in `final-local-validation-6c9d267a7.md`.
+  errors are resolved and documented in `final-local-validation-5203e1fdb.md`.
