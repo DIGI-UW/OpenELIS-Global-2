@@ -22,12 +22,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/coldstorage/corrective-actions")
+@PreAuthorize("hasAnyRole('RESULTS', 'RECEPTION', 'ADMIN')")
 public class CorrectiveActionRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(CorrectiveActionRestController.class);

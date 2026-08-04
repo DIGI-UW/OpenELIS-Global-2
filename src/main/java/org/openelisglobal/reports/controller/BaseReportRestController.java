@@ -36,8 +36,26 @@ import org.springframework.web.bind.annotation.RestController;
  * definition discovery and metadata - Report data retrieval and filtering -
  * Multi-format export (JSON, CSV, PDF) - Report execution with parameters
  */
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Base REST Controller for reporting endpoints.
+ *
+ * <p>
+ * Establishes the `/rest/reports` namespace for all reporting-related APIs.
+ * Specific reporting endpoints (patient reports, test reports, etc.) are
+ * implemented in specialized controllers extending this base class.
+ *
+ * <p>
+ * Provides foundation for ad-hoc reporting with support for: - Report
+ * definition discovery and metadata - Report data retrieval and filtering -
+ * Multi-format export (JSON, CSV, PDF) - Report execution with parameters
+ */
 @RestController
 @RequestMapping("/rest/reports")
+@PreAuthorize("hasAnyRole('REPORTS', 'ADMIN')")
 public class BaseReportRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(BaseReportRestController.class);

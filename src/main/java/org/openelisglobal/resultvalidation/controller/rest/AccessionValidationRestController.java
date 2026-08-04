@@ -67,11 +67,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping(value = "/rest/")
+@PreAuthorize("hasAnyRole('RESULTS', 'ADMIN')")
 public class AccessionValidationRestController extends BaseResultValidationController {
     @Autowired
     private UserService userService;

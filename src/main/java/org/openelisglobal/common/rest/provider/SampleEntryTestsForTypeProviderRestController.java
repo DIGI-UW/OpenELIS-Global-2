@@ -31,6 +31,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,6 +39,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequestMapping(value = "/rest/")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class SampleEntryTestsForTypeProviderRestController extends BaseRestController {
 
     private static String USER_TEST_SECTION_ID;

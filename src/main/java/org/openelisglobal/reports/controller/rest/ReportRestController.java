@@ -22,6 +22,7 @@ import org.openelisglobal.reports.action.implementation.IReportCreator;
 import org.openelisglobal.reports.action.implementation.ReportImplementationFactory;
 import org.openelisglobal.reports.form.ReportForm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequestMapping(value = "/rest/")
+@PreAuthorize("hasAnyRole('REPORTS', 'ADMIN')")
 public class ReportRestController extends BaseRestController {
 
     @Autowired

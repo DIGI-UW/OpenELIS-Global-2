@@ -14,6 +14,7 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping(value = "/rest/")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class SampleItemController extends BaseController {
 
     private final String[] ALLOWED_FIELDS = new String[] {

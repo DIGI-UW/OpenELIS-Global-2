@@ -8,10 +8,12 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/rest/properties")
+@PreAuthorize("isAuthenticated()")
 public class CommonPropertiesController {
 
     @Autowired
