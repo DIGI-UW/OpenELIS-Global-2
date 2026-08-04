@@ -144,19 +144,6 @@ function OEHeader({
 
   const handleMenuItems = (tag, res) => {
     if (res) {
-      const findMenu = (items, elementId) => {
-        for (const item of items || []) {
-          if (item?.menu?.elementId === elementId) {
-            return item;
-          }
-          const childMatch = findMenu(item?.childMenus, elementId);
-          if (childMatch) {
-            return childMatch;
-          }
-        }
-        return null;
-      };
-      const billingMenuBeforeInit = findMenu(res, "menu_billing");
       // FIX: Initialize expanded property for all menu items
       const initializeExpanded = (items) => {
         return items.map((item) => ({
@@ -169,7 +156,6 @@ function OEHeader({
       };
 
       const initializedMenus = initializeExpanded(res);
-      const billingMenuAfterInit = findMenu(initializedMenus, "menu_billing");
 
       // IMPORTANT: use functional setState so we never drop other menu buckets due to stale closures
       setMenus((prev) => ({ ...prev, [tag]: initializedMenus }));
@@ -526,138 +512,69 @@ function OEHeader({
       // Use controlled expanded prop instead of defaultExpanded to ensure proper collapse behavior
       const carbonExpanded = !!menuItem.expanded || hasActiveChild;
       return (
-        // Wrapper span with ID for backward compatibility with Cypress selectors (span#menu_xxx)
-        <span key={itemId} id={menuItem.menu.elementId}>
-          <SideNavMenu
-            // IMPORTANT: use stable key (elementId) to prevent React from reusing the wrong subtree
-            // when the menu list shape changes (roles/plugins/async load).
-            title={intl.formatMessage({ id: menuItem.menu.displayKey })}
-            defaultExpanded={carbonExpanded}
-            isActive={carbonIsActive}
-            onToggle={() => {
-              setMenuItemExpanded(menuItem);
-            }}
-            className={
-              level === 0
-                ? "top-level-menu-item"
-                : "reduced-padding-nav-menu-item"
-            }
-          >
-            <span
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            >
-              {menuItem.childMenus.map((childMenuItem, childIndex) => {
-                return generateMenuItems(
-                  childMenuItem,
-                  childIndex,
-                  level + 1,
-                  path + ".childMenus[" + childIndex + "]",
-                  menuItem.childMenus, // Pass parent's children for sibling check
-                );
-              })}
-            </span>
-          </SideNavMenu>
-        </span>
-      );
-    }
-
-    // Leaf item - wrapped in span for backward compatibility with Cypress selectors
-    return (
-      <span
-        key={itemId}
-        id={menuItem.menu.elementId}
-        data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
-      >
-        <SideNavMenuItem
-          id={menuItem.menu.elementId + "_nav"}
+        <SideNavMenu
+          key={itemId}
+          title={intl.formatMessage({ id: menuItem.menu.displayKey })}
+          defaultExpanded={carbonExpanded}
+          isActive={carbonIsActive}
           className={
             level === 0
               ? "top-level-menu-item"
               : "reduced-padding-nav-menu-item"
           }
-          isActive={isLeafActive}
-          href={menuItem.menu.actionURL || undefined}
-          target={
-            menuItem.menu.openInNewWindow &&
-            !menuItem.menu.actionURL?.startsWith("/")
-              ? "_blank"
-              : undefined
-          }
-          rel={
-            menuItem.menu.openInNewWindow &&
-            !menuItem.menu.actionURL?.startsWith("/")
-              ? "noreferrer"
-              : undefined
-          }
-          onClick={handleLabelClick}
-          aria-current={isLeafActive ? "page" : undefined}
-          style={level === 0 ? undefined : { width: "100%" }}
         >
-          <span
-            style={{
-              display: "flex",
-              width: "100%",
-              marginLeft: level === 0 ? 0 : `${(level - 1) * 0.5}rem`,
-            }}
-          >
-            <span style={{ fontSize: `${100 - 5 * Math.max(level - 1, 0)}%` }}>
-              <FormattedMessage id={menuItem.menu.displayKey} />
-            </span>
+          {menuItem.childMenus.map((childMenuItem, childIndex) => {
+            return generateMenuItems(
+              childMenuItem,
+              childIndex,
+              level + 1,
+              path + ".childMenus[" + childIndex + "]",
+              menuItem.childMenus, // Pass parent's children for sibling check
+            );
+          })}
+        </SideNavMenu>
+      );
+    }
+
+    return (
+      <SideNavMenuItem
+        key={itemId}
+        id={menuItem.menu.elementId + "_nav"}
+        data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
+        className={
+          level === 0 ? "top-level-menu-item" : "reduced-padding-nav-menu-item"
+        }
+        isActive={isLeafActive}
+        href={menuItem.menu.actionURL || undefined}
+        target={
+          menuItem.menu.openInNewWindow &&
+          !menuItem.menu.actionURL?.startsWith("/")
+            ? "_blank"
+            : undefined
+        }
+        rel={
+          menuItem.menu.openInNewWindow &&
+          !menuItem.menu.actionURL?.startsWith("/")
+            ? "noreferrer"
+            : undefined
+        }
+        onClick={handleLabelClick}
+        aria-current={isLeafActive ? "page" : undefined}
+        style={level === 0 ? undefined : { width: "100%" }}
+      >
+        <span
+          style={{
+            display: "flex",
+            width: "100%",
+            marginLeft: level === 0 ? 0 : `${(level - 1) * 0.5}rem`,
+          }}
+        >
+          <span style={{ fontSize: `${100 - 5 * Math.max(level - 1, 0)}%` }}>
+            <FormattedMessage id={menuItem.menu.displayKey} />
           </span>
-        </SideNavMenuItem>
-      </span>
+        </span>
+      </SideNavMenuItem>
     );
-  };
-
-  const setMenuItemExpanded = (menuItem) => {
-    // IMPORTANT: functional update avoids stale-state races that can scramble expansion state.
-    setMenus((prev) => {
-      const newMenus = { ...prev };
-      const targetId = menuItem?.menu?.elementId;
-
-      // IMPORTANT: toggle expansion by stable elementId, NOT by index-based JSONPath.
-      // Index-based paths can point at the wrong node if the menu shape changes.
-      const toggleById = (items) => {
-        return (items || []).map((it) => {
-          const id = it?.menu?.elementId;
-          if (!id) return it;
-          if (id === targetId) {
-            return { ...it, expanded: !it.expanded };
-          }
-          if (it.childMenus && it.childMenus.length > 0) {
-            return { ...it, childMenus: toggleById(it.childMenus) };
-          }
-          return it;
-        });
-      };
-
-      newMenus.menu = toggleById(newMenus.menu || []);
-
-      // Persist expanded state map for this context
-      try {
-        const expandedMap = {};
-        const captureExpanded = (items) => {
-          (items || []).forEach((it) => {
-            expandedMap[it.menu.elementId] = !!it.expanded;
-            if (it.childMenus) {
-              captureExpanded(it.childMenus);
-            }
-          });
-        };
-        captureExpanded(newMenus.menu || []);
-        localStorage.setItem(
-          `${storageKeyPrefix}ExpandedMap`,
-          JSON.stringify(expandedMap),
-        );
-      } catch {
-        // ignore
-      }
-
-      return newMenus;
-    });
   };
 
   return (

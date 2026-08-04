@@ -54,8 +54,8 @@ test.describe("Microbiology keyboard-only workflow", () => {
 
       const workflowFilter = page.getByLabel("Workflow", { exact: true });
       await tabTo(page, workflowFilter);
-      await page.keyboard.press("ArrowDown");
-      await page.keyboard.press("Enter");
+      await page.keyboard.press("b");
+      await page.keyboard.press("Tab");
       await expect(page).toHaveURL(/workflow=BACTERIOLOGY/);
 
       const search = page.getByPlaceholder("Search sample or workflow");

@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
+import { vi } from "vitest";
 import MicrobiologyWorklist from "../MicrobiologyWorklist";
 import messages from "../../../languages/en.json";
 
@@ -155,6 +156,84 @@ describe("MicrobiologyWorklist", () => {
         pageSize: 20,
       }),
     );
+  });
+
+  it("keeps the search control mounted while filtered rows revalidate", async () => {
+    const pendingResponse = new Promise(() => {});
+    const service = {
+      getWorklistRows: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [], total: 0, page: 1, pageSize: 20 })
+        .mockReturnValue(pendingResponse),
+    };
+
+    renderWorklist(service);
+
+    const search = await screen.findByPlaceholderText(
+      "Search sample or workflow",
+    );
+    fireEvent.change(search, { target: { value: "1" } });
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/worklist?q=1",
+      ),
+    );
+    expect(screen.getByPlaceholderText("Search sample or workflow")).toBe(
+      search,
+    );
+
+    fireEvent.change(search, { target: { value: "12" } });
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/worklist?q=12",
+      ),
+    );
+    expect(screen.getByPlaceholderText("Search sample or workflow")).toBe(
+      search,
+    );
+  });
+
+  it("reconciles Carbon rows when a filtered response replaces row IDs", async () => {
+    const worklistRow = (caseId, sampleItemId) => ({
+      caseId,
+      sampleItemId,
+      workflowType: "BACTERIOLOGY",
+      stage: "RECEIVED",
+      dueAction: "SETUP",
+      urgency: "ROUTINE",
+      needsAstReview: false,
+      hasOpenCriticalCommunication: false,
+      siblingWorkflows: [],
+    });
+    const service = {
+      getWorklistRows: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [worklistRow("case-1", "1001")],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+        })
+        .mockResolvedValueOnce({
+          rows: [worklistRow("case-2", "2002")],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+        }),
+    };
+
+    renderWorklist(service);
+
+    expect(
+      await screen.findByTestId("microbiology-worklist-row-case-1"),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Search sample or workflow"), {
+      target: { value: "2002" },
+    });
+
+    expect(
+      await screen.findByTestId("microbiology-worklist-row-case-2"),
+    ).toBeInTheDocument();
   });
 
   it("uses action summary tiles to set canonical worklist state", async () => {

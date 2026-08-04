@@ -98,11 +98,12 @@ test.describe("OGC-782 live AMR UAT", () => {
 
     await test.step("Open the configured Microbiology sidenav route", async () => {
       await page.getByRole("button", { name: "Open menu" }).click();
-      const microbiologyMenu = page.locator("#menu_microbiology");
+      const microbiologyMenu = page.getByRole("button", {
+        name: "Microbiology",
+        exact: true,
+      });
       await expect(microbiologyMenu).toBeVisible({ timeout: LONG_TIMEOUT });
-      await microbiologyMenu
-        .getByRole("button", { name: "Microbiology" })
-        .click();
+      await microbiologyMenu.click();
       const worklistLink = page.locator("#menu_microbiology_worklist_nav");
       await expect(worklistLink).toHaveAttribute(
         "href",

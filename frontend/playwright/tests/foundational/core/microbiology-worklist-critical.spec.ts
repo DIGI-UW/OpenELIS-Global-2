@@ -59,11 +59,12 @@ test.describe("microbiology worklist and critical communication", () => {
     await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Open menu" }).click();
 
-    const microbiologyMenu = page.locator("#menu_microbiology");
+    const microbiologyMenu = page.getByRole("button", {
+      name: "Microbiology",
+      exact: true,
+    });
     await expect(microbiologyMenu).toBeVisible({ timeout: LONG_TIMEOUT });
-    await microbiologyMenu
-      .getByRole("button", { name: "Microbiology" })
-      .click();
+    await microbiologyMenu.click();
 
     const worklistLink = page.locator("#menu_microbiology_worklist_nav");
     await expect(worklistLink).toHaveAttribute(

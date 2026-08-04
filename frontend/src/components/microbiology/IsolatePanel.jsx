@@ -55,7 +55,6 @@ const IsolatePanel = ({
 
   useEffect(() => {
     if (!service.getIdentificationHistory || isolates.length === 0) {
-      setIdentificationHistory({});
       return;
     }
     let active = true;
@@ -136,6 +135,14 @@ const IsolatePanel = ({
     setSignificance(isolate.significance || "UNKNOWN");
     setIdentificationStatus(isolate.identificationStatus || "PRELIMINARY");
   };
+
+  const submitDisabled = Boolean(
+    saving ||
+    readOnly ||
+    !isolateLabel.trim() ||
+    (!preliminaryOrganismText.trim() && !organismId) ||
+    (editingIsolateId && amendmentOpen && !identificationReason.trim()),
+  );
 
   return (
     <section
@@ -325,18 +332,7 @@ const IsolatePanel = ({
             </div>
           )}
           <div className="microbiology-isolate-actions">
-            <Button
-              onClick={submit}
-              disabled={
-                saving ||
-                readOnly ||
-                !isolateLabel.trim() ||
-                (!preliminaryOrganismText.trim() && !organismId) ||
-                (editingIsolateId &&
-                  amendmentOpen &&
-                  !identificationReason.trim())
-              }
-            >
+            <Button onClick={submit} disabled={submitDisabled}>
               {intl.formatMessage({
                 id: editingIsolateId
                   ? "microbiology.isolate.update"
