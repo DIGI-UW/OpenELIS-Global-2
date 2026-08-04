@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -100,5 +101,28 @@ public class MicroBreakpointImportServiceTest {
         MicroBreakpointImportPreviewForm retried = service.apply(retry.previewToken, "42");
         assertEquals(0, retried.importedRows);
         assertEquals(1, retried.unchangedRows);
+    }
+
+    @Test
+    public void applyPreservesLocalCorrectionForTheSameNaturalKey() {
+        MicroBreakpointStandard standard = new MicroBreakpointStandard();
+        standard.setId("standard-1");
+        standard.setAuthority("CLSI");
+        standard.setVersion("SYNTH-2026");
+        when(standardDAO.findByAuthorityAndVersion("CLSI", "SYNTH-2026")).thenReturn(Optional.of(standard));
+        MicroBreakpointRule correction = new MicroBreakpointRule();
+        correction.setId("local-rule");
+        correction.setLocallyCustomized(true);
+        when(ruleDAO.findByNaturalKey("standard-1", "eco", null, "cip", "MIC", null, "MIC"))
+                .thenReturn(Optional.of(correction));
+
+        MicroBreakpointImportPreviewForm preview = service.preview(CSV);
+        MicroBreakpointImportPreviewForm applied = service.apply(preview.previewToken, "42");
+
+        assertEquals(0, applied.importedRows);
+        assertEquals(3, applied.skippedRows);
+        assertTrue(applied.errors.stream().anyMatch(error -> error.message.contains("locally customized")));
+        verify(ruleDAO, never()).insert(org.mockito.ArgumentMatchers.any());
+        verify(ruleDAO, never()).update(org.mockito.ArgumentMatchers.any());
     }
 }
