@@ -70,7 +70,8 @@
 
   &__detail-actions,
   &__standard-heading,
-  &__import-counts {
+  &__import-counts,
+  &__tag-stack {
     display: flex;
     align-items: center;
     gap: $spacing-04;

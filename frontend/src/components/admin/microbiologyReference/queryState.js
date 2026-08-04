@@ -27,18 +27,29 @@ const TEXT_KEYS = [
   "edit",
   "sort",
 ];
+const REFERENCE_STATUSES = new Set(["ALL", "ACTIVE", "INACTIVE"]);
+const BREAKPOINT_STATUSES = new Set(["ALL", "ACTIVE", "LOADED", "ARCHIVED"]);
+const VALID_SORTS = new Set(["name", "name-desc"]);
+
+export const validStatusesForSection = (section) =>
+  section === "breakpoints" ? BREAKPOINT_STATUSES : REFERENCE_STATUSES;
 
 const positiveInteger = (value, fallback) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-export const parseReferenceQuery = (search = "") => {
+export const parseReferenceQuery = (
+  search = "",
+  validStatuses = REFERENCE_STATUSES,
+) => {
   const params = new URLSearchParams(search);
   const query = { ...DEFAULT_REFERENCE_QUERY };
   TEXT_KEYS.forEach((key) => {
     if (params.has(key)) query[key] = params.get(key) || "";
   });
+  if (!validStatuses.has(query.status)) query.status = "ALL";
+  if (!VALID_SORTS.has(query.sort)) query.sort = "name";
   query.page = positiveInteger(params.get("page"), 1);
   const requestedPageSize = positiveInteger(params.get("pageSize"), 20);
   query.pageSize = [20, 50, 100].includes(requestedPageSize)
@@ -61,7 +72,7 @@ export const buildReferenceQuery = (query) => {
 export const updateReferenceQuery = (current, updates) => {
   const next = { ...current, ...updates };
   const changedFilter = Object.keys(updates).some(
-    (key) => !["page", "pageSize"].includes(key),
+    (key) => !["page", "pageSize", "edit"].includes(key),
   );
   if (changedFilter && !Object.prototype.hasOwnProperty.call(updates, "page")) {
     next.page = 1;

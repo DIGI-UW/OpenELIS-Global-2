@@ -250,7 +250,7 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     ).toBe(seeded.activeBreakpointStandardId);
   });
 
-  test("previews, applies, downloads, and idempotently reimports mixed CSV", async ({
+  test("safely imports mixed CSV and protects local corrections", async ({
     page,
   }) => {
     await seedMicrobiologyReferenceAdmin(page);
@@ -295,6 +295,44 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     await page.getByRole("button", { name: "Apply valid rows" }).click();
     await expect(page.getByText("1 unchanged")).toBeVisible({
       timeout: LONG_TIMEOUT,
+    });
+
+    await test.step("Protect a locally corrected imported rule", async () => {
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await openRowAction(page, "SYNTH-UAT-MIXED", "View rules");
+
+      await openRowAction(
+        page,
+        "Reference antibiotic (UAT)",
+        "Edit local correction",
+      );
+      const correctionDialog = page.getByRole("dialog");
+      await correctionDialog.getByLabel("Susceptible").fill("1.5");
+      await correctionDialog
+        .getByLabel("Notes")
+        .fill("Synthetic local UAT correction");
+      await correctionDialog.getByRole("button", { name: "Save" }).click();
+
+      const correctedRow = page
+        .getByRole("row")
+        .filter({ hasText: "Reference antibiotic (UAT)" });
+      await expect(correctedRow).toContainText("Local correction", {
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(correctedRow).toContainText("1.5");
+
+      await page.getByRole("button", { name: "Back to standards" }).click();
+      await page.getByRole("button", { name: "Import CSV" }).click();
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "synthetic-breakpoints.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(csv),
+      });
+      await expect(page.getByText("0 valid")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(page.getByText("3 skipped")).toBeVisible();
+      await expect(page.getByText(/locally customized/)).toBeVisible();
     });
   });
 

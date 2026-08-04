@@ -36,6 +36,8 @@ remain Pass / Fail / N/A with notes; automation is pre-UAT evidence only.
 - Apply valid rows, download rejected rows, and confirm the imported standard is
   Loaded rather than automatically Active.
 - Re-import the same file and confirm unchanged rows are not duplicated.
+- Edit an imported rule as a local correction, then re-import the same rule and
+  confirm the correction remains visible while the import reports the collision.
 
 ## Requiredness
 
