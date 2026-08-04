@@ -1,0 +1,95 @@
+{
+  "commit": "6d6aa2e6e",
+  "database": {
+    "engine": "PostgreSQL",
+    "version": "14.4 (Debian 14.4-1.pgdg110+1)"
+  },
+  "command": "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)",
+  "cardinalities": {
+    "microCase": 414,
+    "openCase": 409,
+    "microIsolate": 18,
+    "microAstRun": 57,
+    "microCriticalCommunication": 0
+  },
+  "plans": [
+    {
+      "name": "open-cases",
+      "sqlTemplate": "SELECT * FROM clinlims.micro_case WHERE closed_at IS NULL ORDER BY created_at",
+      "parameterCount": 0,
+      "accessPath": "Seq Scan",
+      "sortMethod": "quicksort",
+      "actualRows": 409,
+      "planningTimeMs": 0.283,
+      "executionTimeMs": 0.201,
+      "sharedHitBlocks": 12,
+      "sharedReadBlocks": 0,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0
+    },
+    {
+      "name": "sibling-cases-by-sample",
+      "sqlTemplate": "SELECT * FROM clinlims.micro_case WHERE sample_item_id IN (:sampleItemIds) ORDER BY sample_item_id, workflow_type",
+      "parameterCount": 209,
+      "accessPath": "Seq Scan",
+      "sortMethod": "quicksort",
+      "actualRows": 409,
+      "planningTimeMs": 0.452,
+      "executionTimeMs": 0.181,
+      "sharedHitBlocks": 15,
+      "sharedReadBlocks": 0,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0
+    },
+    {
+      "name": "isolates-by-case",
+      "sqlTemplate": "SELECT * FROM clinlims.micro_isolate WHERE case_id IN (:caseIds) ORDER BY case_id, isolate_label",
+      "parameterCount": 409,
+      "accessPath": "Seq Scan",
+      "sortMethod": "quicksort",
+      "actualRows": 13,
+      "planningTimeMs": 0.208,
+      "executionTimeMs": 0.041,
+      "sharedHitBlocks": 4,
+      "sharedReadBlocks": 0,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0
+    },
+    {
+      "name": "ast-runs-by-isolate",
+      "sqlTemplate": "SELECT * FROM clinlims.micro_ast_run WHERE isolate_id IN (:isolateIds) ORDER BY isolate_id, started_at, id",
+      "parameterCount": 13,
+      "accessPath": "Seq Scan",
+      "sortMethod": "quicksort",
+      "actualRows": 52,
+      "planningTimeMs": 0.249,
+      "executionTimeMs": 0.051,
+      "sharedHitBlocks": 8,
+      "sharedReadBlocks": 0,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0
+    },
+    {
+      "name": "communications-by-case",
+      "sqlTemplate": "SELECT * FROM clinlims.micro_critical_communication WHERE case_id IN (:caseIds) ORDER BY case_id, communicated_at",
+      "parameterCount": 409,
+      "accessPath": "Seq Scan",
+      "sortMethod": "quicksort",
+      "actualRows": 0,
+      "planningTimeMs": 0.275,
+      "executionTimeMs": 0.023,
+      "sharedHitBlocks": 6,
+      "sharedReadBlocks": 0,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0,
+      "limitation": "The table was empty; the catalog confirms an existing case_id index but this plan does not qualify populated-table selectivity."
+    }
+  ],
+  "existingIndexesReviewed": [
+    "idx_micro_case_sample_item",
+    "idx_micro_isolate_case",
+    "idx_micro_ast_run_isolate",
+    "idx_micro_critical_comm_case"
+  ],
+  "decision": "No index migration. Exact DAO-shape plans completed at or below 0.201 ms with zero shared reads and zero temporary I/O; API and browser budgets also pass."
+}
