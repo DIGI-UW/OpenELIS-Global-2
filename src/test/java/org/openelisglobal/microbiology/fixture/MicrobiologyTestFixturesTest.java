@@ -52,6 +52,7 @@ public class MicrobiologyTestFixturesTest {
 
     @Before
     public void setUp() {
+        when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
         fixtures = new MicrobiologyTestFixtures(methodService, sampleService, sampleItemService, testService,
                 statusService, statusOfSampleService, systemUserService, configurationService);
     }
@@ -83,7 +84,17 @@ public class MicrobiologyTestFixturesTest {
         assertEquals("SampleEntered", statusCaptor.getValue().getStatusOfSampleName());
         assertEquals("SAMPLE", statusCaptor.getValue().getStatusType());
         assertEquals("901", statusCaptor.getValue().getCode());
+        assertEquals("7", statusCaptor.getValue().getSysUserId());
         verify(statusService).refreshCache();
+    }
+
+    @Test
+    public void returnsGeneratedStatusIdWhenCacheDoesNotRefresh() {
+        when(statusOfSampleService.getAllStatusOfSamples()).thenReturn(List.of());
+        when(statusOfSampleService.insert(any(StatusOfSample.class))).thenReturn("generated-42");
+        when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("-1");
+
+        assertEquals("generated-42", fixtures.ensureSampleEnteredStatus());
     }
 
     @Test
@@ -95,6 +106,21 @@ public class MicrobiologyTestFixturesTest {
         assertEquals("42", fixtures.ensureSampleEnteredStatus());
 
         verify(statusOfSampleService).insert(any(StatusOfSample.class));
+        verify(statusService).refreshCache();
+    }
+
+    @Test
+    public void reusesExistingSampleEnteredRecordWhenCacheMisses() {
+        StatusOfSample entered = new StatusOfSample();
+        entered.setId("existing-42");
+        entered.setStatusOfSampleName("SampleEntered");
+        entered.setStatusType("SAMPLE");
+        when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("-1");
+        when(statusOfSampleService.getAllStatusOfSamples()).thenReturn(List.of(entered));
+
+        assertEquals("existing-42", fixtures.ensureSampleEnteredStatus());
+
+        verify(statusOfSampleService, never()).insert(any(StatusOfSample.class));
         verify(statusService).refreshCache();
     }
 
@@ -132,7 +158,6 @@ public class MicrobiologyTestFixturesTest {
     public void provisionsMethodThroughServiceWhenNoActiveMethodExists() {
         when(methodService.getAllActiveMethods()).thenReturn(List.of());
         when(methodService.insert(any(Method.class))).thenReturn("55");
-        when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
 
         assertEquals("55", fixtures.firstMethodId());
 

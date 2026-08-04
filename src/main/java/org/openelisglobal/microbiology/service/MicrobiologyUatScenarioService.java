@@ -210,6 +210,7 @@ public class MicrobiologyUatScenarioService {
     }
 
     private String requireSampleEnteredStatus() {
+        statusService.refreshCache();
         String statusId = statusService.getStatusID(SampleStatus.Entered);
         if ("-1".equals(statusId)) {
             throw new IllegalStateException("SampleStatus.Entered is required for microbiology UAT scenarios");
