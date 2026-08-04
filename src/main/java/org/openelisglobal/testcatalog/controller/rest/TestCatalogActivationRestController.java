@@ -75,6 +75,25 @@ public class TestCatalogActivationRestController {
     }
 
     /**
+     * The 200 body of a successful activation: the coverage report exactly as
+     * before, widened with the test's resulting lifecycle state.
+     *
+     * <p>
+     * OGC-1153 — activation also flips {@code orderable} (see
+     * {@link #activateTest}), which the old bare-coverage-report body never
+     * mentioned, so a client could only learn about it by reloading. Extending
+     * {@link RangeCoverageValidationService.CoverageReport} keeps the success body
+     * a strict superset of the old one: {@code male} / {@code female} stay at the
+     * top level, so no existing reader breaks. The 409 gap body is still the plain
+     * report — that flow is unchanged.
+     */
+    public static class ActivationResult extends RangeCoverageValidationService.CoverageReport {
+        public String testId;
+        public boolean active;
+        public boolean orderable;
+    }
+
+    /**
      * FR-57 completeness report — the structured reason an activation was refused.
      * Returned with 422 so the UI can render a checklist instead of failing
      * silently (FR-58/FR-59). {@code missing} lists machine-readable issue codes;
@@ -146,7 +165,23 @@ public class TestCatalogActivationRestController {
      * Activates a test, gated on reference-range coverage. Uncovered age windows +
      * no acknowledgment → 409 with the coverage report; with an acknowledgment, an
      * audit row is written and the test is activated. No gaps → activates directly.
-     * Returns the coverage report either way.
+     *
+     * <p>
+     * <b>Activation sets {@code orderable} as well as {@code is_active}</b>, by
+     * design: the FRS lifecycle is "Active ⇒ orderable &amp; importable", and Add
+     * Order filters on {@code is_active='Y' AND orderable=true}, so flipping only
+     * {@code is_active} left the test invisible to order entry (OGC-1116). The
+     * coupling is deliberately one-way — deactivating through Basic Info clears
+     * {@code is_active} only, and an {@code active=false, orderable=true} row is
+     * inert because the order-picker query requires both (OGC-1153; do not "fix"
+     * this by dropping the {@code setOrderable} below).
+     *
+     * <p>
+     * The 200 body is an {@link ActivationResult}: the coverage report plus the
+     * resulting {@code active} / {@code orderable} flags, so a client learns about
+     * the {@code orderable} change from the response instead of having to reload
+     * (OGC-1153). The 409 gap body stays the bare coverage report the
+     * {@code gapsAcknowledged} re-POST flow expects.
      */
     @PostMapping(value = "/tests/{testId}/activate", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> activateTest(@PathVariable String testId,
@@ -190,7 +225,22 @@ public class TestCatalogActivationRestController {
         testService.update(test);
 
         refreshTestCaches();
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(toActivationResult(test, report));
+    }
+
+    /**
+     * Widens a coverage report into the activation success body, echoing the state
+     * the test is now in — including the {@code orderable} flag activation just
+     * set, which is otherwise invisible to the caller until a reload.
+     */
+    private ActivationResult toActivationResult(Test test, RangeCoverageValidationService.CoverageReport report) {
+        ActivationResult result = new ActivationResult();
+        result.male = report.male;
+        result.female = report.female;
+        result.testId = test.getId();
+        result.active = test.isActive();
+        result.orderable = Boolean.TRUE.equals(test.getOrderable());
+        return result;
     }
 
     /**
