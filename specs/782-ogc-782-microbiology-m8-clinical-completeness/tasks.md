@@ -84,8 +84,9 @@ each slice. A checked task requires committed evidence, not intent.
 - [ ] T049 Run Spotless, Prettier, source lint, typecheck, and `git diff --check`.
 - [x] T050 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence reviews; resolve actionable findings.
 - [x] T051 Update the M8 spec/plan/tasks and the original MVP V2 list without changing #3789's historical acceptance claims.
-- [ ] T052 Reconcile OGC-783/784/790/791 delivery status with product-safe comments; do not close parent epics wholesale.
-- [ ] T053 Push the branch and open/update the stacked PR with exact base, migrations, exclusions, test commands, screenshots, video, evidence, and current one-shot check state.
+- [x] T052 Reconcile OGC-783/784/790/791 delivery status with product-safe comments; do not close parent epics wholesale.
+- [x] T053a Push the branch and open stacked draft PR #3972 with the exact base, migrations, exclusions, validation, and evidence.
+- [ ] T053b Attach new M8 screenshots/video and update PR #3972 with their links and a current one-shot check state before marking it ready.
 
 ## Dependency Notes
 
@@ -101,3 +102,6 @@ each slice. A checked task requires committed evidence, not intent.
   Prettier, Playwright lint, the production build, `git diff --check`, and all
   M8-owned TypeScript files pass. The same broad TypeScript 6 baseline failure
   reproduces on `codex/typescript-6-typecheck` at `49714eb84`.
+- T053b does not reuse the M7 MVP walkthrough as proof of the new amendment and
+  repeat-AST workflows. PR #3972 remains draft until M8-specific visual
+  evidence is attached.
