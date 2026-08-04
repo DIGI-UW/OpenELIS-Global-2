@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -50,6 +51,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -390,6 +392,65 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("standard-loaded", result.loadedBreakpointStandardId);
         verify(breakpointAdminService).activate(anyString(), any(), anyString());
         verify(breakpointImportService).apply("preview-1", "1");
+    }
+
+    @Test
+    public void provisionsM4WhonetMappedAndUnmappedReferencesThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+
+        MicroAstPanelAdminForm panel = new MicroAstPanelAdminForm();
+        panel.id = "panel-1";
+        panel.name = "Gram negative AST panel (UAT)";
+        panel.current = true;
+        when(referenceAdminService.getAstPanels(any(MicroReferenceAdminQueryForm.class))).thenReturn(pageOf(panel));
+        when(referenceAdminService.getOrganisms(any(MicroReferenceAdminQueryForm.class)))
+                .thenReturn(new MicroReferenceAdminPageForm<>());
+        when(referenceAdminService.getAntibiotics(any(MicroReferenceAdminQueryForm.class)))
+                .thenReturn(new MicroReferenceAdminPageForm<>());
+        when(referenceAdminService.saveOrganism(any(), any(MicroOrganismAdminForm.class), anyString()))
+                .thenAnswer(invocation -> {
+                    MicroOrganismAdminForm form = invocation.getArgument(1);
+                    form.id = "organism-mapped";
+                    return form;
+                });
+        when(referenceAdminService.saveAntibiotic(any(), any(MicroAntibioticAdminForm.class), anyString()))
+                .thenAnswer(invocation -> {
+                    MicroAntibioticAdminForm form = invocation.getArgument(1);
+                    form.id = "antibiotic-ref";
+                    return form;
+                });
+        when(configurationService.createOrganism(any(MicroOrganism.class))).thenAnswer(invocation -> {
+            MicroOrganism organism = invocation.getArgument(0);
+            organism.setId("organism-unmapped");
+            return organism;
+        });
+        MicroBreakpointImportPreviewForm preview = new MicroBreakpointImportPreviewForm();
+        preview.previewToken = "preview-1";
+        when(breakpointImportService.preview(anyString())).thenReturn(preview);
+        MicroBreakpointStandardAdminForm loaded = new MicroBreakpointStandardAdminForm();
+        loaded.id = "standard-loaded";
+        loaded.version = "SYNTH-UAT-LOADED";
+        when(breakpointAdminService.getStandards(any(MicroReferenceAdminQueryForm.class))).thenReturn(pageOf(loaded));
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "M4";
+        request.scenarioKey = "playwright-whonet-export";
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        assertEquals("organism-mapped", result.organismId);
+        assertEquals("organism-unmapped", result.unmappedOrganismId);
+        ArgumentCaptor<MicroOrganism> organismCaptor = ArgumentCaptor.forClass(MicroOrganism.class);
+        verify(configurationService).createOrganism(organismCaptor.capture());
+        assertEquals("WHONET mapping pending (UAT)", organismCaptor.getValue().getDisplayName());
+        assertNull(organismCaptor.getValue().getWhonetCode());
+        assertEquals("1", organismCaptor.getValue().getLastUpdatedBy());
     }
 
     private void configureHappyPath(Sample sample, SampleItem sampleItem, Method method,
