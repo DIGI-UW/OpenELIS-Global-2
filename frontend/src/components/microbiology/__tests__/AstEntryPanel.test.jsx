@@ -356,7 +356,7 @@ describe("AstEntryPanel", () => {
       selectReportableAstRun: vi.fn().mockResolvedValue({
         status: 409,
         error: "MICROBIOLOGY_AST_CONFLICT",
-        message: "AST_ATTEMPT_ALREADY_IN_PROGRESS",
+        message: "AST_SOURCE_RUN_REVIEW_REQUIRED",
       }),
     };
 
@@ -372,7 +372,7 @@ describe("AstEntryPanel", () => {
       await screen.findByText("AST action could not be completed"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("AST Attempt Already In Progress"),
+      screen.getByText("AST Source Run Review Required"),
     ).toBeInTheDocument();
   });
 });

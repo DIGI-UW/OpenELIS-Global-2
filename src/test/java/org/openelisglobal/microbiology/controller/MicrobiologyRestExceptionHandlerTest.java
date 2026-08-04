@@ -54,11 +54,11 @@ public class MicrobiologyRestExceptionHandlerTest {
     @Test
     public void astConflictReturnsNamedConflict() {
         ResponseEntity<Map<String, Object>> response = new MicrobiologyRestExceptionHandler()
-                .handleAstConflict(new MicroAstConflictException("AST_ATTEMPT_ALREADY_IN_PROGRESS"));
+                .handleAstConflict(new MicroAstConflictException("AST_SOURCE_RUN_REVIEW_REQUIRED"));
 
         assertEquals(409, response.getStatusCode().value());
         assertEquals("MICROBIOLOGY_AST_CONFLICT", response.getBody().get("error"));
-        assertEquals("AST_ATTEMPT_ALREADY_IN_PROGRESS", response.getBody().get("message"));
+        assertEquals("AST_SOURCE_RUN_REVIEW_REQUIRED", response.getBody().get("message"));
     }
 
     @Test
