@@ -18,8 +18,8 @@ Source artifacts are evidence of workflow intent, not implementation contracts:
 
 - [M-01 AMR Reference Data](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-01-amr-reference-data.md)
 - [M-02 Breakpoint Catalog](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-02-breakpoint-catalog.md)
-- [M-01 gallery entry](https://digi-uw.github.io/openelis-work/#/microbiology/m-01-amr-reference-data)
-- [M-02 gallery entry](https://digi-uw.github.io/openelis-work/#/microbiology/m-02-breakpoint-catalog)
+- [M-01 Organism Master visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-01-organism-master.html)
+- [M-02 Breakpoint Catalog visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-02-breakpoint-catalog.html)
 - [Microbiology workflow narrative](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256)
 - OGC-854 through OGC-864, with OGC-916 explicitly excluded from this milestone
 
