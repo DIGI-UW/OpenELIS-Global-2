@@ -1,6 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import IsolatePanel from "../IsolatePanel";
 import messages from "../../../languages/en.json";
@@ -30,13 +31,15 @@ const renderPanel = ({
 
 describe("IsolatePanel", () => {
   it("submits isolate creation details", async () => {
+    const user = userEvent.setup();
     const onCreateIsolate = vi.fn();
     renderPanel({ onCreateIsolate });
 
-    fireEvent.change(screen.getByLabelText("Preliminary organism"), {
-      target: { value: "Escherichia coli" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Create isolate" }));
+    await user.type(
+      screen.getByLabelText("Preliminary organism"),
+      "Escherichia coli",
+    );
+    await user.click(screen.getByRole("button", { name: "Create isolate" }));
 
     await waitFor(() =>
       expect(onCreateIsolate).toHaveBeenCalledWith({
@@ -49,6 +52,7 @@ describe("IsolatePanel", () => {
   });
 
   it("updates isolate identification from reusable organism data", async () => {
+    const user = userEvent.setup();
     const onUpdateIdentification = vi.fn();
     renderPanel({
       isolates: [
@@ -68,16 +72,15 @@ describe("IsolatePanel", () => {
       },
     });
 
-    fireEvent.click(
+    await user.click(
       await screen.findByRole("button", { name: "Update identification" }),
     );
-    fireEvent.change(screen.getByLabelText("Organism"), {
-      target: { value: "organism-1" },
-    });
-    fireEvent.change(screen.getByLabelText("Identification status"), {
-      target: { value: "CONFIRMED" },
-    });
-    fireEvent.click(
+    await user.selectOptions(screen.getByLabelText("Organism"), "organism-1");
+    await user.selectOptions(
+      screen.getByLabelText("Identification status"),
+      "CONFIRMED",
+    );
+    await user.click(
       screen.getByRole("button", { name: "Save identification" }),
     );
 
@@ -90,6 +93,7 @@ describe("IsolatePanel", () => {
   });
 
   it("requires a reason when re-identifying during an amendment", async () => {
+    const user = userEvent.setup();
     const onUpdateIdentification = vi.fn();
     renderPanel({
       isolates: [
@@ -105,7 +109,7 @@ describe("IsolatePanel", () => {
       onUpdateIdentification,
     });
 
-    fireEvent.click(
+    await user.click(
       await screen.findByRole("button", { name: "Update identification" }),
     );
 
@@ -114,10 +118,11 @@ describe("IsolatePanel", () => {
     });
     expect(saveButton).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Re-identification reason"), {
-      target: { value: "Corrected after confirmatory testing" },
-    });
-    fireEvent.click(saveButton);
+    await user.type(
+      screen.getByLabelText("Re-identification reason"),
+      "Corrected after confirmatory testing",
+    );
+    await user.click(saveButton);
 
     expect(onUpdateIdentification).toHaveBeenCalledWith("isolate-1", {
       organismId: "",

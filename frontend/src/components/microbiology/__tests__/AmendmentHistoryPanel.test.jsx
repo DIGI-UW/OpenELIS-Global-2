@@ -1,6 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import AmendmentHistoryPanel from "../AmendmentHistoryPanel";
 import messages from "../../../languages/en.json";
@@ -31,6 +32,7 @@ const baseService = () => ({
 
 describe("AmendmentHistoryPanel", () => {
   it("requires a reason, opens an amendment, and restores focus", async () => {
+    const user = userEvent.setup();
     const service = baseService();
     const onCaseUpdated = vi.fn().mockResolvedValue();
     service.openCaseAmendment.mockResolvedValue({
@@ -47,10 +49,11 @@ describe("AmendmentHistoryPanel", () => {
     });
     expect(openButton).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Amendment reason"), {
-      target: { value: "Correct organism identification" },
-    });
-    fireEvent.click(openButton);
+    await user.type(
+      screen.getByLabelText("Amendment reason"),
+      "Correct organism identification",
+    );
+    await user.click(openButton);
 
     await waitFor(() =>
       expect(service.openCaseAmendment).toHaveBeenCalledWith("case-1", {
@@ -105,6 +108,7 @@ describe("AmendmentHistoryPanel", () => {
   });
 
   it("requires a cancellation reason before relocking without release", async () => {
+    const user = userEvent.setup();
     const service = baseService();
     const onCaseUpdated = vi.fn().mockResolvedValue();
     service.cancelCaseAmendment.mockResolvedValue({
@@ -123,10 +127,11 @@ describe("AmendmentHistoryPanel", () => {
       name: /Cancel amendment/,
     });
     expect(cancelButton).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Cancellation reason"), {
-      target: { value: "Correction no longer needed" },
-    });
-    fireEvent.click(cancelButton);
+    await user.type(
+      screen.getByLabelText("Cancellation reason"),
+      "Correction no longer needed",
+    );
+    await user.click(cancelButton);
 
     await waitFor(() =>
       expect(service.cancelCaseAmendment).toHaveBeenCalledWith("case-1", {
@@ -137,6 +142,7 @@ describe("AmendmentHistoryPanel", () => {
   });
 
   it("shows lifecycle errors and only relocks after a successful amended release", async () => {
+    const user = userEvent.setup();
     const service = baseService();
     const onCaseUpdated = vi.fn().mockResolvedValue();
     service.releaseAmendedReport
@@ -155,14 +161,14 @@ describe("AmendmentHistoryPanel", () => {
     const releaseButton = await screen.findByRole("button", {
       name: "Release amended report",
     });
-    fireEvent.click(releaseButton);
+    await user.click(releaseButton);
 
     expect(
       await screen.findByText("Reportable AST Run Required"),
     ).toBeInTheDocument();
     expect(onCaseUpdated).not.toHaveBeenCalled();
 
-    fireEvent.click(releaseButton);
+    await user.click(releaseButton);
     await waitFor(() => expect(onCaseUpdated).toHaveBeenCalled());
     expect(screen.getByRole("heading", { name: "Amendments" })).toHaveFocus();
   });
