@@ -51,6 +51,7 @@ import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagem
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate";
 import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder";
 import SampleTypeManagement from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import LabUnitManagement from "./labUnitManagement/LabUnitManagement.jsx";
 import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign";
 import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder";
 import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
@@ -182,6 +183,10 @@ function Admin() {
       <Route
         path={`${path}/SampleTypeManagement/:sampleTypeId?/:section?`}
         component={SampleTypeManagement}
+      />
+      <Route
+        path={`${path}/LabUnitManagement/:labUnitId?/:section?`}
+        component={LabUnitManagement}
       />
       <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
       <Route path={`${path}/SampleTypeOrder`} component={SampleTypeOrder} />

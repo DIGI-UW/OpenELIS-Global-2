@@ -35,4 +35,10 @@ public interface TestSectionService extends BaseObjectService<TestSection, Strin
     String getUserLocalizedTesSectionName(TestSection testSection);
 
     void refreshNames();
+
+    /**
+     * Move a lab unit (test section) to a 1-based position in the display order and
+     * densely renumber the whole sequence. Returns the full re-ordered list.
+     */
+    List<TestSection> moveToSortOrderPosition(String testSectionId, int position, String sysUserId);
 }

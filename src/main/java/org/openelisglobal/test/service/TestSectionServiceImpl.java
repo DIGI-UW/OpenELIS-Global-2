@@ -2,10 +2,12 @@ package org.openelisglobal.test.service;
 
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.LocaleChangeListener;
 import org.openelisglobal.internationalization.GlobalLocaleResolver;
@@ -221,5 +223,38 @@ public class TestSectionServiceImpl extends AuditableBaseObjectServiceImpl<TestS
 
     private boolean duplicateTestSectionExists(TestSection testSection) {
         return baseObjectDAO.duplicateTestSectionExists(testSection);
+    }
+
+    @Override
+    @Transactional
+    public List<TestSection> moveToSortOrderPosition(String testSectionId, int position, String sysUserId) {
+        List<TestSection> ordered = new ArrayList<>(baseObjectDAO.getAllTestSections());
+        // Legacy rows may share a sortOrder (creates land at Integer.MAX_VALUE),
+        // so order deterministically before renumbering densely.
+        ordered.sort(Comparator.comparingInt(TestSection::getSortOrderInt).thenComparing(TestSection::getId,
+                Comparator.comparing(id -> Integer.parseInt(id))));
+        TestSection target = null;
+        for (TestSection section : ordered) {
+            if (section.getId().equals(testSectionId)) {
+                target = section;
+                break;
+            }
+        }
+        if (target == null) {
+            throw new LIMSRuntimeException("Test section not found: " + testSectionId);
+        }
+        ordered.remove(target);
+        int index = Math.max(0, Math.min(position - 1, ordered.size()));
+        ordered.add(index, target);
+
+        for (int i = 0; i < ordered.size(); i++) {
+            TestSection section = ordered.get(i);
+            if (section.getSortOrderInt() != i + 1) {
+                section.setSortOrderInt(i + 1);
+                section.setSysUserId(sysUserId);
+                baseObjectDAO.update(section);
+            }
+        }
+        return ordered;
     }
 }
