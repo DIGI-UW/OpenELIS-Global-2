@@ -97,15 +97,67 @@
     display: grid;
     gap: $spacing-04;
   }
+
+  .cds--toolbar-content > .cds--search {
+    flex: 1 1 16rem;
+    min-inline-size: 16rem;
+  }
+
+  .cds--toolbar-content > .cds--select .cds--select-input {
+    min-inline-size: 8rem;
+  }
 }
 
 @media (max-width: 42rem) {
   .microbiology-admin {
+    &__detail-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &__detail-actions > :first-child {
+      margin-inline-end: 0;
+    }
+
+    &__detail-actions .cds--btn {
+      inline-size: 100%;
+      max-inline-size: none;
+    }
+
+    &__standard-heading {
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
     &__panel-add,
     &__panel-row,
     &__form-grid,
     &__filters {
       grid-template-columns: 1fr;
+    }
+
+    .cds--table-toolbar,
+    .cds--toolbar-content {
+      block-size: auto;
+    }
+
+    .cds--toolbar-content {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cds--toolbar-content > .cds--search,
+    .cds--toolbar-content > .cds--btn {
+      grid-column: 1 / -1;
+      inline-size: 100%;
+      max-inline-size: none;
+      min-inline-size: 0;
+    }
+
+    .cds--toolbar-content > .cds--select,
+    .cds--toolbar-content > .cds--select .cds--select-input {
+      inline-size: 100%;
+      min-inline-size: 0;
     }
   }
 }
