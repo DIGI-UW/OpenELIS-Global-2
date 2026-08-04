@@ -85,6 +85,12 @@ measurements with warm-up, fixed iteration counts, p50/p95/max calculation, and
 JSON/Markdown evidence generation. Qualification data is never available from
 a production controller.
 
+Qualification runs that commit their fixtures are supported only on a
+disposable stack/database and require an explicit environment guard. Teardown
+of that database is the cleanup mechanism. Shared demo or clinical databases
+must not be cleaned by deleting audited patient/sample rows, and the browser
+runner refuses to execute without the disposable-stack acknowledgement.
+
 No schema migration is expected for Slice C. Performance indexes may be added
 only if query-plan and measurement evidence demonstrates a data-model need.
 

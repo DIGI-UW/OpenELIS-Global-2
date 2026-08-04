@@ -30,6 +30,9 @@ const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
 // Focused WCAG 2.1 AA qualification for stable core-app feature surfaces.
 const CORE_ACCESSIBILITY_TESTS = ["**/accessibility/core/**/*.spec.ts"];
 
+// Explicit disposable-stack performance qualification for core-app surfaces.
+const CORE_PERFORMANCE_TESTS = ["**/performance/core/**/*.spec.ts"];
+
 // Explicit operator-run verification against a deployed review target.
 const CORE_LIVE_UAT_TESTS = ["**/manual-only/core/**/*.spec.ts"];
 
@@ -129,6 +132,16 @@ export default defineConfig({
       testIgnore: "**/microbiology-keyboard.spec.ts",
       use: {
         ...devices["Pixel 5"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-performance",
+      testMatch: CORE_PERFORMANCE_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],

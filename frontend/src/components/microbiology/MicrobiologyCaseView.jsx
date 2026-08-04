@@ -23,6 +23,10 @@ import {
   getMicrobiologyWorklistUrl,
   parseMicrobiologyCaseSearch,
 } from "./MicrobiologyRoutes";
+import {
+  markMicrobiologyReady,
+  MICROBIOLOGY_CASE_READY_MARK,
+} from "./MicrobiologyPerformance";
 import MicrobiologyService from "./MicrobiologyService";
 import OrderDetailPanel from "./OrderDetailPanel";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -184,6 +188,12 @@ const MicrobiologyCaseView = ({
       active = false;
     };
   }, [caseId, intl, service]);
+
+  useEffect(() => {
+    if (!loading && !error && caseDetail) {
+      markMicrobiologyReady(MICROBIOLOGY_CASE_READY_MARK);
+    }
+  }, [caseDetail, error, loading]);
 
   const recordActivity = (payload) => {
     setSaving(true);
