@@ -8471,6 +8471,7 @@
   "microbiology.admin.breakpoints.chooseFile": "Choose CSV file",
   "microbiology.admin.breakpoints.correction.add": "Add local correction",
   "microbiology.admin.breakpoints.correction.edit": "Edit local correction",
+  "microbiology.admin.breakpoints.count.imported": "{count} imported",
   "microbiology.admin.breakpoints.count.skipped": "{count} skipped",
   "microbiology.admin.breakpoints.count.unchanged": "{count} unchanged",
   "microbiology.admin.breakpoints.count.valid": "{count} valid",

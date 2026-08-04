@@ -889,6 +889,14 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                     { count: importPreview.unchangedRows },
                   )}
                 </Tag>
+                {importPreview.importedRows > 0 && (
+                  <Tag type="green">
+                    {intl.formatMessage(
+                      { id: "microbiology.admin.breakpoints.count.imported" },
+                      { count: importPreview.importedRows },
+                    )}
+                  </Tag>
+                )}
               </div>
               {importPreview.errors.map((item) => (
                 <InlineNotification
