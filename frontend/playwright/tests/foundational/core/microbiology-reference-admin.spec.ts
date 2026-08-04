@@ -290,6 +290,7 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
       timeout: LONG_TIMEOUT,
     });
     await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
 
     await openImport();
     await page.getByRole("button", { name: "Apply valid rows" }).click();
@@ -299,6 +300,7 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
 
     await test.step("Protect a locally corrected imported rule", async () => {
       await page.getByRole("button", { name: "Cancel" }).click();
+      await expect(page.getByRole("dialog")).toBeHidden();
       await openRowAction(page, "SYNTH-UAT-MIXED", "View rules");
 
       await openRowAction(

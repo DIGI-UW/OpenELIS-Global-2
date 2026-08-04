@@ -115,6 +115,13 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   }, [load]);
 
   useEffect(() => {
+    if (query.edit !== "import") {
+      setImportPreview(null);
+      setImporting(false);
+    }
+  }, [query.edit]);
+
+  useEffect(() => {
     if (!standardId) return undefined;
     const controller = new AbortController();
     Promise.all([
