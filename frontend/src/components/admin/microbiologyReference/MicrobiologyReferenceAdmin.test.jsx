@@ -21,7 +21,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, Route } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import {
   applyBreakpointImport,
@@ -39,6 +39,7 @@ import {
 import AstPanelPage from "./AstPanelPage";
 import BreakpointPage from "./BreakpointPage";
 import { REFERENCE_DEFINITIONS } from "./definitions";
+import MicrobiologyReferenceAdmin from "./MicrobiologyReferenceAdmin";
 import ReferenceDataPage from "./ReferenceDataPage";
 import { DEFAULT_REFERENCE_QUERY } from "./queryState";
 
@@ -60,6 +61,29 @@ beforeEach(() => {
 });
 
 describe("microbiology reference administration", () => {
+  it("connects each Carbon tab to an existing tab panel", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    window.history.pushState(
+      {},
+      "",
+      "/MasterListsPage/MicrobiologyReference/organisms?status=ALL&sort=name&page=1&pageSize=20",
+    );
+
+    renderPage(
+      <Route path="/MasterListsPage/MicrobiologyReference/:section/:detailId?">
+        <MicrobiologyReferenceAdmin />
+      </Route>,
+    );
+
+    const organismTab = await screen.findByRole("tab", { name: "Organisms" });
+    const panelId = organismTab.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    expect(document.getElementById(panelId)).toHaveAttribute(
+      "role",
+      "tabpanel",
+    );
+  });
+
   it("renders organism data and writes search state through the URL callback", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();

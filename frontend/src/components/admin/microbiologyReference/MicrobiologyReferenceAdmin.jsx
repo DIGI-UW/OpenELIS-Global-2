@@ -6,6 +6,8 @@ import {
   Section,
   Tab,
   TabList,
+  TabPanel,
+  TabPanels,
   Tabs,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
@@ -71,6 +73,29 @@ const MicrobiologyReferenceAdmin = () => {
     });
   }
 
+  const sectionContent = (
+    <>
+      {REFERENCE_DEFINITIONS[section] && (
+        <ReferenceDataPage
+          definition={REFERENCE_DEFINITIONS[section]}
+          query={query}
+          setQuery={setQuery}
+        />
+      )}
+      {section === "ast-panels" && (
+        <AstPanelPage query={query} setQuery={setQuery} />
+      )}
+      {section === "breakpoints" && (
+        <BreakpointPage
+          standardId={detailId}
+          basePath={basePath}
+          query={query}
+          setQuery={setQuery}
+        />
+      )}
+    </>
+  );
+
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -100,27 +125,14 @@ const MicrobiologyReferenceAdmin = () => {
                 </Tab>
               ))}
             </TabList>
+            <TabPanels>
+              {MICROBIOLOGY_REFERENCE_SECTIONS.map((entry) => (
+                <TabPanel key={entry.key}>
+                  {entry.key === section ? sectionContent : null}
+                </TabPanel>
+              ))}
+            </TabPanels>
           </Tabs>
-        </Column>
-        <Column lg={16} md={8} sm={4}>
-          {REFERENCE_DEFINITIONS[section] && (
-            <ReferenceDataPage
-              definition={REFERENCE_DEFINITIONS[section]}
-              query={query}
-              setQuery={setQuery}
-            />
-          )}
-          {section === "ast-panels" && (
-            <AstPanelPage query={query} setQuery={setQuery} />
-          )}
-          {section === "breakpoints" && (
-            <BreakpointPage
-              standardId={detailId}
-              basePath={basePath}
-              query={query}
-              setQuery={setQuery}
-            />
-          )}
         </Column>
       </Grid>
     </>
