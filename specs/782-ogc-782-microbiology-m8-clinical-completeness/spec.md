@@ -3,8 +3,8 @@
 **Feature branch**: `feat/782-ogc-782-microbiology-m8-clinical-completeness`  
 **Parent feature**: OGC-782 routine bacteriology MVP  
 **Related product work**: OGC-783, OGC-784, OGC-790, OGC-791  
-**Status**: Implementation in progress; base lot traceability implemented,
-requiredness policy awaiting product ruling
+**Status**: Implemented and deployed; automated validation complete; lot
+requiredness policy and human UAT pending
 **Created**: 2026-08-03
 
 ## Purpose

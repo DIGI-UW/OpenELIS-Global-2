@@ -417,7 +417,7 @@ from Piotr's human UAT ruling.
 - [x] T197 [MVP] Deploy the exact #3789 candidate plus compatible review-tooling revision to `amr.openelis-global.org`; app SHA `ee5e4d1fa5324dd0ae742c0cc303b9e1b61b25cf`, review-tooling SHA `4df8441896e59520ffb9bb247b1b2e3ce3f5248d`, health/smoke/SHA guard passed.
 - [x] T198 [MVP] Run registered `core-app`/deployed Playwright pre-UAT journeys for order routing, worklist state, case setup, isolate/AST, critical communication, final lock, and visible patient-report propagation; the final `core-demo-video` passed in 1.9 minutes and the external evidence bundle is `/tmp/ogc-782-mvp-evidence-final-2026-07-29/`.
 - [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target in #3789 until evidence exists.
-- [ ] T200 [Human UAT] Piotr completes the nine required Review-overlay steps and records pass/fail/N/A plus notes in `evidence/human-uat-2026-07-29.md`; the optional TB reflection may also be recorded but cannot block MVP acceptance. Automated execution cannot check off this task.
+- [ ] T200 [Human UAT] Piotr completes Pass/Fail/N/A plus notes for the live combined M1/M2/M3 checklist: 32 required steps across 13 stories at revision `c3a490ab422180d87ada093cf05a2cc727413a01bc6234c3217fb99c466e7c3c`; the optional TB reflection cannot block acceptance. Automated execution cannot check off this task.
 - [x] T201 [MVP] Update PR #3789 with final scope, V2 exclusions, exact commits, test/evidence links, UAT revision and rulings, deployment SHAs, and one-shot required-check status.
 
 ## Dependencies & Execution Order

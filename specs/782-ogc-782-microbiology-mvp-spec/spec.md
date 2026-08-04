@@ -2,7 +2,8 @@
 
 **Feature Branch**: `spec/782-ogc-782-microbiology-mvp-spec`
 **Created**: 2026-06-27
-**Status**: Implementation validation
+**Status**: Implemented and deployed; automated validation complete; combined
+human UAT pending
 **Input**: User description: "Create a microbiology-specific feature spec that distills the important features from Jira, Confluence, openelis-work specs/mockups, and repo research; reference the proper files; make the product behavior crystal clear for planning and implementation without letting product specs mandate technical implementation details."
 
 ## Source References
@@ -348,6 +349,18 @@ because existing Test Catalog roles cannot safely supply it. This status note
 does not change PR #3789's historical MVP acceptance boundary; none of the
 follow-up behavior is claimed as part of that milestone until its own branch is
 merged.
+
+Branch `feat/782-ogc-782-microbiology-m9-reference-mapping-admin` implements the
+M-01/M-02 administration slice: organism and antibiotic vocabularies, immutable
+AST panel versions, culture defaults on the existing Method vocabulary,
+breakpoint lifecycle, protected local corrections, and guarded CSV import. M1,
+M2, and M3 are deployed together for review, but remain an open PR stack and
+have not completed human UAT.
+
+The delivered stack is not the full microbiology module. Full WHONET export and
+mapping, expert rules, macro workflows, richer worklist/dashboard depth,
+analyzer-ingested AST, operational TB, antibiograms, GLASS reporting, catalog
+subscription, and the remaining OGC-783 NFRs remain follow-up work.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 

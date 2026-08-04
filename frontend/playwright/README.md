@@ -271,6 +271,34 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
 `*-demo-video` projects mirror `core-demo` / `harness-demo` with `slowMo: 500` and
 `video: "on"` for stakeholder recordings.
 
+### Stakeholder Evidence Format
+
+Feature walkthroughs use one editorial format in addition to the shared
+recording mechanics:
+
+1. Record at 16:9 through a registered `*-demo-video` project; target 45-90
+   seconds for one milestone.
+2. Open with a 3.5-4.5 second full-screen card: ticket/milestone eyebrow,
+   literal feature title, and one-line outcome. Use `demo.chapter()` so the
+   Carbon-dark card, left accent, type hierarchy, and spacing stay consistent.
+3. Introduce each user story with a chapter card. Use compact scene labels for
+   sustained interaction; reserve numbered step banners for genuinely ordered
+   procedures rather than every click.
+4. End with an outcome card that distinguishes automated evidence from human
+   UAT. Do not imply acceptance when Review-overlay rulings are pending.
+5. Capture 5-8 stable screenshots at acceptance checkpoints and inspect both a
+   screenshot contact sheet and representative video frames for clipping,
+   stale loading state, scroll position, and readable timing.
+6. Package WebM as H.264/yuv420p/faststart MP4 and record the app SHA,
+   deployment ID, checklist revision, and artifact checksums in the evidence
+   manifest or README.
+7. Compare key screenshots with the authoritative product mock/spec. Record
+   intentional OpenELIS-shell or Carbon differences; do not treat prototype
+   routes, components, or navigation as implementation contracts.
+
+Presentation pauses are allowed only through the video-gated helpers below.
+Functional readiness and assertions must continue to use observable state.
+
 ```bash
 cd frontend
 # Core stack (e.g. OGC-284 barcode stories)
@@ -320,7 +348,9 @@ test("my demo test", async ({ page }, testInfo) => {
 - `showStepCard(page, stepNumber, description, durationMs, testInfo)` — step
   banner overlay, skips in non-video projects
 - `createDemoPresentation(page, testInfo)` — shared presentation wrapper so a
-  single UI-only scenario can run in both its normal and `*-demo-video` modes
+  single UI-only scenario can run in both its normal and `*-demo-video` modes;
+  prefer its structured `chapter()` method for opening, story, and completion
+  cards
 
 ## Adding New Tests
 

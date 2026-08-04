@@ -9,6 +9,13 @@ const EVIDENCE_DIR = new URL("../../e2e-evidence", import.meta.url).pathname;
 
 export type DemoPresentation = {
   readonly isVideo: boolean;
+  chapter: (options: {
+    eyebrow: string;
+    title: string;
+    subtitle?: string;
+    accent?: string;
+    durationMs?: number;
+  }) => Promise<void>;
   title: (
     title: string,
     subtitle?: string,
@@ -35,6 +42,17 @@ export function createDemoPresentation(
 
   return {
     isVideo,
+    chapter: ({
+      eyebrow,
+      title,
+      subtitle,
+      accent = "#0f62fe",
+      durationMs = 3500,
+    }) =>
+      showTitleCard(page, title, subtitle, durationMs, testInfo, {
+        eyebrow,
+        accent,
+      }),
     title: (title, subtitle, durationMs = 4500) =>
       showTitleCard(page, title, subtitle, durationMs, testInfo),
     step: (stepNumber, description, durationMs = 3000) =>
