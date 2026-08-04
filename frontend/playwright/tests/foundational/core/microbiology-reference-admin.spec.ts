@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 import { expect, test } from "../../../helpers/test-base";
 import {
   seedMicrobiologyReferenceAdmin,
@@ -254,11 +255,12 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     page,
   }) => {
     await seedMicrobiologyReferenceAdmin(page);
+    const importVersion = `SYNTH-UAT-${randomUUID().slice(0, 8).toUpperCase()}`;
     const csv = [
       "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units",
-      "CLSI,SYNTH-UAT-MIXED,group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L",
-      "CLSI,SYNTH-UAT-MIXED,Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L",
-      "CLSI,SYNTH-UAT-MIXED,group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,synthetic-mg/L",
+      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
+      `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
+      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,synthetic-mg/L`,
     ].join("\n");
 
     const openImport = async () => {
@@ -301,7 +303,7 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     await test.step("Protect a locally corrected imported rule", async () => {
       await page.getByRole("button", { name: "Cancel" }).click();
       await expect(page.getByRole("dialog")).toBeHidden();
-      await openRowAction(page, "SYNTH-UAT-MIXED", "View rules");
+      await openRowAction(page, importVersion, "View rules");
 
       await openRowAction(
         page,
