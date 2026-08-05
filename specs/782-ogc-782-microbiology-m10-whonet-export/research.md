@@ -1,6 +1,6 @@
 # Research And Artifact Crosswalk
 
-## Current Repo State
+## Pre-M4 Baseline
 
 - `WHONetReportServiceImpl` selects legacy AMR analyses and emits the existing
   fifteen-column long CSV contract.
@@ -12,6 +12,14 @@
 - Final microbiology release records `FINAL_RELEASED` and `closedAt`; repeat AST
   already identifies the reportable run.
 - No microbiology export-run history or generated-file audit exists.
+
+## M4 As-Built State
+
+M4 adds a canonical Microbiology export page, scoped used-set readiness,
+service-compiled preview data, manual CSV generation through the existing
+15-column OpenELIS row builder, and an immutable audit summary. It does not yet
+prove import into a current WHONET release or implement the mock's full wide
+format, profile packaging, scheduling, or delivery model.
 
 ## Artifact Health
 
@@ -44,11 +52,11 @@ render unavailable scheduling or FHIR controls.
 ## Remaining Clarifications
 
 - Verify the current authoritative WHONET column and method-suffix contract
-  before claiming full wide-format parity.
+  through a real import before claiming compatibility or full wide-format
+  parity.
 - Verify WHO/CLSI first-isolate guidance before labeling the local seven-day
   policy standards-compliant.
 - Decide ownership and source vocabularies for specimen, origin, patient type,
   department, breakpoint-standard, and phenotype mappings.
 - Decide retention and security policy before storing PHI-bearing export bytes
   for exact re-download.
-

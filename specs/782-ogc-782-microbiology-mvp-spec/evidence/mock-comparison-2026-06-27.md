@@ -42,7 +42,7 @@ mapping/export screens that are outside this MVP slice.
 | Expert review           | Separate inline expert-review queue with open/resolved flags and review decisions.                                          | Actual has AST review status and final-release readiness, not a separate expert-review queue.                                                                                       | Feature-depth gap relative to M-06 mock.                                             |
 | Critical notification   | Inline critical notification card with open/ack/follow-up states and alert-path reuse.                                      | The canonical browser flow exercises a Result-target communication through open, acknowledged, and closed states after preliminary report projection.                                | Behavioral proof is present; refreshed all-up video remains pending.                 |
 | Report readiness        | Reports card with explicit readiness checklist and preliminary/final release buttons.                                       | Actual now has final-release and WHONET readiness checklist cards and hides the release action after final release.                                                                 | Parity achieved for MVP final-release readiness.                                     |
-| WHONET readiness/export | Mapping dashboard with percentage coverage, suggestions, per-vocabulary bars, and three-click export path.                  | Actual shows WHONET readiness/blockers only.                                                                                                                                        | Feature-depth gap; mapping/export dashboard is future scope.                         |
+| WHONET readiness/export | Mapping dashboard with percentage coverage, suggestions, per-vocabulary bars, and three-click export path.                  | M3 provides organism/antibiotic administration. M4 provides a compact Carbon Configure/Preview/Generate flow, selected-set counts, mapping warnings, direct repair, audited manual CSV, and stable desktop/mobile layouts. | Manual-export interaction parity is achieved; auto-map, broad vocabulary coverage, scheduling, profile packaging, and FHIR delivery remain future scope. |
 | Evidence quality        | Mock screenshots are focused viewport-level states.                                                                         | Actual screenshots are recaptured as ordered viewport/card shots with scroll-margin polish for sticky header clearance.                                                             | Accept; use screenshots plus video rather than video alone for visual review.        |
 
 ## Specific Actual Evidence Issues
@@ -53,8 +53,9 @@ mapping/export screens that are outside this MVP slice.
 - The committed M7 media predates the expanded all-up critical lifecycle and
   visible patient-report proof. A refreshed external screenshot/video bundle is
   required for final PR evidence.
-- The WHONET proof is only a blocker notification, not a readiness/mapping
-  dashboard like the mock.
+- The M4 WHONET proof covers the routine manual export and exact organism repair
+  path. It intentionally does not reproduce the mock's unimplemented auto-map,
+  scheduling, FHIR, or broad mapping-dashboard controls.
 
 ## Recommended Follow-Up
 
@@ -62,8 +63,8 @@ mapping/export screens that are outside this MVP slice.
    parity.
 2. Add a follow-up AST UI milestone for multi-row AST entry, reagent lot,
    breakpoint standard, and inline expert review.
-3. Add a follow-up surveillance milestone for WHONET mapping readiness and
-   export preview UI.
+3. Complete the remaining M-09 scope only after its format, vocabulary,
+   scheduling, delivery, and standards-policy decisions are authoritative.
 4. Re-record a stakeholder-facing guided video if Casey needs a walkthrough
    rather than raw Playwright evidence.
 

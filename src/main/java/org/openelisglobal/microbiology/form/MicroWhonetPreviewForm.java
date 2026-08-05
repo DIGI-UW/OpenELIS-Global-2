@@ -17,9 +17,6 @@ public class MicroWhonetPreviewForm {
     public int exportedRows;
     public int excludedRows;
     public boolean canGenerate;
-    public int page;
-    public int pageSize;
-    public int totalRows;
     public List<MicroWhonetWarningForm> warnings = new ArrayList<>();
     public List<MicroWhonetPreviewRowForm> rows = new ArrayList<>();
 }

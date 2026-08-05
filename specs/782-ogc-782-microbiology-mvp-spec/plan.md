@@ -88,6 +88,13 @@ WHONET export/mapping, and the unmeasured 200-case performance target are not
 merge claims. Rulings and evidence are recorded in
 `evidence/scope-rulings-2026-07-28.md`.
 
+The historical MVP boundary above remains unchanged. Follow-on stack branches
+now add clinical completeness (M2), reference/mapping administration (M3), and
+the explicitly scoped manual WHONET export in
+`../782-ogc-782-microbiology-m10-whonet-export/` (M4). M4 reuses the existing
+report service and long CSV contract; it does not make the deferred scheduling,
+delivery, wide-format, remaining-vocabulary, or standards-certification claims.
+
 ## Milestone Plan
 
 _GATE: This feature exceeds three days; each milestone is intended as one PR._

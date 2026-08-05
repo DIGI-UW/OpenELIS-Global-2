@@ -2,7 +2,8 @@
 
 **Date:** 2026-07-28
 **Authority:** Piotr is the final product/engineering judge. This file records
-the deterministic defaults applied to PR #3789 pending the ten-step human UAT.
+the deterministic defaults applied to PR #3789 and follow-on status; automated
+evidence does not replace the live human UAT record.
 
 | Topic | Conflicting evidence | Ruling for PR #3789 | Status |
 | --- | --- | --- | --- |
@@ -16,6 +17,19 @@ the deterministic defaults applied to PR #3789 pending the ten-step human UAT.
 | Setup context | Earlier workbench evidence recorded a free-text setup note and hid patient/specimen context in a section. | Patient, accession, specimen, and workflow context remain visible at the bench. Media/bottle, incubation, and atmosphere are explicit setup inputs and persist in the activity record. | Resolved |
 | Report proof | Earlier Playwright checked the report projection through a backend request. | Core E2E must navigate to the visible patient-results page and assert the reviewed S/I/R content there. | Resolved |
 | Human acceptance | Automated checks and overlay rendering were previously described as UAT. | Automation is pre-UAT evidence only. Piotr must perform the ten-step Review-overlay session; pass/fail/N/A and notes are the acceptance record. | Open |
+
+## Follow-On Status - 2026-08-04
+
+The WHONET ruling above remains the historical acceptance boundary for PR
+#3789. The stacked M3 branch adds organism and antibiotic mapping
+administration. The stacked M4 branch adds the first manual export slice:
+Configure, Preview, scoped mapping repair, Generate CSV, and immutable audit
+metadata. It does not complete M-09's wide-format/profile packaging, remaining
+mapping vocabularies, scheduling, delivery, TB, phenotype, or GLASS scope.
+
+The combined live checklist now contains M1-M4 stories. Human acceptance remains
+open and must be recorded against the exact deployed application SHA and the
+matching live checklist revision.
 
 ## No-Migration Ruling
 

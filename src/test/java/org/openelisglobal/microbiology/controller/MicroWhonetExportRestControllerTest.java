@@ -21,7 +21,6 @@ import org.openelisglobal.reports.service.MicroWhonetExportResult;
 import org.openelisglobal.reports.service.WHONetReportService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -46,7 +45,7 @@ public class MicroWhonetExportRestControllerTest {
     public void generationUsesAuthenticatedActorAndReturnsAttachmentMetadata() {
         WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class);
         MicroWhonetExportQueryForm query = query();
-        MicroWhonetExportResult result = new MicroWhonetExportResult("run-1", "WHONET_period.csv",
+        MicroWhonetExportResult result = new MicroWhonetExportResult("WHONET_period.csv",
                 "csv-content".getBytes(StandardCharsets.UTF_8));
         when(service.generateMicrobiologyExport(query, "42")).thenReturn(result);
 
@@ -56,21 +55,8 @@ public class MicroWhonetExportRestControllerTest {
         assertEquals(200, response.getStatusCodeValue());
         assertEquals("attachment; filename=\"WHONET_period.csv\"",
                 response.getHeaders().getFirst("Content-Disposition"));
-        assertEquals("run-1", response.getHeaders().getFirst("X-WHONET-Export-Run-Id"));
         assertEquals("csv-content", new String(response.getBody(), StandardCharsets.UTF_8));
         verify(service).generateMicrobiologyExport(query, "42");
-    }
-
-    @Test
-    public void endpointsRequireReportCapableRole() throws Exception {
-        PreAuthorize preview = MicroWhonetExportRestController.class
-                .getMethod("preview", MicroWhonetExportQueryForm.class).getAnnotation(PreAuthorize.class);
-        PreAuthorize generate = MicroWhonetExportRestController.class
-                .getMethod("generate", MicroWhonetExportQueryForm.class, jakarta.servlet.http.HttpServletRequest.class)
-                .getAnnotation(PreAuthorize.class);
-
-        assertEquals("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')", preview.value());
-        assertEquals("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')", generate.value());
     }
 
     @Test

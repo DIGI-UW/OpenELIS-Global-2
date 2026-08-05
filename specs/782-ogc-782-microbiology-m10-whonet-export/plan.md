@@ -3,11 +3,11 @@
 ## Technical Context
 
 M4 stacks on M3 commit `5c3937e6727ed7902cb354a6c7748caa69d94f84`.
-The repo already contains the Reports-to-WHONET path,
+The repo already contains the legacy Reports-to-WHONET path,
 `WHONetReportService`, `WHONETCSVRoutineColumnBuilder`, finalized microbiology
 cases, service-created UAT fixtures, organism and antibiotic WHONET codes, and
-case-level readiness. The new slice extends that path; it does not introduce a
-second exporter.
+case-level readiness. The new slice reuses the existing renderer and service
+boundary rather than introducing a second export implementation.
 
 ## Decisions
 
@@ -22,7 +22,8 @@ second exporter.
    isolate for each patient and organism within each rolling seven-day window.
    It is explicitly not labeled WHO/CLSI-certified.
 5. Missing organism or antibiotic codes are warnings and exclude affected rows.
-   Zero remaining rows is a generation blocker.
+   Readings without a final S/I/R interpretation are also excluded. Zero
+   remaining rows is a generation blocker.
 6. A new export-run entity stores generation metadata and a SHA-256 fingerprint,
    not the PHI-bearing file body. Exact re-download is therefore deferred.
 7. The write controller derives the actor from the authenticated request. The
@@ -31,8 +32,10 @@ second exporter.
    `significance`, `dedup`, `step`, `page`, and `pageSize` query state.
 9. Mapping repair uses the M3 admin `edit` query state to open the exact organism
    or antibiotic record. Browser history returns to the preview.
-10. The config-backed Microbiology menu gains a WHONET Export child; no database
-    migration is used for navigation.
+10. The config-backed Microbiology menu gains the canonical WHONET Export child
+    and removes the competing legacy Reports navigation entry; no database
+    migration is used for navigation. Removing the remaining legacy report
+    implementation is separately tracked because direct callers may still exist.
 
 ## Data Flow
 
@@ -48,9 +51,8 @@ second exporter.
 
 ## Database Change
 
-One Liquibase changeset adds the export-run audit entity and indexes generation
-time. Rollback removes that table. Routes, menu config, fixtures, tests, and UI
-do not receive migrations.
+One Liquibase changeset adds the export-run audit entity. Rollback removes that
+table. Routes, menu config, fixtures, tests, and UI do not receive migrations.
 
 ## Test Strategy
 
@@ -73,4 +75,3 @@ do not receive migrations.
 Scheduled delivery, SFTP/email, TXT, profile packaging, exact re-download, TB,
 phenotypes, expert rules, national aggregation, GLASS submission, and new
 specimen/origin/patient/department mapping masters.
-

@@ -21,9 +21,6 @@ const preview = {
   exportedRows: 2,
   excludedRows: 1,
   canGenerate: true,
-  page: 1,
-  pageSize: 20,
-  totalRows: 2,
   warnings: [
     {
       code: "ANTIBIOTIC_MAPPING_REQUIRED",
@@ -38,27 +35,21 @@ const preview = {
       caseId: "case-1",
       isolateId: "isolate-1",
       accessionNumber: "LAB-001",
-      patientIdentifier: "NAT-001",
-      patientName: "Lovelace, Ada",
       specimenType: "Blood",
       organismCode: "eco",
       antibioticCode: "CIP",
       interpretation: "S",
       method: "MIC",
-      finalizedAt: "2026-07-12T10:00:00Z",
     },
     {
       caseId: "case-1",
       isolateId: "isolate-1",
       accessionNumber: "LAB-001",
-      patientIdentifier: "NAT-001",
-      patientName: "Lovelace, Ada",
       specimenType: "Blood",
       organismCode: "eco",
       antibioticCode: "GEN",
       interpretation: "R",
       method: "MIC",
-      finalizedAt: "2026-07-12T10:00:00Z",
     },
   ],
 };
@@ -116,6 +107,18 @@ describe("WhonetExport", () => {
     );
     expect(screen.getByRole("cell", { name: "CIP" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "GEN" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Isolates included").previousSibling,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("After de-duplication").previousSibling,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("Mappable isolates").previousSibling,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("Preview ready with 2 eligible rows."),
+    ).toHaveAttribute("role", "status");
     expect(screen.getByRole("button", { name: "Generate CSV" })).toBeEnabled();
   });
 
@@ -183,12 +186,34 @@ describe("WhonetExport", () => {
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:whonet");
   });
 
+  it("blocks generation when validation leaves no exportable rows", async () => {
+    const blockedPreview = {
+      ...preview,
+      exportableIsolates: 0,
+      exportedRows: 0,
+      excludedRows: 2,
+      canGenerate: false,
+      rows: [],
+    };
+    const service = {
+      getWhonetPreview: vi.fn().mockResolvedValue(blockedPreview),
+      generateWhonetExport: vi.fn(),
+    };
+
+    renderExport(service);
+
+    expect(
+      await screen.findByRole("button", { name: "Generate CSV" }),
+    ).toBeDisabled();
+    expect(service.generateWhonetExport).not.toHaveBeenCalled();
+  });
+
   it("uses Carbon pagination to preserve the preview policy on the next page", async () => {
     const user = userEvent.setup();
     const service = {
       getWhonetPreview: vi
         .fn()
-        .mockResolvedValue({ ...preview, totalRows: 42 }),
+        .mockResolvedValue({ ...preview, exportedRows: 42 }),
       generateWhonetExport: vi.fn(),
     };
 

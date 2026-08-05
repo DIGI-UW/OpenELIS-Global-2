@@ -46,14 +46,8 @@
       <column name="generated_by" type="varchar(20)">
         <constraints nullable="false"/>
       </column>
-      <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
       <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
     </createTable>
-
-    <createIndex schemaName="clinlims" tableName="micro_whonet_export_run"
-      indexName="idx_micro_whonet_export_generated_at">
-      <column name="generated_at" descending="true"/>
-    </createIndex>
 
     <rollback>
       <dropTable schemaName="clinlims" tableName="micro_whonet_export_run"/>

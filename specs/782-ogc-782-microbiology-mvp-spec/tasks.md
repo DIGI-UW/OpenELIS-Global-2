@@ -417,8 +417,14 @@ from Piotr's human UAT ruling.
 - [x] T197 [MVP] Deploy the exact #3789 candidate plus compatible review-tooling revision to `amr.openelis-global.org`; app SHA `ee5e4d1fa5324dd0ae742c0cc303b9e1b61b25cf`, review-tooling SHA `4df8441896e59520ffb9bb247b1b2e3ce3f5248d`, health/smoke/SHA guard passed.
 - [x] T198 [MVP] Run registered `core-app`/deployed Playwright pre-UAT journeys for order routing, worklist state, case setup, isolate/AST, critical communication, final lock, and visible patient-report propagation; the final `core-demo-video` passed in 1.9 minutes and the external evidence bundle is `/tmp/ogc-782-mvp-evidence-final-2026-07-29/`.
 - [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target in #3789 until evidence exists.
-- [ ] T200 [Human UAT] Piotr completes Pass/Fail/N/A plus notes for the live combined M1/M2/M3 checklist: 32 required steps across 13 stories at revision `c3a490ab422180d87ada093cf05a2cc727413a01bc6234c3217fb99c466e7c3c`; the optional TB reflection cannot block acceptance. Automated execution cannot check off this task.
+- [ ] T200 [Human UAT] Piotr completes Pass/Fail/N/A plus notes for the live combined M1/M2/M3/M4 checklist: 38 required steps across 14 stories at pre-deployment revision `2c50adaa394ee252cd775a87383c70d5af672b42530614c9bc1ad201dac27ba8`; the optional TB reflection cannot block acceptance. Reconfirm the revision after the exact M4 deployment. Automated execution cannot check off this task.
 - [x] T201 [MVP] Update PR #3789 with final scope, V2 exclusions, exact commits, test/evidence links, UAT revision and rulings, deployment SHAs, and one-shot required-check status.
+
+## Phase 13: Follow-On Stack Status
+
+- [x] T205 [M2] Implement clinical completeness and NFR qualification in `specs/782-ogc-782-microbiology-m8-clinical-completeness/`; PR and human acceptance remain separate gates.
+- [x] T206 [M3] Implement reference and mapping administration in `specs/782-ogc-782-microbiology-m9-reference-mapping-admin/`; PR and human acceptance remain separate gates.
+- [ ] T207 [M4] Complete the manual WHONET export checklist in `specs/782-ogc-782-microbiology-m10-whonet-export/tasks.md`, publish its stacked PR, deploy its exact SHA, and retain M1-M4 in the live review overlay.
 
 ## Dependencies & Execution Order
 

@@ -1,7 +1,6 @@
 import {
   buildWhonetSearch,
   getWhonetMappingRepairUrl,
-  getWhonetUrl,
   parseWhonetSearch,
 } from "./WhonetRoutes";
 
@@ -20,8 +19,8 @@ describe("WhonetRoutes", () => {
       page: 1,
       pageSize: 20,
     });
-    expect(getWhonetUrl(state, now)).toBe(
-      "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
+    expect(buildWhonetSearch(state, now)).toBe(
+      "from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
     );
   });
 
@@ -39,6 +38,15 @@ describe("WhonetRoutes", () => {
       step: "preview",
       page: 3,
       pageSize: 50,
+    });
+  });
+
+  it("replaces impossible calendar dates with the previous complete month", () => {
+    expect(
+      parseWhonetSearch("?from=2026-02-30&to=2026-04-31", now),
+    ).toMatchObject({
+      from: "2026-07-01",
+      to: "2026-07-31",
     });
   });
 

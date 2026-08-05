@@ -7,10 +7,11 @@
 
 ## Scope
 
-This milestone lets an authorized laboratory user preview and download a
-WHONET-compatible CSV from finalized routine bacteriology cases. It is the first
-usable surveillance-export slice after the M1-M3 clinical and reference-data
-foundation.
+This milestone lets an authorized laboratory user preview and download the
+current OpenELIS surveillance CSV candidate from finalized routine bacteriology
+cases. It is the first usable export slice after the M1-M3 clinical and
+reference-data foundation; acceptance as a complete WHONET import profile is not
+claimed in this milestone.
 
 The milestone includes manual CSV export, scoped readiness, direct repair links
 for organism and antibiotic mapping gaps, a deterministic seven-day
@@ -124,6 +125,10 @@ Configure, Preview, and Generate workflow.
   mapping are not silently invented here. They remain later work because the
   current M3 foundation has authoritative organism and antibiotic mappings but
   not settled ownership for every additional vocabulary.
+- The generated file preserves the existing 15-column OpenELIS long-format
+  export contract. Import validation against current WHONET, wide-format
+  antibiotic columns, method suffixes, and profile packaging remain explicit
+  follow-on acceptance work.
 - OGC-879 and OGC-881 are marked Done/superseded in Jira, while the current repo
   contains readiness only and no generated microbiology export history. Repo
   behavior is authoritative for implementation status.
@@ -138,4 +143,3 @@ Configure, Preview, and Generate workflow.
   counts, page, and visible rows.
 - **SC-004**: Focused service, controller, ORM, Liquibase update/rollback,
   frontend, accessibility, and Playwright tests pass without arbitrary waits.
-

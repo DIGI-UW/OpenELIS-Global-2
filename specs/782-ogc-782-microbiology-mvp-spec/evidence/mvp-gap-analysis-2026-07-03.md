@@ -56,9 +56,10 @@ work:
 ### 4. M-09 WHONET export + code-mapping dashboard
 
 - **FRS source:** M-09 WHONET Export (`m-09-whonet-export.md`); OGC-794; spec [FR-020](../spec.md) / US6 scenario 2 ("export is not part of the current release slice").
-- **As-built:** [`MicroWhonetReadinessServiceImpl`](../../../../src/main/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessServiceImpl.java) reports readiness/blockers only; no export generator, no code-mapping admin UI.
-- **Cause:** deliberate. `plan.md` scope and spec US6 explicitly scope the MVP to readiness, deferring export/mapping.
-- **Disposition: V2.** Not built this session.
+- **As-built at this checkpoint:** [`MicroWhonetReadinessServiceImpl`](../../../../src/main/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessServiceImpl.java) reported readiness/blockers only; no export generator or code-mapping admin UI existed in PR #3789.
+- **Follow-on status (2026-08-04):** M3 adds organism and antibiotic mapping administration. M4 adds period/policy configuration, selected-set readiness, direct repair, preview, audited manual CSV generation, stable URL state, and accessibility evidence through `../782-ogc-782-microbiology-m10-whonet-export/`.
+- **Remaining gap:** authoritative wide-format/profile packaging, the other unsettled mapping vocabularies, scheduling, delivery, exact re-download, TB, phenotype, and GLASS scope remain deferred.
+- **Disposition: Partial follow-on delivery.** The original MVP remains readiness-only; the M4 branch must complete PR, exact-SHA deployment, and human UAT before acceptance.
 
 ### 5. M-05 AST depth: multi-row metadata, reagent lot, per-run breakpoint selection
 
@@ -114,7 +115,7 @@ see `microbiology-case-workbench.spec.ts` and
 | 1 | FR-002 culture-aware order-entry detail capture | MVP | Yes (resolved) |
 | 2 | Amendment/reidentification history; MVP has final mutation lock only | V2 | No |
 | 3 | M-11 Alerts Dashboard (FR-018) | MVP | Yes (resolved) |
-| 4 | M-09 WHONET export + mapping UI | V2 | No |
+| 4 | M-09 WHONET export + mapping UI | Partial follow-on delivery in M3/M4; broader M-09 remains deferred | M4 implementation complete locally; acceptance open |
 | 5a | M-05 per-run breakpoint selection | MVP | Yes (resolved) |
 | 5b | M-05 reagent lot + multi-row AST metadata | V2 | No |
 | 6 | M-06/M-13/M-14/M-15 | Deferred by design | No |

@@ -335,7 +335,9 @@ PR #3789:
   reidentified. The MVP instead locks final cases against isolate and AST
   mutation.
 - **V2-002**: Link reagent/card lots and richer multi-row AST run metadata.
-- **V2-003**: Provide full WHONET export and code-mapping administration.
+- **V2-003**: Complete WHONET interoperability beyond the first manual-export
+  slice, including authoritative wide-format/profile packaging, remaining
+  vocabulary mappings, scheduling, and delivery.
 - **V2-004**: Provide operational TB, expert-rule, antibiogram, and GLASS
   workflows.
 - **V2-005**: Review analyzer-ingested AST results with mandatory human review
@@ -357,10 +359,18 @@ breakpoint lifecycle, protected local corrections, and guarded CSV import. M1,
 M2, and M3 are deployed together for review, but remain an open PR stack and
 have not completed human UAT.
 
-The delivered stack is not the full microbiology module. Full WHONET export and
-mapping, expert rules, macro workflows, richer worklist/dashboard depth,
-analyzer-ingested AST, operational TB, antibiograms, GLASS reporting, catalog
-subscription, and the remaining OGC-783 NFRs remain follow-up work.
+Branch `feat/782-ogc-782-microbiology-m10-whonet-export` implements the first
+manual WHONET export slice: period and policy selection, used-set organism and
+antibiotic readiness, direct mapping repair, preview, audited CSV generation,
+canonical URL state, and desktop/mobile accessibility evidence. It remains
+stacked on M3 and is not accepted or deployed until its own PR, live checklist,
+exact-SHA deployment, and human UAT records are complete.
+
+The delivered stack is not the full microbiology module. Authoritative
+wide-format WHONET/profile packaging, the remaining mapping vocabularies,
+scheduled delivery, expert rules, macro workflows, richer worklist/dashboard
+depth, analyzer-ingested AST, operational TB, antibiograms, GLASS reporting,
+catalog subscription, and the remaining OGC-783 NFRs remain follow-up work.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
