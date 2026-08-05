@@ -40,7 +40,6 @@ public class MicroWhonetExportRestController extends MicrobiologyRestControllerS
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv;charset=UTF-8"));
         headers.setContentDisposition(ContentDisposition.attachment().filename(result.fileName).build());
-        headers.set("X-WHONET-Export-Run-Id", result.runId);
         return ResponseEntity.ok().headers(headers).body(result.content);
     }
 }

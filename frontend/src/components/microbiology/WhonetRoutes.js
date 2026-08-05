@@ -21,7 +21,8 @@ const previousCompleteMonth = (now) => {
 const validIsoDate = (value) =>
   typeof value === "string" &&
   /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-  !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
+  !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()) &&
+  new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 
 const positiveInteger = (value, fallback) => {
   const parsed = Number.parseInt(value, 10);
@@ -61,9 +62,6 @@ export const buildWhonetSearch = (state, now = new Date()) => {
   );
   return params.toString();
 };
-
-export const getWhonetUrl = (state, now = new Date()) =>
-  `${MICROBIOLOGY_WHONET_PATH}?${buildWhonetSearch(state, now)}`;
 
 export const getWhonetMappingRepairUrl = (resource, resourceId) => {
   if (!["organisms", "antibiotics"].includes(resource) || !resourceId) {

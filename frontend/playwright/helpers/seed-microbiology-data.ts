@@ -42,10 +42,6 @@ export interface SeededMicrobiologyReferenceAdmin extends SeededMicrobiologyCase
 export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyReferenceAdmin {
   exportDate: string;
   unmappedOrganismId: string;
-  mappedIsolateId: string;
-  unmappedIsolateId: string;
-  mappedAstRunId: string;
-  unmappedAstRunId: string;
 }
 
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
@@ -79,7 +75,6 @@ interface MicrobiologyAstRunFixture {
 
 interface MicrobiologyReleaseFixture {
   closedAt: number | string;
-  finalReleaseState: string;
 }
 
 export async function getCsrfToken(page: Page): Promise<string> {
@@ -241,7 +236,7 @@ async function ensureReviewedAstIsolate(
       hasAllAntibiotics(candidate, antibiotics),
   );
   if (reviewed) {
-    return { isolateId: isolate.id, astRunId: reviewed.id };
+    return;
   }
 
   const run =
@@ -284,7 +279,6 @@ async function ensureReviewedAstIsolate(
       { headers, data: {} },
     ),
   );
-  return { isolateId: isolate.id, astRunId: run.id };
 }
 
 export async function seedMicrobiologyWhonetExport(
@@ -344,7 +338,7 @@ export async function seedMicrobiologyWhonetExport(
     throw new Error("Final M4 fixture is missing its expected isolates");
   }
 
-  const mapped = await ensureReviewedAstIsolate(
+  await ensureReviewedAstIsolate(
     page,
     reference,
     reference.organismId,
@@ -353,7 +347,7 @@ export async function seedMicrobiologyWhonetExport(
     antibiotics,
     mappedExisting,
   );
-  const unmapped = await ensureReviewedAstIsolate(
+  await ensureReviewedAstIsolate(
     page,
     reference,
     reference.unmappedOrganismId,
@@ -382,10 +376,6 @@ export async function seedMicrobiologyWhonetExport(
   return {
     ...reference,
     exportDate,
-    mappedIsolateId: mapped.isolateId,
-    unmappedIsolateId: unmapped.isolateId,
-    mappedAstRunId: mapped.astRunId,
-    unmappedAstRunId: unmapped.astRunId,
   };
 }
 

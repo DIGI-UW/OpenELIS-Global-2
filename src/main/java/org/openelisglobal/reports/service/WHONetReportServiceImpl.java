@@ -182,7 +182,7 @@ public class WHONetReportServiceImpl implements WHONetReportService {
     @Override
     @Transactional(readOnly = true)
     public MicroWhonetPreviewForm previewMicrobiologyExport(MicroWhonetExportQueryForm query) {
-        return microWhonetDatasetService.preview(query);
+        return microWhonetDatasetService.compile(query).getPreview();
     }
 
     @Override
@@ -214,7 +214,7 @@ public class WHONetReportServiceImpl implements WHONetReportService {
         run.setGeneratedAt(new Timestamp(System.currentTimeMillis()));
         run.setGeneratedBy(authenticatedUserId);
         microWhonetExportRunDAO.insert(run);
-        return new MicroWhonetExportResult(run.getId(), fileName, content);
+        return new MicroWhonetExportResult(fileName, content);
     }
 
     private String sha256(byte[] content) {

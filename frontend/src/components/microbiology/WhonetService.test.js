@@ -1,12 +1,3 @@
-vi.mock("../utils/Utils", () => ({
-  getFromOpenElisServer: vi.fn(),
-  postToOpenElisServerForBlob: vi.fn(),
-}));
-
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerForBlob,
-} from "../utils/Utils";
 import { generateWhonetExport, getWhonetPreview } from "./WhonetService";
 
 const query = {
@@ -19,43 +10,66 @@ const query = {
 };
 
 describe("WhonetService", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
 
   it("requests preview with deterministic query composition", async () => {
-    getFromOpenElisServer.mockImplementation((path, callback) =>
-      callback({ exportedRows: 2 }),
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ exportedRows: 2 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
     );
 
     await expect(getWhonetPreview(query)).resolves.toEqual({ exportedRows: 2 });
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
-      "/rest/microbiology/whonet/preview?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&page=2&pageSize=50",
-      expect.any(Function),
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/OpenELIS-Global/rest/microbiology/whonet/preview?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&page=2&pageSize=50",
+      expect.objectContaining({ credentials: "include" }),
     );
   });
 
-  it("returns the server attachment name and audit run identifier", async () => {
-    const blob = new Blob(["csv"], { type: "text/csv" });
-    const response = new Response(blob, {
-      headers: {
-        "Content-Disposition":
-          'attachment; filename="WHONET_2026-07-01_to_2026-07-31.csv"',
-        "X-WHONET-Export-Run-Id": "run-1",
-      },
-    });
-    postToOpenElisServerForBlob.mockImplementation(
-      (_path, _payload, callback) => callback(blob, response),
+  it("rejects structured preview errors", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: "MICROBIOLOGY_REFERENCE_INVALID",
+          message: "to must be on or after from",
+        }),
+        {
+          status: 400,
+          statusText: "Bad Request",
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
 
-    await expect(generateWhonetExport(query)).resolves.toEqual({
-      blob,
-      filename: "WHONET_2026-07-01_to_2026-07-31.csv",
-      runId: "run-1",
+    await expect(getWhonetPreview(query)).rejects.toMatchObject({
+      status: 400,
+      code: "MICROBIOLOGY_REFERENCE_INVALID",
     });
-    expect(postToOpenElisServerForBlob).toHaveBeenCalledWith(
-      "/rest/microbiology/whonet/exports",
-      JSON.stringify(query),
-      expect.any(Function),
-      expect.any(Function),
+  });
+
+  it("returns the server attachment name", async () => {
+    const response = new Response("csv", {
+      headers: {
+        "Content-Type": "text/csv",
+        "Content-Disposition":
+          'attachment; filename="WHONET_2026-07-01_to_2026-07-31.csv"',
+      },
+    });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+
+    const result = await generateWhonetExport(query);
+    expect(result.filename).toBe("WHONET_2026-07-01_to_2026-07-31.csv");
+    await expect(result.blob.text()).resolves.toBe("csv");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/OpenELIS-Global/rest/microbiology/whonet/exports",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(query),
+      }),
     );
   });
 });

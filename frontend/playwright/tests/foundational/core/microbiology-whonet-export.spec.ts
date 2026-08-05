@@ -22,6 +22,15 @@ const readDownload = async (download: Download) => {
   return content;
 };
 
+const parseCsvLine = (line: string) => {
+  const fields: string[] = [];
+  const pattern = /"((?:[^"]|"")*)"(?:,|$)/g;
+  for (const match of line.matchAll(pattern)) {
+    fields.push(match[1].replace(/""/g, '"'));
+  }
+  return fields;
+};
+
 test.describe("OGC-782 M4 WHONET manual export", () => {
   test("previews mapped AST, links mapping repair, and downloads CSV", async ({
     page,
@@ -83,6 +92,22 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
         page.getByRole("heading", { name: "Preview", exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
 
+      const metric = (label: string) =>
+        page.locator(".whonet-export__metric").filter({ hasText: label });
+      await expect(metric("Finalized cases").locator("strong")).toHaveText("1");
+      await expect(metric("Isolates found").locator("strong")).toHaveText("2");
+      await expect(metric("Isolates included").locator("strong")).toHaveText(
+        "2",
+      );
+      await expect(metric("After de-duplication").locator("strong")).toHaveText(
+        "2",
+      );
+      await expect(metric("Mappable isolates").locator("strong")).toHaveText(
+        "1",
+      );
+      await expect(metric("Eligible rows").locator("strong")).toHaveText("2");
+      await expect(metric("Rows excluded").locator("strong")).toHaveText("2");
+
       const mappedRows = page
         .getByRole("row")
         .filter({ hasText: seeded.accessionNumber });
@@ -128,14 +153,36 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       expect(download.suggestedFilename()).toMatch(/^WHONET_.*\.csv$/);
 
       const csv = await readDownload(download);
-      expect(csv).toContain("NATIONAL_ID");
-      const seededRows = csv
-        .split(/\r?\n/)
-        .filter((line) => line.includes(seeded.accessionNumber));
+      const lines = csv.split(/\r?\n/).filter(Boolean);
+      const header = parseCsvLine(lines[0]);
+      const accessionIndex = header.indexOf("LAB_NUMBER");
+      const antibioticIndex = header.indexOf("ANTIBIOTIC");
+      const organismIndex = header.indexOf("ORGANISM");
+      const interpretationIndex = header.indexOf("RESULT");
+      expect(accessionIndex).toBeGreaterThanOrEqual(0);
+      expect(antibioticIndex).toBeGreaterThanOrEqual(0);
+      expect(organismIndex).toBeGreaterThanOrEqual(0);
+      expect(interpretationIndex).toBeGreaterThanOrEqual(0);
+
+      const seededRows = lines
+        .slice(1)
+        .map(parseCsvLine)
+        .filter((row) => row[accessionIndex] === seeded.accessionNumber);
       expect(seededRows).toHaveLength(2);
-      expect(seededRows.some((line) => line.includes("CIPUAT"))).toBeTruthy();
-      expect(seededRows.some((line) => line.includes("GENUAT"))).toBeTruthy();
-      expect(seededRows.every((line) => line.includes("refuat"))).toBeTruthy();
+      expect(
+        seededRows
+          .map((row) => ({
+            antibiotic: row[antibioticIndex],
+            interpretation: row[interpretationIndex],
+            organism: row[organismIndex],
+          }))
+          .sort((left, right) =>
+            left.antibiotic.localeCompare(right.antibiotic),
+          ),
+      ).toEqual([
+        { antibiotic: "CIPUAT", interpretation: "S", organism: "refuat" },
+        { antibiotic: "GENUAT", interpretation: "R", organism: "refuat" },
+      ]);
     });
   });
 });

@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
@@ -48,6 +49,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     private static final String NONE = "NONE";
     private static final String FIRST_ISOLATE_7_DAY = "FIRST_ISOLATE_7_DAY";
     private static final long SEVEN_DAYS_MILLIS = Duration.ofDays(7).toMillis();
+    private static final Set<String> WHONET_INTERPRETATIONS = Set.of("S", "I", "R");
 
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
@@ -69,12 +71,6 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         this.antibioticDAO = antibioticDAO;
         this.sampleItemService = sampleItemService;
         this.sampleHumanService = sampleHumanService;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public MicroWhonetPreviewForm preview(MicroWhonetExportQueryForm query) {
-        return compile(query).getPreview();
     }
 
     @Override
@@ -145,6 +141,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 String interpretation = toWhonetInterpretation(
                         hasText(reading.getOverrideInterpretation()) ? reading.getOverrideInterpretation()
                                 : reading.getInterpretation());
+                if (!WHONET_INTERPRETATIONS.contains(interpretation)) {
+                    excludedRows++;
+                    addWarning(warnings, "AST_INTERPRETATION_REQUIRED", null, reading.getId(),
+                            antibiotic.get().getDisplayName(), 1);
+                    continue;
+                }
                 exportRows.add(toWhonetRow(candidate, organism.get(), antibiotic.get(), reading, interpretation));
                 previewRows.add(toPreviewRow(candidate, organism.get(), antibiotic.get(), reading, interpretation));
             }
@@ -166,9 +168,6 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         preview.exportedRows = exportRows.size();
         preview.excludedRows = excludedRows;
         preview.canGenerate = !exportRows.isEmpty();
-        preview.page = query.page;
-        preview.pageSize = query.pageSize;
-        preview.totalRows = previewRows.size();
         preview.warnings.addAll(warnings.values());
         int first = Math.min((query.page - 1) * query.pageSize, previewRows.size());
         int last = Math.min(first + query.pageSize, previewRows.size());
@@ -184,9 +183,6 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         LocalDate to = parseDate(query.to, "to");
         if (to.isBefore(from)) {
             throw new IllegalArgumentException("to must be on or after from");
-        }
-        if (Duration.between(from.atStartOfDay(), to.plusDays(1).atStartOfDay()).toDays() > 366) {
-            throw new IllegalArgumentException("Export period cannot exceed 366 days");
         }
         String significance = hasText(query.significance) ? query.significance.trim() : "CLINICALLY_SIGNIFICANT";
         if (!List.of(ALL, MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name()).contains(significance)) {
@@ -283,14 +279,11 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         row.caseId = candidate.microCase.getId();
         row.isolateId = candidate.isolate.getId();
         row.accessionNumber = candidate.context.accessionNumber;
-        row.patientIdentifier = candidate.context.nationalId;
-        row.patientName = (candidate.context.lastName + ", " + candidate.context.firstName).replaceAll("^, |, $", "");
         row.specimenType = candidate.context.specimenType;
         row.organismCode = organism.getWhonetCode();
         row.antibioticCode = antibiotic.getWhonetCode();
         row.interpretation = interpretation;
         row.method = reading.getMethod();
-        row.finalizedAt = candidate.microCase.getClosedAt();
         return row;
     }
 

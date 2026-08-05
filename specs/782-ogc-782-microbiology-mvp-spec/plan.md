@@ -85,6 +85,13 @@ record proves shared-specimen separation only; operational TB processing is V2.
 Reagent/card lots, full WHONET export/mapping, and the unmeasured 200-case
 performance target are not MVP claims.
 
+The historical MVP boundary above remains unchanged. Follow-on stack branches
+now add clinical completeness (M2), reference/mapping administration (M3), and
+the explicitly scoped manual WHONET export in
+`../782-ogc-782-microbiology-m10-whonet-export/` (M4). M4 reuses the existing
+report service and long CSV contract; it does not make the deferred scheduling,
+delivery, wide-format, remaining-vocabulary, or standards-certification claims.
+
 ## Milestone Plan
 
 _GATE: This feature exceeds three days and must be delivered in independently

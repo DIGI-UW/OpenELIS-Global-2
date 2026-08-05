@@ -37,6 +37,21 @@ import {
 } from "./WhonetRoutes";
 import "./WhonetExport.scss";
 
+const formatRequestError = (intl, error) => {
+  if (error?.code === "MICROBIOLOGY_REFERENCE_INVALID") {
+    return intl.formatMessage({
+      id: "microbiology.whonet.error.invalidRequest",
+    });
+  }
+  if (error?.code === "MICROBIOLOGY_WHONET_EXPORT_BLOCKED") {
+    return intl.formatMessage({ id: "microbiology.whonet.error.blocked" });
+  }
+  if (!error?.status) {
+    return intl.formatMessage({ id: "microbiology.whonet.error.network" });
+  }
+  return intl.formatMessage({ id: "microbiology.whonet.error.generic" });
+};
+
 const WhonetExport = ({ service = defaultService, now }) => {
   const intl = useIntl();
   const history = useHistory();
@@ -92,7 +107,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
         if (active) setPreview(response);
       })
       .catch((requestError) => {
-        if (active) setError(requestError.message || String(requestError));
+        if (active) setError(formatRequestError(intl, requestError));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -100,7 +115,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
     return () => {
       active = false;
     };
-  }, [request, service, state.step]);
+  }, [intl, request, service, state.step]);
 
   const updateConfiguration = (updates) => {
     setGenerated(false);
@@ -125,7 +140,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
       URL.revokeObjectURL(href);
       setGenerated(true);
     } catch (requestError) {
-      setError(requestError.message || String(requestError));
+      setError(formatRequestError(intl, requestError));
     } finally {
       setGenerating(false);
     }
@@ -174,9 +189,19 @@ const WhonetExport = ({ service = defaultService, now }) => {
           "microbiology.whonet.count.isolates",
         ],
         [
-          "included",
-          preview.afterDeduplication,
+          "after-inclusion",
+          preview.afterSignificance,
           "microbiology.whonet.count.included",
+        ],
+        [
+          "after-deduplication",
+          preview.afterDeduplication,
+          "microbiology.whonet.count.deduplicated",
+        ],
+        [
+          "mappable",
+          preview.exportableIsolates,
+          "microbiology.whonet.count.mappable",
         ],
         ["eligible", preview.exportedRows, "microbiology.whonet.count.rows"],
         [
@@ -200,6 +225,16 @@ const WhonetExport = ({ service = defaultService, now }) => {
           },
         ]}
       />
+      <div className="cds--visually-hidden" role="status" aria-live="polite">
+        {loading
+          ? intl.formatMessage({ id: "microbiology.whonet.preview.loading" })
+          : preview
+            ? intl.formatMessage(
+                { id: "microbiology.whonet.preview.announced" },
+                { count: preview.exportedRows },
+              )
+            : ""}
+      </div>
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
           <div className="whonet-export__header">
@@ -524,7 +559,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
                 page={state.page}
                 pageSize={state.pageSize}
                 pageSizes={[20, 50, 100]}
-                totalItems={preview.totalRows}
+                totalItems={preview.exportedRows}
                 onChange={({ page, pageSize }) => setQuery({ page, pageSize })}
               />
             </section>

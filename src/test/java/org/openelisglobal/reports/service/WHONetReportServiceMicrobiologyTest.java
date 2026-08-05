@@ -61,7 +61,6 @@ public class WHONetReportServiceMicrobiologyTest {
         assertEquals("authenticated-user", audit.getValue().getGeneratedBy());
         assertEquals(1, audit.getValue().getRowCount());
         assertEquals(64, audit.getValue().getContentSha256().length());
-        assertEquals(audit.getValue().getId(), result.runId);
     }
 
     @Test
