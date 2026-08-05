@@ -104,15 +104,29 @@ describe("ReagentsSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("auto-saves a usage-type change via PUT and shows a success toast", async () => {
+  // Edits are committed by Save, not by changing a field or leaving it: an admin
+  // editing a row's usage type or quantity has to be able to commit deliberately.
+  it("commits a usage-type change only when Save is clicked", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => cb(TWO_REAGENTS));
     putToOpenElisServer.mockImplementation((url, body, cb) => cb(200));
     renderSection();
 
     await screen.findByText("Glucose Reagent");
+    const save = () => screen.getByTestId("reagents-save");
+    expect(save()).toBeDisabled();
+
     fireEvent.change(document.getElementById("usage-link-1"), {
       target: { value: "SECONDARY" },
     });
+
+    // Changing the field must not write on its own.
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(save()).toBeEnabled();
+    expect(
+      screen.getByText(messages["label.testCatalog.reagents.unsaved"]),
+    ).toBeInTheDocument();
+
+    fireEvent.click(save());
 
     expect(putToOpenElisServer).toHaveBeenCalledWith(
       "/rest/test-catalog/42/reagents/7",
@@ -122,6 +136,22 @@ describe("ReagentsSection", () => {
     expect(
       await screen.findByText(messages["label.testCatalog.reagents.updated"]),
     ).toBeInTheDocument();
+  });
+
+  it("discards a pending edit on Cancel without writing", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(TWO_REAGENTS));
+    renderSection();
+
+    await screen.findByText("Glucose Reagent");
+    fireEvent.change(document.getElementById("usage-link-1"), {
+      target: { value: "SECONDARY" },
+    });
+
+    fireEvent.click(screen.getByTestId("reagents-cancel"));
+
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(document.getElementById("usage-link-1").value).toBe("PRIMARY");
+    expect(screen.getByTestId("reagents-save")).toBeDisabled();
   });
 
   it("confirms unlink and calls DELETE", async () => {
