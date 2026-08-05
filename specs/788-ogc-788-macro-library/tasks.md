@@ -11,8 +11,9 @@
       engineering decisions; keep technical choices out of product requirements.
 - [x] T004 Define two validation milestones and the clinical-review gate for
       packaged defaults.
-- [ ] T005 Publish the spec PR as the next native GitHub-stack entry and sync
-      OGC-788 with the product-safe scope and unresolved default-content decision.
+- [x] T005 Publish ready PR #3986 as the next native GitHub stack #3985 entry.
+  The product-safe OGC-788 scope and unresolved default-content decision are
+  recorded here; Jira synchronization remains part of final reconciliation.
 
 ## M1 Phase 1 - Tests First
 
