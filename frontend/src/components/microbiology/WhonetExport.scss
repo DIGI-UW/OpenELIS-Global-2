@@ -102,7 +102,7 @@
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 1px;
-    background: $border-subtle-01;
+    background: transparent;
   }
 
   &__metric {
@@ -110,6 +110,8 @@
     min-block-size: 6rem;
     align-content: center;
     gap: $spacing-02;
+    border-block-start: 1px solid $border-subtle-01;
+    border-inline-start: 1px solid $border-subtle-01;
 
     strong {
       font-size: 2rem;

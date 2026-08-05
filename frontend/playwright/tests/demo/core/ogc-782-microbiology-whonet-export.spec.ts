@@ -188,6 +188,12 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       page.getByRole("heading", { name: "Preview", exact: true }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     await expectNoHorizontalPageOverflow();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(
+      page
+        .getByTestId("whonet-export")
+        .getByRole("link", { name: "Home", exact: true }),
+    ).toBeVisible();
     await demo.evidence("ogc-782-m4-06-whonet-preview-mobile", {
       fullPage: true,
     });
