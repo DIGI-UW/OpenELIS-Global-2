@@ -16,10 +16,11 @@
 | Java 21 package build | Passed |
 | Vite production build | Passed |
 
-The pinned evidence bundler produced six screenshots, one standard H.264 MP4,
-a completed narrative index with no placeholders, and a zip at
-`/tmp/ogc-782-m4-evidence-local/`. This local bundle will be regenerated against
-the exact deployed SHA before publication.
+The pinned evidence bundler produced six screenshots, one 34-second standard
+H.264/yuv420p MP4, a contact sheet, a completed narrative index with no
+placeholders, a manifest, and a zip at
+`/tmp/ogc-782-m4-evidence-f57064ec5b4f/` and
+`/tmp/ogc-782-m4-evidence-f57064ec5b4f.zip`.
 
 All backend runs used Java 21. Persistence, ORM, and Liquibase checks used
 Testcontainers PostgreSQL. The service-created M4 fixture uses no SQL, fixed
@@ -28,9 +29,10 @@ persisted IDs, or DAO bypass.
 ## Interaction Quality
 
 The foundational and accessibility tests use Carbon roles, labels, visible
-state, response readiness, and download events. There are no arbitrary waits.
-Presentation-only pauses are isolated to `core-demo-video` through
-`createDemoPresentation`.
+state, response readiness, and download events. The demo uses visible headings,
+rows, URLs, and status messages rather than backend-response synchronization.
+There are no arbitrary interaction waits. Presentation-only pauses are isolated
+to `core-demo-video` through `createDemoPresentation`.
 
 The disposable Vite stack reports its known HMR WebSocket connection warning and
 one unrelated notification-resource `404`. Neither affected the feature request,
@@ -40,11 +42,32 @@ slice.
 
 ## UAT State
 
-Grist contains story `AMR-S14` with required steps `AMR-45` through `AMR-50`.
-The combined pre-deployment checklist revision is
-`2c50adaa394ee252cd775a87383c70d5af672b42530614c9bc1ad201dac27ba8`, with
-14 stories, 38 required steps, and the optional TB reflection. Deployment-time
-revision verification and human rulings remain open.
+Grist contains story `AMR-S14` with required steps `AMR-45` through `AMR-50` and
+a link to PR #3984. The live Grist source and routed AMR overlay are byte-identical
+at revision `90a25a2ee19e0282611845eca163159e84cc2bbfe55309ebf0d77d6ec7edea43`,
+with 14 stories, 38 required steps, and one optional TB reflection. Human
+Pass/Fail/N/A rulings remain open.
+
+## Exact Deployment
+
+- Instance: `amr.openelis-global.org`
+- Deployment: `20260805T013759Z-f57064ec5b4f`
+- Application SHA: `f57064ec5b4f2f797eee3566938cb69efaa79022`
+- Review harness SHA: `72eb003155db91f08a90d5e853e7811f86d3c642`
+- Target verification: health and smoke passed; `/` and
+  `/Microbiology/worklist` returned `200`
+- Deployed functional Playwright: 2/2 including auth setup
+- Deployed desktop/mobile accessibility: 3/3 including auth setup, with no
+  WCAG 2.1 AA axe violations
+- Deployed standard desktop video: 2/2 including auth setup
+- Deployed mobile evidence/overflow: 2/2 including auth setup
+
+PR #3984 initially failed the blocking Playwright lint rule because the demo
+used `waitForResponse`. Commit `f57064ec5b4f2f797eee3566938cb69efaa79022`
+replaced both uses with visible Preview-state assertions. `npm run lint` and the
+desktop/mobile demo run passed before deployment. The GitHub web session available
+to this workspace is signed out, so the generated binaries have not yet been
+attached to the PR; no release or committed-media workaround was used.
 
 ## Environment Issue Found And Fixed
 
