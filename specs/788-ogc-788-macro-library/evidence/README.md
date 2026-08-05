@@ -12,6 +12,7 @@
 - [Automated validation](validation-2026-08-04.md)
 - [Code-qa review](code-qa-2026-08-04.md)
 - [M-08 visual comparison](mock-comparison-2026-08-04.md)
+- [UAT contract](../uat.md)
 
 The external binary bundle is currently at
 `/Users/pmanko/.codex/visualizations/2026/08/04/019fca12-4b0c-71d0-a37e-8493de64fee5/ogc-788-m1-evidence/`
