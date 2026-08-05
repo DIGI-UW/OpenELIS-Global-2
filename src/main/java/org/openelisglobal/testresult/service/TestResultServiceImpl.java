@@ -8,7 +8,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.dao.TestResultDAO;
@@ -23,6 +27,9 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         implements TestResultService {
     @Autowired
     protected TestResultDAO baseObjectDAO;
+
+    @Autowired
+    private DictionaryService dictionaryService;
 
     TestResultServiceImpl() {
         super(TestResult.class);
@@ -91,6 +98,7 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         }
         Set<String> keptIds = new HashSet<>();
         for (TestResult d : desired) {
+            resolveDictionaryValue(d, sysUserId);
             TestResult match = d.getId() == null ? null : existingById.get(d.getId());
             if (match != null) {
                 match.setValue(d.getValue());
@@ -117,6 +125,42 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
             }
         }
         return getActiveOptionsByComponentId(componentId);
+    }
+
+    /**
+     * Dictionary-variant option rows must hold a numeric dictionary id in VALUE —
+     * every consumer resolves it via {@code getDictionaryById}. A free-text option
+     * typed in the Test Catalog Editor (FR-83) arrives here as raw text, so it is
+     * materialized into the dictionary master list (reusing an active entry with
+     * the same name if one exists) and the row repointed at the entry's id. A
+     * numeric value that already resolves to an entry is kept as-is; a numeric
+     * value that resolves to nothing is treated as free text too.
+     */
+    private void resolveDictionaryValue(TestResult option, String sysUserId) {
+        if (!TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(option.getTestResultType())) {
+            return;
+        }
+        String value = option.getValue() == null ? "" : option.getValue().trim();
+        if (value.isEmpty()) {
+            return;
+        }
+        if (StringUtils.isNumeric(value) && dictionaryService.getDictionaryById(value) != null) {
+            return;
+        }
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("dictEntry", value);
+        properties.put("isActive", IActionConstants.YES);
+        List<Dictionary> matches = dictionaryService.getAllMatching(properties);
+        if (!matches.isEmpty()) {
+            matches.sort(Comparator.comparingInt(d -> Integer.parseInt(d.getId())));
+            option.setValue(matches.get(0).getId());
+            return;
+        }
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictEntry(value);
+        dictionary.setIsActive(IActionConstants.YES);
+        dictionary.setSysUserId(sysUserId);
+        option.setValue(dictionaryService.insert(dictionary));
     }
 
     @Override

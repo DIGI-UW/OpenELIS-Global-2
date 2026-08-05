@@ -192,6 +192,20 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
             }
         }
         jdbc.update("DELETE FROM clinlims.dictionary WHERE id = ?", DICT_ID);
+        // Dictionary entries materialized from free-text options (SRIT- prefix),
+        // plus the localization rows their insert auto-created.
+        java.util.List<Long> materializedLocalizations = jdbc.queryForList(
+                "SELECT name_localization_id FROM clinlims.dictionary"
+                        + " WHERE dict_entry LIKE 'SRIT-%' AND name_localization_id IS NOT NULL",
+                Long.class);
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'SRIT-%'");
+        for (Long localizationId : materializedLocalizations) {
+            try {
+                localizationService.delete(String.valueOf(localizationId), "1");
+            } catch (RuntimeException ignored) {
+                // localization may already be gone; ignore
+            }
+        }
     }
 
     private void cleanupTest(long id) {
@@ -383,36 +397,83 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
 
     @org.junit.Test
     public void saveSampleResults_persistsOptionsPerComponent_andSoftDeletesOnOmit() {
+        // Free-text option values are materialized into dictionary entries on save,
+        // so the round-trip exposes the id in value and the text in valueName.
         ResultComponentDto sex = comp(null, "SEX", "Sex", 1);
         sex.resultType = "D";
-        sex.options.add(opt(null, "Male", 1));
-        sex.options.add(opt(null, "Female", 2));
+        sex.options.add(opt(null, "SRIT-Male", 1));
+        sex.options.add(opt(null, "SRIT-Female", 2));
         controller.saveSampleResults(String.valueOf(TEST_ID), body(sex), authedRequest());
 
         SampleResults loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
         ResultComponentDto loadedSex = loaded.components.get(0);
         assertEquals(2, loadedSex.options.size());
         // ordered by sortOrder
-        assertEquals("Male", loadedSex.options.get(0).value);
+        assertEquals("SRIT-Male", loadedSex.options.get(0).valueName);
+        assertTrue("value must hold a numeric dictionary id, got: " + loadedSex.options.get(0).value,
+                loadedSex.options.get(0).value.matches("\\d+"));
         assertEquals(Integer.valueOf(1), loadedSex.options.get(0).sortOrder);
-        assertEquals("Female", loadedSex.options.get(1).value);
+        assertEquals("SRIT-Female", loadedSex.options.get(1).valueName);
 
-        // Re-PUT keeping only "Male" (by id) → "Female" is soft-deleted.
+        // Re-PUT keeping only "SRIT-Male" (by id) → "SRIT-Female" is soft-deleted.
         ResultComponentDto edit = comp(loadedSex.id, "SEX", "Sex", 1);
         edit.resultType = "D";
-        OptionDto keep = loadedSex.options.stream().filter(o -> "Male".equals(o.value)).findFirst().get();
+        OptionDto keep = loadedSex.options.stream().filter(o -> "SRIT-Male".equals(o.valueName)).findFirst().get();
         edit.options.add(opt(keep.id, keep.value, keep.sortOrder));
         controller.saveSampleResults(String.valueOf(TEST_ID), body(edit), authedRequest());
 
         SampleResults after = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
         assertEquals(1, after.components.get(0).options.size());
-        assertEquals("Male", after.components.get(0).options.get(0).value);
-        // "Female" soft-deleted, not hard-deleted: a TEST_RESULT row remains
-        // is_active=false.
-        Long inactive = jdbc
-                .queryForObject("SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = 'Female'"
-                        + " AND is_active = false", Long.class, TEST_ID);
+        assertEquals("SRIT-Male", after.components.get(0).options.get(0).valueName);
+        // "SRIT-Female" soft-deleted, not hard-deleted: a TEST_RESULT row remains
+        // is_active=false, still pointing at the materialized dictionary entry.
+        Long femaleDictId = jdbc.queryForObject("SELECT min(id) FROM clinlims.dictionary WHERE dict_entry = ?",
+                Long.class, "SRIT-Female");
+        Long inactive = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = ? AND is_active = false",
+                Long.class, TEST_ID, String.valueOf(femaleDictId));
         assertEquals(Long.valueOf(1L), inactive);
+    }
+
+    @org.junit.Test
+    public void saveSampleResults_freeTextOptionMaterializesADictionaryEntry() {
+        // OGC-1142 FR-83 regression: a typed custom option must land in the
+        // dictionary master list, never as raw text in TEST_RESULT.VALUE — raw text
+        // there blows up every getDictionaryById consumer (500 on
+        // MasterListsPage/calculatedValue via /rest/test-display-beans-map).
+        ResultComponentDto virus = comp(null, "VIRUS", "Virus", 1);
+        virus.resultType = "D";
+        virus.options.add(opt(null, "SRIT-HIV1", 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(virus), authedRequest());
+
+        OptionDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
+                .get(0);
+        assertTrue("free text must be replaced by a numeric dictionary id, got: " + saved.value,
+                saved.value.matches("\\d+"));
+        assertEquals("SRIT-HIV1", saved.valueName);
+        Long entries = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.dictionary WHERE dict_entry = ? AND is_active = 'Y'", Long.class,
+                "SRIT-HIV1");
+        assertEquals("the typed text becomes an active dictionary entry", Long.valueOf(1L), entries);
+        Long rawRows = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = 'SRIT-HIV1'", Long.class,
+                TEST_ID);
+        assertEquals("no test_result row may keep the raw text", Long.valueOf(0L), rawRows);
+    }
+
+    @org.junit.Test
+    public void saveSampleResults_freeTextOptionReusesAnExistingActiveDictionaryEntry() {
+        ResultComponentDto res = comp(null, "RES", "Result", 1);
+        res.resultType = "D";
+        res.options.add(opt(null, DICT_ENTRY, 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(res), authedRequest());
+
+        OptionDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
+                .get(0);
+        assertEquals("text matching an active entry must reuse its id", String.valueOf(DICT_ID), saved.value);
+        Long entries = jdbc.queryForObject("SELECT count(*) FROM clinlims.dictionary WHERE dict_entry = ?", Long.class,
+                DICT_ENTRY);
+        assertEquals("no duplicate dictionary entry may be created", Long.valueOf(1L), entries);
     }
 
     @org.junit.Test
@@ -420,8 +481,8 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         // Seed the source test's config via the controller.
         ResultComponentDto srcComp = comp(null, "SEX", "Sex", 1);
         srcComp.resultType = "D";
-        srcComp.options.add(opt(null, "Male", 1));
-        srcComp.interpretations.add(interp(null, "Male", "Boy", "NORMAL"));
+        srcComp.options.add(opt(null, "SRIT-Male", 1));
+        srcComp.interpretations.add(interp(null, "SRIT-Male", "Boy", "NORMAL"));
         controller.saveSampleResults(String.valueOf(SOURCE_ID), body(srcComp), authedRequest());
 
         // Copy onto the (empty) target test.
@@ -433,7 +494,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         assertEquals(1, target.components.size());
         assertEquals("SEX", target.components.get(0).code);
         assertEquals(1, target.components.get(0).options.size());
-        assertEquals("Male", target.components.get(0).options.get(0).value);
+        assertEquals("SRIT-Male", target.components.get(0).options.get(0).valueName);
         assertEquals(1, target.components.get(0).interpretations.size());
         assertEquals("Boy", target.components.get(0).interpretations.get(0).text);
     }

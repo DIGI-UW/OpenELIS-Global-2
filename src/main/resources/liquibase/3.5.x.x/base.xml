@@ -177,4 +177,8 @@
   <include relativeToChangelogFile="true" file="066-sample-type-domain-enum-migration.xml"/>
   <include relativeToChangelogFile="true" file="067-sample-type-disposal-instructions.xml"/>
 
+  <!-- OGC-1142 FR-83 follow-up: dictionary-variant TEST_RESULT rows written with raw
+      free-text values instead of dictionary ids broke every getDictionaryById consumer -->
+  <include relativeToChangelogFile="true" file="068-repair-free-text-dictionary-options.xml"/>
+
 </databaseChangeLog>
