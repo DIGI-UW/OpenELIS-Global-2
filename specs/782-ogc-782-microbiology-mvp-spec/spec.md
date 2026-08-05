@@ -2,19 +2,26 @@
 
 **Feature Branch**: `spec/782-ogc-782-microbiology-mvp-spec`
 **Created**: 2026-06-27
-**Status**: Draft
-**Input**: User description: "Create a microbiology-specific feature spec that distills the important features from Jira, Confluence, openelis-work specs/mockups, and repo research; reference the proper files; make the product behavior crystal clear for planning and implementation without letting product specs mandate technical implementation details."
+**Status**: Authoritative-alignment remediation in progress; implementation is
+partial and combined human UAT remains pending
+**Input**: User description: "Create a microbiology-specific feature spec that
+distills the important product behavior from the authoritative OpenELIS Work
+specs and mocks; reference the proper files; make the behavior crystal clear
+for planning and implementation without letting product artifacts mandate
+technical implementation details."
 
 ## Source References
 
-This feature spec is the product-facing distillation for planning. The detailed
-source artifacts remain useful references, but table names, service names,
-routes, schemas, and ownership assumptions inside those artifacts are not
-binding product requirements.
+This feature spec is the product-facing distillation for planning. OpenELIS
+Work at
+[`a1f720d7b3b0`](https://github.com/DIGI-UW/openelis-work/commit/a1f720d7b3b01db63387361495f4aa6589105003)
+is the pinned product authority for this remediation. Table names, service
+names, schemas, and component or route suggestions inside those artifacts are
+not binding technical requirements.
 
 - Confluence narrative: [Microbiology Module - Workflow Walk-through](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256)
 - Public design bundle:
-  [openelis-work/designs/microbiology](https://github.com/DIGI-UW/openelis-work/tree/main/designs/microbiology)
+  [openelis-work/designs/microbiology](https://github.com/DIGI-UW/openelis-work/tree/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology)
 - M-00 parent:
   [m-00-micro-module-parent.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-00-micro-module-parent.md)
 - M-01 reference data:
@@ -24,7 +31,8 @@ binding product requirements.
   [m-02-breakpoint-catalog.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-02-breakpoint-catalog.md),
   [Breakpoint Catalog visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-02-breakpoint-catalog.html)
 - M-03 order entry hook:
-  [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-03-order-entry-micro-hook.md)
+  [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology/m-03-order-entry-micro-hook.md),
+  [Step 1 visual mock](https://github.com/DIGI-UW/openelis-work/blob/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology/m-03-order-entry-step1.html)
 - M-04 case workbench:
   [m-04-case-workbench-core.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-04-case-workbench-core.md)
 - M-05 AST entry and interpretation:
@@ -45,28 +53,29 @@ binding product requirements.
   `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md`
 - Local product cleanup list:
   `specs/roadmaps/microbiology-spec-health-cleanup-list.md`
-- Primary Jira references: OGC-782, OGC-786, OGC-787, OGC-789, OGC-790,
-  OGC-791, OGC-792, OGC-794, OGC-785, OGC-925.
+- Authoritative alignment and complete guided-workflow crosswalk:
+  `evidence/openelis-work-authoritative-alignment-2026-08-05.md`
 
 ## Interpretation Rules for Planning
 
 - This spec defines product behavior and acceptance expectations.
-- Detailed M-\* source files provide workflow detail and mockup context, but
-  implementation-heavy language in them must be filtered through the local
-  engineering crosswalk.
+- Detailed M-\* source files and visual mocks are authoritative for actors,
+  workflow order, information shown or captured, control meaning,
+  requiredness, defaults, state transitions, and observable acceptance
+  behavior.
 - Planning and tasks may choose table names, service boundaries, API shapes,
   routes, migrations, and reuse points, but those choices should not be treated
   as Casey-owned product requirements.
-- Mockups are visual workflow references, not implementation contracts.
+- Mockups do not prescribe schema, API, route names, or component structure.
+  They do prescribe visible workflow intent unless a deviation is explicitly
+  ruled and recorded.
 
 ## MVP Scope Ruling
 
-Jira OGC-782 is the doc-only M-00 umbrella for the full microbiology module.
-This feature keeps `782` as its traceability number, but PR #3789 is the single
-implementation milestone for an agreed MVP slice across the related M-03,
-M-04, M-05, M-07, and M-11 outcomes. It does not claim that the OGC-782 Jira
-epic itself is an implementation ticket or that the full 17-epic bundle is
-complete.
+This feature keeps `782` as its traceability number. PR #3789 is the initial
+routine-bacteriology implementation slice across M-03, M-04, M-05, M-07, and
+M-11 outcomes; it is not the complete microbiology module. Follow-on branches
+remain unaccepted until their own evidence and human UAT gates pass.
 
 The merge-blocking MVP is routine bacteriology order routing and order details,
 case work, isolate identification, manual AST, worklist navigation, critical
@@ -93,9 +102,9 @@ appears in the worklist with the correct workflow context.
 **Acceptance Scenarios**:
 
 1. **Given** a test that is configured to start routine bacteriology work,
-   **When** the user places an order for that test, **Then** the system
-   indicates that a microbiology case will be created and captures the
-   microbiology order details needed by the lab.
+   **When** the user selects that test in the supported Add Order workflow,
+   **Then** Program visibly changes to Microbiology and the Microbiology Program
+   Details become available before save.
 2. **Given** a test that is not configured for microbiology culture work,
    **When** the user places an order for that test, **Then** the microbiology
    order fields do not appear and no microbiology case is created.
@@ -103,6 +112,12 @@ appears in the worklist with the correct workflow context.
    workflow reserved for TB work, **When** the worklist is reviewed, **Then**
    the system distinguishes both workflow records without requiring duplicate
    accessioning. Completing the TB laboratory workflow is not part of this MVP.
+4. **Given** the user has entered microbiology details, **When** the final
+   culture test is removed or the order leaves the microbiology workflow,
+   **Then** the system asks for confirmation before discarding those details.
+5. **Given** a qualifying order has been saved, **When** the resulting case is
+   opened, **Then** the selected culture setup and order details are present
+   and repeated saves have not created a duplicate case.
 
 ---
 
@@ -267,10 +282,12 @@ or missing mapping for export.
 
 - **FR-001**: The system MUST provide a reliable way for ordered tests to start
   the appropriate microbiology workflow without relying on clerk memory.
-- **FR-002**: Users MUST be able to capture microbiology order details needed
-  for culture setup, including culture setup default, patient origin, number of
-  sets, clinical history, antibiotic exposure, and critical notification
-  preference.
+- **FR-002**: In the supported Add Order workflow, users MUST be able to confirm
+  or change the required default Culture Method, select Patient Origin, enter a
+  bounded/defaulted Number of Sets, record multi-line Clinical History, mark
+  Antibiotic Exposure, and mark Critical Notify. Antibiotic Exposure and
+  Critical Notify are binary choices, not free-text fields. The system MUST
+  confirm before discarding entered details when culture routing is removed.
 - **FR-003**: The system MUST distinguish sibling bacteriology and TB workflow
   records for the same physical specimen without duplicate accessioning. This
   MVP does not provide the operational TB laboratory workflow.
@@ -318,12 +335,16 @@ or missing mapping for export.
   analyzer automation, expert rules, authoritative WHONET interoperability, TB
   workflow, and GLASS reporting may be planned extensions unless included in an
   explicit later slice.
-- **FR-022**: Product specs and Jira tickets for this feature MUST describe
+- **FR-022**: Product specs and product tickets for this feature MUST describe
   workflow behavior and acceptance outcomes, not required table names, service
   names, route names, or storage layout.
 - **FR-023**: Worklist and case destinations MUST preserve bookmarkable,
   refresh-stable filter, sort, and active-section context, including when a
   user opens a case and returns to the worklist.
+- **FR-024**: Completion claims MUST trace each required OpenELIS Work behavior
+  to an implementation task, production path, focused automated evidence, and
+  human UAT. Direct navigation to a legacy route or label-only checks do not
+  prove the supported user workflow.
 
 ### Deferred Product Outcomes
 
@@ -361,9 +382,9 @@ have not completed human UAT.
 Branch `feat/782-ogc-782-microbiology-m10-whonet-export` implements the first
 manual WHONET export slice: period and policy selection, used-set organism and
 antibiotic readiness, direct mapping repair, preview, audited CSV generation,
-canonical URL state, and desktop/mobile accessibility evidence. It remains
-stacked on M3 and is not accepted or deployed until its own PR, live checklist,
-exact-SHA deployment, and human UAT records are complete.
+canonical URL state, and desktop/mobile accessibility evidence. It is deployed
+inside the current combined review candidate but remains unaccepted until its
+own PR, exact-SHA checklist, and human UAT records are complete.
 
 The delivered stack is not the full microbiology module. Authoritative
 wide-format WHONET/profile packaging, the remaining mapping vocabularies,
@@ -424,9 +445,10 @@ shape during planning.
 
 ### Measurable Outcomes
 
-- **SC-001**: A user can enter a qualifying routine bacteriology order and see
-  the resulting microbiology work on the worklist without manual program
-  routing.
+- **SC-001**: From the supported Add Order workflow, a user can select a
+  qualifying routine-bacteriology test, see Program become Microbiology,
+  confirm the complete culture details, save, and find one resulting case on
+  the worklist without manual routing or duplicate creation.
 - **SC-002**: A technologist can complete the MVP bacteriology path from order
   routing through culture setup, isolate identification, manual AST entry,
   review readiness, and report release using one case workflow.

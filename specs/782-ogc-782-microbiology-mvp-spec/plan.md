@@ -9,9 +9,9 @@ Implement the microbiology MVP as a milestone-based OpenELIS module that routes
 culture-capable ordered tests into a microbiology case, supports routine
 bacteriology bench work, records isolates and manual AST, gates preliminary and
 final release, logs critical communications, and prepares finalized data for
-WHONET readiness. The plan uses the Confluence workflow narrative and
-openelis-work M-* bundle as product evidence, but treats implementation-heavy
-phrasing there as engineering input only.
+WHONET readiness. The current synchronized OpenELIS Work source is the product
+authority for visible workflow and acceptance behavior. Its table, service,
+route, schema, and component suggestions remain non-binding engineering input.
 
 The technical approach is to add a new `org.openelisglobal.microbiology`
 backend area for the case workflow while reusing existing OpenELIS anchors:
@@ -43,11 +43,13 @@ performance qualification and is not claimed by this MVP
 **Constraints**: Service-layer transactions only; no controller transactions;
 Carbon-only UI; React Intl for all user-facing text; Liquibase-only schema
 changes with rollback; configuration-driven variation; no product artifact may
-force table, class, route, or storage decisions
+force table, class, route, or storage decisions; no implementation may omit a
+visible OpenELIS Work behavior without an explicit recorded ruling
 **Scale/Scope**: MVP-1A routine bacteriology end-to-end with manual AST.
-Analyzer ingestion, expert rules, TB/mycobacteriology, macro library, full
-WHONET export automation, GLASS/FHIR surveillance, and antibiograms are later
-slices unless explicitly pulled into a milestone.
+Analyzer ingestion, expert rules, TB/mycobacteriology, full WHONET export
+automation, GLASS/FHIR surveillance, and antibiograms are later slices unless
+explicitly pulled into a milestone. Macro Library is a separate cross-cutting
+OpenELIS feature; microbiology owns only its integration behavior.
 
 ## Constitution Check
 
@@ -79,11 +81,14 @@ _GATE: Passed before Phase 0 research. Re-check after Phase 1 design._
 
 ## Clarification Result
 
-The implementation audit resolved material scope ambiguity. Final cases are
-mutation-locked; amendment and re-identification history are V2. The sibling TB
-record proves shared-specimen separation only; operational TB processing is V2.
-Reagent/card lots, full WHONET export/mapping, and the unmeasured 200-case
-performance target are not MVP claims.
+The 2026-08-05 source-alignment audit supersedes the earlier claim that all
+material MVP ambiguity was resolved. Final-case amendment behavior and
+operational TB remain outside the initial PR, but M-03 Program/order-entry
+behavior is a blocking implementation and evidence gap. The synchronized source also
+contains two open product contradictions: untyped-test fallback and mixed
+bacteriology/TB handling. Rulings and the complete guided-workflow crosswalk are
+recorded in
+`evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
 
 The historical MVP boundary above remains unchanged. Follow-on stack branches
 now add clinical completeness (M2), reference/mapping administration (M3), and
@@ -95,10 +100,9 @@ delivery, wide-format, remaining-vocabulary, or standards-certification claims.
 ## Milestone Plan
 
 _GATE: This feature exceeds three days and must be delivered in independently
-verifiable behavior slices. The MVP implementation is grouped into four native
-stack layers: foundations and order routing; case workbench and manual AST;
-worklist and critical communication; and release, reporting, and integrated
-proof. Later slices stack sequentially above the completed MVP layers._
+verifiable behavior slices. The original M1-M7 implementation was consolidated
+historically in PR #3789. Every post-MVP remediation slice is delivered as one
+sequential stacked PR based on the preceding slice._
 
 ### Milestone Table
 
@@ -111,6 +115,7 @@ proof. Later slices stack sequentially above the completed MVP layers._
 | M5 | `m5-manual-ast` | Manual AST setup, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit | US3 | Breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests | M4 |
 | M6 | `m6-worklists-critical` | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing | US4, US5 | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks | M5 |
 | M7 | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2 | US5, US6 | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow | M6 |
+| R1 | `r1-authoritative-alignment` | Repair M-03 on the supported Add Order workflow, reconcile false completion claims, and establish source-to-code-to-UAT traceability | US1 | Unit/component/service tests plus configured-navigation Playwright, desktop/mobile source comparison, and separate human UAT story | M10 follow-on head |
 
 ### Milestone Dependency Graph
 
@@ -122,23 +127,27 @@ graph LR
     M4 --> M5["M5: Manual AST"]
     M5 --> M6["M6: Worklists + Critical"]
     M6 --> M7["M7: Release + Surveillance Readiness"]
+    M7 --> M8["Follow-on Clinical Completeness"]
+    M8 --> M9["Follow-on Reference Administration"]
+    M9 --> M10["Follow-on WHONET Export"]
+    M10 --> R1["R1: Authoritative Alignment"]
 ```
 
 ### PR Strategy
 
 - **Spec PR #3782**: `spec/782-ogc-782-microbiology-mvp-spec` -> `develop`.
-- **Foundations and order routing PR #3789**:
+- **Initial MVP PR #3789**:
   `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` ->
-  `spec/782-ogc-782-microbiology-mvp-spec`. Covers M1-M3.
-- **Case workbench and manual AST**:
-  `feat/782-ogc-782-microbiology-mvp-workbench-ast`. Covers M4-M5.
-- **Worklist and critical communication**:
-  `feat/782-ogc-782-microbiology-mvp-worklist-critical`. Covers M6.
-- **Release, reporting, and integrated proof**:
-  `feat/782-ogc-782-microbiology-mvp-release-reporting`. Covers M7 and MVP
-  closure.
-- **Post-MVP remediation**: one coherent behavior slice per PR, with each PR
-  based on the preceding branch so GitHub represents the sequence as a stack.
+  `spec/782-ogc-782-microbiology-mvp-spec`. It carries the consolidated
+  routine-bacteriology implementation.
+- **Superseded PRs**: #3783-#3788 were closed and are not part of the delivery
+  chain.
+- **Active follow-on stack**: clinical completeness, reference administration,
+  WHONET export, then the R1 authoritative-alignment PR. Each PR targets the
+  preceding branch and retains its own acceptance gate.
+- **Macro Library**: extract core/runtime/administration into a separate
+  cross-cutting stack. Keep only microbiology consumption in a small
+  integration PR.
 
 ## Project Structure
 
@@ -157,7 +166,7 @@ specs/782-ogc-782-microbiology-mvp-spec/
     └── microbiology-openapi.yaml
 ```
 
-### Source Code (implementation branch)
+### Source Code
 
 ```text
 src/main/java/org/openelisglobal/microbiology/
@@ -169,7 +178,7 @@ src/main/java/org/openelisglobal/microbiology/
 └── valueholder/
 
 src/main/resources/liquibase/3.5.x.x/
-└── <next-available>-microbiology-mvp-*.xml
+└── <next-available>-microbiology-*.xml
 
 src/test/java/org/openelisglobal/microbiology/
 ├── controller/
@@ -187,7 +196,8 @@ frontend/src/pages/
 └── MicrobiologyPage.jsx
 
 frontend/playwright/tests/foundational/core/
-└── microbiology-mvp.spec.ts
+├── microbiology-mvp.spec.ts
+└── microbiology-order-entry.spec.ts
 ```
 
 **Structure Decision**: Use a dedicated `microbiology` backend package for the
@@ -240,8 +250,9 @@ inside product requirements.
 
 - Backend unit tests use builders/factories and avoid assert-on-mock-return
   patterns.
-- Integration tests seed micro reference data through test fixtures or focused
-  Liquibase-backed setup; mutation tests assert real persisted effects.
+- Integration and E2E fixtures create mutable scenario data through services.
+  Liquibase provides schema/reference migrations only; tests do not seed
+  scenario data through SQL, fixed primary keys, or DAO bypass.
 - Frontend tests mock API utilities at the utility boundary and verify URL,
   CSRF, and payload shape.
 - E2E setup uses API/fixture setup rather than UI setup and does not stub the
@@ -265,16 +276,19 @@ inside product requirements.
   tests, Test Catalog regression tests.
 - **After M2**: Case service and DAO/integration tests, uniqueness and sibling
   lookup tests.
-- **After M3**: Order-routing integration tests for micro, non-micro, and
-  sibling workflows.
+- **After M3/R1 correction**: Order-routing integration tests for micro,
+  non-micro, and sibling workflows plus current Add Order unit/component and
+  Playwright evidence for visible Program derivation, complete controls,
+  discard confirmation, persistence, and case creation.
 - **After M4**: Controller and frontend case workbench tests; Playwright smoke
   plan drafted.
 - **After M5**: AST interpretation, override, repeat/retest, and review gate
   tests.
 - **After M6**: Worklist prioritization, alert surfacing, critical
   communication audit, accessibility checks.
-- **After M7**: Release readiness, report handoff, WHONET readiness, and
-  Playwright happy-path/blocking-path flows.
+- **After M7**: Release readiness, visible patient-report handoff, final-case
+  mutation lock, WHONET readiness, and Playwright happy-path/blocking-path
+  flows. Amendment history is explicitly excluded.
 - **Final MVP Code QA**: Run `DIGI-UW/code-qa` workflows for meaningful test
   coverage, spec-code alignment, simplicity review, and evidence bundling before
   marking the MVP implementation complete.
