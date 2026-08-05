@@ -3,6 +3,7 @@ package org.openelisglobal.resultlimit;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
@@ -10,6 +11,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -173,5 +175,66 @@ public class ResultLimitServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, resultLimitList.size());
         assertEquals(Timestamp.valueOf("2025-06-01 10:00:00"), resultLimitList.get(0).getLastupdated());
         assertTrue(resultLimitList.get(0).isAlwaysValidate());
+    }
+
+    // ── one selection for both Results Entry and Validation ───────────────────
+    // Validation used to ask only for the test-level range while Results Entry
+    // branched on the result's component, so the two screens disagreed on a
+    // multi-component test. Both now call getResultLimitForResult.
+
+    private static Patient malePatient() {
+        Patient patient = new Patient();
+        patient.setId("1");
+        patient.setBirthDate(Timestamp.valueOf("2025-06-02 11:30:00"));
+        patient.setGender("M");
+        return patient;
+    }
+
+    /**
+     * With no components on the test the row is not component-scoped, so the shared
+     * selection must land on exactly the test-level range the old call returned.
+     */
+    @Test
+    public void getResultLimitForResult_matchesTheTestLevelSelectionWhenThereAreNoComponents() {
+        Analysis analysis = new Analysis();
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        test.setId("7002");
+        analysis.setTest(test);
+
+        ResultLimit viaResult = resultLimitService.getResultLimitForResult(analysis, null, malePatient());
+        ResultLimit viaTest = resultLimitService.getResultLimitForTestAndPatient("7002", malePatient());
+
+        assertNotNull(viaResult);
+        assertNotNull(viaTest);
+        assertEquals(viaTest.getId(), viaResult.getId());
+    }
+
+    /** No test on the analysis is not an exception — there is simply no range. */
+    @Test
+    public void getResultLimitForResult_isNullWhenTheAnalysisHasNoTest() {
+        assertNull(resultLimitService.getResultLimitForResult(new Analysis(), null, malePatient()));
+        assertNull(resultLimitService.getResultLimitForResult(null, null, malePatient()));
+    }
+
+    /**
+     * A results screen renders one row per component, including components with no
+     * result yet. Each row must get its own component's range, so an explicit
+     * component wins over anything derived from the (absent) result.
+     */
+    @Test
+    public void getResultLimitForResult_honoursAnExplicitComponent() {
+        Analysis analysis = new Analysis();
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        test.setId("7002");
+        analysis.setTest(test);
+
+        // A component id that has no ranges of its own resolves to no limit, which is
+        // distinguishable from the test-level limit the null-component call returns.
+        ResultLimit testLevel = resultLimitService.getResultLimitForResult(analysis, null, malePatient(), null);
+        ResultLimit forComponent = resultLimitService.getResultLimitForResult(analysis, null, malePatient(),
+                "no-such-component");
+
+        assertNotNull(testLevel);
+        assertNull(forComponent);
     }
 }

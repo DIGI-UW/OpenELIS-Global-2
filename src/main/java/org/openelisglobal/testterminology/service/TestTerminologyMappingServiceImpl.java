@@ -122,6 +122,29 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Set<String> getTestIdsWithActiveSource(String source) {
+        Set<String> testIds = new HashSet<>();
+        for (TestTerminologyMapping m : getAllMatching("source", source)) {
+            if ("Y".equals(m.getIsActive())) {
+                testIds.add(m.getTestId());
+            }
+        }
+        return testIds;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasActiveMappingForSource(String testId, String source) {
+        for (TestTerminologyMapping m : getActiveByTestId(testId)) {
+            if (Objects.equals(source, m.getSource())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     @Transactional
     public void syncLegacyLoinc(String testId, String loinc, String sysUserId) {
         String code = isBlank(loinc) ? null : loinc.trim();

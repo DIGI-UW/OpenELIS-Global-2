@@ -42,6 +42,9 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     AnalysisService aService;
 
     @Autowired
+    org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
+
+    @Autowired
     AnalysisDAO analysisDAO;
 
     @Autowired
@@ -918,5 +921,38 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
                 .between(analysis.getStartedDate().toInstant(), analysis.getReleasedDate().toInstant()).toHours();
 
         Assert.assertEquals("Weekend TAT should be 65 hours, not 72 (3*24)", 65L, weekendHours);
+    }
+
+    /**
+     * A results or validation row is work on one specimen, so the display name must
+     * name that specimen. The fixtures give the same shape of test on two different
+     * sample items, which is exactly the case the old catalog-summary name could
+     * not distinguish — it appended a "(first +n)" summary, or nothing at all when
+     * the test had no sample-type links.
+     */
+    @Test
+    public void getTestDisplayName_namesTheSpecimenTheAnalysisIsFor() {
+        Analysis blood = aService.get("1");
+        Analysis urine = aService.get("2");
+        Assert.assertNotNull(blood);
+        Assert.assertNotNull(urine);
+
+        String bloodSpecimen = typeOfSampleService.get("1").getLocalizedName();
+        String urineSpecimen = typeOfSampleService.get("2").getLocalizedName();
+
+        String bloodName = aService.getTestDisplayName(blood);
+        String urineName = aService.getTestDisplayName(urine);
+
+        Assert.assertTrue("expected " + bloodName + " to name " + bloodSpecimen,
+                bloodName.endsWith("(" + bloodSpecimen + ")"));
+        Assert.assertTrue("expected " + urineName + " to name " + urineSpecimen,
+                urineName.endsWith("(" + urineSpecimen + ")"));
+        Assert.assertNotEquals("two specimens must not read identically", bloodName, urineName);
+    }
+
+    /** No analysis is not an exception. */
+    @Test
+    public void getTestDisplayName_isBlankForNoAnalysis() {
+        Assert.assertEquals("", aService.getTestDisplayName(null));
     }
 }

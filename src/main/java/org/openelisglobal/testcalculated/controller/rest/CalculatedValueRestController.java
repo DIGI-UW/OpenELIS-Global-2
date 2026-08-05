@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
@@ -94,14 +95,21 @@ public class CalculatedValueRestController {
         }
     }
 
+    /**
+     * All calculations, or just one when {@code id} is supplied — the Test Editor's
+     * Reflex &amp; Calc section links straight to a single calculation, and opening
+     * it should show that calculation rather than the whole collection.
+     */
     @GetMapping(value = "test-calculations", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public List<Calculation> getReflexRules(HttpServletRequest request) {
+    public List<Calculation> getReflexRules(HttpServletRequest request, @RequestParam(required = false) String id) {
         // OGC-655: previously forced toggled=false on every load, which made
         // an active rule's body collapse on reload even though active=true. The
         // Toggle Rule control is a UI-collapse affordance; seed it from the
         // persisted active state so reload reflects what was saved.
-        List<Calculation> calculations = testCalculationService.getAll().stream().collect(Collectors.toList());
+        List<Calculation> calculations = testCalculationService.getAll().stream()
+                .filter(c -> id == null || id.isBlank() || id.equals(String.valueOf(c.getId())))
+                .collect(Collectors.toList());
         calculations.forEach(c -> c.setToggled(Boolean.TRUE.equals(c.getActive())));
         return !calculations.isEmpty() ? calculations : Collections.<Calculation>emptyList();
     }

@@ -85,6 +85,27 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
         return super.insert(analysis);
     }
 
+    /**
+     * The specimen name to show for this analysis: the free-text sample type for a
+     * "Variable" sample item, otherwise the sample item's own type. Blank when the
+     * analysis has no sample item, which leaves the caller on the catalog summary.
+     */
+    private String specimenNameFor(Analysis analysis) {
+        if (analysis.getSampleItem() == null) {
+            return null;
+        }
+        TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
+        String typeOfSampleId = analysis.getSampleItem().getTypeOfSampleId();
+        if (typeOfSampleId == null) {
+            return analysis.getSampleTypeName();
+        }
+        if (typeOfSampleId.equals(typeOfSampleService.getTypeOfSampleIdForLocalAbbreviation("Variable"))) {
+            return analysis.getSampleTypeName();
+        }
+        TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleId);
+        return typeOfSample == null ? analysis.getSampleTypeName() : typeOfSample.getLocalizedName();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public String getTestDisplayName(Analysis analysis) {
@@ -92,11 +113,10 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
             return "";
         }
         Test test = getTest(analysis);
-        String name = TestServiceImpl.getLocalizedTestNameWithType(test);
-        if (analysis.getSampleItem().getTypeOfSampleId().equals(
-                SpringContext.getBean(TypeOfSampleService.class).getTypeOfSampleIdForLocalAbbreviation("Variable"))) {
-            name += "(" + analysis.getSampleTypeName() + ")";
-        }
+        // An analysis is work on one sample item, so name that specimen instead of
+        // the catalog's multi-specimen summary: "Albumin (DBS)" rather than
+        // "Albumin (DBS +1)", which leaves the user guessing which sample the row is.
+        String name = TestServiceImpl.getLocalizedTestNameWithType(test, specimenNameFor(analysis));
 
         // TypeOfSample typeOfSample = SpringContext.getBean(TypeOfSampleService.class)
         // .getTypeOfSampleForTest(test.getId());

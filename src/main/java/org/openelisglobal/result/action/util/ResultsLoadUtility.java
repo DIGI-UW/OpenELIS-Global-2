@@ -744,15 +744,9 @@ public class ResultsLoadUtility {
         // Multi-component rows take their reference range from their own component's
         // limits (chosen for the patient's age/gender); other rows use the test-level
         // limits. Either way the selection is patient-conditional (OGC-1127/OGC-949).
-        // OGC-1145 Phase 2: the analysis's specimen selects a scoped limit over
-        // the shared set when the test carries per-sample-type overrides.
-        String limitSampleTypeId = analysis.getSampleItem() != null ? analysis.getSampleItem().getTypeOfSampleId()
-                : null;
         ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
-        ResultLimit resultLimit = component != null
-                ? resultLimitService.getResultLimitForComponentAndPatient(component.getId(), currentPatient,
-                        limitSampleTypeId)
-                : resultLimitService.getResultLimitForTestAndPatient(test.getId(), currentPatient, limitSampleTypeId);
+        ResultLimit resultLimit = resultLimitService.getResultLimitForResult(analysis, result, currentPatient,
+                component == null ? null : component.getId());
 
         String receivedDate = currSample == null ? getCurrentDate() : currSample.getReceivedDateForDisplay();
         String testMethodName = testService.getTestMethodName(test);

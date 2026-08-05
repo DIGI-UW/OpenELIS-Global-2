@@ -95,7 +95,17 @@ function ReflexRule() {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", fetchSamples);
     getFromOpenElisServer("/rest/reflexrule-options", fetchRuleOptions);
-    getFromOpenElisServer("/rest/reflexrules", fetchReflexRules);
+    // A link from the Test Editor names one rule, so fetch just that rule instead
+    // of the whole collection.
+    const selectedRuleId = new URLSearchParams(window.location.search).get(
+      "id",
+    );
+    getFromOpenElisServer(
+      selectedRuleId
+        ? `/rest/reflexrules?id=${encodeURIComponent(selectedRuleId)}`
+        : "/rest/reflexrules",
+      fetchReflexRules,
+    );
 
     return () => {
       // This code runs when component is unmounted

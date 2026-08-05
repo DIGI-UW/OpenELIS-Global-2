@@ -210,6 +210,10 @@ public class TestCatalogEditorRestController {
         Map<String, List<CatalogHealthService.Finding>> findingsByTest = catalogHealthService != null
                 ? catalogHealthService.getAll()
                 : Map.of();
+        // A test is LOINC-identifiable through the legacy column OR any active LOINC
+        // mapping — including one scoped to a component or a single specimen. Resolved
+        // in one query so decorating the rows below stays a set lookup.
+        Set<String> loincMappedTestIds = terminologyService.getTestIdsWithActiveSource("LOINC");
         String searchLower = search == null ? null : search.toLowerCase(Locale.ROOT);
         // Resolve the test ids for the requested sample type once (one query),
         // rather than looking up each test's sample types while filtering.
@@ -255,7 +259,7 @@ public class TestCatalogEditorRestController {
             row.domain = test.getDomain();
             row.active = active;
             row.amr = testAmr;
-            row.hasLoinc = !isBlank(test.getLoinc());
+            row.hasLoinc = !isBlank(test.getLoinc()) || loincMappedTestIds.contains(test.getId());
             // Coverage-incomplete decoration is wired with Ranges/Coverage Validation (M7).
             row.coverageIncomplete = false;
             row.findings = findings;
@@ -507,9 +511,12 @@ public class TestCatalogEditorRestController {
         LoincIntegrity integrity = new LoincIntegrity();
         integrity.loinc = test.getLoinc();
         integrity.active = test.isActive();
-        // A test that should receive results (active + orderable) but has no LOINC
-        // can never be matched by the resolver.
-        integrity.noLoinc = test.isActive() && Boolean.TRUE.equals(test.getOrderable()) && isBlank(test.getLoinc());
+        // A test that should receive results (active + orderable) but carries no LOINC
+        // anywhere can never be matched by the resolver. A mapping on a component or a
+        // single specimen is still a LOINC the resolver can match, so it counts — only
+        // a test with none at all is flagged.
+        integrity.noLoinc = test.isActive() && Boolean.TRUE.equals(test.getOrderable()) && isBlank(test.getLoinc())
+                && !terminologyService.hasActiveMappingForSource(testId, "LOINC");
         if (!isBlank(test.getLoinc())) {
             for (Test other : testService.getActiveTestsByLoinc(test.getLoinc())) {
                 if (other.getId() != null && !other.getId().equals(testId)) {
