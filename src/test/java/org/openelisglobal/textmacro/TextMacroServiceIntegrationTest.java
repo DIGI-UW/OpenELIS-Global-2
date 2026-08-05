@@ -115,6 +115,13 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
         assertFalse(service.getAdmin(alpha.id).active);
         assertFalse(service.getAdmin(zeta.id).active);
 
+        TextMacroAdminQueryForm allStatuses = new TextMacroAdminQueryForm();
+        allStatuses.q = suffix;
+        allStatuses.status = "all";
+        TextMacroPageForm afterBulk = service.searchAdmin(allStatuses);
+        assertEquals(2, afterBulk.total);
+        assertTrue(afterBulk.items.stream().noneMatch(item -> item.active));
+
         service.bulk(bulk("DELETE_LOCAL", alpha.id), TEST_SYS_USER_ID);
         TextMacroRequestException removed = assertThrows(TextMacroRequestException.class,
                 () -> service.getAdmin(alpha.id));

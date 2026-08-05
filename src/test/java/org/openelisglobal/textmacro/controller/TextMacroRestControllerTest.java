@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,13 +14,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.lang.reflect.Field;
 import java.util.List;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.textmacro.controller.rest.TextMacroAdminRestController;
 import org.openelisglobal.textmacro.controller.rest.TextMacroRestController;
 import org.openelisglobal.textmacro.form.TextMacroAdminForm;
+import org.openelisglobal.textmacro.form.TextMacroAdminQueryForm;
 import org.openelisglobal.textmacro.form.TextMacroBulkRequestForm;
 import org.openelisglobal.textmacro.form.TextMacroListForm;
+import org.openelisglobal.textmacro.form.TextMacroPageForm;
 import org.openelisglobal.textmacro.form.TextMacroSummaryForm;
 import org.openelisglobal.textmacro.service.TextMacroRequestException;
 import org.openelisglobal.textmacro.service.TextMacroService;
@@ -69,6 +73,26 @@ public class TextMacroRestControllerTest {
         assertEquals("attachment; filename=\"openelis-text-macros.csv\"",
                 response.getHeaders().getFirst(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION));
         assertEquals("code,expansion_text\r\n.gpc,Text\r\n", response.getBody());
+    }
+
+    @Test
+    public void adminSearchBindsEveryCanonicalQueryParameter() throws Exception {
+        TextMacroService service = mock(TextMacroService.class);
+        when(service.searchAdmin(org.mockito.ArgumentMatchers.any())).thenReturn(new TextMacroPageForm());
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new TextMacroAdminRestController(service)).build();
+
+        mvc.perform(get("/rest/text-macros/admin").param("q", "growth")
+                .param("context", "MICROBIOLOGY_CULTURE_ACTIVITY").param("status", "all").param("sort", "updated:desc")
+                .param("page", "3").param("pageSize", "50")).andExpect(status().isOk());
+
+        ArgumentCaptor<TextMacroAdminQueryForm> query = ArgumentCaptor.forClass(TextMacroAdminQueryForm.class);
+        verify(service).searchAdmin(query.capture());
+        assertEquals("growth", query.getValue().q);
+        assertEquals("MICROBIOLOGY_CULTURE_ACTIVITY", query.getValue().context);
+        assertEquals("all", query.getValue().status);
+        assertEquals("updated:desc", query.getValue().sort);
+        assertEquals(3, query.getValue().page);
+        assertEquals(50, query.getValue().pageSize);
     }
 
     @Test
