@@ -62,6 +62,9 @@ describe("MacroLibraryPage", () => {
     renderPage();
 
     expect(await screen.findByText("Gram-positive cocci")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Phrase actions" }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add phrase" }));
 
     expect(window.location.search).toContain("edit=new");

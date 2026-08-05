@@ -334,6 +334,9 @@ const MacroLibraryPage = () => {
                                     aria-label={intl.formatMessage({
                                       id: "textMacro.actions",
                                     })}
+                                    iconDescription={intl.formatMessage({
+                                      id: "textMacro.actions",
+                                    })}
                                     flipped
                                   >
                                     <OverflowMenuItem
