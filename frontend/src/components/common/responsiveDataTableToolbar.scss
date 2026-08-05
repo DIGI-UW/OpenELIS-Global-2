@@ -1,0 +1,39 @@
+@use "@carbon/react/scss/spacing" as *;
+
+@media (max-width: 42rem) {
+  .oe-responsive-data-table-toolbar.oe-responsive-data-table-toolbar--batch {
+    > .cds--table-toolbar {
+      block-size: 3rem;
+      min-block-size: 3rem;
+    }
+
+    .cds--toolbar-content {
+      display: none;
+    }
+
+    .cds--batch-actions {
+      overflow: hidden;
+      block-size: 3rem;
+    }
+
+    .cds--batch-summary {
+      flex: 1 1 auto;
+      min-inline-size: 0;
+      padding-inline: $spacing-03;
+    }
+
+    .cds--action-list {
+      flex: 0 0 auto;
+    }
+
+    .oe-responsive-data-table-toolbar__batch-action {
+      min-inline-size: 3rem;
+      inline-size: 3rem;
+      padding-inline: $spacing-04;
+    }
+
+    .oe-responsive-data-table-toolbar__batch-action-label {
+      display: none;
+    }
+  }
+}

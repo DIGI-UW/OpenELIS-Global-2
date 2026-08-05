@@ -24,7 +24,6 @@ import {
   TableRow,
   TableSelectAll,
   TableSelectRow,
-  TableToolbar,
   TableToolbarContent,
   TableToolbarSearch,
   Tag,
@@ -33,6 +32,9 @@ import { Add, Checkmark, Close, Download, TrashCan } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import ConfirmedBulkActionModal from "../../common/ConfirmedBulkActionModal";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import ResponsiveDataTableToolbar, {
+  ResponsiveBatchActionLabel,
+} from "../../common/ResponsiveDataTableToolbar";
 import {
   bulkAdminMacros,
   exportAdminMacros,
@@ -293,43 +295,75 @@ const MacroLibraryPage = () => {
                       id: "textMacro.admin.tableDescription",
                     })}
                   >
-                    <TableToolbar>
-                      <TableBatchActions {...getBatchActionProps()}>
-                        <TableBatchAction
-                          renderIcon={Checkmark}
-                          onClick={() =>
-                            beginBulkAction("ACTIVATE", selectedMacros)
-                          }
-                        >
-                          {intl.formatMessage({
-                            id: "textMacro.bulk.activate",
-                          })}
-                        </TableBatchAction>
-                        <TableBatchAction
-                          renderIcon={Close}
-                          onClick={() =>
-                            beginBulkAction("DEACTIVATE", selectedMacros)
-                          }
-                        >
-                          {intl.formatMessage({
-                            id: "textMacro.bulk.deactivate",
-                          })}
-                        </TableBatchAction>
-                        <TableBatchAction
-                          renderIcon={TrashCan}
-                          disabled={includesPackaged}
-                          aria-label={intl.formatMessage({
-                            id: includesPackaged
-                              ? "textMacro.bulk.removeUnavailable"
-                              : "textMacro.bulk.remove",
-                          })}
-                          onClick={() =>
-                            beginBulkAction("DELETE_LOCAL", selectedMacros)
-                          }
-                        >
-                          {intl.formatMessage({ id: "textMacro.bulk.remove" })}
-                        </TableBatchAction>
-                      </TableBatchActions>
+                    <ResponsiveDataTableToolbar
+                      batchActive={selectedMacros.length > 0}
+                    >
+                      {selectedMacros.length > 0 && (
+                        <TableBatchActions {...getBatchActionProps()}>
+                          <TableBatchAction
+                            className="oe-responsive-data-table-toolbar__batch-action"
+                            renderIcon={Checkmark}
+                            aria-label={intl.formatMessage({
+                              id: "textMacro.bulk.activate",
+                            })}
+                            title={intl.formatMessage({
+                              id: "textMacro.bulk.activate",
+                            })}
+                            onClick={() =>
+                              beginBulkAction("ACTIVATE", selectedMacros)
+                            }
+                          >
+                            <ResponsiveBatchActionLabel>
+                              {intl.formatMessage({
+                                id: "textMacro.bulk.activate",
+                              })}
+                            </ResponsiveBatchActionLabel>
+                          </TableBatchAction>
+                          <TableBatchAction
+                            className="oe-responsive-data-table-toolbar__batch-action"
+                            renderIcon={Close}
+                            aria-label={intl.formatMessage({
+                              id: "textMacro.bulk.deactivate",
+                            })}
+                            title={intl.formatMessage({
+                              id: "textMacro.bulk.deactivate",
+                            })}
+                            onClick={() =>
+                              beginBulkAction("DEACTIVATE", selectedMacros)
+                            }
+                          >
+                            <ResponsiveBatchActionLabel>
+                              {intl.formatMessage({
+                                id: "textMacro.bulk.deactivate",
+                              })}
+                            </ResponsiveBatchActionLabel>
+                          </TableBatchAction>
+                          <TableBatchAction
+                            className="oe-responsive-data-table-toolbar__batch-action"
+                            renderIcon={TrashCan}
+                            disabled={includesPackaged}
+                            aria-label={intl.formatMessage({
+                              id: includesPackaged
+                                ? "textMacro.bulk.removeUnavailable"
+                                : "textMacro.bulk.remove",
+                            })}
+                            title={intl.formatMessage({
+                              id: includesPackaged
+                                ? "textMacro.bulk.removeUnavailable"
+                                : "textMacro.bulk.remove",
+                            })}
+                            onClick={() =>
+                              beginBulkAction("DELETE_LOCAL", selectedMacros)
+                            }
+                          >
+                            <ResponsiveBatchActionLabel>
+                              {intl.formatMessage({
+                                id: "textMacro.bulk.remove",
+                              })}
+                            </ResponsiveBatchActionLabel>
+                          </TableBatchAction>
+                        </TableBatchActions>
+                      )}
                       <TableToolbarContent>
                         <TableToolbarSearch
                           persistent
@@ -452,7 +486,7 @@ const MacroLibraryPage = () => {
                           {intl.formatMessage({ id: "textMacro.add" })}
                         </Button>
                       </TableToolbarContent>
-                    </TableToolbar>
+                    </ResponsiveDataTableToolbar>
                     <Table
                       {...getTableProps()}
                       className="text-macro-admin__table"
@@ -504,6 +538,20 @@ const MacroLibraryPage = () => {
                                     intl.formatMessage({
                                       id: `textMacro.provenance.${String(cell.value).toLowerCase()}`,
                                     })
+                                  ) : cell.info.header === "expansionText" ? (
+                                    <div className="text-macro-admin__phrase-cell">
+                                      <span>{cell.value || "—"}</span>
+                                      <Tag
+                                        className="text-macro-admin__mobile-status"
+                                        type={source.active ? "green" : "gray"}
+                                      >
+                                        {intl.formatMessage({
+                                          id: source.active
+                                            ? "textMacro.status.active"
+                                            : "textMacro.status.inactive",
+                                        })}
+                                      </Tag>
+                                    </div>
                                   ) : cell.info.header === "actions" ? (
                                     <OverflowMenu
                                       aria-label={intl.formatMessage({

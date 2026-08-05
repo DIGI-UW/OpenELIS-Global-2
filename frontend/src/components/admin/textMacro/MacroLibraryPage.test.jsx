@@ -128,7 +128,13 @@ describe("MacroLibraryPage", () => {
     renderPage();
 
     expect(await screen.findByText("Gram-positive cocci")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Activate", hidden: true }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("checkbox", { name: "Select .gpc" }));
+    expect(
+      screen.getByRole("button", { name: "Activate" }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Deactivate" }));
 
     const confirmation = screen.getByRole("dialog", {

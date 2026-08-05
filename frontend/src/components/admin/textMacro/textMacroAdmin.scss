@@ -33,6 +33,10 @@
     color: $text-secondary;
   }
 
+  &__mobile-status {
+    display: none;
+  }
+
   .cds--toolbar-content > .cds--search {
     flex: 1 1 16rem;
     min-inline-size: 16rem;
@@ -80,24 +84,31 @@
       th:nth-child(4),
       td:nth-child(4),
       th:nth-child(5),
-      td:nth-child(5) {
+      td:nth-child(5),
+      th:nth-child(6),
+      td:nth-child(6) {
         display: none;
       }
 
       th:nth-child(2),
       td:nth-child(2) {
-        inline-size: 6.5rem;
-      }
-
-      th:nth-child(6),
-      td:nth-child(6) {
-        inline-size: 5rem;
+        inline-size: 6rem;
       }
 
       th:nth-child(7),
       td:nth-child(7) {
         inline-size: 2.5rem;
       }
+    }
+
+    &__phrase-cell {
+      display: grid;
+      gap: $spacing-02;
+    }
+
+    &__mobile-status {
+      display: inline-flex;
+      inline-size: fit-content;
     }
   }
 }
