@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -70,6 +71,10 @@ import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.textmacro.form.TextMacroAdminForm;
+import org.openelisglobal.textmacro.form.TextMacroAdminQueryForm;
+import org.openelisglobal.textmacro.form.TextMacroPageForm;
+import org.openelisglobal.textmacro.service.TextMacroService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -105,6 +110,8 @@ public class MicrobiologyUatScenarioService {
     private static final String UAT_AST_CARD_NAME = "UAT microbiology AST card";
     private static final String UAT_NCE_CATEGORY_NAME = "Pre-analytical";
     private static final String UAT_NCE_TYPE_NAME = "Specimen lost";
+    private static final String UAT_TEXT_MACRO_CODE = ".uat_ng24";
+    private static final String UAT_TEXT_MACRO_EXPANSION = "No growth at 24 hours";
 
     private final MethodService methodService;
     private final SampleService sampleService;
@@ -135,6 +142,7 @@ public class MicrobiologyUatScenarioService {
     private final MicroBreakpointImportService breakpointImportService;
     private final NceCategoryService nceCategoryService;
     private final NceTypeService nceTypeService;
+    private final TextMacroService textMacroService;
 
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, PatientService patientService, PersonService personService,
@@ -148,7 +156,7 @@ public class MicrobiologyUatScenarioService {
             InventoryLotService inventoryLotService, InventoryManagementService inventoryManagementService,
             TestReagentLinkService testReagentLinkService, MicrobiologyReferenceAdminService referenceAdminService,
             MicroBreakpointAdminService breakpointAdminService, MicroBreakpointImportService breakpointImportService,
-            NceCategoryService nceCategoryService, NceTypeService nceTypeService) {
+            NceCategoryService nceCategoryService, NceTypeService nceTypeService, TextMacroService textMacroService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -178,6 +186,7 @@ public class MicrobiologyUatScenarioService {
         this.breakpointImportService = breakpointImportService;
         this.nceCategoryService = nceCategoryService;
         this.nceTypeService = nceTypeService;
+        this.textMacroService = textMacroService;
     }
 
     @Transactional
@@ -186,6 +195,7 @@ public class MicrobiologyUatScenarioService {
         String scenarioKey = normalizeScenarioKey(request == null ? null : request.scenarioKey);
         String suffix = deterministicSuffix(scenarioKey);
         String accessionNumber = "UATMICRO" + suffix;
+        String textMacroCode = ensureUatTextMacro(performedBy);
 
         Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
         SampleItem sampleItem;
@@ -258,6 +268,7 @@ public class MicrobiologyUatScenarioService {
         form.cultureTestId = test.getId();
         form.tbCultureTestId = tbTest == null ? null : tbTest.getId();
         form.nonCultureTestId = nonCultureTest == null ? null : nonCultureTest.getId();
+        form.textMacroCode = textMacroCode;
         form.organismId = referenceAdminData == null ? astReferenceData.organism().getId()
                 : referenceAdminData.organismId();
         form.antibioticId = referenceAdminData == null ? astReferenceData.antibiotic().getId()
@@ -269,6 +280,25 @@ public class MicrobiologyUatScenarioService {
         form.loadedBreakpointStandardId = referenceAdminData == null ? null : referenceAdminData.loadedStandardId();
         form.unmappedOrganismId = unmappedOrganism == null ? null : unmappedOrganism.getId();
         return form;
+    }
+
+    private String ensureUatTextMacro(String performedBy) {
+        TextMacroAdminQueryForm query = new TextMacroAdminQueryForm();
+        query.q = UAT_TEXT_MACRO_CODE;
+        query.status = "all";
+        query.pageSize = 100;
+        TextMacroPageForm page = textMacroService.searchAdmin(query);
+        TextMacroAdminForm macro = page == null || page.items == null ? null
+                : page.items.stream().filter(candidate -> UAT_TEXT_MACRO_CODE.equals(candidate.code)).findFirst()
+                        .orElse(null);
+        if (macro == null) {
+            macro = new TextMacroAdminForm();
+        }
+        macro.code = UAT_TEXT_MACRO_CODE;
+        macro.expansionText = UAT_TEXT_MACRO_EXPANSION;
+        macro.contexts = Set.of("MICROBIOLOGY_CULTURE_ACTIVITY");
+        macro.active = true;
+        return textMacroService.save(macro.id, macro, performedBy).code;
     }
 
     private boolean isReferenceScenario(String scenario) {

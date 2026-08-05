@@ -23,6 +23,7 @@ export interface SeededMicrobiologyCase {
   cultureTestId?: string;
   tbCultureTestId?: string;
   nonCultureTestId?: string;
+  textMacroCode?: string;
 }
 
 export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {

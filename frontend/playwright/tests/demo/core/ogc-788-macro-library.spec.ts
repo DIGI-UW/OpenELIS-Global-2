@@ -49,6 +49,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
     });
 
     const seeded = await seedMicrobiologyCase(page);
+    expect(seeded.textMacroCode).toBe(macro.code);
     const caseUrl = `/Microbiology/cases/${seeded.caseId}?section=setup`;
 
     await test.step("Expand the phrase in laboratory work", async () => {

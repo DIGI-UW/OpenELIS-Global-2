@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -79,6 +80,9 @@ import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.textmacro.form.TextMacroAdminForm;
+import org.openelisglobal.textmacro.form.TextMacroPageForm;
+import org.openelisglobal.textmacro.service.TextMacroService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -178,6 +182,9 @@ public class MicrobiologyUatScenarioServiceTest {
     private MicroBreakpointImportService breakpointImportService;
 
     @Mock
+    private TextMacroService textMacroService;
+
+    @Mock
     private AutowireCapableBeanFactory beanFactory;
 
     @Mock
@@ -210,6 +217,12 @@ public class MicrobiologyUatScenarioServiceTest {
             item.setId("UAT microbiology blood agar".equals(item.getName()) ? 13L : 14L);
             return null;
         }).when(inventoryItemService).insert(any(InventoryItem.class));
+        when(textMacroService.searchAdmin(any())).thenReturn(new TextMacroPageForm());
+        when(textMacroService.save(any(), any(TextMacroAdminForm.class), anyString())).thenAnswer(invocation -> {
+            TextMacroAdminForm form = invocation.getArgument(1);
+            form.id = "generated-by-service";
+            return form;
+        });
 
         service = new MicrobiologyUatScenarioService(methodService, sampleService, sampleItemService, patientService,
                 personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
@@ -217,7 +230,7 @@ public class MicrobiologyUatScenarioServiceTest {
                 testResultService, testMethodService, statusService, configurationService, caseService,
                 orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
                 testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
-                nceCategoryService, nceTypeService);
+                nceCategoryService, nceTypeService, textMacroService);
     }
 
     @After
@@ -241,7 +254,15 @@ public class MicrobiologyUatScenarioServiceTest {
         request.scenario = "WORKLIST";
         request.scenarioKey = "playwright-worklist-7bd4adf1";
 
-        service.provision(request, "1");
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        ArgumentCaptor<TextMacroAdminForm> macroCaptor = ArgumentCaptor.forClass(TextMacroAdminForm.class);
+        verify(textMacroService).save(any(), macroCaptor.capture(), anyString());
+        assertEquals(".uat_ng24", result.textMacroCode);
+        assertEquals(".uat_ng24", macroCaptor.getValue().code);
+        assertEquals("No growth at 24 hours", macroCaptor.getValue().expansionText);
+        assertEquals(Set.of("MICROBIOLOGY_CULTURE_ACTIVITY"), macroCaptor.getValue().contexts);
+        assertTrue(macroCaptor.getValue().active);
 
         ArgumentCaptor<Person> personCaptor = ArgumentCaptor.forClass(Person.class);
         verify(personService).insert(personCaptor.capture());

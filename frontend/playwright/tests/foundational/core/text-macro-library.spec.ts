@@ -24,6 +24,7 @@ test.describe("OGC-788 managed macro runtime", () => {
     expect(new URL(page.url()).searchParams.get("q")).toBe(macro.code);
 
     const seeded = await seedMicrobiologyCase(page);
+    expect(seeded.textMacroCode).toBe(macro.code);
     const caseUrl = `/Microbiology/cases/${seeded.caseId}?section=setup`;
     await page.goto(caseUrl, { waitUntil: "domcontentloaded" });
     await expect(

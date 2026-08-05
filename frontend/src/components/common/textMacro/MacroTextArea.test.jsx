@@ -81,6 +81,7 @@ describe("MacroTextArea", () => {
 
     expect(field).toHaveValue("No growth at 24 hours");
     expect(field).toHaveFocus();
+    expect(screen.getByText("Inserted .ng24.")).toBeInTheDocument();
   });
 
   it("leaves unknown codes unchanged and closes suggestions on Escape", async () => {
