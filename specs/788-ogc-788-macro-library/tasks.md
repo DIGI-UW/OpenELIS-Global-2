@@ -54,14 +54,14 @@
 
 ## M1 Phase 4 - Validation And Publication
 
-- [ ] T115 Run focused backend, controller, ORM, Liquibase, frontend, a11y, and
+- [x] T115 Run focused backend, controller, ORM, Liquibase, frontend, a11y, and
       Playwright tests; review browser console output and failure artifacts. Record
       reproducible active-context lookup and 500-phrase administration evidence.
-- [ ] T116 Run pinned `tools/code-qa` alignment, coverage, simplicity, and
+- [x] T116 Run pinned `tools/code-qa` alignment, coverage, simplicity, and
       evidence checks; resolve or explicitly disposition every finding.
-- [ ] T117 Compare deterministic desktop/mobile screenshots against M-08
+- [x] T117 Compare deterministic desktop/mobile screenshots against M-08
       workflow intent and record all intentional differences.
-- [ ] T118 Produce the standard titled MP4 walkthrough, contact sheet, manifest,
+- [x] T118 Produce the standard titled MP4 walkthrough, contact sheet, manifest,
       and exact test/evidence index for M1.
 - [ ] T119 Add M1 Grist story/steps, scope them to the phrases review deployment,
       and mark automated evidence separately from human acceptance.
