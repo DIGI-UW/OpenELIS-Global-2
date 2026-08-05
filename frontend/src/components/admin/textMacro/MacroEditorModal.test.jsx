@@ -37,6 +37,7 @@ describe("MacroEditorModal", () => {
       "No growth at 24 hours",
     );
     await user.click(screen.getByLabelText("Clinical history"));
+    await user.click(screen.getByRole("switch", { name: "Status" }));
     await user.click(screen.getByRole("button", { name: "Save phrase" }));
 
     expect(onSave).toHaveBeenCalledWith({
@@ -46,7 +47,7 @@ describe("MacroEditorModal", () => {
         "MICROBIOLOGY_CULTURE_ACTIVITY",
         "MICROBIOLOGY_CLINICAL_HISTORY",
       ],
-      active: true,
+      active: false,
     });
   });
 

@@ -92,6 +92,21 @@ describe("MacroTextArea", () => {
     expect(screen.getByText("Inserted .ng24.")).toBeInTheDocument();
   });
 
+  it("supports pointer selection and returns focus to the controlled field", async () => {
+    const user = userEvent.setup();
+    renderField();
+
+    const field = screen.getByRole("combobox", { name: "Activity note" });
+    await user.click(field);
+    await user.type(field, ".gp");
+    await user.click(
+      await screen.findByRole("option", { name: /\.gpc.*Gram-positive cocci/ }),
+    );
+
+    expect(field).toHaveValue("Gram-positive cocci");
+    expect(field).toHaveFocus();
+  });
+
   it("leaves unknown codes unchanged and closes suggestions on Escape", async () => {
     const user = userEvent.setup();
     renderField();

@@ -110,7 +110,7 @@ public class TextMacroServiceTest {
         TextMacroPageForm result = service.searchAdmin(query);
 
         assertEquals(1, result.page);
-        assertEquals(100, result.pageSize);
+        assertEquals(20, result.pageSize);
         assertEquals(0, result.total);
     }
 

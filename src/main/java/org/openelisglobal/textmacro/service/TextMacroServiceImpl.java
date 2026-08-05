@@ -23,6 +23,7 @@ public class TextMacroServiceImpl implements TextMacroService {
     private static final Pattern CODE_PATTERN = Pattern.compile("\\.[a-z0-9][a-z0-9_-]{0,62}");
     private static final Set<String> STATUSES = Set.of("ACTIVE", "INACTIVE", "ALL");
     private static final Set<String> SORTS = Set.of("code:asc", "code:desc", "updated:asc", "updated:desc");
+    private static final Set<Integer> PAGE_SIZES = Set.of(10, 20, 50, 100);
 
     private final TextMacroDAO macroDAO;
 
@@ -49,7 +50,7 @@ public class TextMacroServiceImpl implements TextMacroService {
         String status = normalizeStatus(query.status);
         String sort = SORTS.contains(query.sort) ? query.sort : "code:asc";
         int page = Math.max(1, query.page);
-        int pageSize = Math.min(100, Math.max(1, query.pageSize <= 0 ? 20 : query.pageSize));
+        int pageSize = PAGE_SIZES.contains(query.pageSize) ? query.pageSize : 20;
         int offset = (page - 1) * pageSize;
 
         TextMacroPageForm result = new TextMacroPageForm();
