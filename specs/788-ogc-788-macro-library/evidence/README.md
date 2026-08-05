@@ -30,8 +30,23 @@ sheets, a manifest, and the 45.64-second H.264/yuv420p MP4.
 
 The external M1 binary bundle is currently at
 `/Users/pmanko/.codex/visualizations/2026/08/04/019fca12-4b0c-71d0-a37e-8493de64fee5/ogc-788-m1-evidence/`
-and its sibling zip. Deployment and live Review-overlay links will be added to
-the PR and this index after the exact top-of-stack SHA is published to AMR.
+and its sibling zip. Live Review-overlay and deployment-guard links are recorded
+below; exact deployment identity is served by the guard rather than copied into
+this repository.
 
 Automated evidence is pre-UAT proof. It does not replace human Pass/Fail/N/A
 rulings in the review overlay.
+
+## Live Review Handoff
+
+- AMR application: `https://amr.openelis-global.org/`
+- Macro Library: `https://amr.openelis-global.org/admin/MacroLibrary`
+- Review checklist:
+  `https://amr.openelis-global.org/__review/uat-amr.json`
+- Deployment guard: `https://amr.openelis-global.org/__review/target.json`
+- Checklist revision:
+  `af9383f5a260695f022720cff23d2e919cecb742e41fbab16042077ed9b0375e`
+
+The live checklist contains 16 stories and 51 steps: 50 required and one
+optional. Automated validation and video proof are complete; human review marks
+remain pending.

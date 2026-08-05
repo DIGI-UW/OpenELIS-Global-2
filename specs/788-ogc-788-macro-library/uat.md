@@ -4,16 +4,21 @@ Grist `UAT_Meta`, `UAT_Stories`, and `UAT_Steps` remain the live source of
 truth. This file records the repository-side contract that must match the AMR
 Review overlay after publication.
 
-## Baseline Before Publication
+## Published State
 
 - Instance: `amr`
-- Checklist revision:
-  `90a25a2ee19e0282611845eca163159e84cc2bbfe55309ebf0d77d6ec7edea43`
-- Existing stories: 14 (`AMR-S01` through `AMR-S14`)
-- Existing required steps: 38
-- Existing optional steps: 1 (`AMR-21`, TB shared-specimen reflection)
+- Live checklist revision:
+  `af9383f5a260695f022720cff23d2e919cecb742e41fbab16042077ed9b0375e`
+- Stories: 16 (`AMR-S01` through `AMR-S16`)
+- Required steps: 50
+- Optional steps: 1 (`AMR-21`, TB shared-specimen reflection)
+- Grist read: `https://grist.openelis-global.org/uat/amr.json`
+- AMR overlay read:
+  `https://amr.openelis-global.org/__review/uat-amr.json`
 
-Publication must preserve every existing story and step key.
+The two live reads return the same revision. Publication preserved all 14 prior
+stories and 39 prior step keys, then added `AMR-S15`, `AMR-S16`, and exactly
+`AMR-51` through `AMR-62`.
 
 ## M1 Story
 
@@ -161,13 +166,17 @@ remaining phrase, and open a bulk confirmation.
 remain readable without horizontal page overflow; focusable controls are not
 hidden from assistive technology.
 
-## Publication Gate
+## Publication Result
 
-- Add both stories and all twelve required steps through Grist authoring.
-- Update the AMR checklist title and intro to name OGC-788 M1 and M2.
-- Verify both `https://grist.openelis-global.org/uat/amr.json` and
-  `https://amr.openelis-global.org/__review/uat-amr.json` return `200`, have the
-  same revision, retain the 39 prior steps, and add exactly `AMR-51` through
-  `AMR-62` under `AMR-S15` and `AMR-S16`.
-- Record automated evidence separately from human Pass/Fail/N/A marks.
-- Update this file with the resulting live revision and deployment identity.
+- [x] Added both stories and all twelve required steps through Grist authoring.
+- [x] Updated the AMR checklist title and intro to name OGC-788 M1 and M2.
+- [x] Verified both `https://grist.openelis-global.org/uat/amr.json` and
+      `https://amr.openelis-global.org/__review/uat-amr.json` return `200`, have the
+      same revision, retain the 39 prior steps, and add exactly `AMR-51` through
+      `AMR-62` under `AMR-S15` and `AMR-S16`.
+- [x] Recorded automated evidence separately from human Pass/Fail/N/A marks.
+- [x] Published an exact-SHA AMR deployment and verified its target metadata,
+      application smoke checks, and live overlay. Deployment identity remains
+      authoritative at `https://amr.openelis-global.org/__review/target.json` and
+      in the implementation PR to avoid stale duplicated runtime state here.
+- [ ] Human Pass/Fail/N/A review remains pending.
