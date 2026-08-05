@@ -87,7 +87,15 @@
   &__preview {
     display: grid;
     gap: $spacing-05;
+    min-inline-size: 0;
+    max-inline-size: 100%;
     margin-block-start: $spacing-07;
+
+    .cds--data-table-container,
+    .cds--pagination {
+      min-inline-size: 0;
+      max-inline-size: 100%;
+    }
   }
 
   &__metrics {
@@ -130,7 +138,7 @@
     gap: $spacing-04;
     min-block-size: 4rem;
     padding: $spacing-04;
-    background: $layer-accent-01;
+    background: $layer-01;
     border-inline-start: 3px solid $support-warning;
 
     p {
@@ -140,8 +148,14 @@
   }
 
   &__table-scroll {
+    inline-size: 100%;
     min-inline-size: 0;
+    max-inline-size: 100%;
     overflow-x: auto;
+
+    .cds--data-table-content {
+      overflow-x: visible;
+    }
   }
 }
 

@@ -3,18 +3,10 @@ import type { Download } from "@playwright/test";
 import { seedMicrobiologyWhonetExport } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
-const isoDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const currentPeriodQuery = () => {
-  const today = isoDate(new Date());
+const currentPeriodQuery = (exportDate: string) => {
   return new URLSearchParams({
-    from: today,
-    to: today,
+    from: exportDate,
+    to: exportDate,
     significance: "CLINICALLY_SIGNIFICANT",
     dedup: "FIRST_ISOLATE_7_DAY",
     step: "configure",
@@ -54,7 +46,7 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       ).toBeVisible({ timeout: LONG_TIMEOUT });
     });
 
-    const query = currentPeriodQuery();
+    const query = currentPeriodQuery(seeded.exportDate);
     await test.step("Reload the complete canonical configuration", async () => {
       await page.goto(`/Microbiology/whonet?${query}`, {
         waitUntil: "domcontentloaded",
@@ -107,6 +99,23 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       await expect(warning).toContainText("2 rows excluded");
       await expect(repairLink).toHaveAccessibleName("Fix organism mapping");
       await expect(repairLink).toHaveAttribute("href", repairHref);
+
+      const previewUrl = page.url();
+      await repairLink.click();
+      await expect(page).toHaveURL(
+        new RegExp(`edit=${seeded.unmappedOrganismId}`),
+      );
+      await expect(
+        page.getByRole("dialog").getByRole("heading", {
+          name: "Organism",
+          exact: true,
+        }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await page.goBack({ waitUntil: "domcontentloaded" });
+      await expect(page).toHaveURL(previewUrl);
+      await expect(
+        page.getByRole("heading", { name: "Preview", exact: true }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
     });
 
     await test.step("Generate and inspect the downloaded CSV", async () => {
