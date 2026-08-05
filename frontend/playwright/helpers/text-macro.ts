@@ -1,4 +1,9 @@
-import type { Locator, Page, Response } from "@playwright/test";
+import type { Download, Locator, Page, Response } from "@playwright/test";
+import {
+  clickCarbonModalPrimaryAction,
+  setCarbonCheckbox,
+  setCarbonToggle,
+} from "./carbon";
 import { expect } from "./test-base";
 import { LONG_TIMEOUT } from "./timeouts";
 
@@ -10,27 +15,58 @@ export interface TextMacroFixture {
   >;
 }
 
+export interface TextMacroLibraryQuery {
+  q?: string;
+  context?:
+    | "all"
+    | "CULTURE_ACTIVITY"
+    | "CLINICAL_HISTORY"
+    | "ANTIBIOTIC_EXPOSURE";
+  status?: "active" | "inactive" | "all";
+  sort?: "code:asc" | "code:desc" | "updated:asc" | "updated:desc";
+  page?: string;
+  pageSize?: string;
+}
+
+export interface TextMacroBulkAction {
+  codes: string[];
+  actionLabel: "Activate" | "Deactivate" | "Remove local phrases";
+  dialogName: string;
+  confirmLabel: "Activate phrases" | "Deactivate phrases" | "Remove phrases";
+}
+
 const adminResponse =
-  (method = "GET") =>
+  (pathSuffix = "", method = "GET") =>
   (response: Response) =>
-    response.url().includes("/rest/text-macros/admin") &&
+    new URL(response.url()).pathname.endsWith(
+      `/rest/text-macros/admin${pathSuffix}`,
+    ) &&
     response.request().method() === method &&
     response.ok();
+
+const adminItemResponse = (method: "PUT") => (response: Response) =>
+  /\/rest\/text-macros\/admin\/[^/]+$/.test(new URL(response.url()).pathname) &&
+  response.request().method() === method &&
+  response.ok();
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-export async function ensureTextMacroViaAdmin(
+export const textMacroRow = (page: Page, code: string) =>
+  page.getByRole("row").filter({ hasText: code });
+
+export async function openTextMacroLibrary(
   page: Page,
-  macro: TextMacroFixture,
+  overrides: TextMacroLibraryQuery = {},
 ) {
   const query = new URLSearchParams({
-    q: macro.code,
+    q: "",
     context: "all",
     status: "all",
     sort: "code:asc",
     page: "1",
     pageSize: "20",
+    ...overrides,
   });
   const loaded = page.waitForResponse(adminResponse());
   await page.goto(`/admin/MacroLibrary?${query}`, {
@@ -40,8 +76,15 @@ export async function ensureTextMacroViaAdmin(
   await expect(
     page.getByRole("heading", { name: "Macro Library", exact: true }),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
+}
 
-  const row = page.getByRole("row").filter({ hasText: macro.code });
+export async function ensureTextMacroViaAdmin(
+  page: Page,
+  macro: TextMacroFixture,
+) {
+  await openTextMacroLibrary(page, { q: macro.code });
+
+  const row = textMacroRow(page, macro.code);
   const editing = (await row.count()) > 0;
   if (editing) {
     await row.getByRole("button", { name: "Phrase actions" }).click();
@@ -61,22 +104,82 @@ export async function ensureTextMacroViaAdmin(
   ] as const) {
     const checkbox = dialog.getByLabel(context);
     const shouldBeChecked = macro.contexts.includes(context);
-    if ((await checkbox.isChecked()) !== shouldBeChecked) {
-      await checkbox.click();
-    }
+    await setCarbonCheckbox(checkbox, shouldBeChecked);
   }
   const active = dialog.getByRole("switch", { name: "Status" });
-  if ((await active.getAttribute("aria-checked")) !== "true") {
-    await active.click();
-  }
+  await setCarbonToggle(active);
 
-  const saved = page.waitForResponse(adminResponse(editing ? "PUT" : "POST"));
+  const saved = page.waitForResponse(
+    editing ? adminItemResponse("PUT") : adminResponse("", "POST"),
+  );
   await dialog.getByRole("button", { name: "Save phrase" }).click();
   await saved;
   await expect(dialog).toBeHidden();
-  await expect(
-    page.getByRole("row").filter({ hasText: macro.code }),
-  ).toContainText(macro.expansionText, { timeout: LONG_TIMEOUT });
+  await expect(textMacroRow(page, macro.code)).toContainText(
+    macro.expansionText,
+    { timeout: LONG_TIMEOUT },
+  );
+}
+
+export async function selectTextMacroRows(page: Page, codes: string[]) {
+  for (const code of codes) {
+    const row = textMacroRow(page, code);
+    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await setCarbonCheckbox(
+      row.getByRole("checkbox", { name: `Select ${code}`, exact: true }),
+    );
+  }
+}
+
+export async function openTextMacroBulkAction(
+  page: Page,
+  action: TextMacroBulkAction,
+) {
+  await selectTextMacroRows(page, action.codes);
+  await page
+    .getByRole("button", { name: action.actionLabel, exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: action.dialogName,
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  for (const code of action.codes) {
+    await expect(dialog.getByText(code, { exact: true })).toBeVisible();
+  }
+  return dialog;
+}
+
+export async function submitOpenTextMacroBulkAction(
+  page: Page,
+  dialog: Locator,
+  confirmLabel: TextMacroBulkAction["confirmLabel"],
+) {
+  const saved = page.waitForResponse(adminResponse("/bulk", "POST"));
+  await clickCarbonModalPrimaryAction(dialog, confirmLabel);
+  const response = await saved;
+  await expect(dialog).toBeHidden();
+  return response;
+}
+
+export async function confirmTextMacroBulkAction(
+  page: Page,
+  action: TextMacroBulkAction,
+) {
+  const dialog = await openTextMacroBulkAction(page, action);
+  return submitOpenTextMacroBulkAction(page, dialog, action.confirmLabel);
+}
+
+export async function exportTextMacroLibrary(page: Page): Promise<Download> {
+  const response = page.waitForResponse(adminResponse("/export"));
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Export phrases", exact: true })
+    .click();
+  await response;
+  const attachment = await download;
+  expect(attachment.suggestedFilename()).toBe("openelis-text-macros.csv");
+  return attachment;
 }
 
 export async function expandTextMacro(

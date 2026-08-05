@@ -2,7 +2,11 @@ import { expect, test } from "../../../helpers/test-base";
 import { expectNoWcag21AaViolations } from "../../../helpers/accessibility";
 import { captureEvidenceScreenshot } from "../../../helpers/demo-presentation";
 import { seedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
-import { ensureTextMacroViaAdmin } from "../../../helpers/text-macro";
+import {
+  ensureTextMacroViaAdmin,
+  openTextMacroBulkAction,
+  openTextMacroLibrary,
+} from "../../../helpers/text-macro";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const macro = {
@@ -10,6 +14,19 @@ const macro = {
   expansionText: "No growth at 24 hours",
   contexts: ["Culture activity"] as const,
 };
+
+const bulkMacros = [
+  {
+    code: ".uat_a11y_first",
+    expansionText: "First accessibility phrase",
+    contexts: ["Culture activity"] as const,
+  },
+  {
+    code: ".uat_a11y_second",
+    expansionText: "Second accessibility phrase",
+    contexts: ["Culture activity"] as const,
+  },
+];
 
 test.describe("OGC-788 macro library accessibility", () => {
   test("admin library and suggestion list meet WCAG 2.1 AA", async ({
@@ -139,5 +156,55 @@ test.describe("OGC-788 macro library accessibility", () => {
     await note.press("Tab");
     await expect(note).toHaveValue(macro.expansionText);
     await expect(note).toBeFocused();
+  });
+
+  test("bulk selection and confirmation meet WCAG 2.1 AA", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(120_000);
+    for (const fixture of bulkMacros) {
+      await ensureTextMacroViaAdmin(page, {
+        ...fixture,
+        contexts: [...fixture.contexts],
+      });
+    }
+    const codes = bulkMacros.map(({ code }) => code);
+    await openTextMacroLibrary(page, { q: ".uat_a11y_", status: "all" });
+    const canonicalUrl = page.url();
+
+    const dialog = await openTextMacroBulkAction(page, {
+      codes,
+      actionLabel: "Deactivate",
+      dialogName: "Deactivate 2 phrases?",
+      confirmLabel: "Deactivate phrases",
+    });
+    await expectNoWcag21AaViolations(
+      page,
+      testInfo,
+      "text-macro-bulk-confirmation",
+    );
+    await captureEvidenceScreenshot(
+      page,
+      testInfo,
+      testInfo.project.name.endsWith("-mobile")
+        ? "ogc-788-m2-02-mobile-bulk-confirmation"
+        : "ogc-788-m2-01-desktop-bulk-confirmation",
+    );
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(canonicalUrl);
+
+    if (testInfo.project.name.endsWith("-mobile")) {
+      const tableContent = page.locator(
+        ".text-macro-admin .cds--data-table-content",
+      );
+      const dimensions = await tableContent.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(dimensions.scrollWidth).toBeLessThanOrEqual(
+        dimensions.clientWidth,
+      );
+    }
   });
 });
