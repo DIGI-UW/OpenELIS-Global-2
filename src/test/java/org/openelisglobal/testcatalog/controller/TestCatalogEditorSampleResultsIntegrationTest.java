@@ -49,6 +49,12 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
 
     private static final String SAMPLE_TYPE_DESC = "UrineIT";
 
+    private static final long FALLBACK_CATEGORY_ID = 952080L;
+
+    private Long testResultCategoryId;
+
+    private boolean createdTestResultCategory;
+
     @Autowired
     private TestService testService;
 
@@ -143,6 +149,16 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         jdbc.update(
                 "INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?, ?, 'Y', NOW())",
                 DICT_ID, DICT_ENTRY);
+        // Free-text options materialize under the "Test Result" category; CI's DB
+        // may not ship it, so seed it when absent (and drop it again in cleanup).
+        testResultCategoryId = jdbc.queryForObject("SELECT min(id) FROM clinlims.dictionary_category WHERE name = ?",
+                Long.class, "Test Result");
+        if (testResultCategoryId == null) {
+            jdbc.update("INSERT INTO clinlims.dictionary_category (id, name, description, lastupdated)"
+                    + " VALUES (?, 'Test Result', 'General test result', NOW())", FALLBACK_CATEGORY_ID);
+            testResultCategoryId = FALLBACK_CATEGORY_ID;
+            createdTestResultCategory = true;
+        }
         Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(SAMPLE_TYPE_DESC,
                 SAMPLE_TYPE_DESC, LocalizationServiceImpl.LocalizationType.TEST_NAME);
         nameLocalization.setSysUserId("1");
@@ -194,10 +210,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         jdbc.update("DELETE FROM clinlims.dictionary WHERE id = ?", DICT_ID);
         // Dictionary entries materialized from free-text options (SRIT- prefix),
         // plus the localization rows their insert auto-created.
-        java.util.List<Long> materializedLocalizations = jdbc.queryForList(
-                "SELECT name_localization_id FROM clinlims.dictionary"
-                        + " WHERE dict_entry LIKE 'SRIT-%' AND name_localization_id IS NOT NULL",
-                Long.class);
+        java.util.List<Long> materializedLocalizations = jdbc
+                .queryForList("SELECT name_localization_id FROM clinlims.dictionary"
+                        + " WHERE dict_entry LIKE 'SRIT-%' AND name_localization_id IS NOT NULL", Long.class);
         jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'SRIT-%'");
         for (Long localizationId : materializedLocalizations) {
             try {
@@ -205,6 +220,10 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
             } catch (RuntimeException ignored) {
                 // localization may already be gone; ignore
             }
+        }
+        if (createdTestResultCategory) {
+            jdbc.update("DELETE FROM clinlims.dictionary_category WHERE id = ?", FALLBACK_CATEGORY_ID);
+            createdTestResultCategory = false;
         }
     }
 
@@ -455,6 +474,10 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 "SELECT count(*) FROM clinlims.dictionary WHERE dict_entry = ? AND is_active = 'Y'", Long.class,
                 "SRIT-HIV1");
         assertEquals("the typed text becomes an active dictionary entry", Long.valueOf(1L), entries);
+        Long categoryId = jdbc.queryForObject(
+                "SELECT dictionary_category_id FROM clinlims.dictionary" + " WHERE dict_entry = ? AND is_active = 'Y'",
+                Long.class, "SRIT-HIV1");
+        assertEquals("materialized entries belong to the Test Result category", testResultCategoryId, categoryId);
         Long rawRows = jdbc.queryForObject(
                 "SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = 'SRIT-HIV1'", Long.class,
                 TEST_ID);

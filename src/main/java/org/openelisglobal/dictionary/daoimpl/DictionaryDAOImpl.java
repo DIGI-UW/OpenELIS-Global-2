@@ -249,10 +249,10 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
     }
 
     /**
-     * The id column is numeric, so a non-numeric id can never match a row. Malformed
-     * callers pass raw result text here (e.g. a legacy free-text select-list
-     * option); that is treated as not-found instead of letting the id parse blow up
-     * the whole request.
+     * The id column is numeric, so a non-numeric id can never match a row.
+     * Malformed callers pass raw result text here (e.g. a legacy free-text
+     * select-list option); that is treated as not-found instead of letting the id
+     * parse blow up the whole request.
      */
     @Override
     @Transactional(readOnly = true)

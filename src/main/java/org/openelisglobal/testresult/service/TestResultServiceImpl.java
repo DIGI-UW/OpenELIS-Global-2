@@ -13,6 +13,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.dao.TestResultDAO;
@@ -25,11 +26,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestResult, String>
         implements TestResultService {
+
+    /**
+     * Dictionary category that result select-list options belong to — the same one
+     * the legacy select-list admin page assigns (see
+     * ResultSelectListServiceImpl.addResultSelectList) and that DisplayListService
+     * builds the "Test Result" display list from.
+     */
+    public static final String RESULT_OPTION_DICTIONARY_CATEGORY = "Test Result";
+
     @Autowired
     protected TestResultDAO baseObjectDAO;
 
     @Autowired
     private DictionaryService dictionaryService;
+
+    @Autowired
+    private DictionaryCategoryService dictionaryCategoryService;
 
     TestResultServiceImpl() {
         super(TestResult.class);
@@ -131,10 +144,11 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
      * Dictionary-variant option rows must hold a numeric dictionary id in VALUE —
      * every consumer resolves it via {@code getDictionaryById}. A free-text option
      * typed in the Test Catalog Editor (FR-83) arrives here as raw text, so it is
-     * materialized into the dictionary master list (reusing an active entry with
-     * the same name if one exists) and the row repointed at the entry's id. A
-     * numeric value that already resolves to an entry is kept as-is; a numeric
-     * value that resolves to nothing is treated as free text too.
+     * materialized into the dictionary master list under the "Test Result" category
+     * (reusing an active entry with the same name if one exists) and the row
+     * repointed at the entry's id. A numeric value that already resolves to an
+     * entry is kept as-is; a numeric value that resolves to nothing is treated as
+     * free text too.
      */
     private void resolveDictionaryValue(TestResult option, String sysUserId) {
         if (!TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(option.getTestResultType())) {
@@ -159,6 +173,9 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         Dictionary dictionary = new Dictionary();
         dictionary.setDictEntry(value);
         dictionary.setIsActive(IActionConstants.YES);
+        dictionary.setSortOrder(1);
+        dictionary.setDictionaryCategory(
+                dictionaryCategoryService.getDictionaryCategoryByName(RESULT_OPTION_DICTIONARY_CATEGORY));
         dictionary.setSysUserId(sysUserId);
         option.setValue(dictionaryService.insert(dictionary));
     }

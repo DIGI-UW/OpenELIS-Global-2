@@ -11,13 +11,17 @@
          resolves VALUE via getDictionaryById, and the id parse throws on raw
          text, turning pages like MasterListsPage/calculatedValue into 500s.
          Repair: materialize each distinct raw text as a dictionary entry
-         (reusing an active entry with the same name), then repoint the rows.
-         The save path now does this resolution up front, so this only cleans
-         rows written before the fix. -->
+         under the "Test Result" category — the one the legacy select-list
+         admin assigns to result options — reusing an active entry with the
+         same name, then repoint the rows. The save path now does this
+         resolution up front, so this only cleans rows written before the
+         fix. -->
     <changeSet id="repair-free-text-dictionary-options" author="OGC">
         <sql>
-            INSERT INTO clinlims.dictionary (id, is_active, dict_entry, lastupdated)
-            SELECT nextval('clinlims.dictionary_seq'), 'Y', v.value, now()
+            INSERT INTO clinlims.dictionary (id, is_active, dict_entry, sort_order, dictionary_category_id, lastupdated)
+            SELECT nextval('clinlims.dictionary_seq'), 'Y', v.value, 1,
+                   (SELECT min(dc.id) FROM clinlims.dictionary_category dc WHERE dc.name = 'Test Result'),
+                   now()
             FROM (SELECT DISTINCT trim(tr.value) AS value
                   FROM clinlims.test_result tr
                   WHERE tr.tst_rslt_type IN ('D', 'M', 'C')
