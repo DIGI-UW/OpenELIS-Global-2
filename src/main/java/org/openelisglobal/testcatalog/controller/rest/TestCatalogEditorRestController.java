@@ -435,9 +435,9 @@ public class TestCatalogEditorRestController {
         }
         EditorEnvelope envelope = new EditorEnvelope();
         envelope.testId = test.getId();
-        // Name augmented with the sample type (e.g. "Covid-PCR (Urine)") so the
-        // selected test is distinguishable, matching the list view.
-        envelope.name = TestServiceImpl.getLocalizedTestNameWithType(test);
+        // Every specimen named in full. The list view abbreviates to "(first +n)"
+        // for readability; on the editor the whole configuration should be visible.
+        envelope.name = TestServiceImpl.getLocalizedTestNameWithAllTypes(test);
         envelope.code = test.getLocalCode();
         envelope.domain = test.getDomain();
         envelope.applicableSections = V1_SECTIONS;

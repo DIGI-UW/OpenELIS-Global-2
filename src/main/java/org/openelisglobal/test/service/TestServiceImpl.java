@@ -366,6 +366,46 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     /**
+     * The test name with every associated specimen named, e.g. "Actin Smooth Muscle
+     * (Immunohistochemistry specimen, Serum, Plasma)". The list view abbreviates to
+     * "(first +n)" to stay readable; a screen showing one test has room for the
+     * whole configuration.
+     */
+    public static String getLocalizedTestNameWithAllTypes(Test test) {
+        if (test == null) {
+            return "";
+        }
+        Localization localization = test.getLocalizedTestName();
+        String baseName;
+        try {
+            baseName = localization.getLocalizedValue();
+        } catch (RuntimeException e) {
+            LogEvent.logInfo("TestServiceImpl", "getLocalizedTestNameWithAllTypes", "augmented caught LAZY");
+            baseName = test.getDescription() != null ? test.getDescription() : "";
+        }
+        if (!ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.TEST_NAME_AUGMENTED, "true")) {
+            return baseName;
+        }
+        List<TypeOfSampleTest> typeOfSampleTests = typeOfSampleTestService.getTypeOfSampleTestsForTest(test.getId());
+        if (typeOfSampleTests == null || typeOfSampleTests.isEmpty()) {
+            return baseName;
+        }
+        List<String> names = new ArrayList<>();
+        for (TypeOfSampleTest typeOfSampleTest : typeOfSampleTests) {
+            TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
+            if (typeOfSample == null || typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
+                continue;
+            }
+            String name = typeOfSample.getLocalizedName();
+            if (!GenericValidator.isBlankOrNull(name) && !names.contains(name)) {
+                names.add(name);
+            }
+        }
+        return names.isEmpty() ? baseName : baseName + "(" + String.join(", ", names) + ")";
+    }
+
+    /**
      * Build augmented test name using current request's locale. This is a static
      * helper that doesn't use instance state.
      */

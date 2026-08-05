@@ -955,4 +955,26 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     public void getTestDisplayName_isBlankForNoAnalysis() {
         Assert.assertEquals("", aService.getTestDisplayName(null));
     }
+
+    /**
+     * The editor names every specimen a test is configured for; the list view's
+     * "(first +n)" abbreviation is for readability there, not on a single-test
+     * page.
+     */
+    @Test
+    public void getLocalizedTestNameWithAllTypes_namesEverySpecimen() {
+        org.openelisglobal.test.valueholder.Test test = tService.getTestById("1");
+        Assert.assertNotNull(test);
+
+        String expanded = org.openelisglobal.test.service.TestServiceImpl.getLocalizedTestNameWithAllTypes(test);
+
+        Assert.assertNotNull(expanded);
+        // No abbreviation may survive into the expanded form.
+        Assert.assertFalse("expected no '+n' abbreviation in " + expanded, expanded.matches(".*\\+\\d+\\).*"));
+    }
+
+    @Test
+    public void getLocalizedTestNameWithAllTypes_isBlankForNoTest() {
+        Assert.assertEquals("", org.openelisglobal.test.service.TestServiceImpl.getLocalizedTestNameWithAllTypes(null));
+    }
 }
