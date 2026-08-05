@@ -2,6 +2,12 @@
 
 Compared on 2026-06-27.
 
+**2026-08-05 correction:** The original comparison omitted M-03, the first
+order-entry screen in the authoritative walkthrough. The source-pinned browser
+audit in
+[`openelis-work-authoritative-alignment-2026-08-05.md`](./openelis-work-authoritative-alignment-2026-08-05.md)
+supersedes aggregate parity claims in this artifact.
+
 ## Sources
 
 - Actual MVP screenshots:
@@ -17,22 +23,26 @@ Compared on 2026-06-27.
 
 ## Executive Finding
 
-The MVP now has design parity for the core case-workbench interaction shape:
+The MVP has useful alignment for the core case-workbench interaction shape:
 case progress rail, next-step callout, case-info strip, highlighted current
 work card, separate timeline, isolate card, AST card, critical-communication
-card, and report/WHONET readiness card. The happy-path behavior still passes in
-Playwright after the design pass, and the refreshed evidence pass uses slower
-step timing plus focused screenshots that avoid fixed-header overlap.
+card, and report/WHONET readiness card. This does not establish parity for the
+complete microbiology workflow.
 
-The remaining differences are feature-depth gaps rather than raw layout gaps:
-the mock includes richer order context, media/subculture tracking, full isolate
-identification, table-level AST metadata, expert-review queues, and WHONET
-mapping/export screens that are outside this MVP slice.
+M-03 has a blocking workflow gap: configured Add Order uses `/order/enter`, but
+the partial microbiology details implementation and its Playwright test use
+legacy `/SamplePatientEntry`. Program derivation, Culture Method, several
+control semantics/defaults, discard confirmation, and the visible save-to-case
+round trip are absent or unproven. M-07 is functional but materially thinner
+than the authoritative worklist. Other remaining differences include richer
+media/subculture tracking, isolate identification, table-level AST metadata,
+expert review, and later reporting/surveillance modules.
 
 ## Comparison By Area
 
 | Area                    | Mock intent                                                                                                                 | Current evidence                                                                                                                                                                    | Review call                                                                          |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| M-03 Program/order entry | Culture-test selection visibly derives Program = Microbiology and presents required/defaulted Culture Method plus complete microbiology details. | Current `/order/enter` drops culture workflow metadata and shows no microbiology Program/details. A partial, control-inaccurate section exists on legacy `/SamplePatientEntry`. | Blocking remediation; prior label-only Playwright/UAT evidence is insufficient. |
 | Guided workflow shell   | Persistent left walkthrough index, branch toggle, step number, Prev/Next, and current-step context.                         | Actual uses the normal OpenELIS shell plus an in-page case progress rail.                                                                                                           | Accept for product MVP; do not build the prototype walkthrough chrome into OpenELIS. |
 | Case progress           | Case-progress rail with done/current/to-do states and next-step callout.                                                    | Actual now has the progress rail, next-step callout, and stage tag.                                                                                                                 | Parity achieved for workflow orientation.                                            |
 | Case workbench layout   | Compact cards for inoculation, timeline, isolates, AST results, reports.                                                    | Actual now separates current inoculation/setup, timeline, isolates, AST, critical communication, and report readiness into cards.                                                   | Parity achieved for core card layout.                                                |
@@ -43,7 +53,7 @@ mapping/export screens that are outside this MVP slice.
 | Critical notification   | Inline critical notification card with open/ack/follow-up states and alert-path reuse.                                      | The canonical browser flow exercises a Result-target communication through open, acknowledged, and closed states after preliminary report projection.                                | Behavioral proof is present; refreshed all-up video remains pending.                 |
 | Report readiness        | Reports card with explicit readiness checklist and preliminary/final release buttons.                                       | Actual now has final-release and WHONET readiness checklist cards and hides the release action after final release.                                                                 | Parity achieved for MVP final-release readiness.                                     |
 | WHONET readiness/export | Mapping dashboard with percentage coverage, suggestions, per-vocabulary bars, and three-click export path.                  | M3 provides organism/antibiotic administration. M4 provides a compact Carbon Configure/Preview/Generate flow, selected-set counts, mapping warnings, direct repair, audited manual CSV, and stable desktop/mobile layouts. | Manual-export interaction parity is achieved; auto-map, broad vocabulary coverage, scheduling, profile packaging, and FHIR delivery remain future scope. |
-| Evidence quality        | Mock screenshots are focused viewport-level states.                                                                         | Actual screenshots are recaptured as ordered viewport/card shots with scroll-margin polish for sticky header clearance.                                                             | Accept; use screenshots plus video rather than video alone for visual review.        |
+| Evidence quality        | Mock screenshots are focused viewport-level states.                                                                         | Case screenshots are ordered viewport/card shots, but the original evidence set omitted M-03 and did not compare the supported Add Order route. | Incomplete; R1 must add desktop/mobile M-03 and refreshed M-07 comparisons. |
 
 ## Specific Actual Evidence Issues
 
@@ -59,13 +69,15 @@ mapping/export screens that are outside this MVP slice.
 
 ## Recommended Follow-Up
 
-1. Keep PR #3789 as the MVP implementation slice with core workbench design
-   parity.
-2. Add a follow-up AST UI milestone for multi-row AST entry, reagent lot,
+1. Keep PR #3789 described as the initial routine-bacteriology implementation,
+   not complete source parity.
+2. Complete R1 M-03 remediation on the supported Add Order workflow before
+   accepting order routing.
+3. Add a follow-up AST UI milestone for multi-row AST entry, reagent lot,
    breakpoint standard, and inline expert review.
-3. Complete the remaining M-09 scope only after its format, vocabulary,
+4. Complete the remaining M-09 scope only after its format, vocabulary,
    scheduling, delivery, and standards-policy decisions are authoritative.
-4. Re-record a stakeholder-facing guided video if Casey needs a walkthrough
+5. Re-record a stakeholder-facing guided video if Casey needs a walkthrough
    rather than raw Playwright evidence.
 
 ## Captured Comparison Aids

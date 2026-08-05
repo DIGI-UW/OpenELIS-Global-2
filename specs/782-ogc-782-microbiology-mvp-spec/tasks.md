@@ -11,9 +11,9 @@ UI work and for final MVP acceptance. The implementation must also use the
 `DIGI-UW/code-qa` skill suite for meaningful test coverage, spec-code alignment,
 simplicity review, and evidence bundling.
 
-**Organization**: The original execution used milestone branches per
-Constitution Principle IX. At the user's direction, those implementation
-milestones were consolidated into the single active milestone PR #3789; the
+**Organization**: The original routine-bacteriology execution was consolidated
+into PR #3789. Clinical completeness, reference administration, WHONET export,
+and authoritative alignment are now an official linear follow-on stack. The
 phase history below is retained for traceability and maps back to the user
 stories in `spec.md`.
 
@@ -23,8 +23,8 @@ stories in `spec.md`.
 - **[M#]**: Milestone from `plan.md`.
 - Every implementation task names the intended file path.
 - Branch creation is always the first task in a milestone.
-- Historical PR-creation tasks record the original stack; #3789 is the only
-  active implementation PR.
+- Historical PR-creation tasks record the original stack. Current follow-on
+  branches retain independent PR and acceptance gates.
 
 ## Milestone Dependency Graph
 
@@ -405,11 +405,11 @@ scope claims, deploy the exact candidate, and keep automated prechecks distinct
 from Piotr's human UAT ruling.
 
 - [x] T190 [MVP] Correct service-created fixture status handling and replace backend-only report inspection in the canonical Playwright flow with visible navigation and assertions on the patient-results page (`4cafa530a`).
-- [x] T191 [MVP] Show reusable microbiology order-detail fields only when a selected test routes to a culture workflow, preserve workflow metadata through order selection, and submit the details through the existing sample-entry service path (`8b6982867`).
+- [x] T191 [MVP] Historical partial repair: show reusable microbiology order-detail fields when selected-test workflow metadata is present and submit them through the sample-entry service path (`8b6982867`). This mounted only in legacy `/SamplePatientEntry`, omitted required Method/control/default behavior, and did not preserve workflow metadata in the supported `/order/enter` flow. It does not satisfy FR-002 and is superseded by Phase 14.
 - [x] T192 [MVP] Compile patient, accession, and specimen context inside the case service transaction; keep it visible in the workbench; capture media/bottle, incubation, and atmosphere explicitly in the existing activity record (`8b6982867`).
 - [x] T193 [MVP] Expose existing projected Result identifiers to critical communication and link the report workflow to the visible patient-results page without adding schema (`8b6982867`).
 - [x] T194 [MVP] Pass 13 focused backend tests and 18 focused frontend tests for the July 28 story-closure slice; run Spotless, Prettier, focused source ESLint, and `git diff --check`.
-- [x] T195 [MVP] Reconcile the feature spec, implementation plan, task ledger, gap analysis, and Jira-umbrella relationship; record amendment, TB, reagent, WHONET, performance, report-proof, and human-UAT rulings in `evidence/scope-rulings-2026-07-28.md`.
+- [x] T195 [MVP] Historical reconciliation at the July 28 checkpoint. Its M-03 resolution and aggregate parity claims are superseded by the pinned 2026-08-05 OpenELIS Work alignment audit and Phase 14.
 - [x] T196 [MVP] Reconcile the ten Grist checklist rows with the current behavior contract and verify live JSON revision `fc9d65e109d3e6863d75b9c66ef7f2f41480bf626d458c11bb59ad55ae5bc0fe`: nine core steps required, TB reflection optional. Final rendered-overlay verification remains part of deployed T198 evidence.
 - [x] T202 [MVP] Repair deployed service-layer UAT data and workflow defects found by the canonical journey: complete patient demographics, add selectable sample/test mapping and localization, normalize blank optional organism identifiers, perform preliminary projection before Result-target communication, return a named 409 for final-case writes, and cover the changes with focused backend/frontend tests (`e2f7a36ea` through `1e3aadfaf`).
 - [x] T203 [MVP] Repair full-suite fixture isolation after legacy DBUnit tests remove shared statuses and active methods: resolve or provision the minimum reference data through services with generated identifiers, cover stale-cache and polluter ordering, and pass the 4,660-test clean install plus the remote backend checkpoint (`6f941e6a5`, `46ab388ad`).
@@ -424,7 +424,60 @@ from Piotr's human UAT ruling.
 
 - [x] T205 [M2] Implement clinical completeness and NFR qualification in `specs/782-ogc-782-microbiology-m8-clinical-completeness/`; PR and human acceptance remain separate gates.
 - [x] T206 [M3] Implement reference and mapping administration in `specs/782-ogc-782-microbiology-m9-reference-mapping-admin/`; PR and human acceptance remain separate gates.
-- [ ] T207 [M4] Complete the manual WHONET export checklist in `specs/782-ogc-782-microbiology-m10-whonet-export/tasks.md`, publish its stacked PR, deploy its exact SHA, and retain M1-M4 in the live review overlay.
+- [ ] T207 [M4] Complete the manual WHONET export acceptance gate in `specs/782-ogc-782-microbiology-m10-whonet-export/tasks.md`; implementation and PR exist and the combined candidate is deployed, but exact-SHA human UAT remains open.
+
+## Phase 14: R1 Authoritative Alignment Remediation
+
+**Branch**:
+`feat/782-ogc-782-microbiology-r1-authoritative-alignment`
+
+**Base**: `feat/782-ogc-782-microbiology-m10-whonet-export` at
+`08b5b3888af4ba9f1c506fc555138218e0d043a4`
+
+**Goal**: Restore the authoritative M-03 Program/order-entry behavior on the
+supported Add Order workflow, correct downstream completion claims, and prove
+the same behavior through implementation, automated evidence, visual review,
+and a separate Grist UAT story.
+
+**Independent Test**: Starting from configured Add Order navigation, a reviewer
+selects a culture-capable test, sees Program become Microbiology, confirms the
+required/defaulted Culture Method and complete details controls, saves, and
+opens exactly one resulting case containing those details.
+
+### Authority And Tests First
+
+- [x] T208 [R1] Create `feat/782-ogc-782-microbiology-r1-authoritative-alignment` from the verified M10 head in an isolated worktree.
+- [x] T209 [R1] Pin OpenELIS Work revision `a1f720d7b3b01db63387361495f4aa6589105003` and add the 17-step source-to-code-to-UAT crosswalk in `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
+- [ ] T210 [P] [R1] Add failing selector/state tests proving modern order selection retains culture workflow and Method metadata for direct and panel-selected tests.
+- [ ] T211 [P] [R1] Add failing React interaction tests using Carbon-accessible roles for Program derivation, required/defaulted Culture Method, Patient Origin selection, bounded Number of Sets, Clinical History, Antibiotic Exposure checkbox, Critical Notify checkbox, and discard confirmation.
+- [ ] T212 [P] [R1] Add failing service/controller integration coverage proving the supported order save persists details atomically, creates one case, and returns the details through case compilation without SQL fixtures or fixed primary keys.
+- [ ] T213 [P] [R1] Replace the legacy-route order-entry Playwright shortcut with a red `core-app` journey that enters through configured navigation and `/order/enter`; cover culture, non-culture, save-to-case, removal confirmation, and the ruled mixed-workflow behavior without arbitrary waits.
+
+### Implementation
+
+- [ ] T214 [R1] Preserve complete workflow/Method metadata in the modern `SampleTestSection` selected-test model for direct and panel selections.
+- [ ] T215 [R1] Derive the visible Microbiology Program from selected test workflows through shared order state and surface a named configuration error when the Program cannot be resolved by stable identity.
+- [ ] T216 [R1] Integrate reusable Carbon microbiology detail controls into the supported Program/order flow with required/defaulted Method and the product-safe control semantics in FR-002.
+- [ ] T217 [R1] Confirm before discarding entered microbiology details when the final culture test is removed or the order changes away from microbiology.
+- [ ] T218 [R1] Submit the modern order details through the existing service-layer order-save path and prove idempotent case/detail persistence. Add no migration unless a real data-model change is required.
+- [ ] T219 [R1] Remove the divergent legacy implementation or make it consume the same shared state and controls; retain a redirect only where compatibility requires it.
+- [ ] T220 [P] [R1] Add or update English React Intl source keys only and use existing Carbon components/tokens without a package upgrade.
+
+### Artifact, UAT, And Evidence Synchronization
+
+- [x] T221 [R1] Reconcile `spec.md`, `plan.md`, `tasks.md`, the engineering crosswalk, gap analysis, scope rulings, mock comparison, and human UAT contract to the pinned authority and corrected status vocabulary.
+- [ ] T222 [R1] Publish a separate M-03 Grist story with concise steps for supported navigation, Program derivation, controls/defaults, save-to-case, non-culture behavior, and discard confirmation; verify the live AMR JSON revision and rendered overlay.
+- [ ] T223 [R1] Run the focused Vitest suite for modern order state and microbiology controls and record the exact command/results.
+- [ ] T224 [R1] Run focused JUnit 4/controller/integration tests plus architecture/ORM checks for the order save path and record the exact command/results.
+- [ ] T225 [R1] Validate and audit the registered Playwright spec, then run the narrow `core-app` journey using locator readiness and web assertions only.
+- [ ] T226 [R1] Capture and manually compare stable desktop/mobile M-03 and M-07 screenshots against the pinned OpenELIS Work sources; document every intentional difference.
+- [ ] T227 [R1] Run pinned `tools/code-qa` alignment, meaningful-coverage, simplicity, and evidence workflows against the remediation diff.
+- [ ] T228 [R1] Run Spotless, targeted Prettier/ESLint, relevant builds, and `git diff --check` before commit.
+- [ ] T229 [R1] Deploy the exact remediation head with compatible review tooling to `amr.openelis-global.org`; verify health, supported routes, application SHA, checklist revision, and overlay rendering.
+- [ ] T230 [Human UAT] Piotr records Pass/Fail/N/A and notes for every required M-03 story step against the exact deployed revisions. Automation cannot complete this task.
+- [ ] T231 [R1] Push the branch and open an official stacked PR targeting `feat/782-ogc-782-microbiology-m10-whonet-export`; include scope, source revision, evidence, UAT state, and known follow-on modules.
+- [ ] T232 [Follow-up] Correct the M-03 v1/v2 visual, fallback, mixed-workflow, duplicate-text, and implementation-leakage issues in a separate `DIGI-UW/openelis-work` product-source PR.
+- [ ] T233 [Follow-up] Extract Macro Library core/runtime/administration into its own PR and UAT stack; retain only microbiology consumer integration in a small integration PR and review it on a separate macro deployment when available.
 
 ## Dependencies & Execution Order
 
@@ -442,6 +495,9 @@ from Piotr's human UAT ruling.
 - Phase 12 deployment depends on the story-closure and artifact-reconciliation
   commits. Human UAT depends on the exact deployed SHA and matching live Grist
   revision.
+- R1 depends on the M10 follow-on head. Its implementation gate depends on the
+  pinned product behavior, and its final acceptance depends on matching
+  Playwright, visual, deployed, and human UAT evidence.
 
 ## Parallel Opportunities
 

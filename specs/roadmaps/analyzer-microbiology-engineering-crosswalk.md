@@ -1,6 +1,6 @@
 # Analyzer + Microbiology Engineering Crosswalk
 
-**Last updated:** 2026-06-27
+**Last updated:** 2026-08-05
 **Audience:** Engineering planning and implementation
 **Purpose:** Preserve technical decisions and repo constraints outside
 Casey-owned product artifacts.
@@ -13,10 +13,10 @@ Casey-owned product artifacts.
   `projects/analyzer-profiles/schema/analyzer-defaults-1.0.schema.json`
 - Analyzer code: `src/main/java/org/openelisglobal/analyzer/`
 - Current analyzer UI: `frontend/src/components/analyzers/`
-- Microbiology Confluence narrative:
-  `https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256`
-- Public design repo:
-  `https://github.com/DIGI-UW/openelis-work/tree/main/designs/microbiology`
+- Pinned microbiology product authority:
+  `https://github.com/DIGI-UW/openelis-work/tree/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology`
+- Source-to-code-to-UAT status:
+  `specs/782-ogc-782-microbiology-mvp-spec/evidence/openelis-work-authoritative-alignment-2026-08-05.md`
 
 ## Analyzer Engineering Crosswalk
 
@@ -61,31 +61,53 @@ and documented the architecture decision.
 
 ### Current Repo Reality
 
-- There is no dedicated microbiology backend module yet.
-- `SampleItem` exists and is the correct granularity to evaluate for case
-  anchoring.
+- A dedicated `org.openelisglobal.microbiology` backend module and Carbon React
+  workflow are implemented through the M10 follow-on stack, but human UAT is
+  still pending.
+- Cases are anchored to `SampleItem + workflow` and can represent sibling
+  workflows on one physical specimen.
 - Test Catalog already has AMR/WHONET groundwork through `test_amr_config`,
   `whonet_antibiotic_codes`, and the existing AMR flag.
-- `test_method` exists and supports a default Method per test.
+- Test Catalog culture workflow configuration and default Method support are
+  implemented.
 - The MVP stores AST runs/readings in the microbiology workflow and projects
   reviewed reportable interpretations into the standard Result/patient-report
   path.
-- Existing WHONET export services exist and should be extended before building
-  a parallel exporter.
+- The M10 branch extends the existing report/export path with the first manual
+  WHONET CSV slice; broader compatibility and delivery remain incomplete.
 - The clinical call/read-back record is authoritative and projects lifecycle
   state into the existing generic Alert workflow.
+- Configured Add Order uses `/order/enter`. The historical M-03 repair mounts
+  only in legacy `/SamplePatientEntry`; modern `SampleTestSection` truncates
+  selected tests to ID/name and loses culture workflow metadata.
+- The M-07 worklist has configured navigation, breadcrumbs, and canonical query
+  state, but lacks several authoritative laboratory context fields and views.
 
 ### As-Built MVP Decisions
 
 | Topic | Engineering decision | Product-safe expression |
 | --- | --- | --- |
-| Workflow routing | Test Catalog persists `culture_workflow_type`; case persists `workflow_type`; order-entry details pass through the sample-entry service to routing | The ordered test determines the microbiology workflow and reveals the details needed for culture work |
+| Workflow routing | Test Catalog persists `culture_workflow_type`; case persists `workflow_type`; backend routing is implemented. R1 must preserve this metadata through modern order state and visibly derive Program/details | The ordered test determines the microbiology workflow and visibly reveals the details needed for culture work |
 | Case anchor | Case is keyed by one physical specimen workflow, implemented as `SampleItem + workflow` | A specimen can hold distinguishable sibling workflow records without duplicate accessioning |
 | Culture protocol | Use test default Method plus micro-specific method metadata | The selected test provides a default culture setup recipe |
 | AST storage and reporting | Use microbiology AST runs/readings, then project reviewed reportable content into standard Result/patient reporting | Users enter AST readings, review interpretations, and see the result on the patient report |
 | Final safety | Reject isolate and AST mutation after final release; amendment/version history is V2 | Final results cannot be silently changed |
 | Critical communications | Keep the clinical critical log authoritative and synchronize its lifecycle with existing Alert records | Critical communications are logged and surfaced in the existing operational alert workflow |
-| WHONET | Reuse existing mapping/reference concepts for readiness; export generation and mapping administration are V2 | Users can see whether a finalized case is ready for future surveillance export |
+| WHONET | Reuse existing mapping/reference/report services. M9/M10 add organism/antibiotic administration and first manual export; wider packaging, remaining vocabularies, scheduling, and delivery remain future work | Users can validate and manually export the supported finalized result set; unsupported export depth remains explicit |
+
+### Product Authority Versus Engineering Choice
+
+OpenELIS Work is binding for visible workflow order, information, control
+meaning, defaults, state transitions, and acceptance behavior. It is not
+binding for schema, API, service, route names, or component structure. An
+engineering implementation may differ internally, but it may not silently omit
+the product behavior.
+
+For M-03 this means the current Add Order path must visibly derive Program,
+show the ruled Culture Method/details controls, confirm destructive workflow
+changes, and persist to the case. Reusing a legacy route or choosing a shared
+state abstraction is engineering work; whether the user sees the behavior is
+not optional.
 
 ### Microbiology Implementation Readiness Gate
 
@@ -98,10 +120,12 @@ Before a later micro slice begins, engineering should confirm:
 - Which WHONET export columns and mapping administration belong in the export
   slice beyond current readiness.
 - Whether reagent/card lot or expert-rule behavior requires new persistence.
+- Whether a planned slice has a complete pinned-source -> requirement -> task
+  -> code -> automated evidence -> Grist UAT trace.
 
 ## Spec Cleanup Workflow
 
-1. Rewrite Casey-facing Jira titles and summaries around workflow outcomes.
+1. Rewrite product titles and summaries around workflow outcomes.
 2. Move table/class/route/service details into engineering notes or linked
    implementation tasks.
 3. Keep product acceptance criteria observable by a user or reviewer.
@@ -113,5 +137,6 @@ Before a later micro slice begins, engineering should confirm:
 
 - Do not create a governance process.
 - Do not erase useful technical context; move it to the right artifact.
-- Do not treat mockups as implementation contracts.
+- Do not treat mockups as schema/API/component contracts; do treat their
+  observable workflow behavior as authoritative unless a deviation is ruled.
 - Do not make Bridge/OpenELIS ownership a product-spec decision.
