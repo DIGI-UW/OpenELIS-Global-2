@@ -25,11 +25,11 @@ sidenav rather than copying prototype-specific styling.
 
 ## Inspected Evidence
 
-The six generated screenshots cover desktop Configure, desktop Preview, exact
-organism repair, generated success, mobile Configure, and mobile Preview. Visual
-inspection confirmed no overlapping controls or page-level horizontal overflow;
-the mobile AST table remains an explicitly labeled keyboard-focusable horizontal
-region. The refreshed mobile Preview starts at the full breadcrumb context, and
-the generated screenshot no longer contains the previous scene label. Binary
-files remain outside git under `frontend/e2e-evidence/` until they are packaged
-and uploaded with the exact deployed-SHA walkthrough.
+The six exact-deployment screenshots cover desktop Configure, desktop Preview,
+exact organism repair, generated success, mobile Configure, and mobile Preview.
+Visual inspection confirmed no overlapping controls or page-level horizontal
+overflow; the mobile AST table remains an explicitly labeled keyboard-focusable
+horizontal region. The refreshed mobile Preview starts at the full breadcrumb
+context, and the generated screenshot does not contain a stale scene label. The
+standardized bundle is under `/tmp/ogc-782-m4-evidence-f57064ec5b4f/`; binaries
+remain outside git pending attachment to PR #3984.
