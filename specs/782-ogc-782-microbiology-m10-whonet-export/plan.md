@@ -35,7 +35,9 @@ boundary rather than introducing a second export implementation.
 10. The config-backed Microbiology menu gains the canonical WHONET Export child
     and removes the competing legacy Reports navigation entry; no database
     migration is used for navigation. Removing the remaining legacy report
-    implementation is separately tracked because direct callers may still exist.
+    implementation is separately tracked in
+    [GitHub #3983](https://github.com/DIGI-UW/OpenELIS-Global-2/issues/3983)
+    because direct callers may still exist.
 
 ## Data Flow
 
@@ -51,8 +53,11 @@ boundary rather than introducing a second export implementation.
 
 ## Database Change
 
-One Liquibase changeset adds the export-run audit entity. Rollback removes that
-table. Routes, menu config, fixtures, tests, and UI do not receive migrations.
+The original Liquibase changeset adds the export-run audit entity. A follow-up
+changeset removes one redundant compatibility column and an unneeded index while
+preserving the original checksum for environments that already applied M4.
+Rollback of the M4 migration file removes the table. Routes, menu config,
+fixtures, tests, and UI do not receive migrations.
 
 ## Test Strategy
 

@@ -73,8 +73,8 @@ The merge-blocking MVP is routine bacteriology order routing and order details,
 case work, isolate identification, manual AST, worklist navigation, critical
 communication, preliminary/final report propagation, and WHONET readiness.
 Amendment/re-identification history, reagent/card lot linkage, expert rules,
-full WHONET export and mapping UI, operational TB processing, antibiograms, and
-GLASS reporting are explicit later work.
+authoritative WHONET interoperability, operational TB processing, antibiograms,
+and GLASS reporting are explicit later work.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -316,9 +316,9 @@ or missing mapping for export.
   surveillance export by tracking export-relevant organism, specimen,
   antibiotic, breakpoint, and interpretation information.
 - **FR-021**: Phase 1A MUST support manual bacteriology workflow end-to-end;
-  analyzer automation, expert rules, full WHONET export, TB workflow, and GLASS
-  reporting may be planned extensions unless included in an explicit later
-  slice.
+  analyzer automation, expert rules, authoritative WHONET interoperability, TB
+  workflow, and GLASS reporting may be planned extensions unless included in an
+  explicit later slice.
 - **FR-022**: Product specs and Jira tickets for this feature MUST describe
   workflow behavior and acceptance outcomes, not required table names, service
   names, route names, or storage layout.
@@ -417,7 +417,7 @@ shape during planning.
 - **Microbiology Worklist**: The shared operational queue of microbiology cases
   and AST work requiring attention.
 - **Surveillance Export Readiness**: The finalized result and mapping state
-  needed to produce WHONET-compatible surveillance output.
+  needed to produce surveillance output for WHONET import validation.
 
 ## Success Criteria _(mandatory)_
 
