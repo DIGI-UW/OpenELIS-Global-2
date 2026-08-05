@@ -62,4 +62,7 @@
 
   <!-- QA Phase D.1 — OGC-686: accrediting bodies + per-test accreditation -->
   <include file="liquibase/qa/013-create-accreditation-tables.xml" />
+
+  <!-- QA Phase D.2 — OGC-686: accreditation page menu row -->
+  <include file="liquibase/qa/014-add-accreditation-menu.xml" />
 </databaseChangeLog>
