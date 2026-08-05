@@ -1,0 +1,62 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/theme" as *;
+
+.text-macro-admin {
+  padding-block-end: $spacing-09;
+
+  h1 {
+    margin-block-start: $spacing-05;
+  }
+
+  &__subtitle {
+    max-inline-size: 48rem;
+    margin-block: $spacing-03 $spacing-06;
+    color: $text-secondary;
+  }
+
+  &__form,
+  &__contexts {
+    display: grid;
+    gap: $spacing-05;
+  }
+
+  &__contexts {
+    padding: $spacing-04;
+    border: 1px solid $border-subtle-01;
+  }
+
+  &__empty {
+    display: grid;
+    min-block-size: 8rem;
+    place-items: center;
+    background: $layer-01;
+    color: $text-secondary;
+  }
+
+  .cds--toolbar-content > .cds--search {
+    flex: 1 1 16rem;
+    min-inline-size: 16rem;
+  }
+}
+
+@media (max-width: 42rem) {
+  .text-macro-admin {
+    .cds--table-toolbar,
+    .cds--toolbar-content {
+      block-size: auto;
+    }
+
+    .cds--toolbar-content {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .cds--toolbar-content > .cds--search,
+    .cds--toolbar-content > .cds--select,
+    .cds--toolbar-content > .cds--btn {
+      inline-size: 100%;
+      max-inline-size: none;
+      min-inline-size: 0;
+    }
+  }
+}
