@@ -50,6 +50,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -665,6 +666,12 @@ public class TestCatalogEditorRestController {
         // Activation (N→Y) is gated on reference-range coverage (the H-03 safety
         // gate) and must go through POST .../activate; basic-info only persists a
         // deactivation, so it cannot be used to bypass the coverage acknowledgment.
+        // Asking for it here is refused rather than answered 200 and dropped, which
+        // told the caller the activation had been saved when it had not. Sending
+        // active=true for an already-active test is not a change, so it still passes.
+        if (Boolean.TRUE.equals(body.active) && !test.isActive()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
         if (body.active != null && !body.active) {
             test.setIsActive("N");
         }

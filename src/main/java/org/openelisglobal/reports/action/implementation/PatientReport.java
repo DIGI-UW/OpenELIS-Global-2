@@ -79,6 +79,8 @@ import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -95,6 +97,8 @@ import org.openelisglobal.testresultcomponent.service.TestResultComponentService
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
+import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 
 public abstract class PatientReport extends Report {
 
@@ -584,10 +588,12 @@ public abstract class PatientReport extends Report {
             if (resultList.isEmpty()) {
                 setEmptyResult(data);
             } else {
-                setAppropriateResults(resultList, data);
+                boolean perComponent = setAppropriateResults(resultList, data);
                 Result result = resultList.get(0);
                 setCorrectedStatus(result, data);
-                setNormalRange(data, test, result);
+                if (!perComponent) {
+                    setNormalRange(data, test, result);
+                }
                 data.setResult(getAugmentedResult(data, result));
                 data.setFinishDate(analysisService.getCompletedDateForDisplay(currentAnalysis));
                 data.setAlerts(getResultFlag(result, null, data));
@@ -703,15 +709,19 @@ public abstract class PatientReport extends Report {
         return (test != null && test.getUnitOfMeasure() != null) ? test.getUnitOfMeasure().getName() : "";
     }
 
-    private void setAppropriateResults(List<Result> resultList, ClinicalPatientData data) {
+    /**
+     * @return true when the row was filled per component, so the caller must not
+     *         overwrite the unit and reference range with test-level values
+     */
+    private boolean setAppropriateResults(List<Result> resultList, ClinicalPatientData data) {
         String reportResult = "";
         if (!resultList.isEmpty()) {
 
             List<TestResultComponent> activeComponents = SpringContext.getBean(TestResultComponentService.class)
                     .getActiveComponentsByTestId(analysisService.getTest(currentAnalysis).getId());
             if (activeComponents.size() > 1) {
-                data.setResult(buildMultiComponentResult(resultList, activeComponents));
-                return;
+                buildMultiComponentRow(resultList, activeComponents, data);
+                return true;
             }
 
             // If only one result just get it and get out
@@ -828,6 +838,7 @@ public abstract class PatientReport extends Report {
             }
         }
         data.setResult(reportResult);
+        return false;
     }
 
     /**
@@ -835,6 +846,86 @@ public abstract class PatientReport extends Report {
      * formatted by its component's own type. Results whose test_result row has no
      * component (legacy rows) belong to the primary component.
      */
+    /**
+     * Fill a multi-component row: one line per rendered component in the Result
+     * cell, and the matching line in the Unit and Reference-value cells. A
+     * component carries its own unit, and its own range for the patient's age and
+     * sex, this specimen and that component — resolved through the same selection
+     * Results Entry and Validation use, so all three agree.
+     */
+    private void buildMultiComponentRow(List<Result> resultList, List<TestResultComponent> components,
+            ClinicalPatientData data) {
+        ResultService resultResultService = SpringContext.getBean(ResultService.class);
+        ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
+        UnitOfMeasureService unitOfMeasureService = SpringContext.getBean(UnitOfMeasureService.class);
+        String testUom = getUnitOfMeasure(analysisService.getTest(currentAnalysis));
+
+        StringBuilder results = new StringBuilder();
+        StringBuilder uoms = new StringBuilder();
+        StringBuilder ranges = new StringBuilder();
+        for (TestResultComponent component : components) {
+            // OGC-1127: a component flagged not to print is omitted from the report.
+            // The primary is always kept so the test never renders with no result.
+            if (!component.getIsPrimary() && !component.getShowOnReport()) {
+                continue;
+            }
+            List<Result> componentResults = new ArrayList<>();
+            for (Result result : resultList) {
+                if (result.getParentResult() != null) {
+                    continue;
+                }
+                String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
+                if (componentId == null ? component.getIsPrimary() : component.getId().equals(componentId)) {
+                    componentResults.add(result);
+                }
+            }
+            if (componentResults.isEmpty()) {
+                continue;
+            }
+            String componentValue = formatComponentResults(component, componentResults, resultResultService);
+            if (GenericValidator.isBlankOrNull(componentValue)) {
+                continue;
+            }
+            results.append(component.getLabel()).append(": ").append(componentValue).append("\n");
+
+            String componentUom = componentUomName(component, unitOfMeasureService);
+            uoms.append(GenericValidator.isBlankOrNull(componentUom) ? testUom : componentUom).append("\n");
+
+            Result first = componentResults.get(0);
+            ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
+                    component.getId());
+            String significantDigits = first.getTestResult() == null ? "0"
+                    : first.getTestResult().getSignificantDigits();
+            String range = limit == null ? ""
+                    : resultLimitService.getDisplayReferenceRange(limit,
+                            GenericValidator.isBlankOrNull(significantDigits) ? "0" : significantDigits, " - ");
+            ranges.append(range).append("\n");
+        }
+        trimTrailingNewline(results);
+        trimTrailingNewline(uoms);
+        trimTrailingNewline(ranges);
+
+        data.setResult(results.toString());
+        data.setUom(uoms.toString());
+        data.setTestRefRange(ranges.toString());
+        data.setHasRangeAndUOM(ranges.length() > 0 || uoms.length() > 0);
+    }
+
+    private static void trimTrailingNewline(StringBuilder builder) {
+        if (builder.length() > 0) {
+            builder.setLength(builder.length() - 1);
+        }
+    }
+
+    /** A component's own unit of measure, blank when it has none of its own. */
+    private String componentUomName(TestResultComponent component, UnitOfMeasureService unitOfMeasureService) {
+        if (component.getUomId() == null) {
+            return "";
+        }
+        UnitOfMeasure uom = unitOfMeasureService.getUnitOfMeasureById(component.getUomId());
+        return uom == null || uom.getUnitOfMeasureName() == null ? "" : uom.getUnitOfMeasureName();
+    }
+
     private String buildMultiComponentResult(List<Result> resultList, List<TestResultComponent> components) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         StringBuilder reportBuilder = new StringBuilder();
