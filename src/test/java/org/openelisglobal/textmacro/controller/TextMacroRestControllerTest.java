@@ -18,6 +18,7 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.textmacro.controller.rest.TextMacroAdminRestController;
 import org.openelisglobal.textmacro.controller.rest.TextMacroRestController;
 import org.openelisglobal.textmacro.form.TextMacroAdminForm;
+import org.openelisglobal.textmacro.form.TextMacroBulkRequestForm;
 import org.openelisglobal.textmacro.form.TextMacroListForm;
 import org.openelisglobal.textmacro.form.TextMacroSummaryForm;
 import org.openelisglobal.textmacro.service.TextMacroRequestException;
@@ -42,6 +43,32 @@ public class TextMacroRestControllerTest {
         controller.create(requestFor("42"), request);
 
         verify(service).save(null, request, "42");
+    }
+
+    @Test
+    public void adminBulkWriteUsesAuthenticatedActor() {
+        TextMacroService service = mock(TextMacroService.class);
+        TextMacroAdminRestController controller = new TextMacroAdminRestController(service);
+        TextMacroBulkRequestForm request = new TextMacroBulkRequestForm();
+        request.action = "DEACTIVATE";
+        request.ids = List.of("macro-1");
+
+        controller.bulk(requestFor("42"), request);
+
+        verify(service).bulk(request, "42");
+    }
+
+    @Test
+    public void exportUsesStableCsvAttachmentContract() {
+        TextMacroService service = mock(TextMacroService.class);
+        when(service.exportCsv()).thenReturn("code,expansion_text\r\n.gpc,Text\r\n");
+
+        org.springframework.http.ResponseEntity<String> response = new TextMacroAdminRestController(service).export();
+
+        assertEquals("text/csv;charset=UTF-8", response.getHeaders().getContentType().toString());
+        assertEquals("attachment; filename=\"openelis-text-macros.csv\"",
+                response.getHeaders().getFirst(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION));
+        assertEquals("code,expansion_text\r\n.gpc,Text\r\n", response.getBody());
     }
 
     @Test

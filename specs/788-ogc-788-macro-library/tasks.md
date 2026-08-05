@@ -78,6 +78,9 @@
 - [ ] T202 Add tests and implementation for reviewed-package restore/import that
       preserves local phrases and reports collisions.
 - [ ] T203 Add tests and implementation for export and explicit bulk operations.
+      Export is deterministic CSV; bulk activation/deactivation/removal is
+      confirmed, capped at 100 rows, actor-attributed, and validated atomically.
+      This slice reuses the M1 table/query/service/test helpers and adds no schema.
 - [ ] T204 Extend the reusable field to approved additional consumers with no
       duplicated parser or suggestion logic.
 - [ ] T205 Repeat focused tests, code-qa, visual/a11y comparison, standard video,

@@ -7,14 +7,22 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.textmacro.form.TextMacroAdminForm;
 import org.openelisglobal.textmacro.form.TextMacroAdminQueryForm;
+import org.openelisglobal.textmacro.form.TextMacroBulkRequestForm;
+import org.openelisglobal.textmacro.form.TextMacroBulkResultForm;
 import org.openelisglobal.textmacro.form.TextMacroPageForm;
 import org.openelisglobal.textmacro.service.TextMacroConflictException;
+import org.openelisglobal.textmacro.service.TextMacroRequestException;
 import org.openelisglobal.textmacro.service.TextMacroService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,6 +90,37 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
         assertTrue(page.items.get(0).code.compareTo(page.items.get(99).code) > 0);
     }
 
+    @Test
+    public void exportAndBulkOperationsRoundTripThroughOrm() throws IOException {
+        String suffix = uniqueSuffix();
+        TextMacroAdminForm alpha = service.save(null,
+                request(".alpha" + suffix, "Alpha, reviewed", Set.of("MICROBIOLOGY_CULTURE_ACTIVITY"), true),
+                TEST_SYS_USER_ID);
+        TextMacroAdminForm zeta = service.save(null,
+                request(".zeta" + suffix, "Zeta reviewed", Set.of("MICROBIOLOGY_CLINICAL_HISTORY"), true),
+                TEST_SYS_USER_ID);
+
+        try (CSVParser parser = CSVParser.parse(new StringReader(service.exportCsv()),
+                CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build())) {
+            List<org.apache.commons.csv.CSVRecord> exported = parser.getRecords().stream()
+                    .filter(row -> row.get("code").endsWith(suffix)).toList();
+            assertEquals(2, exported.size());
+            assertEquals(alpha.code, exported.get(0).get("code"));
+            assertEquals("Alpha, reviewed", exported.get(0).get("expansion_text"));
+            assertEquals(zeta.code, exported.get(1).get("code"));
+        }
+
+        TextMacroBulkResultForm deactivated = service.bulk(bulk("DEACTIVATE", alpha.id, zeta.id), TEST_SYS_USER_ID);
+        assertEquals(List.of(alpha.code, zeta.code), deactivated.affectedCodes);
+        assertFalse(service.getAdmin(alpha.id).active);
+        assertFalse(service.getAdmin(zeta.id).active);
+
+        service.bulk(bulk("DELETE_LOCAL", alpha.id), TEST_SYS_USER_ID);
+        TextMacroRequestException removed = assertThrows(TextMacroRequestException.class,
+                () -> service.getAdmin(alpha.id));
+        assertEquals("MACRO_NOT_FOUND", removed.getCode());
+    }
+
     private TextMacroAdminForm request(String code, String text, Set<String> contexts, boolean active) {
         TextMacroAdminForm request = new TextMacroAdminForm();
         request.code = code;
@@ -93,5 +132,12 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
 
     private String uniqueSuffix() {
         return Long.toUnsignedString(System.nanoTime(), 36);
+    }
+
+    private TextMacroBulkRequestForm bulk(String action, String... ids) {
+        TextMacroBulkRequestForm request = new TextMacroBulkRequestForm();
+        request.action = action;
+        request.ids = List.of(ids);
+        return request;
     }
 }

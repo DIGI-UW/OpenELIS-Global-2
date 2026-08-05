@@ -1,4 +1,4 @@
-# REST And URL Contract: OGC-788 M1
+# REST And URL Contract: OGC-788 M1-M2
 
 This file records the first engineering contract. Product acceptance remains in
 `spec.md`.
@@ -71,6 +71,48 @@ Expected errors use a stable `code` and human-safe message key:
 - `404 MACRO_NOT_FOUND`
 - `409 MACRO_CODE_EXISTS`
 - `403` for unauthorized administration
+
+## Administrative Export
+
+`GET /rest/text-macros/admin/export`
+
+- Requires the existing administrator role.
+- Returns `text/csv; charset=UTF-8` as
+  `attachment; filename="openelis-text-macros.csv"`.
+- The first row is
+  `code,expansion_text,contexts,active,provenance,source_key,source_version`.
+- Rows are ordered by canonical code ascending. Context names are ordered and
+  joined with `|`; RFC 4180 quoting preserves commas, quotes, and newlines in
+  phrase text.
+- Export contains no database ID, audit actor, or timestamp.
+
+## Administrative Bulk Action
+
+`POST /rest/text-macros/admin/bulk`
+
+```json
+{
+  "ids": ["generated-id-1", "generated-id-2"],
+  "action": "DEACTIVATE"
+}
+```
+
+Supported actions are `ACTIVATE`, `DEACTIVATE`, and `DELETE_LOCAL`.
+
+- The request contains 1-100 unique generated IDs and no actor.
+- The service derives the actor from the authenticated request, loads the full
+  selection, validates every row, then applies the action in one transaction.
+- `DELETE_LOCAL` rejects the complete request if any selected phrase is not
+  locally authored. It never removes a packaged phrase, and the irreversible
+  removal is written to the existing audit trail with the authenticated actor
+  before the row is deleted.
+- Already expanded clinical text is plain text and is unaffected.
+- The response includes the action, affected count, and affected canonical codes
+  in ascending order.
+- Stable errors include `MACRO_SELECTION_REQUIRED`,
+  `MACRO_SELECTION_LIMIT_EXCEEDED`, `DUPLICATE_MACRO_IDS`,
+  `INVALID_MACRO_BULK_ACTION`, `MACRO_NOT_FOUND`, and
+  `PACKAGED_MACRO_REMOVAL_NOT_ALLOWED`.
 
 ## Canonical Administration URL
 

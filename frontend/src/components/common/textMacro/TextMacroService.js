@@ -1,6 +1,7 @@
 import config from "../../../config.json";
+import { filenameFromContentDisposition } from "../../utils/downloadAttachment";
 
-const request = async (path, options = {}) => {
+const requestResponse = async (path, options = {}) => {
   const response = await fetch(config.serverBaseUrl + path, {
     credentials: "include",
     ...options,
@@ -14,6 +15,11 @@ const request = async (path, options = {}) => {
       ...options.headers,
     },
   });
+  return response;
+};
+
+const request = async (path, options = {}) => {
+  const response = await requestResponse(path, options);
   const contentType = response.headers.get("content-type") || "";
   const body = contentType.includes("application/json")
     ? await response.json()
@@ -51,3 +57,25 @@ export const saveAdminMacro = (macro) =>
       }),
     },
   );
+
+export const bulkAdminMacros = ({ ids, action }) =>
+  request("/rest/text-macros/admin/bulk", {
+    method: "POST",
+    body: JSON.stringify({ ids, action }),
+  });
+
+export const exportAdminMacros = async () => {
+  const response = await requestResponse("/rest/text-macros/admin/export");
+  if (!response.ok) {
+    const error = new Error(response.statusText);
+    error.status = response.status;
+    throw error;
+  }
+  return {
+    blob: await response.blob(),
+    filename: filenameFromContentDisposition(
+      response.headers.get("Content-Disposition"),
+      "openelis-text-macros.csv",
+    ),
+  };
+};

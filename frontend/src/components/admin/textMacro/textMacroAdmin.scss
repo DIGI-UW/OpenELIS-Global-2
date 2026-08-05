@@ -74,23 +74,28 @@
 
       th:nth-child(1),
       td:nth-child(1) {
-        inline-size: 6.5rem;
+        inline-size: 3rem;
       }
 
-      th:nth-child(3),
-      td:nth-child(3),
       th:nth-child(4),
-      td:nth-child(4) {
+      td:nth-child(4),
+      th:nth-child(5),
+      td:nth-child(5) {
         display: none;
       }
 
-      th:nth-child(5),
-      td:nth-child(5) {
-        inline-size: 5rem;
+      th:nth-child(2),
+      td:nth-child(2) {
+        inline-size: 6.5rem;
       }
 
       th:nth-child(6),
       td:nth-child(6) {
+        inline-size: 5rem;
+      }
+
+      th:nth-child(7),
+      td:nth-child(7) {
         inline-size: 2.5rem;
       }
     }
