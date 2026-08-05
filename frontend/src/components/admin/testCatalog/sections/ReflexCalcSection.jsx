@@ -187,10 +187,16 @@ const ReflexCalcSection = ({ testId }) => {
           <strong>
             <FormattedMessage id="label.testCatalog.reflexCalc.calc.feedsInto" />
           </strong>
+          {/* Same InlineNotification treatment as the Reflex Tests block above. */}
           {data.feedsInto.length === 0 ? (
-            <p>
-              <FormattedMessage id="label.testCatalog.reflexCalc.calc.empty" />
-            </p>
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "label.testCatalog.reflexCalc.calc.feedsInto.empty",
+              })}
+            />
           ) : (
             <Table size="sm" aria-label="calc-feeds-into">
               <TableHead>
@@ -226,9 +232,14 @@ const ReflexCalcSection = ({ testId }) => {
             <FormattedMessage id="label.testCatalog.reflexCalc.calc.calculatedBy" />
           </strong>
           {data.calculatedBy.length === 0 ? (
-            <p>
-              <FormattedMessage id="label.testCatalog.reflexCalc.calc.empty" />
-            </p>
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "label.testCatalog.reflexCalc.calc.calculatedBy.empty",
+              })}
+            />
           ) : (
             <Table size="sm" aria-label="calc-calculated-by">
               <TableHead>
