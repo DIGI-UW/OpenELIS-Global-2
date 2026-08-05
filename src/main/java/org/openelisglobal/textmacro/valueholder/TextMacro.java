@@ -7,13 +7,16 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.UUID;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
@@ -23,8 +26,11 @@ public class TextMacro extends BaseObject<String> {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @Column(name = "id", length = 36)
-    private String id = UUID.randomUUID().toString();
+    @Column(name = "id", precision = 10, scale = 0)
+    @GeneratedValue(generator = "text_macro_seq_gen")
+    @GenericGenerator(name = "text_macro_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "text_macro_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String id;
 
     @Column(name = "code", nullable = false, length = 64, unique = true)
     private String code;

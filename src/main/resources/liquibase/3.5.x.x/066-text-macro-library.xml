@@ -6,8 +6,10 @@
                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <changeSet id="OGC-788-text-macro-library" author="OGC">
+    <createSequence sequenceName="text_macro_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
     <createTable tableName="text_macro" schemaName="clinlims">
-      <column name="id" type="varchar(36)">
+      <column name="id" type="bigint">
         <constraints primaryKey="true" primaryKeyName="pk_text_macro" nullable="false"/>
       </column>
       <column name="code" type="varchar(64)">
@@ -34,7 +36,7 @@
       constraintName="uq_text_macro_code"/>
 
     <createTable tableName="text_macro_context" schemaName="clinlims">
-      <column name="macro_id" type="varchar(36)">
+      <column name="macro_id" type="bigint">
         <constraints nullable="false"/>
       </column>
       <column name="context" type="varchar(80)">
@@ -55,6 +57,26 @@
     <rollback>
       <dropTable schemaName="clinlims" tableName="text_macro_context"/>
       <dropTable schemaName="clinlims" tableName="text_macro"/>
+      <dropSequence sequenceName="text_macro_seq" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="OGC-788-register-text-macro-audit" author="OGC">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'text_macro'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="text_macro"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="reference_tables">
+        <where>LOWER(name) = 'text_macro'</where>
+      </delete>
     </rollback>
   </changeSet>
 </databaseChangeLog>

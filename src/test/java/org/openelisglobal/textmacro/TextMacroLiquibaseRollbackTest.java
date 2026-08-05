@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import liquibase.Contexts;
 import liquibase.Liquibase;
@@ -40,14 +41,20 @@ public class TextMacroLiquibaseRollbackTest {
                 assertTrue(tableExists(connection, "text_macro"));
                 assertTrue(tableExists(connection, "text_macro_context"));
                 assertTrue(indexExists(connection, "text_macro", "uq_text_macro_code"));
+                assertTrue(sequenceExists(connection, "text_macro_seq"));
+                assertTrue(textMacroAuditRegistrationExists(connection));
 
-                changelog.rollback(1, "test");
+                changelog.rollback(2, "test");
                 assertFalse(tableExists(connection, "text_macro_context"));
                 assertFalse(tableExists(connection, "text_macro"));
+                assertFalse(sequenceExists(connection, "text_macro_seq"));
+                assertFalse(textMacroAuditRegistrationExists(connection));
 
                 changelog.update(new Contexts("test"));
                 assertTrue(tableExists(connection, "text_macro"));
                 assertTrue(tableExists(connection, "text_macro_context"));
+                assertTrue(sequenceExists(connection, "text_macro_seq"));
+                assertTrue(textMacroAuditRegistrationExists(connection));
             }
         }
     }
@@ -68,6 +75,24 @@ public class TextMacroLiquibaseRollbackTest {
                 }
             }
             return false;
+        }
+    }
+
+    private boolean sequenceExists(Connection connection, String sequenceName) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT 1 FROM information_schema.sequences WHERE sequence_schema = 'clinlims' AND sequence_name = ?")) {
+            statement.setString(1, sequenceName);
+            try (ResultSet rows = statement.executeQuery()) {
+                return rows.next();
+            }
+        }
+    }
+
+    private boolean textMacroAuditRegistrationExists(Connection connection) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT 1 FROM clinlims.reference_tables WHERE LOWER(name) = 'text_macro' AND keep_history = 'Y'");
+                ResultSet rows = statement.executeQuery()) {
+            return rows.next();
         }
     }
 }
