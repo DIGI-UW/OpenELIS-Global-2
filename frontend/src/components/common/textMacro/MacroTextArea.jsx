@@ -173,6 +173,7 @@ const MacroTextArea = forwardRef(
           }}
           onChange={updateToken}
           onKeyDown={handleKeyDown}
+          role="combobox"
           aria-autocomplete="list"
           aria-label={textAreaProps["aria-label"] || textAreaProps.labelText}
           aria-controls={open ? listboxId : undefined}

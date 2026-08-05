@@ -55,7 +55,7 @@ describe("MacroTextArea", () => {
     const user = userEvent.setup();
     renderField();
 
-    const field = screen.getByRole("textbox", { name: "Activity note" });
+    const field = screen.getByRole("combobox", { name: "Activity note" });
     await user.click(field);
     await user.type(field, "Observed: .gpc ");
 
@@ -70,12 +70,20 @@ describe("MacroTextArea", () => {
     const user = userEvent.setup();
     renderField();
 
-    const field = screen.getByRole("textbox", { name: "Activity note" });
+    const field = screen.getByRole("combobox", { name: "Activity note" });
     await user.click(field);
     await user.type(field, ".ng");
     expect(
       await screen.findByRole("option", { name: /\.ng24.*No growth/ }),
     ).toBeInTheDocument();
+    expect(field).toHaveAttribute(
+      "aria-controls",
+      "activity-note-macro-options",
+    );
+    expect(field).toHaveAttribute(
+      "aria-activedescendant",
+      "activity-note-macro-options-ng24",
+    );
 
     await user.keyboard("{ArrowDown}{Enter}");
 
@@ -88,7 +96,7 @@ describe("MacroTextArea", () => {
     const user = userEvent.setup();
     renderField();
 
-    const field = screen.getByRole("textbox", { name: "Activity note" });
+    const field = screen.getByRole("combobox", { name: "Activity note" });
     await user.click(field);
     await user.type(field, ".unknown");
     await user.keyboard("{Escape} ");
