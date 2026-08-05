@@ -83,7 +83,6 @@ public class MicrobiologyTestFixtures {
         method.setMethodName("Microbiology test");
         method.setDescription("Service-created microbiology integration test method");
         method.setCode("MCR" + uniqueSuffix());
-        method.setActiveBeginDate(new Date(System.currentTimeMillis()));
         method.setIsActive(IActionConstants.YES);
         method.setSysUserId(defaultUserId());
         return methodService.insert(method);
@@ -247,6 +246,12 @@ public class MicrobiologyTestFixtures {
             return generatedId;
         }
         throw new IllegalStateException("Unable to provision SampleStatus.Entered for microbiology tests");
+    }
+
+    public void ensureRequiredWorkflowStatuses() {
+        ensureSampleEnteredStatus();
+        ensureAnalysisNotStartedStatus();
+        ensureAnalysisFinalizedStatus();
     }
 
     public String ensureAnalysisNotStartedStatus() {

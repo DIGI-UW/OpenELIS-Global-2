@@ -125,6 +125,23 @@ public class MicrobiologyTestFixturesTest {
     }
 
     @Test
+    public void ensuresEveryRequiredWorkflowStatus() {
+        when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("20");
+        when(statusService.getStatusID(AnalysisStatus.NotStarted)).thenReturn("21");
+        when(statusService.getStatusID(AnalysisStatus.Finalized)).thenReturn("22");
+        when(statusOfSampleService.getMatch("id", "20")).thenReturn(Optional.of(new StatusOfSample()));
+        when(statusOfSampleService.getMatch("id", "21")).thenReturn(Optional.of(new StatusOfSample()));
+        when(statusOfSampleService.getMatch("id", "22")).thenReturn(Optional.of(new StatusOfSample()));
+
+        fixtures.ensureRequiredWorkflowStatuses();
+
+        verify(statusService).getStatusID(SampleStatus.Entered);
+        verify(statusService).getStatusID(AnalysisStatus.NotStarted);
+        verify(statusService).getStatusID(AnalysisStatus.Finalized);
+        verify(statusOfSampleService, never()).insert(any(StatusOfSample.class));
+    }
+
+    @Test
     public void provisionsMissingAnalysisNotStartedStatusThroughServices() {
         when(statusService.getStatusID(AnalysisStatus.NotStarted)).thenReturn("-1", "43");
         when(statusOfSampleService.getAllStatusOfSamples()).thenReturn(List.of());
