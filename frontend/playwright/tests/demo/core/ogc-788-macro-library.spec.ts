@@ -51,6 +51,10 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
     const seeded = await seedMicrobiologyCase(page);
     expect(seeded.textMacroCode).toBe(macro.code);
     const caseUrl = `/Microbiology/cases/${seeded.caseId}?section=setup`;
+    await page.goto(caseUrl, { waitUntil: "domcontentloaded" });
+    await expect(
+      page.getByRole("heading", { name: "Microbiology case" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
 
     await test.step("Expand the phrase in laboratory work", async () => {
       await demo.chapter({
@@ -61,10 +65,6 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
         accent: "#ff832b",
         durationMs: 4500,
       });
-      await page.goto(caseUrl, { waitUntil: "domcontentloaded" });
-      await expect(
-        page.getByRole("heading", { name: "Microbiology case" }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
       const note = page.getByLabel("Activity note");
       await expandTextMacro(page, note, macro, "Culture observation: ");
       await demo.evidence("ogc-788-m1-02-expanded-activity");
