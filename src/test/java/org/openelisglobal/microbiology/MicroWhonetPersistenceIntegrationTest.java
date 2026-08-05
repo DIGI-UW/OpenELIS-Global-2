@@ -18,6 +18,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroWhonetExportRunDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
+import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioRequestForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
@@ -110,18 +111,21 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         exportQuery.page = 1;
         exportQuery.pageSize = 20;
 
-        MicroWhonetExportResult result = new WHONetReportServiceImpl(datasetService, exportRunDAO)
-                .generateMicrobiologyExport(exportQuery, performedBy);
+        WHONetReportServiceImpl reportService = new WHONetReportServiceImpl(datasetService, exportRunDAO);
+        MicroWhonetPreviewForm preview = reportService.previewMicrobiologyExport(exportQuery);
+        assertTrue(preview.rows.stream().anyMatch(row -> scenario.accessionNumber.equals(row.accessionNumber)));
+
+        MicroWhonetExportResult result = reportService.generateMicrobiologyExport(exportQuery, performedBy);
         String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(result.content));
         MicroWhonetExportRun persisted = exportRunDAO.getAll().stream()
                 .filter(candidate -> digest.equals(candidate.getContentSha256())).findFirst().orElseThrow();
 
         assertEquals(performedBy, persisted.getGeneratedBy());
         assertEquals(result.fileName, persisted.getFileName());
-        assertEquals(1, persisted.getCaseCount());
-        assertEquals(1, persisted.getIsolateCount());
-        assertEquals(1, persisted.getRowCount());
-        assertEquals(0, persisted.getExcludedRowCount());
+        assertEquals(preview.totalCases, persisted.getCaseCount());
+        assertEquals(preview.exportableIsolates, persisted.getIsolateCount());
+        assertEquals(preview.exportedRows, persisted.getRowCount());
+        assertEquals(preview.excludedRows, persisted.getExcludedRowCount());
         assertTrue(
                 new String(result.content, java.nio.charset.StandardCharsets.UTF_8).contains(scenario.accessionNumber));
     }
