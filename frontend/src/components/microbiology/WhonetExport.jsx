@@ -486,7 +486,14 @@ const WhonetExport = ({ service = defaultService, now }) => {
                       id: "microbiology.whonet.table.description",
                     })}
                   >
-                    <div className="whonet-export__table-scroll">
+                    <div
+                      className="whonet-export__table-scroll"
+                      role="region"
+                      aria-label={intl.formatMessage({
+                        id: "microbiology.whonet.table.title",
+                      })}
+                      tabIndex={0}
+                    >
                       <Table {...getTableProps()}>
                         <TableHead>
                           <TableRow>

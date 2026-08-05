@@ -1,7 +1,9 @@
 import { test, expect } from "../../../helpers/test-base";
+import type { Locator } from "@playwright/test";
 import {
   seedFinalizedMicrobiologyCase,
   seedMicrobiologyReferenceAdmin,
+  seedMicrobiologyWhonetExport,
   seedMicrobiologyWorklistCase,
   seedReviewedMicrobiologyCase,
 } from "../../../helpers/seed-microbiology-data";
@@ -85,11 +87,12 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
         { timeout: LONG_TIMEOUT },
       );
     };
-    const expectInsideViewport = async (locator) => {
+    const expectInsideViewport = async (locator: Locator) => {
       const box = await locator.boundingBox();
       const viewport = page.viewportSize();
-      expect(box).not.toBeNull();
-      expect(viewport).not.toBeNull();
+      if (!box || !viewport) {
+        throw new Error("Expected a visible element inside an active viewport");
+      }
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
     };
@@ -139,5 +142,51 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
         await expectNoWcag21AaViolations(page, testInfo, evidenceName);
       });
     }
+  });
+
+  test("WHONET configuration and preview", async ({ page }, testInfo) => {
+    const seeded = await seedMicrobiologyWhonetExport(page);
+    const query = new URLSearchParams({
+      from: seeded.exportDate,
+      to: seeded.exportDate,
+      significance: "CLINICALLY_SIGNIFICANT",
+      dedup: "FIRST_ISOLATE_7_DAY",
+      step: "configure",
+      page: "1",
+      pageSize: "20",
+    });
+
+    await page.goto(`/Microbiology/whonet?${query}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(
+      page.getByRole("heading", { name: "WHONET export", exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expectNoWcag21AaViolations(
+      page,
+      testInfo,
+      "microbiology-whonet-configure",
+    );
+
+    const previewResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/microbiology/whonet/preview?") &&
+        response.status() === 200,
+    );
+    await page.getByRole("button", { name: "Preview export" }).click();
+    await previewResponse;
+    await expect(
+      page.getByRole("heading", { name: "Preview", exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    const tableRegion = page.getByRole("region", {
+      name: "Eligible AST rows",
+    });
+    await tableRegion.focus();
+    await expect(tableRegion).toBeFocused();
+    await expectNoWcag21AaViolations(
+      page,
+      testInfo,
+      "microbiology-whonet-preview",
+    );
   });
 });

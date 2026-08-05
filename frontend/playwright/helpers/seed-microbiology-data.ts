@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 const API_PREFIX = "/api/OpenELIS-Global";
 
 export interface SeededMicrobiologyCase {
+  accessionNumber: string;
   caseId: string;
   sampleItemId: string;
   sampleId: string;
@@ -39,6 +40,7 @@ export interface SeededMicrobiologyReferenceAdmin extends SeededMicrobiologyCase
 }
 
 export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyReferenceAdmin {
+  exportDate: string;
   unmappedOrganismId: string;
   mappedIsolateId: string;
   unmappedIsolateId: string;
@@ -56,6 +58,30 @@ interface MicrobiologyReferenceOption {
   code: string;
 }
 
+interface MicrobiologyIsolateFixture {
+  id: string;
+  isolateLabel: string;
+  organismId: string;
+  identificationStatus: string;
+}
+
+interface MicrobiologyCaseFixture {
+  closedAt?: number | string;
+  finalReleaseState: string;
+  isolates: MicrobiologyIsolateFixture[];
+}
+
+interface MicrobiologyAstRunFixture {
+  id: string;
+  status: string;
+  readings: Array<{ antibioticId: string }>;
+}
+
+interface MicrobiologyReleaseFixture {
+  closedAt: number | string;
+  finalReleaseState: string;
+}
+
 export async function getCsrfToken(page: Page): Promise<string> {
   const state = await page.context().storageState();
   for (const origin of state.origins) {
@@ -71,6 +97,7 @@ export async function getCsrfToken(page: Page): Promise<string> {
 async function provisionMicrobiologyScenario(
   page: Page,
   scenario: MicrobiologyScenario,
+  scenarioKey = `playwright-${scenario.toLowerCase()}-${randomUUID()}`,
 ): Promise<SeededMicrobiologyCase> {
   const csrfToken = await getCsrfToken(page);
   const response = await page.request.post(
@@ -78,7 +105,7 @@ async function provisionMicrobiologyScenario(
     {
       data: {
         scenario,
-        scenarioKey: `playwright-${scenario.toLowerCase()}-${randomUUID()}`,
+        scenarioKey,
       },
       headers: { "X-CSRF-Token": csrfToken },
     },
@@ -141,55 +168,100 @@ export async function seedMicrobiologyReferenceAdmin(
   return seeded as SeededMicrobiologyReferenceAdmin;
 }
 
-async function createReviewedAstIsolate(
+async function getAstRuns(
+  page: Page,
+  isolateId: string,
+): Promise<MicrobiologyAstRunFixture[]> {
+  return requireJsonResponse<MicrobiologyAstRunFixture[]>(
+    "Load isolate AST runs",
+    await page.request.get(
+      `${API_PREFIX}/rest/microbiology/ast/runs?isolateId=${encodeURIComponent(isolateId)}`,
+    ),
+  );
+}
+
+const hasAllAntibiotics = (
+  run: MicrobiologyAstRunFixture,
+  antibiotics: MicrobiologyReferenceOption[],
+) =>
+  antibiotics.every((antibiotic) =>
+    run.readings.some((reading) => reading.antibioticId === antibiotic.id),
+  );
+
+async function ensureReviewedAstIsolate(
   page: Page,
   seeded: SeededMicrobiologyReferenceAdmin,
   organismId: string,
   isolateLabel: string,
   organismText: string,
   antibiotics: MicrobiologyReferenceOption[],
+  existing?: MicrobiologyIsolateFixture,
 ) {
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
-  const isolate = await requireJsonResponse<{ id: string }>(
-    `Create ${isolateLabel}`,
-    await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
-      headers,
-      data: {
-        caseId: seeded.caseId,
-        isolateLabel,
-        organismId,
-        preliminaryOrganismText: organismText,
-        significance: "CLINICALLY_SIGNIFICANT",
-      },
-    }),
-  );
-  await requireJsonResponse(
-    `Confirm ${isolateLabel}`,
-    await page.request.put(
-      `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
-      {
+  const isolate =
+    existing ||
+    (await requireJsonResponse<MicrobiologyIsolateFixture>(
+      `Create ${isolateLabel}`,
+      await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
         headers,
         data: {
+          caseId: seeded.caseId,
+          isolateLabel,
           organismId,
           preliminaryOrganismText: organismText,
           significance: "CLINICALLY_SIGNIFICANT",
-          identificationStatus: "CONFIRMED",
         },
-      },
-    ),
+      }),
+    ));
+  if (
+    isolate.organismId !== organismId ||
+    isolate.identificationStatus !== "CONFIRMED"
+  ) {
+    await requireJsonResponse(
+      `Confirm ${isolateLabel}`,
+      await page.request.put(
+        `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
+        {
+          headers,
+          data: {
+            organismId,
+            preliminaryOrganismText: organismText,
+            significance: "CLINICALLY_SIGNIFICANT",
+            identificationStatus: "CONFIRMED",
+          },
+        },
+      ),
+    );
+  }
+
+  const runs = await getAstRuns(page, isolate.id);
+  const reviewed = runs.find(
+    (candidate) =>
+      candidate.status === "REVIEWED" &&
+      hasAllAntibiotics(candidate, antibiotics),
   );
-  const run = await requireJsonResponse<{ id: string }>(
-    `Start ${isolateLabel} AST run`,
-    await page.request.post(`${API_PREFIX}/rest/microbiology/ast/runs`, {
-      headers,
-      data: {
-        isolateId: isolate.id,
-        panelId: seeded.astPanelId,
-        breakpointStandardId: seeded.activeBreakpointStandardId,
-      },
-    }),
+  if (reviewed) {
+    return { isolateId: isolate.id, astRunId: reviewed.id };
+  }
+
+  const run =
+    runs.find((candidate) => candidate.status === "IN_PROGRESS") ||
+    (await requireJsonResponse<MicrobiologyAstRunFixture>(
+      `Start ${isolateLabel} AST run`,
+      await page.request.post(`${API_PREFIX}/rest/microbiology/ast/runs`, {
+        headers,
+        data: {
+          isolateId: isolate.id,
+          panelId: seeded.astPanelId,
+          breakpointStandardId: seeded.activeBreakpointStandardId,
+        },
+      }),
+    ));
+  const recordedAntibiotics = new Set(
+    run.readings.map((reading) => reading.antibioticId),
   );
   for (const antibiotic of antibiotics) {
+    if (recordedAntibiotics.has(antibiotic.id)) continue;
     await requireJsonResponse(
       `Record ${isolateLabel} ${antibiotic.code}`,
       await page.request.post(
@@ -218,7 +290,11 @@ async function createReviewedAstIsolate(
 export async function seedMicrobiologyWhonetExport(
   page: Page,
 ): Promise<SeededMicrobiologyWhonetExport> {
-  const seeded = await provisionMicrobiologyScenario(page, "M4");
+  const seeded = await provisionMicrobiologyScenario(
+    page,
+    "M4",
+    "playwright-m4-whonet-export",
+  );
   const required = [
     "organismId",
     "unmappedOrganismId",
@@ -248,33 +324,64 @@ export async function seedMicrobiologyWhonetExport(
     throw new Error("Microbiology M4 scenario requires CIPUAT and GENUAT");
   }
 
-  const mapped = await createReviewedAstIsolate(
+  const caseDetail = await requireJsonResponse<MicrobiologyCaseFixture>(
+    "Load M4 case",
+    await page.request.get(
+      `${API_PREFIX}/rest/microbiology/cases/${reference.caseId}`,
+    ),
+  );
+  const mappedExisting = caseDetail.isolates.find(
+    (isolate) => isolate.isolateLabel === "WHONET-MAPPED",
+  );
+  const unmappedExisting = caseDetail.isolates.find(
+    (isolate) => isolate.isolateLabel === "WHONET-UNMAPPED",
+  );
+
+  if (
+    caseDetail.finalReleaseState === "FINAL_RELEASED" &&
+    (!mappedExisting || !unmappedExisting)
+  ) {
+    throw new Error("Final M4 fixture is missing its expected isolates");
+  }
+
+  const mapped = await ensureReviewedAstIsolate(
     page,
     reference,
     reference.organismId,
     "WHONET-MAPPED",
     "Reference organism (UAT)",
     antibiotics,
+    mappedExisting,
   );
-  const unmapped = await createReviewedAstIsolate(
+  const unmapped = await ensureReviewedAstIsolate(
     page,
     reference,
     reference.unmappedOrganismId,
     "WHONET-UNMAPPED",
     "WHONET mapping pending (UAT)",
     antibiotics,
+    unmappedExisting,
   );
-  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
-  await requireJsonResponse(
-    "Release M4 case for WHONET export",
-    await page.request.post(
-      `${API_PREFIX}/rest/microbiology/cases/${reference.caseId}/release/final`,
-      { headers, data: {} },
-    ),
-  );
+  let closedAt = caseDetail.closedAt;
+  if (caseDetail.finalReleaseState !== "FINAL_RELEASED") {
+    const headers = { "X-CSRF-Token": await getCsrfToken(page) };
+    const release = await requireJsonResponse<MicrobiologyReleaseFixture>(
+      "Release M4 case for WHONET export",
+      await page.request.post(
+        `${API_PREFIX}/rest/microbiology/cases/${reference.caseId}/release/final`,
+        { headers, data: {} },
+      ),
+    );
+    closedAt = release.closedAt;
+  }
+  if (closedAt === undefined || closedAt === null || closedAt === "") {
+    throw new Error("Final M4 fixture is missing its server release time");
+  }
+  const exportDate = new Date(closedAt).toISOString().slice(0, 10);
 
   return {
     ...reference,
+    exportDate,
     mappedIsolateId: mapped.isolateId,
     unmappedIsolateId: unmapped.isolateId,
     mappedAstRunId: mapped.astRunId,
