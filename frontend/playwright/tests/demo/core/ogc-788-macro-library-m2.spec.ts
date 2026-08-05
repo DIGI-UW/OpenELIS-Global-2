@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import {
-  ensureTextMacroViaAdmin,
+  ensureTextMacroViaAdminApi,
   exportTextMacroLibrary,
   openTextMacroBulkAction,
   openTextMacroLibrary,
@@ -33,20 +33,21 @@ test.describe("OGC-788 M2 broader administration demo", () => {
     const demo = createDemoPresentation(page, testInfo);
     const codes = macros.map(({ code }) => code);
 
-    await demo.chapter({
-      eyebrow: "OGC-788 M2",
-      title: "Broader phrase administration",
-      subtitle:
-        "Administrators select, confirm, update, and export reusable phrases through one Carbon workflow",
-      durationMs: 4500,
-    });
-
-    for (const fixture of macros) {
-      await ensureTextMacroViaAdmin(page, {
-        ...fixture,
-        contexts: [...fixture.contexts],
-      });
-    }
+    await Promise.all([
+      demo.chapter({
+        eyebrow: "OGC-788 M2",
+        title: "Broader phrase administration",
+        subtitle:
+          "Administrators select, confirm, update, and export reusable phrases through one Carbon workflow",
+        durationMs: 4500,
+      }),
+      ...macros.map((fixture) =>
+        ensureTextMacroViaAdminApi(page, {
+          ...fixture,
+          contexts: [...fixture.contexts],
+        }),
+      ),
+    ]);
     await openTextMacroLibrary(page, { q: ".uat_admin_", status: "all" });
     const canonicalUrl = page.url();
 

@@ -1,4 +1,5 @@
 import type { Download, Locator, Page, Response } from "@playwright/test";
+import { csrfHeaders } from "./authenticated-request";
 import {
   clickCarbonModalPrimaryAction,
   setCarbonCheckbox,
@@ -51,6 +52,12 @@ const adminItemResponse = (method: "PUT") => (response: Response) =>
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const contextByLabel = {
+  "Culture activity": "MICROBIOLOGY_CULTURE_ACTIVITY",
+  "Clinical history": "MICROBIOLOGY_CLINICAL_HISTORY",
+  "Antibiotic exposure": "MICROBIOLOGY_ANTIBIOTIC_EXPOSURE",
+} as const;
 
 export const textMacroRow = (page: Page, code: string) =>
   page.getByRole("row").filter({ hasText: code });
@@ -119,6 +126,45 @@ export async function ensureTextMacroViaAdmin(
     macro.expansionText,
     { timeout: LONG_TIMEOUT },
   );
+}
+
+export async function ensureTextMacroViaAdminApi(
+  browserPage: Page,
+  macro: TextMacroFixture,
+) {
+  const query = new URLSearchParams({
+    q: macro.code,
+    context: "all",
+    status: "all",
+    sort: "code:asc",
+    page: "1",
+    pageSize: "20",
+  });
+  const adminPath = "/api/OpenELIS-Global/rest/text-macros/admin";
+  const request = browserPage.request;
+  const listed = await request.get(`${adminPath}?${query}`);
+  expect(listed.ok()).toBeTruthy();
+  const page = await listed.json();
+  const existing = page.items.find(
+    (item: { code: string }) => item.code === macro.code,
+  );
+  const data = {
+    ...(existing ? { id: existing.id } : {}),
+    code: macro.code,
+    expansionText: macro.expansionText,
+    contexts: macro.contexts.map((context) => contextByLabel[context]),
+    active: true,
+  };
+  const headers = await csrfHeaders(browserPage);
+  const saved = existing
+    ? await request.put(`${adminPath}/${existing.id}`, { data, headers })
+    : await request.post(adminPath, { data, headers });
+  if (!saved.ok()) {
+    throw new Error(
+      `Text macro fixture failed: HTTP ${saved.status()} ${await saved.text()}`,
+    );
+  }
+  return saved.json();
 }
 
 export async function selectTextMacroRows(page: Page, codes: string[]) {
