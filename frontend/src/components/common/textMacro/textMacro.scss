@@ -64,3 +64,11 @@
     white-space: nowrap;
   }
 }
+
+@media (max-width: 42rem) {
+  .text-macro-field__popover {
+    position: static;
+    margin-block-end: $spacing-03;
+    box-shadow: none;
+  }
+}

@@ -298,7 +298,11 @@ const MacroLibraryPage = () => {
                       </Button>
                     </TableToolbarContent>
                   </TableToolbar>
-                  <Table size="lg" useZebraStyles>
+                  <Table
+                    className="text-macro-admin__table"
+                    size="lg"
+                    useZebraStyles
+                  >
                     <TableHead>
                       <TableRow>
                         {renderedHeaders.map((header) => (

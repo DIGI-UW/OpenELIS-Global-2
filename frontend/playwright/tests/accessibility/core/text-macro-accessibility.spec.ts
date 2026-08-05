@@ -1,5 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 import { expectNoWcag21AaViolations } from "../../../helpers/accessibility";
+import { captureEvidenceScreenshot } from "../../../helpers/demo-presentation";
 import { seedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
 import { ensureTextMacroViaAdmin } from "../../../helpers/text-macro";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -19,6 +20,32 @@ test.describe("OGC-788 macro library accessibility", () => {
       ...macro,
       contexts: [...macro.contexts],
     });
+    if (testInfo.project.name.endsWith("-mobile")) {
+      const tableContent = page.locator(
+        ".text-macro-admin .cds--data-table-content",
+      );
+      const dimensions = await tableContent.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(dimensions.scrollWidth).toBeLessThanOrEqual(
+        dimensions.clientWidth,
+      );
+      await expect(
+        page.getByRole("columnheader", { name: "Shortcut code" }),
+      ).toBeInViewport();
+      await expect(
+        page.getByRole("columnheader", { name: "Phrase text" }),
+      ).toBeInViewport();
+      await captureEvidenceScreenshot(
+        page,
+        testInfo,
+        "ogc-788-m1-04-mobile-admin",
+        {
+          locator: page.locator(".text-macro-admin .cds--data-table-container"),
+        },
+      );
+    }
     await expectNoWcag21AaViolations(
       page,
       testInfo,
@@ -48,6 +75,28 @@ test.describe("OGC-788 macro library accessibility", () => {
         name: `${macro.code} ${macro.expansionText}`,
       }),
     ).toBeVisible();
+    if (testInfo.project.name.endsWith("-mobile")) {
+      const optionBounds = await page
+        .getByRole("option", {
+          name: `${macro.code} ${macro.expansionText}`,
+        })
+        .boundingBox();
+      const actionBounds = await page
+        .getByRole("button", { name: "Start inoculation" })
+        .boundingBox();
+      if (!optionBounds || !actionBounds) {
+        throw new Error("Macro option and primary action must be rendered");
+      }
+      expect(optionBounds.y + optionBounds.height).toBeLessThanOrEqual(
+        actionBounds.y,
+      );
+      await note.scrollIntoViewIfNeeded();
+      await captureEvidenceScreenshot(
+        page,
+        testInfo,
+        "ogc-788-m1-05-mobile-suggestions",
+      );
+    }
     await expectNoWcag21AaViolations(
       page,
       testInfo,

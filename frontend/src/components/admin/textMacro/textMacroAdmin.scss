@@ -58,5 +58,41 @@
       max-inline-size: none;
       min-inline-size: 0;
     }
+
+    &__table {
+      inline-size: 100%;
+      table-layout: fixed;
+
+      td {
+        overflow-wrap: anywhere;
+      }
+
+      th,
+      td {
+        padding-inline: $spacing-03;
+      }
+
+      th:nth-child(1),
+      td:nth-child(1) {
+        inline-size: 6.5rem;
+      }
+
+      th:nth-child(3),
+      td:nth-child(3),
+      th:nth-child(4),
+      td:nth-child(4) {
+        display: none;
+      }
+
+      th:nth-child(5),
+      td:nth-child(5) {
+        inline-size: 5rem;
+      }
+
+      th:nth-child(6),
+      td:nth-child(6) {
+        inline-size: 2.5rem;
+      }
+    }
   }
 }
