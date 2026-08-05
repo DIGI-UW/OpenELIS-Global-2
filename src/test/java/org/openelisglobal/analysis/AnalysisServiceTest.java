@@ -977,4 +977,26 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     public void getLocalizedTestNameWithAllTypes_isBlankForNoTest() {
         Assert.assertEquals("", org.openelisglobal.test.service.TestServiceImpl.getLocalizedTestNameWithAllTypes(null));
     }
+
+    /**
+     * The patient report names the specimen alongside the reporting name, so a test
+     * configured for several specimens can be told apart on a report carrying more
+     * than one of them.
+     */
+    @Test
+    public void reportingTestName_carriesTheSpecimenWhenOneIsGiven() {
+        org.openelisglobal.test.valueholder.Test test = tService.getTestById("1");
+        Assert.assertNotNull(test);
+
+        String plain = org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName(test);
+        String withSpecimen = org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName(test,
+                "Blood Sample");
+
+        Assert.assertEquals(plain + " (Blood Sample)", withSpecimen);
+        // No specimen to name leaves the reporting name exactly as it was.
+        Assert.assertEquals(plain,
+                org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName(test, null));
+        Assert.assertEquals(plain,
+                org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName(test, "  "));
+    }
 }

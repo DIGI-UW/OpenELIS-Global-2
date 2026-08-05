@@ -93,6 +93,7 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 
 public abstract class PatientReport extends Report {
@@ -1079,6 +1080,15 @@ public abstract class PatientReport extends Report {
         return data;
     }
 
+    /**
+     * Whether the Test column names the specimen each result was run on. Off by
+     * default: it widens the column, and the existing templates were laid out
+     * without it.
+     */
+    protected boolean appendSampleTypeToTestName() {
+        return false;
+    }
+
     private String getTestName(boolean indent) {
         String testName;
 
@@ -1090,6 +1100,13 @@ public abstract class PatientReport extends Report {
 
         if (GenericValidator.isBlankOrNull(testName)) {
             testName = TestServiceImpl.getUserLocalizedTestName(analysisService.getTest(currentAnalysis));
+        }
+        if (appendSampleTypeToTestName() && !GenericValidator.isBlankOrNull(testName)) {
+            TypeOfSample typeOfSample = analysisService.getTypeOfSample(currentAnalysis);
+            String sampleTypeName = typeOfSample == null ? null : typeOfSample.getLocalizedName();
+            if (!GenericValidator.isBlankOrNull(sampleTypeName)) {
+                testName = testName + " (" + sampleTypeName + ")";
+            }
         }
         return (indent ? "    " : "") + testName;
     }

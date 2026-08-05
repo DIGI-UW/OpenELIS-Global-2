@@ -303,6 +303,19 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     /**
+     * The reporting name with the specimen it was run on, "Culture (Blood)". A test
+     * associated with several specimens reports under one name, which cannot be
+     * told apart on a patient report carrying more than one of them.
+     */
+    public static String getUserLocalizedReportingTestName(Test test, String sampleTypeName) {
+        String reportingName = getUserLocalizedReportingTestName(test);
+        if (GenericValidator.isBlankOrNull(reportingName) || GenericValidator.isBlankOrNull(sampleTypeName)) {
+            return reportingName;
+        }
+        return reportingName + " (" + sampleTypeName + ")";
+    }
+
+    /**
      * Get the localized reporting test name for the current request's locale.
      *
      * @param testId the test ID
