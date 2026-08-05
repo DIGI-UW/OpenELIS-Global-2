@@ -61,13 +61,7 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
           "Counts, all AST readings, and only the mapping gaps in this export are visible before download",
         accent: "#ff832b",
       });
-      const previewResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes("/rest/microbiology/whonet/preview?") &&
-          response.status() === 200,
-      );
       await page.getByRole("button", { name: "Preview export" }).click();
-      await previewResponse;
       await expect(
         page.getByRole("heading", { name: "Preview", exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
@@ -177,13 +171,7 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       fullPage: true,
     });
 
-    const previewResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes("/rest/microbiology/whonet/preview?") &&
-        response.status() === 200,
-    );
     await page.getByRole("button", { name: "Preview export" }).click();
-    await previewResponse;
     await expect(
       page.getByRole("heading", { name: "Preview", exact: true }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
