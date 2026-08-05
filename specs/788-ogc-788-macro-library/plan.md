@@ -35,9 +35,9 @@ adapter, while microbiology supplies only the field context.
 7. The canonical administration URL is selected by current router conventions,
    not by the mock. It preserves `q`, `context`, `status`, `sort`, `page`,
    `pageSize`, and the active create/edit action.
-8. Runtime results are fetched on supported-form load and may use SWR's normal
-   request cache. Observable freshness on the next form load is required;
-   custom cache infrastructure is not.
+8. Runtime results are fetched on first focus/use after a supported form loads
+   and may use SWR's normal request cache. Observable freshness on the next
+   form load is required; custom cache infrastructure is not.
 9. The property-gated UAT scenario service creates test phrases through the
    phrase service. No SQL fixture, DAO bypass, fixed persisted ID, or fixture
    migration is permitted.
@@ -72,7 +72,8 @@ version, and clinical approver are recorded.
 
 ## Data Flow
 
-1. A supported form requests active phrases for its context.
+1. A supported field requests active phrases for its context when it first
+   receives focus or is used after form load.
 2. The user types a dot token or opens matching suggestions.
 3. The reusable adapter replaces the token in the controlled field value and
    returns focus and caret to the text area.

@@ -25,6 +25,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
       title: "Managed macro phrases",
       subtitle:
         "Administrators maintain reusable text while laboratory staff expand it in context",
+      durationMs: 4500,
     });
 
     await test.step("Manage a reusable phrase", async () => {
@@ -34,6 +35,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
         subtitle:
           "A bookmarkable Carbon table keeps shortcuts, text, context, and status explicit",
         accent: "#24a148",
+        durationMs: 4500,
       });
       await ensureTextMacroViaAdmin(page, {
         ...macro,
@@ -43,7 +45,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
       const row = page.getByRole("row").filter({ hasText: macro.code });
       await expect(row).toContainText(macro.expansionText);
       await demo.evidence("ogc-788-m1-01-managed-phrase");
-      await demo.pause(2500);
+      await demo.pause(5000);
     });
 
     const seeded = await seedMicrobiologyCase(page);
@@ -57,6 +59,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
         subtitle:
           "The culture activity field suggests eligible phrases and replaces the exact shortcut",
         accent: "#ff832b",
+        durationMs: 4500,
       });
       await page.goto(caseUrl, { waitUntil: "domcontentloaded" });
       await expect(
@@ -65,7 +68,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
       const note = page.getByLabel("Activity note");
       await expandTextMacro(page, note, macro, "Culture observation: ");
       await demo.evidence("ogc-788-m1-02-expanded-activity");
-      await demo.pause(2500);
+      await demo.pause(5000);
 
       await page.getByRole("button", { name: "Start inoculation" }).click();
       await expect(
@@ -80,6 +83,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
         subtitle:
           "The expanded phrase is stored as ordinary clinical text and survives a bookmarked reload",
         accent: "#8a3ffc",
+        durationMs: 4500,
       });
       await page.getByRole("button", { name: "Timeline", exact: true }).click();
       const expectedText = `Culture observation: ${macro.expansionText}`;
@@ -96,7 +100,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
         timeout: LONG_TIMEOUT,
       });
       await demo.evidence("ogc-788-m1-03-persisted-timeline");
-      await demo.pause(3000);
+      await demo.pause(5000);
     });
 
     await demo.chapter({
@@ -104,7 +108,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
       title: "Automated OGC-788 M1 journey passed",
       subtitle:
         "Phrase administration, contextual expansion, persistence, and bookmark recovery passed; human Review-overlay rulings remain separate.",
-      durationMs: 4000,
+      durationMs: 4500,
     });
   });
 });
