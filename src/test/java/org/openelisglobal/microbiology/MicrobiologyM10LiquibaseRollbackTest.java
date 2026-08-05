@@ -38,13 +38,17 @@ public class MicrobiologyM10LiquibaseRollbackTest {
                 Liquibase fullChangelog = new Liquibase("liquibase/base-changelog.xml", resources, database);
                 fullChangelog.update(new Contexts("test"));
                 assertTrue(tableExists(connection, "micro_whonet_export_run"));
+                assertFalse(columnExists(connection, "micro_whonet_export_run", "lastupdated"));
+                assertFalse(indexExists(connection, "micro_whonet_export_run", "idx_micro_whonet_export_generated_at"));
 
                 Liquibase m10Changelog = new Liquibase("liquibase/microbiology-m10-rollback.xml", resources, database);
-                m10Changelog.rollback(1, "test");
+                m10Changelog.rollback(2, "test");
                 assertFalse(tableExists(connection, "micro_whonet_export_run"));
 
                 m10Changelog.update(new Contexts("test"));
                 assertTrue(tableExists(connection, "micro_whonet_export_run"));
+                assertFalse(columnExists(connection, "micro_whonet_export_run", "lastupdated"));
+                assertFalse(indexExists(connection, "micro_whonet_export_run", "idx_micro_whonet_export_generated_at"));
             }
         }
     }
@@ -53,6 +57,25 @@ public class MicrobiologyM10LiquibaseRollbackTest {
         DatabaseMetaData metadata = connection.getMetaData();
         try (ResultSet tables = metadata.getTables(null, "clinlims", tableName, new String[] { "TABLE" })) {
             return tables.next();
+        }
+    }
+
+    private boolean columnExists(Connection connection, String tableName, String columnName) throws Exception {
+        DatabaseMetaData metadata = connection.getMetaData();
+        try (ResultSet columns = metadata.getColumns(null, "clinlims", tableName, columnName)) {
+            return columns.next();
+        }
+    }
+
+    private boolean indexExists(Connection connection, String tableName, String indexName) throws Exception {
+        DatabaseMetaData metadata = connection.getMetaData();
+        try (ResultSet indexes = metadata.getIndexInfo(null, "clinlims", tableName, false, false)) {
+            while (indexes.next()) {
+                if (indexName.equals(indexes.getString("INDEX_NAME"))) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
