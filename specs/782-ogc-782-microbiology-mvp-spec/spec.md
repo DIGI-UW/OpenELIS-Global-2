@@ -39,6 +39,9 @@ not binding technical requirements.
   [m-05-ast-entry-and-interpretation.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-05-ast-entry-and-interpretation.md)
 - M-07 worklist:
   [m-07-worklists.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-07-worklists.md)
+- M-08 macro library:
+  [m-08-macro-library.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-08-macro-library.md),
+  [Macro Library visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-08-macro-library.html)
 - M-09 WHONET export:
   [m-09-whonet-export.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-09-whonet-export.md)
 - M-11 critical notification:
@@ -490,6 +493,14 @@ The R1 remediation boundary includes the authoritative M-03, M-04, M-05, M-07,
 M-12, and applicable M-NFR behavior described in User Stories 8-12 and the
 source-alignment record. That promotion does not retroactively expand PR
 #3789's historical acceptance boundary.
+
+OGC-788 Macro Library is specified in
+`specs/788-ogc-788-macro-library/` and delivered through a separate stacked PR
+and review deployment built on this remediation boundary. Its first milestone
+provides managed shared phrases and reusable expansion in real microbiology
+narratives. The draft claim of 85 defaults is not implementation-ready: exact
+clinical content, provenance, version, and approver remain a separate product
+gate.
 
 The delivered stack is not the full microbiology module. Authoritative
 wide-format WHONET/profile packaging, the remaining mapping vocabularies,
