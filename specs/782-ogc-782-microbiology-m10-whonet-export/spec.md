@@ -102,8 +102,8 @@ Configure, Preview, and Generate workflow.
 - **FR-006**: Mapping warnings MUST identify the exact organism or antibiotic
   and provide a direct repair path.
 - **FR-007**: Generation MUST be blocked when no valid export row remains.
-- **FR-008**: The generated CSV MUST preserve the existing OpenELIS WHONET
-  column contract while including reviewed, reportable microbiology AST data.
+- **FR-008**: The generated CSV MUST include the finalized isolate and reviewed,
+  reportable AST information needed for the current validation workflow.
 - **FR-009**: The downloaded filename MUST identify the reporting period and be
   safe for common filesystems.
 - **FR-010**: Every successful generation MUST be attributable to the
