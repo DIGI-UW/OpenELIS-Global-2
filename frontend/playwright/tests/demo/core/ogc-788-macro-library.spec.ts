@@ -42,9 +42,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
       expect(new URL(page.url()).searchParams.get("q")).toBe(macro.code);
       const row = page.getByRole("row").filter({ hasText: macro.code });
       await expect(row).toContainText(macro.expansionText);
-      await demo.evidence("ogc-788-m1-01-managed-phrase", {
-        fullPage: true,
-      });
+      await demo.evidence("ogc-788-m1-01-managed-phrase");
       await demo.pause(2500);
     });
 
@@ -66,9 +64,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       const note = page.getByLabel("Activity note");
       await expandTextMacro(page, note, macro, "Culture observation: ");
-      await demo.evidence("ogc-788-m1-02-expanded-activity", {
-        locator: page.getByTestId("microbiology-case-view"),
-      });
+      await demo.evidence("ogc-788-m1-02-expanded-activity");
       await demo.pause(2500);
 
       await page.getByRole("button", { name: "Start inoculation" }).click();
@@ -99,9 +95,7 @@ test.describe("OGC-788 M1 managed macro runtime demo", () => {
       await expect(page.getByText(expectedText)).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
-      await demo.evidence("ogc-788-m1-03-persisted-timeline", {
-        fullPage: true,
-      });
+      await demo.evidence("ogc-788-m1-03-persisted-timeline");
       await demo.pause(3000);
     });
 
