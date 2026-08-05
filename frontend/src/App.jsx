@@ -45,6 +45,7 @@ import RejectionReport from "./components/qa/qi/RejectionReport";
 import CallbackReport from "./components/qa/qi/CallbackReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
+import Accreditation from "./components/qa/qms/Accreditation";
 import InventoryManagement from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
@@ -903,6 +904,13 @@ export default function App() {
                   path="/qa/qms/capa-register"
                   exact
                   component={() => <CapaRegister />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/accreditation"
+                  exact
+                  component={() => <Accreditation />}
                   permission="qa.view.qms"
                   role={Roles.GLOBAL_ADMIN}
                 />

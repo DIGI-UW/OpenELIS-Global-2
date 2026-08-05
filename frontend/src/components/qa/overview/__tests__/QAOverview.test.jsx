@@ -153,6 +153,15 @@ beforeEach(() => {
         compliancePercent: 75.0,
         target: 100,
       });
+    } else if (url.includes("/rest/accreditation/summary")) {
+      callback({
+        totalBodies: 3,
+        activeBodies: 2,
+        expiringBodies: 1,
+        expiredBodies: 0,
+        inForceBodyNames: ["ISO 15189", "SANAS"],
+        worstStatus: "EXPIRING",
+      });
     } else if (url.includes("/rest/nce/capa-register")) {
       callback([
         { id: 1, nceStatus: "Pending", dueDate: LAST_MONTH }, // overdue
@@ -217,10 +226,11 @@ describe("QAOverview", () => {
 
     // One shared NCE fetch, one overview summary, two TAT windows, the
     // Amendment + Rejection tile summaries, three callback windows (tile 30d,
-    // attention 24h, week), the CAPA register, plus the OGC-711 config
-    // resolves: AttentionRequired (NCE), TodayTiles (all five indicators),
-    // PillarStatus (TAT) = 1 + 1 + 2 + 2 + 3 + 1 + 1 + 5 + 1 = 17
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(17);
+    // attention 24h, week), the CAPA register, the accreditation summary
+    // (inspector Q5), plus the OGC-711 config resolves: AttentionRequired
+    // (NCE), TodayTiles (all five indicators), PillarStatus (TAT)
+    // = 1 + 1 + 2 + 2 + 3 + 1 + 1 + 1 + 5 + 1 = 18
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(18);
   });
 
   test("Today tiles carry the KPI titles, tickets, and the live TAT/Amendment/NCE values", async () => {
@@ -404,7 +414,7 @@ describe("QAOverview", () => {
     ).toHaveAttribute("href", "/qa/qms/audit-trail");
   });
 
-  test("inspector readiness answers Q1/Q3/Q4 and keeps Q2/Q5 placeholders; open state sticks", async () => {
+  test("inspector readiness answers Q1/Q3/Q4/Q5 and keeps the Q2 placeholder; open state sticks", async () => {
     const view = await renderPage();
     const heading = screen.getByRole("button", {
       name: /Inspector readiness/,
@@ -418,7 +428,7 @@ describe("QAOverview", () => {
     const inspector = screen.getByRole("region", {
       name: /Inspector readiness/,
     });
-    expect(within(inspector).getAllByText("Coming soon")).toHaveLength(2);
+    expect(within(inspector).getAllByText("Coming soon")).toHaveLength(1);
     expect(
       within(inspector).getByText("4 of 6 instruments in control (30d)"),
     ).toBeInTheDocument();
@@ -427,6 +437,9 @@ describe("QAOverview", () => {
     ).toBeInTheDocument();
     expect(
       within(inspector).getByText("3 critical NCEs pending acknowledgment"),
+    ).toBeInTheDocument();
+    expect(
+      within(inspector).getByText("2 of 3 in force, 1 expiring, 0 expired"),
     ).toBeInTheDocument();
 
     view.unmount();

@@ -9,10 +9,20 @@ import {
   countCriticalPending,
   fetchNceList,
 } from "./nceOverview";
-import { fetchOverviewSummary, fetchTatRollup } from "./overviewData";
+import {
+  fetchAccreditationSummary,
+  fetchOverviewSummary,
+  fetchTatRollup,
+} from "./overviewData";
 import { STATUS_ICON, qcPillar } from "./PillarStatus";
 
 const STORAGE_KEY = "qa.overview.inspectorOpen";
+
+const ACCREDITATION_STATUS = {
+  ACTIVE: "green",
+  EXPIRING: "amber",
+  EXPIRED: "red",
+};
 
 const AnswerRow = ({ titleKey, status, answer, loading, onClick }) => (
   <button type="button" className="qa-live-row" onClick={onClick}>
@@ -36,8 +46,9 @@ const AnswerRow = ({ titleKey, status, answer, loading, onClick }) => (
 
 /**
  * Inspector readiness Q&A (OGC-694 WS-F): Q1 answers from the QC instrument
- * rollup, Q3 from the TAT rollup, Q4 from the NCE register; Q2 (EQA, OGC-721)
- * and Q5 (accreditation, OGC-716) stay placeholders.
+ * rollup, Q3 from the TAT rollup, Q4 from the NCE register, Q5 from the
+ * accreditation portfolio summary (OGC-686 D.2); Q2 (EQA, OGC-721) stays a
+ * placeholder.
  */
 const InspectorReadiness = () => {
   const intl = useIntl();
@@ -51,12 +62,14 @@ const InspectorReadiness = () => {
   const [summary, setSummary] = useState();
   const [nceList, setNceList] = useState();
   const [tat, setTat] = useState();
+  const [accreditation, setAccreditation] = useState();
 
   useEffect(() => {
     let mounted = true;
     fetchOverviewSummary((data) => mounted && setSummary(data));
     fetchNceList((list) => mounted && setNceList(list));
     fetchTatRollup((data) => mounted && setTat(data));
+    fetchAccreditationSummary((data) => mounted && setAccreditation(data));
     return () => {
       mounted = false;
     };
@@ -130,10 +143,29 @@ const InspectorReadiness = () => {
               }
               onClick={() => history.push(NCE_DRILL_URL)}
             />
-            <ComingSoon
-              variant="row"
+            <AnswerRow
               titleKey="qa.overview.inspector.q5"
-              ticket="OGC-716"
+              loading={accreditation === undefined}
+              status={ACCREDITATION_STATUS[accreditation?.worstStatus] || null}
+              answer={
+                // worstStatus is null once every body is inactive, so key the
+                // "nothing configured" answer off the count instead — otherwise a
+                // lab with three archived bodies is told it has none.
+                accreditation?.totalBodies
+                  ? intl.formatMessage(
+                      { id: "qa.overview.inspector.q5.answer" },
+                      {
+                        active: accreditation.activeBodies,
+                        total: accreditation.totalBodies,
+                        expiring: accreditation.expiringBodies,
+                        expired: accreditation.expiredBodies,
+                      },
+                    )
+                  : intl.formatMessage({
+                      id: "qa.overview.inspector.q5.noData",
+                    })
+              }
+              onClick={() => history.push("/qa/qms/accreditation")}
             />
           </div>
         </AccordionItem>

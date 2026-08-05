@@ -37,6 +37,14 @@ export const fetchOverviewSummary = dedupedFetch((resolve) => {
   );
 });
 
+// D.2 accreditation portfolio summary (OGC-686): counts per status plus
+// worstStatus, which is null when no non-inactive body exists.
+export const fetchAccreditationSummary = dedupedFetch((resolve) => {
+  getFromOpenElisServer("/rest/accreditation/summary", (data) =>
+    resolve(data && typeof data.totalBodies === "number" ? data : null),
+  );
+});
+
 // C.4 critical-callback compliance summary for a window (OGC-714/715):
 // {enabled, criticalCount, confirmedCount, compliancePercent, target}. When
 // the CALLBACK indicator is disabled the response says enabled=false —
