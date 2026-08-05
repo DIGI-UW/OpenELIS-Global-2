@@ -102,7 +102,7 @@ note or Start inoculation action.
 | Order      | 15                                                                                                                                                  |
 | Version    | 1.0                                                                                                                                                 |
 | Jira       | OGC-788                                                                                                                                             |
-| PR         | Pending stacked M2 PR                                                                                                                               |
+| PR         | https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3992                                                                                              |
 | Mock       | https://digi-uw.github.io/openelis-work/designs/microbiology/m-08-macro-library.html                                                                |
 | User story | As a laboratory administrator, I can safely administer several shared phrases together and export the effective library for review and portability. |
 
