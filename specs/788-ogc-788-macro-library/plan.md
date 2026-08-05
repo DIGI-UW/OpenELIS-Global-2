@@ -70,7 +70,7 @@ adapter, while microbiology supplies only the field context.
 M1 deliberately proves the end-to-end behavior without claiming the draft 85
 clinical defaults are approved.
 
-### M2 - Reviewed Package And Broader Administration
+### M2 - Broader Administration; Reviewed Package Gated
 
 - Import or restore a versioned, clinically reviewed default package.
 - Preserve and visibly distinguish local phrases.
@@ -80,6 +80,12 @@ clinical defaults are approved.
 
 M2 cannot start its default-package task until the phrase source, exact content,
 version, and clinical approver are recorded.
+
+The current M2 stack delivers the independent broader-administration slice:
+deterministic export, explicit bulk activation/deactivation, and local-only
+removal. Reviewed package import/restore and additional field consumers remain
+undelivered because their product inputs are not approved. This is a partial M2
+delivery, not evidence that those gated outcomes are complete.
 
 ## Data Flow
 

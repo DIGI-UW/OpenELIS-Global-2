@@ -1,4 +1,4 @@
-# OGC-788 M1 UAT Contract
+# OGC-788 M1 And M2 UAT Contract
 
 Grist `UAT_Meta`, `UAT_Stories`, and `UAT_Steps` remain the live source of
 truth. This file records the repository-side contract that must match the AMR
@@ -15,7 +15,7 @@ Review overlay after publication.
 
 Publication must preserve every existing story and step key.
 
-## Story
+## M1 Story
 
 | Field      | Value                                                                                                                                            |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -93,13 +93,81 @@ note or Start inoculation action.
 
 **Route:** The canonical Macro Library URL from AMR-51.
 
+## M2 Story
+
+| Field      | Value                                                                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Key        | `AMR-S16`                                                                                                                                           |
+| Title      | OGC-788 M2 - Administer and export shared phrases                                                                                                   |
+| Order      | 15                                                                                                                                                  |
+| Version    | 1.0                                                                                                                                                 |
+| Jira       | OGC-788                                                                                                                                             |
+| PR         | Pending stacked M2 PR                                                                                                                               |
+| Mock       | https://digi-uw.github.io/openelis-work/designs/microbiology/m-08-macro-library.html                                                                |
+| User story | As a laboratory administrator, I can safely administer several shared phrases together and export the effective library for review and portability. |
+
+## M2 Required Steps
+
+### AMR-57 - Restore the bulk-administration view
+
+**Do:** Open Macro Library, search for `.uat_bulk`, select All contexts, All
+statuses, and Code A-Z, then reload the resulting URL.
+
+**Expect:** The filtered library and all selected controls return unchanged from
+the canonical URL. Prepare two local active phrases named `.uat_bulk_a` and
+`.uat_bulk_b` through the editor if they are not already present.
+
+**Route:**
+`/admin/MacroLibrary?q=.uat_bulk&context=all&status=all&sort=code%3Aasc&page=1&pageSize=20`
+
+### AMR-58 - Review an explicit bulk action
+
+**Do:** Select `.uat_bulk_a` and `.uat_bulk_b`, choose Deactivate, inspect the
+confirmation, and cancel once before opening it again.
+
+**Expect:** The confirmation names the action and both phrases. Cancel changes
+nothing and returns focus to the library; reopening presents the same selection.
+
+### AMR-59 - Deactivate and restore several phrases
+
+**Do:** Confirm Deactivate, reload the canonical URL, select the same two rows,
+and confirm Activate.
+
+**Expect:** Both rows become inactive together, remain inactive after reload,
+and then become active together. No partial update is visible.
+
+### AMR-60 - Export a reviewable effective library
+
+**Do:** Choose Export CSV and open the downloaded file.
+
+**Expect:** The UTF-8 CSV has one header row, is ordered by code, includes
+contexts, active state, and source/provenance, and contains no database IDs or
+audit actor identifiers.
+
+### AMR-61 - Restrict irreversible removal
+
+**Do:** Select only `.uat_bulk_b`, choose Remove local phrases, inspect the
+danger confirmation, and confirm. Leave `.uat_bulk_a` active for repeat review.
+
+**Expect:** The confirmation identifies irreversible local removal,
+`.uat_bulk_b` disappears after reload, and `.uat_bulk_a` remains available.
+
+### AMR-62 - Review responsive batch behavior
+
+**Do:** At a narrow mobile-width window, search for `.uat_bulk`, select the
+remaining phrase, and open a bulk confirmation.
+
+**Expect:** The phrase, status, compact selected-count state, and confirmation
+remain readable without horizontal page overflow; focusable controls are not
+hidden from assistive technology.
+
 ## Publication Gate
 
-- Add the story and six required steps through Grist authoring.
-- Update the AMR checklist title and intro to name OGC-788 M1.
+- Add both stories and all twelve required steps through Grist authoring.
+- Update the AMR checklist title and intro to name OGC-788 M1 and M2.
 - Verify both `https://grist.openelis-global.org/uat/amr.json` and
   `https://amr.openelis-global.org/__review/uat-amr.json` return `200`, have the
   same revision, retain the 39 prior steps, and add exactly `AMR-51` through
-  `AMR-56` under `AMR-S15`.
+  `AMR-62` under `AMR-S15` and `AMR-S16`.
 - Record automated evidence separately from human Pass/Fail/N/A marks.
 - Update this file with the resulting live revision and deployment identity.

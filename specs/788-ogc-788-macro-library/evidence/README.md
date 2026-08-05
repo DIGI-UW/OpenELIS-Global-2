@@ -1,4 +1,4 @@
-# OGC-788 M1 Evidence Index
+# OGC-788 Evidence Index
 
 ## Exact Sources
 
@@ -14,7 +14,21 @@
 - [M-08 visual comparison](mock-comparison-2026-08-04.md)
 - [UAT contract](../uat.md)
 
-The external binary bundle is currently at
+## M2 Broader Administration
+
+- Behavioral implementation and evidence-capture source:
+  `93ad7e5921380cbd933fcc398e4469f85b8a9fc8`
+- Comparison base: `646ede9b7`
+- [Automated validation](validation-m2-2026-08-05.md)
+- [Code-qa review](code-qa-m2-2026-08-05.md)
+- [M-08 visual comparison](mock-comparison-m2-2026-08-05.md)
+
+The exact external M2 evidence bundle is at
+`/Users/pmanko/.codex/visualizations/2026/08/04/019fca12-4b0c-71d0-a37e-8493de64fee5/ogc-788-m2-evidence-93ad7e59/`
+and its sibling zip. It contains seven deterministic screenshots, contact
+sheets, a manifest, and the 45.64-second H.264/yuv420p MP4.
+
+The external M1 binary bundle is currently at
 `/Users/pmanko/.codex/visualizations/2026/08/04/019fca12-4b0c-71d0-a37e-8493de64fee5/ogc-788-m1-evidence/`
 and its sibling zip. Deployment and live Review-overlay links will be added to
 the PR and this index after the exact top-of-stack SHA is published to AMR.
