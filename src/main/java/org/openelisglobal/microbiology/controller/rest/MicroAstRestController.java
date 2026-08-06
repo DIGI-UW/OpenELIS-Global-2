@@ -173,6 +173,7 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.id = reading.getId();
         form.astRunId = reading.getAstRunId();
         form.antibioticId = reading.getAntibioticId();
+        form.measurementType = reading.getMethod();
         form.method = reading.getMethod();
         form.rawValue = reading.getRawValue();
         form.rawText = reading.getRawText();

@@ -9,6 +9,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
 import org.openelisglobal.microbiology.form.MicroAstOverrideRequestForm;
+import org.openelisglobal.microbiology.form.MicroAstReadingForm;
 import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
@@ -110,14 +111,18 @@ public class MicroAstRestControllerTest {
         MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
         MicroAstReading reading = new MicroAstReading();
         reading.setId("reading-1");
+        reading.setMethod("MIC");
         org.openelisglobal.microbiology.form.MicroAstReadingRequestForm request = new org.openelisglobal.microbiology.form.MicroAstReadingRequestForm();
         request.antibioticId = "abx-1";
         request.rawValue = new java.math.BigDecimal("4");
         when(service.recordReading("run-1", "abx-1", new java.math.BigDecimal("4"), "42")).thenReturn(reading);
 
-        new MicroAstRestController(service).recordReading("run-1", request, requestFor("42"));
+        MicroAstReadingForm response = new MicroAstRestController(service)
+                .recordReading("run-1", request, requestFor("42")).getBody();
 
         verify(service).recordReading("run-1", "abx-1", new java.math.BigDecimal("4"), "42");
+        assertEquals("MIC", response.measurementType);
+        assertEquals("MIC", response.method);
     }
 
     @Test
