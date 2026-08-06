@@ -326,6 +326,10 @@ or missing mapping for export.
   culture observations or isolate work-up are available, including Gram stain
   and colony morphology before organism identification, and final reports only
   when readiness checks pass.
+- **FR-016**: Users MUST be able to report a nonconformance from the case with
+  the specimen context already identified, choose whether to flag or reject
+  affected work, and use a dedicated Mark Lost action that records the event,
+  rejects affected open tests, and makes the terminal lost state visible.
 - **FR-017**: Users MUST be able to log critical communications for case,
   isolate, sample, or result context, including recipient, message, time,
   method, acknowledgment state, and follow-up.
@@ -451,6 +455,9 @@ shape during planning.
   readings.
 - **Critical Communication**: A clinically required notification and
   acknowledgment record for urgent findings.
+- **Nonconformance**: A reported departure from expected specimen or laboratory
+  handling, including its classification, severity, description, disposition,
+  and visible effect on affected work.
 - **Microbiology Worklist**: The shared operational queue of microbiology cases
   and AST work requiring attention.
 - **Surveillance Export Readiness**: The finalized result and mapping state
@@ -474,10 +481,15 @@ the appropriate current step without losing prior work.
 2. Changing workflow is inline, requires a reason and compatible culture
    method, preserves prior history, and is blocked after final release.
 3. Cases sharing one specimen link to each other while retaining independent
-   stages, results, critical communication, and reports.
+   stages, results, critical communication, and reports, except when a ruled
+   physical-specimen disposition must apply to every affected sibling.
 4. The case presents setup, subculture lineage, notes, isolate work, AST,
    critical communication, reporting, and amendments in the order implied by
    the current stage.
+5. A user can report a nonconformance from the case without re-entering specimen
+   identity and can choose flag-only or reject-affected-work disposition.
+6. Marking a physical specimen lost records the nonconformance, rejects affected
+   open work, and leaves a visible terminal event in each affected case history.
 
 ### User Story 9 - Review Complete And Traceable AST Work
 
