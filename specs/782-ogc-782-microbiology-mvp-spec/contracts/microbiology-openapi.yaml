@@ -655,6 +655,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AstReading"
+        orderedAntibiotics:
+          type: array
+          items:
+            $ref: "#/components/schemas/AstRunAntibiotic"
     AstSetup:
       type: object
       properties:
@@ -739,6 +743,22 @@ components:
       enum:
         - MIC
         - ZONE
+    AstRunAntibiotic:
+      type: object
+      required:
+        - antibioticId
+        - displayOrder
+      properties:
+        antibioticId:
+          type: string
+        displayOrder:
+          type: integer
+        tier:
+          type: integer
+          minimum: 1
+          maximum: 3
+        reportBehavior:
+          type: string
     AstOverrideEvent:
       type: object
       properties:

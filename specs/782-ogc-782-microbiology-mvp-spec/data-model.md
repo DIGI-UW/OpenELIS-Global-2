@@ -279,6 +279,7 @@ Fields:
 Relationships:
 
 - Belongs to one `MicroIsolate`.
+- Has an immutable ordered set of `MicroAstRunAntibiotic` rows.
 - Has many `MicroAstReading`.
 
 Validation:
@@ -290,6 +291,30 @@ Validation:
   to their stored measurement type and require a real technique for new work.
 - Repeat/retest creates a new run or linked repeat record rather than
   overwriting prior readings.
+
+### MicroAstRunAntibiotic
+
+Immutable ordered-work snapshot for one antibiotic expected on an AST run.
+
+Fields:
+
+- `id`
+- `astRunId`
+- `antibioticId`
+- `displayOrder`
+- `tier`
+- `reportBehavior`
+
+Validation:
+
+- Run creation copies the selected panel's exact ordered membership inside the
+  same transaction as the run.
+- Later panel administration does not change an in-flight or historical run.
+- Repeat runs inherit the source run's snapshot rather than reading the current
+  panel definition.
+- A reading must belong to the run snapshot.
+- The snapshot does not create a parallel core `Analysis` per antibiotic; the
+  case's linked culture analysis remains the standard report projection anchor.
 
 ### MicroAstReading
 

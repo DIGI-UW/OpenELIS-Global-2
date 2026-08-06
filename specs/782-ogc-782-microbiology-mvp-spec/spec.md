@@ -185,6 +185,9 @@ report readiness.
    reason.
 4. **Given** AST results have not been reviewed, **When** a supervisor attempts
    final release, **Then** the case is not considered ready for final reporting.
+5. **Given** the ordered panel needs to change, **When** the technologist adjusts
+   the panel or its antibiotic set with a reason, **Then** entry and reporting
+   use that retained set and later reference-data edits do not change it.
 
 ---
 
@@ -507,12 +510,15 @@ override, revert, repeat, or block it safely.
 1. AST setup shows the ordered panel and its provenance, selected breakpoint
    standard/version, laboratory technique, technique-appropriate measurement,
    and reagent lot.
-2. Each reading shows the matched interpretation basis and preserves visible
+2. The run shows the exact ordered antibiotic set; entry cannot silently add a
+   drug outside that set, and a justified adjustment changes the set used for
+   entry and reporting.
+3. Each reading shows the matched interpretation basis and preserves visible
    original-to-override history with a justified supervisor revert.
-3. Instrument results remain pending review until accepted; mismatches,
+4. Instrument results remain pending review until accepted; mismatches,
    missing breakpoints, and QC failures are visible blockers with named next
    actions.
-4. Repeating all or part of a run creates a new attempt and leaves the prior
+5. Repeating all or part of a run creates a new attempt and leaves the prior
    attempt available for review.
 
 ### User Story 10 - Work One Shared Culture And AST Queue
