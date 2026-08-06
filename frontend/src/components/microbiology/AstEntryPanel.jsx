@@ -23,7 +23,7 @@ import {
 import { useIntl } from "react-intl";
 import AstAttemptTable from "./AstAttemptTable";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
-import ReagentLotPicker from "./ReagentLotPicker";
+import ReagentLotPicker, { formatReagentLotConflict } from "./ReagentLotPicker";
 import ReagentUsageHistory from "./ReagentUsageHistory";
 
 const TECHNIQUE_OPTIONS = [
@@ -424,7 +424,12 @@ const AstEntryPanel = ({
           result?.status === 0
         ) {
           throw new Error(
-            formatMicrobiologyEnum(result.message || result.error, intl),
+            formatReagentLotConflict(
+              result,
+              reagentRequirements,
+              selectedLots,
+              intl,
+            ) || formatMicrobiologyEnum(result.message || result.error, intl),
           );
         }
         return loadAstState().then(() => result);

@@ -2,8 +2,11 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
+import { vi } from "vitest";
 import messages from "../../../languages/en.json";
-import ReagentLotPicker from "../ReagentLotPicker";
+import ReagentLotPicker, {
+  formatReagentLotConflict,
+} from "../ReagentLotPicker";
 
 const requirements = [
   {
@@ -67,6 +70,25 @@ const renderPicker = (props = {}) =>
     </IntlProvider>,
   );
 
+const ControlledPicker = () => {
+  const [selectedLots, setSelectedLots] = React.useState({});
+  return (
+    <IntlProvider locale="en" messages={messages} timeZone="UTC">
+      <ReagentLotPicker
+        id="culture-lots"
+        requirements={requirements}
+        selectedLots={selectedLots}
+        onChange={(selection) =>
+          setSelectedLots({
+            [`${selection.analysisId}:${selection.testReagentLinkId}`]:
+              selection,
+          })
+        }
+      />
+    </IntlProvider>
+  );
+};
+
 describe("ReagentLotPicker", () => {
   it("shows catalog role separately from lot eligibility and FEFO", () => {
     renderPicker();
@@ -79,6 +101,12 @@ describe("ReagentLotPicker", () => {
     expect(screen.getByLabelText(/MEDIA-EXPIRED/)).toBeDisabled();
     expect(screen.getByText("Blocked: Expired")).toBeInTheDocument();
     expect(screen.getByText("FEFO - use first")).toBeInTheDocument();
+    expect(screen.getAllByText("QC passed")).toHaveLength(3);
+    expect(
+      screen.getByRole("button", {
+        name: "Lots are ordered by earliest expiry, then by receipt date when expiry is unavailable.",
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/MEDIA-FEFO/)).toBeEnabled();
     expect(screen.getByLabelText(/MEDIA-LATER/)).toBeEnabled();
   });
@@ -103,5 +131,46 @@ describe("ReagentLotPicker", () => {
     expect(
       screen.getByText("No reagents are linked to this test."),
     ).toBeInTheDocument();
+  });
+
+  it("selects an eligible lot through scanner-style Enter input", async () => {
+    const user = userEvent.setup();
+    render(<ControlledPicker />);
+
+    const scanner = screen.getByRole("searchbox", {
+      name: "Scan or enter lot number",
+    });
+    await user.type(scanner, "MEDIA-FEFO{Enter}");
+
+    expect(screen.getByLabelText(/MEDIA-FEFO/)).toBeChecked();
+    expect(screen.getByText("Selected lot MEDIA-FEFO.")).toBeInTheDocument();
+  });
+
+  it("names the reagent, lot, reason, and corrective action for a race conflict", () => {
+    const intl = {
+      formatMessage: ({ id }, values) =>
+        messages[id]
+          .replace("{reagent}", values.reagent)
+          .replace("{lot}", values.lot),
+    };
+
+    expect(
+      formatReagentLotConflict(
+        {
+          error: "MICROBIOLOGY_LOT_CONFLICT",
+          message: "INVENTORY_LOT_EXPIRED",
+          lotNumber: "MEDIA-FEFO",
+        },
+        requirements,
+        {
+          "41:link-1": {
+            analysisId: "41",
+            testReagentLinkId: "link-1",
+            lotId: 7,
+          },
+        },
+        intl,
+      ),
+    ).toBe("Blood agar lot MEDIA-FEFO expired; pick another lot.");
   });
 });

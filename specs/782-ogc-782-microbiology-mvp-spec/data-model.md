@@ -527,6 +527,24 @@ and confirmed growth. Migration `079-microbiology-positive-culture-stage.xml`
 also reconciles the constraint with the existing lost-specimen terminal states;
 routes, worklist filters, and confirmation panels require no schema changes.
 
+### Shared Reagent Lot Selection (No New Microbiology Model)
+
+Culture setup and AST setup consume existing Test Catalog reagent links and
+Inventory lots through one shared picker. Inventory remains authoritative for
+lot status, QC, expiry, quantity, locked consumption, and usage records;
+Microbiology stores only its existing action-to-usage provenance link.
+
+Validation:
+
+- Eligibility is revalidated by Inventory inside the save transaction.
+- A failed revalidation creates neither consumption nor a microbiology usage
+  link and returns the stable reason plus lot number.
+- `PRIMARY` and `SECONDARY` are catalog reagent roles, not required, optional,
+  or substitute selection policies.
+- Required/optional/substitute behavior cannot be enforced until the shared
+  Test Catalog contract supplies those semantics; Microbiology must not add a
+  parallel policy model.
+
 ### MicroCriticalCommunication
 
 Clinical call/read-back communication log for urgent microbiology findings.

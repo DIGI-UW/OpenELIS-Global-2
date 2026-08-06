@@ -445,6 +445,12 @@
   margin: 0;
 }
 
+.microbiology-reagent-lots__title {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
 .microbiology-reagent-lots__requirement {
   background: var(--cds-layer-01);
   border-left: 0.25rem solid var(--cds-border-interactive);

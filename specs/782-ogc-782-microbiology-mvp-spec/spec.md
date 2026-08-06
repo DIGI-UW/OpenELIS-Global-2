@@ -609,14 +609,17 @@ item without relying on ownership or paper logs.
 
 As a bench technologist, I use the same lot-selection behavior during culture
 setup and AST setup, see the oldest-expiring eligible lots first, and cannot
-save with missing, expired, or QC-blocked required lots.
+save a selected lot that is expired, QC-blocked, depleted, or otherwise no
+longer eligible.
 
 **Acceptance Scenarios**:
 
 1. Eligible lots show expiration, QC state, quantity, and clear oldest-expiry
    guidance in both consuming workflows.
-2. Required, optional, and substitute requirements enforce their distinct save
-   rules.
+2. When the catalog supplies required, optional, and substitute selection
+   policies, each policy enforces its distinct save rule. Until that catalog
+   contract exists, the system does not infer these policies from unrelated
+   reagent roles and this scenario remains blocked by an explicit dependency.
 3. A lot that becomes invalid after selection produces a specific message
    naming the reagent, lot, and corrective action.
 

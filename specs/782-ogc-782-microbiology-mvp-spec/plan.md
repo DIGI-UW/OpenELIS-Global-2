@@ -143,6 +143,16 @@ rule that requires local judgment before review. This distinction is verified
 at the service boundary and through the complete reference-administration
 browser flow.
 
+R1 also treats M-12 as shared workflow behavior rather than a microbiology data
+model. Culture setup and AST setup use one Carbon lot picker; Inventory remains
+authoritative for eligibility, locked consumption, QC, quantity, and usage;
+Test Catalog remains authoritative for reagent links. The current catalog roles
+`PRIMARY` and `SECONDARY` do not mean required, optional, or substitute, so R1
+does not infer those policies or add a duplicate schema. Their enforcement is a
+named Test Catalog dependency. The implemented boundary covers visible QC and
+FEFO guidance, exact scanner-style lot entry, locked save-time revalidation,
+specific corrective messages, and retained usage provenance.
+
 ### Milestone Dependency Graph
 
 ```mermaid

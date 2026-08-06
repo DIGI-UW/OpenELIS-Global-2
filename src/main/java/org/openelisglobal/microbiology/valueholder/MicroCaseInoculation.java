@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
 import java.util.UUID;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
@@ -27,7 +28,8 @@ public class MicroCaseInoculation extends BaseObject<String> {
     @Column(name = "activity_id", nullable = false, length = 36)
     private String activityId;
 
-    @Column(name = "method_id", length = 20)
+    @Column(name = "method_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String methodId;
 
     @Column(name = "container_identifier", nullable = false, length = 80)
