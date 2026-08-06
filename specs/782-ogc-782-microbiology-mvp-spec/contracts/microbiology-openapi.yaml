@@ -230,6 +230,60 @@ paths:
           description: AST run is not reviewable
         "409":
           description: One or more ordered drugs has no recorded result
+  /microbiology/ast/runs/{astRunId}/analyzer-flags/acknowledge:
+    post:
+      summary: Acknowledge analyzer expert flags before accepting results
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstReasonRequest"
+      responses:
+        "200":
+          description: AST run with acknowledged analyzer flags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /microbiology/ast/runs/{astRunId}/qc/override:
+    post:
+      summary: Record a supervisor QC override before accepting results
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstReasonRequest"
+      responses:
+        "200":
+          description: AST run with the QC resolution retained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /microbiology/ast/runs/{astRunId}/invalidate-and-repeat:
+    post:
+      summary: Preserve a failed analyzer run and start its replacement
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstInvalidateRepeatRequest"
+      responses:
+        "200":
+          description: New analyzer-backed AST run awaiting results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
   /microbiology/ast/runs/{astRunId}/attempts:
     post:
       summary: Start a repeat or retest AST run while preserving the source run
@@ -260,6 +314,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AstRun"
+  /analyzer/events/ast:
+    post:
+      summary: Receive an idempotent normalized AST result or QC event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstAnalyzerEventRequest"
+      responses:
+        "202":
+          description: Event applied to its AST run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstAnalyzerEvent"
+        "422":
+          description: Event retained for reconciliation because it could not be applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstAnalyzerEvent"
   /microbiology/ast/readings/{readingId}/override:
     put:
       summary: Override an AST interpretation with a required reason
@@ -632,6 +708,13 @@ components:
           type: array
           items:
             type: object
+        awaitAnalyzerResults:
+          type: boolean
+          default: false
+        analyzerInstrumentId:
+          type: string
+        analyzerCardId:
+          type: string
     AstAttemptRequest:
       type: object
       required:
@@ -648,6 +731,135 @@ components:
           type: string
         technique:
           $ref: "#/components/schemas/AstTechnique"
+    AstReasonRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+    AstInvalidateRepeatRequest:
+      type: object
+      required:
+        - reason
+        - analyzerCardId
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        analyzerCardId:
+          type: string
+          minLength: 1
+    AstAnalyzerEventRequest:
+      type: object
+      required:
+        - externalEventId
+        - eventType
+        - payload
+      properties:
+        externalEventId:
+          type: string
+        eventType:
+          type: string
+          enum:
+            - AST_RESULT_AVAILABLE
+            - AST_QC_FAIL
+        analyzerId:
+          type: string
+        sourceId:
+          type: string
+          description: Analyzer card or panel identifier used when targetRunId is absent.
+        targetRunId:
+          type: string
+        payload:
+          $ref: "#/components/schemas/AstAnalyzerResultPayload"
+    AstAnalyzerResultPayload:
+      type: object
+      properties:
+        sourceEventId:
+          type: string
+        analyzerInstrumentId:
+          type: string
+        analyzerCardId:
+          type: string
+        analyzerSoftwareVersion:
+          type: string
+        analyzerOrganismId:
+          type: string
+        analyzerOrganismName:
+          type: string
+        analyzerOrganismConfidence:
+          type: number
+        analyzerExpertFlags:
+          type: array
+          items:
+            type: string
+        instrumentQcReference:
+          type: string
+        qcPassed:
+          type: boolean
+        loadedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        analyzerMessageCodes:
+          type: array
+          items:
+            type: string
+        readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/AstAnalyzerReading"
+    AstAnalyzerReading:
+      type: object
+      required:
+        - antibioticId
+        - rawValue
+      properties:
+        antibioticId:
+          type: string
+        rawValue:
+          type: number
+        units:
+          type: string
+        instrumentInterpretation:
+          type: string
+        analyzerResultReference:
+          type: string
+    AstAnalyzerEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        externalEventId:
+          type: string
+        eventType:
+          type: string
+        analyzerId:
+          type: string
+        sourceId:
+          type: string
+        targetReference:
+          type: string
+        status:
+          type: string
+          enum:
+            - RECEIVED
+            - APPLIED
+            - FAILED
+        failureReason:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+        reconciliationUrl:
+          type: string
     AstRun:
       type: object
       properties:
@@ -680,6 +892,46 @@ components:
           deprecated: true
           description: Compatibility alias for measurementType.
         status:
+          type: string
+          enum:
+            - IN_PROGRESS
+            - AWAITING_RESULTS
+            - RESULTS_IN
+            - QC_FAILED
+            - RERUN_REQUIRED
+            - INVALIDATED
+            - REVIEWED
+        analyzerInstrumentId:
+          type: string
+        analyzerCardId:
+          type: string
+        analyzerSoftwareVersion:
+          type: string
+        analyzerOrganismId:
+          type: string
+        analyzerOrganismName:
+          type: string
+        analyzerOrganismConfidence:
+          type: number
+        analyzerExpertFlags:
+          type: string
+        instrumentQcReference:
+          type: string
+        qcState:
+          type: string
+        qcOverrideReason:
+          type: string
+        analyzerFlagsAcknowledgementReason:
+          type: string
+        analyzerLoadedAt:
+          type: string
+          format: date-time
+        analyzerCompletedAt:
+          type: string
+          format: date-time
+        analyzerMessageCodes:
+          type: string
+        sourceEventId:
           type: string
         readings:
           type: array
@@ -734,6 +986,10 @@ components:
         rawValue:
           type: number
         interpretation:
+          type: string
+        instrumentInterpretation:
+          type: string
+        analyzerResultReference:
           type: string
         breakpointRuleId:
           type: string
