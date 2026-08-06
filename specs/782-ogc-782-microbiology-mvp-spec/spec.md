@@ -238,6 +238,20 @@ case action.
    explicitly confirmed by a user, **When** it appears in the resistance-hit
    context, **Then** its provenance is distinguishable and the system does not
    infer a classification from free-text notes.
+9. **Given** the worklist remains open during a shift, **When** thirty seconds
+   elapse or the user refreshes it directly, **Then** current work appears
+   without changing the bookmarked queue state, keyboard focus, or horizontal
+   scroll position, and the page states how recently it refreshed.
+10. **Given** a user is not permitted to view or work microbiology cases,
+    **When** they navigate to the worklist or request its data, **Then** access
+    is denied even when that user is otherwise authenticated.
+11. **Given** a positive signal first appears during refresh, **When** the
+    refreshed rows render, **Then** the new positive work is briefly
+    distinguishable without relying on color alone or disrupting focus.
+12. **Given** a culture is incubating, **When** the worklist renders its next
+    action, **Then** the action reflects the elapsed culture day when timing
+    inputs are available and falls back to an accurate stage label when they
+    are not.
 
 ---
 
@@ -397,6 +411,11 @@ or missing mapping for export.
   to an implementation task, production path, focused automated evidence, and
   human UAT. Direct navigation to a legacy route or label-only checks do not
   prove the supported user workflow.
+- **FR-025**: The shared worklist MUST refresh every thirty seconds and on user
+  request without changing its canonical URL, focus, scroll position, or
+  current row context.
+- **FR-026**: Only users permitted to view or work microbiology cases may open
+  the worklist or read its data.
 
 ### Historical Initial-MVP Deferrals And Current Status
 
@@ -570,6 +589,12 @@ item without relying on ownership or paper logs.
    action appears.
 4. Empty, refresh, keyboard, and compact-screen behavior preserve the user’s
    position and focus.
+5. The page refreshes every thirty seconds, reports its freshness, briefly
+   distinguishes newly positive work, and keeps the current canonical URL.
+6. Clicking a culture or AST row opens the exact case context; the same actions
+   remain available through the row menu.
+7. Incubating cultures show the correct day-aware next action when timing is
+   known and an accurate stage fallback when it is not.
 
 ### User Story 11 - Select Safe Reagent Lots Consistently
 
