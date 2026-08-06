@@ -291,21 +291,27 @@ Fields:
 - `id`
 - `astRunId`
 - `antibioticId`
-- `readingType`
-- `readingValue`
-- `readingUnit`
-- `interpretedValue`
-- `finalInterpretation`
+- `method` (current MIC/ZONE measurement mode)
+- `rawValue`
+- `rawText`
+- `units`
+- `interpretation`
+- `source`
+- `matchedBy`
 - `overrideReason`
+- `overrideInterpretation`
 - `breakpointRuleId`
-- `requiresManualJudgment`
-- `lastUpdated`
+- `createdAt`
+- `createdBy`
 
 Validation:
 
 - Override requires a reason and preserves the original interpreted value.
-- Missing breakpoint sets `requiresManualJudgment`.
+- Missing breakpoint records `matchedBy=NONE` and requires visible local-policy
+  guidance rather than silently implying an interpretation.
 - Numeric readings validate precision and allowed ranges by method.
+- Laboratory technique remains a distinct open design decision; it must not be
+  inferred from the MIC/ZONE measurement mode.
 
 ### MicroCriticalCommunication
 

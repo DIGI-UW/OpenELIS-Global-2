@@ -656,6 +656,21 @@ components:
           type: string
         breakpointRuleId:
           type: string
+        source:
+          type: string
+          enum:
+            - MANUAL_ENTRY
+            - ANALYZER_AUTO
+            - OVERRIDE
+        matchedBy:
+          type: string
+          enum:
+            - SPECIMEN
+            - ORGANISM
+            - GROUP
+            - NONE
+        units:
+          type: string
         overrideInterpretation:
           type: string
         overrideReason:
