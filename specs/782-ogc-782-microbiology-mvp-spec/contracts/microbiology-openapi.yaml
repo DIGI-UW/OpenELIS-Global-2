@@ -256,6 +256,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AstReading"
+  /microbiology/ast/readings/{readingId}/override/revert:
+    post:
+      summary: Revert an active AST override with a required reason
+      parameters:
+        - $ref: "#/components/parameters/ReadingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstRevertRequest"
+      responses:
+        "200":
+          description: AST reading restored to its original interpretation with history retained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstReading"
   /microbiology/cases/{caseId}/critical-communications:
     post:
       summary: Log a critical microbiology communication
@@ -675,6 +693,35 @@ components:
           type: string
         overrideReason:
           type: string
+        overrideHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/AstOverrideEvent"
+    AstOverrideEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        readingId:
+          type: string
+        action:
+          type: string
+          enum:
+            - OVERRIDE
+            - REVERT
+        fromInterpretation:
+          type: string
+        toInterpretation:
+          type: string
+        reason:
+          type: string
+        performedAt:
+          type: string
+          format: date-time
+        performedBy:
+          type: string
+        performedByDisplay:
+          type: string
     AstOverrideRequest:
       type: object
       required:
@@ -683,6 +730,13 @@ components:
       properties:
         overrideInterpretation:
           type: string
+        overrideReason:
+          type: string
+    AstRevertRequest:
+      type: object
+      required:
+        - overrideReason
+      properties:
         overrideReason:
           type: string
     CriticalCommunicationRequest:
