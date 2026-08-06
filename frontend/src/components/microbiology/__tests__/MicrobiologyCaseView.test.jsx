@@ -60,6 +60,9 @@ const astServiceStubs = {
   logCriticalCommunication: vi.fn(),
   acknowledgeCriticalCommunication: vi.fn(),
   closeCriticalCommunication: vi.fn(),
+  getNceCategories: vi.fn().mockResolvedValue([]),
+  getNceReportingUnits: vi.fn().mockResolvedValue([]),
+  reportCaseNonconformance: vi.fn(),
   getOrganisms: vi.fn().mockResolvedValue([]),
   getWhonetReadiness: vi.fn().mockResolvedValue({
     whonetReady: true,
@@ -277,6 +280,33 @@ describe("MicrobiologyCaseView", () => {
     );
     expect(screen.getByLabelText("Critical result target")).toBeDisabled();
     expect(screen.getByLabelText("Target record")).toHaveValue("case-1");
+  });
+
+  it("opens each nonconformance action from a canonical header URL", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    await user.click(await screen.findByRole("button", { name: "Report NCE" }));
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=nonconformance&action=report-nce",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Report nonconformance" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Mark lost/ }));
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=nonconformance&action=mark-lost",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Mark specimen lost" }),
+    ).toBeInTheDocument();
   });
 
   it("opens amendment history from its canonical section URL", async () => {

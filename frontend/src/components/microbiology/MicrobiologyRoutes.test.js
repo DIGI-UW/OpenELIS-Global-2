@@ -97,4 +97,23 @@ describe("MicrobiologyRoutes", () => {
       targetId: "isolate-1",
     });
   });
+
+  it("keeps nonconformance actions in canonical case state", () => {
+    expect(
+      getMicrobiologyCaseUrl("case-1", {
+        section: "nonconformance",
+        action: "report-nce",
+      }),
+    ).toBe(
+      "/Microbiology/cases/case-1?section=nonconformance&action=report-nce",
+    );
+    expect(
+      parseMicrobiologyCaseSearch("?section=nonconformance&action=mark-lost"),
+    ).toMatchObject({
+      section: "nonconformance",
+      action: "mark-lost",
+      targetType: "",
+      targetId: "",
+    });
+  });
 });

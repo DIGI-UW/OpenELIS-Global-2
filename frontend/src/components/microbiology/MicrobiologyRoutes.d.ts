@@ -11,7 +11,7 @@ export type MicrobiologyWorklistState = {
 
 export type MicrobiologyCaseState = MicrobiologyWorklistState & {
   section?: string;
-  action?: "log-critical" | "";
+  action?: "log-critical" | "report-nce" | "mark-lost" | "";
   targetType?: "CASE" | "ISOLATE" | "";
   targetId?: string;
 };

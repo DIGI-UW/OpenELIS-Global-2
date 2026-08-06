@@ -7,13 +7,18 @@ export const MICROBIOLOGY_CASE_SECTIONS = [
   "order-detail",
   "setup",
   "timeline",
+  "nonconformance",
   "isolates",
   "ast",
   "critical-communication",
   "reports",
   "amendment",
 ];
-export const MICROBIOLOGY_CASE_ACTIONS = ["log-critical"];
+export const MICROBIOLOGY_CASE_ACTIONS = [
+  "log-critical",
+  "report-nce",
+  "mark-lost",
+];
 export const MICROBIOLOGY_CRITICAL_TARGET_TYPES = ["CASE", "ISOLATE"];
 
 const DEFAULT_WORKLIST_STATE = {
@@ -83,6 +88,7 @@ const toSearch = (state, caseState = {}) => {
   if (MICROBIOLOGY_CASE_ACTIONS.includes(caseState.action)) {
     params.set("action", caseState.action);
     if (
+      caseState.action === "log-critical" &&
       MICROBIOLOGY_CRITICAL_TARGET_TYPES.includes(caseState.targetType) &&
       textValue(caseState.targetId)
     ) {
@@ -124,8 +130,11 @@ export const parseMicrobiologyCaseSearch = (search = "") => {
       ? params.get("section")
       : "",
     action,
-    targetType: action ? targetType : "",
-    targetId: action && targetType ? textValue(params.get("targetId")) : "",
+    targetType: action === "log-critical" ? targetType : "",
+    targetId:
+      action === "log-critical" && targetType
+        ? textValue(params.get("targetId"))
+        : "",
   };
 };
 
