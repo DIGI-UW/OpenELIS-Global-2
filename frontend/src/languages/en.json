@@ -2651,6 +2651,7 @@
   "instructions.copy.labnum": "Copy Lab Number",
   "label.validation.viewPatient": "View Patient",
   "instructions.order.entry.eqa.enabled": "When enabled, a checkbox will appear on the Order Entry screen allowing staff to mark a sample as an EQA (External Quality Assurance) sample. Patient demographics will be auto-populated with N/A and locked.",
+  "instructions.order.entry.requester": "When enabled, Search Requester and Requester First Name and Requester Last Name become required fields on the Add Order screen. When disabled (default), all three fields are optional.",
   "instructions.test.activation": "Active Tests: a checked box indicates an already active test. To activate a test, check the box; to deactivate, uncheck the box. Any sample types without an existing active test are deactivated and appear at the bottom, under 'Inactive Sample Types'. If one of the tests is activated, the sample type will be activated.",
   "instructions.test.activation.confirm": "Verify that these are the changes you want to make. If correct then save. If not correct use the back button to make the correct changes",
   "instructions.test.activation.sort": "Display Order: Lists of sample types which have newly activated tests. Sort the tests to indicate how they will be displayed in the order entry screen. Sorting can be done by dragging items to the desired position.",
