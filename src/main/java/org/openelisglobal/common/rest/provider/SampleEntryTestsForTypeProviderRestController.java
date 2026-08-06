@@ -144,8 +144,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         String userTestSectionId = testSectionService.getTestSectionByName("user").getId();
         ArrayList<TestMap> testsMapList = new ArrayList<>();
         for (Test test : tests) {
-            List<TestMethodDto> methods = GenericValidator.isBlankOrNull(test.getCultureWorkflowType()) ? List.of()
-                    : testMethodService.getLinkedMethodDtos(test.getId());
+            List<TestMethodDto> methods = testMethodService.getLinkedMethodDtos(test.getId());
             testsMapList.add(new TestMap(test.getId(), localizedTestName(test),
                     userTestSectionId.equals(test.getTestSection().getId()), test.getCultureWorkflowType(), methods));
         }

@@ -10,6 +10,7 @@ const MicrobiologyOrderEntrySection = ({
   samples = [],
   orderFormValues,
   setOrderFormValues,
+  enabled,
   isReadOnly = false,
 }) => {
   const intl = useIntl();
@@ -33,16 +34,24 @@ const MicrobiologyOrderEntrySection = ({
       ),
     [samples],
   );
+  const selectedTests = useMemo(
+    () => samples.flatMap((sample) => sample.tests || []),
+    [samples],
+  );
+  const routedWorkflows = workflows.length > 0 ? workflows : ["UNASSIGNED"];
+  const sectionEnabled = enabled ?? workflows.length > 0;
+  const methodSourceTests =
+    cultureTests.length > 0 ? cultureTests : selectedTests;
 
   const methods = useMemo(() => {
     const byId = new Map();
-    cultureTests.forEach((test) =>
+    methodSourceTests.forEach((test) =>
       (test.methods || []).forEach((method) =>
         byId.set(String(method.methodId), method),
       ),
     );
     return Array.from(byId.values());
-  }, [cultureTests]);
+  }, [methodSourceTests]);
 
   const existingFields = {
     ...emptyMicrobiologyOrderDetail,
@@ -80,7 +89,7 @@ const MicrobiologyOrderEntrySection = ({
   };
 
   useEffect(() => {
-    if (workflows.length === 0) {
+    if (!sectionEnabled) {
       return;
     }
     const current = orderFormValues.microbiologyOrderDetail || {};
@@ -101,10 +110,10 @@ const MicrobiologyOrderEntrySection = ({
     fields.numberOfSets,
     fields.patientOrigin,
     setOrderFormValues,
-    workflows.length,
+    sectionEnabled,
   ]);
 
-  if (workflows.length === 0) {
+  if (!sectionEnabled) {
     return null;
   }
 
@@ -131,7 +140,7 @@ const MicrobiologyOrderEntrySection = ({
           </p>
         </div>
         <div>
-          {workflows.map((workflow) => (
+          {routedWorkflows.map((workflow) => (
             <Tag key={workflow} type="blue">
               {formatMicrobiologyEnum(workflow)}
             </Tag>

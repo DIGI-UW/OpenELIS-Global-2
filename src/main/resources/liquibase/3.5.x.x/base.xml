@@ -220,4 +220,7 @@
   <!-- OGC-782 M10: audited manual WHONET export -->
   <include relativeToChangelogFile="true" file="065-microbiology-whonet-export-run.xml"/>
 
+  <!-- OGC-782 R1: safe manual-Program fallback classification -->
+  <include relativeToChangelogFile="true" file="069-microbiology-unassigned-workflow.xml"/>
+
 </databaseChangeLog>

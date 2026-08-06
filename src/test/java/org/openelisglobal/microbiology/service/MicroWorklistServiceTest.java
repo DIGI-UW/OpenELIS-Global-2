@@ -108,6 +108,20 @@ public class MicroWorklistServiceTest {
     }
 
     @Test
+    public void unassignedCaseIsSurfacedAsTheFirstRequiredAction() {
+        MicroCase unassigned = microCase("case-unassigned", "sample-1", MicroWorkflowType.UNASSIGNED,
+                MicroCaseStage.RECEIVED, "ROUTINE");
+        when(caseDAO.getOpenCases()).thenReturn(List.of(unassigned));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(unassigned));
+        when(isolateDAO.getByCaseIds(List.of("case-unassigned"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-unassigned"))).thenReturn(List.of());
+
+        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+
+        assertEquals("NEEDS_WORKFLOW", row.dueAction);
+    }
+
+    @Test
     public void worklistFiltersSearchesAndPaginatesOnTheServer() {
         MicroCase bacteriology = microCase("case-bac", "sample-1", MicroWorkflowType.BACTERIOLOGY,
                 MicroCaseStage.RECEIVED, "ROUTINE");
