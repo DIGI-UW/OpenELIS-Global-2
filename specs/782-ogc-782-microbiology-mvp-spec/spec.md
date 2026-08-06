@@ -173,10 +173,13 @@ report readiness.
 
 1. **Given** an identified significant isolate, **When** the technologist starts
    AST entry, **Then** the system offers the expected antibiotic panel and
-   breakpoint context for that organism and specimen.
-2. **Given** MIC or zone values are entered, **When** the values are saved,
-   **Then** the system displays susceptibility interpretations and clearly
-   marks readings that need manual judgment.
+   breakpoint context and allows the technologist to select the laboratory
+   technique used.
+2. **Given** a laboratory technique is selected, **When** the technologist
+   records its readings, **Then** the system presents the appropriate MIC or
+   zone input without asking the user to classify the same measurement again,
+   displays susceptibility interpretations, and clearly marks readings that
+   need manual judgment.
 3. **Given** a user overrides an interpretation, **When** the override is saved,
    **Then** the original reading remains reviewable and the override requires a
    reason.
@@ -500,7 +503,8 @@ override, revert, repeat, or block it safely.
 **Acceptance Scenarios**:
 
 1. AST setup shows the ordered panel and its provenance, selected breakpoint
-   standard/version, method-appropriate measurement, and reagent lot.
+   standard/version, laboratory technique, technique-appropriate measurement,
+   and reagent lot.
 2. Each reading shows the matched interpretation basis and preserves visible
    original-to-override history with a justified supervisor revert.
 3. Instrument results remain pending review until accepted; mismatches,
