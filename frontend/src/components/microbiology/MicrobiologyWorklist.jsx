@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Download, FilterRemove, Launch, Printer } from "@carbon/icons-react";
+import {
+  Download,
+  FilterRemove,
+  Launch,
+  Printer,
+  Renew,
+} from "@carbon/icons-react";
 import {
   Accordion,
   AccordionItem,
@@ -42,6 +48,7 @@ import {
 } from "./MicrobiologyRoutes";
 import {
   markMicrobiologyReady,
+  MICROBIOLOGY_WORKLIST_REFRESH_INTERVAL_MS,
   MICROBIOLOGY_WORKLIST_READY_MARK,
 } from "./MicrobiologyPerformance";
 import MicrobiologyService from "./MicrobiologyService";
@@ -52,6 +59,7 @@ const STAGE_OPTIONS = [
   "RECEIVED",
   "SETUP_RECORDED",
   "INCUBATING",
+  "POSITIVE_SIGNAL",
   "GROWTH_DETECTED",
   "NO_GROWTH_READY",
   "IDENTIFICATION",
@@ -219,6 +227,9 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     status: "loading",
   });
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [refreshGeneration, setRefreshGeneration] = useState(0);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const { current: worklist, previousRows } = worklistState;
   const responseMatchesLocation = requestState.search === location.search;
   const loading = !responseMatchesLocation || requestState.status === "loading";
@@ -240,6 +251,9 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
         }));
         setRequestState({ search: location.search, status: "success" });
         setHasLoaded(true);
+        const updatedAt = Date.now();
+        setLastUpdatedAt(updatedAt);
+        setClockNow(updatedAt);
       })
       .catch(() => {
         if (!active) {
@@ -250,7 +264,24 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     return () => {
       active = false;
     };
+  }, [location.search, refreshGeneration, service]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setRefreshGeneration((generation) => generation + 1);
+    }, MICROBIOLOGY_WORKLIST_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
   }, [location.search, service]);
+
+  useEffect(() => {
+    if (lastUpdatedAt === null) {
+      return undefined;
+    }
+    const intervalId = window.setInterval(() => {
+      setClockNow(Date.now());
+    }, 1_000);
+    return () => window.clearInterval(intervalId);
+  }, [lastUpdatedAt]);
 
   useEffect(() => {
     if (!loading && !hasLoadError) {
@@ -533,6 +564,10 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     },
   ];
   const summaryTiles = isAstGrain ? astSummaryTiles : cultureSummaryTiles;
+  const secondsSinceUpdate =
+    lastUpdatedAt === null
+      ? 0
+      : Math.max(0, Math.floor((clockNow - lastUpdatedAt) / 1_000));
 
   return (
     <main className="microbiology-worklist" data-testid="microbiology-worklist">
@@ -557,9 +592,34 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               {intl.formatMessage({ id: "microbiology.worklist.subtitle" })}
             </p>
           </div>
-          <Tag type="blue">
-            {intl.formatMessage({ id: "microbiology.worklist.queueStatus" })}
-          </Tag>
+          <div className="microbiology-worklist__refresh-controls">
+            {lastUpdatedAt !== null && (
+              <span
+                className="microbiology-worklist__refresh-status"
+                role="status"
+              >
+                <span aria-hidden="true" />
+                {intl.formatMessage(
+                  { id: "microbiology.worklist.updated" },
+                  { seconds: secondsSinceUpdate },
+                )}
+              </span>
+            )}
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Renew}
+              disabled={loading}
+              onClick={() =>
+                setRefreshGeneration((generation) => generation + 1)
+              }
+            >
+              {intl.formatMessage({ id: "microbiology.worklist.refresh" })}
+            </Button>
+            <Tag type="blue">
+              {intl.formatMessage({ id: "microbiology.worklist.queueStatus" })}
+            </Tag>
+          </div>
         </header>
         <div className="microbiology-worklist__grain-control">
           <ContentSwitcher
@@ -937,6 +997,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                   </TableToolbar>
                   <div
                     className="microbiology-worklist__table-scroll"
+                    data-testid="microbiology-worklist-table-scroll"
                     tabIndex={0}
                     aria-label={intl.formatMessage({
                       id: isAstGrain

@@ -22,7 +22,7 @@ public class MicroWorklistRestController extends BaseRestController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')")
     public ResponseEntity<MicroWorklistPageForm> getWorklistRows(@RequestParam(required = false) String grain,
             @RequestParam(required = false) String status, @RequestParam(required = false) String workflow,
             @RequestParam(required = false) String stage, @RequestParam(required = false) String urgency,

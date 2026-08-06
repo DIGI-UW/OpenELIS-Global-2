@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -26,6 +26,10 @@ const renderWorklist = (service, initialEntry = "/Microbiology/worklist") =>
   );
 
 describe("MicrobiologyWorklist", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("shows due action, critical communication, and sibling workflows", async () => {
     const service = {
       getWorklistRows: vi.fn().mockResolvedValue({
@@ -249,6 +253,77 @@ describe("MicrobiologyWorklist", () => {
         "Search lab number, patient, specimen, or workflow",
       ),
     ).toBe(search);
+  });
+
+  it("refreshes at 30 seconds without losing URL, focus, or table scroll", async () => {
+    vi.useFakeTimers();
+    const worklistRow = (caseId, stage = "INCUBATING") => ({
+      caseId,
+      sampleItemId: caseId,
+      accessionNumber: `LAB-${caseId}`,
+      workflowType: "BACTERIOLOGY",
+      stage,
+      dueAction: stage === "POSITIVE_SIGNAL" ? "CONFIRM_GROWTH" : "SETUP",
+      urgency: "ROUTINE",
+      siblingWorkflows: [],
+    });
+    const service = {
+      getWorklistRows: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [worklistRow("1001")],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+        })
+        .mockResolvedValueOnce({
+          rows: [worklistRow("1001"), worklistRow("1002", "POSITIVE_SIGNAL")],
+          total: 2,
+          page: 1,
+          pageSize: 20,
+        }),
+    };
+
+    renderWorklist(
+      service,
+      "/Microbiology/worklist?workflow=BACTERIOLOGY&sort=newest",
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const search = screen.getByPlaceholderText(
+      "Search lab number, patient, specimen, or workflow",
+    );
+    const tableScroll = screen.getByTestId(
+      "microbiology-worklist-table-scroll",
+    );
+    search.focus();
+    tableScroll.scrollLeft = 144;
+    const canonicalUrl = screen.getByTestId(
+      "microbiology-current-url",
+    ).textContent;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(29_999);
+    });
+    expect(service.getWorklistRows).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(service.getWorklistRows).toHaveBeenCalledTimes(2);
+    expect(
+      screen.getByTestId("microbiology-worklist-row-1002"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      canonicalUrl,
+    );
+    expect(document.activeElement).toBe(search);
+    expect(tableScroll.scrollLeft).toBe(144);
+    expect(screen.getByText(/Updated 0s ago/)).toBeVisible();
   });
 
   it("reconciles Carbon rows when a filtered response replaces row IDs", async () => {
