@@ -168,3 +168,32 @@
 - Deployment caveat: the checklist is live now, but AMR must be redeployed from
   the feature branch before the new navigation and canonical-route steps can
   pass.
+
+## R1 Case Nonconformance And Lost Specimen
+
+- Flow: `microbiology-case-workbench`
+- Route: `/Microbiology/cases/:caseId`
+- Setup: provision two independent cases through the property-gated UAT scenario
+  service. One is retained for flag-only NCE evidence; the other is disposable
+  because Mark Lost intentionally rejects its physical specimen and open work.
+- User actions:
+  - open Report NCE from the case header and verify canonical
+    `section=nonconformance&action=report-nce` state;
+  - choose configured category/reporting unit and severity, enter a description,
+    retain Flag only, submit, and verify the automatic timeline event;
+  - open a separate case, choose Mark Lost, verify configured category/type and
+    reject disposition are preset, submit, and verify the terminal case state and
+    automatic timeline event.
+- Expected outcomes:
+  - no specimen identity or actor is entered by the user;
+  - NCE reference choices come from active configuration rather than fixed IDs;
+  - missing lost-specimen type is a named blocker;
+  - the browser observes the saved timeline and terminal state without backend
+    inspection.
+- Project: `core-app`
+- Evidence commands:
+  `cd frontend && npx playwright test --project=core-app playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --list`
+  `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app`
+- Current result: project registration, targeted ESLint, selector-policy scan,
+  and 21-file/78-test frontend suite passed. Exact-SHA browser runtime is pending
+  because no local OpenELIS HTTPS stack is running.

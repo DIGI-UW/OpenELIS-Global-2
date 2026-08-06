@@ -10,7 +10,7 @@ paths:
     get:
       summary: List microbiology cases and AST work requiring action
       parameters:
-        - name: workflowType
+        - name: workflow
           in: query
           schema:
             $ref: "#/components/schemas/MicroWorkflowType"
@@ -18,23 +18,39 @@ paths:
           in: query
           schema:
             type: string
-        - name: dueAction
+        - name: due
           in: query
           schema:
             type: string
-        - name: urgentOnly
+        - name: urgency
           in: query
           schema:
-            type: boolean
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
       responses:
         "200":
           description: Worklist rows
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/WorklistRow"
+                $ref: "#/components/schemas/WorklistPage"
   /microbiology/cases/{caseId}:
     get:
       summary: Get compiled microbiology case detail
@@ -61,7 +77,7 @@ paths:
             schema:
               $ref: "#/components/schemas/CaseActivityRequest"
       responses:
-        "201":
+        "200":
           description: Activity recorded and case state updated
           content:
             application/json:
@@ -117,7 +133,7 @@ paths:
             schema:
               $ref: "#/components/schemas/AstRunRequest"
       responses:
-        "201":
+        "200":
           description: AST run created
           content:
             application/json:
@@ -178,13 +194,35 @@ paths:
             schema:
               $ref: "#/components/schemas/CriticalCommunicationRequest"
       responses:
-        "201":
+        "200":
           description: Communication logged and alert surfaced when configured
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CriticalCommunication"
-  /microbiology/cases/{caseId}/release-preliminary:
+  /microbiology/cases/{caseId}/nonconformances:
+    post:
+      summary: Report a case nonconformance or lost specimen
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaseNonconformanceRequest"
+      responses:
+        "200":
+          description: Nonconformance recorded and disposition applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseNonconformanceResult"
+        "400":
+          description: Required classification or disposition is invalid
+        "409":
+          description: Affected case state prevents specimen rejection
+  /microbiology/cases/{caseId}/release/preliminary:
     post:
       summary: Release a preliminary microbiology report
       parameters:
@@ -195,10 +233,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MicroCaseDetail"
+                $ref: "#/components/schemas/MicroReportRelease"
         "400":
           description: Preliminary release is not allowed
-  /microbiology/cases/{caseId}/release-final:
+  /microbiology/cases/{caseId}/release/final:
     post:
       summary: Release a final microbiology report
       parameters:
@@ -209,7 +247,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MicroCaseDetail"
+                $ref: "#/components/schemas/MicroReportRelease"
         "409":
           description: Case is not final-release ready
           content:
@@ -269,14 +307,30 @@ components:
         - BACTERIOLOGY
         - MYCOBACTERIOLOGY_TB
         - MYCOLOGY
+        - UNASSIGNED
+    WorklistPage:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorklistRow"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        summary:
+          type: object
+          additionalProperties:
+            type: integer
     WorklistRow:
       type: object
       properties:
         caseId:
           type: string
-        accessionNumber:
-          type: string
-        patientDisplay:
+        sampleItemId:
           type: string
         workflowType:
           $ref: "#/components/schemas/MicroWorkflowType"
@@ -286,12 +340,17 @@ components:
           type: string
         urgency:
           type: string
-        hasSiblingWorkflow:
+        needsAstReview:
           type: boolean
-        needsReview:
+        hasOpenCriticalCommunication:
           type: boolean
-        hasCriticalOpen:
-          type: boolean
+        siblingWorkflows:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
     MicroCaseDetail:
       type: object
       properties:
@@ -481,23 +540,23 @@ components:
       required:
         - targetType
         - targetId
-        - recipientName
+        - recipient
         - message
-        - method
+        - communicationMethod
       properties:
         targetType:
           type: string
         targetId:
           type: string
-        recipientName:
+        recipient:
           type: string
         recipientContact:
           type: string
         message:
           type: string
-        method:
+        communicationMethod:
           type: string
-        followUpRequired:
+        followUpNeeded:
           type: boolean
     CriticalCommunication:
       allOf:
@@ -506,14 +565,77 @@ components:
           properties:
             id:
               type: string
-            communicationStatus:
+            acknowledgementStatus:
               type: string
             communicatedAt:
               type: string
               format: date-time
-            linkedAlertId:
+            alertId:
               type: integer
               format: int64
+    CaseNonconformanceRequest:
+      type: object
+      required:
+        - categoryId
+        - reportingUnitId
+        - severity
+        - description
+        - disposition
+        - eventType
+      properties:
+        categoryId:
+          type: string
+        typeId:
+          type: string
+        reportingUnitId:
+          type: integer
+        severity:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        immediateAction:
+          type: string
+        disposition:
+          type: string
+          enum:
+            - FLAG_ONLY
+            - REJECT_TEST
+        eventType:
+          type: string
+          enum:
+            - NONCONFORMANCE
+            - SPECIMEN_LOST
+    CaseNonconformanceResult:
+      type: object
+      properties:
+        nceId:
+          type: string
+        nceNumber:
+          type: string
+        disposition:
+          type: string
+        eventType:
+          type: string
+        affectedCaseIds:
+          type: array
+          items:
+            type: string
+    MicroReportRelease:
+      type: object
+      properties:
+        caseId:
+          type: string
+        finalReleaseState:
+          type: string
+        stage:
+          type: string
+        closedAt:
+          type: string
+          format: date-time
+        closedBy:
+          type: string
     ReadinessFailure:
       type: object
       properties:
