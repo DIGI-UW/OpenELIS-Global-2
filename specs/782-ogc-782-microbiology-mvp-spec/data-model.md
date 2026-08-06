@@ -313,6 +313,28 @@ Validation:
 - Laboratory technique remains a distinct open design decision; it must not be
   inferred from the MIC/ZONE measurement mode.
 
+### MicroAstOverrideEvent
+
+Append-only override and revert history for an AST reading.
+
+Fields:
+
+- `id`
+- `readingId`
+- `action`
+- `fromInterpretation`
+- `toInterpretation`
+- `reason`
+- `performedAt`
+- `performedBy`
+
+Validation:
+
+- Every override or revert appends an event; prior events are never updated.
+- Revert requires an active override and a non-empty reason.
+- The original reading value, interpretation, source, rule, and measurement are
+  never replaced by override history.
+
 ### MicroCriticalCommunication
 
 Clinical call/read-back communication log for urgent microbiology findings.
