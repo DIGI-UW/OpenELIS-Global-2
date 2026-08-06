@@ -413,4 +413,7 @@
   <!-- OGC-782 R1: safe manual-Program fallback classification -->
   <include relativeToChangelogFile="true" file="069-microbiology-unassigned-workflow.xml"/>
 
+  <!-- OGC-782 R1: inoculation records and subculture lineage -->
+  <include relativeToChangelogFile="true" file="070-microbiology-inoculation-lineage.xml"/>
+
 </databaseChangeLog>

@@ -4,6 +4,7 @@ import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
+import { vi } from "vitest";
 import MicrobiologyCaseView from "../MicrobiologyCaseView";
 import messages from "../../../languages/en.json";
 
@@ -74,6 +75,8 @@ const astServiceStubs = {
     requirements: [],
     usages: [],
   }),
+  getCaseInoculations: vi.fn().mockResolvedValue([]),
+  recordCaseInoculation: vi.fn(),
   releasePreliminaryReport: vi.fn(),
   releaseFinalReport: vi.fn(),
   getCaseAmendments: vi.fn().mockResolvedValue([]),
@@ -99,7 +102,7 @@ const getAccordionButton = (name) => {
 };
 
 describe("MicrobiologyCaseView", () => {
-  it("loads case details and records setup activity", async () => {
+  it("records primary inoculation with a service-managed timeline and lot", async () => {
     const user = userEvent.setup();
     const requirement = {
       analysisId: "41",
@@ -126,19 +129,37 @@ describe("MicrobiologyCaseView", () => {
     };
     const service = {
       ...astServiceStubs,
-      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      getCaseDetail: vi
+        .fn()
+        .mockResolvedValueOnce(caseDetail)
+        .mockResolvedValue({
+          ...caseDetail,
+          stage: "INCUBATING",
+          activities: [
+            ...caseDetail.activities,
+            {
+              id: "a2",
+              activityType: "INOCULATION_RECORDED",
+              note: "BOTTLE-001 - Blood culture bottle",
+            },
+          ],
+        }),
       getReagentLotOverview: vi.fn().mockResolvedValue({
         requirements: [requirement],
         usages: [],
       }),
-      recordCaseActivity: vi.fn().mockResolvedValue({
-        ...caseDetail,
-        stage: "SETUP_RECORDED",
-        activities: [
-          ...caseDetail.activities,
-          { id: "a2", activityType: "STAGE_CHANGED", note: "setup complete" },
-        ],
-      }),
+      getCaseInoculations: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: "inoculation-1",
+            containerIdentifier: "BOTTLE-001",
+            media: "Blood culture bottle",
+            incubation: "35 C for 24 hours",
+          },
+        ]),
+      recordCaseInoculation: vi.fn().mockResolvedValue({ id: "inoculation-1" }),
       createIsolate: vi.fn(),
     };
 
@@ -151,20 +172,23 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getByText("UATMICRO001")).toBeInTheDocument();
     expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Start inoculation" }));
+    await user.type(screen.getByLabelText("Bottle or plate ID"), "BOTTLE-001");
     await user.type(
       screen.getByLabelText("Media or bottle"),
       "Blood culture bottle",
     );
     await user.type(screen.getByLabelText("Incubation"), "35 C for 24 hours");
     await user.type(screen.getByLabelText("Atmosphere"), "Ambient");
-    await user.type(screen.getByLabelText("Activity note"), "setup complete");
-    await user.click(screen.getByLabelText(/MEDIA-FIFO/));
-    await user.click(screen.getByRole("button", { name: "Start inoculation" }));
+    await user.click(screen.getByText(/MEDIA-FIFO/).closest("label"));
+    await user.click(screen.getByRole("button", { name: "Save media" }));
 
     await waitFor(() =>
-      expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
-        nextStage: "SETUP_RECORDED",
-        note: "Media or bottle: Blood culture bottle; Incubation: 35 C for 24 hours; Atmosphere: Ambient; setup complete",
+      expect(service.recordCaseInoculation).toHaveBeenCalledWith("case-1", {
+        containerIdentifier: "BOTTLE-001",
+        media: "Blood culture bottle",
+        incubation: "35 C for 24 hours",
+        atmosphere: "Ambient",
         lotSelections: [
           {
             analysisId: "41",
@@ -174,10 +198,11 @@ describe("MicrobiologyCaseView", () => {
         ],
       }),
     );
-    await waitFor(() =>
-      expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0),
-    );
-    expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0);
+    expect(await screen.findByText("BOTTLE-001")).toBeInTheDocument();
+    expect(screen.getByText("Primary")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Inoculation recorded. Add significant growth/),
+    ).toBeInTheDocument();
   });
 
   it("links the report workflow to the patient results page", async () => {
