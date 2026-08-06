@@ -2,7 +2,6 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,15 +18,19 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
@@ -38,6 +41,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 
 /**
  * M-05: per-run breakpoint-standard selection. A run started with an explicit
@@ -75,13 +79,28 @@ public class MicroAstServiceTest {
     @Mock
     private MicroReagentLotService reagentLotService;
 
+    @Mock
+    private MicroOrganismDAO organismDAO;
+
+    @Mock
+    private MicroAstPanelDAO panelDAO;
+
     private MicroAstService service;
 
     @Before
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
-                interpretationService, amendmentDAO, reagentLotService);
+                interpretationService, amendmentDAO, reagentLotService, organismDAO, panelDAO);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
+        MicroOrganism organism = new MicroOrganism();
+        organism.setId("org-1");
+        organism.setDefaultAstPanelId("panel-1");
+        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism));
+        MicroAstPanel panel = panel("panel-1", "GN-STD", 3);
+        when(panelDAO.get("panel-1")).thenReturn(Optional.of(panel));
+        MicroBreakpointStandard standard = standard("eucast-std", "EUCAST", "2025");
+        when(breakpointService.getStandard("eucast-std")).thenReturn(standard);
+        when(breakpointService.getActiveStandards()).thenReturn(List.of(standard));
     }
 
     @Test
@@ -92,17 +111,54 @@ public class MicroAstServiceTest {
         MicroAstRun run = service.startRun("iso-1", "panel-1", "eucast-std", "1");
 
         assertEquals("eucast-std", run.getBreakpointStandardId());
+        assertEquals("2025", run.getBreakpointVersion());
+        assertEquals(Integer.valueOf(3), run.getPanelVersion());
+        assertEquals("ORGANISM_DEFAULT", run.getPanelProvenance());
         verify(runDAO).insert(run);
     }
 
     @Test
-    public void startRunWithoutStandardLeavesItNull() {
+    public void startRunWithoutStandardSnapshotsTheActiveStandard() {
         MicroIsolate isolate = identifiedIsolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
 
         MicroAstRun run = service.startRun("iso-1", "panel-1", "1");
 
-        assertNull(run.getBreakpointStandardId());
+        assertEquals("eucast-std", run.getBreakpointStandardId());
+        assertEquals("2025", run.getBreakpointVersion());
+    }
+
+    @Test
+    public void setupReturnsTheIdentifiedOrganismsOrderedPanel() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+
+        MicroAstSetupForm setup = service.getSetup("iso-1");
+
+        assertEquals("panel-1", setup.orderedPanelId);
+        assertEquals("GN-STD", setup.orderedPanelLabel);
+        assertEquals(Integer.valueOf(3), setup.orderedPanelVersion);
+        assertEquals("ORGANISM_DEFAULT", setup.panelProvenance);
+    }
+
+    @Test
+    public void adjustedPanelRequiresReasonAndPreservesProvenance() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(panelDAO.get("panel-2")).thenReturn(Optional.of(panel("panel-2", "URINE-GN", 2)));
+
+        try {
+            service.startRun("iso-1", "panel-2", "eucast-std", null, List.of(), "1");
+            fail("Expected an adjustment reason");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("AST_PANEL_ADJUSTMENT_REASON_REQUIRED", expected.getMessage());
+        }
+
+        MicroAstRun adjusted = service.startRun("iso-1", "panel-2", "eucast-std",
+                "Urine-specific panel required", List.of(), "1");
+
+        assertEquals("panel-2", adjusted.getPanelId());
+        assertEquals(Integer.valueOf(2), adjusted.getPanelVersion());
+        assertEquals("ADJUSTED", adjusted.getPanelProvenance());
+        assertEquals("Urine-specific panel required", adjusted.getPanelAdjustmentReason());
     }
 
     @Test(expected = IllegalStateException.class)
@@ -341,6 +397,24 @@ public class MicroAstServiceTest {
         run.setIsolateId("iso-1");
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         return run;
+    }
+
+    private MicroAstPanel panel(String id, String name, int version) {
+        MicroAstPanel panel = new MicroAstPanel();
+        panel.setId(id);
+        panel.setName(name);
+        panel.setVersionNumber(version);
+        return panel;
+    }
+
+    private MicroBreakpointStandard standard(String id, String authority, String version) {
+        MicroBreakpointStandard standard = new MicroBreakpointStandard();
+        standard.setId(id);
+        standard.setAuthority(authority);
+        standard.setVersion(version);
+        standard.setIsActive("Y");
+        standard.setLifecycleStatus("ACTIVE");
+        return standard;
     }
 
     private MicroCase mutableCase() {

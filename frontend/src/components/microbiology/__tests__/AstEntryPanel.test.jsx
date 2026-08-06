@@ -127,6 +127,13 @@ describe("AstEntryPanel", () => {
           label: "Gram negative AST panel",
         },
       ]),
+      getAstSetupForIsolate: vi.fn().mockResolvedValue({
+        isolateId: "iso-1",
+        orderedPanelId: "panel-1",
+        orderedPanelLabel: "Gram negative AST panel",
+        orderedPanelVersion: 3,
+        panelProvenance: "ORGANISM_DEFAULT",
+      }),
       getAntibiotics: vi.fn().mockResolvedValue([
         {
           id: "abx-1",
@@ -177,6 +184,9 @@ describe("AstEntryPanel", () => {
     renderPanel(service, { reagentRequirements });
 
     expect(await screen.findByText("Manual AST")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Gram negative AST panel v3"),
+    ).toBeInTheDocument();
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Start AST run" }),
@@ -253,6 +263,60 @@ describe("AstEntryPanel", () => {
       method: "MIC",
       rawValue: "4",
     });
+  });
+
+  it("requires a reason before adjusting the ordered AST panel", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getAstPanels: vi.fn().mockResolvedValue([
+        { id: "panel-1", label: "GN-STD" },
+        { id: "panel-2", label: "URINE-GN" },
+      ]),
+      getAstSetupForIsolate: vi.fn().mockResolvedValue({
+        isolateId: "iso-1",
+        orderedPanelId: "panel-1",
+        orderedPanelLabel: "GN-STD",
+        orderedPanelVersion: 3,
+        panelProvenance: "ORGANISM_DEFAULT",
+      }),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([inProgressRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+      startAstRun: vi.fn().mockResolvedValue(inProgressRun),
+    };
+
+    renderPanel(service);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Adjust panel" }),
+    );
+    await user.selectOptions(screen.getByLabelText("AST panel"), "panel-2");
+    expect(
+      screen.getByRole("button", { name: "Start AST run" }),
+    ).toBeDisabled();
+    await user.type(
+      screen.getByLabelText("Reason for panel adjustment"),
+      "Urine-specific panel required",
+    );
+    await user.click(screen.getByRole("button", { name: "Start AST run" }));
+
+    await waitFor(() =>
+      expect(service.startAstRun).toHaveBeenCalledWith({
+        isolateId: "iso-1",
+        panelId: "panel-2",
+        breakpointStandardId: "std-clsi",
+        panelAdjustmentReason: "Urine-specific panel required",
+      }),
+    );
   });
 
   it("keeps AST write actions disabled when a final case is locked", async () => {

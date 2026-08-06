@@ -10,6 +10,8 @@ public interface MicroBreakpointService {
     /** Selectable breakpoint standards for AST run setup (M-05 FRS §4). */
     List<MicroBreakpointStandard> getActiveStandards();
 
+    MicroBreakpointStandard getStandard(String standardId);
+
     MicroBreakpointRule findBreakpointRule(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType);
 }

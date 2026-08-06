@@ -9,6 +9,7 @@ public class MicroAstRunRequestForm {
 
     public String isolateId;
     public String panelId;
+    public String panelAdjustmentReason;
     public String breakpointStandardId;
     public String attemptType;
     public String reason;

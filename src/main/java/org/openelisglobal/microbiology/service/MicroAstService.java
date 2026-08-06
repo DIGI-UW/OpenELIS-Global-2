@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -21,6 +22,11 @@ public interface MicroAstService {
 
     MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId,
             List<MicroLotSelection> lotSelections, String performedBy);
+
+    MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String panelAdjustmentReason,
+            List<MicroLotSelection> lotSelections, String performedBy);
+
+    MicroAstSetupForm getSetup(String isolateId);
 
     MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
             MicroAstMethod method, String performedBy);

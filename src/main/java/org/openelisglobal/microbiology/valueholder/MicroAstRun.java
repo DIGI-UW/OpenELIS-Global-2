@@ -24,8 +24,20 @@ public class MicroAstRun extends BaseObject<String> {
     @Column(name = "panel_id", length = 36)
     private String panelId;
 
+    @Column(name = "panel_version")
+    private Integer panelVersion;
+
+    @Column(name = "panel_provenance", length = 40)
+    private String panelProvenance;
+
+    @Column(name = "panel_adjustment_reason")
+    private String panelAdjustmentReason;
+
     @Column(name = "breakpoint_standard_id", length = 36)
     private String breakpointStandardId;
+
+    @Column(name = "breakpoint_version", length = 50)
+    private String breakpointVersion;
 
     @Column(name = "amendment_id", length = 36)
     private String amendmentId;
@@ -86,12 +98,44 @@ public class MicroAstRun extends BaseObject<String> {
         this.panelId = panelId;
     }
 
+    public Integer getPanelVersion() {
+        return panelVersion;
+    }
+
+    public void setPanelVersion(Integer panelVersion) {
+        this.panelVersion = panelVersion;
+    }
+
+    public String getPanelProvenance() {
+        return panelProvenance;
+    }
+
+    public void setPanelProvenance(String panelProvenance) {
+        this.panelProvenance = panelProvenance;
+    }
+
+    public String getPanelAdjustmentReason() {
+        return panelAdjustmentReason;
+    }
+
+    public void setPanelAdjustmentReason(String panelAdjustmentReason) {
+        this.panelAdjustmentReason = panelAdjustmentReason;
+    }
+
     public String getBreakpointStandardId() {
         return breakpointStandardId;
     }
 
     public void setBreakpointStandardId(String breakpointStandardId) {
         this.breakpointStandardId = breakpointStandardId;
+    }
+
+    public String getBreakpointVersion() {
+        return breakpointVersion;
+    }
+
+    public void setBreakpointVersion(String breakpointVersion) {
+        this.breakpointVersion = breakpointVersion;
     }
 
     public String getAmendmentId() {
