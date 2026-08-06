@@ -276,6 +276,8 @@ export const getWorklistRows = (query = {}) =>
   new Promise((resolve) => {
     const params = new URLSearchParams();
     [
+      "grain",
+      "status",
       "workflow",
       "stage",
       "urgency",

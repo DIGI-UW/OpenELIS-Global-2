@@ -6,6 +6,8 @@ import java.util.List;
 
 public class MicroWorklistRowForm {
 
+    public String rowId;
+    public String grain;
     public String caseId;
     public String sampleItemId;
     public String workflowType;
@@ -15,6 +17,14 @@ public class MicroWorklistRowForm {
     public String urgency;
     public boolean needsAstReview;
     public boolean hasOpenCriticalCommunication;
+    public String isolateId;
+    public String isolateLabel;
+    public String organismDisplay;
+    public String astRunId;
+    public String panelId;
+    public String astStatus;
+    public Timestamp astStartedAt;
+    public boolean analyzerResultsAvailable;
     public List<String> siblingWorkflows = new ArrayList<>();
     public Timestamp createdAt;
 }

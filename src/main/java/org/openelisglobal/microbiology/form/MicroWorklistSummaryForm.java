@@ -14,4 +14,9 @@ public class MicroWorklistSummaryForm {
     public int needsAstReview;
     public int readyForCaseReview;
     public int openCriticalFollowUps;
+    public int astInQueue;
+    public int astPendingSetup;
+    public int astInProgress;
+    public int astAwaitingResults;
+    public int astResultsIn;
 }
