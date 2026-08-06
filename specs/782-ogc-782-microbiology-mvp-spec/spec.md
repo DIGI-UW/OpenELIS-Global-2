@@ -346,22 +346,26 @@ or missing mapping for export.
   human UAT. Direct navigation to a legacy route or label-only checks do not
   prove the supported user workflow.
 
-### Deferred Product Outcomes
+### Historical Initial-MVP Deferrals And Current Status
 
 These outcomes remain valid module goals but are not acceptance criteria for
 PR #3789:
 
 - **V2-001**: Preserve versioned report history when a final case is amended or
-  reidentified. The MVP instead locks final cases against isolate and AST
-  mutation.
-- **V2-002**: Link reagent/card lots and richer multi-row AST run metadata.
+  reidentified. The initial MVP locked final cases; the follow-on clinical
+  completeness branch implemented a first amendment path, and R1 must close
+  the remaining authoritative amendment/re-identification drift.
+- **V2-002**: Link reagent/card lots and richer multi-row AST run metadata. The
+  follow-on clinical completeness branch implemented a first traceability
+  slice; R1 must close the remaining M-05/M-12 provenance and safety gaps.
 - **V2-003**: Complete WHONET interoperability beyond the first manual-export
   slice, including authoritative wide-format/profile packaging, remaining
   vocabulary mappings, scheduling, and delivery.
 - **V2-004**: Provide operational TB, expert-rule, antibiogram, and GLASS
   workflows.
 - **V2-005**: Review analyzer-ingested AST results with mandatory human review
-  before final reporting.
+  before final reporting. This is promoted into R1 because the authoritative
+  M-05 acceptance path includes analyzer and QC review states.
 
 Follow-up status: branch
 `feat/782-ogc-782-microbiology-m8-clinical-completeness` implements and
@@ -386,11 +390,17 @@ canonical URL state, and desktop/mobile accessibility evidence. It is deployed
 inside the current combined review candidate but remains unaccepted until its
 own PR, exact-SHA checklist, and human UAT records are complete.
 
+The R1 remediation boundary includes the authoritative M-03, M-04, M-05, M-07,
+M-12, and applicable M-NFR behavior described in User Stories 8-11 and the
+source-alignment record. That promotion does not retroactively expand PR
+#3789's historical acceptance boundary.
+
 The delivered stack is not the full microbiology module. Authoritative
 wide-format WHONET/profile packaging, the remaining mapping vocabularies,
-scheduled delivery, expert rules, macro workflows, richer worklist/dashboard
-depth, analyzer-ingested AST, operational TB, antibiograms, GLASS reporting,
-catalog subscription, and the remaining OGC-783 NFRs remain follow-up work.
+scheduled delivery, expert rules, Macro Library runtime/administration,
+operational TB, antibiograms, GLASS reporting, catalog subscription, and NFRs
+explicitly excluded in the pinned source-alignment record remain follow-up
+work.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -440,6 +450,79 @@ shape during planning.
   and AST work requiring attention.
 - **Surveillance Export Readiness**: The finalized result and mapping state
   needed to produce surveillance output for WHONET import validation.
+
+## Authoritative Alignment Stories
+
+These stories close behavior omitted when the earlier roadmap treated the
+first vertical slice as module completion.
+
+### User Story 8 - Classify And Work Every Culture Case
+
+As a bench technologist, I can identify cases that still need a workflow,
+choose the correct bacteriology or TB workflow with a reason, and continue from
+the appropriate current step without losing prior work.
+
+**Acceptance Scenarios**:
+
+1. A manually routed case with no safe deployment default is visibly marked as
+   needing workflow classification in both the shared queue and case header.
+2. Changing workflow is inline, requires a reason and compatible culture
+   method, preserves prior history, and is blocked after final release.
+3. Cases sharing one specimen link to each other while retaining independent
+   stages, results, critical communication, and reports.
+4. The case presents setup, subculture lineage, notes, isolate work, AST,
+   critical communication, reporting, and amendments in the order implied by
+   the current stage.
+
+### User Story 9 - Review Complete And Traceable AST Work
+
+As a microbiology technologist or supervisor, I can review manual or
+instrument-provided susceptibility work with enough provenance to accept,
+override, revert, repeat, or block it safely.
+
+**Acceptance Scenarios**:
+
+1. AST setup shows the ordered panel and its provenance, selected breakpoint
+   standard/version, method-appropriate measurement, and reagent lot.
+2. Each reading shows the matched interpretation basis and preserves visible
+   original-to-override history with a justified supervisor revert.
+3. Instrument results remain pending review until accepted; mismatches,
+   missing breakpoints, and QC failures are visible blockers with named next
+   actions.
+4. Repeating all or part of a run creates a new attempt and leaves the prior
+   attempt available for review.
+
+### User Story 10 - Work One Shared Culture And AST Queue
+
+As a rotating bench team, we can use one shared worklist to switch between
+culture cases and AST runs, understand what is due, and open the exact work
+item without relying on ownership or paper logs.
+
+**Acceptance Scenarios**:
+
+1. Culture and AST views are distinct views of one worklist and preserve their
+   selected view, filters, search, sort, and page state when bookmarked.
+2. Summary actions, due-action text, linked-workflow markers, and row actions
+   are deterministic for the selected view.
+3. New instrument results are identified as awaiting review; no manual import
+   action appears.
+4. Empty, refresh, keyboard, and compact-screen behavior preserve the user’s
+   position and focus.
+
+### User Story 11 - Select Safe Reagent Lots Consistently
+
+As a bench technologist, I use the same lot-selection behavior during culture
+setup and AST setup, see the oldest-expiring eligible lots first, and cannot
+save with missing, expired, or QC-blocked required lots.
+
+**Acceptance Scenarios**:
+
+1. Eligible lots show expiration, QC state, quantity, and clear oldest-expiry
+   guidance in both consuming workflows.
+2. Required, optional, and substitute requirements enforce their distinct save
+   rules.
+3. A lot that becomes invalid after selection produces a specific message
+   naming the reagent, lot, and corrective action.
 
 ## Success Criteria _(mandatory)_
 

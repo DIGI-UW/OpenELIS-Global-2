@@ -35,6 +35,10 @@ graph LR
     M4 --> M5["M5: Manual AST"]
     M5 --> M6["M6: Worklists + Critical"]
     M6 --> M7["M7: Release + Surveillance Readiness"]
+    M7 --> M8["M8: Clinical Completeness"]
+    M8 --> M9["M9: Reference Administration"]
+    M9 --> M10["M10: WHONET Export"]
+    M10 --> R1["R1: Authoritative Alignment"]
 ```
 
 ## Phase 1: M1 - Catalog + Reference Foundations
@@ -387,7 +391,7 @@ explicit product decisions or V2 scope.
 - [x] T184 [MVP] Add a compact-viewport layout test and make the Microbiology sidenav default closed on compact screens while retaining locked desktop navigation and saved user preferences.
 - [x] T185 [MVP] Add a Playwright mobile regression for contained table scrolling; correct the Carbon table-container sizing so the page does not horizontally overflow.
 - [x] T186 [MVP] Capture and inspect stable desktop/mobile worklist screenshots, rerun the registered worklist/critical Playwright journey, and record the comparison in `evidence/worklist-ux-follow-up-2026-07-28.md`.
-- [ ] T187 [V2 clarification] Obtain a product ruling on whether M-07's culture/AST-run switch, richer queue context, resistance strip, and recent activity are future user workflows. Keep timer, transport, schema, and component proposals out of the resulting product wording.
+- [x] T187 [Superseded] The pinned OpenELIS Work M-07 source makes the culture/AST-run switch, richer queue context, resistance strip, and recent activity required behavior. Phase 14 now carries deterministic implementation and evidence tasks; no separate product ruling remains.
 
 ## Phase 11: Deployed UAT Fixture Integrity
 
@@ -445,20 +449,20 @@ opens exactly one resulting case containing those details.
 
 - [x] T208 [R1] Create `feat/782-ogc-782-microbiology-r1-authoritative-alignment` from the verified M10 head in an isolated worktree.
 - [x] T209 [R1] Synchronize the OpenELIS Work source and add the source-to-code-to-UAT crosswalk in `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
-- [ ] T210 [P] [R1] Add failing selector/state tests proving modern order selection retains culture workflow and Method metadata for direct and panel-selected tests.
-- [ ] T211 [P] [R1] Add failing React interaction tests using Carbon-accessible roles for Program derivation, required/defaulted Culture Method, Patient Origin selection, bounded Number of Sets, Clinical History, Antibiotic Exposure checkbox, Critical Notify checkbox, and discard confirmation.
+- [x] T210 [P] [R1] Add selector/state tests proving modern order selection retains culture workflow and Method metadata for direct and panel-selected tests.
+- [x] T211 [P] [R1] Add React interaction tests using Carbon-accessible roles for Program derivation, required/defaulted Culture Method, Patient Origin selection, bounded Number of Sets, Clinical History, Antibiotic Exposure checkbox, Critical Notify checkbox, discard confirmation, and manual Program fallback.
 - [ ] T212 [P] [R1] Add failing service/controller integration coverage proving the supported order save persists details atomically, creates one case, and returns the details through case compilation without SQL fixtures or fixed primary keys.
 - [ ] T213 [P] [R1] Replace the legacy-route order-entry Playwright shortcut with a red `core-app` journey that enters through configured navigation and `/order/enter`; cover culture, non-culture, save-to-case, removal confirmation, and the ruled mixed-workflow behavior without arbitrary waits.
 
 ### Implementation
 
-- [ ] T214 [R1] Preserve complete workflow/Method metadata in the modern `SampleTestSection` selected-test model for direct and panel selections.
-- [ ] T215 [R1] Derive the visible Microbiology Program from selected test workflows through shared order state and surface a named configuration error when the Program cannot be resolved by stable identity.
-- [ ] T216 [R1] Integrate reusable Carbon microbiology detail controls into the supported Program/order flow with required/defaulted Method and the product-safe control semantics in FR-002.
-- [ ] T217 [R1] Confirm before discarding entered microbiology details when the final culture test is removed or the order changes away from microbiology.
+- [x] T214 [R1] Preserve complete workflow/Method metadata in the modern `SampleTestSection` selected-test model for direct and panel selections (`38b177f7e`).
+- [x] T215 [R1] Derive the visible Microbiology Program from selected test workflows through shared order state and surface a named configuration error when the Program cannot be resolved by stable identity (`38b177f7e`).
+- [x] T216 [R1] Integrate reusable Carbon microbiology detail controls into the supported Program/order flow with required/defaulted Method and the product-safe control semantics in FR-002 (`38b177f7e`).
+- [x] T217 [R1] Confirm before discarding entered microbiology details when the final culture test is removed (`38b177f7e`). Program-change confirmation remains part of T218 before complete save-path evidence.
 - [ ] T218 [R1] Submit the modern order details through the existing service-layer order-save path and prove idempotent case/detail persistence. Add no migration unless a real data-model change is required.
-- [ ] T219 [R1] Remove the divergent legacy implementation or make it consume the same shared state and controls; retain a redirect only where compatibility requires it.
-- [ ] T220 [P] [R1] Add or update English React Intl source keys only and use existing Carbon components/tokens without a package upgrade.
+- [x] T219 [R1] Make the legacy compatibility flow retain the same complete selected-test metadata and consume the shared detail controls without creating a second implementation (`38b177f7e`).
+- [x] T220 [P] [R1] Add or update English React Intl source keys only and use existing Carbon components/tokens without a package upgrade (`38b177f7e`).
 
 ### Artifact, UAT, And Evidence Synchronization
 
@@ -475,6 +479,62 @@ opens exactly one resulting case containing those details.
 - [ ] T231 [R1] Push the branch and open an official stacked PR targeting `feat/782-ogc-782-microbiology-m10-whonet-export`; include scope, evidence, UAT state, and known follow-on modules.
 - [ ] T232 [Follow-up] Correct the M-03 v1/v2 visual, fallback, mixed-workflow, duplicate-text, and implementation-leakage issues in a separate `DIGI-UW/openelis-work` product-source PR.
 - [ ] T233 [Follow-up] Extract Macro Library core/runtime/administration into its own PR and UAT stack; retain only microbiology consumer integration in a small integration PR and review it on a separate macro deployment when available.
+
+### M-04 Case Workbench Alignment
+
+- [ ] T234 [R1] Add focused service/controller and React tests for visible `UNASSIGNED` classification, early-case workflow change, required reason and compatible Method, result-preservation warning, final-release block, and audit history.
+- [ ] T235 [R1] Implement the inline Change Workflow action and hold profile-dependent work while a case is unassigned; add durable state only where the existing model cannot preserve the required history.
+- [ ] T236 [R1] Add sibling-case links in the case header with live workflow/stage context and state-preserving navigation.
+- [ ] T237 [R1] Replace generic setup activity entry with explicit Start inoculation/Add subculture behavior, parent lineage, barcode-ready identifiers, automatic timeline projection, and shared reagent-lot selection.
+- [ ] T238 [R1] Restrict Timeline manual entry to notes/observations and project automatic domain/audit events without creating a duplicate history system.
+- [ ] T239 [R1] Complete two-pass isolate behavior: Gram/colony preliminary data, identified status with method/confidence/significance, disabled AST until identification, and edit versus post-final reidentify actions.
+- [ ] T240 [R1] Add header/isolate critical entry points and reuse the existing NCE/rejection workflow for Report NCE and Mark lost; do not introduce microbiology-only NCE storage.
+- [ ] T241 [R1] Focus the case on its deterministic current step, complete compact clinical-history-first Case Info, and add the sticky stage-appropriate action area without duplicating progress state.
+- [ ] T242 [R1] Add registered Playwright and Grist stories for classification, sibling navigation, setup/subculture, isolate identification, critical entry points, NCE/lost specimen, and final-lock behavior.
+
+### M-05 AST Alignment
+
+- [ ] T243 [R1] Add failing service and React tests for ordered-panel provenance, panel/version and standard/version snapshots, method-driven units, and matched-breakpoint display.
+- [ ] T244 [R1] Make AST setup confirm the upstream panel by default; require an audited reason for panel adjustment and retain the changed ordered-work provenance.
+- [ ] T245 [R1] Add inline original-to-override history and supervisor revert with actor, time, reason, and unchanged original reading.
+- [ ] T246 [R1] Add analyzer-result and QC lifecycle behavior: awaiting results, results-in review, mismatch/no-breakpoint/QC blockers, accept results, invalidate-and-repeat, and named reconciliation handoff for unmatched events.
+- [ ] T247 [R1] Capture analyzer provenance and keep analyzer organism identity informational; flag disagreement with the case isolate without silently replacing it.
+- [ ] T248 [R1] Extend repeat/retest to whole-panel or single-antibiotic scope and converge case, worklist, and existing NCE Retest entry points on a new preserved run.
+- [ ] T249 [R1] Add AST progress counts that include runs complete, significant isolates awaiting setup, and isolates pending identification.
+- [ ] T250 [R1] Add registered Playwright and Grist stories for manual and analyzer AST review, override/revert, QC failure, accept, repeat scope, and report-readiness gating.
+
+### M-07 Worklist Alignment
+
+- [ ] T251 [R1] Add URL/parser/service tests for canonical `grain=cultures|ast`, per-grain status, and state-preserving AST-run case links.
+- [ ] T252 [R1] Add the server-side AST-run projection and per-grain summaries without introducing worklist writes or per-case ownership.
+- [ ] T253 [R1] Build one Carbon worklist with a Cultures/AST segmented control, grain-specific DataTable headers/rows, deterministic due actions, summary filters, and empty states.
+- [ ] T254 [R1] Add row overflow commands that navigate to existing case actions; do not mutate clinical state directly from the worklist.
+- [ ] T255 [R1] Add the resistance-hit strip, collapsible recent activity, results-in badge, awaiting-analyzer state, and visibly disabled future controls with tooltips.
+- [ ] T256 [R1] Implement refresh that preserves focus, scroll, URL state, and selected row context; enforce the existing case-view permission rather than authentication alone.
+- [ ] T257 [R1] Add desktop/mobile Carbon interaction, keyboard, URL-reload, and 200-row performance tests without arbitrary waits.
+- [ ] T258 [R1] Add separate Culture Worklist and AST Worklist Grist stories and registered Playwright journeys.
+
+### M-12 And NFR Qualification
+
+- [ ] T259 [R1] Add shared-component tests for required/optional/substitute lot rules, filtered eligible lots, oldest-expiry ordering, QC/expiry race validation, and specific corrective messages.
+- [ ] T260 [R1] Align the shared lot picker and service validation in both culture and AST hosts; add scanner-ready lot/card entry using an existing barcode input pattern.
+- [ ] T261 [R1] Keep Test Catalog linkage administration, reagent reverse view, inventory quantities, and seed definitions as explicit external dependencies; do not duplicate them in microbiology.
+- [ ] T262 [R1] Prove the picker latency and WCAG behavior at the source ceiling with service-created fixtures.
+- [ ] T263 [R1] Qualify the case and both worklist grains at source scale using service-layer fixtures; record server and browser timings separately.
+- [ ] T264 [R1] Audit keyboard, focus, labels, status text, contrast, and compact layouts for every touched action with axe plus direct interactions.
+- [ ] T265 [R1] Audit all new writes for authenticated actor, permission, atomic transition, and preserved history; add missing negative tests.
+- [ ] T266 [R1] Record offline/intermittent-connectivity as not implemented unless a shared application pattern is selected and proven; do not build a microbiology-only queue.
+
+### Full-Stack Evidence And Delivery
+
+- [ ] T267 [R1] Update the M-03, M-04, M-05, M-07, M-12, and NFR crosswalk after every slice; statuses must distinguish code, automated evidence, deployment, and human acceptance.
+- [ ] T268 [R1] Publish separate Grist stories per workflow outcome, verify the live AMR JSON revision and rendered overlay, and keep milestone stories distinct rather than combining them into one checklist.
+- [ ] T269 [R1] Run pinned `tools/code-qa` meaningful coverage, spec/code alignment, simplicity, and evidence workflows across the complete remediation diff.
+- [ ] T270 [R1] Capture stable desktop/mobile comparisons against each authoritative HTML mock and record every intentional behavioral or visual deviation.
+- [ ] T271 [R1] Push and maintain one official remediation PR stacked on M10; update its body with exact source revision, migration scope, tests, evidence, UAT revision, and unresolved exclusions.
+- [ ] T272 [R1] Deploy the exact top-of-micro-stack SHA plus compatible review tooling to AMR and verify app SHA, health, routes, story separation, overlay stability, and no refresh loop.
+- [ ] T273 [Human UAT] Piotr completes required per-story Pass/Fail/N/A and notes against the exact deployed revisions; automation cannot complete this task.
+- [ ] T274 [Macro split] Create a separate Macro Library feature/spec/PR/UAT stack and review deployment; add microbiology consumer integration only after that base is available.
 
 ## Dependencies & Execution Order
 
