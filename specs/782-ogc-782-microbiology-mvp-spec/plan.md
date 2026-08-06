@@ -252,6 +252,11 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   set of bounded batch projections. Keep the source records authoritative: do
   not copy patient or specimen fields into microbiology tables and do not issue
   per-row DAO or service calls.
+- Populate the Phase 1A resistance strip only from structured, dated evidence.
+  The current safe projection counts analyzer-reported flags completed today.
+  Do not parse AST override reasons as phenotype classifications; the source's
+  manual-override count requires a separate product ruling and explicit
+  confirmation workflow before implementation.
 - Keep Macro Library as a separate cross-cutting feature stack and review
   deployment. Microbiology carries only a small consumer integration after the
   macro feature is independently accepted.

@@ -515,6 +515,14 @@ Accession, patient, specimen, panel display, and latest-activity actor are
 read-time projections from their existing authoritative records. They are not
 duplicated into microbiology tables and require no schema migration.
 
+The worklist page also carries:
+
+- the 25 most recent typed case activities across open cases, with accession,
+  actor, time, and note;
+- today's ESBL, MRSA, CRE, VRE, and MDR counts derived from structured analyzer
+  flags;
+- no manually inferred resistance categories from free-text override reasons.
+
 An identified clinically significant isolate without an active AST attempt is
 represented as pending setup. Invalidated, cancelled, and superseded attempts
 do not inflate the live queue. This is a computed projection and requires no
