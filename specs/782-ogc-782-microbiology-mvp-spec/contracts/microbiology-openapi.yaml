@@ -10,6 +10,15 @@ paths:
     get:
       summary: List microbiology cases and AST work requiring action
       parameters:
+        - name: grain
+          in: query
+          schema:
+            type: string
+            enum: [cultures, ast]
+        - name: status
+          in: query
+          schema:
+            type: string
         - name: workflow
           in: query
           schema:
@@ -546,9 +555,20 @@ components:
     WorklistRow:
       type: object
       properties:
+        rowId:
+          type: string
+        grain:
+          type: string
+          enum: [cultures, ast]
         caseId:
           type: string
         sampleItemId:
+          type: string
+        accessionNumber:
+          type: string
+        patientDisplay:
+          type: string
+        specimenDisplay:
           type: string
         workflowType:
           $ref: "#/components/schemas/MicroWorkflowType"
@@ -558,6 +578,8 @@ components:
           type: string
         urgency:
           type: string
+        priority:
+          type: string
         needsAstReview:
           type: boolean
         hasOpenCriticalCommunication:
@@ -566,9 +588,33 @@ components:
           type: array
           items:
             type: string
+        isolateId:
+          type: string
+        isolateLabel:
+          type: string
+        organismDisplay:
+          type: string
+        astRunId:
+          type: string
+        panelId:
+          type: string
+        panelName:
+          type: string
+        astStatus:
+          type: string
+        astStartedAt:
+          type: string
+          format: date-time
+        analyzerResultsAvailable:
+          type: boolean
         createdAt:
           type: string
           format: date-time
+        lastActivityAt:
+          type: string
+          format: date-time
+        lastActivityBy:
+          type: string
     MicroCaseDetail:
       type: object
       properties:
