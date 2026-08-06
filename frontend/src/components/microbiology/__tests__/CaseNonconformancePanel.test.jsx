@@ -110,6 +110,62 @@ describe("CaseNonconformancePanel", () => {
     );
   });
 
+  it("creates a scoped AST retest from an NCE disposition", async () => {
+    const user = userEvent.setup();
+    const { service } = renderPanel({
+      workflowType: "BACTERIOLOGY",
+      isolates: [{ id: "iso-1", isolateLabel: "ISO-1" }],
+    });
+    service.getAstRunsForIsolate = vi.fn().mockResolvedValue([
+      {
+        id: "run-1",
+        status: "REVIEWED",
+        technique: "VITEK_2",
+        orderedAntibiotics: [{ antibioticId: "abx-2" }],
+      },
+    ]);
+    service.getAntibiotics = vi
+      .fn()
+      .mockResolvedValue([{ id: "abx-2", label: "Meropenem" }]);
+
+    expect(await screen.findByLabelText("Category")).toHaveValue("10");
+    await user.selectOptions(screen.getByLabelText("Type"), "12");
+    await user.selectOptions(screen.getByLabelText("Reporting unit"), "7");
+    await user.click(screen.getByRole("radio", { name: "Major" }));
+    await user.type(
+      screen.getByLabelText("Description"),
+      "Discordant carbapenem result",
+    );
+    await user.click(screen.getByRole("radio", { name: "Retest AST" }));
+    await user.selectOptions(
+      await screen.findByLabelText("AST run to retest"),
+      "run-1",
+    );
+    await user.click(screen.getByRole("radio", { name: "Single antibiotic" }));
+    await user.selectOptions(
+      screen.getByLabelText("Antibiotic to repeat"),
+      "abx-2",
+    );
+    await user.click(screen.getByRole("button", { name: "Report NCE" }));
+
+    await waitFor(() =>
+      expect(service.reportCaseNonconformance).toHaveBeenCalledWith("case-1", {
+        categoryId: "10",
+        typeId: "12",
+        reportingUnitId: 7,
+        severity: "MAJOR",
+        title: "",
+        description: "Discordant carbapenem result",
+        immediateAction: "",
+        disposition: "RETEST",
+        eventType: "NONCONFORMANCE",
+        sourceAstRunId: "run-1",
+        astTechnique: "VITEK_2",
+        orderedAntibioticIds: ["abx-2"],
+      }),
+    );
+  });
+
   it("names a missing specimen-lost configuration instead of guessing", async () => {
     const service = {
       getNceCategories: vi

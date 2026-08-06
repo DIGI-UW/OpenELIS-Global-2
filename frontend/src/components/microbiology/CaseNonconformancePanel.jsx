@@ -12,6 +12,9 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import MicrobiologyService from "./MicrobiologyService";
+import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+
+const EMPTY_ISOLATES = [];
 
 const initialForm = {
   categoryId: "",
@@ -22,11 +25,16 @@ const initialForm = {
   description: "",
   immediateAction: "",
   disposition: "FLAG_ONLY",
+  sourceAstRunId: "",
+  retestScope: "WHOLE_PANEL",
+  retestAntibioticId: "",
 };
 
 const CaseNonconformancePanel = ({
   caseId,
   mode,
+  isolates = EMPTY_ISOLATES,
+  workflowType,
   service = MicrobiologyService,
   onComplete,
   onCancel,
@@ -42,6 +50,9 @@ const CaseNonconformancePanel = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [astRuns, setAstRuns] = useState([]);
+  const [antibiotics, setAntibiotics] = useState([]);
+  const [loadingRetest, setLoadingRetest] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -104,6 +115,50 @@ const CaseNonconformancePanel = ({
     };
   }, [intl, lostMode, service]);
 
+  useEffect(() => {
+    if (lostMode || form.disposition !== "RETEST") {
+      return;
+    }
+    let active = true;
+    Promise.all([
+      Promise.all(
+        isolates.map((isolate) =>
+          service.getAstRunsForIsolate(isolate.id).then((runs = []) =>
+            runs.map((run) => ({
+              ...run,
+              isolateLabel: isolate.isolateLabel || isolate.id,
+            })),
+          ),
+        ),
+      ),
+      service.getAntibiotics(workflowType),
+    ])
+      .then(([runsByIsolate, antibioticRows]) => {
+        if (!active) {
+          return;
+        }
+        setAstRuns(
+          runsByIsolate.flat().filter((run) => run.status === "REVIEWED"),
+        );
+        setAntibiotics(Array.isArray(antibioticRows) ? antibioticRows : []);
+      })
+      .catch(() => {
+        if (active) {
+          setError(
+            intl.formatMessage({ id: "microbiology.nce.retestLoadError" }),
+          );
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingRetest(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [form.disposition, intl, isolates, lostMode, service, workflowType]);
+
   const selectedCategory = useMemo(
     () =>
       categories.find(
@@ -113,6 +168,11 @@ const CaseNonconformancePanel = ({
   );
   const types = selectedCategory?.types || [];
   const lostConfigurationMissing = lostMode && !loading && !form.typeId;
+  const selectedAstRun = astRuns.find((run) => run.id === form.sourceAstRunId);
+  const retestSelectionMissing =
+    form.disposition === "RETEST" &&
+    (!selectedAstRun ||
+      (form.retestScope === "SINGLE_ANTIBIOTIC" && !form.retestAntibioticId));
   const requiredMissing =
     !form.categoryId ||
     !form.reportingUnitId ||
@@ -125,7 +185,7 @@ const CaseNonconformancePanel = ({
   };
 
   const submit = () => {
-    if (requiredMissing || lostConfigurationMissing) {
+    if (requiredMissing || lostConfigurationMissing || retestSelectionMissing) {
       setError(intl.formatMessage({ id: "microbiology.nce.required" }));
       return;
     }
@@ -141,6 +201,16 @@ const CaseNonconformancePanel = ({
         immediateAction: form.immediateAction.trim(),
         disposition: lostMode ? "REJECT_TEST" : form.disposition,
         eventType: lostMode ? "SPECIMEN_LOST" : "NONCONFORMANCE",
+        ...(form.disposition === "RETEST"
+          ? {
+              sourceAstRunId: selectedAstRun.id,
+              astTechnique: selectedAstRun.technique,
+              orderedAntibioticIds:
+                form.retestScope === "SINGLE_ANTIBIOTIC"
+                  ? [form.retestAntibioticId]
+                  : [],
+            }
+          : {}),
       })
       .then(onComplete)
       .catch(() => {
@@ -302,7 +372,14 @@ const CaseNonconformancePanel = ({
           })}
           name="microbiology-nce-disposition"
           valueSelected={lostMode ? "REJECT_TEST" : form.disposition}
-          onChange={(value) => update("disposition", value)}
+          onChange={(value) => {
+            update("disposition", value);
+            update("sourceAstRunId", "");
+            update("retestAntibioticId", "");
+            setAstRuns([]);
+            setAntibiotics([]);
+            setLoadingRetest(value === "RETEST");
+          }}
         >
           {!lostMode && (
             <RadioButton
@@ -320,7 +397,97 @@ const CaseNonconformancePanel = ({
             })}
             value="REJECT_TEST"
           />
+          {!lostMode && (
+            <RadioButton
+              id="microbiology-nce-retest"
+              labelText={intl.formatMessage({
+                id: "microbiology.nce.retest",
+              })}
+              value="RETEST"
+            />
+          )}
         </RadioButtonGroup>
+
+        {!lostMode && form.disposition === "RETEST" ? (
+          <Stack gap={4}>
+            <Select
+              id="microbiology-nce-source-ast-run"
+              labelText={intl.formatMessage({
+                id: "microbiology.nce.sourceAstRun",
+              })}
+              value={form.sourceAstRunId}
+              disabled={loadingRetest}
+              onChange={(event) => {
+                update("sourceAstRunId", event.target.value);
+                update("retestAntibioticId", "");
+              }}
+            >
+              <SelectItem value="" text="" />
+              {astRuns.map((run) => (
+                <SelectItem
+                  key={run.id}
+                  value={run.id}
+                  text={`${run.isolateLabel} · ${formatMicrobiologyEnum(
+                    run.technique,
+                  )} · ${run.id}`}
+                />
+              ))}
+            </Select>
+            <RadioButtonGroup
+              legendText={intl.formatMessage({
+                id: "microbiology.ast.attemptScope",
+              })}
+              name="microbiology-nce-retest-scope"
+              valueSelected={form.retestScope}
+              onChange={(value) => {
+                update("retestScope", value);
+                update("retestAntibioticId", "");
+              }}
+            >
+              <RadioButton
+                id="microbiology-nce-retest-whole-panel"
+                labelText={intl.formatMessage({
+                  id: "microbiology.ast.wholePanel",
+                })}
+                value="WHOLE_PANEL"
+              />
+              <RadioButton
+                id="microbiology-nce-retest-single-antibiotic"
+                labelText={intl.formatMessage({
+                  id: "microbiology.ast.singleAntibiotic",
+                })}
+                value="SINGLE_ANTIBIOTIC"
+              />
+            </RadioButtonGroup>
+            {form.retestScope === "SINGLE_ANTIBIOTIC" ? (
+              <Select
+                id="microbiology-nce-retest-antibiotic"
+                labelText={intl.formatMessage({
+                  id: "microbiology.ast.antibioticToRepeat",
+                })}
+                value={form.retestAntibioticId}
+                disabled={!selectedAstRun}
+                onChange={(event) =>
+                  update("retestAntibioticId", event.target.value)
+                }
+              >
+                <SelectItem value="" text="" />
+                {(selectedAstRun?.orderedAntibiotics || []).map((ordered) => {
+                  const antibiotic = antibiotics.find(
+                    (item) => item.id === ordered.antibioticId,
+                  );
+                  return (
+                    <SelectItem
+                      key={ordered.antibioticId}
+                      value={ordered.antibioticId}
+                      text={antibiotic?.label || ordered.antibioticId}
+                    />
+                  );
+                })}
+              </Select>
+            ) : null}
+          </Stack>
+        ) : null}
 
         <div className="microbiology-form-actions">
           <Button kind="secondary" type="button" onClick={onCancel}>
@@ -328,7 +495,13 @@ const CaseNonconformancePanel = ({
           </Button>
           <Button
             type="button"
-            disabled={loading || saving || lostConfigurationMissing}
+            disabled={
+              loading ||
+              saving ||
+              loadingRetest ||
+              lostConfigurationMissing ||
+              retestSelectionMissing
+            }
             onClick={submit}
           >
             {intl.formatMessage({

@@ -10,13 +10,19 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseNonconformanceRequestForm;
+import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
+import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NceReportService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
@@ -40,23 +46,32 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
     private final SampleItemService sampleItemService;
     private final NceReportService nceReportService;
     private final SampleItemRejectionService rejectionService;
+    private final MicroAstRunDAO astRunDAO;
+    private final MicroIsolateDAO isolateDAO;
+    private final MicroAstService astService;
     private final ObjectMapper objectMapper;
 
     @Autowired
     public MicroCaseNonconformanceServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
             SampleItemService sampleItemService, NceReportService nceReportService,
-            SampleItemRejectionService rejectionService) {
-        this(caseDAO, activityDAO, sampleItemService, nceReportService, rejectionService, new ObjectMapper());
+            SampleItemRejectionService rejectionService, MicroAstRunDAO astRunDAO, MicroIsolateDAO isolateDAO,
+            MicroAstService astService) {
+        this(caseDAO, activityDAO, sampleItemService, nceReportService, rejectionService, astRunDAO, isolateDAO,
+                astService, new ObjectMapper());
     }
 
     MicroCaseNonconformanceServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
             SampleItemService sampleItemService, NceReportService nceReportService,
-            SampleItemRejectionService rejectionService, ObjectMapper objectMapper) {
+            SampleItemRejectionService rejectionService, MicroAstRunDAO astRunDAO, MicroIsolateDAO isolateDAO,
+            MicroAstService astService, ObjectMapper objectMapper) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.sampleItemService = sampleItemService;
         this.nceReportService = nceReportService;
         this.rejectionService = rejectionService;
+        this.astRunDAO = astRunDAO;
+        this.isolateDAO = isolateDAO;
+        this.astService = astService;
         this.objectMapper = objectMapper;
     }
 
@@ -75,6 +90,9 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
                 && disposition != MicroCaseNonconformanceDisposition.REJECT_TEST) {
             throw new IllegalArgumentException("Specimen lost requires reject-test disposition");
         }
+        if (disposition == MicroCaseNonconformanceDisposition.RETEST) {
+            requireRetestSource(currentCase, request);
+        }
 
         SampleItem item = sampleItemService.get(currentCase.getSampleItemId());
         if (item == null || item.getSample() == null) {
@@ -83,6 +101,7 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
         List<MicroCase> affectedCases = disposition == MicroCaseNonconformanceDisposition.REJECT_TEST
                 ? caseDAO.getBySampleItem(currentCase.getSampleItemId())
                 : List.of(currentCase);
+        String createdAstRunId = null;
         if (disposition == MicroCaseNonconformanceDisposition.REJECT_TEST) {
             affectedCases.forEach(this::requireRejectable);
         }
@@ -99,11 +118,31 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
         } else {
             recordActivity(currentCase.getId(), MicroCaseActivityType.NONCONFORMANCE_REPORTED, authenticatedUserId, nce,
                     request.description);
+            if (disposition == MicroCaseNonconformanceDisposition.RETEST) {
+                List<String> orderedAntibioticIds = request.orderedAntibioticIds == null ? List.of()
+                        : request.orderedAntibioticIds;
+                MicroAstRun retest = astService.startRepeatRun(request.sourceAstRunId, MicroAstAttemptType.RETEST,
+                        request.description, MicroAstTechnique.valueOf(request.astTechnique), List.of(),
+                        orderedAntibioticIds, authenticatedUserId);
+                createdAstRunId = retest.getId();
+            }
         }
         List<String> affectedCaseIds = new ArrayList<>();
         affectedCases.forEach(affectedCase -> affectedCaseIds.add(affectedCase.getId()));
         return new MicroCaseNonconformanceResult(String.valueOf(nce.getId()), nce.getNceNumber(), disposition.name(),
-                eventType.name(), List.copyOf(affectedCaseIds));
+                eventType.name(), List.copyOf(affectedCaseIds), createdAstRunId);
+    }
+
+    private void requireRetestSource(MicroCase currentCase, MicroCaseNonconformanceRequestForm request) {
+        requireText(request.sourceAstRunId, "sourceAstRunId");
+        requireText(request.astTechnique, "astTechnique");
+        MicroAstRun source = astRunDAO.get(request.sourceAstRunId)
+                .orElseThrow(() -> new IllegalArgumentException("AST source run not found"));
+        MicroIsolate isolate = isolateDAO.get(source.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        if (!currentCase.getId().equals(isolate.getCaseId())) {
+            throw new IllegalArgumentException("AST_RETEST_SOURCE_CASE_MISMATCH");
+        }
     }
 
     private NonConformingEventForm toNceForm(MicroCaseNonconformanceRequestForm request, SampleItem item) {

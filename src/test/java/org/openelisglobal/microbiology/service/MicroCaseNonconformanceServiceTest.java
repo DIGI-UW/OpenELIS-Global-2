@@ -11,12 +11,18 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseNonconformanceRequestForm;
+import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
+import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NceReportService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
@@ -62,12 +68,43 @@ public class MicroCaseNonconformanceServiceTest {
         verify(fixture.activityDAO, org.mockito.Mockito.times(2)).insert(any(MicroCaseActivity.class));
     }
 
+    @Test
+    public void retestDispositionCreatesOneScopedRunAgainstTheCurrentCase() {
+        Fixture fixture = fixture(MicroCaseStage.REVIEW_READY);
+        MicroAstRun source = new MicroAstRun();
+        source.setId("run-1");
+        source.setIsolateId("iso-1");
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        MicroAstRun retest = new MicroAstRun();
+        retest.setId("run-2");
+        when(fixture.runDAO.get("run-1")).thenReturn(Optional.of(source));
+        when(fixture.isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        when(fixture.astService.startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Specimen handling issue",
+                MicroAstTechnique.VITEK_2, List.of(), List.of("abx-2"), "17")).thenReturn(retest);
+        MicroCaseNonconformanceRequestForm request = request("RETEST", "NONCONFORMANCE");
+        request.sourceAstRunId = "run-1";
+        request.astTechnique = MicroAstTechnique.VITEK_2.name();
+        request.orderedAntibioticIds = List.of("abx-2");
+
+        MicroCaseNonconformanceResult result = fixture.service.report("case-1", request, "17");
+
+        assertEquals("run-2", result.createdAstRunId());
+        verify(fixture.astService).startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Specimen handling issue",
+                MicroAstTechnique.VITEK_2, List.of(), List.of("abx-2"), "17");
+        verify(fixture.rejectionService, never()).reject(any(), any(), any());
+    }
+
     private Fixture fixture(MicroCaseStage stage) {
         MicroCaseDAO caseDAO = mock(MicroCaseDAO.class);
         MicroCaseActivityDAO activityDAO = mock(MicroCaseActivityDAO.class);
         SampleItemService sampleItemService = mock(SampleItemService.class);
         NceReportService nceReportService = mock(NceReportService.class);
         SampleItemRejectionService rejectionService = mock(SampleItemRejectionService.class);
+        MicroAstRunDAO runDAO = mock(MicroAstRunDAO.class);
+        MicroIsolateDAO isolateDAO = mock(MicroIsolateDAO.class);
+        MicroAstService astService = mock(MicroAstService.class);
         MicroCase microCase = microCase("case-1", stage);
         Sample sample = new Sample();
         sample.setAccessionNumber("ACC-1");
@@ -83,8 +120,9 @@ public class MicroCaseNonconformanceServiceTest {
         when(nceReportService.report(any(NonConformingEventForm.class), org.mockito.ArgumentMatchers.eq("17")))
                 .thenReturn(nce);
         MicroCaseNonconformanceService service = new MicroCaseNonconformanceServiceImpl(caseDAO, activityDAO,
-                sampleItemService, nceReportService, rejectionService);
-        return new Fixture(service, caseDAO, activityDAO, nceReportService, rejectionService, microCase);
+                sampleItemService, nceReportService, rejectionService, runDAO, isolateDAO, astService);
+        return new Fixture(service, caseDAO, activityDAO, nceReportService, rejectionService, runDAO, isolateDAO,
+                astService, microCase);
     }
 
     private MicroCase microCase(String id, MicroCaseStage stage) {
@@ -111,6 +149,7 @@ public class MicroCaseNonconformanceServiceTest {
 
     private record Fixture(MicroCaseNonconformanceService service, MicroCaseDAO caseDAO,
             MicroCaseActivityDAO activityDAO, NceReportService nceReportService,
-            SampleItemRejectionService rejectionService, MicroCase microCase) {
+            SampleItemRejectionService rejectionService, MicroAstRunDAO runDAO, MicroIsolateDAO isolateDAO,
+            MicroAstService astService, MicroCase microCase) {
     }
 }

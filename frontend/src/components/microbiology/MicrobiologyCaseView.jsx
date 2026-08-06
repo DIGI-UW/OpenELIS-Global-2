@@ -405,12 +405,12 @@ const MicrobiologyCaseView = ({
     );
   };
 
-  const completeNonconformance = () => {
+  const completeNonconformance = (result) => {
     loadCase({ showLoading: false });
     history.replace(
       getMicrobiologyCaseUrl(caseId, {
         ...routeState,
-        section: "timeline",
+        section: result?.disposition === "RETEST" ? "ast" : "timeline",
         action: "",
         targetType: "",
         targetId: "",
@@ -782,6 +782,8 @@ const MicrobiologyCaseView = ({
                     <CaseNonconformancePanel
                       caseId={caseDetail.id}
                       mode={routeState.action}
+                      isolates={caseDetail.isolates}
+                      workflowType={caseDetail.workflowType}
                       service={service}
                       onComplete={completeNonconformance}
                       onCancel={() => selectSection("timeline")}
