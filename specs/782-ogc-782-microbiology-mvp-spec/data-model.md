@@ -46,6 +46,9 @@ Fields:
 - `workflowType`
 - `mediaDefaults`
 - `incubationDefaults`
+- `incubationHours` (optional positive integer)
+- `subcultureAtHours` (optional positive integer)
+- `maxIncubationDays` (optional positive integer)
 - `atmosphereDefaults`
 - `active`
 - `lastUpdated`
