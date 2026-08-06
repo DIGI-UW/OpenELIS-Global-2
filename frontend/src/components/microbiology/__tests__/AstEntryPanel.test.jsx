@@ -151,6 +151,40 @@ const renderPanel = (service, props = {}) =>
   );
 
 describe("AstEntryPanel", () => {
+  it("focuses the isolate and AST run named by the worklist link", async () => {
+    const linkedIsolate = { ...isolate, id: "iso-2", isolateLabel: "ISO-2" };
+    const original = { ...reviewedRun, isolateId: "iso-2" };
+    const repeat = {
+      ...reviewedRepeatRun,
+      isolateId: "iso-2",
+      sourceRunId: "run-1",
+    };
+    const service = {
+      getAstPanels: vi.fn().mockResolvedValue([]),
+      getAstSetupForIsolate: vi.fn().mockResolvedValue({ isolateId: "iso-2" }),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([original, repeat]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: true,
+        blockers: [],
+      }),
+    };
+
+    renderPanel(service, {
+      isolates: [isolate, linkedIsolate],
+      initialIsolateId: "iso-2",
+      initialRunId: "run-2",
+    });
+
+    await waitFor(() =>
+      expect(service.getAstRunsForIsolate).toHaveBeenCalledWith("iso-2"),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Viewing attempt 2" }),
+    ).toBeDisabled();
+  });
+
   it("shows immutable override history and requires a reason to revert", async () => {
     const user = userEvent.setup();
     const service = {

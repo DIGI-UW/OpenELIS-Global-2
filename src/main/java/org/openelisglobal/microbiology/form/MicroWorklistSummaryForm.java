@@ -9,6 +9,7 @@ public class MicroWorklistSummaryForm {
 
     public int totalPending;
     public int incubating;
+    public int positiveSignals;
     public int growthDetected;
     public int identification;
     public int needsAstReview;
