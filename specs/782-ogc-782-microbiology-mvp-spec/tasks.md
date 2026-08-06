@@ -480,7 +480,7 @@ opens exactly one resulting case containing those details.
 - [ ] T228 [R1] Run Spotless, targeted Prettier/ESLint, relevant builds, and `git diff --check` before commit.
 - [ ] T229 [R1] Deploy the exact remediation head with compatible review tooling to `amr.openelis-global.org`; verify health, supported routes, application SHA, checklist revision, and overlay rendering.
 - [ ] T230 [Human UAT] Piotr records Pass/Fail/N/A and notes for every required M-03 story step against the exact deployed revisions. Automation cannot complete this task.
-- [ ] T231 [R1] Push the branch and open an official stacked PR targeting `feat/782-ogc-782-microbiology-m10-whonet-export`; include scope, source revision, evidence, UAT state, and known follow-on modules.
+- [x] T231 [R1] Push the branch and open official stacked PR #4004 targeting `feat/782-ogc-782-microbiology-m10-whonet-export`; its body records the pinned source revision, completed scope, open evidence/UAT gates, and the separate Macro follow-on boundary.
 - [ ] T232 [Follow-up] Correct the M-03 v1/v2 visual, fallback, mixed-workflow, duplicate-text, and implementation-leakage issues in a separate `DIGI-UW/openelis-work` product-source PR.
 - [ ] T233 [Follow-up] Extract Macro Library core/runtime/administration into its own PR and UAT stack; retain only microbiology consumer integration in a small integration PR and review it on a separate macro deployment when available.
 
