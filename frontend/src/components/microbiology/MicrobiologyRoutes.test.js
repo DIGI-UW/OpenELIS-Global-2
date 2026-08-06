@@ -186,4 +186,25 @@ describe("MicrobiologyRoutes", () => {
       action: "mark-no-growth",
     });
   });
+
+  it("keeps a new AST attempt focused on its source run", () => {
+    const url = getMicrobiologyCaseUrl("case-1", {
+      grain: "ast",
+      section: "ast",
+      action: "new-ast-attempt",
+      astIsolateId: "isolate-1",
+      astRunId: "run-1",
+    });
+
+    expect(url).toBe(
+      "/Microbiology/cases/case-1?grain=ast&section=ast&astIsolateId=isolate-1&astRunId=run-1&action=new-ast-attempt",
+    );
+    expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
+      grain: "ast",
+      section: "ast",
+      action: "new-ast-attempt",
+      astIsolateId: "isolate-1",
+      astRunId: "run-1",
+    });
+  });
 });

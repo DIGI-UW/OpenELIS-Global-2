@@ -50,6 +50,8 @@ const AstEntryPanel = ({
   reagentUsages = [],
   initialIsolateId = "",
   initialRunId = "",
+  initialAction = "",
+  onAttemptStarted,
 }) => {
   const intl = useIntl();
   const [selectedIsolateId, setSelectedIsolateId] = useState(initialIsolateId);
@@ -487,6 +489,7 @@ const AstEntryPanel = ({
         setAttemptScope("WHOLE_PANEL");
         setAttemptAntibioticId("");
         setSelectedLots({});
+        onAttemptStarted?.(run);
       }
     });
 
@@ -1455,6 +1458,7 @@ const AstEntryPanel = ({
                     <div className="microbiology-form-grid">
                       <TextArea
                         id={`microbiology-ast-attempt-reason-${currentRun.id}`}
+                        autoFocus={initialAction === "new-ast-attempt"}
                         labelText={intl.formatMessage({
                           id: "microbiology.ast.reasonForAttempt",
                         })}

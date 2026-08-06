@@ -946,6 +946,7 @@ describe("AstEntryPanel", () => {
 
   it("starts a repeat attempt from a reviewed run with a required reason", async () => {
     const user = userEvent.setup();
+    const onAttemptStarted = vi.fn();
     const repeatRun = {
       ...reviewedRepeatRun,
       attemptType: "RETEST",
@@ -971,9 +972,15 @@ describe("AstEntryPanel", () => {
       startRepeatAstRun: vi.fn().mockResolvedValue(repeatRun),
     };
 
-    renderPanel(service);
+    renderPanel(service, {
+      initialIsolateId: "iso-1",
+      initialRunId: "run-1",
+      initialAction: "new-ast-attempt",
+      onAttemptStarted,
+    });
 
     expect(await screen.findByText("Original")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reason for repeat or retest")).toHaveFocus();
     expect(
       screen.getByRole("button", { name: "Start repeat attempt" }),
     ).toBeDisabled();
@@ -998,6 +1005,7 @@ describe("AstEntryPanel", () => {
         technique: "DISK_DIFFUSION",
       }),
     );
+    expect(onAttemptStarted).toHaveBeenCalledWith(repeatRun);
     expect(await screen.findByText("Retest")).toBeInTheDocument();
     expect(screen.getByLabelText("Zone diameter (mm)")).toBeInTheDocument();
   });

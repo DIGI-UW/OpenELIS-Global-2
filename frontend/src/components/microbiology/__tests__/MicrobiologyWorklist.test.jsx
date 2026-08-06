@@ -390,6 +390,47 @@ describe("MicrobiologyWorklist", () => {
     );
   });
 
+  it("opens the preserved new-attempt flow for a reviewed AST run", async () => {
+    const user = userEvent.setup();
+    const service = {
+      startRepeatAstRun: vi.fn(),
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            rowId: "run-1",
+            caseId: "case-1",
+            sampleItemId: "1001",
+            workflowType: "BACTERIOLOGY",
+            stage: "REVIEW_READY",
+            dueAction: "CASE_REVIEW",
+            urgency: "ROUTINE",
+            isolateId: "isolate-1",
+            astRunId: "run-1",
+            astStatus: "REVIEWED",
+            siblingWorkflows: [],
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+    };
+
+    renderWorklist(service, "/Microbiology/worklist?grain=ast");
+
+    await user.click(
+      await screen.findByRole("button", { name: "Row actions" }),
+    );
+    await user.click(await screen.findByText("Set up new AST run"));
+
+    expect(service.startRepeatAstRun).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?grain=ast&section=ast&astIsolateId=isolate-1&astRunId=run-1&action=new-ast-attempt",
+      ),
+    );
+  });
+
   it("uses an AST summary card as the canonical grain-specific status", async () => {
     const user = userEvent.setup();
     const service = {

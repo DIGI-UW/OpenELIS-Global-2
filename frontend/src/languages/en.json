@@ -8595,6 +8595,7 @@
   "microbiology.worklist.markNoGrowth": "Mark no growth",
   "microbiology.worklist.markPositive": "Mark positive",
   "microbiology.worklist.openCase": "Open case",
+  "microbiology.worklist.newAstAttempt": "Set up new AST run",
   "microbiology.worklist.phase1b": "Available in Phase 1B",
   "microbiology.worklist.queueStatus": "Shared queue",
   "microbiology.worklist.rowActions": "Row actions",
