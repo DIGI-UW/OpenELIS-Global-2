@@ -53,6 +53,18 @@ const runWithOverride = {
     {
       ...runWithReading.readings[0],
       overrideInterpretation: "RESISTANT",
+      overrideReason: "Clinical exception",
+      overrideHistory: [
+        {
+          id: "override-1",
+          action: "OVERRIDE",
+          fromInterpretation: "SUSCEPTIBLE",
+          toInterpretation: "RESISTANT",
+          reason: "Clinical exception",
+          performedAt: "2026-08-05T18:30:00Z",
+          performedByDisplay: "Olivia Mendez",
+        },
+      ],
     },
     runWithReading.readings[1],
   ],
@@ -124,6 +136,63 @@ const renderPanel = (service, props = {}) =>
   );
 
 describe("AstEntryPanel", () => {
+  it("shows immutable override history and requires a reason to revert", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([
+          { id: "panel-1", label: "Gram negative AST panel" },
+        ]),
+      getAstSetupForIsolate: vi.fn().mockResolvedValue({
+        isolateId: "iso-1",
+        orderedPanelId: "panel-1",
+        orderedPanelLabel: "Gram negative AST panel",
+        orderedPanelVersion: 3,
+        panelProvenance: "ORGANISM_DEFAULT",
+      }),
+      getAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ id: "abx-1", label: "Ciprofloxacin" }]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValueOnce([runWithOverride])
+        .mockResolvedValueOnce([runWithReading]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+      revertAstOverride: vi.fn().mockResolvedValue(runWithReading.readings[0]),
+    };
+
+    renderPanel(service);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Show original" }),
+    );
+    expect(screen.getByText(/Susceptible to Resistant/)).toBeInTheDocument();
+    expect(screen.getByText(/Olivia Mendez/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Revert to original/ }),
+    ).toBeDisabled();
+    await user.type(
+      screen.getByLabelText("Reason for reverting override"),
+      "Repeat confirmed original",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /Revert to original/ }),
+    );
+
+    await waitFor(() =>
+      expect(service.revertAstOverride).toHaveBeenCalledWith("reading-1", {
+        overrideReason: "Repeat confirmed original",
+      }),
+    );
+  });
+
   it("records, overrides, and reviews a manual AST run", async () => {
     const user = userEvent.setup();
     const service = {

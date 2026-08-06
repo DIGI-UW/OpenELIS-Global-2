@@ -401,6 +401,24 @@
   min-width: 10rem;
 }
 
+.microbiology-ast-override-history {
+  background: var(--cds-layer-01);
+  border-left: 0.25rem solid var(--cds-border-interactive);
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.microbiology-ast-override-history h4,
+.microbiology-ast-override-history p {
+  margin: 0;
+}
+
+.microbiology-ast-override-history p {
+  color: var(--cds-text-secondary);
+  line-height: 1.4;
+}
+
 .microbiology-ast-repeat-form {
   border-top: 1px solid var(--cds-border-subtle);
   display: grid;

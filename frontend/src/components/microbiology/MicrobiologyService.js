@@ -195,6 +195,15 @@ export const overrideAstReading = (readingId, payload) =>
     );
   });
 
+export const revertAstOverride = (readingId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/readings/${readingId}/override/revert`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
 export const reviewAstRun = (runId) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
@@ -435,6 +444,7 @@ const MicrobiologyService = {
   startRepeatAstRun,
   recordAstReading,
   overrideAstReading,
+  revertAstOverride,
   reviewAstRun,
   selectReportableAstRun,
   getCaseReadiness,

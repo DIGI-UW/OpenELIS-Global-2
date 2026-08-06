@@ -21,6 +21,7 @@ import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -135,6 +136,41 @@ public class MicroAstRestControllerTest {
 
         verify(service).startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
                 java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42");
+    }
+
+    @Test
+    public void overrideAndRevertUseTheAuthenticatedActorAndSupervisorBundle() throws Exception {
+        MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
+        MicroAstOverrideRequestForm override = new MicroAstOverrideRequestForm();
+        override.overrideInterpretation = "RESISTANT";
+        override.overrideReason = "Clinical exception";
+        MicroAstOverrideRequestForm revert = new MicroAstOverrideRequestForm();
+        revert.overrideReason = "Repeat confirmed original";
+        MicroAstReading reading = new MicroAstReading();
+        reading.setId("reading-1");
+        reading.setAstRunId("run-1");
+        when(service.overrideReading("reading-1",
+                org.openelisglobal.microbiology.valueholder.MicroAstInterpretation.RESISTANT, "Clinical exception",
+                "42")).thenReturn(reading);
+        when(service.revertOverride("reading-1", "Repeat confirmed original", "84")).thenReturn(reading);
+        when(service.getOverrideHistoryForRun("run-1")).thenReturn(java.util.List.of());
+        MicroAstRestController controller = new MicroAstRestController(service);
+
+        controller.overrideReading("reading-1", override, requestFor("42"));
+        controller.revertOverride("reading-1", revert, requestFor("84"));
+
+        verify(service).overrideReading("reading-1",
+                org.openelisglobal.microbiology.valueholder.MicroAstInterpretation.RESISTANT, "Clinical exception",
+                "42");
+        verify(service).revertOverride("reading-1", "Repeat confirmed original", "84");
+        PreAuthorize overrideGuard = MicroAstRestController.class.getMethod("overrideReading", String.class,
+                MicroAstOverrideRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
+                .getAnnotation(PreAuthorize.class);
+        PreAuthorize revertGuard = MicroAstRestController.class.getMethod("revertOverride", String.class,
+                MicroAstOverrideRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
+                .getAnnotation(PreAuthorize.class);
+        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", overrideGuard.value());
+        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", revertGuard.value());
     }
 
     private MockHttpServletRequest requestFor(String userId) {

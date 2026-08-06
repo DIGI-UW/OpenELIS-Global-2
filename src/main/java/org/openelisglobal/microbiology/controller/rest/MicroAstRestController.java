@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstOverrideRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingRequestForm;
@@ -87,13 +88,22 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PutMapping("/readings/{readingId}/override")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VALIDATION')")
     public ResponseEntity<MicroAstReadingForm> overrideReading(@PathVariable String readingId,
             @RequestBody MicroAstOverrideRequestForm request, HttpServletRequest httpRequest) {
         MicroAstReading reading = astService.overrideReading(readingId,
                 requiredEnum(MicroAstInterpretation.class, request.overrideInterpretation, "overrideInterpretation"),
                 request.overrideReason, authenticatedUserId(httpRequest));
-        return ResponseEntity.ok(toReadingForm(reading));
+        return ResponseEntity.ok(toReadingForm(reading, astService.getOverrideHistoryForRun(reading.getAstRunId())));
+    }
+
+    @PostMapping("/readings/{readingId}/override/revert")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VALIDATION')")
+    public ResponseEntity<MicroAstReadingForm> revertOverride(@PathVariable String readingId,
+            @RequestBody MicroAstOverrideRequestForm request, HttpServletRequest httpRequest) {
+        MicroAstReading reading = astService.revertOverride(readingId, request.overrideReason,
+                authenticatedUserId(httpRequest));
+        return ResponseEntity.ok(toReadingForm(reading, astService.getOverrideHistoryForRun(reading.getAstRunId())));
     }
 
     @PostMapping("/runs/{runId}/review")
@@ -112,8 +122,9 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
 
     private MicroAstRunForm toRunFormWithReadings(MicroAstRun run) {
         MicroAstRunForm form = toRunForm(run);
+        List<MicroAstOverrideEventForm> overrideHistory = astService.getOverrideHistoryForRun(run.getId());
         for (MicroAstReading reading : astService.getReadingsForRun(run.getId())) {
-            form.readings.add(toReadingForm(reading));
+            form.readings.add(toReadingForm(reading, overrideHistory));
         }
         return form;
     }
@@ -142,6 +153,11 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     private MicroAstReadingForm toReadingForm(MicroAstReading reading) {
+        return toReadingForm(reading, List.of());
+    }
+
+    private MicroAstReadingForm toReadingForm(MicroAstReading reading,
+            List<MicroAstOverrideEventForm> overrideHistory) {
         MicroAstReadingForm form = new MicroAstReadingForm();
         form.id = reading.getId();
         form.astRunId = reading.getAstRunId();
@@ -158,6 +174,8 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.overrideReason = reading.getOverrideReason();
         form.createdAt = reading.getCreatedAt();
         form.createdBy = reading.getCreatedBy();
+        form.overrideHistory = overrideHistory.stream().filter(event -> reading.getId().equals(event.readingId))
+                .toList();
         return form;
     }
 }

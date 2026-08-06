@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
@@ -39,6 +40,10 @@ public interface MicroAstService {
 
     MicroAstReading overrideReading(String readingId, MicroAstInterpretation overrideInterpretation,
             String overrideReason, String performedBy);
+
+    MicroAstReading revertOverride(String readingId, String reason, String performedBy);
+
+    List<MicroAstOverrideEventForm> getOverrideHistoryForRun(String runId);
 
     MicroAstRun reviewRun(String runId, String performedBy);
 

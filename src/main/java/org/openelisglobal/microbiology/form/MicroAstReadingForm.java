@@ -2,6 +2,8 @@ package org.openelisglobal.microbiology.form;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MicroAstReadingForm {
 
@@ -20,4 +22,5 @@ public class MicroAstReadingForm {
     public String overrideReason;
     public Timestamp createdAt;
     public String createdBy;
+    public List<MicroAstOverrideEventForm> overrideHistory = new ArrayList<>();
 }
