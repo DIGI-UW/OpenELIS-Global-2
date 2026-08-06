@@ -161,6 +161,13 @@ export const getAstRunsForIsolate = (isolateId) =>
     );
   });
 
+export const getAnalyzers = () =>
+  new Promise((resolve) => {
+    getFromOpenElisServer("/rest/analyzer/analyzers", (response) => {
+      resolve(Array.isArray(response) ? response : response?.analyzers || []);
+    });
+  });
+
 export const startAstRun = (payload) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
@@ -217,6 +224,33 @@ export const reviewAstRun = (runId) =>
     postToOpenElisServerJsonResponse(
       `/rest/microbiology/ast/runs/${runId}/review`,
       JSON.stringify({}),
+      resolve,
+    );
+  });
+
+export const acknowledgeAstAnalyzerFlags = (runId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${encodeURIComponent(runId)}/analyzer-flags/acknowledge`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
+export const overrideAstQcFailure = (runId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${encodeURIComponent(runId)}/qc/override`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
+export const invalidateAndRepeatAstRun = (runId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${encodeURIComponent(runId)}/invalidate-and-repeat`,
+      JSON.stringify(payload),
       resolve,
     );
   });
@@ -449,12 +483,16 @@ const MicrobiologyService = {
   getCultureMethods,
   changeCaseWorkflow,
   getAstRunsForIsolate,
+  getAnalyzers,
   startAstRun,
   startRepeatAstRun,
   recordAstReading,
   overrideAstReading,
   revertAstOverride,
   reviewAstRun,
+  acknowledgeAstAnalyzerFlags,
+  overrideAstQcFailure,
+  invalidateAndRepeatAstRun,
   selectReportableAstRun,
   getCaseReadiness,
   getWorklistRows,

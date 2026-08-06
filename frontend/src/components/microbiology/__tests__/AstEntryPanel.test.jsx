@@ -53,7 +53,7 @@ const runWithReading = {
       method: "ZONE",
       rawValue: 16,
       source: "MANUAL_ENTRY",
-      matchedBy: "NONE",
+      matchedBy: "ORGANISM",
       units: "mm",
     },
   ],
@@ -331,11 +331,6 @@ describe("AstEntryPanel", () => {
     expect(
       screen.getAllByTestId("microbiology-ast-reading-row")[0],
     ).toHaveTextContent("4 ug/mL");
-    expect(
-      screen.getByText(
-        "No standard breakpoint. Interpret this reading according to the local SOP.",
-      ),
-    ).toBeInTheDocument();
     await user.type(
       screen.getByLabelText("Override reason"),
       "mixed growth confirmed on repeat",
@@ -574,6 +569,220 @@ describe("AstEntryPanel", () => {
     expect(
       await screen.findByRole("button", { name: "Review AST run" }),
     ).toBeDisabled();
+  });
+
+  it("starts a connected analyzer run with an explicit instrument and card", async () => {
+    const user = userEvent.setup();
+    const awaitingRun = {
+      ...inProgressRun,
+      status: "AWAITING_RESULTS",
+      analyzerInstrumentId: "7",
+      analyzerCardId: "card-42",
+    };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "GN-STD" }]),
+      getAstSetupForIsolate: vi.fn().mockResolvedValue({
+        isolateId: "iso-1",
+        orderedPanelId: "panel-1",
+        orderedPanelLabel: "GN-STD",
+        orderedPanelVersion: 3,
+        panelProvenance: "ORGANISM_DEFAULT",
+      }),
+      getAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ id: "abx-1", label: "Ciprofloxacin" }]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
+      getAnalyzers: vi
+        .fn()
+        .mockResolvedValue([{ id: "7", name: "VITEK 2 bench" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([awaitingRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+      startAstRun: vi.fn().mockResolvedValue(awaitingRun),
+    };
+
+    renderPanel(service);
+    await user.click(
+      await screen.findByRole("radio", { name: "Connected analyzer" }),
+    );
+    await user.selectOptions(screen.getByLabelText("Analyzer"), "7");
+    await user.type(screen.getByLabelText("Card or panel ID"), "card-42");
+    await user.click(screen.getByRole("button", { name: "Start AST run" }));
+
+    expect(service.startAstRun).toHaveBeenCalledWith({
+      isolateId: "iso-1",
+      panelId: "panel-1",
+      breakpointStandardId: "std-clsi",
+      technique: "VITEK_2",
+      awaitAnalyzerResults: true,
+      analyzerInstrumentId: "7",
+      analyzerCardId: "card-42",
+    });
+    expect(
+      await screen.findByText("Awaiting analyzer results"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /import/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("blocks review and guides the user when a reading has no breakpoint", async () => {
+    const noBreakpointRun = {
+      ...runWithReading,
+      readings: [
+        {
+          ...runWithReading.readings[0],
+          matchedBy: "NONE",
+        },
+      ],
+    };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "GN-STD" }]),
+      getAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ id: "abx-1", label: "Ciprofloxacin" }]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([noBreakpointRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+    };
+
+    renderPanel(service);
+
+    expect(
+      await screen.findByText(
+        "No standard breakpoint. Interpret this reading according to the local SOP.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Review AST run" }),
+    ).toBeDisabled();
+  });
+
+  it("surfaces analyzer provenance and blocks acceptance until flagged results are addressed", async () => {
+    const resultsInRun = {
+      ...runWithReading,
+      status: "RESULTS_IN",
+      analyzerInstrumentId: "7",
+      analyzerCardId: "card-42",
+      analyzerSoftwareVersion: "9.02",
+      analyzerOrganismId: "organism-2",
+      analyzerOrganismName: "Klebsiella pneumoniae",
+      analyzerOrganismConfidence: 98.4,
+      analyzerExpertFlags: "ESBL",
+      readings: [
+        {
+          ...runWithReading.readings[0],
+          source: "ANALYZER_AUTO",
+          instrumentInterpretation: "RESISTANT",
+        },
+      ],
+    };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "GN-STD" }]),
+      getAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ id: "abx-1", label: "Ciprofloxacin" }]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAnalyzers: vi
+        .fn()
+        .mockResolvedValue([{ id: "7", name: "VITEK 2 bench" }]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([resultsInRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+    };
+
+    renderPanel(service);
+
+    expect(
+      await screen.findByText("Analyzer results ready for review"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/VITEK 2 bench/)).toBeInTheDocument();
+    expect(screen.getByText(/Klebsiella pneumoniae/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Analyzer organism differs from the case isolate"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Analyzer: Resistant/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Accept results" }),
+    ).toBeDisabled();
+  });
+
+  it("offers deterministic recovery actions for analyzer QC failure", async () => {
+    const user = userEvent.setup();
+    const qcFailedRun = {
+      ...inProgressRun,
+      status: "QC_FAILED",
+      qcState: "FAILED",
+      analyzerInstrumentId: "7",
+      analyzerCardId: "card-42",
+      instrumentQcReference: "qc-17",
+    };
+    const replacement = {
+      ...qcFailedRun,
+      id: "run-2",
+      status: "AWAITING_RESULTS",
+      analyzerCardId: "card-43",
+    };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "GN-STD" }]),
+      getAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ id: "abx-1", label: "Ciprofloxacin" }]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAnalyzers: vi
+        .fn()
+        .mockResolvedValue([{ id: "7", name: "VITEK 2 bench" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValueOnce([qcFailedRun])
+        .mockResolvedValueOnce([qcFailedRun, replacement]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+      invalidateAndRepeatAstRun: vi.fn().mockResolvedValue(replacement),
+    };
+
+    renderPanel(service);
+    expect(await screen.findByText("Analyzer QC failed")).toBeInTheDocument();
+    await user.type(
+      screen.getByLabelText("Reason and corrective action"),
+      "Control out of range",
+    );
+    await user.type(screen.getByLabelText("New card or panel ID"), "card-43");
+    const invalidateButton = await screen.findByRole("button", {
+      name: /Invalidate and start new run/,
+    });
+    await waitFor(() => expect(invalidateButton).toBeEnabled());
+    await user.click(invalidateButton);
+
+    expect(service.invalidateAndRepeatAstRun).toHaveBeenCalledWith("run-1", {
+      reason: "Control out of range",
+      analyzerCardId: "card-43",
+    });
+    expect(
+      await screen.findByText("Awaiting analyzer results"),
+    ).toBeInTheDocument();
   });
 
   it("keeps AST write actions disabled when a final case is locked", async () => {
