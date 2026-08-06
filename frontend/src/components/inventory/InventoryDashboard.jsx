@@ -49,6 +49,13 @@ import {
 } from "../storage/LocationPicker/locationSelectionMapper";
 import "./InventoryList.css";
 
+const QC_TAG_KIND = {
+  PASSED: "green",
+  FAILED: "red",
+  PENDING: "gray",
+  QUARANTINED: "magenta",
+};
+
 const InventoryDashboard = () => {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -69,11 +76,9 @@ const InventoryDashboard = () => {
 
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
-  // Item codes the backend reports as below their low-stock threshold.
   const [lowStockItemIds, setLowStockItemIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
 
-  // Guards setState after awaits when the tab unmounts mid-fetch.
   const isMountedRef = useRef(true);
   useEffect(() => {
     isMountedRef.current = true;
@@ -149,6 +154,10 @@ const InventoryDashboard = () => {
       header: intl.formatMessage({ id: "lot.status" }),
     },
     {
+      key: "qcStatus",
+      header: intl.formatMessage({ id: "lot.qcStatus" }),
+    },
+    {
       key: "stockStatus",
       header: intl.formatMessage({ id: "stock.status" }),
     },
@@ -197,11 +206,8 @@ const InventoryDashboard = () => {
   const fetchLots = async () => {
     setLoading(true);
     try {
-      // Low stock comes from the backend rather than being recomputed here:
-      // it is judged against an item's usable quantity summed across lots
-      // (InventoryItemService.getLowStockItems), which a per-lot comparison in
-      // the browser cannot reproduce. Keeps this tile, /items/low-stock and the
-      // Low Stock report agreeing.
+      // Low stock is the backend's call: it sums usable quantity across an
+      // item's lots, which a per-lot check here cannot reproduce.
       const [lotsResponse, itemsResponse, lowStockResponse] = await Promise.all(
         [
           InventoryLotAPI.getAll({
@@ -275,8 +281,7 @@ const InventoryDashboard = () => {
 
     setMetrics({
       totalLots: lotsData.length,
-      // Items below threshold, not lots — one item short on stock is one thing
-      // to reorder however many lots it is spread across.
+      // Items below threshold, not lots.
       lowStock: lowStockIds.size,
       expiringSoon: expiringSoonCount,
       expired: expiredCount,
@@ -318,6 +323,16 @@ const InventoryDashboard = () => {
 
     if (lowStockItemIds.has(lot.inventoryItem.id)) {
       return { type: "lowStock", label: "Low Stock", kind: "warm-gray" };
+    }
+
+    // Stock that exists but cannot be consumed yet: FEFO only picks QC-passed
+    // lots, so surface the gate instead of a reassuring "In Stock".
+    if (lot.qcStatus && lot.qcStatus !== "PASSED") {
+      return {
+        type: "pendingQc",
+        label: intl.formatMessage({ id: "stock.status.pendingQc" }),
+        kind: "cyan",
+      };
     }
 
     return { type: "inStock", label: "In Stock", kind: "green" };
@@ -374,6 +389,7 @@ const InventoryDashboard = () => {
         ? new Date(lot.expirationDate).toLocaleDateString()
         : "N/A",
       status: lot.status,
+      qcStatus: lot.qcStatus || "PENDING",
       stockStatus: stockStatus,
     };
   });
@@ -648,6 +664,19 @@ const InventoryDashboard = () => {
                                 {status && (
                                   <Tag type={status.kind}>{status.label}</Tag>
                                 )}
+                              </TableCell>
+                            );
+                          }
+
+                          if (cell.info.header === "qcStatus") {
+                            return (
+                              <TableCell key={cell.id}>
+                                <Tag type={QC_TAG_KIND[cell.value] || "gray"}>
+                                  {intl.formatMessage({
+                                    id: `lot.qcStatus.${cell.value}`,
+                                    defaultMessage: cell.value,
+                                  })}
+                                </Tag>
                               </TableCell>
                             );
                           }

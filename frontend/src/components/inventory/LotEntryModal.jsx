@@ -430,6 +430,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             onChange={({ selectedItem }) =>
               handleChange("qcStatus", selectedItem.id)
             }
+            helperText={intl.formatMessage({ id: "lot.qcStatus.hint" })}
           />
 
           <Dropdown

@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -48,7 +49,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         List<InventoryLot> availableLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
 
         if (availableLots == null || availableLots.isEmpty()) {
-            throw new IllegalStateException("No available lots for item: " + itemId);
+            throw new IllegalStateException(describeWhyNoLotsAvailable(itemId));
         }
 
         // Check if sufficient inventory is available
@@ -154,6 +155,22 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
                 savedLot.getCurrentQuantity(), null, ReferenceType.RECEIPT.name(), "New inventory received", sysUserId);
 
         return savedLot;
+    }
+
+    /**
+     * "No lots available" is usually a QC gate rather than an empty shelf — a
+     * received lot defaults to QC PENDING and stays unusable until it passes. Say
+     * which, so the message does not read as "this item has no stock".
+     */
+    private String describeWhyNoLotsAvailable(String itemId) {
+        List<InventoryLot> allLots = inventoryLotService.getByInventoryItemId(itemId);
+        long pendingQc = allLots.stream().filter(lot -> lot.getQcStatus() == QCStatus.PENDING)
+                .filter(lot -> lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0).count();
+        if (pendingQc > 0) {
+            return "No QC-passed lots available for item: " + itemId + " (" + pendingQc
+                    + " lot(s) with stock are still awaiting QC — mark QC as passed to use them)";
+        }
+        return "No available lots for item: " + itemId;
     }
 
     private String generateLotNumber(String itemId) {

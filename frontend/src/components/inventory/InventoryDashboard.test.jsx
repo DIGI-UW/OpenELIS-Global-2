@@ -81,6 +81,7 @@ const lotWithLocation = {
   id: 1,
   lotNumber: "LOT-100",
   status: "ACTIVE",
+  qcStatus: "PASSED",
   currentQuantity: 10,
   inventoryItem: { id: "MALARIA_RDT" },
   location: {
@@ -93,6 +94,7 @@ const lotWithoutLocation = {
   id: 2,
   lotNumber: "LOT-200",
   status: "ACTIVE",
+  qcStatus: "PASSED",
   currentQuantity: 3,
   inventoryItem: { id: "MALARIA_RDT" },
   location: null,
@@ -115,6 +117,31 @@ beforeEach(() => {
     "RDT",
     "CARTRIDGE",
   ]);
+});
+
+describe("InventoryDashboard QC gate visibility", () => {
+  // A received lot defaults to QC PENDING and FEFO will not consume it, so the
+  // table has to say so rather than showing a reassuring "In Stock".
+  const pendingQcLot = { ...lotWithLocation, qcStatus: "PENDING" };
+
+  it("flags a QC-pending lot as Pending QC instead of In Stock", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([pendingQcLot]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    const table = document.querySelector("table");
+    expect(within(table).getByText("Pending QC")).toBeInTheDocument();
+    expect(within(table).queryByText("In Stock")).not.toBeInTheDocument();
+  });
+
+  it("shows each lot's QC status in its own column", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([lotWithLocation]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    const table = document.querySelector("table");
+    expect(within(table).getByText("Passed")).toBeInTheDocument();
+  });
 });
 
 describe("InventoryDashboard low stock", () => {
