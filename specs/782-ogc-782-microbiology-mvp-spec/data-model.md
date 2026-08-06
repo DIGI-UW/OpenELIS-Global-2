@@ -487,23 +487,33 @@ Computed service response, not a dedicated table for MVP.
 Fields:
 
 - `rowId`
+- `rowId`
 - `grain`
 - `caseId`
 - `accessionNumber`
 - `sampleItemId`
 - `patientDisplay`
+- `specimenDisplay`
 - `workflowType`
 - `stage`
+- `priority`
 - `dueAction`
 - `urgency`
-- `hasSiblingWorkflow`
-- `needsReview`
-- `hasCriticalOpen`
+- `needsAstReview`
+- `hasOpenCriticalCommunication`
+- `siblingWorkflows`
+- `createdAt`
 - `lastActivityAt`
+- `lastActivityBy`
 - Culture projection: `stage`, `dueAction`, sibling-workflow context, and
   analyzer-results-in indicator.
 - AST projection: `isolateId`, isolate label, organism display, run identity,
-  panel display, run status, start time, and analyzer-results-in indicator.
+  panel identity and display name, run status, start time, and analyzer-results-
+  in indicator.
+
+Accession, patient, specimen, panel display, and latest-activity actor are
+read-time projections from their existing authoritative records. They are not
+duplicated into microbiology tables and require no schema migration.
 
 An identified clinically significant isolate without an active AST attempt is
 represented as pending setup. Invalidated, cancelled, and superseded attempts

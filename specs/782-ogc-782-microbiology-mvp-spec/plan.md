@@ -241,6 +241,11 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   URL and server query state. Culture rows and AST-run rows use different DTO
   projections but share navigation, filtering, paging, refresh, and empty-state
   infrastructure.
+- Compile laboratory accession, patient, specimen, latest activity, and AST
+  panel display context inside the worklist service transaction with a fixed
+  set of bounded batch projections. Keep the source records authoritative: do
+  not copy patient or specimen fields into microbiology tables and do not issue
+  per-row DAO or service calls.
 - Keep Macro Library as a separate cross-cutting feature stack and review
   deployment. Microbiology carries only a small consumer integration after the
   macro feature is independently accepted.

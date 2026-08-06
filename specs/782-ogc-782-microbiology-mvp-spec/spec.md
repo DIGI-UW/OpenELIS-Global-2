@@ -223,11 +223,15 @@ case action.
    user switches the worklist view, **Then** the same shared page presents one
    row per culture case or one row per actionable isolate attempt with
    view-specific status counts and columns.
-5. **Given** an instrument has not returned an AST result or has returned a
+5. **Given** culture and AST work are in flight, **When** either worklist view
+   is opened, **Then** each row identifies the laboratory accession and patient;
+   culture rows also identify the specimen and most recent actor, while AST rows
+   identify the isolate, organism, and selected panel.
+6. **Given** an instrument has not returned an AST result or has returned a
    result needing review, **When** the worklist refreshes, **Then** the user can
    distinguish awaiting-results from results-in-review without importing or
    transcribing a result on the worklist.
-6. **Given** a supervisor needs situational awareness, **When** the worklist is
+7. **Given** a supervisor needs situational awareness, **When** the worklist is
    opened, **Then** resistance-hit context and recent microbiology activity are
    available on the same page without implying ownership of a case.
 
