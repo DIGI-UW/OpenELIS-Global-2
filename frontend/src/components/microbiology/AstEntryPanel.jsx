@@ -79,6 +79,8 @@ const AstEntryPanel = ({
   const [attemptType, setAttemptType] = useState("REPEAT");
   const [attemptReason, setAttemptReason] = useState("");
   const [attemptTechnique, setAttemptTechnique] = useState("");
+  const [attemptScope, setAttemptScope] = useState("WHOLE_PANEL");
+  const [attemptAntibioticId, setAttemptAntibioticId] = useState("");
   const [readiness, setReadiness] = useState(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -365,6 +367,8 @@ const AstEntryPanel = ({
     setSelectedRunId(runId);
     setAttemptTechnique("");
     setAttemptReason("");
+    setAttemptScope("WHOLE_PANEL");
+    setAttemptAntibioticId("");
   };
 
   const runOperation = (operation) => {
@@ -432,12 +436,17 @@ const AstEntryPanel = ({
         attemptType,
         reason: attemptReason,
         technique: effectiveAttemptTechnique,
+        ...(attemptScope === "SINGLE_ANTIBIOTIC"
+          ? { orderedAntibioticIds: [attemptAntibioticId] }
+          : {}),
         ...(lotSelections.length > 0 ? { lotSelections } : {}),
       }),
     ).then((run) => {
       if (run) {
         setSelectedRunId(run.id);
         setAttemptReason("");
+        setAttemptScope("WHOLE_PANEL");
+        setAttemptAntibioticId("");
         setSelectedLots({});
       }
     });
@@ -1364,6 +1373,33 @@ const AstEntryPanel = ({
                         })}
                       />
                     </RadioButtonGroup>
+                    <RadioButtonGroup
+                      name={`microbiology-ast-attempt-scope-${currentRun.id}`}
+                      legendText={intl.formatMessage({
+                        id: "microbiology.ast.attemptScope",
+                      })}
+                      valueSelected={attemptScope}
+                      onChange={(value) => {
+                        setAttemptScope(value);
+                        setAttemptAntibioticId("");
+                      }}
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        id={`microbiology-ast-whole-panel-${currentRun.id}`}
+                        value="WHOLE_PANEL"
+                        labelText={intl.formatMessage({
+                          id: "microbiology.ast.wholePanel",
+                        })}
+                      />
+                      <RadioButton
+                        id={`microbiology-ast-single-antibiotic-${currentRun.id}`}
+                        value="SINGLE_ANTIBIOTIC"
+                        labelText={intl.formatMessage({
+                          id: "microbiology.ast.singleAntibiotic",
+                        })}
+                      />
+                    </RadioButtonGroup>
                     <div className="microbiology-form-grid">
                       <TextArea
                         id={`microbiology-ast-attempt-reason-${currentRun.id}`}
@@ -1393,6 +1429,32 @@ const AstEntryPanel = ({
                           />
                         ))}
                       </Select>
+                      {attemptScope === "SINGLE_ANTIBIOTIC" ? (
+                        <Select
+                          id={`microbiology-ast-attempt-antibiotic-${currentRun.id}`}
+                          labelText={intl.formatMessage({
+                            id: "microbiology.ast.antibioticToRepeat",
+                          })}
+                          value={attemptAntibioticId}
+                          onChange={(event) =>
+                            setAttemptAntibioticId(event.target.value)
+                          }
+                        >
+                          <SelectItem
+                            value=""
+                            text={intl.formatMessage({
+                              id: "microbiology.ast.selectAntibiotic",
+                            })}
+                          />
+                          {orderedAntibiotics.map((antibiotic) => (
+                            <SelectItem
+                              key={antibiotic.id}
+                              value={antibiotic.id}
+                              text={antibiotic.label}
+                            />
+                          ))}
+                        </Select>
+                      ) : null}
                     </div>
                     <Button
                       kind="secondary"
@@ -1401,7 +1463,9 @@ const AstEntryPanel = ({
                         busy ||
                         readOnly ||
                         hasInProgressRun ||
-                        !attemptReason.trim()
+                        !attemptReason.trim() ||
+                        (attemptScope === "SINGLE_ANTIBIOTIC" &&
+                          !attemptAntibioticId)
                       }
                     >
                       {intl.formatMessage(

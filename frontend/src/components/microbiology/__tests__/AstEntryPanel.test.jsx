@@ -935,6 +935,65 @@ describe("AstEntryPanel", () => {
     expect(screen.getByLabelText("Zone diameter (mm)")).toBeInTheDocument();
   });
 
+  it("starts a single-antibiotic retest from the preserved source run", async () => {
+    const user = userEvent.setup();
+    const scopedRetest = {
+      ...reviewedRepeatRun,
+      status: "IN_PROGRESS",
+      orderedAntibiotics: [reviewedRun.orderedAntibiotics[0]],
+      readings: [],
+    };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "Gram negative panel" }]),
+      getAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ id: "abx-1", label: "Ciprofloxacin" }]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValueOnce([reviewedRun])
+        .mockResolvedValueOnce([reviewedRun, scopedRetest]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: true,
+        blockers: [],
+      }),
+      startRepeatAstRun: vi.fn().mockResolvedValue(scopedRetest),
+    };
+
+    renderPanel(service);
+
+    await user.click(
+      await screen.findByRole("radio", { name: "Single antibiotic" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Start repeat attempt" }),
+    ).toBeDisabled();
+    await user.selectOptions(
+      screen.getByLabelText("Antibiotic to repeat"),
+      "abx-1",
+    );
+    await user.type(
+      screen.getByLabelText("Reason for repeat or retest"),
+      "Confirm carbapenem",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Start repeat attempt" }),
+    );
+
+    await waitFor(() =>
+      expect(service.startRepeatAstRun).toHaveBeenCalledWith("run-1", {
+        attemptType: "REPEAT",
+        reason: "Confirm carbapenem",
+        technique: "VITEK_2",
+        orderedAntibioticIds: ["abx-1"],
+      }),
+    );
+  });
+
   it("shows attempt relationships and requires an explicit reportable selection", async () => {
     const user = userEvent.setup();
     const noSelectionOriginal = { ...reviewedRun, reportable: false };
