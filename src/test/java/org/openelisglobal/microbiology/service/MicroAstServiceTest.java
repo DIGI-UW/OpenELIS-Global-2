@@ -246,6 +246,48 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void repeatRunCanSnapshotOneAntibioticFromTheSourceRun() {
+        MicroAstRun source = reviewedRun("run-1");
+        source.setPanelId("panel-1");
+        source.setTechnique(MicroAstTechnique.VITEK_2.name());
+        source.setMethod(MicroAstMethod.MIC.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(source));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(runAntibioticDAO.getByRunId("run-1"))
+                .thenReturn(List.of(orderedAntibiotic("run-1", "abx-1", 1), orderedAntibiotic("run-1", "abx-2", 2)));
+
+        MicroAstRun repeat = service.startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Confirm carbapenem",
+                MicroAstTechnique.VITEK_2, List.of(), List.of("abx-2"), "1");
+
+        ArgumentCaptor<MicroAstRunAntibiotic> copied = ArgumentCaptor.forClass(MicroAstRunAntibiotic.class);
+        verify(runAntibioticDAO).insert(copied.capture());
+        assertEquals(repeat.getId(), copied.getValue().getAstRunId());
+        assertEquals("abx-2", copied.getValue().getAntibioticId());
+        assertEquals(Integer.valueOf(2), copied.getValue().getDisplayOrder());
+    }
+
+    @Test
+    public void repeatRunRejectsAnAntibioticOutsideTheSourceRun() {
+        MicroAstRun source = reviewedRun("run-1");
+        source.setPanelId("panel-1");
+        source.setTechnique(MicroAstTechnique.VITEK_2.name());
+        source.setMethod(MicroAstMethod.MIC.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(source));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(runAntibioticDAO.getByRunId("run-1")).thenReturn(List.of(orderedAntibiotic("run-1", "abx-1", 1)));
+
+        try {
+            service.startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Confirm carbapenem", MicroAstTechnique.VITEK_2,
+                    List.of(), List.of("abx-outside"), "1");
+            fail("Expected the scoped retest to reject an unordered antibiotic");
+        } catch (MicroAstConflictException expected) {
+            assertEquals("AST_REPEAT_ANTIBIOTIC_NOT_IN_SOURCE", expected.getMessage());
+        }
+
+        verify(runAntibioticDAO, never()).insert(any(MicroAstRunAntibiotic.class));
+    }
+
+    @Test
     public void startRunWithoutStandardSnapshotsTheActiveStandard() {
         MicroIsolate isolate = identifiedIsolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));

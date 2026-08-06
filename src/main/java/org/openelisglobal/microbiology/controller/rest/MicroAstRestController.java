@@ -112,13 +112,18 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     public ResponseEntity<MicroAstRunForm> startRepeatRun(@PathVariable String sourceRunId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
         if (request.lotSelections == null || request.lotSelections.isEmpty()) {
+            if (request.orderedAntibioticIds != null && !request.orderedAntibioticIds.isEmpty()) {
+                return ResponseEntity.ok(toRunForm(astService.startRepeatRun(sourceRunId,
+                        MicroAstAttemptType.valueOf(request.attemptType), request.reason, technique(request.technique),
+                        List.of(), request.orderedAntibioticIds, authenticatedUserId(httpRequest))));
+            }
             return ResponseEntity.ok(
                     toRunForm(astService.startRepeatRun(sourceRunId, MicroAstAttemptType.valueOf(request.attemptType),
                             request.reason, technique(request.technique), authenticatedUserId(httpRequest))));
         }
         return ResponseEntity.ok(toRunForm(astService.startRepeatRun(sourceRunId,
                 MicroAstAttemptType.valueOf(request.attemptType), request.reason, technique(request.technique),
-                lotSelections(request.lotSelections), authenticatedUserId(httpRequest))));
+                lotSelections(request.lotSelections), request.orderedAntibioticIds, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{runId}/readings")

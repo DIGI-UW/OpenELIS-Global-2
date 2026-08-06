@@ -258,6 +258,14 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Transactional
     public MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
             MicroAstTechnique technique, List<MicroLotSelection> lotSelections, String performedBy) {
+        return startRepeatRun(sourceRunId, attemptType, reason, technique, lotSelections, List.of(), performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
+            MicroAstTechnique technique, List<MicroLotSelection> lotSelections, List<String> orderedAntibioticIds,
+            String performedBy) {
         MicroCaseServiceImpl.requireText(sourceRunId, "sourceRunId");
         if (attemptType == null || MicroAstAttemptType.ORIGINAL.equals(attemptType)) {
             throw new IllegalArgumentException("AST_REPEAT_OR_RETEST_REQUIRED");
@@ -277,6 +285,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (isAmendmentInProgress(microCase) && !source.isReportable()) {
             throw new MicroAstConflictException("AST_AMENDMENT_SOURCE_MUST_BE_REPORTABLE");
         }
+        List<MicroAstRunAntibiotic> scopedOrder = resolveRepeatOrder(source, orderedAntibioticIds);
 
         MicroAstRun run = new MicroAstRun();
         run.setIsolateId(source.getIsolateId());
@@ -299,7 +308,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setStartedAt(MicroCaseServiceImpl.now());
         run.setStartedBy(performedBy);
         runDAO.insert(run);
-        copyOrderedAntibiotics(source, run);
+        snapshotRepeatOrder(source, run, scopedOrder);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CREATED, performedBy,
                 attemptType.name() + " AST run created",
                 "{\"astRunId\":\"" + run.getId() + "\",\"sourceRunId\":\"" + source.getId() + "\"}");
@@ -824,6 +833,37 @@ public class MicroAstServiceImpl implements MicroAstService {
             return;
         }
         for (MicroAstRunAntibiotic sourceRow : sourceRows) {
+            MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
+            ordered.setAstRunId(target.getId());
+            ordered.setAntibioticId(sourceRow.getAntibioticId());
+            ordered.setDisplayOrder(sourceRow.getDisplayOrder());
+            ordered.setTier(sourceRow.getTier());
+            ordered.setReportBehavior(sourceRow.getReportBehavior());
+            runAntibioticDAO.insert(ordered);
+        }
+    }
+
+    private List<MicroAstRunAntibiotic> resolveRepeatOrder(MicroAstRun source, List<String> requestedAntibioticIds) {
+        List<MicroAstRunAntibiotic> sourceRows = runAntibioticDAO.getByRunId(source.getId());
+        if (requestedAntibioticIds == null || requestedAntibioticIds.isEmpty()) {
+            return sourceRows;
+        }
+        List<String> requested = normalizeOrderedAntibioticIds(requestedAntibioticIds);
+        Set<String> requestedSet = Set.copyOf(requested);
+        List<MicroAstRunAntibiotic> selected = sourceRows.stream()
+                .filter(row -> requestedSet.contains(row.getAntibioticId())).toList();
+        if (selected.size() != requested.size()) {
+            throw new MicroAstConflictException("AST_REPEAT_ANTIBIOTIC_NOT_IN_SOURCE");
+        }
+        return selected;
+    }
+
+    private void snapshotRepeatOrder(MicroAstRun source, MicroAstRun target, List<MicroAstRunAntibiotic> scopedOrder) {
+        if (scopedOrder.isEmpty()) {
+            snapshotPanelAntibiotics(target.getId(), source.getPanelId());
+            return;
+        }
+        for (MicroAstRunAntibiotic sourceRow : scopedOrder) {
             MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
             ordered.setAstRunId(target.getId());
             ordered.setAntibioticId(sourceRow.getAntibioticId());
