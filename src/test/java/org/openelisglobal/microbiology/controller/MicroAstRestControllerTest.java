@@ -17,6 +17,7 @@ import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
+import org.openelisglobal.microbiology.service.MicroAstRunSetupCommand;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
@@ -107,6 +108,25 @@ public class MicroAstRestControllerTest {
     }
 
     @Test
+    public void repeatPassesTheRequestedDrugScopeWithTheAuthenticatedActor() {
+        MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
+        MicroAstRun repeat = new MicroAstRun();
+        repeat.setId("run-2");
+        MicroAstRunRequestForm request = new MicroAstRunRequestForm();
+        request.attemptType = MicroAstAttemptType.RETEST.name();
+        request.reason = "Confirm carbapenem";
+        request.technique = MicroAstTechnique.VITEK_2.name();
+        request.orderedAntibioticIds = java.util.List.of("abx-2");
+        when(service.startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Confirm carbapenem",
+                MicroAstTechnique.VITEK_2, java.util.List.of(), java.util.List.of("abx-2"), "42")).thenReturn(repeat);
+
+        new MicroAstRestController(service).startRepeatRun("run-1", request, requestFor("42"));
+
+        verify(service).startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Confirm carbapenem",
+                MicroAstTechnique.VITEK_2, java.util.List.of(), java.util.List.of("abx-2"), "42");
+    }
+
+    @Test
     public void repeatAndSelectionRequireAuthentication() throws Exception {
         PreAuthorize repeat = MicroAstRestController.class.getMethod("startRepeatRun", String.class,
                 MicroAstRunRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
@@ -140,16 +160,16 @@ public class MicroAstRestControllerTest {
         selection.testReagentLinkId = "link-1";
         selection.lotId = 7L;
         request.lotSelections.add(selection);
-        when(service.startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
-                MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)),
-                java.util.List.of("abx-1"), "42")).thenReturn(run);
+        MicroAstRunSetupCommand command = new MicroAstRunSetupCommand("isolate-1", "panel-1", "standard-1",
+                "Urine-specific panel required", MicroAstTechnique.DISK_DIFFUSION,
+                java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), java.util.List.of("abx-1"), false, null,
+                null);
+        when(service.startRun(command, "42")).thenReturn(run);
         when(service.getOrderedAntibioticsForRun("run-1")).thenReturn(java.util.List.of(ordered));
 
         MicroAstRunForm response = new MicroAstRestController(service).startRun(request, requestFor("42")).getBody();
 
-        verify(service).startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
-                MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)),
-                java.util.List.of("abx-1"), "42");
+        verify(service).startRun(command, "42");
         assertEquals("abx-1", response.orderedAntibiotics.get(0).antibioticId);
     }
 

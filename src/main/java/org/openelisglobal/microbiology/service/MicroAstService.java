@@ -53,6 +53,10 @@ public interface MicroAstService {
     MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
             MicroAstTechnique technique, List<MicroLotSelection> lotSelections, String performedBy);
 
+    MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
+            MicroAstTechnique technique, List<MicroLotSelection> lotSelections, List<String> orderedAntibioticIds,
+            String performedBy);
+
     MicroAstReading recordReading(String runId, String antibioticId, BigDecimal rawValue, String performedBy);
 
     MicroAstReading recordReading(String runId, String antibioticId, MicroAstMethod method, BigDecimal rawValue,
