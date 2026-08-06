@@ -37,6 +37,9 @@ const AstEntryPanel = ({
   const [antibiotics, setAntibiotics] = useState([]);
   const [breakpointStandards, setBreakpointStandards] = useState([]);
   const [selectedPanelId, setSelectedPanelId] = useState("");
+  const [astSetup, setAstSetup] = useState(null);
+  const [adjustingPanel, setAdjustingPanel] = useState(false);
+  const [panelAdjustmentReason, setPanelAdjustmentReason] = useState("");
   const [selectedAntibioticId, setSelectedAntibioticId] = useState("");
   const [selectedStandardId, setSelectedStandardId] = useState("");
   const [method, setMethod] = useState("MIC");
@@ -88,6 +91,48 @@ const AstEntryPanel = ({
     });
   }, [service, workflowType]);
 
+  useEffect(() => {
+    if (
+      !activeIsolateId ||
+      !isolateIdentified ||
+      !service.getAstSetupForIsolate
+    ) {
+      return;
+    }
+    let active = true;
+    service
+      .getAstSetupForIsolate(activeIsolateId)
+      .then((setup) => {
+        if (!active) {
+          return;
+        }
+        if (!setup || setup.error || setup.statusCode >= 400) {
+          setActionError(
+            formatMicrobiologyEnum(
+              setup?.message || setup?.error || "AST_SETUP_UNAVAILABLE",
+            ),
+          );
+          return;
+        }
+        setAstSetup(setup);
+        if (setup.orderedPanelId) {
+          setSelectedPanelId(setup.orderedPanelId);
+          setAdjustingPanel(false);
+        } else {
+          setAdjustingPanel(true);
+        }
+        setPanelAdjustmentReason("");
+      })
+      .catch(() => {
+        if (active) {
+          setActionError(formatMicrobiologyEnum("AST_SETUP_UNAVAILABLE"));
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeIsolateId, isolateIdentified, service]);
+
   const loadAstState = useCallback(() => {
     if (!activeIsolateId) {
       return Promise.resolve().then(() => setRuns([]));
@@ -130,6 +175,14 @@ const AstEntryPanel = ({
   const hasInProgressRun = runs.some((run) => run.status === "IN_PROGRESS");
   const effectiveAttemptMethod = attemptMethod || currentRun?.method || "MIC";
   const lotSelections = Object.values(selectedLots);
+  const panelAdjusted = Boolean(
+    astSetup && selectedPanelId !== astSetup.orderedPanelId,
+  );
+  const setupUnavailable = Boolean(
+    service.getAstSetupForIsolate &&
+    isolateIdentified &&
+    astSetup?.isolateId !== activeIsolateId,
+  );
 
   const selectLot = (selection) => {
     const selectionKey = `${selection.analysisId}:${selection.testReagentLinkId}`;
@@ -181,6 +234,9 @@ const AstEntryPanel = ({
         isolateId: activeIsolateId,
         panelId: selectedPanelId,
         breakpointStandardId: selectedStandardId,
+        ...(panelAdjusted
+          ? { panelAdjustmentReason: panelAdjustmentReason.trim() }
+          : {}),
         ...(lotSelections.length > 0 ? { lotSelections } : {}),
       }),
     ).then((run) => {
@@ -302,22 +358,81 @@ const AstEntryPanel = ({
                   />
                 ))}
               </Select>
-              <Select
-                id="microbiology-ast-panel"
-                labelText={intl.formatMessage({
-                  id: "microbiology.ast.panel",
-                })}
-                value={selectedPanelId}
-                onChange={(event) => setSelectedPanelId(event.target.value)}
-              >
-                {panels.map((panel) => (
-                  <SelectItem
-                    key={panel.id}
-                    value={panel.id}
-                    text={panel.label}
-                  />
-                ))}
-              </Select>
+              {astSetup?.orderedPanelId && !adjustingPanel ? (
+                <div className="microbiology-ast-panel-confirmation">
+                  <span className="microbiology-card__hint">
+                    {intl.formatMessage({
+                      id: "microbiology.ast.orderedPanel",
+                    })}
+                  </span>
+                  <strong>
+                    {astSetup.orderedPanelLabel}
+                    {astSetup.orderedPanelVersion
+                      ? ` v${astSetup.orderedPanelVersion}`
+                      : ""}
+                  </strong>
+                  <span className="microbiology-card__hint">
+                    {intl.formatMessage({
+                      id: "microbiology.ast.panelProvenance.organismDefault",
+                    })}
+                  </span>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={() => setAdjustingPanel(true)}
+                  >
+                    {intl.formatMessage({
+                      id: "microbiology.ast.adjustPanel",
+                    })}
+                  </Button>
+                </div>
+              ) : (
+                <div className="microbiology-ast-panel-adjustment">
+                  <Select
+                    id="microbiology-ast-panel"
+                    labelText={intl.formatMessage({
+                      id: "microbiology.ast.panel",
+                    })}
+                    value={selectedPanelId}
+                    onChange={(event) => setSelectedPanelId(event.target.value)}
+                  >
+                    {panels.map((panel) => (
+                      <SelectItem
+                        key={panel.id}
+                        value={panel.id}
+                        text={panel.label}
+                      />
+                    ))}
+                  </Select>
+                  {panelAdjusted && (
+                    <TextArea
+                      id="microbiology-ast-panel-adjustment-reason"
+                      labelText={intl.formatMessage({
+                        id: "microbiology.ast.panelAdjustmentReason",
+                      })}
+                      value={panelAdjustmentReason}
+                      onChange={(event) =>
+                        setPanelAdjustmentReason(event.target.value)
+                      }
+                    />
+                  )}
+                  {astSetup?.orderedPanelId && (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        setSelectedPanelId(astSetup.orderedPanelId);
+                        setPanelAdjustmentReason("");
+                        setAdjustingPanel(false);
+                      }}
+                    >
+                      {intl.formatMessage({ id: "button.cancel" })}
+                    </Button>
+                  )}
+                </div>
+              )}
               <Select
                 id="microbiology-ast-breakpoint-standard"
                 labelText={intl.formatMessage({
@@ -361,7 +476,9 @@ const AstEntryPanel = ({
                         !!currentRun ||
                         !activeIsolateId ||
                         !isolateIdentified ||
-                        !selectedPanelId
+                        setupUnavailable ||
+                        !selectedPanelId ||
+                        (panelAdjusted && !panelAdjustmentReason.trim())
                       }
                     >
                       {intl.formatMessage({ id: "microbiology.ast.startRun" })}

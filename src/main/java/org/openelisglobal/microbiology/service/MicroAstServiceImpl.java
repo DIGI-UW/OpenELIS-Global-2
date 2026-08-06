@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
@@ -9,9 +10,11 @@ import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
@@ -26,6 +29,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.stereotype.Service;
@@ -48,12 +52,13 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroReagentLotService reagentLotService;
     private final MicroOrganismDAO organismDAO;
     private final SampleItemService sampleItemService;
+    private final MicroAstPanelDAO panelDAO;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
             MicroAstInterpretationService interpretationService, MicroCaseAmendmentDAO amendmentDAO,
             MicroReagentLotService reagentLotService, MicroOrganismDAO organismDAO,
-            SampleItemService sampleItemService) {
+            SampleItemService sampleItemService, MicroAstPanelDAO panelDAO) {
         this.runDAO = runDAO;
         this.readingDAO = readingDAO;
         this.isolateDAO = isolateDAO;
@@ -65,6 +70,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         this.reagentLotService = reagentLotService;
         this.organismDAO = organismDAO;
         this.sampleItemService = sampleItemService;
+        this.panelDAO = panelDAO;
     }
 
     @Override
@@ -83,6 +89,13 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Transactional
     public MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId,
             List<MicroLotSelection> lotSelections, String performedBy) {
+        return startRun(isolateId, panelId, breakpointStandardId, null, lotSelections, performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId,
+            String panelAdjustmentReason, List<MicroLotSelection> lotSelections, String performedBy) {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
@@ -91,10 +104,18 @@ public class MicroAstServiceImpl implements MicroAstService {
             throw new IllegalStateException("AST_ISOLATE_IDENTIFICATION_REQUIRED");
         }
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
+        MicroOrganism organism = organismDAO.get(isolate.getOrganismId())
+                .orElseThrow(() -> new IllegalArgumentException("AST_ORGANISM_NOT_FOUND"));
+        PanelSelection panelSelection = resolvePanel(organism, panelId, panelAdjustmentReason);
+        MicroBreakpointStandard standard = resolveStandard(breakpointStandardId);
         MicroAstRun run = new MicroAstRun();
         run.setIsolateId(isolateId);
-        run.setPanelId(panelId);
-        run.setBreakpointStandardId(breakpointStandardId);
+        run.setPanelId(panelSelection.panel.getId());
+        run.setPanelVersion(panelSelection.panel.getVersionNumber());
+        run.setPanelProvenance(panelSelection.provenance);
+        run.setPanelAdjustmentReason(panelSelection.adjustmentReason);
+        run.setBreakpointStandardId(standard.getId());
+        run.setBreakpointVersion(standard.getVersion());
         run.setAttemptType(MicroAstAttemptType.ORIGINAL.name());
         run.setReportable(false);
         if (isAmendmentInProgress(microCase)) {
@@ -109,6 +130,32 @@ public class MicroAstServiceImpl implements MicroAstService {
         reagentLotService.recordSelections(isolate.getCaseId(), MicroInventoryUsageContext.AST_SETUP, run.getId(),
                 lotSelections, performedBy);
         return run;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroAstSetupForm getSetup(String isolateId) {
+        MicroCaseServiceImpl.requireText(isolateId, "isolateId");
+        MicroIsolate isolate = isolateDAO.get(isolateId)
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        if (!MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())
+                || isolate.getOrganismId() == null || isolate.getOrganismId().isBlank()) {
+            throw new IllegalStateException("AST_ISOLATE_IDENTIFICATION_REQUIRED");
+        }
+        MicroOrganism organism = organismDAO.get(isolate.getOrganismId())
+                .orElseThrow(() -> new IllegalArgumentException("AST_ORGANISM_NOT_FOUND"));
+        MicroAstSetupForm form = new MicroAstSetupForm();
+        form.isolateId = isolateId;
+        form.panelProvenance = "UNASSIGNED";
+        if (organism.getDefaultAstPanelId() != null && !organism.getDefaultAstPanelId().isBlank()) {
+            MicroAstPanel panel = panelDAO.get(organism.getDefaultAstPanelId())
+                    .orElseThrow(() -> new IllegalStateException("AST_ORDERED_PANEL_NOT_FOUND"));
+            form.orderedPanelId = panel.getId();
+            form.orderedPanelLabel = panel.getName();
+            form.orderedPanelVersion = panel.getVersionNumber();
+            form.panelProvenance = "ORGANISM_DEFAULT";
+        }
+        return form;
     }
 
     @Override
@@ -145,7 +192,11 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = new MicroAstRun();
         run.setIsolateId(source.getIsolateId());
         run.setPanelId(source.getPanelId());
+        run.setPanelVersion(source.getPanelVersion());
+        run.setPanelProvenance(source.getPanelProvenance());
+        run.setPanelAdjustmentReason(source.getPanelAdjustmentReason());
         run.setBreakpointStandardId(source.getBreakpointStandardId());
+        run.setBreakpointVersion(source.getBreakpointVersion());
         run.setAttemptType(attemptType.name());
         run.setSourceRunId(source.getId());
         run.setAttemptReason(reason.trim());
@@ -332,6 +383,43 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (reason == null || reason.trim().isEmpty()) {
             throw new IllegalArgumentException("AST_ATTEMPT_REASON_REQUIRED");
         }
+    }
+
+    private PanelSelection resolvePanel(MicroOrganism organism, String requestedPanelId, String adjustmentReason) {
+        String orderedPanelId = organism.getDefaultAstPanelId();
+        String selectedPanelId = requestedPanelId == null || requestedPanelId.isBlank() ? orderedPanelId
+                : requestedPanelId;
+        if (selectedPanelId == null || selectedPanelId.isBlank()) {
+            throw new IllegalStateException("AST_ORDERED_PANEL_REQUIRED");
+        }
+        MicroAstPanel panel = panelDAO.get(selectedPanelId)
+                .orElseThrow(() -> new IllegalArgumentException("AST_PANEL_NOT_FOUND"));
+        boolean adjusted = orderedPanelId == null || !orderedPanelId.equals(selectedPanelId);
+        if (adjusted && (adjustmentReason == null || adjustmentReason.trim().isEmpty())) {
+            throw new IllegalArgumentException("AST_PANEL_ADJUSTMENT_REASON_REQUIRED");
+        }
+        return new PanelSelection(panel, adjusted ? "ADJUSTED" : "ORGANISM_DEFAULT",
+                adjusted ? adjustmentReason.trim() : null);
+    }
+
+    private MicroBreakpointStandard resolveStandard(String requestedStandardId) {
+        if (requestedStandardId != null && !requestedStandardId.isBlank()) {
+            MicroBreakpointStandard selected = breakpointService.getStandard(requestedStandardId);
+            if (selected == null || "N".equals(selected.getIsActive())
+                    || "ARCHIVED".equals(selected.getLifecycleStatus())) {
+                throw new IllegalArgumentException("AST_BREAKPOINT_STANDARD_NOT_AVAILABLE");
+            }
+            return selected;
+        }
+        List<MicroBreakpointStandard> active = breakpointService.getActiveStandards().stream()
+                .filter(standard -> "ACTIVE".equals(standard.getLifecycleStatus())).toList();
+        if (active.size() != 1) {
+            throw new IllegalArgumentException("AST_BREAKPOINT_STANDARD_REQUIRED");
+        }
+        return active.get(0);
+    }
+
+    private record PanelSelection(MicroAstPanel panel, String provenance, String adjustmentReason) {
     }
 
     private MicroCase requireMutableCase(String caseId) {

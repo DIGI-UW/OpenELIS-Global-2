@@ -15,6 +15,7 @@ import org.openelisglobal.microbiology.form.MicroAstOverrideRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
+import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
@@ -57,6 +58,21 @@ public class MicroAstRestControllerTest {
         }
 
         verify(service, never()).overrideReading(any(), any(), any(), any());
+    }
+
+    @Test
+    public void setupReturnsTheServerResolvedOrderedPanel() {
+        MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
+        MicroAstSetupForm setup = new MicroAstSetupForm();
+        setup.isolateId = "isolate-1";
+        setup.orderedPanelId = "panel-1";
+        setup.orderedPanelVersion = 3;
+        when(service.getSetup("isolate-1")).thenReturn(setup);
+
+        MicroAstSetupForm response = new MicroAstRestController(service).getSetup("isolate-1").getBody();
+
+        assertEquals("panel-1", response.orderedPanelId);
+        assertEquals(Integer.valueOf(3), response.orderedPanelVersion);
     }
 
     @Test
@@ -106,17 +122,18 @@ public class MicroAstRestControllerTest {
         request.isolateId = "isolate-1";
         request.panelId = "panel-1";
         request.breakpointStandardId = "standard-1";
+        request.panelAdjustmentReason = "Urine-specific panel required";
         MicroLotSelectionRequestForm selection = new MicroLotSelectionRequestForm();
         selection.analysisId = "41";
         selection.testReagentLinkId = "link-1";
         selection.lotId = 7L;
         request.lotSelections.add(selection);
-        when(service.startRun("isolate-1", "panel-1", "standard-1",
+        when(service.startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
                 java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42")).thenReturn(run);
 
         new MicroAstRestController(service).startRun(request, requestFor("42"));
 
-        verify(service).startRun("isolate-1", "panel-1", "standard-1",
+        verify(service).startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
                 java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42");
     }
 

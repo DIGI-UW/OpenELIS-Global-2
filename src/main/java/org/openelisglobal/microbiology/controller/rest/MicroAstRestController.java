@@ -8,6 +8,7 @@ import org.openelisglobal.microbiology.form.MicroAstReadingForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
+import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
@@ -45,16 +46,19 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         return ResponseEntity.ok(forms);
     }
 
+    @GetMapping("/setup")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MicroAstSetupForm> getSetup(@RequestParam String isolateId) {
+        return ResponseEntity.ok(astService.getSetup(isolateId));
+    }
+
     @PostMapping("/runs")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request,
             HttpServletRequest httpRequest) {
-        if (request.lotSelections == null || request.lotSelections.isEmpty()) {
-            return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
-                    request.breakpointStandardId, authenticatedUserId(httpRequest))));
-        }
         return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
-                request.breakpointStandardId, lotSelections(request.lotSelections), authenticatedUserId(httpRequest))));
+                request.breakpointStandardId, request.panelAdjustmentReason, lotSelections(request.lotSelections),
+                authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{sourceRunId}/attempts")
@@ -119,7 +123,11 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.id = run.getId();
         form.isolateId = run.getIsolateId();
         form.panelId = run.getPanelId();
+        form.panelVersion = run.getPanelVersion();
+        form.panelProvenance = run.getPanelProvenance();
+        form.panelAdjustmentReason = run.getPanelAdjustmentReason();
         form.breakpointStandardId = run.getBreakpointStandardId();
+        form.breakpointVersion = run.getBreakpointVersion();
         form.attemptType = run.getAttemptType();
         form.sourceRunId = run.getSourceRunId();
         form.attemptReason = run.getAttemptReason();

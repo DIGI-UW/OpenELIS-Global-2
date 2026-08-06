@@ -342,6 +342,18 @@
   align-self: end;
 }
 
+.microbiology-ast-panel-confirmation,
+.microbiology-ast-panel-adjustment {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.microbiology-ast-panel-confirmation .cds--btn,
+.microbiology-ast-panel-adjustment .cds--btn {
+  justify-self: start;
+}
+
 .microbiology-table {
   border-collapse: collapse;
   font-size: 0.875rem;
