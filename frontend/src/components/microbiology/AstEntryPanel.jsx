@@ -361,6 +361,36 @@ const AstEntryPanel = ({
     unresolvedInstrumentMismatch ||
     unresolvedNoBreakpoint ||
     unresolvedExpertFlags;
+  const astProgress = [];
+  if (readiness) {
+    astProgress.push(
+      readiness.astRunsTotal > 0
+        ? intl.formatMessage(
+            { id: "microbiology.ast.runsComplete" },
+            {
+              complete: readiness.astRunsComplete,
+              total: readiness.astRunsTotal,
+            },
+          )
+        : intl.formatMessage({ id: "microbiology.ast.noRunsYet" }),
+    );
+    if (readiness.significantIsolatesAwaitingAstSetup > 0) {
+      astProgress.push(
+        intl.formatMessage(
+          { id: "microbiology.ast.awaitingSetupCount" },
+          { count: readiness.significantIsolatesAwaitingAstSetup },
+        ),
+      );
+    }
+    if (readiness.isolatesPendingIdentification > 0) {
+      astProgress.push(
+        intl.formatMessage(
+          { id: "microbiology.ast.pendingIdentificationCount" },
+          { count: readiness.isolatesPendingIdentification },
+        ),
+      );
+    }
+  }
 
   const selectLot = (selection) => {
     const selectionKey = `${selection.analysisId}:${selection.testReagentLinkId}`;
@@ -568,6 +598,11 @@ const AstEntryPanel = ({
         <div>
           <h3 id="microbiology-ast-heading">
             {intl.formatMessage({ id: "microbiology.ast.title" })}
+            {astProgress.length > 0 ? (
+              <span className="microbiology-ast-progress-count">
+                {astProgress.join(" · ")}
+              </span>
+            ) : null}
           </h3>
           <p className="microbiology-card__hint">
             {intl.formatMessage({ id: "microbiology.ast.hint" })}
