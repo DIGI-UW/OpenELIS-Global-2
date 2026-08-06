@@ -583,6 +583,14 @@
   padding: 1rem;
 }
 
+.microbiology-ast-progress-count {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
 .microbiology-ast-qc-recovery,
 .microbiology-ast-flag-review {
   display: grid;

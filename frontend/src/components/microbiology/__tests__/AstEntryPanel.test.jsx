@@ -668,6 +668,35 @@ describe("AstEntryPanel", () => {
     ).toBeDisabled();
   });
 
+  it("shows complete runs plus isolates still awaiting AST work", async () => {
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "GN-STD" }]),
+      getAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ id: "abx-1", label: "Ciprofloxacin" }]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([reviewedRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["ISOLATE_IDENTIFICATION_REQUIRED"],
+        astRunsComplete: 1,
+        astRunsTotal: 1,
+        significantIsolatesAwaitingAstSetup: 1,
+        isolatesPendingIdentification: 1,
+      }),
+    };
+
+    renderPanel(service);
+
+    expect(
+      await screen.findByText(
+        "1 / 1 runs complete · 1 awaiting setup · 1 pending identification",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("surfaces analyzer provenance and blocks acceptance until flagged results are addressed", async () => {
     const resultsInRun = {
       ...runWithReading,
