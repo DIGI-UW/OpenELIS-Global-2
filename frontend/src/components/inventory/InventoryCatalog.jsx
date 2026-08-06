@@ -51,7 +51,6 @@ const InventoryCatalog = () => {
   );
 
   const [items, setItems] = useState([]);
-  // Guards setState after awaits when this view unmounts mid-fetch.
   const isMountedRef = useRef(true);
   useEffect(() => {
     isMountedRef.current = true;

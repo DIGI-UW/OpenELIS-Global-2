@@ -51,7 +51,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   });
 
   const [saving, setSaving] = useState(false);
-  // Guards setState after awaits when this view unmounts mid-fetch.
   const isMountedRef = useRef(true);
   useEffect(() => {
     isMountedRef.current = true;
