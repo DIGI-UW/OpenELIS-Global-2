@@ -102,6 +102,14 @@ export const getAstSetupForIsolate = (isolateId) =>
     );
   });
 
+export const getAstPanelAntibiotics = (panelId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/ast/panels/${encodeURIComponent(panelId)}/antibiotics`,
+      resolve,
+    );
+  });
+
 export const getAntibiotics = () =>
   new Promise((resolve) => {
     getFromOpenElisServer("/rest/microbiology/reference/antibiotics", resolve);
@@ -434,6 +442,7 @@ const MicrobiologyService = {
   updateIsolateIdentification,
   getAstPanels,
   getAstSetupForIsolate,
+  getAstPanelAntibiotics,
   getAntibiotics,
   getOrganisms,
   getBreakpointStandards,

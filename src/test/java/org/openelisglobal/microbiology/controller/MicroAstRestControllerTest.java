@@ -43,6 +43,25 @@ public class MicroAstRestControllerTest {
     }
 
     @Test
+    public void panelAntibioticsExposeTheConfiguredOrderForAdjustment() {
+        MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
+        org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic ordered = new org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic();
+        ordered.setAntibioticId("abx-1");
+        ordered.setDisplayOrder(2);
+        ordered.setTier(1);
+        ordered.setReportBehavior("ALWAYS");
+        when(service.getPanelAntibiotics("panel-1")).thenReturn(java.util.List.of(ordered));
+
+        org.openelisglobal.microbiology.form.MicroAstRunAntibioticForm response = new MicroAstRestController(service)
+                .getPanelAntibiotics("panel-1").getBody().get(0);
+
+        assertEquals("abx-1", response.antibioticId);
+        assertEquals(Integer.valueOf(2), response.displayOrder);
+        assertEquals(Integer.valueOf(1), response.tier);
+        assertEquals("ALWAYS", response.reportBehavior);
+    }
+
+    @Test
     public void repeatAndSelectionUseTheAuthenticatedActor() {
         MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
         MicroAstRun repeat = new MicroAstRun();
@@ -96,20 +115,22 @@ public class MicroAstRestControllerTest {
         request.breakpointStandardId = "standard-1";
         request.panelAdjustmentReason = "Urine-specific panel required";
         request.technique = MicroAstTechnique.DISK_DIFFUSION.name();
+        request.orderedAntibioticIds = java.util.List.of("abx-1");
         MicroLotSelectionRequestForm selection = new MicroLotSelectionRequestForm();
         selection.analysisId = "41";
         selection.testReagentLinkId = "link-1";
         selection.lotId = 7L;
         request.lotSelections.add(selection);
         when(service.startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
-                MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42"))
-                .thenReturn(run);
+                MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)),
+                java.util.List.of("abx-1"), "42")).thenReturn(run);
         when(service.getOrderedAntibioticsForRun("run-1")).thenReturn(java.util.List.of(ordered));
 
         MicroAstRunForm response = new MicroAstRestController(service).startRun(request, requestFor("42")).getBody();
 
         verify(service).startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
-                MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42");
+                MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)),
+                java.util.List.of("abx-1"), "42");
         assertEquals("abx-1", response.orderedAntibiotics.get(0).antibioticId);
     }
 

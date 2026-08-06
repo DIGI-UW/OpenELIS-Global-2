@@ -7,6 +7,7 @@ import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
@@ -31,6 +32,10 @@ public interface MicroAstService {
 
     MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String panelAdjustmentReason,
             MicroAstTechnique technique, List<MicroLotSelection> lotSelections, String performedBy);
+
+    MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String panelAdjustmentReason,
+            MicroAstTechnique technique, List<MicroLotSelection> lotSelections, List<String> orderedAntibioticIds,
+            String performedBy);
 
     MicroAstSetupForm getSetup(String isolateId);
 
@@ -67,4 +72,6 @@ public interface MicroAstService {
     List<MicroAstReading> getReadingsForRun(String runId);
 
     List<MicroAstRunAntibiotic> getOrderedAntibioticsForRun(String runId);
+
+    List<MicroAstPanelAntibiotic> getPanelAntibiotics(String panelId);
 }

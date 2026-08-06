@@ -7371,6 +7371,7 @@
   "microbiology.ast.antibiotic": "Antibiotic",
   "microbiology.ast.actionError": "AST action could not be completed",
   "microbiology.ast.adjustPanel": "Adjust panel",
+  "microbiology.ast.orderedAntibiotics": "Antibiotics to test",
   "microbiology.ast.actions": "Actions",
   "microbiology.ast.applyOverride": "Apply override",
   "microbiology.ast.attempt": "Attempt",

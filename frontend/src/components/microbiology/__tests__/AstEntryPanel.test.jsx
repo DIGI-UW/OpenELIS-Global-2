@@ -380,7 +380,18 @@ describe("AstEntryPanel", () => {
         orderedPanelVersion: 3,
         panelProvenance: "ORGANISM_DEFAULT",
       }),
-      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getAntibiotics: vi.fn().mockResolvedValue([
+        { id: "abx-1", label: "Ciprofloxacin" },
+        { id: "abx-2", label: "Gentamicin" },
+      ]),
+      getAstPanelAntibiotics: vi.fn().mockImplementation((panelId) =>
+        Promise.resolve([
+          {
+            antibioticId: panelId === "panel-2" ? "abx-2" : "abx-1",
+            displayOrder: 1,
+          },
+        ]),
+      ),
       getBreakpointStandards: vi
         .fn()
         .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
@@ -416,7 +427,73 @@ describe("AstEntryPanel", () => {
         panelId: "panel-2",
         breakpointStandardId: "std-clsi",
         technique: "VITEK_2",
+        orderedAntibioticIds: ["abx-2"],
         panelAdjustmentReason: "Urine-specific panel required",
+      }),
+    );
+  });
+
+  it("adds an individual antibiotic through the Carbon order adjustment control", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "GN-STD" }]),
+      getAstSetupForIsolate: vi.fn().mockResolvedValue({
+        isolateId: "iso-1",
+        orderedPanelId: "panel-1",
+        orderedPanelLabel: "GN-STD",
+        orderedPanelVersion: 3,
+        panelProvenance: "ORGANISM_DEFAULT",
+      }),
+      getAntibiotics: vi.fn().mockResolvedValue([
+        { id: "abx-1", label: "Ciprofloxacin" },
+        { id: "abx-2", label: "Gentamicin" },
+      ]),
+      getAstPanelAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ antibioticId: "abx-1", displayOrder: 1 }]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([inProgressRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+      startAstRun: vi.fn().mockResolvedValue(inProgressRun),
+    };
+
+    renderPanel(service);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Adjust panel" }),
+    );
+    const drugSelector = await screen.findByRole("combobox", {
+      name: /Antibiotics to test Total items selected:\s+1\./,
+    });
+    await user.click(drugSelector);
+    await user.click(await screen.findByRole("option", { name: "Gentamicin" }));
+    expect(
+      screen.getByRole("button", { name: "Start AST run" }),
+    ).toBeDisabled();
+    await user.type(
+      screen.getByLabelText("Reason for panel adjustment"),
+      "Add reserve drug",
+    );
+    await user.click(screen.getByRole("button", { name: "Start AST run" }));
+
+    await waitFor(() =>
+      expect(service.startAstRun).toHaveBeenCalledWith({
+        isolateId: "iso-1",
+        panelId: "panel-1",
+        breakpointStandardId: "std-clsi",
+        technique: "VITEK_2",
+        orderedAntibioticIds: ["abx-1", "abx-2"],
+        panelAdjustmentReason: "Add reserve drug",
       }),
     );
   });

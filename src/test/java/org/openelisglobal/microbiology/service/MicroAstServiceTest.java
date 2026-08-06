@@ -19,6 +19,7 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstOverrideEventDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
@@ -31,6 +32,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
+import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -104,6 +106,9 @@ public class MicroAstServiceTest {
     private MicroAstRunAntibioticDAO runAntibioticDAO;
 
     @Mock
+    private MicroAntibioticDAO antibioticDAO;
+
+    @Mock
     private MicroAstOverrideEventDAO overrideEventDAO;
 
     @Mock
@@ -115,7 +120,7 @@ public class MicroAstServiceTest {
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
                 interpretationService, amendmentDAO, reagentLotService, organismDAO, panelDAO, overrideEventDAO,
-                systemUserService, panelAntibioticDAO, runAntibioticDAO);
+                systemUserService, panelAntibioticDAO, runAntibioticDAO, antibioticDAO);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
         MicroOrganism organism = new MicroOrganism();
         organism.setId("org-1");
@@ -172,6 +177,30 @@ public class MicroAstServiceTest {
         assertEquals(run.getId(), ordered.getValue().getAstRunId());
         assertEquals("abx-1", ordered.getValue().getAntibioticId());
         assertEquals(Integer.valueOf(1), ordered.getValue().getDisplayOrder());
+    }
+
+    @Test
+    public void adjustedDrugSetRequiresReasonAndSnapshotsTheRequestedMembership() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(antibioticDAO.get("abx-added")).thenReturn(Optional.of(activeAntibiotic("abx-added")));
+
+        try {
+            service.startRun("iso-1", "panel-1", "eucast-std", null, MicroAstTechnique.VITEK_2, List.of(),
+                    List.of("abx-1", "abx-added"), "1");
+            fail("Expected an adjustment reason");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("AST_PANEL_ADJUSTMENT_REASON_REQUIRED", expected.getMessage());
+        }
+
+        MicroAstRun run = service.startRun("iso-1", "panel-1", "eucast-std", "Add reserve drug",
+                MicroAstTechnique.VITEK_2, List.of(), List.of("abx-1", "abx-added"), "1");
+
+        ArgumentCaptor<MicroAstRunAntibiotic> ordered = ArgumentCaptor.forClass(MicroAstRunAntibiotic.class);
+        verify(runAntibioticDAO, org.mockito.Mockito.times(2)).insert(ordered.capture());
+        assertEquals(List.of("abx-1", "abx-added"),
+                ordered.getAllValues().stream().map(MicroAstRunAntibiotic::getAntibioticId).toList());
+        assertEquals("ADJUSTED", run.getPanelProvenance());
+        assertEquals("Add reserve drug", run.getPanelAdjustmentReason());
     }
 
     @Test
@@ -674,6 +703,13 @@ public class MicroAstServiceTest {
         row.setAntibioticId(antibioticId);
         row.setDisplayOrder(displayOrder);
         return row;
+    }
+
+    private MicroAntibiotic activeAntibiotic(String id) {
+        MicroAntibiotic antibiotic = new MicroAntibiotic();
+        antibiotic.setId(id);
+        antibiotic.setIsActive("Y");
+        return antibiotic;
     }
 
     private MicroBreakpointStandard standard(String id, String authority, String version) {

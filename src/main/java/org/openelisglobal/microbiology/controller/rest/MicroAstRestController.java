@@ -55,13 +55,29 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         return ResponseEntity.ok(astService.getSetup(isolateId));
     }
 
+    @GetMapping("/panels/{panelId}/antibiotics")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroAstRunAntibioticForm>> getPanelAntibiotics(@PathVariable String panelId) {
+        List<MicroAstRunAntibioticForm> forms = new ArrayList<>();
+        for (org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic ordered : astService
+                .getPanelAntibiotics(panelId)) {
+            MicroAstRunAntibioticForm form = new MicroAstRunAntibioticForm();
+            form.antibioticId = ordered.getAntibioticId();
+            form.displayOrder = ordered.getDisplayOrder();
+            form.tier = ordered.getTier();
+            form.reportBehavior = ordered.getReportBehavior();
+            forms.add(form);
+        }
+        return ResponseEntity.ok(forms);
+    }
+
     @PostMapping("/runs")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request,
             HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
                 request.breakpointStandardId, request.panelAdjustmentReason, technique(request.technique),
-                lotSelections(request.lotSelections), authenticatedUserId(httpRequest))));
+                lotSelections(request.lotSelections), request.orderedAntibioticIds, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{sourceRunId}/attempts")
