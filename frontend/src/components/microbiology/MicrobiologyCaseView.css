@@ -228,6 +228,13 @@
   grid-column: 1 / -1;
 }
 
+.microbiology-inline-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .microbiology-list {
   display: grid;
   gap: 0.5rem;

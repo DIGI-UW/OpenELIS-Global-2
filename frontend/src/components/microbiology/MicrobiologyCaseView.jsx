@@ -19,6 +19,7 @@ import {
 } from "react-router-dom";
 import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
 import AstEntryPanel from "./AstEntryPanel";
+import CaseInoculationPanel from "./CaseInoculationPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import ChangeWorkflowPanel from "./ChangeWorkflowPanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
@@ -132,7 +133,10 @@ const getNextStepMessageId = (caseDetail) => {
   if (caseDetail.stage === "FINAL_RELEASED") {
     return "microbiology.next.finalReleased";
   }
-  if (!hasActivity(caseDetail, "STAGE_CHANGED")) {
+  if (
+    !hasActivity(caseDetail, "INOCULATION_RECORDED") &&
+    !hasActivity(caseDetail, "STAGE_CHANGED")
+  ) {
     return "microbiology.next.recordSetup";
   }
   if (caseDetail.stage === "NO_GROWTH_READY") {
@@ -167,6 +171,7 @@ const MicrobiologyCaseView = ({
     requirements: [],
     usages: [],
   });
+  const [inoculations, setInoculations] = useState([]);
   const [actionError, setActionError] = useState("");
 
   const loadReagentOverview = () => {
@@ -210,7 +215,10 @@ const MicrobiologyCaseView = ({
       service.getReagentLotOverview
         ? service.getReagentLotOverview(caseId)
         : Promise.resolve({ requirements: [], usages: [] }),
-    ]).then(([detail, projection, overview]) => {
+      service.getCaseInoculations
+        ? service.getCaseInoculations(caseId)
+        : Promise.resolve([]),
+    ]).then(([detail, projection, overview, caseInoculations]) => {
       if (!active) {
         return;
       }
@@ -226,6 +234,7 @@ const MicrobiologyCaseView = ({
         requirements: overview?.requirements || [],
         usages: overview?.usages || [],
       });
+      setInoculations(Array.isArray(caseInoculations) ? caseInoculations : []);
       setLoading(false);
     });
 
@@ -251,22 +260,28 @@ const MicrobiologyCaseView = ({
     }
   }, [caseDetail, caseId, history, routeState.section]);
 
-  const recordActivity = (payload) => {
+  const recordInoculation = (payload) => {
     setSaving(true);
     setActionError("");
     return service
-      .recordCaseActivity(caseId, payload)
-      .then((detail) => {
-        if (!detail || detail.error || detail.statusCode >= 400) {
+      .recordCaseInoculation(caseId, payload)
+      .then((result) => {
+        if (!result || result.error || result.statusCode >= 400) {
           throw new Error(
-            formatMicrobiologyEnum(detail?.message || detail?.error),
+            formatMicrobiologyEnum(result?.message || result?.error),
           );
         }
-        setCaseDetail(detail);
-        return loadReagentOverview();
+        return Promise.all([
+          loadCase({ showLoading: false }),
+          loadReagentOverview(),
+          service.getCaseInoculations(caseId).then((records) => {
+            setInoculations(Array.isArray(records) ? records : []);
+          }),
+        ]);
       })
-      .catch((activityError) => {
-        setActionError(activityError?.message || String(activityError));
+      .catch((inoculationError) => {
+        setActionError(inoculationError?.message || String(inoculationError));
+        throw inoculationError;
       })
       .finally(() => setSaving(false));
   };
@@ -569,14 +584,13 @@ const MicrobiologyCaseView = ({
                 disabled={unassigned}
               >
                 {!unassigned && (
-                  <CaseTimelinePanel
-                    activities={caseDetail.activities}
-                    onRecordActivity={recordActivity}
+                  <CaseInoculationPanel
+                    inoculations={inoculations}
+                    onRecord={recordInoculation}
                     saving={saving}
-                    setupSectionId="microbiology-setup"
-                    showTimeline={false}
                     reagentRequirements={reagentOverview.requirements}
                     reagentUsages={reagentOverview.usages}
+                    readOnly={finalReleased && !amendmentOpen}
                   />
                 )}
               </AccordionItem>
@@ -589,10 +603,7 @@ const MicrobiologyCaseView = ({
               >
                 <CaseTimelinePanel
                   activities={caseDetail.activities}
-                  onRecordActivity={recordActivity}
-                  saving={saving}
                   timelineSectionId="microbiology-timeline"
-                  showSetup={false}
                 />
               </AccordionItem>
               <AccordionItem

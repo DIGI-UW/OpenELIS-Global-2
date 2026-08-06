@@ -6,18 +6,15 @@ import {
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test.describe("Microbiology case workbench", () => {
-  test("records setup activity and creates an isolate", async ({ page }) => {
+  test("records inoculation lineage and creates an isolate", async ({
+    page,
+  }) => {
     const seeded = await seedMicrobiologyCase(page);
     await page.goto(
-      `/MicrobiologyCaseView/${seeded.caseId}?workflow=BACTERIOLOGY&sort=newest`,
+      `/Microbiology/cases/${seeded.caseId}?workflow=BACTERIOLOGY&sort=newest`,
       {
         waitUntil: "commit",
       },
-    );
-    await expect(page).toHaveURL(
-      new RegExp(
-        `/Microbiology/cases/${seeded.caseId}\\?workflow=BACTERIOLOGY&sort=newest$`,
-      ),
     );
 
     await expect(
@@ -31,17 +28,37 @@ test.describe("Microbiology case workbench", () => {
       .getByRole("button", { name: "Inoculation", exact: true })
       .click();
     await expect(page).toHaveURL(/section=setup/);
-    await page.getByLabel("Activity note").fill("setup complete");
     await page.getByRole("button", { name: "Start inoculation" }).click();
-    await expect(caseHeader.getByTitle("Setup Recorded")).toBeVisible({
+    await page.getByLabel("Bottle or plate ID").fill("BOTTLE-001");
+    await page.getByLabel("Media or bottle").fill("Blood culture bottle");
+    await page.getByLabel("Incubation").fill("35 C for 24 hours");
+    await page.getByLabel("Atmosphere").fill("Ambient");
+    await page.getByRole("button", { name: "Save media" }).click();
+    await expect(caseHeader.getByTitle("Incubating")).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
+    await expect(page.getByRole("cell", { name: "BOTTLE-001" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Add subculture" }).click();
+    await page.getByLabel("Parent media").selectOption({ label: /BOTTLE-001/ });
+    await page.getByLabel("Bottle or plate ID").fill("PLATE-002");
+    await page.getByLabel("Media or bottle").fill("MacConkey agar");
+    await page.getByRole("button", { name: "Save media" }).click();
+    await expect(page.getByRole("cell", { name: "PLATE-002" })).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: /Subculture BOTTLE-001/ }),
+    ).toBeVisible();
 
     await caseView
       .getByRole("button", { name: "Timeline", exact: true })
       .click();
     await expect(page).toHaveURL(/section=timeline/);
-    await expect(page.getByText(/setup complete/)).toBeVisible();
+    await expect(page.getByText("Inoculation Recorded")).toBeVisible();
+    await expect(
+      page.getByText(/BOTTLE-001 - Blood culture bottle/),
+    ).toBeVisible();
+    await expect(page.getByText("Subculture Recorded")).toBeVisible();
+    await expect(page.getByText(/PLATE-002 - MacConkey agar/)).toBeVisible();
 
     await caseView
       .getByRole("button", { name: "Isolates", exact: true })

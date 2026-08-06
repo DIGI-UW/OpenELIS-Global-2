@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.junit.Test;
 import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseInoculationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCriticalCommunicationRestController;
@@ -25,8 +26,8 @@ public class MicrobiologyArchitectureTest {
 
     @Test
     public void microbiologyControllersDoNotDeclareTransactions() {
-        Class<?>[] controllers = { MicroCaseRestController.class, MicroIsolateRestController.class,
-                MicroAstRestController.class, MicroCaseReadinessRestController.class,
+        Class<?>[] controllers = { MicroCaseRestController.class, MicroCaseInoculationRestController.class,
+                MicroIsolateRestController.class, MicroAstRestController.class, MicroCaseReadinessRestController.class,
                 MicrobiologyReferenceRestController.class, MicroWorklistRestController.class,
                 MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
                 MicroWhonetReadinessRestController.class, MicrobiologyUatScenarioRestController.class };
