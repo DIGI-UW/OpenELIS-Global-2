@@ -211,6 +211,49 @@ public class MicroWorklistServiceTest {
         assertEquals(1, page.summary.readyForCaseReview);
     }
 
+    @Test
+    public void astGrainProjectsOneRowPerRunAndFiltersByResultsInStatus() {
+        MicroCase microCase = microCase("case-ast", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.AST_IN_PROGRESS, "STAT");
+        MicroIsolate isolate = significantIsolate("iso-1");
+        isolate.setCaseId("case-ast");
+        isolate.setIsolateLabel("Isolate 1");
+        isolate.setPreliminaryOrganismText("E. coli");
+        MicroAstRun awaiting = astRun("run-awaiting", "iso-1", MicroAstRunStatus.AWAITING_RESULTS);
+        MicroAstRun resultsIn = astRun("run-results", "iso-1", MicroAstRunStatus.RESULTS_IN);
+        resultsIn.setPanelId("panel-1");
+
+        when(caseDAO.getOpenCases()).thenReturn(List.of(microCase));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(microCase));
+        when(isolateDAO.getByCaseIds(List.of("case-ast"))).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateIds(List.of("iso-1"))).thenReturn(List.of(awaiting, resultsIn));
+        when(communicationDAO.getByCaseIds(List.of("case-ast"))).thenReturn(List.of());
+
+        MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        query.grain = "ast";
+        query.status = "results-in";
+        MicroWorklistPageForm page = service.getWorklistPage(query);
+
+        assertEquals(1, page.total);
+        assertEquals(2, page.summary.astInQueue);
+        assertEquals(1, page.summary.astAwaitingResults);
+        assertEquals(1, page.summary.astResultsIn);
+        assertEquals("run-results", page.rows.get(0).rowId);
+        assertEquals("run-results", page.rows.get(0).astRunId);
+        assertEquals("iso-1", page.rows.get(0).isolateId);
+        assertEquals("Isolate 1", page.rows.get(0).isolateLabel);
+        assertEquals("E. coli", page.rows.get(0).organismDisplay);
+        assertEquals(MicroAstRunStatus.RESULTS_IN.name(), page.rows.get(0).astStatus);
+    }
+
+    private MicroAstRun astRun(String id, String isolateId, MicroAstRunStatus status) {
+        MicroAstRun run = new MicroAstRun();
+        run.setId(id);
+        run.setIsolateId(isolateId);
+        run.setStatus(status.name());
+        return run;
+    }
+
     private MicroCase microCase(String id, String sampleItemId, MicroWorkflowType workflowType, MicroCaseStage stage,
             String priority) {
         MicroCase microCase = new MicroCase();

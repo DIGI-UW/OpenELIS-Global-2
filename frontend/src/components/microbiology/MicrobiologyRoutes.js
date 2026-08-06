@@ -22,6 +22,8 @@ export const MICROBIOLOGY_CASE_ACTIONS = [
 export const MICROBIOLOGY_CRITICAL_TARGET_TYPES = ["CASE", "ISOLATE"];
 
 const DEFAULT_WORKLIST_STATE = {
+  grain: "cultures",
+  status: "",
   workflow: "",
   stage: "",
   urgency: "",
@@ -32,6 +34,11 @@ const DEFAULT_WORKLIST_STATE = {
   pageSize: 20,
 };
 
+const WORKLIST_STATUSES = {
+  cultures: ["incubating", "positive", "growth", "ready"],
+  ast: ["pending-setup", "in-progress", "results-in"],
+};
+
 const textValue = (value) => (typeof value === "string" ? value.trim() : "");
 
 const positiveInteger = (value, fallback) => {
@@ -39,25 +46,39 @@ const positiveInteger = (value, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const normalizeWorklistState = (state = {}) => ({
-  workflow: textValue(state.workflow),
-  stage: textValue(state.stage),
-  urgency: textValue(state.urgency),
-  due: textValue(state.due),
-  q: textValue(state.q),
-  sort: ["priority", "newest", "workflow"].includes(state.sort)
-    ? state.sort
-    : DEFAULT_WORKLIST_STATE.sort,
-  page: positiveInteger(state.page, DEFAULT_WORKLIST_STATE.page),
-  pageSize: MICROBIOLOGY_WORKLIST_PAGE_SIZES.includes(
-    positiveInteger(state.pageSize, DEFAULT_WORKLIST_STATE.pageSize),
-  )
-    ? positiveInteger(state.pageSize, DEFAULT_WORKLIST_STATE.pageSize)
-    : DEFAULT_WORKLIST_STATE.pageSize,
-});
+const normalizeWorklistState = (state = {}) => {
+  const grain = state.grain === "ast" ? "ast" : DEFAULT_WORKLIST_STATE.grain;
+  const status = WORKLIST_STATUSES[grain].includes(textValue(state.status))
+    ? textValue(state.status)
+    : "";
+  return {
+    grain,
+    status,
+    workflow: textValue(state.workflow),
+    stage: textValue(state.stage),
+    urgency: textValue(state.urgency),
+    due: textValue(state.due),
+    q: textValue(state.q),
+    sort: ["priority", "newest", "workflow"].includes(state.sort)
+      ? state.sort
+      : DEFAULT_WORKLIST_STATE.sort,
+    page: positiveInteger(state.page, DEFAULT_WORKLIST_STATE.page),
+    pageSize: MICROBIOLOGY_WORKLIST_PAGE_SIZES.includes(
+      positiveInteger(state.pageSize, DEFAULT_WORKLIST_STATE.pageSize),
+    )
+      ? positiveInteger(state.pageSize, DEFAULT_WORKLIST_STATE.pageSize)
+      : DEFAULT_WORKLIST_STATE.pageSize,
+  };
+};
 
 const toSearch = (state, caseState = {}) => {
   const params = new URLSearchParams();
+  if (state.grain !== DEFAULT_WORKLIST_STATE.grain) {
+    params.set("grain", state.grain);
+  }
+  if (state.status) {
+    params.set("status", state.status);
+  }
   if (state.workflow) {
     params.set("workflow", state.workflow);
   }
@@ -85,6 +106,9 @@ const toSearch = (state, caseState = {}) => {
   if (MICROBIOLOGY_CASE_SECTIONS.includes(caseState.section)) {
     params.set("section", caseState.section);
   }
+  if (caseState.section === "ast" && textValue(caseState.astRunId)) {
+    params.set("astRunId", textValue(caseState.astRunId));
+  }
   if (MICROBIOLOGY_CASE_ACTIONS.includes(caseState.action)) {
     params.set("action", caseState.action);
     if (
@@ -103,6 +127,8 @@ const toSearch = (state, caseState = {}) => {
 export const parseMicrobiologyWorklistSearch = (search = "") => {
   const params = new URLSearchParams(search);
   return normalizeWorklistState({
+    grain: params.get("grain"),
+    status: params.get("status"),
     workflow: params.get("workflow"),
     stage: params.get("stage"),
     urgency: params.get("urgency"),
@@ -135,6 +161,8 @@ export const parseMicrobiologyCaseSearch = (search = "") => {
       action === "log-critical" && targetType
         ? textValue(params.get("targetId"))
         : "",
+    astRunId:
+      params.get("section") === "ast" ? textValue(params.get("astRunId")) : "",
   };
 };
 

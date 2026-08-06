@@ -23,12 +23,15 @@ public class MicroWorklistRestController extends BaseRestController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MicroWorklistPageForm> getWorklistRows(@RequestParam(required = false) String workflow,
+    public ResponseEntity<MicroWorklistPageForm> getWorklistRows(@RequestParam(required = false) String grain,
+            @RequestParam(required = false) String status, @RequestParam(required = false) String workflow,
             @RequestParam(required = false) String stage, @RequestParam(required = false) String urgency,
             @RequestParam(required = false) String due, @RequestParam(required = false) String q,
             @RequestParam(required = false) String sort, @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        query.grain = grain;
+        query.status = status;
         query.workflow = workflow;
         query.stage = stage;
         query.urgency = urgency;

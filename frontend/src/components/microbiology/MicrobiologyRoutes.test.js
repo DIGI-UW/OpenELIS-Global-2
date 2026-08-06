@@ -23,12 +23,27 @@ describe("MicrobiologyRoutes", () => {
     );
   });
 
+  it("composes a canonical AST grain and status before shared filters", () => {
+    expect(
+      getMicrobiologyWorklistUrl({
+        grain: "ast",
+        status: "results-in",
+        urgency: "HIGH",
+        q: "E. coli",
+      }),
+    ).toBe(
+      "/Microbiology/worklist?grain=ast&status=results-in&urgency=HIGH&q=E.+coli",
+    );
+  });
+
   it("drops unsupported worklist state while parsing", () => {
     expect(
       parseMicrobiologyWorklistSearch(
         "?workflow=BACTERIOLOGY&sort=unsupported&unknown=value",
       ),
     ).toEqual({
+      grain: "cultures",
+      status: "",
       workflow: "BACTERIOLOGY",
       stage: "",
       urgency: "",
@@ -37,6 +52,21 @@ describe("MicrobiologyRoutes", () => {
       sort: "priority",
       page: 1,
       pageSize: 20,
+    });
+  });
+
+  it("drops a status that does not belong to the selected grain", () => {
+    expect(
+      parseMicrobiologyWorklistSearch("?grain=ast&status=growth"),
+    ).toMatchObject({
+      grain: "ast",
+      status: "",
+    });
+    expect(
+      parseMicrobiologyWorklistSearch("?grain=cultures&status=results-in"),
+    ).toMatchObject({
+      grain: "cultures",
+      status: "",
     });
   });
 
@@ -55,6 +85,8 @@ describe("MicrobiologyRoutes", () => {
         "?workflow=BACTERIOLOGY&urgency=HIGH&section=isolates",
       ),
     ).toEqual({
+      grain: "cultures",
+      status: "",
       workflow: "BACTERIOLOGY",
       urgency: "HIGH",
       stage: "",
@@ -67,6 +99,26 @@ describe("MicrobiologyRoutes", () => {
       action: "",
       targetType: "",
       targetId: "",
+      astRunId: "",
+    });
+  });
+
+  it("preserves the exact AST run and worklist grain in a case URL", () => {
+    const url = getMicrobiologyCaseUrl("case-1", {
+      grain: "ast",
+      status: "results-in",
+      section: "ast",
+      astRunId: "run / 1",
+    });
+
+    expect(url).toBe(
+      "/Microbiology/cases/case-1?grain=ast&status=results-in&section=ast&astRunId=run+%2F+1",
+    );
+    expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
+      grain: "ast",
+      status: "results-in",
+      section: "ast",
+      astRunId: "run / 1",
     });
   });
 

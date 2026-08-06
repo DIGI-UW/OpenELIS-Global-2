@@ -31,6 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroWorklistServiceImpl implements MicroWorklistService {
 
+    private static final String CULTURES_GRAIN = "cultures";
+    private static final String AST_GRAIN = "ast";
+
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstRunDAO astRunDAO;
@@ -61,13 +64,9 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 isolateIds.isEmpty() ? List.of() : astRunDAO.getByIsolateIds(isolateIds), MicroAstRun::getIsolateId);
         Map<String, List<MicroCriticalCommunication>> communicationsByCase = groupBy(
                 communicationDAO.getByCaseIds(caseIds), MicroCriticalCommunication::getCaseId);
-        List<MicroWorklistRowForm> rows = new ArrayList<>();
-        for (MicroCase microCase : openCases) {
-            List<MicroIsolate> isolates = valuesFor(isolatesByCase, microCase.getId());
-            rows.add(toRow(microCase, isolates, valuesFor(runsByIsolate, isolates),
-                    valuesFor(communicationsByCase, microCase.getId()),
-                    valuesFor(casesBySampleItem, microCase.getSampleItemId())));
-        }
+        List<MicroWorklistRowForm> rows = AST_GRAIN.equals(normalized.grain)
+                ? toAstRows(openCases, isolatesByCase, runsByIsolate)
+                : toCultureRows(openCases, isolatesByCase, runsByIsolate, communicationsByCase, casesBySampleItem);
         List<MicroWorklistRowForm> summaryRows = new ArrayList<>(rows);
         summaryRows.removeIf(row -> !matches(row, queryWithoutActionFilters(normalized)));
         rows.removeIf(row -> !matches(row, normalized));
@@ -86,6 +85,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
     private MicroWorklistQueryForm queryWithoutActionFilters(MicroWorklistQueryForm query) {
         MicroWorklistQueryForm summaryQuery = new MicroWorklistQueryForm();
+        summaryQuery.grain = query.grain;
         summaryQuery.workflow = query.workflow;
         summaryQuery.urgency = query.urgency;
         summaryQuery.q = query.q;
@@ -99,6 +99,10 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         MicroWorklistSummaryForm summary = new MicroWorklistSummaryForm();
         summary.totalPending = rows.size();
         for (MicroWorklistRowForm row : rows) {
+            if (AST_GRAIN.equals(row.grain)) {
+                summarizeAstRow(summary, row);
+                continue;
+            }
             if (MicroCaseStage.INCUBATING.name().equals(row.stage)) {
                 summary.incubating++;
             }
@@ -121,11 +125,28 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         return summary;
     }
 
+    private void summarizeAstRow(MicroWorklistSummaryForm summary, MicroWorklistRowForm row) {
+        summary.astInQueue++;
+        if ("PENDING_SETUP".equals(row.astStatus)) {
+            summary.astPendingSetup++;
+        } else if (MicroAstRunStatus.RESULTS_IN.name().equals(row.astStatus)
+                || MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus)) {
+            summary.astResultsIn++;
+        } else {
+            summary.astInProgress++;
+        }
+        if (MicroAstRunStatus.AWAITING_RESULTS.name().equals(row.astStatus)) {
+            summary.astAwaitingResults++;
+        }
+    }
+
     private MicroWorklistQueryForm normalize(MicroWorklistQueryForm query) {
         MicroWorklistQueryForm normalized = new MicroWorklistQueryForm();
         if (query == null) {
             return normalized;
         }
+        normalized.grain = AST_GRAIN.equals(query.grain) ? AST_GRAIN : CULTURES_GRAIN;
+        normalized.status = statusForGrain(normalized.grain, query.status);
         normalized.workflow = filterText(query.workflow);
         normalized.stage = filterText(query.stage);
         normalized.urgency = filterText(query.urgency);
@@ -140,6 +161,9 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     }
 
     private boolean matches(MicroWorklistRowForm row, MicroWorklistQueryForm query) {
+        if (!query.status.isEmpty() && !matchesStatus(row, query.status)) {
+            return false;
+        }
         if (!query.workflow.isEmpty() && !query.workflow.equals(row.workflowType)) {
             return false;
         }
@@ -156,8 +180,41 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             return true;
         }
         String searchable = String.join(" ", safe(row.caseId), safe(row.sampleItemId), safe(row.workflowType),
-                safe(row.stage), safe(row.dueAction), safe(row.urgency)).toLowerCase(Locale.ROOT);
+                safe(row.stage), safe(row.dueAction), safe(row.urgency), safe(row.isolateLabel),
+                safe(row.organismDisplay), safe(row.panelId), safe(row.astStatus)).toLowerCase(Locale.ROOT);
         return searchable.contains(query.q.toLowerCase(Locale.ROOT));
+    }
+
+    private String statusForGrain(String grain, String value) {
+        String status = text(value).toLowerCase(Locale.ROOT);
+        List<String> allowed = AST_GRAIN.equals(grain) ? List.of("pending-setup", "in-progress", "results-in")
+                : List.of("incubating", "positive", "growth", "ready");
+        return allowed.contains(status) ? status : "";
+    }
+
+    private boolean matchesStatus(MicroWorklistRowForm row, String status) {
+        if (AST_GRAIN.equals(row.grain)) {
+            if ("pending-setup".equals(status)) {
+                return "PENDING_SETUP".equals(row.astStatus);
+            }
+            if ("results-in".equals(status)) {
+                return MicroAstRunStatus.RESULTS_IN.name().equals(row.astStatus)
+                        || MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus);
+            }
+            return !"PENDING_SETUP".equals(row.astStatus) && !MicroAstRunStatus.RESULTS_IN.name().equals(row.astStatus)
+                    && !MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus);
+        }
+        if ("incubating".equals(status)) {
+            return MicroCaseStage.INCUBATING.name().equals(row.stage);
+        }
+        if ("positive".equals(status)) {
+            return "POSITIVE_SIGNAL".equals(row.stage);
+        }
+        if ("growth".equals(status)) {
+            return MicroCaseStage.GROWTH_DETECTED.name().equals(row.stage);
+        }
+        return MicroCaseStage.REVIEW_READY.name().equals(row.stage)
+                || MicroCaseStage.NO_GROWTH_READY.name().equals(row.stage);
     }
 
     private Comparator<MicroWorklistRowForm> comparatorFor(String sort) {
@@ -190,6 +247,8 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     private MicroWorklistRowForm toRow(MicroCase microCase, List<MicroIsolate> isolates, List<MicroAstRun> runs,
             List<MicroCriticalCommunication> communications, List<MicroCase> siblingCases) {
         MicroWorklistRowForm row = new MicroWorklistRowForm();
+        row.rowId = microCase.getId();
+        row.grain = CULTURES_GRAIN;
         row.caseId = microCase.getId();
         row.sampleItemId = microCase.getSampleItemId();
         row.workflowType = microCase.getWorkflowType();
@@ -205,6 +264,80 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 row.siblingWorkflows.add(sibling.getWorkflowType());
             }
         }
+        return row;
+    }
+
+    private List<MicroWorklistRowForm> toCultureRows(List<MicroCase> openCases,
+            Map<String, List<MicroIsolate>> isolatesByCase, Map<String, List<MicroAstRun>> runsByIsolate,
+            Map<String, List<MicroCriticalCommunication>> communicationsByCase,
+            Map<String, List<MicroCase>> casesBySampleItem) {
+        List<MicroWorklistRowForm> rows = new ArrayList<>();
+        for (MicroCase microCase : openCases) {
+            List<MicroIsolate> isolates = valuesFor(isolatesByCase, microCase.getId());
+            rows.add(toRow(microCase, isolates, valuesFor(runsByIsolate, isolates),
+                    valuesFor(communicationsByCase, microCase.getId()),
+                    valuesFor(casesBySampleItem, microCase.getSampleItemId())));
+        }
+        return rows;
+    }
+
+    private List<MicroWorklistRowForm> toAstRows(List<MicroCase> openCases,
+            Map<String, List<MicroIsolate>> isolatesByCase, Map<String, List<MicroAstRun>> runsByIsolate) {
+        List<MicroWorklistRowForm> rows = new ArrayList<>();
+        for (MicroCase microCase : openCases) {
+            for (MicroIsolate isolate : valuesFor(isolatesByCase, microCase.getId())) {
+                List<MicroAstRun> activeRuns = valuesFor(runsByIsolate, isolate.getId()).stream()
+                        .filter(this::isActiveWorklistRun).toList();
+                if (activeRuns.isEmpty()) {
+                    if (MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name().equals(isolate.getSignificance())) {
+                        rows.add(toAstRow(microCase, isolate, null));
+                    }
+                    continue;
+                }
+                for (MicroAstRun run : activeRuns) {
+                    rows.add(toAstRow(microCase, isolate, run));
+                }
+            }
+        }
+        return rows;
+    }
+
+    private boolean isActiveWorklistRun(MicroAstRun run) {
+        return !MicroAstRunStatus.INVALIDATED.name().equals(run.getStatus())
+                && !MicroAstRunStatus.RERUN_REQUIRED.name().equals(run.getStatus())
+                && !MicroAstRunStatus.CANCELLED.name().equals(run.getStatus());
+    }
+
+    private MicroWorklistRowForm toAstRow(MicroCase microCase, MicroIsolate isolate, MicroAstRun run) {
+        MicroWorklistRowForm row = new MicroWorklistRowForm();
+        row.grain = AST_GRAIN;
+        row.caseId = microCase.getId();
+        row.sampleItemId = microCase.getSampleItemId();
+        row.workflowType = microCase.getWorkflowType();
+        row.stage = microCase.getStage();
+        row.priority = microCase.getPriority();
+        row.isolateId = isolate.getId();
+        row.isolateLabel = isolate.getIsolateLabel();
+        row.organismDisplay = text(isolate.getPreliminaryOrganismText()).isEmpty() ? isolate.getOrganismId()
+                : isolate.getPreliminaryOrganismText();
+        if (run == null) {
+            row.rowId = "setup:" + isolate.getId();
+            row.astStatus = "PENDING_SETUP";
+            row.dueAction = "AST_ENTRY";
+            row.createdAt = isolate.getCreatedAt();
+        } else {
+            row.rowId = run.getId();
+            row.astRunId = run.getId();
+            row.panelId = run.getPanelId();
+            row.astStatus = run.getStatus();
+            row.astStartedAt = run.getStartedAt();
+            row.createdAt = run.getStartedAt();
+            row.analyzerResultsAvailable = MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())
+                    || MicroAstRunStatus.QC_FAILED.name().equals(run.getStatus());
+            row.dueAction = row.analyzerResultsAvailable ? "AST_REVIEW" : "AST_IN_PROGRESS";
+        }
+        row.needsAstReview = row.analyzerResultsAvailable;
+        row.urgency = urgency(microCase, row.needsAstReview, false);
         return row;
     }
 
