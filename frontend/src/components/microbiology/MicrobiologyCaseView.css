@@ -574,6 +574,28 @@
   gap: 0.75rem;
 }
 
+.microbiology-ast-analyzer-provenance {
+  background: #f4f4f4;
+  border-left: 0.25rem solid #0f62fe;
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.microbiology-ast-qc-recovery,
+.microbiology-ast-flag-review {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.microbiology-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .microbiology-critical-list {
   display: grid;
   gap: 0.75rem;

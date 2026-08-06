@@ -54,6 +54,7 @@ const AstEntryPanel = ({
   const [panels, setPanels] = useState([]);
   const [antibiotics, setAntibiotics] = useState([]);
   const [breakpointStandards, setBreakpointStandards] = useState([]);
+  const [analyzers, setAnalyzers] = useState([]);
   const [selectedPanelId, setSelectedPanelId] = useState("");
   const [astSetup, setAstSetup] = useState(null);
   const [adjustingPanel, setAdjustingPanel] = useState(false);
@@ -63,6 +64,9 @@ const AstEntryPanel = ({
   const [selectedAntibioticId, setSelectedAntibioticId] = useState("");
   const [selectedStandardId, setSelectedStandardId] = useState("");
   const [technique, setTechnique] = useState("VITEK_2");
+  const [entryMode, setEntryMode] = useState("MANUAL");
+  const [selectedAnalyzerId, setSelectedAnalyzerId] = useState("");
+  const [analyzerCardId, setAnalyzerCardId] = useState("");
   const [rawValue, setRawValue] = useState("4");
   const [overrideInterpretation, setOverrideInterpretation] =
     useState("RESISTANT");
@@ -79,6 +83,8 @@ const AstEntryPanel = ({
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState("");
   const [selectedLots, setSelectedLots] = useState({});
+  const [analyzerResolutionReason, setAnalyzerResolutionReason] = useState("");
+  const [replacementCardId, setReplacementCardId] = useState("");
 
   const activeIsolateId = selectedIsolateId || isolates[0]?.id || "";
   const activeIsolate = isolates.find(
@@ -111,6 +117,14 @@ const AstEntryPanel = ({
         setSelectedStandardId((current) => current || items[0].id);
       }
     });
+    if (service.getAnalyzers) {
+      service.getAnalyzers().then((items = []) => {
+        setAnalyzers(items);
+        if (items.length > 0) {
+          setSelectedAnalyzerId((current) => current || items[0].id);
+        }
+      });
+    }
   }, [service, workflowType]);
 
   useEffect(() => {
@@ -178,6 +192,9 @@ const AstEntryPanel = ({
     return (
       selected ||
       runs.find((run) => run.status === "IN_PROGRESS") ||
+      runs.find((run) => run.status === "RESULTS_IN") ||
+      runs.find((run) => run.status === "QC_FAILED") ||
+      runs.find((run) => run.status === "AWAITING_RESULTS") ||
       runs.find((run) => run.reportable) ||
       (runs.length > 0 ? runs[runs.length - 1] : null)
     );
@@ -258,7 +275,11 @@ const AstEntryPanel = ({
     reading?.antibioticId;
   const busy = saving || caseSaving;
   const isReviewed = currentRun?.status === "REVIEWED";
-  const hasInProgressRun = runs.some((run) => run.status === "IN_PROGRESS");
+  const hasInProgressRun = runs.some((run) =>
+    ["IN_PROGRESS", "AWAITING_RESULTS", "RESULTS_IN", "QC_FAILED"].includes(
+      run.status,
+    ),
+  );
   const effectiveAttemptTechnique =
     attemptTechnique || currentRun?.technique || "VITEK_2";
   const lotSelections = Object.values(selectedLots);
@@ -290,11 +311,47 @@ const AstEntryPanel = ({
       reading.overrideInterpretation ? "OVERRIDE" : reading.source || "UNKNOWN",
     ),
     matchedBy: formatMicrobiologyEnum(reading.matchedBy || "NONE"),
-    interpretation: reading.interpretation,
+    interpretation: reading.instrumentInterpretation
+      ? `${reading.interpretation} (${intl.formatMessage(
+          { id: "microbiology.ast.instrumentInterpretation" },
+          {
+            interpretation: formatMicrobiologyEnum(
+              reading.instrumentInterpretation,
+            ),
+          },
+        )})`
+      : reading.interpretation,
     override:
       reading.overrideReason ||
       intl.formatMessage({ id: "microbiology.ast.noOverride" }),
   }));
+  const analyzerName =
+    analyzers.find(
+      (analyzer) => analyzer.id === currentRun?.analyzerInstrumentId,
+    )?.name || currentRun?.analyzerInstrumentId;
+  const analyzerOrganismMismatch = Boolean(
+    currentRun?.analyzerOrganismId &&
+    activeIsolate?.organismId &&
+    currentRun.analyzerOrganismId !== activeIsolate.organismId,
+  );
+  const unresolvedInstrumentMismatch = currentReadings.some(
+    (reading) =>
+      reading.instrumentInterpretation &&
+      reading.instrumentInterpretation !== reading.interpretation &&
+      !reading.overrideInterpretation,
+  );
+  const unresolvedNoBreakpoint = currentReadings.some(
+    (reading) =>
+      reading.matchedBy === "NONE" && !reading.overrideInterpretation,
+  );
+  const unresolvedExpertFlags = Boolean(
+    currentRun?.analyzerExpertFlags && !currentRun?.analyzerFlagsAcknowledgedAt,
+  );
+  const analyzerAcceptanceBlocked =
+    currentRun?.status === "QC_FAILED" ||
+    unresolvedInstrumentMismatch ||
+    unresolvedNoBreakpoint ||
+    unresolvedExpertFlags;
 
   const selectLot = (selection) => {
     const selectionKey = `${selection.analysisId}:${selection.testReagentLinkId}`;
@@ -354,6 +411,13 @@ const AstEntryPanel = ({
           ? { panelAdjustmentReason: panelAdjustmentReason.trim() }
           : {}),
         ...(lotSelections.length > 0 ? { lotSelections } : {}),
+        ...(entryMode === "ANALYZER"
+          ? {
+              awaitAnalyzerResults: true,
+              analyzerInstrumentId: selectedAnalyzerId,
+              analyzerCardId: analyzerCardId.trim(),
+            }
+          : {}),
       }),
     ).then((run) => {
       if (run) {
@@ -435,6 +499,42 @@ const AstEntryPanel = ({
   const reviewRun = () =>
     runOperation(() => service.reviewAstRun(currentRun.id));
 
+  const acknowledgeAnalyzerFlags = () =>
+    runOperation(() =>
+      service.acknowledgeAstAnalyzerFlags(currentRun.id, {
+        reason: analyzerResolutionReason.trim(),
+      }),
+    ).then((run) => {
+      if (run) {
+        setAnalyzerResolutionReason("");
+      }
+    });
+
+  const overrideQcFailure = () =>
+    runOperation(() =>
+      service.overrideAstQcFailure(currentRun.id, {
+        reason: analyzerResolutionReason.trim(),
+      }),
+    ).then((run) => {
+      if (run) {
+        setAnalyzerResolutionReason("");
+      }
+    });
+
+  const invalidateAndRepeat = () =>
+    runOperation(() =>
+      service.invalidateAndRepeatAstRun(currentRun.id, {
+        reason: analyzerResolutionReason.trim(),
+        analyzerCardId: replacementCardId.trim(),
+      }),
+    ).then((run) => {
+      if (run) {
+        setSelectedRunId(run.id);
+        setAnalyzerResolutionReason("");
+        setReplacementCardId("");
+      }
+    });
+
   const selectReportableRun = (runId) =>
     runOperation(() => service.selectReportableAstRun(runId)).then((run) => {
       if (run) {
@@ -459,7 +559,15 @@ const AstEntryPanel = ({
         </div>
         {currentRun && (
           <div data-testid="microbiology-ast-run-status">
-            <Tag type={currentRun.status === "REVIEWED" ? "green" : "cyan"}>
+            <Tag
+              type={
+                currentRun.status === "REVIEWED"
+                  ? "green"
+                  : currentRun.status === "QC_FAILED"
+                    ? "red"
+                    : "cyan"
+              }
+            >
               {formatMicrobiologyEnum(currentRun.status)}
             </Tag>
           </div>
@@ -493,6 +601,161 @@ const AstEntryPanel = ({
                 subtitle={actionError}
                 hideCloseButton
               />
+            ) : null}
+            {currentRun?.status === "AWAITING_RESULTS" ? (
+              <InlineNotification
+                kind="info"
+                title={intl.formatMessage({
+                  id: "microbiology.ast.awaitingAnalyzerResults",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "microbiology.ast.awaitingAnalyzerResultsDetail",
+                })}
+                hideCloseButton
+              />
+            ) : null}
+            {currentRun?.status === "RESULTS_IN" ? (
+              <InlineNotification
+                kind="info"
+                title={intl.formatMessage({
+                  id: "microbiology.ast.resultsReady",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "microbiology.ast.resultsReadyDetail",
+                })}
+                hideCloseButton
+              />
+            ) : null}
+            {currentRun?.analyzerInstrumentId ? (
+              <div className="microbiology-ast-analyzer-provenance">
+                <strong>{analyzerName}</strong>
+                <span>
+                  {intl.formatMessage(
+                    { id: "microbiology.ast.analyzerProvenance" },
+                    {
+                      card: currentRun.analyzerCardId || "-",
+                      version: currentRun.analyzerSoftwareVersion || "-",
+                    },
+                  )}
+                </span>
+                {currentRun.analyzerOrganismName ? (
+                  <span>
+                    {intl.formatMessage(
+                      { id: "microbiology.ast.analyzerOrganism" },
+                      {
+                        organism: currentRun.analyzerOrganismName,
+                        confidence:
+                          currentRun.analyzerOrganismConfidence ?? "-",
+                      },
+                    )}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            {analyzerOrganismMismatch ? (
+              <InlineNotification
+                kind="warning"
+                title={intl.formatMessage({
+                  id: "microbiology.ast.organismMismatch",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "microbiology.ast.organismMismatchDetail",
+                })}
+                hideCloseButton
+              />
+            ) : null}
+            {currentRun?.status === "QC_FAILED" ? (
+              <div className="microbiology-ast-qc-recovery">
+                <InlineNotification
+                  kind="error"
+                  title={intl.formatMessage({
+                    id: "microbiology.ast.qcFailed",
+                  })}
+                  subtitle={intl.formatMessage(
+                    { id: "microbiology.ast.qcFailedDetail" },
+                    { reference: currentRun.instrumentQcReference || "-" },
+                  )}
+                  hideCloseButton
+                />
+                <TextArea
+                  id="microbiology-ast-analyzer-resolution-reason"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.analyzerResolutionReason",
+                  })}
+                  value={analyzerResolutionReason}
+                  onChange={(event) =>
+                    setAnalyzerResolutionReason(event.target.value)
+                  }
+                />
+                <TextInput
+                  id="microbiology-ast-replacement-card"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.replacementCardId",
+                  })}
+                  value={replacementCardId}
+                  onChange={(event) => setReplacementCardId(event.target.value)}
+                />
+                <div className="microbiology-action-row">
+                  <Button
+                    kind="danger"
+                    onClick={invalidateAndRepeat}
+                    disabled={
+                      busy ||
+                      readOnly ||
+                      !analyzerResolutionReason.trim() ||
+                      !replacementCardId.trim()
+                    }
+                  >
+                    {intl.formatMessage({
+                      id: "microbiology.ast.invalidateAndRepeat",
+                    })}
+                  </Button>
+                  <Button
+                    kind="secondary"
+                    onClick={overrideQcFailure}
+                    disabled={
+                      busy || readOnly || !analyzerResolutionReason.trim()
+                    }
+                  >
+                    {intl.formatMessage({
+                      id: "microbiology.ast.overrideQc",
+                    })}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {unresolvedExpertFlags && currentRun?.status === "RESULTS_IN" ? (
+              <div className="microbiology-ast-flag-review">
+                <InlineNotification
+                  kind="warning"
+                  title={intl.formatMessage({
+                    id: "microbiology.ast.expertFlags",
+                  })}
+                  subtitle={currentRun.analyzerExpertFlags}
+                  hideCloseButton
+                />
+                <TextArea
+                  id="microbiology-ast-flag-acknowledgement"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.analyzerResolutionReason",
+                  })}
+                  value={analyzerResolutionReason}
+                  onChange={(event) =>
+                    setAnalyzerResolutionReason(event.target.value)
+                  }
+                />
+                <Button
+                  kind="secondary"
+                  onClick={acknowledgeAnalyzerFlags}
+                  disabled={
+                    busy || readOnly || !analyzerResolutionReason.trim()
+                  }
+                >
+                  {intl.formatMessage({
+                    id: "microbiology.ast.acknowledgeFlags",
+                  })}
+                </Button>
+              </div>
             ) : null}
             <div className="microbiology-form-grid">
               <Select
@@ -639,6 +902,63 @@ const AstEntryPanel = ({
                   />
                 ))}
               </Select>
+              <RadioButtonGroup
+                name="microbiology-ast-entry-mode"
+                legendText={intl.formatMessage({
+                  id: "microbiology.ast.entryMode",
+                })}
+                valueSelected={entryMode}
+                onChange={setEntryMode}
+                orientation="horizontal"
+                disabled={Boolean(currentRun)}
+              >
+                <RadioButton
+                  id="microbiology-ast-entry-manual"
+                  value="MANUAL"
+                  disabled={Boolean(currentRun)}
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.entryMode.manual",
+                  })}
+                />
+                <RadioButton
+                  id="microbiology-ast-entry-analyzer"
+                  value="ANALYZER"
+                  disabled={Boolean(currentRun)}
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.entryMode.analyzer",
+                  })}
+                />
+              </RadioButtonGroup>
+              {entryMode === "ANALYZER" && !currentRun ? (
+                <>
+                  <Select
+                    id="microbiology-ast-analyzer"
+                    labelText={intl.formatMessage({
+                      id: "microbiology.ast.analyzer",
+                    })}
+                    value={selectedAnalyzerId}
+                    onChange={(event) =>
+                      setSelectedAnalyzerId(event.target.value)
+                    }
+                  >
+                    {analyzers.map((analyzer) => (
+                      <SelectItem
+                        key={analyzer.id}
+                        value={analyzer.id}
+                        text={analyzer.name}
+                      />
+                    ))}
+                  </Select>
+                  <TextInput
+                    id="microbiology-ast-card-id"
+                    labelText={intl.formatMessage({
+                      id: "microbiology.ast.cardId",
+                    })}
+                    value={analyzerCardId}
+                    onChange={(event) => setAnalyzerCardId(event.target.value)}
+                  />
+                </>
+              ) : null}
               <div className="microbiology-ast-start-action">
                 {!isolateIdentified && (
                   <p className="microbiology-card__hint">
@@ -670,7 +990,9 @@ const AstEntryPanel = ({
                         !selectedPanelId ||
                         (adjustingPanel &&
                           adjustedAntibioticIds.length === 0) ||
-                        (orderAdjusted && !panelAdjustmentReason.trim())
+                        (orderAdjusted && !panelAdjustmentReason.trim()) ||
+                        (entryMode === "ANALYZER" &&
+                          (!selectedAnalyzerId || !analyzerCardId.trim()))
                       }
                     >
                       {intl.formatMessage({ id: "microbiology.ast.startRun" })}
@@ -735,6 +1057,9 @@ const AstEntryPanel = ({
                       busy ||
                       readOnly ||
                       isReviewed ||
+                      ["AWAITING_RESULTS", "QC_FAILED", "INVALIDATED"].includes(
+                        currentRun.status,
+                      ) ||
                       !activeAntibioticId ||
                       !rawValue.trim()
                     }
@@ -994,10 +1319,19 @@ const AstEntryPanel = ({
                   kind="primary"
                   onClick={reviewRun}
                   disabled={
-                    busy || readOnly || isReviewed || !orderedResultsComplete
+                    busy ||
+                    readOnly ||
+                    isReviewed ||
+                    !orderedResultsComplete ||
+                    analyzerAcceptanceBlocked
                   }
                 >
-                  {intl.formatMessage({ id: "microbiology.ast.reviewRun" })}
+                  {intl.formatMessage({
+                    id:
+                      currentRun.status === "RESULTS_IN"
+                        ? "microbiology.ast.acceptResults"
+                        : "microbiology.ast.reviewRun",
+                  })}
                 </Button>
                 {isReviewed ? (
                   <div className="microbiology-ast-repeat-form">
