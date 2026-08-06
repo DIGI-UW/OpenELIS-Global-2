@@ -34,6 +34,7 @@ export type SeededMicrobiologyAstWorklistCase = SeededReviewedMicrobiologyCase;
 export interface SeededDenseMicrobiologyCase extends SeededMicrobiologyCase {
   isolateIds: string[];
   astReadingCount: number;
+  timelineEventCount: number;
 }
 
 export interface SeededMicrobiologyReferenceAdmin extends SeededMicrobiologyCase {
@@ -415,6 +416,22 @@ export async function seedMicrobiologyWorklistCases(
   return cases;
 }
 
+export async function seedMicrobiologyAstWorklistCases(
+  page: Page,
+  count = 200,
+): Promise<SeededMicrobiologyAstWorklistCase[]> {
+  if (!Number.isInteger(count) || count < 1 || count > 500) {
+    throw new Error(
+      "Microbiology AST worklist seed count must be between 1 and 500",
+    );
+  }
+  const cases: SeededMicrobiologyAstWorklistCase[] = [];
+  for (let index = 0; index < count; index += 1) {
+    cases.push(await seedMicrobiologyAstWorklistCase(page));
+  }
+  return cases;
+}
+
 async function requireJsonResponse<T>(
   label: string,
   response: Awaited<ReturnType<Page["request"]["get"]>>,
@@ -642,10 +659,28 @@ export async function seedDenseMicrobiologyCase(
         data: {
           caseId: seeded.caseId,
           isolateLabel: `QISO-${isolateIndex}`,
-          preliminaryOrganismText: `Qualification organism ${isolateIndex}`,
+          gramStain: "Gram negative rods",
+          colonyMorphology: `Qualification morphology ${isolateIndex}`,
           significance: "CLINICALLY_SIGNIFICANT",
         },
       }),
+    );
+    await requireJsonResponse(
+      "Identify dense-case isolate",
+      await page.request.put(
+        `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
+        {
+          headers,
+          data: {
+            organismId: seeded.organismId,
+            preliminaryOrganismText: `Qualification organism ${isolateIndex}`,
+            significance: "CLINICALLY_SIGNIFICANT",
+            identificationStatus: "CONFIRMED",
+            identificationMethod: "MALDI_TOF",
+            identificationConfidence: 99.5,
+          },
+        },
+      ),
     );
     isolateIds.push(isolate.id);
     for (let runIndex = 0; runIndex < 8; runIndex += 1) {
@@ -656,6 +691,8 @@ export async function seedDenseMicrobiologyCase(
           data: {
             isolateId: isolate.id,
             panelId: panel.id,
+            panelAdjustmentReason:
+              "Qualification fixture exercises the seeded two-drug panel",
             breakpointStandardId: standard.id,
             technique: "BROTH_MICRODILUTION",
           },
@@ -678,9 +715,27 @@ export async function seedDenseMicrobiologyCase(
         );
         astReadingCount += 1;
       }
+      await requireJsonResponse(
+        "Review dense-case AST run",
+        await page.request.post(
+          `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/review`,
+          { headers, data: {} },
+        ),
+      );
     }
   }
-  return { ...seeded, isolateIds, astReadingCount };
+  const timeline = await requireJsonResponse<unknown[]>(
+    "Load dense-case timeline",
+    await page.request.get(
+      `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/timeline`,
+    ),
+  );
+  return {
+    ...seeded,
+    isolateIds,
+    astReadingCount,
+    timelineEventCount: timeline.length,
+  };
 }
 
 export async function seedFinalizedMicrobiologyCase(

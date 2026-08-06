@@ -7,6 +7,7 @@ import {
 import { parseMicrobiologyWorklistSearch } from "../../../../src/components/microbiology/MicrobiologyRoutes";
 import {
   seedDenseMicrobiologyCase,
+  seedMicrobiologyAstWorklistCases,
   seedMicrobiologyWorklistCases,
 } from "../../../helpers/seed-microbiology-data";
 import {
@@ -17,8 +18,14 @@ import {
 
 const WARMUPS = 2;
 const MEASURED = 10;
-const WORKLIST_URL =
-  "/Microbiology/worklist?workflow=BACTERIOLOGY&stage=ALL&urgency=ALL&due=ALL&q=&sort=priority&page=1&pageSize=50";
+const CULTURE_WORKLIST_URL =
+  "/Microbiology/worklist?workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
+const AST_WORKLIST_URL =
+  "/Microbiology/worklist?grain=ast&workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
+const CULTURE_WORKLIST_ENDPOINT =
+  "/api/OpenELIS-Global/rest/microbiology/worklist?grain=cultures&workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
+const AST_WORKLIST_ENDPOINT =
+  "/api/OpenELIS-Global/rest/microbiology/worklist?grain=ast&workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
 
 const waitForReadyMark = async (page: Page, markName: string) => {
   await page.waitForFunction(
@@ -33,7 +40,49 @@ const waitForReadyMark = async (page: Page, markName: string) => {
 
 const measureNavigation = async (page: Page, url: string, markName: string) => {
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  return waitForReadyMark(page, markName);
+  const readyAt = await waitForReadyMark(page, markName);
+  await page.waitForLoadState("networkidle");
+  return readyAt;
+};
+
+const measureBrowserFetch = async (page: Page, endpoint: string) =>
+  page.evaluate(async (url) => {
+    const startedAt = performance.now();
+    const response = await fetch(url, { credentials: "same-origin" });
+    if (!response.ok) {
+      throw new Error(`Worklist request failed: ${response.status}`);
+    }
+    await response.json();
+    return performance.now() - startedAt;
+  }, endpoint);
+
+const measureSummaryFilter = async (
+  page: Page,
+  activeTestId: string,
+  allTestId: string,
+  operationIndex: number,
+) => {
+  const activate = operationIndex % 2 === 0;
+  const expectedStatus = activate
+    ? activeTestId.replace("microbiology-worklist-summary-", "")
+    : "";
+  await page.evaluate(
+    (markName) => performance.clearMarks(markName),
+    MICROBIOLOGY_WORKLIST_READY_MARK,
+  );
+  const startedAt = await page.evaluate(() => performance.now());
+  await Promise.all([
+    page.waitForURL(
+      (url) =>
+        parseMicrobiologyWorklistSearch(url.search).status === expectedStatus,
+    ),
+    page.getByTestId(activate ? activeTestId : allTestId).click(),
+  ]);
+  const readyAt = await waitForReadyMark(
+    page,
+    MICROBIOLOGY_WORKLIST_READY_MARK,
+  );
+  return readyAt - startedAt;
 };
 
 test.describe("Microbiology browser performance qualification", () => {
@@ -53,19 +102,54 @@ test.describe("Microbiology browser performance qualification", () => {
     ).toBeTruthy();
 
     const worklistCases = await seedMicrobiologyWorklistCases(page, 200);
+    const astWorklistCases = await seedMicrobiologyAstWorklistCases(page, 200);
     const denseCase = await seedDenseMicrobiologyCase(page);
     const measurements = [];
 
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
     measurements.push(
       await measureBrowserOperation(
-        "worklist-initial-render",
+        "server-culture-worklist-fetch",
+        WARMUPS,
+        MEASURED,
+        2000,
+        () => measureBrowserFetch(page, CULTURE_WORKLIST_ENDPOINT),
+      ),
+    );
+    measurements.push(
+      await measureBrowserOperation(
+        "server-ast-worklist-fetch",
+        WARMUPS,
+        MEASURED,
+        2000,
+        () => measureBrowserFetch(page, AST_WORKLIST_ENDPOINT),
+      ),
+    );
+
+    measurements.push(
+      await measureBrowserOperation(
+        "culture-worklist-initial-render",
         WARMUPS,
         MEASURED,
         2000,
         () =>
           measureNavigation(
             page,
-            WORKLIST_URL,
+            CULTURE_WORKLIST_URL,
+            MICROBIOLOGY_WORKLIST_READY_MARK,
+          ),
+      ),
+    );
+    measurements.push(
+      await measureBrowserOperation(
+        "ast-worklist-initial-render",
+        WARMUPS,
+        MEASURED,
+        2000,
+        () =>
+          measureNavigation(
+            page,
+            AST_WORKLIST_URL,
             MICROBIOLOGY_WORKLIST_READY_MARK,
           ),
       ),
@@ -85,43 +169,58 @@ test.describe("Microbiology browser performance qualification", () => {
       ),
     );
 
-    await page.goto(WORKLIST_URL, { waitUntil: "domcontentloaded" });
+    await page.goto(CULTURE_WORKLIST_URL, { waitUntil: "domcontentloaded" });
     await waitForReadyMark(page, MICROBIOLOGY_WORKLIST_READY_MARK);
-    await expect(
-      page.getByLabel("Next page"),
-      "The 200-case qualification workload must produce a second page",
-    ).toBeEnabled();
     measurements.push(
       await measureBrowserOperation(
-        "worklist-page-interaction",
+        "culture-worklist-filter",
         WARMUPS,
         MEASURED,
         300,
         async (iteration, warmup) => {
           const operationIndex = warmup ? iteration : WARMUPS + iteration;
-          const nextPage = operationIndex % 2 === 0;
-          const expectedPage = nextPage ? 2 : 1;
-          await page.evaluate(
-            (markName) => performance.clearMarks(markName),
-            MICROBIOLOGY_WORKLIST_READY_MARK,
-          );
-          const startedAt = await page.evaluate(() => performance.now());
-          await Promise.all([
-            page.waitForURL(
-              (url) =>
-                parseMicrobiologyWorklistSearch(url.search).page ===
-                expectedPage,
-            ),
-            page.getByLabel(nextPage ? "Next page" : "Previous page").click(),
-          ]);
-          const readyAt = await waitForReadyMark(
+          return measureSummaryFilter(
             page,
-            MICROBIOLOGY_WORKLIST_READY_MARK,
+            "microbiology-worklist-summary-incubating",
+            "microbiology-worklist-summary-total",
+            operationIndex,
           );
-          return readyAt - startedAt;
         },
       ),
     );
+    await page.goto(AST_WORKLIST_URL, { waitUntil: "domcontentloaded" });
+    await waitForReadyMark(page, MICROBIOLOGY_WORKLIST_READY_MARK);
+    measurements.push(
+      await measureBrowserOperation(
+        "ast-worklist-filter",
+        WARMUPS,
+        MEASURED,
+        300,
+        async (iteration, warmup) => {
+          const operationIndex = warmup ? iteration : WARMUPS + iteration;
+          return measureSummaryFilter(
+            page,
+            "microbiology-worklist-summary-in-progress",
+            "microbiology-worklist-summary-in-queue",
+            operationIndex,
+          );
+        },
+      ),
+    );
+
+    const [culturePage, astPage] = await Promise.all([
+      page.request.get(CULTURE_WORKLIST_ENDPOINT),
+      page.request.get(AST_WORKLIST_ENDPOINT),
+    ]);
+    expect(culturePage.ok()).toBe(true);
+    expect(astPage.ok()).toBe(true);
+    const cultureVolume = await culturePage.json();
+    const astVolume = await astPage.json();
+    expect(cultureVolume.total).toBeGreaterThanOrEqual(200);
+    expect(astVolume.total).toBeGreaterThanOrEqual(200);
+    expect(denseCase.isolateIds).toHaveLength(5);
+    expect(denseCase.astReadingCount).toBe(80);
+    expect(denseCase.timelineEventCount).toBeGreaterThanOrEqual(30);
 
     const viewport = page.viewportSize();
     const evidence: BrowserPerformanceEvidence = {
@@ -135,9 +234,13 @@ test.describe("Microbiology browser performance qualification", () => {
         baseUrl: String(testInfo.project.use.baseURL || ""),
       },
       dataVolume: {
-        worklistCases: worklistCases.length,
+        seededCultureCases: worklistCases.length,
+        activeCultureRows: cultureVolume.total,
+        seededAstRuns: astWorklistCases.length,
+        activeAstRows: astVolume.total,
         denseCaseIsolates: denseCase.isolateIds.length,
         denseCaseReadings: denseCase.astReadingCount,
+        denseCaseTimelineEvents: denseCase.timelineEventCount,
       },
       measurements,
       passed: measurements.every((measurement) => measurement.passed),

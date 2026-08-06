@@ -4,6 +4,8 @@ import { Button, Stack, Tag, TextArea } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 
+const RECENT_TIMELINE_EVENT_LIMIT = 30;
+
 const CaseTimelinePanel = ({
   activities = [],
   timelineSectionId,
@@ -13,6 +15,11 @@ const CaseTimelinePanel = ({
   const intl = useIntl();
   const [addingNote, setAddingNote] = useState(false);
   const [note, setNote] = useState("");
+  const [showAllEvents, setShowAllEvents] = useState(false);
+  const hasOlderEvents = activities.length > RECENT_TIMELINE_EVENT_LIMIT;
+  const visibleActivities = showAllEvents
+    ? activities
+    : activities.slice(-RECENT_TIMELINE_EVENT_LIMIT);
 
   const saveNote = () => {
     Promise.resolve(onAddNote(note.trim()))
@@ -92,36 +99,59 @@ const CaseTimelinePanel = ({
       {activities.length === 0 ? (
         <p>{intl.formatMessage({ id: "microbiology.case.timeline.empty" })}</p>
       ) : (
-        <ol className="microbiology-list">
-          {activities.map((activity) => (
-            <li
-              className="microbiology-list__row"
-              key={
-                activity.id || `${activity.activityType}-${activity.occurredAt}`
-              }
-            >
-              <div className="microbiology-inline-actions">
-                <strong>
-                  {formatMicrobiologyEnum(activity.activityType, intl)}
-                </strong>
-                <Tag type="cool-gray" size="sm">
-                  {intl.formatMessage({
-                    id:
-                      activity.activityType === "MANUAL_NOTE"
-                        ? "microbiology.case.timeline.manual"
-                        : "microbiology.case.timeline.auto",
-                  })}
-                </Tag>
-              </div>
-              {activity.note ? `: ${activity.note}` : ""}
-              {activity.occurredAt && (
-                <div className="microbiology-list__meta">
-                  {activity.occurredAt}
+        <>
+          <ol className="microbiology-list">
+            {visibleActivities.map((activity) => (
+              <li
+                className="microbiology-list__row"
+                key={
+                  activity.id ||
+                  `${activity.activityType}-${activity.occurredAt}`
+                }
+              >
+                <div className="microbiology-inline-actions">
+                  <strong>
+                    {formatMicrobiologyEnum(activity.activityType, intl)}
+                  </strong>
+                  <Tag type="cool-gray" size="sm">
+                    {intl.formatMessage({
+                      id:
+                        activity.activityType === "MANUAL_NOTE"
+                          ? "microbiology.case.timeline.manual"
+                          : "microbiology.case.timeline.auto",
+                    })}
+                  </Tag>
                 </div>
+                {activity.note ? `: ${activity.note}` : ""}
+                {activity.occurredAt && (
+                  <div className="microbiology-list__meta">
+                    {activity.occurredAt}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+          {hasOlderEvents && (
+            <Button
+              kind="ghost"
+              size="sm"
+              onClick={() => setShowAllEvents((current) => !current)}
+            >
+              {intl.formatMessage(
+                {
+                  id: showAllEvents
+                    ? "microbiology.case.timeline.showRecent"
+                    : "microbiology.case.timeline.showAll",
+                },
+                {
+                  count: showAllEvents
+                    ? RECENT_TIMELINE_EVENT_LIMIT
+                    : activities.length,
+                },
               )}
-            </li>
-          ))}
-        </ol>
+            </Button>
+          )}
+        </>
       )}
     </section>
   );
