@@ -270,6 +270,20 @@ Fields:
 - `breakpointStandardId`
 - `breakpointVersion`
 - `status`
+- `analyzerInstrumentId`
+- `analyzerCardId`
+- `analyzerSoftwareVersion`
+- `analyzerOrganismId`
+- `analyzerOrganismName`
+- `analyzerOrganismConfidence`
+- `analyzerExpertFlags`
+- `instrumentQcReference`
+- `qcState`
+- `qcOverrideReason`
+- `analyzerLoadedAt`
+- `analyzerCompletedAt`
+- `analyzerMessageCodes`
+- `sourceEventId`
 - `startedAt`
 - `reviewedAt`
 - `reviewedBy`
@@ -285,6 +299,15 @@ Relationships:
 Validation:
 
 - Only reviewed AST can satisfy final release readiness.
+- Analyzer-backed work moves through `AWAITING_RESULTS`, `RESULTS_IN`, and
+  either reviewed completion or an explicit QC/repeat resolution. Analyzer
+  expert flags, missing breakpoints, and interpretation mismatches block review
+  until resolved.
+- Analyzer organism identity is retained as evidence only. It never replaces
+  the case isolate identity without a separate identified-user action.
+- QC override and analyzer-flag acknowledgment require an authenticated actor,
+  time, and reason. Invalidation preserves the failed run and creates a linked
+  replacement run.
 - A supported technique deterministically derives MIC or zone measurement type;
   clients do not classify the same reading independently.
 - Historical rows backfill to an explicit legacy-unspecified technique according
@@ -337,6 +360,8 @@ Fields:
 - `rawText`
 - `units`
 - `interpretation`
+- `instrumentInterpretation`
+- `analyzerResultReference`
 - `source`
 - `matchedBy`
 - `overrideReason`
@@ -354,6 +379,8 @@ Validation:
   measurement type.
 - A reading inherits measurement type from its run technique; request payloads
   cannot override it.
+- Analyzer interpretation and result reference remain distinguishable from the
+  OpenELIS interpretation and any later human override.
 
 ### MicroAstOverrideEvent
 
@@ -376,6 +403,33 @@ Validation:
 - Revert requires an active override and a non-empty reason.
 - The original reading value, interpretation, source, rule, and measurement are
   never replaced by override history.
+
+### AnalyzerEvent
+
+Durable, idempotent envelope for normalized events delivered by analyzer
+runtime integrations before a feature-specific consumer applies them.
+
+Fields:
+
+- `id`
+- `externalEventId`
+- `eventType`
+- `analyzerId`
+- `sourceId`
+- `payload`
+- `status`
+- `targetReference`
+- `failureReason`
+- `receivedAt`
+- `processedAt`
+
+Validation:
+
+- `externalEventId` is unique so retries cannot duplicate clinical work.
+- AST consumers accept result-available and QC-failure events and resolve the
+  target by explicit run or analyzer/card identity.
+- Events that cannot be applied remain durable with a named failure and appear
+  in the existing Analyzer Import Issues reconciliation surface.
 
 ### MicroCriticalCommunication
 

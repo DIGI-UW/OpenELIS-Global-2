@@ -226,6 +226,13 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
 - Extend existing case, activity, AST, inventory, result, alert, and amendment
   services where they already own the behavior. Do not reproduce History/Note,
   NCE, analyzer reconciliation, or Inventory as microbiology-only systems.
+- Receive normalized AST result and QC events through one durable, idempotent
+  analyzer-event envelope. The microbiology consumer applies the event to an
+  awaiting run; unresolved events remain visible in the existing Analyzer
+  Import Issues surface rather than creating a second reconciliation product.
+- Preserve analyzer organism identity, interpretations, QC references, flags,
+  and card/software provenance as evidence. Case isolate identity remains
+  authoritative until changed through the explicit identification workflow.
 - Add schema migrations only where observable behavior needs new durable state
   or a current constraint rejects a valid state. UI state, routes, fixtures,
   and test scenarios do not receive migrations.

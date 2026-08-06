@@ -83,9 +83,11 @@ and documented the architecture decision.
 - The M-04 workbench lacks workflow classification, subculture lineage, full
   two-pass isolate work, sibling navigation, and reuse of the existing
   non-conformance workflow.
-- The M-05 AST flow lacks complete ordered-panel provenance, matched-breakpoint
-  evidence, override/revert history, analyzer/QC review states, and scoped
-  repeat behavior.
+- The M-05 AST flow now has ordered-panel and ordered-drug provenance,
+  matched-breakpoint evidence, override/revert history, durable normalized
+  analyzer result/QC events, human acceptance blockers, analyzer provenance,
+  and existing-surface reconciliation. Scoped whole-panel versus single-drug
+  repeat and exact-SHA acceptance evidence remain open.
 - The M-07 worklist has configured navigation, breadcrumbs, and canonical query
   state, but lacks the authoritative Culture/AST view switch, AST-run rows,
   resistance context, recent activity, and complete row actions.
