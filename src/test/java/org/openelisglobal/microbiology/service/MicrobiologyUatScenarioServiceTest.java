@@ -395,6 +395,37 @@ public class MicrobiologyUatScenarioServiceTest {
     }
 
     @Test
+    public void provisionsR1ClassificationScenarioThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase routedCase = microCase("case-bacteriology");
+        MicroCase unassignedCase = microCase("case-unassigned");
+        unassignedCase.setWorkflowType(MicroWorkflowType.UNASSIGNED.name());
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, routedCase);
+        when(caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1"))
+                .thenReturn(unassignedCase);
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "R1";
+        request.scenarioKey = "playwright-r1-workflow-classification";
+
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        assertEquals("case-unassigned", result.caseId);
+        assertEquals("case-bacteriology", result.siblingCaseId);
+        assertEquals("method-1", result.methodId);
+        verify(caseService).createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1");
+        ArgumentCaptor<org.openelisglobal.microbiology.valueholder.MicroCultureSetup> setupCaptor = ArgumentCaptor
+                .forClass(org.openelisglobal.microbiology.valueholder.MicroCultureSetup.class);
+        verify(configurationService, times(2)).getOrCreateCultureSetup(setupCaptor.capture());
+        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), setupCaptor.getAllValues().get(0).getWorkflowType());
+        assertEquals(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), setupCaptor.getAllValues().get(1).getWorkflowType());
+    }
+
+    @Test
     public void provisionsM4WhonetMappedAndUnmappedReferencesThroughServices() {
         Sample sample = sample("sample-1");
         SampleItem sampleItem = sampleItem("sample-item-1");

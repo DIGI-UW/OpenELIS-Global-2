@@ -46,7 +46,7 @@ export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyRefere
 
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
-type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST" | "M3" | "M4";
+type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST" | "M3" | "M4" | "R1";
 
 interface MicrobiologyReferenceOption {
   id: string;
@@ -139,6 +139,16 @@ export function seedMicrobiologyWorklistCase(
   page: Page,
 ): Promise<SeededMicrobiologyCase> {
   return provisionMicrobiologyScenario(page, "WORKLIST");
+}
+
+export function seedMicrobiologyClassificationCase(
+  page: Page,
+): Promise<SeededMicrobiologyCase> {
+  return provisionMicrobiologyScenario(
+    page,
+    "R1",
+    `playwright-r1-classification-${randomUUID()}`,
+  );
 }
 
 export async function seedMicrobiologyReferenceAdmin(
