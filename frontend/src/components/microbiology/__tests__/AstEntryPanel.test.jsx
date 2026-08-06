@@ -38,6 +38,7 @@ const runWithReading = {
   readings: [
     {
       id: "reading-1",
+      antibioticId: "abx-1",
       interpretation: "SUSCEPTIBLE",
       method: "MIC",
       rawValue: 4,
@@ -47,6 +48,7 @@ const runWithReading = {
     },
     {
       id: "reading-2",
+      antibioticId: "abx-1",
       interpretation: "INTERMEDIATE",
       method: "ZONE",
       rawValue: 16,
@@ -101,6 +103,7 @@ const reviewedRepeatRun = {
   readings: [
     {
       id: "reading-3",
+      antibioticId: "abx-1",
       interpretation: "RESISTANT",
       method: "ZONE",
       rawValue: 12,
@@ -534,6 +537,43 @@ describe("AstEntryPanel", () => {
     expect(
       screen.queryByRole("option", { name: "Gentamicin" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps review disabled until every ordered antibiotic has a reading", async () => {
+    const incompleteRun = {
+      ...inProgressRun,
+      orderedAntibiotics: [
+        ...inProgressRun.orderedAntibiotics,
+        {
+          antibioticId: "abx-2",
+          displayOrder: 2,
+          tier: 1,
+          reportBehavior: "ALWAYS",
+        },
+      ],
+      readings: [runWithReading.readings[0]],
+    };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "GN-STD" }]),
+      getAntibiotics: vi.fn().mockResolvedValue([
+        { id: "abx-1", label: "Ciprofloxacin" },
+        { id: "abx-2", label: "Gentamicin" },
+      ]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([incompleteRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+    };
+
+    renderPanel(service);
+
+    expect(
+      await screen.findByRole("button", { name: "Review AST run" }),
+    ).toBeDisabled();
   });
 
   it("keeps AST write actions disabled when a final case is locked", async () => {
