@@ -549,9 +549,62 @@ components:
         pageSize:
           type: integer
         summary:
+          $ref: "#/components/schemas/WorklistSummary"
+        recentActivity:
+          type: array
+          maxItems: 25
+          items:
+            $ref: "#/components/schemas/WorklistRecentActivity"
+    WorklistSummary:
+      type: object
+      properties:
+        totalPending:
+          type: integer
+        incubating:
+          type: integer
+        positiveSignals:
+          type: integer
+        growthDetected:
+          type: integer
+        identification:
+          type: integer
+        needsAstReview:
+          type: integer
+        readyForCaseReview:
+          type: integer
+        openCriticalFollowUps:
+          type: integer
+        astInQueue:
+          type: integer
+        astPendingSetup:
+          type: integer
+        astInProgress:
+          type: integer
+        astAwaitingResults:
+          type: integer
+        astResultsIn:
+          type: integer
+        resistanceHits:
           type: object
+          description: Today-scoped counts from structured analyzer flags.
           additionalProperties:
             type: integer
+    WorklistRecentActivity:
+      type: object
+      properties:
+        caseId:
+          type: string
+        accessionNumber:
+          type: string
+        activityType:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        performedByDisplay:
+          type: string
+        note:
+          type: string
     WorklistRow:
       type: object
       properties:
@@ -607,6 +660,8 @@ components:
           format: date-time
         analyzerResultsAvailable:
           type: boolean
+        analyzerExpertFlags:
+          type: string
         createdAt:
           type: string
           format: date-time

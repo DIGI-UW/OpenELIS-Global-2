@@ -234,6 +234,10 @@ case action.
 7. **Given** a supervisor needs situational awareness, **When** the worklist is
    opened, **Then** resistance-hit context and recent microbiology activity are
    available on the same page without implying ownership of a case.
+8. **Given** a resistance classification is reported by an analyzer or
+   explicitly confirmed by a user, **When** it appears in the resistance-hit
+   context, **Then** its provenance is distinguishable and the system does not
+   infer a classification from free-text notes.
 
 ---
 
@@ -356,7 +360,9 @@ or missing mapping for export.
   reconciliation experience.
 - **FR-014C**: The worklist MUST include resistance-hit context and recent
   microbiology activity, while visibly identifying future controls that are
-  unavailable in the current phase.
+  unavailable in the current phase. Resistance classifications MUST retain
+  their analyzer-reported or user-confirmed provenance and MUST NOT be inferred
+  from free-text notes.
 - **FR-015**: Users MUST be able to release preliminary reports when reportable
   culture observations or isolate work-up are available, including Gram stain
   and colony morphology before organism identification, and final reports only
