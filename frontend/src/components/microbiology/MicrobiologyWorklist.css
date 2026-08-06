@@ -203,6 +203,30 @@
   min-width: 100%;
 }
 
+.microbiology-worklist__table-section tbody tr[tabindex="0"] {
+  cursor: pointer;
+}
+
+.microbiology-worklist__table-section tbody tr[tabindex="0"]:focus {
+  outline: 0.125rem solid var(--microbiology-border-interactive);
+  outline-offset: -0.125rem;
+}
+
+.microbiology-worklist__row--new-positive > td {
+  animation: microbiology-new-positive 5s ease-out;
+}
+
+@keyframes microbiology-new-positive {
+  0%,
+  35% {
+    background: var(--cds-highlight, #d0e2ff);
+  }
+
+  100% {
+    background: var(--cds-layer-01, #ffffff);
+  }
+}
+
 .microbiology-worklist__case-link {
   color: var(--microbiology-link-primary);
   font-weight: var(--microbiology-body-font-weight);
@@ -354,5 +378,12 @@
 @media (max-width: 32rem) {
   .microbiology-worklist__summary-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .microbiology-worklist__row--new-positive > td {
+    animation: none;
+    box-shadow: inset 0.25rem 0 var(--microbiology-border-interactive);
   }
 }

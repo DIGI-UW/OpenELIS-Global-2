@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -318,12 +318,97 @@ describe("MicrobiologyWorklist", () => {
     expect(
       screen.getByTestId("microbiology-worklist-row-1002"),
     ).toBeInTheDocument();
+    expect(screen.getByTestId("microbiology-worklist-row-1002")).toHaveClass(
+      "microbiology-worklist__row--new-positive",
+    );
+    expect(screen.getByText("New positive")).toBeVisible();
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
       canonicalUrl,
     );
     expect(document.activeElement).toBe(search);
     expect(tableScroll.scrollLeft).toBe(144);
     expect(screen.getByText(/Updated 0s ago/)).toBeVisible();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(screen.queryByText("New positive")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("microbiology-worklist-row-1002"),
+    ).not.toHaveClass("microbiology-worklist__row--new-positive");
+  });
+
+  it("opens a culture case when a non-interactive row cell is clicked", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            caseId: "case-1",
+            sampleItemId: "1001",
+            accessionNumber: "LAB-1001",
+            patientDisplay: "Mendez, Olivia",
+            workflowType: "BACTERIOLOGY",
+            stage: "INCUBATING",
+            dueAction: "SETUP",
+            urgency: "ROUTINE",
+            siblingWorkflows: [],
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+    };
+
+    renderWorklist(service, "/Microbiology/worklist?status=incubating");
+
+    const row = await screen.findByTestId("microbiology-worklist-row-case-1");
+    await user.click(within(row).getByText("Mendez, Olivia"));
+
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?status=incubating",
+    );
+  });
+
+  it("opens the exact AST context when its row is keyboard-activated", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            rowId: "run-1",
+            grain: "ast",
+            caseId: "case-1",
+            sampleItemId: "1001",
+            workflowType: "BACTERIOLOGY",
+            isolateId: "isolate-1",
+            isolateLabel: "Isolate 1",
+            astRunId: "run-1",
+            astStatus: "RESULTS_IN",
+            urgency: "HIGH",
+            siblingWorkflows: [],
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+    };
+
+    renderWorklist(
+      service,
+      "/Microbiology/worklist?grain=ast&status=results-in",
+    );
+
+    const row = await screen.findByTestId("microbiology-worklist-row-run-1");
+    row.focus();
+    expect(row).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?grain=ast&status=results-in&section=ast&astIsolateId=isolate-1&astRunId=run-1",
+    );
   });
 
   it("reconciles Carbon rows when a filtered response replaces row IDs", async () => {
