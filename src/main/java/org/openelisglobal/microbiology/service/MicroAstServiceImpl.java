@@ -525,6 +525,30 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     @Override
     @Transactional
+    public MicroAstRun recordAnalyzerQcFailure(String runId, String instrumentQcReference, List<String> messageCodes,
+            String sourceEventId, String performedBy) {
+        MicroAstRun run = requireRun(runId);
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableRun(run, isolate.getCaseId());
+        if (!MicroAstRunStatus.AWAITING_RESULTS.name().equals(run.getStatus())
+                && !MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())
+                && !MicroAstRunStatus.QC_FAILED.name().equals(run.getStatus())) {
+            throw new MicroAstConflictException("AST_RUN_NOT_AWAITING_ANALYZER_RESULTS");
+        }
+        run.setInstrumentQcReference(trimToNull(instrumentQcReference));
+        run.setAnalyzerMessageCodes(join(messageCodes));
+        run.setSourceEventId(trimToNull(sourceEventId));
+        run.setQcState("FAILED");
+        run.setStatus(MicroAstRunStatus.QC_FAILED.name());
+        MicroAstRun updated = runDAO.update(run);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_ANALYZER_QC_FAILED, performedBy,
+                "Analyzer AST QC failure received", "{\"astRunId\":\"" + runId + "\"}");
+        return updated;
+    }
+
+    @Override
+    @Transactional
     public MicroAstRun acknowledgeAnalyzerFlags(String runId, String reason, String performedBy) {
         MicroCaseServiceImpl.requireText(reason, "reason");
         MicroAstRun run = requireRun(runId);

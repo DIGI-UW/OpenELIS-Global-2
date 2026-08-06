@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-analyzer-event-reconciliation" author="OGC">
+        <createTable schemaName="clinlims" tableName="analyzer_event">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_analyzer_event"/>
+            </column>
+            <column name="external_event_id" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_analyzer_event_external"/>
+            </column>
+            <column name="event_type" type="VARCHAR(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="VARCHAR(20)"/>
+            <column name="source_id" type="VARCHAR(100)"/>
+            <column name="target_reference" type="VARCHAR(100)"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="RECEIVED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="failure_reason" type="TEXT"/>
+            <column name="payload" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="received_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="processed_at" type="TIMESTAMP"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <createIndex schemaName="clinlims" tableName="analyzer_event" indexName="idx_analyzer_event_failed">
+            <column name="status"/>
+            <column name="received_at" descending="true"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.analyzer_event
+            ADD CONSTRAINT analyzer_event_status_chk CHECK (status IN ('RECEIVED', 'APPLIED', 'FAILED'))
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="analyzer_event"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

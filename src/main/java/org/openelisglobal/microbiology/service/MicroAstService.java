@@ -69,6 +69,9 @@ public interface MicroAstService {
 
     MicroAstRun applyAnalyzerResults(MicroAstAnalyzerResultBatch batch, String performedBy);
 
+    MicroAstRun recordAnalyzerQcFailure(String runId, String instrumentQcReference, List<String> messageCodes,
+            String sourceEventId, String performedBy);
+
     MicroAstRun acknowledgeAnalyzerFlags(String runId, String reason, String performedBy);
 
     MicroAstRun overrideQcFailure(String runId, String reason, String performedBy);
