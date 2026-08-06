@@ -408,6 +408,18 @@ const MicrobiologyCaseView = ({
     );
   };
 
+  const completeAstAttempt = (run) => {
+    history.replace(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "ast",
+        action: "",
+        astIsolateId: run.isolateId || routeState.astIsolateId,
+        astRunId: run.id,
+      }),
+    );
+  };
+
   const openNonconformance = (action) => {
     history.push(
       getMicrobiologyCaseUrl(caseId, {
@@ -849,7 +861,7 @@ const MicrobiologyCaseView = ({
               >
                 {!unassigned && (
                   <AstEntryPanel
-                    key={`${routeState.astIsolateId}:${routeState.astRunId}`}
+                    key={`${routeState.astIsolateId}:${routeState.astRunId}:${routeState.action}`}
                     caseId={caseDetail.id}
                     workflowType={caseDetail.workflowType}
                     isolates={caseDetail.isolates}
@@ -866,6 +878,8 @@ const MicrobiologyCaseView = ({
                     reagentUsages={reagentOverview.usages}
                     initialIsolateId={routeState.astIsolateId}
                     initialRunId={routeState.astRunId}
+                    initialAction={routeState.action}
+                    onAttemptStarted={completeAstAttempt}
                   />
                 )}
               </AccordionItem>

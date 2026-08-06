@@ -1077,6 +1077,24 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                                 }
                                               />
                                             )}
+                                            {isAstGrain && row.astRunId && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.newAstAttempt",
+                                                })}
+                                                disabled={
+                                                  row.astStatus !== "REVIEWED"
+                                                }
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "ast",
+                                                      "new-ast-attempt",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
                                             {!isAstGrain && (
                                               <OverflowMenuItem
                                                 itemText={intl.formatMessage({
