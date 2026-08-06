@@ -422,4 +422,7 @@
   <!-- OGC-782 R1: immutable AST panel and breakpoint provenance -->
   <include relativeToChangelogFile="true" file="072-microbiology-ast-provenance.xml"/>
 
+  <!-- OGC-782 R1: AST reading source, match level, and units -->
+  <include relativeToChangelogFile="true" file="073-microbiology-ast-reading-provenance.xml"/>
+
 </databaseChangeLog>

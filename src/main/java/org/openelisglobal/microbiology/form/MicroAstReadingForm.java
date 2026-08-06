@@ -13,6 +13,9 @@ public class MicroAstReadingForm {
     public String rawText;
     public String interpretation;
     public String breakpointRuleId;
+    public String source;
+    public String matchedBy;
+    public String units;
     public String overrideInterpretation;
     public String overrideReason;
     public Timestamp createdAt;

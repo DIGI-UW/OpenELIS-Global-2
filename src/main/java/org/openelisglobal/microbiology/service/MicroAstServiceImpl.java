@@ -242,6 +242,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setRawText(rawValue == null ? null : rawValue.toPlainString());
         reading.setInterpretation(interpretation.name());
         reading.setBreakpointRuleId(rule == null ? null : rule.getId());
+        reading.setSource("MANUAL_ENTRY");
+        reading.setMatchedBy(matchedBy(rule));
+        reading.setUnits(rule != null && rule.getUnits() != null && !rule.getUnits().isBlank() ? rule.getUnits()
+                : defaultUnits(method));
         reading.setCreatedAt(MicroCaseServiceImpl.now());
         reading.setCreatedBy(performedBy);
         readingDAO.insert(reading);
@@ -366,6 +370,26 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         return breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(), organismGroup, antibioticId,
                 method.name(), specimenTypeId, method.name());
+    }
+
+    private String matchedBy(MicroBreakpointRule rule) {
+        if (rule == null) {
+            return "NONE";
+        }
+        if (rule.getSpecimenTypeId() != null && !rule.getSpecimenTypeId().isBlank()) {
+            return "SPECIMEN";
+        }
+        if (rule.getOrganismId() != null && !rule.getOrganismId().isBlank()) {
+            return "ORGANISM";
+        }
+        if (rule.getOrganismGroup() != null && !rule.getOrganismGroup().isBlank()) {
+            return "GROUP";
+        }
+        return "NONE";
+    }
+
+    private String defaultUnits(MicroAstMethod method) {
+        return MicroAstMethod.ZONE.equals(method) ? "mm" : "ug/mL";
     }
 
     private void snapshotOrValidateMethod(MicroAstRun run, MicroAstMethod method) {
