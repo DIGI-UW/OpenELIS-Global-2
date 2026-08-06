@@ -48,6 +48,7 @@ import {
 } from "./MicrobiologyRoutes";
 import {
   markMicrobiologyReady,
+  MICROBIOLOGY_NEW_POSITIVE_HIGHLIGHT_MS,
   MICROBIOLOGY_WORKLIST_REFRESH_INTERVAL_MS,
   MICROBIOLOGY_WORKLIST_READY_MARK,
 } from "./MicrobiologyPerformance";
@@ -93,6 +94,10 @@ const EMPTY_SUMMARY = {
   astResultsIn: 0,
 };
 const RESISTANCE_FLAGS = ["ESBL", "MRSA", "CRE", "VRE", "MDR"];
+const INTERACTIVE_ROW_SELECTOR =
+  "a, button, input, select, textarea, [role='button'], [role='link']";
+
+const getWorklistRowId = (row) => row.rowId || row.astRunId || row.caseId;
 
 const asCount = (value) => {
   const parsed = Number(value);
@@ -221,6 +226,8 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
       recentActivity: [],
     },
     previousRows: [],
+    sourceSearch: null,
+    newPositiveRowIds: [],
   });
   const [requestState, setRequestState] = useState({
     search: null,
@@ -230,7 +237,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
   const [refreshGeneration, setRefreshGeneration] = useState(0);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
-  const { current: worklist, previousRows } = worklistState;
+  const { current: worklist, previousRows, newPositiveRowIds } = worklistState;
   const responseMatchesLocation = requestState.search === location.search;
   const loading = !responseMatchesLocation || requestState.status === "loading";
   const hasLoadError =
@@ -245,10 +252,25 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
           return;
         }
         const nextWorklist = normalizePageResponse(response, filters);
-        setWorklistState(({ current }) => ({
-          current: nextWorklist,
-          previousRows: current.rows,
-        }));
+        setWorklistState(({ current, sourceSearch }) => {
+          const previousRowIds = new Set(current.rows.map(getWorklistRowId));
+          const refreshedPositiveRowIds =
+            sourceSearch === location.search
+              ? nextWorklist.rows
+                  .filter(
+                    (row) =>
+                      row.stage === "POSITIVE_SIGNAL" &&
+                      !previousRowIds.has(getWorklistRowId(row)),
+                  )
+                  .map(getWorklistRowId)
+              : [];
+          return {
+            current: nextWorklist,
+            previousRows: current.rows,
+            sourceSearch: location.search,
+            newPositiveRowIds: refreshedPositiveRowIds,
+          };
+        });
         setRequestState({ search: location.search, status: "success" });
         setHasLoaded(true);
         const updatedAt = Date.now();
@@ -265,6 +287,19 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
       active = false;
     };
   }, [location.search, refreshGeneration, service]);
+
+  useEffect(() => {
+    if (newPositiveRowIds.length === 0) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setWorklistState((state) => ({
+        ...state,
+        newPositiveRowIds: [],
+      }));
+    }, MICROBIOLOGY_NEW_POSITIVE_HIGHLIGHT_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [newPositiveRowIds]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -429,7 +464,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     () =>
       Object.fromEntries(
         [...previousRows, ...worklist.rows].map((row) => [
-          row.rowId || row.caseId,
+          getWorklistRowId(row),
           row,
         ]),
       ),
@@ -562,6 +597,22 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     lastUpdatedAt === null
       ? 0
       : Math.max(0, Math.floor((clockNow - lastUpdatedAt) / 1_000));
+  const navigateFromRowClick = (event, url) => {
+    if (event.target.closest(INTERACTIVE_ROW_SELECTOR)) {
+      return;
+    }
+    history.push(url);
+  };
+  const navigateFromRowKey = (event, url) => {
+    if (
+      event.target !== event.currentTarget ||
+      !["Enter", " "].includes(event.key)
+    ) {
+      return;
+    }
+    event.preventDefault();
+    history.push(url);
+  };
 
   return (
     <main className="microbiology-worklist" data-testid="microbiology-worklist">
@@ -1027,6 +1078,9 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                           ) : (
                             rows.map((tableRow) => {
                               const row = rowsById[tableRow.id];
+                              const isNewPositive = newPositiveRowIds.includes(
+                                tableRow.id,
+                              );
                               const caseUrl = getMicrobiologyCaseUrl(
                                 row.caseId,
                                 isAstGrain
@@ -1042,7 +1096,19 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                 <TableRow
                                   key={tableRow.id}
                                   {...getRowProps({ row: tableRow })}
+                                  className={
+                                    isNewPositive
+                                      ? "microbiology-worklist__row--new-positive"
+                                      : undefined
+                                  }
                                   data-testid={`microbiology-worklist-row-${tableRow.id}`}
+                                  tabIndex={0}
+                                  onClick={(event) =>
+                                    navigateFromRowClick(event, caseUrl)
+                                  }
+                                  onKeyDown={(event) =>
+                                    navigateFromRowKey(event, caseUrl)
+                                  }
                                 >
                                   {tableRow.cells.map((cell) => {
                                     if (cell.info.header === "labNumber") {
@@ -1088,6 +1154,13 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                             >
                                               {cell.value}
                                             </Tag>
+                                            {isNewPositive && (
+                                              <Tag type="green">
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.newPositive",
+                                                })}
+                                              </Tag>
+                                            )}
                                             {row.needsAstReview && (
                                               <span>
                                                 {intl.formatMessage({
