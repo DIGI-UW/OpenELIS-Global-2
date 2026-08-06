@@ -9,6 +9,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 
 public interface MicroAstService {
@@ -64,4 +65,6 @@ public interface MicroAstService {
     List<MicroAstRun> getRunsForIsolate(String isolateId);
 
     List<MicroAstReading> getReadingsForRun(String runId);
+
+    List<MicroAstRunAntibiotic> getOrderedAntibioticsForRun(String runId);
 }

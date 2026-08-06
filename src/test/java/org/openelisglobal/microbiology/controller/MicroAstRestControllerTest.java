@@ -19,6 +19,7 @@ import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -85,6 +86,10 @@ public class MicroAstRestControllerTest {
         MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
         MicroAstRun run = new MicroAstRun();
         run.setId("run-1");
+        MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
+        ordered.setAstRunId("run-1");
+        ordered.setAntibioticId("abx-1");
+        ordered.setDisplayOrder(1);
         MicroAstRunRequestForm request = new MicroAstRunRequestForm();
         request.isolateId = "isolate-1";
         request.panelId = "panel-1";
@@ -99,11 +104,13 @@ public class MicroAstRestControllerTest {
         when(service.startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
                 MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42"))
                 .thenReturn(run);
+        when(service.getOrderedAntibioticsForRun("run-1")).thenReturn(java.util.List.of(ordered));
 
-        new MicroAstRestController(service).startRun(request, requestFor("42"));
+        MicroAstRunForm response = new MicroAstRestController(service).startRun(request, requestFor("42")).getBody();
 
         verify(service).startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
                 MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42");
+        assertEquals("abx-1", response.orderedAntibiotics.get(0).antibioticId);
     }
 
     @Test

@@ -7,6 +7,7 @@ import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstOverrideRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingRequestForm;
+import org.openelisglobal.microbiology.form.MicroAstRunAntibioticForm;
 import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
@@ -15,6 +16,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -160,6 +162,14 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.startedBy = run.getStartedBy();
         form.reviewedAt = run.getReviewedAt();
         form.reviewedBy = run.getReviewedBy();
+        for (MicroAstRunAntibiotic ordered : astService.getOrderedAntibioticsForRun(run.getId())) {
+            MicroAstRunAntibioticForm orderedForm = new MicroAstRunAntibioticForm();
+            orderedForm.antibioticId = ordered.getAntibioticId();
+            orderedForm.displayOrder = ordered.getDisplayOrder();
+            orderedForm.tier = ordered.getTier();
+            orderedForm.reportBehavior = ordered.getReportBehavior();
+            form.orderedAntibiotics.add(orderedForm);
+        }
         return form;
     }
 

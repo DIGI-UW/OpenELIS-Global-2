@@ -5,8 +5,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.microbiology.dao.MicroAstOverrideEventDAO;
+import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
+import org.openelisglobal.microbiology.dao.MicroAstRunAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
@@ -21,8 +23,10 @@ import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstOverrideAction;
 import org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
@@ -61,12 +65,15 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroAstPanelDAO panelDAO;
     private final MicroAstOverrideEventDAO overrideEventDAO;
     private final SystemUserService systemUserService;
+    private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
+    private final MicroAstRunAntibioticDAO runAntibioticDAO;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
             MicroAstInterpretationService interpretationService, MicroCaseAmendmentDAO amendmentDAO,
             MicroReagentLotService reagentLotService, MicroOrganismDAO organismDAO, MicroAstPanelDAO panelDAO,
-            MicroAstOverrideEventDAO overrideEventDAO, SystemUserService systemUserService) {
+            MicroAstOverrideEventDAO overrideEventDAO, SystemUserService systemUserService,
+            MicroAstPanelAntibioticDAO panelAntibioticDAO, MicroAstRunAntibioticDAO runAntibioticDAO) {
         this.runDAO = runDAO;
         this.readingDAO = readingDAO;
         this.isolateDAO = isolateDAO;
@@ -80,6 +87,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         this.panelDAO = panelDAO;
         this.overrideEventDAO = overrideEventDAO;
         this.systemUserService = systemUserService;
+        this.panelAntibioticDAO = panelAntibioticDAO;
+        this.runAntibioticDAO = runAntibioticDAO;
     }
 
     @Override
@@ -148,6 +157,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setStartedAt(MicroCaseServiceImpl.now());
         run.setStartedBy(performedBy);
         runDAO.insert(run);
+        snapshotPanelAntibiotics(run.getId(), panelSelection.panel.getId());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CREATED, performedBy, "AST run created",
                 "{\"astRunId\":\"" + run.getId() + "\"}");
         reagentLotService.recordSelections(isolate.getCaseId(), MicroInventoryUsageContext.AST_SETUP, run.getId(),
@@ -249,6 +259,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setStartedAt(MicroCaseServiceImpl.now());
         run.setStartedBy(performedBy);
         runDAO.insert(run);
+        copyOrderedAntibiotics(source, run);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CREATED, performedBy,
                 attemptType.name() + " AST run created",
                 "{\"astRunId\":\"" + run.getId() + "\",\"sourceRunId\":\"" + source.getId() + "\"}");
@@ -281,6 +292,9 @@ public class MicroAstServiceImpl implements MicroAstService {
         String runId = run.getId();
         MicroCaseServiceImpl.requireText(runId, "runId");
         MicroCaseServiceImpl.requireText(antibioticId, "antibioticId");
+        if (runAntibioticDAO.getByRunIdAndAntibioticId(runId, antibioticId).isEmpty()) {
+            throw new MicroAstConflictException("AST_ANTIBIOTIC_NOT_ORDERED");
+        }
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         requireMutableRun(run, isolate.getCaseId());
@@ -442,6 +456,45 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Transactional(readOnly = true)
     public List<MicroAstReading> getReadingsForRun(String runId) {
         return readingDAO.getByRunId(runId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAstRunAntibiotic> getOrderedAntibioticsForRun(String runId) {
+        return runAntibioticDAO.getByRunId(runId);
+    }
+
+    private void snapshotPanelAntibiotics(String runId, String panelId) {
+        List<MicroAstPanelAntibiotic> panelRows = panelAntibioticDAO.getByPanelId(panelId);
+        if (panelRows.isEmpty()) {
+            throw new IllegalStateException("AST_PANEL_HAS_NO_ANTIBIOTICS");
+        }
+        for (MicroAstPanelAntibiotic panelRow : panelRows) {
+            MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
+            ordered.setAstRunId(runId);
+            ordered.setAntibioticId(panelRow.getAntibioticId());
+            ordered.setDisplayOrder(panelRow.getDisplayOrder());
+            ordered.setTier(panelRow.getTier());
+            ordered.setReportBehavior(panelRow.getReportBehavior());
+            runAntibioticDAO.insert(ordered);
+        }
+    }
+
+    private void copyOrderedAntibiotics(MicroAstRun source, MicroAstRun target) {
+        List<MicroAstRunAntibiotic> sourceRows = runAntibioticDAO.getByRunId(source.getId());
+        if (sourceRows.isEmpty()) {
+            snapshotPanelAntibiotics(target.getId(), source.getPanelId());
+            return;
+        }
+        for (MicroAstRunAntibiotic sourceRow : sourceRows) {
+            MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
+            ordered.setAstRunId(target.getId());
+            ordered.setAntibioticId(sourceRow.getAntibioticId());
+            ordered.setDisplayOrder(sourceRow.getDisplayOrder());
+            ordered.setTier(sourceRow.getTier());
+            ordered.setReportBehavior(sourceRow.getReportBehavior());
+            runAntibioticDAO.insert(ordered);
+        }
     }
 
     /**

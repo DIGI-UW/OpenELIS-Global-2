@@ -241,4 +241,7 @@
   <!-- OGC-782 R1: AST technique distinct from derived measurement type -->
   <include relativeToChangelogFile="true" file="075-microbiology-ast-technique.xml"/>
 
+  <!-- OGC-782 R1: immutable per-run ordered antibiotic set -->
+  <include relativeToChangelogFile="true" file="076-microbiology-ast-ordered-antibiotics.xml"/>
+
 </databaseChangeLog>

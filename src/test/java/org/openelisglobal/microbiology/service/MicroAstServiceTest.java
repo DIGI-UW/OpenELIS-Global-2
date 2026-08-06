@@ -20,8 +20,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroAstOverrideEventDAO;
+import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
+import org.openelisglobal.microbiology.dao.MicroAstRunAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
@@ -35,8 +37,10 @@ import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstOverrideAction;
 import org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
@@ -94,6 +98,12 @@ public class MicroAstServiceTest {
     private MicroAstPanelDAO panelDAO;
 
     @Mock
+    private MicroAstPanelAntibioticDAO panelAntibioticDAO;
+
+    @Mock
+    private MicroAstRunAntibioticDAO runAntibioticDAO;
+
+    @Mock
     private MicroAstOverrideEventDAO overrideEventDAO;
 
     @Mock
@@ -105,7 +115,7 @@ public class MicroAstServiceTest {
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
                 interpretationService, amendmentDAO, reagentLotService, organismDAO, panelDAO, overrideEventDAO,
-                systemUserService);
+                systemUserService, panelAntibioticDAO, runAntibioticDAO);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
         MicroOrganism organism = new MicroOrganism();
         organism.setId("org-1");
@@ -113,6 +123,9 @@ public class MicroAstServiceTest {
         when(organismDAO.get("org-1")).thenReturn(Optional.of(organism));
         MicroAstPanel panel = panel("panel-1", "GN-STD", 3);
         when(panelDAO.get("panel-1")).thenReturn(Optional.of(panel));
+        when(panelAntibioticDAO.getByPanelId("panel-1")).thenReturn(List.of(panelAntibiotic("panel-1", "abx-1", 1)));
+        when(runAntibioticDAO.getByRunIdAndAntibioticId(any(String.class), any(String.class))).thenAnswer(
+                invocation -> Optional.of(orderedAntibiotic(invocation.getArgument(0), invocation.getArgument(1), 1)));
         MicroBreakpointStandard standard = standard("eucast-std", "EUCAST", "2025");
         when(breakpointService.getStandard("eucast-std")).thenReturn(standard);
         when(breakpointService.getActiveStandards()).thenReturn(List.of(standard));
@@ -148,6 +161,61 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void startRunSnapshotsTheExactOrderedAntibioticSet() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+
+        MicroAstRun run = service.startRun("iso-1", "panel-1", "eucast-std", null,
+                MicroAstTechnique.VITEK_2, List.of(), "1");
+
+        ArgumentCaptor<MicroAstRunAntibiotic> ordered = ArgumentCaptor.forClass(MicroAstRunAntibiotic.class);
+        verify(runAntibioticDAO).insert(ordered.capture());
+        assertEquals(run.getId(), ordered.getValue().getAstRunId());
+        assertEquals("abx-1", ordered.getValue().getAntibioticId());
+        assertEquals(Integer.valueOf(1), ordered.getValue().getDisplayOrder());
+    }
+
+    @Test
+    public void recordReadingRejectsAnAntibioticOutsideTheOrderedSet() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        run.setTechnique(MicroAstTechnique.VITEK_2.name());
+        run.setMethod(MicroAstMethod.MIC.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(runAntibioticDAO.getByRunIdAndAntibioticId("run-1", "abx-outside")).thenReturn(Optional.empty());
+
+        try {
+            service.recordReading("run-1", "abx-outside", new BigDecimal("2"), "1");
+            fail("Expected an ordered-panel conflict");
+        } catch (MicroAstConflictException expected) {
+            assertEquals("AST_ANTIBIOTIC_NOT_ORDERED", expected.getMessage());
+        }
+
+        verify(readingDAO, never()).insert(any(MicroAstReading.class));
+    }
+
+    @Test
+    public void repeatRunCopiesTheSourceOrderedSetInsteadOfTheMutablePanel() {
+        MicroAstRun source = reviewedRun("run-1");
+        source.setPanelId("panel-1");
+        source.setPanelVersion(3);
+        source.setTechnique(MicroAstTechnique.VITEK_2.name());
+        source.setMethod(MicroAstMethod.MIC.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(source));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        MicroAstRunAntibiotic sourceOrder = orderedAntibiotic("run-1", "abx-original", 1);
+        when(runAntibioticDAO.getByRunId("run-1")).thenReturn(List.of(sourceOrder));
+
+        MicroAstRun repeat = service.startRepeatRun("run-1", MicroAstAttemptType.REPEAT, "Confirm result",
+                MicroAstTechnique.VITEK_2, "1");
+
+        ArgumentCaptor<MicroAstRunAntibiotic> copied = ArgumentCaptor.forClass(MicroAstRunAntibiotic.class);
+        verify(runAntibioticDAO).insert(copied.capture());
+        assertEquals(repeat.getId(), copied.getValue().getAstRunId());
+        assertEquals("abx-original", copied.getValue().getAntibioticId());
+    }
+
+    @Test
     public void startRunWithoutStandardSnapshotsTheActiveStandard() {
         MicroIsolate isolate = identifiedIsolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
@@ -174,6 +242,8 @@ public class MicroAstServiceTest {
     public void adjustedPanelRequiresReasonAndPreservesProvenance() {
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
         when(panelDAO.get("panel-2")).thenReturn(Optional.of(panel("panel-2", "URINE-GN", 2)));
+        when(panelAntibioticDAO.getByPanelId("panel-2"))
+                .thenReturn(List.of(panelAntibiotic("panel-2", "abx-2", 1)));
 
         try {
             service.startRun("iso-1", "panel-2", "eucast-std", null, List.of(), "1");
@@ -569,6 +639,7 @@ public class MicroAstServiceTest {
         MicroAstRun run = new MicroAstRun();
         run.setId(id);
         run.setIsolateId("iso-1");
+        run.setPanelId("panel-1");
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         return run;
     }
@@ -587,6 +658,22 @@ public class MicroAstServiceTest {
         panel.setName(name);
         panel.setVersionNumber(version);
         return panel;
+    }
+
+    private MicroAstPanelAntibiotic panelAntibiotic(String panelId, String antibioticId, int displayOrder) {
+        MicroAstPanelAntibiotic row = new MicroAstPanelAntibiotic();
+        row.setPanelId(panelId);
+        row.setAntibioticId(antibioticId);
+        row.setDisplayOrder(displayOrder);
+        return row;
+    }
+
+    private MicroAstRunAntibiotic orderedAntibiotic(String runId, String antibioticId, int displayOrder) {
+        MicroAstRunAntibiotic row = new MicroAstRunAntibiotic();
+        row.setAstRunId(runId);
+        row.setAntibioticId(antibioticId);
+        row.setDisplayOrder(displayOrder);
+        return row;
     }
 
     private MicroBreakpointStandard standard(String id, String authority, String version) {
