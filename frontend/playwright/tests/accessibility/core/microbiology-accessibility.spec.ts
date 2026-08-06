@@ -13,6 +13,12 @@ import {
   createAndIdentifyMicrobiologyIsolate,
   openMicrobiologyCaseSection,
 } from "../../../helpers/microbiology-ui";
+import {
+  MICROBIOLOGY_CULTURE_TEST_NAME,
+  seedMicrobiologyOrderCatalog,
+  selectMicrobiologyOrderTest,
+  startMicrobiologyOrder,
+} from "../../../helpers/microbiology-order-entry";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test.describe("Microbiology WCAG 2.1 AA qualification", () => {
@@ -119,6 +125,33 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     await expectNoWcag21AaViolations(page, testInfo, "microbiology-amendment");
   });
 
+  test("microbiology order-entry details", async ({ page }, testInfo) => {
+    const seeded = await seedMicrobiologyOrderCatalog(page);
+    await startMicrobiologyOrder(page, seeded);
+    await selectMicrobiologyOrderTest(page, MICROBIOLOGY_CULTURE_TEST_NAME);
+
+    const details = page.getByTestId("microbiology-order-entry-section");
+    await expect(details).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page.getByLabel("Patient Origin")).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: "Culture Method" }),
+    ).not.toHaveValue("");
+    if (testInfo.project.name.endsWith("-mobile")) {
+      const box = await details.boundingBox();
+      const viewport = page.viewportSize();
+      if (!box || !viewport) {
+        throw new Error("Expected order details inside an active viewport");
+      }
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+    }
+    await expectNoWcag21AaViolations(
+      page,
+      testInfo,
+      "microbiology-order-entry-details",
+    );
+  });
+
   test("reference and breakpoint administration", async ({
     page,
   }, testInfo) => {
@@ -140,14 +173,29 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     };
     const surfaces = [
       [
+        "/MasterListsPage/MicrobiologyReference/patient-origins?status=ALL&sort=name&page=1&pageSize=20",
+        "Patient origins",
+        "microbiology-reference-patient-origins",
+      ],
+      [
         "/MasterListsPage/MicrobiologyReference/organisms?q=Reference%20organism%20%28UAT%29&status=ALL&sort=name&page=1&pageSize=20",
         "Organisms",
         "microbiology-reference-organisms",
       ],
       [
+        "/MasterListsPage/MicrobiologyReference/antibiotics?status=ALL&sort=name&page=1&pageSize=20",
+        "Antibiotics",
+        "microbiology-reference-antibiotics",
+      ],
+      [
         "/MasterListsPage/MicrobiologyReference/ast-panels?q=Gram%20negative%20AST%20panel%20%28UAT%29&status=ALL&sort=name&page=1&pageSize=20",
         "AST panels",
         "microbiology-reference-ast-panels",
+      ],
+      [
+        "/MasterListsPage/MicrobiologyReference/culture-setups?status=ALL&sort=name&page=1&pageSize=20",
+        "Culture methods",
+        "microbiology-reference-culture-setups",
       ],
       [
         `/MasterListsPage/MicrobiologyReference/breakpoints/${seeded.loadedBreakpointStandardId}?status=ALL&sort=name&page=1&pageSize=20`,
@@ -163,6 +211,9 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
         await expect(page.getByRole("heading", { name: heading })).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
+        const table = page.getByRole("table").first();
+        await table.focus();
+        await expect(table).toBeFocused();
         if (testInfo.project.name.endsWith("-mobile")) {
           await expectInsideViewport(
             page.getByPlaceholder("Search reference data"),

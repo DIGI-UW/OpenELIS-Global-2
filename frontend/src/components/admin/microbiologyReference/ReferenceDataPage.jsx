@@ -277,7 +277,7 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
                 )}
               </TableToolbarContent>
             </TableToolbar>
-            <Table size="lg" useZebraStyles>
+            <Table size="lg" useZebraStyles tabIndex={0}>
               <TableHead>
                 <TableRow>
                   {renderedHeaders.map((header) => (

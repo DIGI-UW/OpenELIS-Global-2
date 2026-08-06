@@ -327,7 +327,7 @@ const AstPanelPage = ({ query, setQuery }) => {
                 </Button>
               </TableToolbarContent>
             </TableToolbar>
-            <Table size="lg" useZebraStyles>
+            <Table size="lg" useZebraStyles tabIndex={0}>
               <TableHead>
                 <TableRow>
                   {tableHeaders.map((header) => (

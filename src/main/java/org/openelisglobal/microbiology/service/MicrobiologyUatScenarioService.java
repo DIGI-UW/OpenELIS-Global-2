@@ -237,6 +237,7 @@ public class MicrobiologyUatScenarioService {
         form.sampleId = sample.getId();
         form.sampleItemId = sampleItem.getId();
         form.patientId = patient.getId();
+        form.patientExternalId = patient.getExternalId();
         form.caseId = microCase.getId();
         form.siblingCaseId = sibling == null ? null : sibling.getId();
         form.analysisId = analysis.getId();

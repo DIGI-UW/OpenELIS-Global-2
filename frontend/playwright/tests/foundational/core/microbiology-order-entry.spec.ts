@@ -1,99 +1,15 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import {
-  seedMicrobiologyClassificationCase,
-  type SeededMicrobiologyCase,
-} from "../../../helpers/seed-microbiology-data";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
-
-type OrderCatalog = SeededMicrobiologyCase & {
-  sampleTypeId: string;
-  cultureTestId: string;
-  tbCultureTestId: string;
-  nonCultureTestId: string;
-};
-
-const cultureTestName = "UAT microbiology culture";
-const tbCultureTestName = "UAT microbiology TB culture";
-const nonCultureTestName = "UAT routine non-culture test";
-
-async function seedOrderCatalog(page: Page): Promise<OrderCatalog> {
-  const seeded = await seedMicrobiologyClassificationCase(page);
-  const required = [
-    "sampleTypeId",
-    "cultureTestId",
-    "tbCultureTestId",
-    "nonCultureTestId",
-  ] as const;
-  for (const field of required) {
-    if (!seeded[field]) {
-      throw new Error(`Microbiology order-entry scenario is missing ${field}`);
-    }
-  }
-  return seeded as OrderCatalog;
-}
-
-async function startSupportedOrder(page: Page, seeded: OrderCatalog) {
-  await page.goto("/order/enter", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Enter Order" })).toBeVisible({
-    timeout: LONG_TIMEOUT,
-  });
-
-  const labNumber = page.getByRole("textbox", { name: "Lab Number *" });
-  const generateLabNumber = page.getByText("Generate Lab Number", {
-    exact: true,
-  });
-  await expect(generateLabNumber).toBeVisible({ timeout: UI_TIMEOUT });
-  await generateLabNumber.click();
-  await expect(labNumber).not.toHaveValue("", { timeout: UI_TIMEOUT });
-
-  const patientSearch = page.getByTestId("patient-search-section");
-  await patientSearch.getByLabel("Last Name").fill("Microbiology");
-  await patientSearch.getByLabel("First Name").fill("UAT");
-  await patientSearch
-    .getByRole("button", { name: "Search", exact: true })
-    .click();
-  const patientRow = patientSearch.getByTestId(
-    `patient-search-result-${seeded.patientId}`,
-  );
-  await expect(patientRow).toBeVisible({ timeout: LONG_TIMEOUT });
-  await patientRow.getByRole("button", { name: "Select" }).click();
-  await expect(
-    page.getByRole("heading", { name: "UAT Microbiology", exact: true }),
-  ).toBeVisible({ timeout: UI_TIMEOUT });
-
-  const sampleType = page
-    .getByTestId("order-sample-test-section")
-    .getByLabel("Sample Type");
-  await expect(sampleType).toBeVisible({ timeout: LONG_TIMEOUT });
-  await sampleType.selectOption(seeded.sampleTypeId);
-  await expect(page.getByLabel(cultureTestName)).toBeVisible({
-    timeout: LONG_TIMEOUT,
-  });
-
-  return await labNumber.inputValue();
-}
-
-async function clickTestToggle(page: Page, name: string) {
-  const checkbox = page.getByLabel(name);
-  await expect(checkbox).toBeVisible({ timeout: LONG_TIMEOUT });
-  const checkboxId = await checkbox.getAttribute("id");
-  if (!checkboxId) {
-    throw new Error(`Test checkbox ${name} is missing its label target`);
-  }
-  await page.locator(`label[for="${checkboxId}"]`).click({
-    timeout: UI_TIMEOUT,
-  });
-  return checkbox;
-}
-
-async function selectTest(page: Page, name: string) {
-  const checkbox = page.getByLabel(name);
-  if (!(await checkbox.isChecked())) {
-    await clickTestToggle(page, name);
-  }
-  await expect(checkbox).toBeChecked({ timeout: UI_TIMEOUT });
-}
+  clickMicrobiologyOrderTest as clickTestToggle,
+  MICROBIOLOGY_CULTURE_TEST_NAME as cultureTestName,
+  MICROBIOLOGY_NON_CULTURE_TEST_NAME as nonCultureTestName,
+  MICROBIOLOGY_TB_CULTURE_TEST_NAME as tbCultureTestName,
+  seedMicrobiologyOrderCatalog as seedOrderCatalog,
+  selectMicrobiologyOrderTest as selectTest,
+  startMicrobiologyOrder as startSupportedOrder,
+} from "../../../helpers/microbiology-order-entry";
+import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 async function fillMicrobiologyDetails(page: Page) {
   const details = page.getByTestId("microbiology-order-entry-section");

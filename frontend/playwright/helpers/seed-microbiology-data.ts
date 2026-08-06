@@ -9,6 +9,7 @@ export interface SeededMicrobiologyCase {
   sampleItemId: string;
   sampleId: string;
   patientId: string;
+  patientExternalId?: string;
   analysisId: string;
   siblingCaseId?: string;
   organismId?: string;

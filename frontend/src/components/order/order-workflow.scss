@@ -134,7 +134,9 @@
    ========================================================================== */
 .order-workflow-container {
   border-radius: 8px;
+  box-sizing: border-box;
   margin: 1.5rem;
+  min-width: 0;
   padding: 1.5rem;
   background-color: var(--cds-layer);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
@@ -794,6 +796,8 @@
    ========================================================================== */
 .order-section {
   margin-bottom: 1.5rem;
+  min-width: 0;
+  overflow: hidden;
   padding: 1.5rem;
 
   .section-title {
@@ -842,6 +846,7 @@
 /* Section Tabs */
 .section-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
 
@@ -861,9 +866,7 @@
   }
 
   .generate-link {
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    cursor: pointer;
+    flex: 0 0 auto;
   }
 }
 
@@ -896,6 +899,7 @@
 
 .search-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 1rem;
 
@@ -906,6 +910,12 @@
 
 .search-results {
   margin-top: 1.5rem;
+  min-width: 0;
+
+  .cds--data-table-content {
+    max-width: 100%;
+    overflow-x: auto;
+  }
 
   .results-title {
     margin-bottom: 0.5rem;
@@ -1375,12 +1385,23 @@
    Responsive
    ========================================================================== */
 @media (max-width: 768px) {
+  .lab-number-field {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    .generate-link {
+      align-self: flex-start;
+    }
+  }
+
   .order-dashboard {
     padding: 1rem;
   }
 
   .order-workflow-container {
     margin: 1rem;
+    max-width: calc(100vw - 2rem);
     padding: 1rem;
   }
 

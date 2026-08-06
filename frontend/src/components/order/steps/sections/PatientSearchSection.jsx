@@ -536,7 +536,7 @@ const PatientSearchSection = ({
                   getHeaderProps,
                   getRowProps,
                 }) => (
-                  <Table {...getTableProps()}>
+                  <Table {...getTableProps()} tabIndex={0}>
                     <TableHead>
                       <TableRow>
                         {headers.map((header) => (
