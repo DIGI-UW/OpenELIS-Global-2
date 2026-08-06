@@ -69,27 +69,25 @@ paths:
                 $ref: "#/components/schemas/MicroCaseDetail"
         "400":
           description: Invalid activity for case state
-  /microbiology/cases/{caseId}/isolates:
+  /microbiology/isolates:
     post:
-      summary: Create an isolate for a case
-      parameters:
-        - $ref: "#/components/parameters/CaseId"
+      summary: Record preliminary isolate work-up for a case
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IsolateRequest"
+              $ref: "#/components/schemas/CreateIsolateRequest"
       responses:
-        "201":
+        "200":
           description: Isolate created
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/MicroIsolate"
-  /microbiology/isolates/{isolateId}:
+  /microbiology/isolates/{isolateId}/identification:
     put:
-      summary: Update organism identification or significance for an isolate
+      summary: Identify or reidentify an isolate
       parameters:
         - $ref: "#/components/parameters/IsolateId"
       requestBody:
@@ -97,7 +95,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IsolateRequest"
+              $ref: "#/components/schemas/IdentifyIsolateRequest"
       responses:
         "200":
           description: Updated isolate
@@ -358,28 +356,73 @@ components:
               type: string
             performedBy:
               type: string
-    IsolateRequest:
+    CreateIsolateRequest:
+      type: object
+      required:
+        - caseId
+        - isolateLabel
+        - gramStain
+      properties:
+        caseId:
+          type: string
+        isolateLabel:
+          type: string
+        gramStain:
+          type: string
+        colonyMorphology:
+          type: string
+        significance:
+          type: string
+    IdentifyIsolateRequest:
+      type: object
+      required:
+        - organismId
+        - identificationMethod
+        - identificationConfidence
+        - significance
+        - identificationStatus
+      properties:
+        organismId:
+          type: string
+        preliminaryOrganismText:
+          type: string
+        identificationMethod:
+          type: string
+        identificationConfidence:
+          type: number
+          minimum: 0
+          maximum: 100
+        significance:
+          type: string
+        identificationStatus:
+          type: string
+        identificationReason:
+          type: string
+    MicroIsolate:
       type: object
       properties:
+        id:
+          type: string
+        caseId:
+          type: string
         isolateLabel:
+          type: string
+        gramStain:
+          type: string
+        colonyMorphology:
           type: string
         organismId:
           type: string
         preliminaryOrganismText:
           type: string
+        identificationMethod:
+          type: string
+        identificationConfidence:
+          type: number
         significance:
           type: string
-    MicroIsolate:
-      allOf:
-        - $ref: "#/components/schemas/IsolateRequest"
-        - type: object
-          properties:
-            id:
-              type: string
-            caseId:
-              type: string
-            identificationStatus:
-              type: string
+        identificationStatus:
+          type: string
     AstRunRequest:
       type: object
       properties:

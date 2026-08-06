@@ -146,9 +146,13 @@ confirming the case shows the next required action.
 3. **Given** growth or a positive signal is observed, **When** the technologist
    records the observation, **Then** the case prompts isolate workup and makes
    the event visible in the case history.
-4. **Given** an organism has been identified, **When** the technologist marks it
-   as clinically significant, **Then** the case supports AST setup for that
-   isolate.
+4. **Given** growth is present, **When** the technologist records Gram stain and
+   colony morphology, **Then** the case preserves a preliminary isolate that can
+   contribute to preliminary reporting without presenting AST as available.
+5. **Given** the preliminary isolate is identified, **When** the technologist
+   records the organism, identification method, confidence, and clinical
+   significance, **Then** the case marks the isolate identified and supports AST
+   setup for it.
 
 ---
 
@@ -296,11 +300,12 @@ or missing mapping for export.
 - **FR-005**: Users MUST be able to record culture setup, incubation progress,
   positive or growth observations, no-growth finalization, and specimen-loss or
   rejection events.
-- **FR-006**: Users MUST be able to create and update isolates, record organism
-  identification, record clinical significance, and distinguish preliminary
-  from final organism identification.
-- **FR-007**: Users MUST be able to set up AST only when the isolate context is
-  sufficient to support interpretation.
+- **FR-006**: Users MUST be able to record preliminary isolate work-up from Gram
+  stain and colony morphology, then identify the organism with method,
+  confidence, and clinical significance while clearly distinguishing pending
+  from identified state.
+- **FR-007**: AST MUST remain unavailable until the isolate has a confirmed
+  organism identification sufficient to support interpretation.
 - **FR-008**: Users MUST be able to enter manual AST readings and see
   susceptibility interpretation, including clear guidance when no standard
   breakpoint is available.
@@ -317,8 +322,10 @@ or missing mapping for export.
 - **FR-014**: The system MUST make sibling workflow records on the same specimen
   distinguishable in the worklist while keeping their lifecycles and reports
   separate.
-- **FR-015**: Users MUST be able to release preliminary reports when eligible
-  and final reports only when readiness checks pass.
+- **FR-015**: Users MUST be able to release preliminary reports when reportable
+  culture observations or isolate work-up are available, including Gram stain
+  and colony morphology before organism identification, and final reports only
+  when readiness checks pass.
 - **FR-017**: Users MUST be able to log critical communications for case,
   isolate, sample, or result context, including recipient, message, time,
   method, acknowledgment state, and follow-up.

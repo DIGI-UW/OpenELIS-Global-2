@@ -229,8 +229,12 @@ Fields:
 - `id`
 - `caseId`
 - `isolateLabel`
+- `gramStain`
+- `colonyMorphology`
 - `organismId`
 - `preliminaryOrganismText`
+- `identificationMethod`
+- `identificationConfidence`
 - `significance`
 - `identificationStatus`
 - `createdAt`
@@ -243,10 +247,11 @@ Relationships:
 
 Validation:
 
-- AST setup requires a clinically significant isolate with sufficient organism
-  context.
-- Reidentification preserves prior organism history through activity entries or
-  versioning in a later amendment slice.
+- Creation records Gram stain and colony morphology while organism identity is
+  pending.
+- AST setup requires confirmed organism identification.
+- Identification and reidentification preserve the prior organism, method,
+  confidence, significance, actor, time, and reason in immutable history.
 
 ### MicroAstRun
 
