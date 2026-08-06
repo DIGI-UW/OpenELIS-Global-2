@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ================================================================== -->
+    <!-- OGC-1151: privilege data for the menu filter.                      -->
+    <!--                                                                    -->
+    <!-- Both changeSets below affect page authorization as well as menu    -->
+    <!-- visibility, because ModuleAuthenticationInterceptor resolves the   -->
+    <!-- same system_module_url rows. They are kept separate so either can  -->
+    <!-- be rolled back on its own.                                         -->
+    <!-- ================================================================== -->
+
+    <!--
+      The Admin landing page had no system_module_url row, so it was invisible to
+      the privilege chain and every role saw the Admin menu entry. The MasterList
+      module already exists and is granted to the administrator roles; only the
+      URL mapping was missing.
+
+      Side effect to note on deploy: the interceptor now enforces /MasterListsPage
+      server-side (REQUIRE_MODULE denies an unmapped non-REST path), replacing the
+      client-side "Access Denied" dialog with a real redirect.
+    -->
+    <changeSet author="samuelmale" id="ogc-1151-001-master-lists-page-url">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'MasterList'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_module_url WHERE url_path = '/MasterListsPage'
+            </sqlCheck>
+        </preConditions>
+        <comment>Map /MasterListsPage to the MasterList module so the Admin menu is privilege-gated</comment>
+
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/MasterListsPage"/>
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'MasterList')"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="system_module_url" schemaName="clinlims">
+                <where>url_path = '/MasterListsPage'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!--
+      URLUtil strips the /rest prefix before looking a path up, so rows stored
+      with that prefix could never match. Seven such rows exist; all were dead
+      data. Four of them cover live endpoints (/eqa, /qc, /alerts,
+      /reports/amendment) which until now fell through the interceptor's
+      isRestFullPath() auto-allow — after this runs they are enforced against
+      EQAView / AmendmentReport. The remaining three (GenericSampleOrder) stay
+      inert because no handler maps their bare paths.
+    -->
+    <changeSet author="samuelmale" id="ogc-1151-002-strip-rest-prefix-from-module-urls">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Strip the /rest prefix from system_module_url rows so they can match a request path</comment>
+
+        <sql>
+            UPDATE clinlims.system_module_url
+            SET url_path = SUBSTRING(url_path FROM 6)
+            WHERE url_path LIKE '/rest/%';
+        </sql>
+
+        <!--
+          /rest/GenericSampleOrder strips onto a path that already had a row for the
+          same module, so drop the now-redundant duplicate. Keyed on the whole
+          (url_path, module, param) triple to avoid removing rows that legitimately
+          share a path but differ by parameter.
+        -->
+        <sql>
+            DELETE FROM clinlims.system_module_url stripped
+            WHERE stripped.url_path IN ('/alerts', '/eqa', '/qc', '/reports/amendment',
+                                        '/GenericSampleOrder', '/GenericSampleOrder/import',
+                                        '/GenericSampleOrder/validate')
+              AND EXISTS (
+                SELECT 1
+                FROM clinlims.system_module_url kept
+                WHERE kept.url_path = stripped.url_path
+                  AND kept.system_module_id = stripped.system_module_id
+                  AND kept.system_module_param_id IS NOT DISTINCT FROM stripped.system_module_param_id
+                  AND kept.id &lt; stripped.id
+              );
+        </sql>
+
+        <rollback>
+            <sql>
+                UPDATE clinlims.system_module_url
+                SET url_path = '/rest' || url_path
+                WHERE url_path IN ('/alerts', '/eqa', '/qc', '/reports/amendment',
+                                   '/GenericSampleOrder', '/GenericSampleOrder/import',
+                                   '/GenericSampleOrder/validate');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
