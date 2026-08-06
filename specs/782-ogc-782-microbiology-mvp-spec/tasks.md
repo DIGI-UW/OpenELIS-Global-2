@@ -451,7 +451,7 @@ opens exactly one resulting case containing those details.
 - [x] T209 [R1] Synchronize the OpenELIS Work source and add the source-to-code-to-UAT crosswalk in `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
 - [x] T210 [P] [R1] Add selector/state tests proving modern order selection retains culture workflow and Method metadata for direct and panel-selected tests.
 - [x] T211 [P] [R1] Add React interaction tests using Carbon-accessible roles for Program derivation, required/defaulted Culture Method, Patient Origin selection, bounded Number of Sets, Clinical History, Antibiotic Exposure checkbox, Critical Notify checkbox, discard confirmation, and manual Program fallback.
-- [ ] T212 [P] [R1] Add failing service/controller integration coverage proving the supported order save persists details atomically, creates one case, and returns the details through case compilation without SQL fixtures or fixed primary keys.
+- [ ] T212 [P] [R1] Complete service/controller integration coverage proving the supported order save persists details atomically, creates one case, and returns the details through case compilation without SQL fixtures or fixed primary keys. Service-created catalog/sample/analysis fixtures, JSON binding coverage, and transaction-level routing/detail/idempotency coverage exist; the complete `SamplePatientEntryService`/controller save-path proof remains open.
 - [ ] T213 [P] [R1] Replace the legacy-route order-entry Playwright shortcut with a red `core-app` journey that enters through configured navigation and `/order/enter`; cover culture, non-culture, save-to-case, removal confirmation, and the ruled mixed-workflow behavior without arbitrary waits.
 
 ### Implementation
@@ -460,7 +460,7 @@ opens exactly one resulting case containing those details.
 - [x] T215 [R1] Derive the visible Microbiology Program from selected test workflows through shared order state and surface a named configuration error when the Program cannot be resolved by stable identity (`38b177f7e`).
 - [x] T216 [R1] Integrate reusable Carbon microbiology detail controls into the supported Program/order flow with required/defaulted Method and the product-safe control semantics in FR-002 (`38b177f7e`).
 - [x] T217 [R1] Confirm before discarding entered microbiology details when the final culture test is removed (`38b177f7e`). Program-change confirmation remains part of T218 before complete save-path evidence.
-- [ ] T218 [R1] Submit the modern order details through the existing service-layer order-save path and prove idempotent case/detail persistence. Add no migration unless a real data-model change is required.
+- [ ] T218 [R1] Submit the modern order details through the existing service-layer order-save path and prove idempotent case/detail persistence. Commit `919cf7258` persists typed booleans, enforces source bounds, resolves the default `TestMethod`, and adds the required data conversion migration with rollback; complete supported-save runtime proof and Program-change confirmation remain open.
 - [x] T219 [R1] Make the legacy compatibility flow retain the same complete selected-test metadata and consume the shared detail controls without creating a second implementation (`38b177f7e`).
 - [x] T220 [P] [R1] Add or update English React Intl source keys only and use existing Carbon components/tokens without a package upgrade (`38b177f7e`).
 
@@ -479,6 +479,8 @@ opens exactly one resulting case containing those details.
 - [x] T231 [R1] Push the branch and open official stacked PR #4004 targeting `feat/782-ogc-782-microbiology-m10-whonet-export`; its body records scope, open evidence/UAT gates, and the separate Macro follow-on boundary.
 - [ ] T232 [Follow-up] Correct the M-03 v1/v2 visual, fallback, mixed-workflow, duplicate-text, and implementation-leakage issues in a separate `DIGI-UW/openelis-work` product-source PR.
 - [ ] T233 [Follow-up] Extract Macro Library core/runtime/administration into its own PR and UAT stack; retain only microbiology consumer integration in a small integration PR and review it on a separate macro deployment when available.
+- [ ] T284 [R1] Replace the hardcoded M-03 Patient Origin choices with deployment reference data and default from the requesting location when configured; add service/component/Playwright evidence and keep the stored value stable for WHONET mapping. The authoritative source requires a reference table, while the current repository has no reusable patient-origin master.
+- [ ] T285 [Macro dependency] After T274 provides the separate Macro Library base, integrate its `clinical` category into M-03 Clinical History without moving macro administration or runtime ownership into the microbiology PR.
 
 ### M-04 Case Workbench Alignment
 

@@ -330,11 +330,15 @@ or missing mapping for export.
 - **FR-001**: The system MUST provide a reliable way for ordered tests to start
   the appropriate microbiology workflow without relying on clerk memory.
 - **FR-002**: In the supported Add Order workflow, users MUST be able to confirm
-  or change the required default Culture Method, select Patient Origin, enter a
-  bounded/defaulted Number of Sets, record multi-line Clinical History, mark
-  Antibiotic Exposure, and mark Critical Notify. Antibiotic Exposure and
-  Critical Notify are binary choices, not free-text fields. The system MUST
-  confirm before discarding entered details when culture routing is removed.
+  or change the required default Culture Method, select Patient Origin from the
+  deployment's configured choices, enter a bounded/defaulted Number of Sets,
+  record multi-line Clinical History, mark Antibiotic Exposure, and mark
+  Critical Notify. Patient Origin SHOULD default from the requesting location
+  when that mapping is available. Clinical History MUST offer managed clinical
+  macros when the separately owned Macro Library is enabled. Antibiotic
+  Exposure and Critical Notify are binary choices, not free-text fields. The
+  system MUST confirm before discarding entered details when culture routing is
+  removed.
 - **FR-003**: The system MUST distinguish sibling bacteriology and TB workflow
   records for the same physical specimen without duplicate accessioning. This
   MVP does not provide the operational TB laboratory workflow.
