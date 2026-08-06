@@ -63,6 +63,7 @@ const OrderDetailPanel = ({
         <MicrobiologyOrderDetailFields
           fields={fields}
           onChange={(name, value) => setField(name)(value)}
+          showCultureMethod={false}
         />
         <div>
           <Button onClick={save} disabled={saving}>
