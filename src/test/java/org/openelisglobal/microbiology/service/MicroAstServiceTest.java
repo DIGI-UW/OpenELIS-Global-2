@@ -595,6 +595,10 @@ public class MicroAstServiceTest {
         repeat.setAttemptType(MicroAstAttemptType.REPEAT.name());
         when(runDAO.get("run-2")).thenReturn(Optional.of(repeat));
         when(runDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
+        when(runAntibioticDAO.getByRunId("run-2")).thenReturn(List.of(orderedAntibiotic("run-2", "abx-1", 1)));
+        MicroAstReading entered = reading("reading-1", "run-2", MicroAstInterpretation.SUSCEPTIBLE);
+        entered.setAntibioticId("abx-1");
+        when(readingDAO.getByRunId("run-2")).thenReturn(List.of(entered));
         when(runDAO.update(any(MicroAstRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.reviewRun("run-2", "7");
@@ -603,6 +607,29 @@ public class MicroAstServiceTest {
         assertFalse(repeat.isReportable());
         verify(runDAO).update(original);
         assertEquals(MicroAstRunStatus.REVIEWED.name(), repeat.getStatus());
+    }
+
+    @Test
+    public void reviewRejectsAResultSetMissingAnOrderedAntibiotic() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate()));
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(runAntibioticDAO.getByRunId("run-1")).thenReturn(List.of(
+                orderedAntibiotic("run-1", "abx-1", 1), orderedAntibiotic("run-1", "abx-2", 2)));
+        MicroAstReading entered = reading("reading-1", "run-1", MicroAstInterpretation.SUSCEPTIBLE);
+        entered.setAntibioticId("abx-1");
+        when(readingDAO.getByRunId("run-1")).thenReturn(List.of(entered));
+
+        try {
+            service.reviewRun("run-1", "7");
+            fail("Expected every ordered antibiotic to have a reading before review");
+        } catch (MicroAstConflictException expected) {
+            assertEquals("AST_ORDERED_RESULTS_INCOMPLETE", expected.getMessage());
+        }
+
+        verify(runDAO, never()).update(run);
     }
 
     @Test

@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstOverrideEventDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
@@ -421,6 +423,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         requireMutableRun(run, isolate.getCaseId());
+        requireCompleteOrderedResults(runId);
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         run.setReviewedAt(MicroCaseServiceImpl.now());
         run.setReviewedBy(performedBy);
@@ -495,6 +498,19 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     private void snapshotPanelAntibiotics(String runId, String panelId) {
         snapshotOrderedAntibiotics(runId, resolveOrderedAntibiotics(panelId, null).antibiotics);
+    }
+
+    private void requireCompleteOrderedResults(String runId) {
+        List<MicroAstRunAntibiotic> ordered = runAntibioticDAO.getByRunId(runId);
+        if (ordered.isEmpty()) {
+            throw new MicroAstConflictException("AST_ORDERED_RESULTS_INCOMPLETE");
+        }
+        Set<String> enteredAntibioticIds = readingDAO.getByRunId(runId).stream().map(MicroAstReading::getAntibioticId)
+                .collect(Collectors.toSet());
+        if (ordered.stream().map(MicroAstRunAntibiotic::getAntibioticId)
+                .anyMatch(antibioticId -> !enteredAntibioticIds.contains(antibioticId))) {
+            throw new MicroAstConflictException("AST_ORDERED_RESULTS_INCOMPLETE");
+        }
     }
 
     private void snapshotOrderedAntibiotics(String runId, List<OrderedAntibiotic> antibiotics) {

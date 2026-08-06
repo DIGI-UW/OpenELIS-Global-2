@@ -209,6 +209,13 @@ const AstEntryPanel = ({
   )
     ? selectedAntibioticId
     : orderedAntibiotics[0]?.id || "";
+  const orderedResultsComplete =
+    orderedAntibiotics.length > 0 &&
+    orderedAntibiotics.every((ordered) =>
+      currentReadings.some(
+        (reading) => reading.antibioticId === ordered.antibioticId,
+      ),
+    );
 
   const readingHeaders = useMemo(
     () => [
@@ -987,10 +994,7 @@ const AstEntryPanel = ({
                   kind="primary"
                   onClick={reviewRun}
                   disabled={
-                    busy ||
-                    readOnly ||
-                    isReviewed ||
-                    !currentRun.readings?.length
+                    busy || readOnly || isReviewed || !orderedResultsComplete
                   }
                 >
                   {intl.formatMessage({ id: "microbiology.ast.reviewRun" })}
