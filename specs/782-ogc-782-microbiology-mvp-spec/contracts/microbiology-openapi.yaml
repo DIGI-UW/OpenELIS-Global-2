@@ -731,6 +731,13 @@ components:
           type: string
         technique:
           $ref: "#/components/schemas/AstTechnique"
+        orderedAntibioticIds:
+          type: array
+          description: Omit for the whole source panel or provide source-run members for a scoped repeat.
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
     AstReasonRequest:
       type: object
       required:
@@ -1154,11 +1161,23 @@ components:
           enum:
             - FLAG_ONLY
             - REJECT_TEST
+            - RETEST
         eventType:
           type: string
           enum:
             - NONCONFORMANCE
             - SPECIMEN_LOST
+        sourceAstRunId:
+          type: string
+          description: Required for the RETEST disposition and constrained to this case.
+        astTechnique:
+          $ref: "#/components/schemas/AstTechnique"
+        orderedAntibioticIds:
+          type: array
+          description: Empty for the whole source panel or source-run members for a scoped retest.
+          uniqueItems: true
+          items:
+            type: string
     CaseNonconformanceResult:
       type: object
       properties:
@@ -1174,6 +1193,8 @@ components:
           type: array
           items:
             type: string
+        createdAstRunId:
+          type: string
     MicroReportRelease:
       type: object
       properties:
