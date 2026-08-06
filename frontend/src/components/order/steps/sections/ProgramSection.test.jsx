@@ -117,4 +117,48 @@ describe("ProgramSection microbiology derivation", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("shows the same details for a manually selected Microbiology Program with an untyped test", async () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ProgramSection
+          orderData={{
+            ...orderData,
+            sampleOrderItems: { programId: "8" },
+          }}
+          setOrderData={vi.fn()}
+          samples={[
+            {
+              sampleTypeId: "5",
+              sampleTypeName: "Blood",
+              tests: [
+                {
+                  id: "43",
+                  name: "Untyped culture",
+                  methods: [
+                    {
+                      methodId: "7",
+                      methodName: "Blood Culture Standard",
+                      isDefault: true,
+                    },
+                  ],
+                },
+              ],
+            },
+          ]}
+          isReadOnly={false}
+        />
+      </IntlProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Microbiology Program Details",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unassigned")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("Blood Culture Standard"),
+    ).toBeInTheDocument();
+  });
 });

@@ -222,8 +222,14 @@ const OrderEnter = () => {
   const hasCultureWorkflow = samples.some((sample) =>
     (sample.tests || []).some((test) => test.cultureWorkflowType),
   );
+  const microbiologyProgramSelected =
+    Boolean(orderData?.sampleOrderItems?.microbiologyProgramId) &&
+    String(orderData?.sampleOrderItems?.programId || "") ===
+      String(orderData.sampleOrderItems.microbiologyProgramId);
+  const routesToMicrobiology =
+    hasCultureWorkflow || microbiologyProgramSelected;
   const microbiologyOrderReady =
-    !hasCultureWorkflow ||
+    !routesToMicrobiology ||
     (String(orderData?.sampleOrderItems?.programId || "") ===
       String(orderData?.sampleOrderItems?.microbiologyProgramId || "") &&
       Boolean(orderData?.microbiologyOrderDetail?.cultureMethodId));

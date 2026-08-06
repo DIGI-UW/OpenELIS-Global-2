@@ -57,6 +57,7 @@ const STAGE_OPTIONS = [
 ];
 const URGENCY_OPTIONS = ["HIGH", "ROUTINE"];
 const DUE_OPTIONS = [
+  "NEEDS_WORKFLOW",
   "SETUP",
   "ISOLATE_ID",
   "AST_ENTRY",

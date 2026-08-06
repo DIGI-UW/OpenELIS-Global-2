@@ -203,8 +203,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             }
             boolean hasQc = testIdNum != null && testsWithQcThreshold.contains(testIdNum);
             String resultType = testService.getResultType(test);
-            List<TestMethodDto> methods = GenericValidator.isBlankOrNull(test.getCultureWorkflowType()) ? List.of()
-                    : testMethodService.getLinkedMethodDtos(test.getId());
+            List<TestMethodDto> methods = testMethodService.getLinkedMethodDtos(test.getId());
             testsMapList.add(new TestMap(test.getId(), localizedTestName(test),
                     userTestSectionId.equals(test.getTestSection().getId()), hasQc, resultType, test.getTimeHolding(),
                     test.getCultureWorkflowType(), methods));

@@ -52,6 +52,8 @@ const ProgramSection = ({
   const microbiologyProgram = programs.find(
     (program) => program.code?.toUpperCase() === "MICROBIOLOGY",
   );
+  const microbiologyProgramSelected =
+    selectedProgram?.code?.toUpperCase() === "MICROBIOLOGY";
 
   // Convert questionnaire to response format
   const convertQuestionnaireToResponse = (questionnaireData) => {
@@ -218,6 +220,10 @@ const ProgramSection = ({
         sampleOrderItems: {
           ...prev.sampleOrderItems,
           programId: selectedItem.id,
+          microbiologyProgramId:
+            selectedItem.code?.toUpperCase() === "MICROBIOLOGY"
+              ? selectedItem.id
+              : undefined,
         },
       }));
       fetchProgramQuestionnaire(selectedItem.id);
@@ -583,11 +589,12 @@ const ProgramSection = ({
         />
       )}
 
-      {hasCultureWorkflow && (
+      {(hasCultureWorkflow || microbiologyProgramSelected) && (
         <MicrobiologyOrderEntrySection
           samples={samples}
           orderFormValues={orderData}
           setOrderFormValues={setOrderData}
+          enabled={hasCultureWorkflow || microbiologyProgramSelected}
           isReadOnly={isReadOnly}
         />
       )}

@@ -24,6 +24,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
+import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -239,6 +240,9 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     }
 
     private String dueAction(MicroCase microCase, List<MicroIsolate> isolates, boolean needsAstReview) {
+        if (MicroWorkflowType.UNASSIGNED.name().equals(microCase.getWorkflowType())) {
+            return "NEEDS_WORKFLOW";
+        }
         if (needsAstReview) {
             return "AST_REVIEW";
         }
@@ -269,18 +273,21 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     }
 
     private int actionRank(MicroWorklistRowForm row) {
-        if ("AST_REVIEW".equals(row.dueAction)) {
+        if ("NEEDS_WORKFLOW".equals(row.dueAction)) {
             return 0;
         }
-        if ("SETUP".equals(row.dueAction)) {
+        if ("AST_REVIEW".equals(row.dueAction)) {
             return 1;
         }
-        if ("ISOLATE_ID".equals(row.dueAction)) {
+        if ("SETUP".equals(row.dueAction)) {
             return 2;
         }
-        if ("AST_ENTRY".equals(row.dueAction)) {
+        if ("ISOLATE_ID".equals(row.dueAction)) {
             return 3;
         }
-        return 4;
+        if ("AST_ENTRY".equals(row.dueAction)) {
+            return 4;
+        }
+        return 5;
     }
 }
