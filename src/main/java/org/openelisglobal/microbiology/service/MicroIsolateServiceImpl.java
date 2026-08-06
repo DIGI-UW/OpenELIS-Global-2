@@ -59,6 +59,7 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         if (MicroCaseStage.RECEIVED.name().equals(microCase.getStage())
                 || MicroCaseStage.SETUP_RECORDED.name().equals(microCase.getStage())
                 || MicroCaseStage.INCUBATING.name().equals(microCase.getStage())
+                || MicroCaseStage.POSITIVE_SIGNAL.name().equals(microCase.getStage())
                 || MicroCaseStage.GROWTH_DETECTED.name().equals(microCase.getStage())) {
             microCase.setStage(MicroCaseStage.IDENTIFICATION.name());
             caseDAO.update(microCase);

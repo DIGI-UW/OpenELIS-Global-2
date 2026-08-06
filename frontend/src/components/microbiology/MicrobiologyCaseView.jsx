@@ -22,6 +22,7 @@ import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
 import AstEntryPanel from "./AstEntryPanel";
 import CaseInfoSummary, { CaseInfoCompactSummary } from "./CaseInfoSummary";
 import CaseInoculationPanel from "./CaseInoculationPanel";
+import CaseCultureTransitionPanel from "./CaseCultureTransitionPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CaseNonconformancePanel from "./CaseNonconformancePanel";
 import ChangeWorkflowPanel from "./ChangeWorkflowPanel";
@@ -145,6 +146,9 @@ const getNextStepMessageId = (caseDetail) => {
   }
   if (caseDetail.stage === "NO_GROWTH_READY") {
     return "microbiology.next.release";
+  }
+  if (caseDetail.stage === "POSITIVE_SIGNAL") {
+    return "microbiology.next.subculturePositive";
   }
   if ((caseDetail.isolates || []).length === 0) {
     return "microbiology.next.createIsolate";
@@ -389,6 +393,17 @@ const MicrobiologyCaseView = ({
         action: "",
         targetType: "",
         targetId: "",
+      }),
+    );
+  };
+
+  const completeCultureTransition = (detail) => {
+    setCaseDetail(detail);
+    history.replace(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "setup",
+        action: "",
       }),
     );
   };
@@ -745,14 +760,27 @@ const MicrobiologyCaseView = ({
                 disabled={unassigned}
               >
                 {!unassigned && (
-                  <CaseInoculationPanel
-                    inoculations={inoculations}
-                    onRecord={recordInoculation}
-                    saving={saving}
-                    reagentRequirements={reagentOverview.requirements}
-                    reagentUsages={reagentOverview.usages}
-                    readOnly={finalReleased && !amendmentOpen}
-                  />
+                  <Stack gap={5}>
+                    {["mark-positive", "mark-no-growth"].includes(
+                      routeState.action,
+                    ) && (
+                      <CaseCultureTransitionPanel
+                        action={routeState.action}
+                        caseId={caseId}
+                        service={service}
+                        onComplete={completeCultureTransition}
+                        onCancel={() => selectSection("setup")}
+                      />
+                    )}
+                    <CaseInoculationPanel
+                      inoculations={inoculations}
+                      onRecord={recordInoculation}
+                      saving={saving}
+                      reagentRequirements={reagentOverview.requirements}
+                      reagentUsages={reagentOverview.usages}
+                      readOnly={finalReleased && !amendmentOpen}
+                    />
+                  </Stack>
                 )}
               </AccordionItem>
               <AccordionItem

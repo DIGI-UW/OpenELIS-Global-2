@@ -108,6 +108,24 @@ public class MicroWorklistServiceTest {
     }
 
     @Test
+    public void positiveSignalHasItsOwnSummaryAndSubcultureAction() {
+        MicroCase positive = microCase("case-positive", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.POSITIVE_SIGNAL, "STAT");
+        when(caseDAO.getOpenCases()).thenReturn(List.of(positive));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(positive));
+        when(isolateDAO.getByCaseIds(List.of("case-positive"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-positive"))).thenReturn(List.of());
+
+        MicroWorklistPageForm page = service.getWorklistPage(new MicroWorklistQueryForm());
+
+        assertEquals(1, page.summary.positiveSignals);
+        assertEquals("SUBCULTURE_GRAM_STAIN", page.rows.get(0).dueAction);
+        MicroWorklistQueryForm positiveQuery = new MicroWorklistQueryForm();
+        positiveQuery.status = "positive";
+        assertEquals(1, service.getWorklistPage(positiveQuery).total);
+    }
+
+    @Test
     public void unassignedCaseIsSurfacedAsTheFirstRequiredAction() {
         MicroCase unassigned = microCase("case-unassigned", "sample-1", MicroWorkflowType.UNASSIGNED,
                 MicroCaseStage.RECEIVED, "ROUTINE");

@@ -17,6 +17,10 @@ const STEP_BY_STAGE = {
     section: "setup",
     labelId: "microbiology.progress.inoculation",
   },
+  POSITIVE_SIGNAL: {
+    section: "setup",
+    labelId: "microbiology.progress.inoculation",
+  },
   GROWTH_DETECTED: {
     section: "isolates",
     labelId: "microbiology.progress.isolates",

@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, FilterRemove } from "@carbon/icons-react";
+import { FilterRemove } from "@carbon/icons-react";
 import {
   Button,
   ClickableTile,
   ContentSwitcher,
   DataTable,
-  IconButton,
   InlineNotification,
   Loading,
+  OverflowMenu,
+  OverflowMenuItem,
   Pagination,
   Select,
   SelectItem,
@@ -170,8 +171,15 @@ const tagTypeForStage = (stage) => {
   }
   return "cyan";
 };
-const dueActionDetailId = (dueAction) =>
-  `microbiology.worklist.dueDetail.${String(dueAction || "").toLowerCase()}`;
+const DUE_ACTION_DETAIL_IDS = {
+  AST_ENTRY: "microbiology.worklist.dueDetail.ast_entry",
+  AST_REVIEW: "microbiology.worklist.dueDetail.ast_review",
+  CASE_REVIEW: "microbiology.worklist.dueDetail.case_review",
+  ISOLATE_ID: "microbiology.worklist.dueDetail.isolate_id",
+  SETUP: "microbiology.worklist.dueDetail.setup",
+  SUBCULTURE_GRAM_STAIN:
+    "microbiology.worklist.dueDetail.subculture_gram_stain",
+};
 
 const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
   const intl = useIntl();
@@ -940,6 +948,8 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                       );
                                     }
                                     if (cell.info.header === "due") {
+                                      const detailId =
+                                        DUE_ACTION_DETAIL_IDS[row.dueAction];
                                       return (
                                         <TableCell key={cell.id}>
                                           <div className="microbiology-worklist__due-action">
@@ -950,13 +960,13 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                             >
                                               {cell.value}
                                             </Tag>
-                                            <span>
-                                              {intl.formatMessage({
-                                                id: dueActionDetailId(
-                                                  row.dueAction,
-                                                ),
-                                              })}
-                                            </span>
+                                            {detailId && (
+                                              <span>
+                                                {intl.formatMessage({
+                                                  id: detailId,
+                                                })}
+                                              </span>
+                                            )}
                                           </div>
                                         </TableCell>
                                       );
@@ -1002,20 +1012,124 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                       );
                                     }
                                     if (cell.info.header === "action") {
+                                      const caseActionUrl = (section, action) =>
+                                        getMicrobiologyCaseUrl(row.caseId, {
+                                          ...filters,
+                                          section,
+                                          action,
+                                          astIsolateId:
+                                            section === "ast"
+                                              ? row.isolateId
+                                              : "",
+                                          astRunId:
+                                            section === "ast"
+                                              ? row.astRunId
+                                              : "",
+                                        });
                                       return (
                                         <TableCell key={cell.id}>
-                                          <IconButton
-                                            label={intl.formatMessage({
-                                              id: "microbiology.worklist.openCase",
+                                          <OverflowMenu
+                                            ariaLabel={intl.formatMessage({
+                                              id: "microbiology.worklist.rowActions",
                                             })}
-                                            kind="ghost"
+                                            iconDescription={intl.formatMessage(
+                                              {
+                                                id: "microbiology.worklist.rowActions",
+                                              },
+                                            )}
                                             size="sm"
-                                            onClick={() =>
-                                              history.push(caseUrl)
-                                            }
+                                            flipped
                                           >
-                                            <ArrowRight />
-                                          </IconButton>
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "microbiology.worklist.openCase",
+                                              })}
+                                              onClick={() =>
+                                                history.push(caseUrl)
+                                              }
+                                            />
+                                            {isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: row.astRunId
+                                                    ? "microbiology.worklist.editAst"
+                                                    : "microbiology.worklist.setupAst",
+                                                })}
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl("ast", ""),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.viewAudit",
+                                                })}
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "timeline",
+                                                      "",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {!isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.markPositive",
+                                                })}
+                                                disabled={
+                                                  row.stage !== "INCUBATING"
+                                                }
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "setup",
+                                                      "mark-positive",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {!isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.markNoGrowth",
+                                                })}
+                                                disabled={
+                                                  row.stage !== "INCUBATING"
+                                                }
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "setup",
+                                                      "mark-no-growth",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {!isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.markLost",
+                                                })}
+                                                isDelete
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "nonconformance",
+                                                      "mark-lost",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                          </OverflowMenu>
                                         </TableCell>
                                       );
                                     }

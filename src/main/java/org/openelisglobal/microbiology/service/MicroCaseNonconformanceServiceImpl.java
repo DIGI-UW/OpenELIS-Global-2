@@ -37,9 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconformanceService {
 
     private static final DateTimeFormatter NCE_DATE = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-    private static final Set<MicroCaseStage> POSITIVE_STAGES = EnumSet.of(MicroCaseStage.GROWTH_DETECTED,
-            MicroCaseStage.IDENTIFICATION, MicroCaseStage.AST_READY, MicroCaseStage.AST_IN_PROGRESS,
-            MicroCaseStage.REVIEW_READY, MicroCaseStage.PRELIM_RELEASED);
+    private static final Set<MicroCaseStage> POSITIVE_STAGES = EnumSet.of(MicroCaseStage.POSITIVE_SIGNAL,
+            MicroCaseStage.GROWTH_DETECTED, MicroCaseStage.IDENTIFICATION, MicroCaseStage.AST_READY,
+            MicroCaseStage.AST_IN_PROGRESS, MicroCaseStage.REVIEW_READY, MicroCaseStage.PRELIM_RELEASED);
 
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;

@@ -250,4 +250,7 @@
   <!-- OGC-782 R1: durable analyzer event reconciliation envelope -->
   <include relativeToChangelogFile="true" file="078-analyzer-event-reconciliation.xml"/>
 
+  <!-- OGC-782 R1: positive culture stage and complete stage constraint -->
+  <include relativeToChangelogFile="true" file="079-microbiology-positive-culture-stage.xml"/>
+
 </databaseChangeLog>

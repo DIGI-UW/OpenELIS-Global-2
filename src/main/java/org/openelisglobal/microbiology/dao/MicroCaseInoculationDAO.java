@@ -7,4 +7,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 public interface MicroCaseInoculationDAO extends BaseDAO<MicroCaseInoculation, String> {
 
     List<MicroCaseInoculation> getByCaseId(String caseId);
+
+    List<MicroCaseInoculation> getByContainerIdentifier(String containerIdentifier);
 }

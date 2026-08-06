@@ -27,4 +27,14 @@ public class MicroCaseInoculationDAOImpl extends BaseDAOImpl<MicroCaseInoculatio
         query.setParameter("caseId", caseId);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCaseInoculation> getByContainerIdentifier(String containerIdentifier) {
+        Query<MicroCaseInoculation> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroCaseInoculation i where i.containerIdentifier = :containerIdentifier order by i.id",
+                MicroCaseInoculation.class);
+        query.setParameter("containerIdentifier", containerIdentifier);
+        return query.list();
+    }
 }

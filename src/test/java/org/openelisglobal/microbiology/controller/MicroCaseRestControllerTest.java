@@ -6,16 +6,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.Test;
+import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseNonconformanceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCultureAnalyzerEventRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
 import org.openelisglobal.microbiology.form.MicroCaseActivityRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.form.MicroCaseNonconformanceRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseWorkflowChangeRequestForm;
+import org.openelisglobal.microbiology.form.MicroCultureAnalyzerEventRequestForm;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
 import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
@@ -25,6 +28,8 @@ import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.service.MicroCaseWorkflowService;
+import org.openelisglobal.microbiology.service.MicroCultureAnalyzerEventCommand;
+import org.openelisglobal.microbiology.service.MicroCultureAnalyzerEventService;
 import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
@@ -38,6 +43,28 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 public class MicroCaseRestControllerTest {
+
+    @Test
+    public void cultureAnalyzerEventUsesTheAuthenticatedBridgeActor() {
+        MicroCultureAnalyzerEventService service = org.mockito.Mockito.mock(MicroCultureAnalyzerEventService.class);
+        MicroCultureAnalyzerEventRequestForm request = new MicroCultureAnalyzerEventRequestForm();
+        request.externalEventId = "evt-1";
+        request.eventType = "POSITIVE_SIGNAL";
+        request.analyzerId = "analyzer-7";
+        request.sourceId = "bottle-42";
+        request.note = "Bottle positive";
+        AnalyzerEvent event = new AnalyzerEvent();
+        event.setStatus("APPLIED");
+        when(service.receive(new MicroCultureAnalyzerEventCommand("evt-1", "POSITIVE_SIGNAL", "analyzer-7", "bottle-42",
+                null, "Bottle positive"), "42")).thenReturn(event);
+
+        ResponseEntity<?> response = new MicroCultureAnalyzerEventRestController(service).receive(request,
+                requestFor("42"));
+
+        assertEquals(202, response.getStatusCode().value());
+        verify(service).receive(new MicroCultureAnalyzerEventCommand("evt-1", "POSITIVE_SIGNAL", "analyzer-7",
+                "bottle-42", null, "Bottle positive"), "42");
+    }
 
     @Test
     public void getCaseDetailReturnsCompiledServiceDto() {
