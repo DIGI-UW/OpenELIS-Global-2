@@ -54,6 +54,7 @@ import DeviceHistoryExpansion from "./DeviceHistoryExpansion";
 import { toDate, formatDuration } from "./shared/timeUtils";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
 const COLUMNS = [
   { key: "id", header: "Unit ID" },
@@ -167,6 +168,7 @@ const formatTemperatureDisplay = (value) =>
 function FreezerMonitoringDashboard({ intl }) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
@@ -279,7 +281,9 @@ function FreezerMonitoringDashboard({ intl }) {
           [];
 
       setStorageUnits(unitsArray.map(normalizeUnit));
-      setActiveAlerts(alertsArray.map(normalizeAlert));
+      setActiveAlerts(
+        alertsArray.map(normalizeAlert).filter((a) => a.status !== "RESOLVED"),
+      );
       setLastUpdated(new Date().toISOString());
     } catch (error) {
       notify({
@@ -304,16 +308,30 @@ function FreezerMonitoringDashboard({ intl }) {
 
   const handleAlertAction = useCallback(
     async (alertId, action) => {
+      const userId = userSessionDetails?.userId;
+      if (userId == null) {
+        notify({
+          kind: NotificationKinds.error,
+          title: "Error",
+          subtitle:
+            "Unable to determine the current user. Please reload and try again.",
+        });
+        return;
+      }
       setActionInFlight(alertId);
       try {
         if (action === "acknowledge") {
           await acknowledgeAlert(
             alertId,
-            1,
+            userId,
             "Acknowledged via Cold Storage dashboard",
           );
         } else {
-          await resolveAlert(alertId, 1, "Resolved via Cold Storage dashboard");
+          await resolveAlert(
+            alertId,
+            userId,
+            "Resolved via Cold Storage dashboard",
+          );
         }
         await loadDashboardData();
         notify({
@@ -331,7 +349,7 @@ function FreezerMonitoringDashboard({ intl }) {
         setActionInFlight(null);
       }
     },
-    [loadDashboardData, notify],
+    [loadDashboardData, notify, userSessionDetails],
   );
 
   const handleAcknowledgeAlert = useCallback(
@@ -827,9 +845,32 @@ function FreezerMonitoringDashboard({ intl }) {
                                                         );
                                                       }}
                                                     >
-                                                      Acknowledge
+                                                      {intl.formatMessage({
+                                                        id: "coldstorage.alert.acknowledge",
+                                                        defaultMessage:
+                                                          "Acknowledge",
+                                                      })}
                                                     </Button>
                                                   )}
+                                                  <Button
+                                                    kind="danger--ghost"
+                                                    size="sm"
+                                                    disabled={
+                                                      actionInFlight ===
+                                                      alert.id
+                                                    }
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleResolveAlert(
+                                                        alert.id,
+                                                      );
+                                                    }}
+                                                  >
+                                                    {intl.formatMessage({
+                                                      id: "coldstorage.alert.clear",
+                                                      defaultMessage: "Clear",
+                                                    })}
+                                                  </Button>
                                                 </div>
                                               </TableCell>
                                             </TableRow>
