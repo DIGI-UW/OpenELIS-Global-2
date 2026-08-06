@@ -106,6 +106,15 @@
   opacity: 0.55;
 }
 
+.microbiology-worklist__future-control {
+  display: block;
+  height: 100%;
+}
+
+.microbiology-worklist__future-control .microbiology-worklist__summary-card {
+  height: 100%;
+}
+
 .microbiology-worklist__summary-value {
   color: var(--microbiology-text-primary);
   font-size: var(--microbiology-heading-font-size);
@@ -174,6 +183,7 @@
 }
 
 .microbiology-worklist__due-action,
+.microbiology-worklist__flags,
 .microbiology-worklist__lab-context,
 .microbiology-worklist__last-activity,
 .microbiology-worklist__stage-status,
@@ -182,6 +192,79 @@
   display: flex;
   flex-direction: column;
   gap: var(--microbiology-spacing-02);
+}
+
+.microbiology-worklist__flags {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.microbiology-worklist__future-value {
+  color: var(--cds-text-disabled, #8d8d8d);
+  cursor: help;
+  font-size: var(--microbiology-helper-font-size);
+}
+
+.microbiology-worklist__resistance {
+  border-block: 1px solid var(--microbiology-border-subtle);
+  display: grid;
+  gap: var(--microbiology-spacing-04);
+  padding-block: var(--microbiology-spacing-05);
+}
+
+.microbiology-worklist__resistance-grid {
+  display: grid;
+  gap: var(--microbiology-spacing-03);
+  grid-template-columns: repeat(5, minmax(5rem, 1fr));
+  margin: 0;
+}
+
+.microbiology-worklist__resistance-grid > div {
+  border-inline-start: 0.1875rem solid var(--microbiology-border-interactive);
+  padding: var(--microbiology-spacing-03) var(--microbiology-spacing-04);
+}
+
+.microbiology-worklist__resistance-grid dd,
+.microbiology-worklist__resistance-grid dt {
+  margin: 0;
+}
+
+.microbiology-worklist__resistance-grid dd {
+  font-size: var(--microbiology-heading-font-size);
+  line-height: var(--microbiology-heading-line-height);
+}
+
+.microbiology-worklist__resistance-grid dt {
+  color: var(--microbiology-text-secondary);
+  font-size: var(--microbiology-helper-font-size);
+  font-weight: var(--microbiology-label-font-weight);
+}
+
+.microbiology-worklist__activity-list {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.microbiology-worklist__activity-list li {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--microbiology-border-subtle);
+  display: flex;
+  gap: var(--microbiology-spacing-05);
+  justify-content: space-between;
+  padding-block: var(--microbiology-spacing-03);
+}
+
+.microbiology-worklist__activity-list li > div {
+  display: grid;
+  gap: var(--microbiology-spacing-02);
+}
+
+.microbiology-worklist__activity-meta {
+  color: var(--microbiology-text-secondary);
+  font-size: var(--microbiology-helper-font-size);
+  text-align: end;
 }
 
 .microbiology-worklist__due-action span,
@@ -223,6 +306,18 @@
 
   .microbiology-worklist__summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .microbiology-worklist__resistance-grid {
+    grid-template-columns: repeat(2, minmax(5rem, 1fr));
+  }
+
+  .microbiology-worklist__activity-list li {
+    flex-direction: column;
+  }
+
+  .microbiology-worklist__activity-meta {
+    text-align: start;
   }
 }
 

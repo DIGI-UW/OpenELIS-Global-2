@@ -59,7 +59,24 @@ describe("MicrobiologyWorklist", () => {
           needsAstReview: 1,
           readyForCaseReview: 1,
           openCriticalFollowUps: 1,
+          resistanceHits: {
+            ESBL: 2,
+            MRSA: 1,
+            CRE: 0,
+            VRE: 0,
+            MDR: 1,
+          },
         },
+        recentActivity: [
+          {
+            caseId: "case-1",
+            accessionNumber: "LAB-1001",
+            activityType: "AST_REVIEWED",
+            note: "AST run reviewed",
+            occurredAt: "2026-08-06T09:30:00Z",
+            performedByDisplay: "Morgan Lee",
+          },
+        ],
       }),
     };
 
@@ -105,6 +122,17 @@ describe("MicrobiologyWorklist", () => {
     expect(
       screen.getByTestId("microbiology-worklist-summary-critical"),
     ).toHaveTextContent("Open critical follow-ups");
+    expect(
+      screen.getByRole("heading", { name: "Today's resistance hits" }),
+    ).toBeVisible();
+    expect(
+      screen.getByTestId("microbiology-resistance-hit-ESBL"),
+    ).toHaveTextContent("2");
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /Recent activity/ }));
+    expect(screen.getByText("AST run reviewed")).toBeVisible();
+    expect(screen.getAllByText("Morgan Lee")).toHaveLength(2);
   });
 
   it("preserves worklist filters when opening a case", async () => {
@@ -337,6 +365,7 @@ describe("MicrobiologyWorklist", () => {
                     astStatus: "RESULTS_IN",
                     astStartedAt: "2026-08-06T09:30:00Z",
                     analyzerResultsAvailable: true,
+                    analyzerExpertFlags: "ESBL|MDR",
                   },
                 ],
                 total: 1,
@@ -372,6 +401,12 @@ describe("MicrobiologyWorklist", () => {
     expect(row).toHaveTextContent("Mendez, Olivia");
     expect(row).toHaveTextContent("Gram-negative standard panel");
     expect(row).toHaveTextContent("Results In");
+    expect(row).toHaveTextContent("ESBL");
+    expect(row).toHaveTextContent("MDR");
+    expect(screen.getByRole("columnheader", { name: "Flags" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Export to WHONET (Phase 1B)" }),
+    ).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Row actions" }));
     await user.click(await screen.findByText("Open case"));

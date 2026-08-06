@@ -7,6 +7,7 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
+import org.openelisglobal.microbiology.form.MicroWorklistRecentActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistSpecimenContext;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,11 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
             + "select newer.id from MicroCaseActivity newer where newer.caseId = activity.caseId and ("
             + "newer.occurredAt > activity.occurredAt or (newer.occurredAt = activity.occurredAt "
             + "and newer.id > activity.id)))";
+
+    static final String RECENT_ACTIVITY_CONTEXT_HQL = "select activity.caseId, activity.occurredAt, activity.performedBy, user.firstName, user.lastName, "
+            + "activity.activityType, activity.note from MicroCaseActivity activity "
+            + "left join SystemUser user on user.id = activity.performedBy "
+            + "where activity.caseId in (:caseIds) order by activity.occurredAt desc, activity.id desc";
 
     public MicroWorklistContextDAOImpl() {
         super(MicroCase.class);
@@ -57,6 +63,22 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
         query.setParameterList("caseIds", caseIds);
         return query.list().stream().map(values -> new MicroWorklistActivityContext(text(values[0]),
                 (Timestamp) values[1], text(values[2]), text(values[3]), text(values[4]))).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroWorklistRecentActivityContext> getRecentActivityContexts(List<String> caseIds, int limit) {
+        if (caseIds.isEmpty() || limit <= 0) {
+            return List.of();
+        }
+        Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(RECENT_ACTIVITY_CONTEXT_HQL,
+                Object[].class);
+        query.setParameterList("caseIds", caseIds);
+        query.setMaxResults(limit);
+        return query.list().stream()
+                .map(values -> new MicroWorklistRecentActivityContext(text(values[0]), (Timestamp) values[1],
+                        text(values[2]), text(values[3]), text(values[4]), text(values[5]), text(values[6])))
+                .toList();
     }
 
     private String patientDisplay(Object lastName, Object firstName) {

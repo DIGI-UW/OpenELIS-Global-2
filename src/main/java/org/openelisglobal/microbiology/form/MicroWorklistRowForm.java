@@ -29,6 +29,7 @@ public class MicroWorklistRowForm {
     public String astStatus;
     public Timestamp astStartedAt;
     public boolean analyzerResultsAvailable;
+    public String analyzerExpertFlags;
     public List<String> siblingWorkflows = new ArrayList<>();
     public Timestamp createdAt;
     public Timestamp lastActivityAt;

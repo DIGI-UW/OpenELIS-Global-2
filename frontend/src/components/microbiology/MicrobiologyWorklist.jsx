@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FilterRemove } from "@carbon/icons-react";
+import { Download, FilterRemove, Launch, Printer } from "@carbon/icons-react";
 import {
+  Accordion,
+  AccordionItem,
   Button,
   ClickableTile,
   ContentSwitcher,
@@ -26,6 +28,7 @@ import {
   TableToolbarSearch,
   Tag,
   Tile,
+  Tooltip,
 } from "@carbon/react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
@@ -81,6 +84,7 @@ const EMPTY_SUMMARY = {
   astAwaitingResults: 0,
   astResultsIn: 0,
 };
+const RESISTANCE_FLAGS = ["ESBL", "MRSA", "CRE", "VRE", "MDR"];
 
 const asCount = (value) => {
   const parsed = Number(value);
@@ -124,13 +128,22 @@ const summaryFromRows = (rows) =>
 
 const normalizeSummary = (summary, rows) => {
   const fallback = summaryFromRows(rows);
-  return Object.keys(EMPTY_SUMMARY).reduce(
+  const counts = Object.keys(EMPTY_SUMMARY).reduce(
     (normalized, key) => ({
       ...normalized,
       [key]: asCount(summary?.[key] ?? fallback[key]),
     }),
     {},
   );
+  return {
+    ...counts,
+    resistanceHits: Object.fromEntries(
+      RESISTANCE_FLAGS.map((flag) => [
+        flag,
+        asCount(summary?.resistanceHits?.[flag]),
+      ]),
+    ),
+  };
 };
 
 const normalizePageResponse = (response, filters) => {
@@ -153,6 +166,9 @@ const normalizePageResponse = (response, filters) => {
     pageSize: Array.isArray(response)
       ? filters.pageSize
       : response?.pageSize || filters.pageSize,
+    recentActivity: Array.isArray(response?.recentActivity)
+      ? response.recentActivity
+      : [],
   };
 };
 
@@ -194,6 +210,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
       total: 0,
       page: filters.page,
       pageSize: filters.pageSize,
+      recentActivity: [],
     },
     previousRows: [],
   });
@@ -302,6 +319,12 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
           }),
         },
         {
+          key: "flags",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.flags",
+          }),
+        },
+        {
           key: "started",
           header: intl.formatMessage({
             id: "microbiology.worklist.column.started",
@@ -402,6 +425,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 row.panelId ||
                 intl.formatMessage({ id: "microbiology.worklist.notSet" }),
               astStatus: formatMicrobiologyEnum(row.astStatus),
+              flags: row.analyzerExpertFlags || "",
               started: row.astStartedAt
                 ? intl.formatDate(row.astStartedAt, {
                     month: "short",
@@ -608,19 +632,28 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               </ClickableTile>
             ))}
             {isAstGrain ? (
-              <Tile
-                className="microbiology-worklist__summary-card microbiology-worklist__summary-card--disabled"
-                title={intl.formatMessage({
-                  id: "microbiology.worklist.phase1b",
+              <Tooltip
+                align="top"
+                label={intl.formatMessage({
+                  id: "microbiology.worklist.expertRulesUnavailable",
                 })}
               >
-                <span className="microbiology-worklist__summary-value">-</span>
-                <span className="microbiology-worklist__summary-label">
-                  {intl.formatMessage({
-                    id: "microbiology.worklist.summary.expertFlags",
-                  })}
+                <span
+                  className="microbiology-worklist__future-control"
+                  tabIndex={0}
+                >
+                  <Tile className="microbiology-worklist__summary-card microbiology-worklist__summary-card--disabled">
+                    <span className="microbiology-worklist__summary-value">
+                      -
+                    </span>
+                    <span className="microbiology-worklist__summary-label">
+                      {intl.formatMessage({
+                        id: "microbiology.worklist.summary.expertFlags",
+                      })}
+                    </span>
+                  </Tile>
                 </span>
-              </Tile>
+              </Tooltip>
             ) : (
               <Tile
                 className="microbiology-worklist__summary-card microbiology-worklist__summary-card--static"
@@ -851,6 +884,49 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                           updateFilters({ q: event.target.value })
                         }
                       />
+                      {isAstGrain && (
+                        <>
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            renderIcon={Printer}
+                            onClick={() => window.print()}
+                          >
+                            {intl.formatMessage({
+                              id: "microbiology.worklist.print",
+                            })}
+                          </Button>
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            renderIcon={Launch}
+                            onClick={() => history.push("/analyzers/qc/db")}
+                          >
+                            {intl.formatMessage({
+                              id: "microbiology.worklist.qcDashboard",
+                            })}
+                          </Button>
+                          <Tooltip
+                            align="top"
+                            label={intl.formatMessage({
+                              id: "microbiology.worklist.whonetUnavailable",
+                            })}
+                          >
+                            <span>
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                renderIcon={Download}
+                                disabled
+                              >
+                                {intl.formatMessage({
+                                  id: "microbiology.worklist.whonetPhase1b",
+                                })}
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </>
+                      )}
                     </TableToolbarContent>
                   </TableToolbar>
                   <div
@@ -996,6 +1072,43 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                               </span>
                                             )}
                                           </div>
+                                        </TableCell>
+                                      );
+                                    }
+                                    if (cell.info.header === "flags") {
+                                      const flags = (
+                                        row.analyzerExpertFlags || ""
+                                      )
+                                        .split("|")
+                                        .map((flag) => flag.trim())
+                                        .filter(Boolean);
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          {flags.length > 0 ? (
+                                            <div className="microbiology-worklist__flags">
+                                              {flags.map((flag) => (
+                                                <Tag type="purple" key={flag}>
+                                                  {flag}
+                                                </Tag>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <Tooltip
+                                              align="top"
+                                              label={intl.formatMessage({
+                                                id: "microbiology.worklist.expertRulesUnavailable",
+                                              })}
+                                            >
+                                              <span
+                                                className="microbiology-worklist__future-value"
+                                                tabIndex={0}
+                                              >
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.flagsUnavailable",
+                                                })}
+                                              </span>
+                                            </Tooltip>
+                                          )}
                                         </TableCell>
                                       );
                                     }
@@ -1227,6 +1340,92 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               updateFilters({ page, pageSize }, false)
             }
           />
+        )}
+        {hasLoaded && (
+          <section
+            className="microbiology-worklist__resistance"
+            aria-labelledby="microbiology-worklist-resistance-heading"
+          >
+            <div className="microbiology-worklist__section-heading">
+              <div>
+                <h2 id="microbiology-worklist-resistance-heading">
+                  {intl.formatMessage({
+                    id: "microbiology.worklist.resistance.title",
+                  })}
+                </h2>
+                <p>
+                  {intl.formatMessage({
+                    id: "microbiology.worklist.resistance.hint",
+                  })}
+                </p>
+              </div>
+            </div>
+            <dl className="microbiology-worklist__resistance-grid">
+              {RESISTANCE_FLAGS.map((flag) => (
+                <div
+                  key={flag}
+                  data-testid={`microbiology-resistance-hit-${flag}`}
+                >
+                  <dd>{worklist.summary.resistanceHits?.[flag] || 0}</dd>
+                  <dt>{flag}</dt>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+        {hasLoaded && (
+          <section className="microbiology-worklist__recent-activity">
+            <Accordion>
+              <AccordionItem
+                title={intl.formatMessage(
+                  { id: "microbiology.worklist.recentActivity.title" },
+                  { count: worklist.recentActivity.length },
+                )}
+              >
+                {worklist.recentActivity.length === 0 ? (
+                  <p>
+                    {intl.formatMessage({
+                      id: "microbiology.worklist.recentActivity.empty",
+                    })}
+                  </p>
+                ) : (
+                  <ol className="microbiology-worklist__activity-list">
+                    {worklist.recentActivity.map((activity, index) => (
+                      <li
+                        key={`${activity.caseId}-${activity.occurredAt}-${index}`}
+                      >
+                        <div>
+                          <Link
+                            to={getMicrobiologyCaseUrl(
+                              activity.caseId,
+                              filters,
+                            )}
+                          >
+                            {activity.accessionNumber}
+                          </Link>
+                          <span>
+                            {activity.note ||
+                              formatMicrobiologyEnum(activity.activityType)}
+                          </span>
+                        </div>
+                        <div className="microbiology-worklist__activity-meta">
+                          <span>{activity.performedByDisplay}</span>
+                          <span>
+                            {intl.formatDate(activity.occurredAt, {
+                              month: "short",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </AccordionItem>
+            </Accordion>
+          </section>
         )}
       </Stack>
     </main>
