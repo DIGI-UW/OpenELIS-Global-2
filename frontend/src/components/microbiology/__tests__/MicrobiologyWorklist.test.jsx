@@ -33,10 +33,16 @@ describe("MicrobiologyWorklist", () => {
           {
             caseId: "case-1",
             sampleItemId: "1001",
+            accessionNumber: "LAB-1001",
+            patientDisplay: "Mendez, Olivia",
+            specimenDisplay: "Blood",
             workflowType: "BACTERIOLOGY",
             stage: "AST_IN_PROGRESS",
             dueAction: "AST_REVIEW",
             urgency: "HIGH",
+            priority: "STAT",
+            lastActivityBy: "Morgan Lee",
+            lastActivityAt: "2026-08-06T09:30:00Z",
             needsAstReview: true,
             hasOpenCriticalCommunication: true,
             siblingWorkflows: ["MYCOBACTERIOLOGY_TB"],
@@ -75,11 +81,24 @@ describe("MicrobiologyWorklist", () => {
       pageSize: 20,
     });
     const worklistRow = screen.getByTestId("microbiology-worklist-row-case-1");
+    expect(screen.getByRole("columnheader", { name: "Lab #" })).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "Patient" })).toBeVisible();
+    expect(
+      screen.getByRole("columnheader", { name: "Specimen" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("columnheader", { name: "Last activity by" }),
+    ).toBeVisible();
+    expect(worklistRow).toHaveTextContent("LAB-1001");
+    expect(worklistRow).toHaveTextContent("Mendez, Olivia");
+    expect(worklistRow).toHaveTextContent("Blood");
+    expect(worklistRow).toHaveTextContent("Morgan Lee");
+    expect(worklistRow).toHaveTextContent("Linked · 2 workflows");
     expect(worklistRow).toHaveTextContent("AST Review");
     expect(worklistRow).toHaveTextContent("Critical communication");
     expect(
       screen.getByTestId("microbiology-worklist-siblings"),
-    ).toHaveTextContent("Mycobacteriology TB");
+    ).toHaveTextContent("Linked · 2 workflows");
     expect(
       screen.getByTestId("microbiology-worklist-summary-growth"),
     ).toHaveTextContent("Growth detected");
@@ -177,7 +196,7 @@ describe("MicrobiologyWorklist", () => {
     renderWorklist(service);
 
     const search = await screen.findByPlaceholderText(
-      "Search sample or workflow",
+      "Search lab number, patient, specimen, or workflow",
     );
     await user.type(search, "1");
     await waitFor(() =>
@@ -185,9 +204,11 @@ describe("MicrobiologyWorklist", () => {
         "/Microbiology/worklist?q=1",
       ),
     );
-    expect(screen.getByPlaceholderText("Search sample or workflow")).toBe(
-      search,
-    );
+    expect(
+      screen.getByPlaceholderText(
+        "Search lab number, patient, specimen, or workflow",
+      ),
+    ).toBe(search);
 
     await user.type(search, "2");
     await waitFor(() =>
@@ -195,9 +216,11 @@ describe("MicrobiologyWorklist", () => {
         "/Microbiology/worklist?q=12",
       ),
     );
-    expect(screen.getByPlaceholderText("Search sample or workflow")).toBe(
-      search,
-    );
+    expect(
+      screen.getByPlaceholderText(
+        "Search lab number, patient, specimen, or workflow",
+      ),
+    ).toBe(search);
   });
 
   it("reconciles Carbon rows when a filtered response replaces row IDs", async () => {
@@ -239,7 +262,9 @@ describe("MicrobiologyWorklist", () => {
       await screen.findByTestId("microbiology-worklist-row-case-1"),
     ).toBeInTheDocument();
     await user.type(
-      screen.getByPlaceholderText("Search sample or workflow"),
+      screen.getByPlaceholderText(
+        "Search lab number, patient, specimen, or workflow",
+      ),
       "2002",
     );
 
@@ -298,6 +323,8 @@ describe("MicrobiologyWorklist", () => {
                     grain: "ast",
                     caseId: "case-1",
                     sampleItemId: "1001",
+                    accessionNumber: "LAB-1001",
+                    patientDisplay: "Mendez, Olivia",
                     workflowType: "BACTERIOLOGY",
                     priority: "STAT",
                     urgency: "HIGH",
@@ -306,6 +333,7 @@ describe("MicrobiologyWorklist", () => {
                     organismDisplay: "E. coli",
                     astRunId: "run-1",
                     panelId: "GN-STD",
+                    panelName: "Gram-negative standard panel",
                     astStatus: "RESULTS_IN",
                     astStartedAt: "2026-08-06T09:30:00Z",
                     analyzerResultsAvailable: true,
@@ -340,7 +368,9 @@ describe("MicrobiologyWorklist", () => {
     const row = await screen.findByTestId("microbiology-worklist-row-run-1");
     expect(row).toHaveTextContent("Isolate 1");
     expect(row).toHaveTextContent("E. coli");
-    expect(row).toHaveTextContent("GN-STD");
+    expect(row).toHaveTextContent("LAB-1001");
+    expect(row).toHaveTextContent("Mendez, Olivia");
+    expect(row).toHaveTextContent("Gram-negative standard panel");
     expect(row).toHaveTextContent("Results In");
 
     await user.click(screen.getByRole("button", { name: "Row actions" }));

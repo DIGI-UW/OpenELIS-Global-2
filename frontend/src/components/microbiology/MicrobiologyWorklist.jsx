@@ -266,15 +266,21 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     if (isAstGrain) {
       return [
         {
-          key: "sampleItem",
+          key: "labNumber",
           header: intl.formatMessage({
-            id: "microbiology.worklist.column.sample",
+            id: "microbiology.worklist.column.labNumber",
           }),
         },
         {
           key: "isolate",
           header: intl.formatMessage({
             id: "microbiology.worklist.column.isolate",
+          }),
+        },
+        {
+          key: "patient",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.patient",
           }),
         },
         {
@@ -302,9 +308,9 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
           }),
         },
         {
-          key: "urgency",
+          key: "priority",
           header: intl.formatMessage({
-            id: "microbiology.worklist.column.urgency",
+            id: "microbiology.worklist.column.priority",
           }),
         },
         {
@@ -317,15 +323,21 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     }
     return [
       {
-        key: "sampleItem",
+        key: "labNumber",
         header: intl.formatMessage({
-          id: "microbiology.worklist.column.sample",
+          id: "microbiology.worklist.column.labNumber",
         }),
       },
       {
-        key: "workflow",
+        key: "patient",
         header: intl.formatMessage({
-          id: "microbiology.worklist.column.workflow",
+          id: "microbiology.worklist.column.patient",
+        }),
+      },
+      {
+        key: "specimen",
+        header: intl.formatMessage({
+          id: "microbiology.worklist.column.specimen",
         }),
       },
       {
@@ -339,15 +351,15 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
         header: intl.formatMessage({ id: "microbiology.worklist.column.due" }),
       },
       {
-        key: "urgency",
+        key: "priority",
         header: intl.formatMessage({
-          id: "microbiology.worklist.column.urgency",
+          id: "microbiology.worklist.column.priority",
         }),
       },
       {
-        key: "context",
+        key: "lastActivity",
         header: intl.formatMessage({
-          id: "microbiology.worklist.column.context",
+          id: "microbiology.worklist.column.lastActivity",
         }),
       },
       {
@@ -375,14 +387,18 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
         isAstGrain
           ? {
               id: row.rowId || row.astRunId || `setup:${row.isolateId}`,
-              sampleItem: row.sampleItemId,
+              labNumber: row.accessionNumber || row.sampleItemId,
               isolate: row.isolateLabel,
+              patient:
+                row.patientDisplay ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
               organism:
                 row.organismDisplay ||
                 intl.formatMessage({
                   id: "microbiology.worklist.ast.pendingIdentification",
                 }),
               panel:
+                row.panelName ||
                 row.panelId ||
                 intl.formatMessage({ id: "microbiology.worklist.notSet" }),
               astStatus: formatMicrobiologyEnum(row.astStatus),
@@ -396,17 +412,24 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 : intl.formatMessage({
                     id: "microbiology.worklist.notStarted",
                   }),
-              urgency: formatMicrobiologyEnum(row.urgency),
+              priority: formatMicrobiologyEnum(row.priority || row.urgency),
               action: row.caseId,
             }
           : {
               id: row.rowId || row.caseId,
-              sampleItem: row.sampleItemId,
-              workflow: formatMicrobiologyEnum(row.workflowType),
+              labNumber: row.accessionNumber || row.sampleItemId,
+              patient:
+                row.patientDisplay ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
+              specimen:
+                row.specimenDisplay ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
               stage: formatMicrobiologyEnum(row.stage),
               due: formatMicrobiologyEnum(row.dueAction),
-              urgency: formatMicrobiologyEnum(row.urgency),
-              context: row.siblingWorkflows?.join(", ") || "",
+              priority: formatMicrobiologyEnum(row.priority || row.urgency),
+              lastActivity:
+                row.lastActivityBy ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
               action: row.caseId,
             },
       ),
@@ -885,15 +908,37 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                   data-testid={`microbiology-worklist-row-${tableRow.id}`}
                                 >
                                   {tableRow.cells.map((cell) => {
-                                    if (cell.info.header === "sampleItem") {
+                                    if (cell.info.header === "labNumber") {
                                       return (
                                         <TableCell key={cell.id}>
-                                          <Link
-                                            className="microbiology-worklist__case-link"
-                                            to={caseUrl}
-                                          >
-                                            {cell.value}
-                                          </Link>
+                                          <div className="microbiology-worklist__lab-context">
+                                            <Link
+                                              className="microbiology-worklist__case-link"
+                                              to={caseUrl}
+                                            >
+                                              {cell.value}
+                                            </Link>
+                                            <Tag type="outline">
+                                              {formatMicrobiologyEnum(
+                                                row.workflowType,
+                                              )}
+                                            </Tag>
+                                            {row.siblingWorkflows?.length >
+                                              0 && (
+                                              <span data-testid="microbiology-worklist-siblings">
+                                                {intl.formatMessage(
+                                                  {
+                                                    id: "microbiology.worklist.linkedWorkflows",
+                                                  },
+                                                  {
+                                                    count:
+                                                      row.siblingWorkflows
+                                                        .length + 1,
+                                                  },
+                                                )}
+                                              </span>
+                                            )}
+                                          </div>
                                         </TableCell>
                                       );
                                     }
@@ -910,6 +955,13 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                               <span>
                                                 {intl.formatMessage({
                                                   id: "microbiology.worklist.ast.resultsInBadge",
+                                                })}
+                                              </span>
+                                            )}
+                                            {row.hasOpenCriticalCommunication && (
+                                              <span>
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.critical",
                                                 })}
                                               </span>
                                             )}
@@ -971,7 +1023,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                         </TableCell>
                                       );
                                     }
-                                    if (cell.info.header === "urgency") {
+                                    if (cell.info.header === "priority") {
                                       return (
                                         <TableCell key={cell.id}>
                                           <Tag
@@ -984,27 +1036,22 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                         </TableCell>
                                       );
                                     }
-                                    if (cell.info.header === "context") {
+                                    if (cell.info.header === "lastActivity") {
                                       return (
                                         <TableCell key={cell.id}>
-                                          <div className="microbiology-worklist__context">
-                                            {row.hasOpenCriticalCommunication && (
-                                              <Tag type="magenta">
-                                                {intl.formatMessage({
-                                                  id: "microbiology.worklist.critical",
-                                                })}
-                                              </Tag>
-                                            )}
-                                            {row.siblingWorkflows?.length >
-                                              0 && (
-                                              <span data-testid="microbiology-worklist-siblings">
-                                                {intl.formatMessage({
-                                                  id: "microbiology.worklist.siblings",
-                                                })}
-                                                {": "}
-                                                {row.siblingWorkflows
-                                                  .map(formatMicrobiologyEnum)
-                                                  .join(", ")}
+                                          <div className="microbiology-worklist__last-activity">
+                                            <span>{cell.value}</span>
+                                            {row.lastActivityAt && (
+                                              <span>
+                                                {intl.formatDate(
+                                                  row.lastActivityAt,
+                                                  {
+                                                    month: "short",
+                                                    day: "2-digit",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                  },
+                                                )}
                                               </span>
                                             )}
                                           </div>

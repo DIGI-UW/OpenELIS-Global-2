@@ -19,6 +19,18 @@ public class MicroAstPanelDAOImpl extends BaseDAOImpl<MicroAstPanel, String> imp
 
     @Override
     @Transactional(readOnly = true)
+    public List<MicroAstPanel> getByIds(List<String> panelIds) {
+        if (panelIds.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroAstPanel> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroAstPanel p where p.id in (:panelIds)", MicroAstPanel.class);
+        query.setParameterList("panelIds", panelIds);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MicroAstPanel> getActivePanelsByWorkflowType(String workflowType) {
         Query<MicroAstPanel> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroAstPanel p where p.isActive = 'Y' and p.isCurrent = 'Y' and p.workflowType = :workflowType"

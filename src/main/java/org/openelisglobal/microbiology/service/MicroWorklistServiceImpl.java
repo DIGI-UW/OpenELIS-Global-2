@@ -8,14 +8,19 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
+import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.form.MicroWorklistRowForm;
+import org.openelisglobal.microbiology.form.MicroWorklistSpecimenContext;
 import org.openelisglobal.microbiology.form.MicroWorklistSummaryForm;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -38,13 +43,18 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstRunDAO astRunDAO;
     private final MicroCriticalCommunicationDAO communicationDAO;
+    private final MicroWorklistContextDAO contextDAO;
+    private final MicroAstPanelDAO panelDAO;
 
     public MicroWorklistServiceImpl(MicroCaseDAO caseDAO, MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO,
-            MicroCriticalCommunicationDAO communicationDAO) {
+            MicroCriticalCommunicationDAO communicationDAO, MicroWorklistContextDAO contextDAO,
+            MicroAstPanelDAO panelDAO) {
         this.caseDAO = caseDAO;
         this.isolateDAO = isolateDAO;
         this.astRunDAO = astRunDAO;
         this.communicationDAO = communicationDAO;
+        this.contextDAO = contextDAO;
+        this.panelDAO = panelDAO;
     }
 
     @Override
@@ -70,9 +80,17 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 isolateIds.isEmpty() ? List.of() : astRunDAO.getByIsolateIds(isolateIds), MicroAstRun::getIsolateId);
         Map<String, List<MicroCriticalCommunication>> communicationsByCase = groupBy(
                 communicationDAO.getByCaseIds(caseIds), MicroCriticalCommunication::getCaseId);
+        Map<String, MicroWorklistSpecimenContext> specimenContextBySampleItem = indexBy(
+                contextDAO.getSpecimenContexts(sampleItemIds), MicroWorklistSpecimenContext::sampleItemId);
+        Map<String, MicroWorklistActivityContext> activityContextByCase = indexBy(
+                contextDAO.getLatestActivityContexts(caseIds), MicroWorklistActivityContext::caseId);
+        List<String> panelIds = runsByIsolate.values().stream().flatMap(List::stream).map(MicroAstRun::getPanelId)
+                .filter(panelId -> panelId != null && !panelId.isBlank()).distinct().toList();
+        Map<String, MicroAstPanel> panelsById = indexBy(panelDAO.getByIds(panelIds), MicroAstPanel::getId);
         List<MicroWorklistRowForm> rows = AST_GRAIN.equals(normalized.grain)
                 ? toAstRows(openCases, isolatesByCase, runsByIsolate)
                 : toCultureRows(openCases, isolatesByCase, runsByIsolate, communicationsByCase, casesBySampleItem);
+        enrichRows(rows, specimenContextBySampleItem, activityContextByCase, panelsById);
         List<MicroWorklistRowForm> summaryRows = new ArrayList<>(rows);
         summaryRows.removeIf(row -> !matches(row, queryWithoutActionFilters(normalized)));
         rows.removeIf(row -> !matches(row, normalized));
@@ -188,9 +206,12 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         if (query.q.isEmpty()) {
             return true;
         }
-        String searchable = String.join(" ", safe(row.caseId), safe(row.sampleItemId), safe(row.workflowType),
-                safe(row.stage), safe(row.dueAction), safe(row.urgency), safe(row.isolateLabel),
-                safe(row.organismDisplay), safe(row.panelId), safe(row.astStatus)).toLowerCase(Locale.ROOT);
+        String searchable = String
+                .join(" ", safe(row.caseId), safe(row.sampleItemId), safe(row.workflowType), safe(row.stage),
+                        safe(row.dueAction), safe(row.urgency), safe(row.isolateLabel), safe(row.organismDisplay),
+                        safe(row.panelId), safe(row.astStatus), safe(row.accessionNumber), safe(row.patientDisplay),
+                        safe(row.specimenDisplay), safe(row.panelName), safe(row.lastActivityBy))
+                .toLowerCase(Locale.ROOT);
         return searchable.contains(query.q.toLowerCase(Locale.ROOT));
     }
 
@@ -369,6 +390,33 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
     private <T> Map<String, List<T>> groupBy(List<T> values, Function<T, String> keyFunction) {
         return values.stream().collect(Collectors.groupingBy(keyFunction, LinkedHashMap::new, Collectors.toList()));
+    }
+
+    private <T> Map<String, T> indexBy(List<T> values, Function<T, String> keyFunction) {
+        return values.stream().collect(
+                Collectors.toMap(keyFunction, Function.identity(), (first, ignored) -> first, LinkedHashMap::new));
+    }
+
+    private void enrichRows(List<MicroWorklistRowForm> rows,
+            Map<String, MicroWorklistSpecimenContext> specimenContextBySampleItem,
+            Map<String, MicroWorklistActivityContext> activityContextByCase, Map<String, MicroAstPanel> panelsById) {
+        for (MicroWorklistRowForm row : rows) {
+            MicroWorklistSpecimenContext specimen = specimenContextBySampleItem.get(row.sampleItemId);
+            if (specimen != null) {
+                row.accessionNumber = specimen.accessionNumber();
+                row.patientDisplay = specimen.patientDisplay();
+                row.specimenDisplay = specimen.specimenDisplay();
+            }
+            MicroWorklistActivityContext activity = activityContextByCase.get(row.caseId);
+            if (activity != null) {
+                row.lastActivityAt = activity.occurredAt();
+                row.lastActivityBy = activity.performedByDisplay();
+            }
+            MicroAstPanel panel = panelsById.get(row.panelId);
+            if (panel != null) {
+                row.panelName = panel.getName();
+            }
+        }
     }
 
     private boolean hasOpenCriticalCommunication(List<MicroCriticalCommunication> communications) {
