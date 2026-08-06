@@ -12,23 +12,16 @@ const WARMUPS = 2;
 const MEASURED = 10;
 const PICKER_BUDGET_MS = 500;
 
-const measureReagentOverviewRequest = async (page: Page, caseUrl: string) => {
-  const responsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes("/rest/microbiology/cases/") &&
-      response.url().endsWith("/reagent-lots") &&
-      response.status() === 200,
-  );
-  await page.goto(caseUrl, { waitUntil: "domcontentloaded" });
-  const response = await responsePromise;
-  await response.finished();
-  const duration = response.request().timing().responseEnd;
-  expect(
-    duration,
-    "Reagent overview request must expose response timing",
-  ).toBeGreaterThanOrEqual(0);
-  return duration;
-};
+const measureReagentOverviewRequest = async (page: Page, endpoint: string) =>
+  page.evaluate(async (url) => {
+    const startedAt = performance.now();
+    const response = await fetch(url, { credentials: "same-origin" });
+    if (!response.ok) {
+      throw new Error(`Reagent overview request failed: ${response.status}`);
+    }
+    await response.json();
+    return performance.now() - startedAt;
+  }, endpoint);
 
 test.describe("Microbiology reagent lot picker performance qualification", () => {
   test("loads service data and renders the culture picker below 500 ms p95", async ({
@@ -48,6 +41,11 @@ test.describe("Microbiology reagent lot picker performance qualification", () =>
 
     const seeded = await seedMicrobiologyMvpCase(page);
     const caseUrl = `/Microbiology/cases/${seeded.caseId}?section=setup`;
+    const overviewEndpoint = `/api/OpenELIS-Global/rest/microbiology/cases/${seeded.caseId}/reagent-lots`;
+    await page.goto(caseUrl, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("region", { name: "Inoculation" })).toBeVisible(
+      { timeout: LONG_TIMEOUT },
+    );
     const measurements = [];
     measurements.push(
       await measureBrowserOperation(
@@ -55,11 +53,10 @@ test.describe("Microbiology reagent lot picker performance qualification", () =>
         WARMUPS,
         MEASURED,
         PICKER_BUDGET_MS,
-        () => measureReagentOverviewRequest(page, caseUrl),
+        () => measureReagentOverviewRequest(page, overviewEndpoint),
       ),
     );
 
-    await page.goto(caseUrl, { waitUntil: "domcontentloaded" });
     const setup = page.getByRole("region", { name: "Inoculation" });
     await expect(
       setup.getByRole("button", { name: "Start inoculation" }),
@@ -87,9 +84,7 @@ test.describe("Microbiology reagent lot picker performance qualification", () =>
       ),
     );
 
-    const overviewResponse = await page.request.get(
-      `/api/OpenELIS-Global/rest/microbiology/cases/${seeded.caseId}/reagent-lots`,
-    );
+    const overviewResponse = await page.request.get(overviewEndpoint);
     expect(overviewResponse.ok()).toBe(true);
     const overview = await overviewResponse.json();
     const viewport = page.viewportSize();
