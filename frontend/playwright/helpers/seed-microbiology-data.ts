@@ -25,6 +25,8 @@ export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {
   astRunId: string;
 }
 
+export type SeededMicrobiologyAstWorklistCase = SeededReviewedMicrobiologyCase;
+
 export interface SeededDenseMicrobiologyCase extends SeededMicrobiologyCase {
   isolateIds: string[];
   astReadingCount: number;
@@ -418,14 +420,13 @@ async function requireJsonResponse<T>(
   return response.json() as Promise<T>;
 }
 
-/**
- * Creates a reviewed, reportable bacteriology case through authenticated HTTP
- * endpoints. Every persisted record is therefore created by application
- * services, with server-generated identifiers and normal validation/auditing.
- */
-export async function seedReviewedMicrobiologyCase(
+interface PreparedMicrobiologyAstCase extends SeededMicrobiologyAstWorklistCase {
+  antibioticId: string;
+}
+
+async function prepareMicrobiologyAstCase(
   page: Page,
-): Promise<SeededReviewedMicrobiologyCase> {
+): Promise<PreparedMicrobiologyAstCase> {
   const seeded = await seedMicrobiologyMvpCase(page);
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
 
@@ -500,14 +501,43 @@ export async function seedReviewedMicrobiologyCase(
       },
     }),
   );
+  return {
+    ...seeded,
+    isolateId: isolate.id,
+    astRunId: run.id,
+    antibioticId: antibiotic.id,
+  };
+}
+
+/**
+ * Creates one actionable in-progress AST worklist row through authenticated
+ * application endpoints. The run deliberately has no reading or review yet.
+ */
+export async function seedMicrobiologyAstWorklistCase(
+  page: Page,
+): Promise<SeededMicrobiologyAstWorklistCase> {
+  return prepareMicrobiologyAstCase(page);
+}
+
+/**
+ * Creates a reviewed, reportable bacteriology case through authenticated HTTP
+ * endpoints. Every persisted record is therefore created by application
+ * services, with server-generated identifiers and normal validation/auditing.
+ */
+export async function seedReviewedMicrobiologyCase(
+  page: Page,
+): Promise<SeededReviewedMicrobiologyCase> {
+  const seeded = await prepareMicrobiologyAstCase(page);
+  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
+
   await requireJsonResponse(
     "Record AST reading",
     await page.request.post(
-      `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/readings`,
+      `${API_PREFIX}/rest/microbiology/ast/runs/${seeded.astRunId}/readings`,
       {
         headers,
         data: {
-          antibioticId: antibiotic.id,
+          antibioticId: seeded.antibioticId,
           method: "MIC",
           rawValue: 4,
         },
@@ -517,12 +547,12 @@ export async function seedReviewedMicrobiologyCase(
   await requireJsonResponse(
     "Review AST run",
     await page.request.post(
-      `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/review`,
+      `${API_PREFIX}/rest/microbiology/ast/runs/${seeded.astRunId}/review`,
       { headers, data: {} },
     ),
   );
 
-  return { ...seeded, isolateId: isolate.id, astRunId: run.id };
+  return seeded;
 }
 
 export async function seedDenseMicrobiologyCase(
