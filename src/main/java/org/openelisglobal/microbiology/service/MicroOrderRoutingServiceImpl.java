@@ -61,6 +61,11 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
             return List.of();
         }
 
+        MicroCaseOrderDetailRequestForm effectiveOrderDetail = orderDetail;
+        if (effectiveOrderDetail == null && sampleItem.getSample() != null && sampleItem.getSample().getId() != null) {
+            effectiveOrderDetail = orderDetailService.getOrderDraft(sampleItem.getSample().getId());
+        }
+
         Map<MicroWorkflowType, List<Test>> testsByWorkflow = new LinkedHashMap<>();
         for (Analysis analysis : analyses) {
             Test test = analysis == null ? null : analysis.getTest();
@@ -74,12 +79,12 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
                     .map(Analysis::getTest).filter(java.util.Objects::nonNull).toList());
         }
 
-        validateOrderDetail(orderDetail);
-        validateSelectedMethod(orderDetail, testsByWorkflow);
+        validateOrderDetail(effectiveOrderDetail);
+        validateSelectedMethod(effectiveOrderDetail, testsByWorkflow);
         Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
         for (Map.Entry<MicroWorkflowType, List<Test>> entry : testsByWorkflow.entrySet()) {
             MicroWorkflowType workflowType = entry.getKey();
-            String methodId = methodIdFor(entry.getValue(), orderDetail);
+            String methodId = methodIdFor(entry.getValue(), effectiveOrderDetail);
             MicroCultureSetup setup = workflowType == MicroWorkflowType.UNASSIGNED ? null
                     : referenceService.getActiveCultureSetupForMethod(methodId, workflowType);
             if (setup == null && workflowType != MicroWorkflowType.UNASSIGNED) {
@@ -96,8 +101,8 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
                     configuration.methodId(), performedBy);
             routedCases.add(routedCase);
             linkPersistedAnalyses(routedCase, configuration.tests(), configuration.cultureSetup(), analyses);
-            if (orderDetail != null) {
-                orderDetailService.saveOrderDetail(routedCase.getId(), orderDetail, performedBy);
+            if (effectiveOrderDetail != null) {
+                orderDetailService.saveOrderDetail(routedCase.getId(), effectiveOrderDetail, performedBy);
             }
         }
         return routedCases;

@@ -21,6 +21,7 @@ import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testmethod.service.TestMethodService;
 
@@ -247,6 +248,29 @@ public class MicroOrderRoutingServiceTest {
 
         verify(orderDetailService, never()).saveOrderDetail(any(String.class),
                 any(MicroCaseOrderDetailRequestForm.class), any(String.class));
+    }
+
+    @Test
+    public void routeAnalysesUsesTheDurableOrderDraftAfterStepReload() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService, "");
+        when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
+                .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
+        MicroCase routedCase = new MicroCase();
+        routedCase.setId("case-1");
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(routedCase);
+        MicroCaseOrderDetailRequestForm draft = new MicroCaseOrderDetailRequestForm();
+        draft.patientOrigin = "INPATIENT";
+        when(orderDetailService.getOrderDraft("2001")).thenReturn(draft);
+        SampleItem sampleItem = sampleItem("1001");
+        Sample sample = new Sample();
+        sample.setId("2001");
+        sampleItem.setSample(sample);
+
+        service.routeAnalysesForSampleItem(sampleItem, List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")),
+                "1", null);
+
+        verify(orderDetailService).saveOrderDetail("case-1", draft, "1");
     }
 
     @Test

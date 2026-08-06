@@ -25,4 +25,14 @@ public class MicroCaseOrderDetailDAOImpl extends BaseDAOImpl<MicroCaseOrderDetai
         query.setParameter("caseId", caseId);
         return query.uniqueResultOptional().orElse(null);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroCaseOrderDetail getDraftBySampleId(String sampleId) {
+        Query<MicroCaseOrderDetail> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroCaseOrderDetail d where d.sampleId = :sampleId and d.caseId is null",
+                MicroCaseOrderDetail.class);
+        query.setParameter("sampleId", sampleId);
+        return query.uniqueResultOptional().orElse(null);
+    }
 }

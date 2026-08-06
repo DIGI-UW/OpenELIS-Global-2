@@ -8,6 +8,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.form.MicroAstAnalyzerResultRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,7 +22,13 @@ public class MicroAstAnalyzerEventService {
     private final MicroAstService astService;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public MicroAstAnalyzerEventService(AnalyzerEventPersistenceService persistenceService, MicroAstRunDAO runDAO,
+            MicroAstService astService) {
+        this(persistenceService, runDAO, astService, new ObjectMapper());
+    }
+
+    MicroAstAnalyzerEventService(AnalyzerEventPersistenceService persistenceService, MicroAstRunDAO runDAO,
             MicroAstService astService, ObjectMapper objectMapper) {
         this.persistenceService = persistenceService;
         this.runDAO = runDAO;

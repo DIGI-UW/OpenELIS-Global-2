@@ -205,14 +205,18 @@ Validation:
 
 ### MicroCaseOrderDetail
 
-The order-entry context captured once for a microbiology case. This record is
-created and updated through the service-layer order-save transaction; it is not
-fixture or UI-only state.
+The order-entry context captured before collection and retained for the resulting
+microbiology case. During `/order/enter`, the record is a Sample-owned draft so
+the supported `/order/collect` reload cannot discard entered details before a
+physical SampleItem and case exist. Routing copies the draft into a Case-owned
+record through services; it is not fixture or UI-only state.
 
 Fields:
 
 - `id`
-- `caseId`
+- `caseId` (nullable while the record is a Sample-owned draft)
+- `sampleId` (nullable after routing; unique while draft-owned)
+- `cultureMethodId`
 - `patientOrigin`
 - `numberOfSets` (1-10)
 - `clinicalHistory` (maximum 1000 characters)
@@ -222,9 +226,12 @@ Fields:
 
 Relationships and constraints:
 
-- References exactly one `MicroCase` and is unique on `caseId`.
-- The selected culture protocol remains `MicroCase.cultureMethodId`; this
-  record does not introduce a second protocol master.
+- Exactly one owner is present: `caseId` XOR `sampleId`.
+- A Sample has at most one order-entry draft; a MicroCase has at most one final
+  order-detail record.
+- `cultureMethodId` preserves the selected existing `Method` while the case does
+  not yet exist. Routing applies it to `MicroCase.cultureMethodId`; this record
+  does not introduce a second protocol master.
 - `patientOrigin` is currently stored as a stable string. The authoritative
   M-03 source requires its choices to come from deployment reference data and
   default from the requesting location when available. The current hardcoded

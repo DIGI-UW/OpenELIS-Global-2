@@ -17,6 +17,7 @@ import {
   convertRequestsToSamples,
 } from "./api/sampleTypeRequestApi";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import { buildLoadedOrderData } from "./orderDataUtils";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -254,27 +255,7 @@ export const OrderProvider = ({ children }) => {
             setOrderId(response.id);
             setLabNumber(response.labNumber);
 
-            // Build order data by merging response fields with defaults
-            // The backend returns patientProperties at top level and inside orderData
-            const loadedOrderData = {
-              ...SampleOrderFormValues,
-              ...(response.orderData || {}),
-              patientProperties: {
-                ...SampleOrderFormValues.patientProperties,
-                ...(response.patientProperties || {}),
-                ...(response.orderData?.patientProperties || {}),
-                // Keep patient status from response or default to NO_ACTION for subsequent saves
-                // Only set UPDATE when patient data has actually been modified
-                patientUpdateStatus:
-                  response.patientProperties?.patientUpdateStatus ||
-                  "NO_ACTION",
-              },
-              sampleOrderItems: {
-                ...SampleOrderFormValues.sampleOrderItems,
-                ...(response.sampleOrderItems || {}),
-                labNo: response.labNumber,
-              },
-            };
+            const loadedOrderData = buildLoadedOrderData(response);
 
             setOrderDataState(loadedOrderData);
 

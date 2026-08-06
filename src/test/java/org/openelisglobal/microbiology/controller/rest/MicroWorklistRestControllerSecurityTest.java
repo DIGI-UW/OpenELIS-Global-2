@@ -13,7 +13,6 @@ import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -56,7 +55,6 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
                 .andExpect(status().isOk());
     }
 
-    @Configuration
     @EnableWebMvc
     @EnableWebSecurity
     @EnableMethodSecurity(prePostEnabled = true)
