@@ -9,6 +9,7 @@ import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +32,19 @@ public class MenuController {
         return findMenuItem(elementId, MenuUtil.getMenuTree());
     }
 
+    /**
+     * Serves the unfiltered tree for the menu configuration screens, which must be
+     * able to edit nodes the editing admin would not otherwise see.
+     *
+     * <p>
+     * Admin-only: without this the privilege filter on {@code /rest/menu} is
+     * trivially sidestepped, because any authenticated caller could read the
+     * unfiltered node here instead. The interceptor does not cover it — no
+     * {@code system_module_url} row maps this path, so {@code /rest/**} is
+     * auto-allowed. Every caller (the Billing, Patient, NonConformity and Global
+     * menu configuration screens) already sits behind a GLOBAL_ADMIN route.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping(value = "/rest/admin/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Optional<MenuItem> getEditableMenuItem(@PathVariable String elementId) {
         return findMenuItem(elementId, MenuUtil.getUnfilteredMenuTree());

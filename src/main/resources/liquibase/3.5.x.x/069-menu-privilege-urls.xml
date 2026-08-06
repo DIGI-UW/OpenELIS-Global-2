@@ -58,6 +58,9 @@
       isRestFullPath() auto-allow — after this runs they are enforced against
       EQAView / AmendmentReport. The remaining three (GenericSampleOrder) stay
       inert because no handler maps their bare paths.
+
+      Verified on a seeded database: no active role loses a page it could reach
+      before, because Reception already holds EQAView and GenericSampleView.
     -->
     <changeSet author="samuelmale" id="ogc-1151-002-strip-rest-prefix-from-module-urls">
         <preConditions onFail="MARK_RAN">
@@ -65,40 +68,57 @@
         </preConditions>
         <comment>Strip the /rest prefix from system_module_url rows so they can match a request path</comment>
 
+        <!--
+          Drop redundant rows FIRST, while the /rest prefix still distinguishes them.
+          /rest/GenericSampleOrder strips onto a path that already has a row for the
+          same module, and once both rows read '/GenericSampleOrder' nothing can tell
+          the pre-existing row from the stripped one — which would make the rollback
+          below unable to avoid corrupting a row this changeset never touched.
+          Compared on the whole (target path, module, param) triple so rows that
+          legitimately share a path but differ by parameter are left alone.
+        -->
+        <sql>
+            DELETE FROM clinlims.system_module_url redundant
+            WHERE redundant.url_path LIKE '/rest/%'
+              AND EXISTS (
+                SELECT 1
+                FROM clinlims.system_module_url existing
+                WHERE existing.url_path = SUBSTRING(redundant.url_path FROM 6)
+                  AND existing.system_module_id = redundant.system_module_id
+                  AND existing.system_module_param_id IS NOT DISTINCT FROM redundant.system_module_param_id
+              );
+        </sql>
+
         <sql>
             UPDATE clinlims.system_module_url
             SET url_path = SUBSTRING(url_path FROM 6)
             WHERE url_path LIKE '/rest/%';
         </sql>
 
-        <!--
-          /rest/GenericSampleOrder strips onto a path that already had a row for the
-          same module, so drop the now-redundant duplicate. Keyed on the whole
-          (url_path, module, param) triple to avoid removing rows that legitimately
-          share a path but differ by parameter.
-        -->
-        <sql>
-            DELETE FROM clinlims.system_module_url stripped
-            WHERE stripped.url_path IN ('/alerts', '/eqa', '/qc', '/reports/amendment',
-                                        '/GenericSampleOrder', '/GenericSampleOrder/import',
-                                        '/GenericSampleOrder/validate')
-              AND EXISTS (
-                SELECT 1
-                FROM clinlims.system_module_url kept
-                WHERE kept.url_path = stripped.url_path
-                  AND kept.system_module_id = stripped.system_module_id
-                  AND kept.system_module_param_id IS NOT DISTINCT FROM stripped.system_module_param_id
-                  AND kept.id &lt; stripped.id
-              );
-        </sql>
-
         <rollback>
+            <!--
+              Restore the redundant row the delete above removed, cloned from the row
+              it duplicated. Done before the re-prefix so the clone is not itself
+              re-prefixed.
+            -->
+            <sql>
+                INSERT INTO clinlims.system_module_url (id, url_path, system_module_id, system_module_param_id)
+                SELECT nextval('clinlims.system_module_url_seq'), '/rest/GenericSampleOrder',
+                       system_module_id, system_module_param_id
+                FROM clinlims.system_module_url
+                WHERE url_path = '/GenericSampleOrder'
+                LIMIT 1;
+            </sql>
+            <!--
+              '/GenericSampleOrder' is deliberately absent from this list: its row
+              predates this changeset and was never prefixed, so re-prefixing it would
+              break GenericSampleView authorization on rollback.
+            -->
             <sql>
                 UPDATE clinlims.system_module_url
                 SET url_path = '/rest' || url_path
                 WHERE url_path IN ('/alerts', '/eqa', '/qc', '/reports/amendment',
-                                   '/GenericSampleOrder', '/GenericSampleOrder/import',
-                                   '/GenericSampleOrder/validate');
+                                   '/GenericSampleOrder/import', '/GenericSampleOrder/validate');
             </sql>
         </rollback>
     </changeSet>

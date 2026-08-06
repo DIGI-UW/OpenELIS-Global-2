@@ -2,12 +2,12 @@ package org.openelisglobal.menu.service;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.URLUtil;
@@ -128,7 +128,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
     @Override
     @Transactional(readOnly = true)
     public List<MenuItem> filterByPrivilege(List<MenuItem> menuTree) {
-        if (menuTree == null || menuTree.isEmpty() || holdsAdminAuthority()) {
+        if (holdsAdminAuthority()) {
             return menuTree;
         }
         String sysUserId = userContextHolder.getCurrentSysUserId();
@@ -179,11 +179,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
     }
 
     private Map<String, List<SystemModuleUrl>> indexModuleUrlsByPath() {
-        Map<String, List<SystemModuleUrl>> urlsByPath = new HashMap<>();
-        for (SystemModuleUrl moduleUrl : systemModuleUrlService.getAll()) {
-            urlsByPath.computeIfAbsent(moduleUrl.getUrlPath(), path -> new ArrayList<>()).add(moduleUrl);
-        }
-        return urlsByPath;
+        return systemModuleUrlService.getAll().stream().collect(Collectors.groupingBy(SystemModuleUrl::getUrlPath));
     }
 
     private void collectIndependentlyVisible(List<MenuItem> menuItems, Set<String> permittedModules,
