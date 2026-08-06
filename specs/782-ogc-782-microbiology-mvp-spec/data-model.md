@@ -203,6 +203,36 @@ Validation:
 - Rejected/lost cases require reason and actor/time.
 - Sibling workflows are found through shared `sampleItemId`.
 
+### MicroCaseOrderDetail
+
+The order-entry context captured once for a microbiology case. This record is
+created and updated through the service-layer order-save transaction; it is not
+fixture or UI-only state.
+
+Fields:
+
+- `id`
+- `caseId`
+- `patientOrigin`
+- `numberOfSets` (1-10)
+- `clinicalHistory` (maximum 1000 characters)
+- `antibioticExposure` (nullable boolean)
+- `criticalNotificationPreference` (nullable boolean)
+- audit actor/time fields
+
+Relationships and constraints:
+
+- References exactly one `MicroCase` and is unique on `caseId`.
+- The selected culture protocol remains `MicroCase.cultureMethodId`; this
+  record does not introduce a second protocol master.
+- `patientOrigin` is currently stored as a stable string. The authoritative
+  M-03 source requires its choices to come from deployment reference data and
+  default from the requesting location when available. The current hardcoded
+  client option list is an unresolved R1 configuration gap, not the intended
+  final model.
+- Macro expansion is not persisted here. Clinical History will consume the
+  separately owned Macro Library when that feature is available.
+
 ### MicroCaseActivity
 
 Timeline event for case actions and observations.

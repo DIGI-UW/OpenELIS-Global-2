@@ -90,6 +90,15 @@ create sibling workflows on one specimen. The complete guided-workflow
 crosswalk is recorded in
 `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
 
+R1 stores Antibiotic Exposure and Critical Notify as booleans, enforces the
+source bounds of 1-10 sets and 1000 Clinical History characters, and resolves
+the default culture protocol through the existing default `TestMethod`. Patient
+Origin remains an open configuration integration: the source requires a
+deployment reference list and requesting-location default, while the current UI
+uses hardcoded choices. Macro-enabled Clinical History is a consumer dependency
+on the separate Macro Library stack, not a reason to duplicate that runtime in
+microbiology.
+
 For R1 M-05, the repository has no authoritative Antibiotic-to-Test mapping.
 The engineering contract therefore retains one immutable ordered-drug snapshot
 per AST run, requires complete coverage before review, and projects one current
