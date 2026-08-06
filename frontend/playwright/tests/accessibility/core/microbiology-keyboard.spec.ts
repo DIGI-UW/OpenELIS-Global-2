@@ -53,6 +53,22 @@ test.describe("Microbiology keyboard-only workflow", () => {
         page.getByRole("heading", { name: "Microbiology worklist" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
 
+      const incubatingSummary = page.getByRole("link", {
+        name: "Incubating",
+        exact: true,
+      });
+      await tabTo(page, incubatingSummary);
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/status=incubating/);
+
+      const totalSummary = page.getByRole("link", {
+        name: "Total pending",
+        exact: true,
+      });
+      await tabTo(page, totalSummary);
+      await page.keyboard.press("Enter");
+      await expect(page).not.toHaveURL(/status=incubating/);
+
       const workflowFilter = page.getByLabel("Workflow", { exact: true });
       await tabTo(page, workflowFilter);
       await page.keyboard.press("b");
@@ -78,6 +94,9 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await expect(
         page.getByRole("heading", { name: "Microbiology case" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(
+        page.getByTestId("microbiology-case-section-setup"),
+      ).toBeFocused({ timeout: LONG_TIMEOUT });
     });
 
     await test.step("Create an isolate and record AST with the keyboard", async () => {
@@ -199,6 +218,30 @@ test.describe("Microbiology keyboard-only workflow", () => {
         page.getByTestId("microbiology-ast-run-status"),
       ).toContainText("Reviewed", { timeout: LONG_TIMEOUT });
       await attachScreenshot(page, testInfo, "keyboard-ast-reviewed");
+
+      const reportsPanel = page
+        .getByTestId("microbiology-case-view")
+        .getByRole("button", {
+          name: "Reports",
+          exact: true,
+        });
+      await tabTo(page, reportsPanel);
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/section=reports/);
+      await expect(
+        page.getByTestId("microbiology-case-section-reports"),
+      ).toBeFocused({ timeout: LONG_TIMEOUT });
+
+      const releasePreliminary = page.getByRole("button", {
+        name: "Release preliminary report",
+      });
+      await expect(releasePreliminary).toBeEnabled({ timeout: LONG_TIMEOUT });
+      await tabTo(page, releasePreliminary);
+      await page.keyboard.press("Enter");
+      await expect(
+        page.getByTestId("microbiology-release-state"),
+      ).toContainText("Preliminary Released", { timeout: LONG_TIMEOUT });
+      await attachScreenshot(page, testInfo, "keyboard-preliminary-release");
     });
 
     await test.step("Open and release an amendment with the keyboard", async () => {

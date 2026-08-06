@@ -701,7 +701,7 @@ describe("MicrobiologyWorklist", () => {
     );
   });
 
-  it("uses an AST summary card as the canonical grain-specific status", async () => {
+  it("exposes an AST summary card as a keyboard-operable canonical link", async () => {
     const user = userEvent.setup();
     const service = {
       getWorklistRows: vi.fn().mockResolvedValue({
@@ -720,9 +720,16 @@ describe("MicrobiologyWorklist", () => {
 
     renderWorklist(service, "/Microbiology/worklist?grain=ast");
 
-    await user.click(
-      await screen.findByTestId("microbiology-worklist-summary-results-in"),
+    const resultsIn = await screen.findByRole("link", {
+      name: "Results in - review",
+    });
+    expect(resultsIn).toHaveAttribute(
+      "href",
+      "/Microbiology/worklist?grain=ast&status=results-in",
     );
+    resultsIn.focus();
+    expect(resultsIn).toHaveFocus();
+    await user.keyboard("{Enter}");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
         "/Microbiology/worklist?grain=ast&status=results-in",

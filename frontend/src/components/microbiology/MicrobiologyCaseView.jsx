@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { forwardRef, useEffect, useRef, useState } from "react";
 import {
   Accordion,
   AccordionItem,
@@ -93,6 +93,36 @@ const profileDependentSections = new Set([
   "reports",
 ]);
 
+const sectionLabelIds = {
+  "case-info": "microbiology.progress.caseInfo",
+  "order-detail": "microbiology.orderDetail.title",
+  setup: "microbiology.progress.inoculation",
+  timeline: "microbiology.progress.timeline",
+  nonconformance: "microbiology.nce.sectionTitle",
+  isolates: "microbiology.progress.isolates",
+  ast: "microbiology.ast.title",
+  "critical-communication": "microbiology.critical.title",
+  reports: "microbiology.progress.reports",
+  amendment: "microbiology.amendment.title",
+};
+
+const CaseSectionFocusTarget = forwardRef(
+  ({ section, focused, label, children }, ref) => (
+    <div
+      ref={focused ? ref : undefined}
+      className="microbiology-workbench__section-focus"
+      data-testid={`microbiology-case-section-${section}`}
+      role="region"
+      aria-label={label}
+      tabIndex={focused ? -1 : undefined}
+    >
+      {children}
+    </div>
+  ),
+);
+
+CaseSectionFocusTarget.displayName = "CaseSectionFocusTarget";
+
 const hasActivity = (caseDetail, activityType) =>
   (caseDetail.activities || []).some(
     (activity) => activity.activityType === activityType,
@@ -182,6 +212,7 @@ const MicrobiologyCaseView = ({
   });
   const [inoculations, setInoculations] = useState([]);
   const [actionError, setActionError] = useState("");
+  const focusedSectionRef = useRef(null);
 
   const loadReagentOverview = () => {
     if (!service.getReagentLotOverview) {
@@ -463,6 +494,32 @@ const MicrobiologyCaseView = ({
     0,
     progressItems.findIndex((item) => item.section === focusedSection),
   );
+  const focusedSectionLabel = intl.formatMessage({
+    id: sectionLabelIds[focusedSection] || "microbiology.progress.caseInfo",
+  });
+
+  useEffect(() => {
+    if (
+      loading ||
+      error ||
+      !caseDetail ||
+      routeState.section !== focusedSection ||
+      !focusedSectionRef.current
+    ) {
+      return;
+    }
+    focusedSectionRef.current.focus();
+  }, [
+    error,
+    focusedSection,
+    loading,
+    routeState.action,
+    routeState.astIsolateId,
+    routeState.astRunId,
+    routeState.section,
+    routeState.targetId,
+    routeState.targetType,
+  ]);
 
   if (loading) {
     return <Loading withOverlay={false} />;
@@ -491,6 +548,19 @@ const MicrobiologyCaseView = ({
       className="microbiology-workbench"
       data-testid="microbiology-case-view"
     >
+      <div
+        className="cds--visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-label={intl.formatMessage({
+          id: "microbiology.case.sectionStatus",
+        })}
+      >
+        {intl.formatMessage(
+          { id: "microbiology.case.sectionExpanded" },
+          { section: focusedSectionLabel },
+        )}
+      </div>
       <Stack gap={7}>
         <PageBreadCrumb
           breadcrumbs={[
@@ -745,21 +815,30 @@ const MicrobiologyCaseView = ({
                 open={focusedSection === "case-info"}
                 onHeadingClick={() => selectSection("case-info")}
               >
-                <CaseInfoSummary
-                  accessionNumber={caseDetail.accessionNumber}
-                  requestingLocation={caseDetail.requestingLocation}
-                  orderDetail={caseDetail.orderDetail}
-                />
-                <ChangeWorkflowPanel
-                  caseId={caseDetail.id}
-                  workflowType={caseDetail.workflowType}
-                  cultureMethodId={caseDetail.cultureMethodId}
-                  requiresConfirmation={
-                    caseDetail.workflowChangeRequiresConfirmation
-                  }
-                  service={service}
-                  onChanged={workflowChanged}
-                />
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="case-info"
+                  focused={focusedSection === "case-info"}
+                  label={intl.formatMessage({
+                    id: sectionLabelIds["case-info"],
+                  })}
+                >
+                  <CaseInfoSummary
+                    accessionNumber={caseDetail.accessionNumber}
+                    requestingLocation={caseDetail.requestingLocation}
+                    orderDetail={caseDetail.orderDetail}
+                  />
+                  <ChangeWorkflowPanel
+                    caseId={caseDetail.id}
+                    workflowType={caseDetail.workflowType}
+                    cultureMethodId={caseDetail.cultureMethodId}
+                    requiresConfirmation={
+                      caseDetail.workflowChangeRequiresConfirmation
+                    }
+                    service={service}
+                    onChanged={workflowChanged}
+                  />
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -768,12 +847,21 @@ const MicrobiologyCaseView = ({
                 open={focusedSection === "order-detail"}
                 onHeadingClick={() => selectSection("order-detail")}
               >
-                <OrderDetailPanel
-                  caseId={caseDetail.id}
-                  orderDetail={caseDetail.orderDetail}
-                  service={service}
-                  onSaved={() => loadCase({ showLoading: false })}
-                />
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="order-detail"
+                  focused={focusedSection === "order-detail"}
+                  label={intl.formatMessage({
+                    id: sectionLabelIds["order-detail"],
+                  })}
+                >
+                  <OrderDetailPanel
+                    caseId={caseDetail.id}
+                    orderDetail={caseDetail.orderDetail}
+                    service={service}
+                    onSaved={() => loadCase({ showLoading: false })}
+                  />
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -783,29 +871,36 @@ const MicrobiologyCaseView = ({
                 onHeadingClick={() => selectSection("setup")}
                 disabled={unassigned}
               >
-                {!unassigned && (
-                  <Stack gap={5}>
-                    {["mark-positive", "mark-no-growth"].includes(
-                      routeState.action,
-                    ) && (
-                      <CaseCultureTransitionPanel
-                        action={routeState.action}
-                        caseId={caseId}
-                        service={service}
-                        onComplete={completeCultureTransition}
-                        onCancel={() => selectSection("setup")}
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="setup"
+                  focused={focusedSection === "setup"}
+                  label={intl.formatMessage({ id: sectionLabelIds.setup })}
+                >
+                  {!unassigned && (
+                    <Stack gap={5}>
+                      {["mark-positive", "mark-no-growth"].includes(
+                        routeState.action,
+                      ) && (
+                        <CaseCultureTransitionPanel
+                          action={routeState.action}
+                          caseId={caseId}
+                          service={service}
+                          onComplete={completeCultureTransition}
+                          onCancel={() => selectSection("setup")}
+                        />
+                      )}
+                      <CaseInoculationPanel
+                        inoculations={inoculations}
+                        onRecord={recordInoculation}
+                        saving={saving}
+                        reagentRequirements={reagentOverview.requirements}
+                        reagentUsages={reagentOverview.usages}
+                        readOnly={finalReleased && !amendmentOpen}
                       />
-                    )}
-                    <CaseInoculationPanel
-                      inoculations={inoculations}
-                      onRecord={recordInoculation}
-                      saving={saving}
-                      reagentRequirements={reagentOverview.requirements}
-                      reagentUsages={reagentOverview.usages}
-                      readOnly={finalReleased && !amendmentOpen}
-                    />
-                  </Stack>
-                )}
+                    </Stack>
+                  )}
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -814,12 +909,19 @@ const MicrobiologyCaseView = ({
                 open={focusedSection === "timeline"}
                 onHeadingClick={() => selectSection("timeline")}
               >
-                <CaseTimelinePanel
-                  activities={caseDetail.activities}
-                  timelineSectionId="microbiology-timeline"
-                  onAddNote={addTimelineNote}
-                  saving={saving}
-                />
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="timeline"
+                  focused={focusedSection === "timeline"}
+                  label={intl.formatMessage({ id: sectionLabelIds.timeline })}
+                >
+                  <CaseTimelinePanel
+                    activities={caseDetail.activities}
+                    timelineSectionId="microbiology-timeline"
+                    onAddNote={addTimelineNote}
+                    saving={saving}
+                  />
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -828,18 +930,27 @@ const MicrobiologyCaseView = ({
                 open={focusedSection === "nonconformance"}
                 onHeadingClick={() => selectSection("nonconformance")}
               >
-                {routeState.section === "nonconformance" &&
-                  ["report-nce", "mark-lost"].includes(routeState.action) && (
-                    <CaseNonconformancePanel
-                      caseId={caseDetail.id}
-                      mode={routeState.action}
-                      isolates={caseDetail.isolates}
-                      workflowType={caseDetail.workflowType}
-                      service={service}
-                      onComplete={completeNonconformance}
-                      onCancel={() => selectSection("timeline")}
-                    />
-                  )}
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="nonconformance"
+                  focused={focusedSection === "nonconformance"}
+                  label={intl.formatMessage({
+                    id: sectionLabelIds.nonconformance,
+                  })}
+                >
+                  {routeState.section === "nonconformance" &&
+                    ["report-nce", "mark-lost"].includes(routeState.action) && (
+                      <CaseNonconformancePanel
+                        caseId={caseDetail.id}
+                        mode={routeState.action}
+                        isolates={caseDetail.isolates}
+                        workflowType={caseDetail.workflowType}
+                        service={service}
+                        onComplete={completeNonconformance}
+                        onCancel={() => selectSection("timeline")}
+                      />
+                    )}
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -849,21 +960,28 @@ const MicrobiologyCaseView = ({
                 onHeadingClick={() => selectSection("isolates")}
                 disabled={unassigned}
               >
-                {!unassigned && (
-                  <IsolatePanel
-                    caseId={caseDetail.id}
-                    isolates={caseDetail.isolates}
-                    onCreateIsolate={createIsolate}
-                    onUpdateIdentification={updateIdentification}
-                    saving={saving}
-                    readOnly={finalReleased}
-                    amendmentOpen={amendmentOpen}
-                    onLogCritical={(isolate) =>
-                      openCriticalCommunication("ISOLATE", isolate.id)
-                    }
-                    service={service}
-                  />
-                )}
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="isolates"
+                  focused={focusedSection === "isolates"}
+                  label={intl.formatMessage({ id: sectionLabelIds.isolates })}
+                >
+                  {!unassigned && (
+                    <IsolatePanel
+                      caseId={caseDetail.id}
+                      isolates={caseDetail.isolates}
+                      onCreateIsolate={createIsolate}
+                      onUpdateIdentification={updateIdentification}
+                      saving={saving}
+                      readOnly={finalReleased}
+                      amendmentOpen={amendmentOpen}
+                      onLogCritical={(isolate) =>
+                        openCriticalCommunication("ISOLATE", isolate.id)
+                      }
+                      service={service}
+                    />
+                  )}
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({ id: "microbiology.ast.title" })}
@@ -871,29 +989,36 @@ const MicrobiologyCaseView = ({
                 onHeadingClick={() => selectSection("ast")}
                 disabled={unassigned}
               >
-                {!unassigned && (
-                  <AstEntryPanel
-                    key={`${routeState.astIsolateId}:${routeState.astRunId}:${routeState.action}`}
-                    caseId={caseDetail.id}
-                    workflowType={caseDetail.workflowType}
-                    isolates={caseDetail.isolates}
-                    service={service}
-                    saving={saving}
-                    onAstUpdated={() => {
-                      setReadinessRefreshToken(
-                        (currentValue) => currentValue + 1,
-                      );
-                      loadReagentOverview();
-                    }}
-                    readOnly={finalReleased}
-                    reagentRequirements={reagentOverview.requirements}
-                    reagentUsages={reagentOverview.usages}
-                    initialIsolateId={routeState.astIsolateId}
-                    initialRunId={routeState.astRunId}
-                    initialAction={routeState.action}
-                    onAttemptStarted={completeAstAttempt}
-                  />
-                )}
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="ast"
+                  focused={focusedSection === "ast"}
+                  label={intl.formatMessage({ id: sectionLabelIds.ast })}
+                >
+                  {!unassigned && (
+                    <AstEntryPanel
+                      key={`${routeState.astIsolateId}:${routeState.astRunId}:${routeState.action}`}
+                      caseId={caseDetail.id}
+                      workflowType={caseDetail.workflowType}
+                      isolates={caseDetail.isolates}
+                      service={service}
+                      saving={saving}
+                      onAstUpdated={() => {
+                        setReadinessRefreshToken(
+                          (currentValue) => currentValue + 1,
+                        );
+                        loadReagentOverview();
+                      }}
+                      readOnly={finalReleased}
+                      reagentRequirements={reagentOverview.requirements}
+                      reagentUsages={reagentOverview.usages}
+                      initialIsolateId={routeState.astIsolateId}
+                      initialRunId={routeState.astRunId}
+                      initialAction={routeState.action}
+                      onAttemptStarted={completeAstAttempt}
+                    />
+                  )}
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -902,25 +1027,34 @@ const MicrobiologyCaseView = ({
                 open={focusedSection === "critical-communication"}
                 onHeadingClick={() => selectSection("critical-communication")}
               >
-                <CriticalCommunicationPanel
-                  caseId={caseDetail.id}
-                  sampleItemId={caseDetail.sampleItemId}
-                  isolates={caseDetail.isolates}
-                  projectedResultIds={projectedResultIds}
-                  entryTargetType={
-                    routeState.action === "log-critical"
-                      ? routeState.targetType
-                      : ""
-                  }
-                  entryTargetId={
-                    routeState.action === "log-critical"
-                      ? routeState.targetId
-                      : ""
-                  }
-                  service={service}
-                  onCaseUpdated={() => loadCase({ showLoading: false })}
-                  onEntryComplete={completeCriticalEntry}
-                />
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="critical-communication"
+                  focused={focusedSection === "critical-communication"}
+                  label={intl.formatMessage({
+                    id: sectionLabelIds["critical-communication"],
+                  })}
+                >
+                  <CriticalCommunicationPanel
+                    caseId={caseDetail.id}
+                    sampleItemId={caseDetail.sampleItemId}
+                    isolates={caseDetail.isolates}
+                    projectedResultIds={projectedResultIds}
+                    entryTargetType={
+                      routeState.action === "log-critical"
+                        ? routeState.targetType
+                        : ""
+                    }
+                    entryTargetId={
+                      routeState.action === "log-critical"
+                        ? routeState.targetId
+                        : ""
+                    }
+                    service={service}
+                    onCaseUpdated={() => loadCase({ showLoading: false })}
+                    onEntryComplete={completeCriticalEntry}
+                  />
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -930,20 +1064,27 @@ const MicrobiologyCaseView = ({
                 onHeadingClick={() => selectSection("reports")}
                 disabled={unassigned}
               >
-                {!unassigned && (
-                  <ReportReadinessPanel
-                    caseId={caseDetail.id}
-                    service={service}
-                    finalReleaseState={
-                      caseDetail.finalReleaseState || caseDetail.stage
-                    }
-                    amendmentOpen={amendmentOpen}
-                    patientId={caseDetail.patientId}
-                    onReleased={() => loadCase({ showLoading: false })}
-                    onProjectionLoaded={setProjectedResultIds}
-                    refreshToken={readinessRefreshToken}
-                  />
-                )}
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="reports"
+                  focused={focusedSection === "reports"}
+                  label={intl.formatMessage({ id: sectionLabelIds.reports })}
+                >
+                  {!unassigned && (
+                    <ReportReadinessPanel
+                      caseId={caseDetail.id}
+                      service={service}
+                      finalReleaseState={
+                        caseDetail.finalReleaseState || caseDetail.stage
+                      }
+                      amendmentOpen={amendmentOpen}
+                      patientId={caseDetail.patientId}
+                      onReleased={() => loadCase({ showLoading: false })}
+                      onProjectionLoaded={setProjectedResultIds}
+                      refreshToken={readinessRefreshToken}
+                    />
+                  )}
+                </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -952,15 +1093,22 @@ const MicrobiologyCaseView = ({
                 open={focusedSection === "amendment"}
                 onHeadingClick={() => selectSection("amendment")}
               >
-                <AmendmentHistoryPanel
-                  caseId={caseDetail.id}
-                  finalReleaseState={
-                    caseDetail.finalReleaseState || caseDetail.stage
-                  }
-                  service={service}
-                  active={focusedSection === "amendment"}
-                  onCaseUpdated={() => loadCase({ showLoading: false })}
-                />
+                <CaseSectionFocusTarget
+                  ref={focusedSectionRef}
+                  section="amendment"
+                  focused={focusedSection === "amendment"}
+                  label={intl.formatMessage({ id: sectionLabelIds.amendment })}
+                >
+                  <AmendmentHistoryPanel
+                    caseId={caseDetail.id}
+                    finalReleaseState={
+                      caseDetail.finalReleaseState || caseDetail.stage
+                    }
+                    service={service}
+                    active={focusedSection === "amendment"}
+                    onCaseUpdated={() => loadCase({ showLoading: false })}
+                  />
+                </CaseSectionFocusTarget>
               </AccordionItem>
             </Accordion>
             <footer
