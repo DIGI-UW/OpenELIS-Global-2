@@ -84,6 +84,7 @@ public class MicrobiologyUatScenarioService {
     private static final String WORKLIST_SCENARIO = "WORKLIST";
     private static final String REFERENCE_ADMIN_SCENARIO = "M3";
     private static final String WHONET_EXPORT_SCENARIO = "M4";
+    private static final String CLASSIFICATION_SCENARIO = "R1";
     private static final String UAT_METHOD_NAME = "UAT micro culture";
     private static final String UAT_METHOD_DESCRIPTION = "UAT microbiology culture method";
     private static final String UAT_TEST_DESCRIPTION = "UAT microbiology culture";
@@ -202,9 +203,14 @@ public class MicrobiologyUatScenarioService {
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
         configureCultureSetup(method, reportableTestAnalyte);
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
-        MicroCase microCase = routeCultureAnalysis(sampleItem, analysis, performedBy);
+        MicroCase routedCase = routeCultureAnalysis(sampleItem, analysis, performedBy);
+        MicroCase microCase = routedCase;
         MicroCase sibling = null;
-        if (WORKLIST_SCENARIO.equals(scenario)) {
+        if (CLASSIFICATION_SCENARIO.equals(scenario)) {
+            microCase = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null,
+                    performedBy);
+            sibling = routedCase;
+        } else if (WORKLIST_SCENARIO.equals(scenario)) {
             sibling = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.MYCOBACTERIOLOGY_TB,
                     method.getId(), performedBy);
         }
@@ -727,10 +733,17 @@ public class MicrobiologyUatScenarioService {
     }
 
     private void configureCultureSetup(Method method, TestAnalyte reportableTestAnalyte) {
+        configureCultureSetup(method, reportableTestAnalyte, MicroWorkflowType.BACTERIOLOGY,
+                "UAT bacteriology culture");
+        configureCultureSetup(method, reportableTestAnalyte, MicroWorkflowType.MYCOBACTERIOLOGY_TB, "UAT TB culture");
+    }
+
+    private void configureCultureSetup(Method method, TestAnalyte reportableTestAnalyte, MicroWorkflowType workflowType,
+            String name) {
         MicroCultureSetup setup = new MicroCultureSetup();
         setup.setMethodId(method.getId());
-        setup.setName("UAT bacteriology culture");
-        setup.setWorkflowType(BACTERIOLOGY);
+        setup.setName(name);
+        setup.setWorkflowType(workflowType.name());
         setup.setMediaDefaults("Blood agar");
         setup.setIncubationDefaults("18-24h");
         setup.setAtmosphereDefaults("Ambient");
@@ -790,8 +803,9 @@ public class MicrobiologyUatScenarioService {
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
         if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
-                && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)) {
-            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, M3, or M4");
+                && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
+                && !CLASSIFICATION_SCENARIO.equals(normalized)) {
+            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, M3, M4, or R1");
         }
         return normalized;
     }
