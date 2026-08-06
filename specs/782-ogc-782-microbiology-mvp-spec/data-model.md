@@ -105,6 +105,47 @@ Validation:
 
 - WHONET-ready antibiotics require a WHONET code.
 
+### MicroPatientOrigin
+
+Deployment reference entry for order-time patient context and surveillance.
+
+Fields:
+
+- `id` (generated UUID)
+- `code` (stable application identity)
+- `displayName`
+- `whonetCode`
+- `active`
+- `sortOrder`
+- `lastUpdated`
+
+Validation:
+
+- Phase 1A seeds Inpatient, Outpatient, ICU, Emergency, Long-term Care, and
+  Unknown with their ruled WHONET codes.
+- Order-detail writes accept only an active stable code or a blank optional
+  value; free text is rejected.
+- The Phase 1A administration surface is read-only. Full vocabulary CRUD is a
+  later deployment need.
+
+### MicroPatientOriginDefault
+
+Optional deployment mapping from an existing requesting Organization to one
+active Patient Origin. It is deliberately explicit: the source does not define
+how organization names or ward types imply patient origin.
+
+Fields:
+
+- `id` (generated UUID)
+- `organizationId` (unique)
+- `patientOriginId`
+- `lastUpdated`
+
+Validation:
+
+- A missing, inactive, or invalid mapping produces no default.
+- The UI never overwrites an origin already selected or restored on the order.
+
 ### MicroBreakpointStandard
 
 Versioned AST interpretation standard.
@@ -232,11 +273,10 @@ Relationships and constraints:
 - `cultureMethodId` preserves the selected existing `Method` while the case does
   not yet exist. Routing applies it to `MicroCase.cultureMethodId`; this record
   does not introduce a second protocol master.
-- `patientOrigin` is currently stored as a stable string. The authoritative
-  M-03 source requires its choices to come from deployment reference data and
-  default from the requesting location when available. The current hardcoded
-  client option list is an unresolved R1 configuration gap, not the intended
-  final model.
+- `patientOrigin` stores the validated stable `MicroPatientOrigin.code`; both
+  order entry and the case panel obtain labels and WHONET identity from the
+  reference service. This preserves existing order-detail compatibility without
+  making the product contract depend on a particular foreign-key layout.
 - Macro expansion is not persisted here. Clinical History will consume the
   separately owned Macro Library when that feature is available.
 

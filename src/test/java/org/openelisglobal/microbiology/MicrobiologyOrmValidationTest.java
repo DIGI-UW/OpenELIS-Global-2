@@ -31,6 +31,8 @@ import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOriginDefault;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersionSource;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun;
@@ -59,6 +61,8 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroBreakpointRule.class));
         assertNotNull(metamodel.entity(MicroBreakpointActivationEvent.class));
         assertNotNull(metamodel.entity(MicroCultureSetup.class));
+        assertNotNull(metamodel.entity(MicroPatientOrigin.class));
+        assertNotNull(metamodel.entity(MicroPatientOriginDefault.class));
         assertNotNull(metamodel.entity(MicroCase.class));
         assertNotNull(metamodel.entity(MicroCaseActivity.class));
         assertNotNull(metamodel.entity(MicroCaseAmendment.class));
@@ -98,6 +102,21 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
             assertNotNull(entityManager.createQuery(
                     "from MicroCaseOrderDetail d where d.sampleId = :sampleId and d.caseId is null",
                     MicroCaseOrderDetail.class));
+        } finally {
+            entityManager.close();
+        }
+    }
+
+    @Test
+    public void microbiologyPatientOriginHqlCompiles() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        try {
+            assertNotNull(entityManager.createQuery(
+                    "from MicroPatientOrigin o where o.isActive = 'Y' order by o.sortOrder, o.displayName",
+                    MicroPatientOrigin.class));
+            assertNotNull(entityManager.createQuery(
+                    "select d.patientOriginId from MicroPatientOriginDefault d where d.organizationId = :organizationId",
+                    String.class));
         } finally {
             entityManager.close();
         }

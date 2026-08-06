@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { InlineNotification, Layer, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyOrderDetailFields, {
   emptyMicrobiologyOrderDetail,
 } from "./MicrobiologyOrderDetailFields";
+import { getPatientOrigins } from "./MicrobiologyService";
 
 const MicrobiologyOrderEntrySection = ({
   samples = [],
@@ -14,6 +15,8 @@ const MicrobiologyOrderEntrySection = ({
   isReadOnly = false,
 }) => {
   const intl = useIntl();
+  const [patientOriginOptions, setPatientOriginOptions] = useState([]);
+  const [defaultPatientOrigin, setDefaultPatientOrigin] = useState("");
   const cultureTests = useMemo(
     () =>
       samples.flatMap((sample) =>
@@ -40,6 +43,10 @@ const MicrobiologyOrderEntrySection = ({
   );
   const routedWorkflows = workflows.length > 0 ? workflows : ["UNASSIGNED"];
   const sectionEnabled = enabled ?? workflows.length > 0;
+  const requestingOrganizationId =
+    orderFormValues.sampleOrderItems?.referringSiteDepartmentId ||
+    orderFormValues.sampleOrderItems?.referringSiteId ||
+    "";
   const methodSourceTests =
     cultureTests.length > 0 ? cultureTests : selectedTests;
 
@@ -67,6 +74,7 @@ const MicrobiologyOrderEntrySection = ({
   );
   const fields = {
     ...existingFields,
+    patientOrigin: existingFields.patientOrigin || defaultPatientOrigin || "",
     cultureMethodId:
       existingFields.cultureMethodId || defaultMethod?.methodId || "",
     numberOfSets:
@@ -87,6 +95,23 @@ const MicrobiologyOrderEntrySection = ({
         : existingFields.criticalNotificationPreference === true ||
           existingFields.criticalNotificationPreference === "true",
   };
+
+  useEffect(() => {
+    if (!sectionEnabled) {
+      return undefined;
+    }
+    let active = true;
+    getPatientOrigins(requestingOrganizationId).then((response) => {
+      if (!active) {
+        return;
+      }
+      setPatientOriginOptions(response?.options || []);
+      setDefaultPatientOrigin(response?.defaultCode || "");
+    });
+    return () => {
+      active = false;
+    };
+  }, [requestingOrganizationId, sectionEnabled]);
 
   useEffect(() => {
     if (!sectionEnabled) {
@@ -162,6 +187,7 @@ const MicrobiologyOrderEntrySection = ({
         fields={fields}
         onChange={updateField}
         methods={methods}
+        patientOrigins={patientOriginOptions}
         idPrefix="microbiology-order-entry"
         isReadOnly={isReadOnly}
       />

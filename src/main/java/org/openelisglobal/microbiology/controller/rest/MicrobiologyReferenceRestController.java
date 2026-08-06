@@ -3,6 +3,8 @@ package org.openelisglobal.microbiology.controller.rest;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.microbiology.form.MicroPatientOriginOptionForm;
+import org.openelisglobal.microbiology.form.MicroPatientOriginOptionsForm;
 import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.service.MicroBreakpointService;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
@@ -11,6 +13,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -85,6 +88,24 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
             forms.add(form);
         }
         return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/patient-origins")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MicroPatientOriginOptionsForm> getPatientOrigins(
+            @RequestParam(required = false) String organizationId) {
+        var origins = referenceService.getPatientOrigins(organizationId);
+        MicroPatientOriginOptionsForm response = new MicroPatientOriginOptionsForm();
+        response.defaultCode = origins.getDefaultCode();
+        for (MicroPatientOrigin origin : origins.getOptions()) {
+            MicroPatientOriginOptionForm option = new MicroPatientOriginOptionForm();
+            option.id = origin.getId();
+            option.code = origin.getCode();
+            option.label = origin.getDisplayName();
+            option.whonetCode = origin.getWhonetCode();
+            response.options.add(option);
+        }
+        return ResponseEntity.ok(response);
     }
 
     private MicroReferenceOptionForm toStandardForm(MicroBreakpointStandard standard) {
