@@ -106,6 +106,9 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             if (MicroCaseStage.INCUBATING.name().equals(row.stage)) {
                 summary.incubating++;
             }
+            if ("POSITIVE_SIGNAL".equals(row.stage)) {
+                summary.positiveSignals++;
+            }
             if (MicroCaseStage.GROWTH_DETECTED.name().equals(row.stage)) {
                 summary.growthDetected++;
             }

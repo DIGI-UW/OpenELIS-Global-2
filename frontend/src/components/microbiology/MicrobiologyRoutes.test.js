@@ -100,6 +100,7 @@ describe("MicrobiologyRoutes", () => {
       targetType: "",
       targetId: "",
       astRunId: "",
+      astIsolateId: "",
     });
   });
 
@@ -108,16 +109,18 @@ describe("MicrobiologyRoutes", () => {
       grain: "ast",
       status: "results-in",
       section: "ast",
+      astIsolateId: "isolate-1",
       astRunId: "run / 1",
     });
 
     expect(url).toBe(
-      "/Microbiology/cases/case-1?grain=ast&status=results-in&section=ast&astRunId=run+%2F+1",
+      "/Microbiology/cases/case-1?grain=ast&status=results-in&section=ast&astIsolateId=isolate-1&astRunId=run+%2F+1",
     );
     expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
       grain: "ast",
       status: "results-in",
       section: "ast",
+      astIsolateId: "isolate-1",
       astRunId: "run / 1",
     });
   });

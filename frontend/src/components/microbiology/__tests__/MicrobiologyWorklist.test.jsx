@@ -63,6 +63,8 @@ describe("MicrobiologyWorklist", () => {
       await screen.findByRole("heading", { name: "Microbiology worklist" }),
     ).toBeInTheDocument();
     expect(service.getWorklistRows).toHaveBeenCalledWith({
+      grain: "cultures",
+      status: "",
       workflow: "",
       stage: "",
       urgency: "",
@@ -79,8 +81,8 @@ describe("MicrobiologyWorklist", () => {
       screen.getByTestId("microbiology-worklist-siblings"),
     ).toHaveTextContent("Mycobacteriology/TB");
     expect(
-      screen.getByTestId("microbiology-worklist-summary-ast-review"),
-    ).toHaveTextContent("AST review");
+      screen.getByTestId("microbiology-worklist-summary-growth"),
+    ).toHaveTextContent("Growth detected");
     expect(
       screen.getByTestId("microbiology-worklist-summary-critical"),
     ).toHaveTextContent("Open critical follow-ups");
@@ -146,6 +148,8 @@ describe("MicrobiologyWorklist", () => {
     );
     await waitFor(() =>
       expect(service.getWorklistRows).toHaveBeenLastCalledWith({
+        grain: "cultures",
+        status: "",
         workflow: "",
         stage: "AST_IN_PROGRESS",
         urgency: "",
@@ -269,12 +273,107 @@ describe("MicrobiologyWorklist", () => {
 
     await screen.findByRole("heading", { name: "Microbiology worklist" });
     await user.click(
-      screen.getByTestId("microbiology-worklist-summary-ast-review"),
+      screen.getByTestId("microbiology-worklist-summary-growth"),
     );
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?workflow=BACTERIOLOGY&due=AST_REVIEW&q=blood",
+        "/Microbiology/worklist?status=growth&workflow=BACTERIOLOGY&q=blood",
+      ),
+    );
+  });
+
+  it("switches to the AST grain and opens the exact run with queue state", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getWorklistRows: vi.fn().mockImplementation(({ grain }) =>
+        Promise.resolve(
+          grain === "ast"
+            ? {
+                rows: [
+                  {
+                    rowId: "run-1",
+                    grain: "ast",
+                    caseId: "case-1",
+                    sampleItemId: "1001",
+                    workflowType: "BACTERIOLOGY",
+                    priority: "STAT",
+                    urgency: "HIGH",
+                    isolateId: "isolate-1",
+                    isolateLabel: "Isolate 1",
+                    organismDisplay: "E. coli",
+                    astRunId: "run-1",
+                    panelId: "GN-STD",
+                    astStatus: "RESULTS_IN",
+                    astStartedAt: "2026-08-06T09:30:00Z",
+                    analyzerResultsAvailable: true,
+                  },
+                ],
+                total: 1,
+                page: 1,
+                pageSize: 20,
+                summary: {
+                  astInQueue: 1,
+                  astPendingSetup: 0,
+                  astInProgress: 0,
+                  astAwaitingResults: 0,
+                  astResultsIn: 1,
+                },
+              }
+            : { rows: [], total: 0, page: 1, pageSize: 20 },
+        ),
+      ),
+    };
+
+    renderWorklist(service);
+
+    await screen.findByRole("heading", { name: "Microbiology worklist" });
+    await user.click(screen.getByRole("tab", { name: "AST runs" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/worklist?grain=ast",
+      ),
+    );
+    const row = await screen.findByTestId("microbiology-worklist-row-run-1");
+    expect(row).toHaveTextContent("Isolate 1");
+    expect(row).toHaveTextContent("E. coli");
+    expect(row).toHaveTextContent("GN-STD");
+    expect(row).toHaveTextContent("Results In");
+
+    await user.click(screen.getByRole("button", { name: "Open case" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?grain=ast&section=ast&astIsolateId=isolate-1&astRunId=run-1",
+      ),
+    );
+  });
+
+  it("uses an AST summary card as the canonical grain-specific status", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+        summary: {
+          astInQueue: 3,
+          astPendingSetup: 1,
+          astInProgress: 1,
+          astResultsIn: 1,
+        },
+      }),
+    };
+
+    renderWorklist(service, "/Microbiology/worklist?grain=ast");
+
+    await user.click(
+      await screen.findByTestId("microbiology-worklist-summary-results-in"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/worklist?grain=ast&status=results-in",
       ),
     );
   });

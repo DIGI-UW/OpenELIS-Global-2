@@ -822,6 +822,7 @@ const MicrobiologyCaseView = ({
               >
                 {!unassigned && (
                   <AstEntryPanel
+                    key={`${routeState.astIsolateId}:${routeState.astRunId}`}
                     caseId={caseDetail.id}
                     workflowType={caseDetail.workflowType}
                     isolates={caseDetail.isolates}
@@ -836,6 +837,8 @@ const MicrobiologyCaseView = ({
                     readOnly={finalReleased}
                     reagentRequirements={reagentOverview.requirements}
                     reagentUsages={reagentOverview.usages}
+                    initialIsolateId={routeState.astIsolateId}
+                    initialRunId={routeState.astRunId}
                   />
                 )}
               </AccordionItem>
