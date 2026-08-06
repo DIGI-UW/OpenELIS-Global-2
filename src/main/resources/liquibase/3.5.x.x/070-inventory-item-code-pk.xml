@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
+    logicalFilePath="inventory/inventory-item-code-pk.xml"
     xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
@@ -12,12 +13,10 @@
     break per the story (Inventory has no production users yet) — existing
     rows are dropped and recreated with auto-generated codes, not migrated.
 
-    Must NOT use "TRUNCATE ... CASCADE": 068 puts sample_storage_assignment/
-    movement in inventory_item's cascade closure (fk_assignment_inventory_lot/
-    fk_movement_inventory_lot), so CASCADE would wipe shipped sample-storage
-    data on upgraded instances. DELETE in FK dependency order instead — a
-    future reference into these tables then fails loudly here rather than
-    being silently truncated.
+    Must NOT use "TRUNCATE ... CASCADE": the storage generalization puts
+    sample_storage_assignment/movement in inventory_item's cascade closure, so
+    CASCADE would wipe shipped sample-storage data on upgrade. Hence DELETE in
+    FK dependency order.
     -->
     <changeSet id="OGC-658-part-c-migrate-inventory-item-pk-to-code" author="OGC">
         <preConditions onFail="MARK_RAN">

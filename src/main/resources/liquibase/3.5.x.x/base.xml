@@ -132,6 +132,13 @@
   <!-- OGC-949 / OGC-986 (epic OGC-760): test_reagent_link foundation for the v2 Reagents tab -->
   <include relativeToChangelogFile="true" file="048-test-reagent-link.xml"/>
 
+  <!-- OGC-657/OGC-658 inventory. Placed here rather than at the end of the file
+       on purpose: this is the earliest point that satisfies the dependency on
+       048 (test_reagent_link), and keeping it away from the append point every
+       branch uses stops it conflicting on every rebase. -->
+  <include relativeToChangelogFile="true" file="069-generalize-storage-assignment-occupant.xml"/>
+  <include relativeToChangelogFile="true" file="070-inventory-item-code-pk.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 
@@ -183,21 +190,4 @@
 
   <!-- Sample Entry Config: requesterRequired toggle for Search Requester + First/Last Name -->
   <include relativeToChangelogFile="true" file="069-requester-required-config.xml"/>
-
-  <!-- OGC-657: generalize sample_storage_assignment/movement to support inventory-lot occupants,
-       and drop the non-functional inventory storage skeleton (inventory_storage_location) -->
-  <include relativeToChangelogFile="true" file="069-generalize-storage-assignment-occupant.xml"/>
-
-  <!-- OGC-658 (superseded): corrective cleanup for environments that already ran the
-       since-deleted Part A changesets (inventory_item_type table + item_type FK) -->
-  <include relativeToChangelogFile="true" file="070-drop-inventory-item-type.xml"/>
-
-  <!-- OGC-658 Part C: inventory_item's PK migrated from BIGINT id to a
-       server-generated VARCHAR(64) code -->
-  <include relativeToChangelogFile="true" file="071-inventory-item-code-pk.xml"/>
-
-
-  <!-- OGC-658: corrective cleanup for environments that already ran the
-       since-deleted 061 changeset (menu_inventory_item_types) -->
-  <include relativeToChangelogFile="true" file="072-remove-inventory-item-type-menu-entry.xml"/>
 </databaseChangeLog>
