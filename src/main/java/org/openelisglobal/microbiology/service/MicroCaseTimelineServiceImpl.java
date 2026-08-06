@@ -14,6 +14,7 @@ import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
     private final ReferenceTablesService referenceTablesService;
     private final String configuredSampleItemTableId;
 
+    @Autowired
     public MicroCaseTimelineServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, NoteService noteService,
             ReferenceTablesService referenceTablesService) {
         this.caseDAO = caseDAO;

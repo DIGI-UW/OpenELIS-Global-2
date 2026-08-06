@@ -16,6 +16,8 @@ import org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm;
 import org.openelisglobal.microbiology.form.MicroBreakpointStandardAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
+import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.springframework.stereotype.Service;
@@ -117,13 +119,11 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
             throw new IllegalArgumentException("Antibiotic not found: " + antibioticId);
         }
         String method = required(request.method, "method").toUpperCase(Locale.ROOT);
-        if (!Set.of("MIC", "ZONE").contains(method)) {
-            throw new IllegalArgumentException("method must be MIC or ZONE");
-        }
         String breakpointType = required(request.breakpointType, "breakpointType").toUpperCase(Locale.ROOT);
         if (!Set.of("MIC", "ZONE").contains(breakpointType)) {
             throw new IllegalArgumentException("breakpointType must be MIC or ZONE");
         }
+        validateMethodAndBreakpointType(method, breakpointType);
         if (request.susceptibleValue == null && request.intermediateLowerValue == null
                 && request.intermediateUpperValue == null && request.resistantValue == null) {
             throw new IllegalArgumentException("At least one breakpoint threshold is required");
@@ -165,6 +165,24 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
             ruleDAO.update(rule);
         }
         return toRuleForm(rule);
+    }
+
+    private void validateMethodAndBreakpointType(String method, String breakpointType) {
+        if (Set.of(MicroAstMethod.MIC.name(), MicroAstMethod.ZONE.name()).contains(method)) {
+            if (!method.equals(breakpointType)) {
+                throw new IllegalArgumentException("Legacy method must match breakpointType");
+            }
+            return;
+        }
+        MicroAstTechnique technique;
+        try {
+            technique = MicroAstTechnique.valueOf(method);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unsupported AST technique: " + method, exception);
+        }
+        if (technique.isLegacyUnspecified() || !technique.measurementType().name().equals(breakpointType)) {
+            throw new IllegalArgumentException("AST technique does not match breakpointType");
+        }
     }
 
     @Override

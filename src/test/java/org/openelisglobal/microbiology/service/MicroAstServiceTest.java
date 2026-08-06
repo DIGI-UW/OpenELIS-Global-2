@@ -38,6 +38,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -132,6 +133,21 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void startRunSnapshotsTechniqueAndDerivedMeasurementType() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+
+        MicroAstRun vitekRun = service.startRun("iso-1", "panel-1", "eucast-std", null,
+                MicroAstTechnique.VITEK_2, List.of(), "1");
+        MicroAstRun diskRun = service.startRun("iso-1", "panel-1", "eucast-std", null,
+                MicroAstTechnique.DISK_DIFFUSION, List.of(), "1");
+
+        assertEquals(MicroAstTechnique.VITEK_2.name(), vitekRun.getTechnique());
+        assertEquals(MicroAstMethod.MIC.name(), vitekRun.getMethod());
+        assertEquals(MicroAstTechnique.DISK_DIFFUSION.name(), diskRun.getTechnique());
+        assertEquals(MicroAstMethod.ZONE.name(), diskRun.getMethod());
+    }
+
+    @Test
     public void startRunWithoutStandardSnapshotsTheActiveStandard() {
         MicroIsolate isolate = identifiedIsolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
@@ -217,11 +233,42 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void readingUsesRunTechniqueAndFallsBackToLegacyMeasurementRule() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        run.setBreakpointStandardId("eucast-std");
+        run.setTechnique(MicroAstTechnique.DISK_DIFFUSION.name());
+        run.setMethod(MicroAstMethod.ZONE.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        MicroBreakpointRule legacyRule = new MicroBreakpointRule();
+        legacyRule.setId("legacy-zone-rule");
+        legacyRule.setUnits("mm");
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", null, "abx-1", "DISK_DIFFUSION", null, "ZONE"))
+                .thenReturn(null);
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", null, "abx-1", "ZONE", null, "ZONE"))
+                .thenReturn(legacyRule);
+        when(interpretationService.interpret(legacyRule, MicroAstMethod.ZONE, new BigDecimal("18")))
+                .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
+
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", new BigDecimal("18"), "1");
+
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", null, "abx-1", "DISK_DIFFUSION", null,
+                "ZONE");
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", null, "abx-1", "ZONE", null, "ZONE");
+        assertEquals(MicroAstMethod.ZONE.name(), reading.getMethod());
+        assertEquals("mm", reading.getUnits());
+    }
+
+    @Test
     public void noBreakpointReadingRetainsNoneProvenanceAndMethodUnits() {
         MicroAstRun run = new MicroAstRun();
         run.setId("run-1");
         run.setIsolateId("iso-1");
         run.setBreakpointStandardId("eucast-std");
+        run.setTechnique(MicroAstTechnique.DISK_DIFFUSION.name());
+        run.setMethod(MicroAstMethod.ZONE.name());
         when(runDAO.get("run-1")).thenReturn(Optional.of(run));
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
         when(interpretationService.interpret(null, MicroAstMethod.ZONE, new BigDecimal("18")))
@@ -403,6 +450,21 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void repeatRunSnapshotsItsSelectedTechniqueAndMeasurement() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate()));
+        MicroAstRun source = reviewedRun("run-1");
+        source.setPanelId("panel-1");
+        source.setBreakpointStandardId("standard-1");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(source));
+
+        MicroAstRun repeat = service.startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Method comparison",
+                MicroAstTechnique.ETEST, "7");
+
+        assertEquals(MicroAstTechnique.ETEST.name(), repeat.getTechnique());
+        assertEquals(MicroAstMethod.MIC.name(), repeat.getMethod());
+    }
+
+    @Test
     public void repeatRunRejectsMissingReasonAndUnreviewedSource() {
         try {
             service.startRepeatRun("run-1", MicroAstAttemptType.REPEAT, " ", MicroAstMethod.MIC, "7");
@@ -464,7 +526,7 @@ public class MicroAstServiceTest {
     }
 
     @Test
-    public void firstReadingSnapshotsRunMethodAndMixedMethodsAreRejected() {
+    public void legacyReadingUsesSnapshottedMeasurementAndRejectsMismatch() {
         MicroAstRun run = new MicroAstRun();
         run.setId("run-1");
         run.setIsolateId("iso-1");
@@ -485,7 +547,7 @@ public class MicroAstServiceTest {
             service.recordReading("run-1", "abx-2", MicroAstMethod.ZONE, new BigDecimal("20"), "7");
             fail("Expected one method per AST attempt");
         } catch (IllegalStateException expected) {
-            assertEquals("AST_RUN_METHOD_MISMATCH", expected.getMessage());
+            assertEquals("AST_RUN_MEASUREMENT_TYPE_MISMATCH", expected.getMessage());
         }
     }
 

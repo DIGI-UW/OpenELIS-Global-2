@@ -238,4 +238,7 @@
   <!-- OGC-782 R1: immutable AST override and revert history -->
   <include relativeToChangelogFile="true" file="074-microbiology-ast-override-history.xml"/>
 
+  <!-- OGC-782 R1: AST technique distinct from derived measurement type -->
+  <include relativeToChangelogFile="true" file="075-microbiology-ast-technique.xml"/>
+
 </databaseChangeLog>

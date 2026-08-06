@@ -66,6 +66,7 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroIsolate.class));
         assertNotNull(metamodel.entity(MicroIsolateIdentificationEvent.class));
         assertNotNull(metamodel.entity(MicroAstRun.class));
+        assertNotNull(metamodel.entity(MicroAstRun.class).getAttribute("technique"));
         assertNotNull(metamodel.entity(MicroAstReading.class));
         assertNotNull(metamodel.entity(MicroAstOverrideEvent.class));
         assertNotNull(metamodel.entity(MicroCriticalCommunication.class));

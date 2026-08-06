@@ -18,6 +18,8 @@ public class MicroAstRunForm {
     public String sourceRunId;
     public String attemptReason;
     public String method;
+    public String technique;
+    public String measurementType;
     public boolean reportable;
     public String status;
     public Timestamp startedAt;
