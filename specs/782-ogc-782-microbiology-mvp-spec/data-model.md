@@ -313,6 +313,13 @@ Validation:
 - Repeat runs inherit the source run's snapshot rather than reading the current
   panel definition.
 - A reading must belong to the run snapshot.
+- Any panel switch or individual drug addition/removal requires one retained
+  adjustment reason and produces the exact snapshot used by entry and review.
+- Review is blocked until every snapshotted antibiotic has at least one
+  reading.
+- Standard patient-report projection emits only the latest reading for each
+  snapshotted antibiotic, in snapshot display order; superseded and unordered
+  readings are excluded.
 - The snapshot does not create a parallel core `Analysis` per antibiotic; the
   case's linked culture analysis remains the standard report projection anchor.
 

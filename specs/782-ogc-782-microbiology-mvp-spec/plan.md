@@ -90,6 +90,14 @@ create sibling workflows on one specimen. The complete guided-workflow
 crosswalk is recorded in
 `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
 
+For R1 M-05, the repository has no authoritative Antibiotic-to-Test mapping.
+The engineering contract therefore retains one immutable ordered-drug snapshot
+per AST run, requires complete coverage before review, and projects one current
+reading per ordered drug through the case's existing linked culture Analysis.
+This satisfies the source behavior without manufacturing parallel core
+analyses; later cascade-reporting rules may filter presentation but do not
+rewrite the historical tested set.
+
 The historical MVP boundary above remains unchanged. Follow-on stack branches
 now add clinical completeness (M2), reference/mapping administration (M3), and
 the explicitly scoped manual WHONET export in
