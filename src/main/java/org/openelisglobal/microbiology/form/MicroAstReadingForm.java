@@ -10,6 +10,9 @@ public class MicroAstReadingForm {
     public String id;
     public String astRunId;
     public String antibioticId;
+    public String measurementType;
+    /** @deprecated Use {@link #measurementType}. */
+    @Deprecated
     public String method;
     public BigDecimal rawValue;
     public String rawText;
