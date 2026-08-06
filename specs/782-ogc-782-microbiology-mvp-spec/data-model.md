@@ -314,6 +314,11 @@ Validation:
   to their stored measurement type and require a real technique for new work.
 - Repeat/retest creates a new run or linked repeat record rather than
   overwriting prior readings.
+- Whole-panel repeat copies the source ordered-work snapshot. Single-antibiotic
+  repeat copies only the selected source member and rejects any drug that was
+  not part of the preserved source run.
+- A nonconformance Retest disposition records the NCE and invokes the same
+  preserved-run operation after verifying that the source belongs to the case.
 
 ### MicroAstRunAntibiotic
 
