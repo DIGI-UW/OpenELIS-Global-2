@@ -77,6 +77,8 @@ const astServiceStubs = {
   }),
   getCaseInoculations: vi.fn().mockResolvedValue([]),
   recordCaseInoculation: vi.fn(),
+  getCaseTimeline: vi.fn().mockResolvedValue(caseDetail.activities),
+  addCaseNote: vi.fn(),
   releasePreliminaryReport: vi.fn(),
   releaseFinalReport: vi.fn(),
   getCaseAmendments: vi.fn().mockResolvedValue([]),
@@ -144,6 +146,17 @@ describe("MicrobiologyCaseView", () => {
             },
           ],
         }),
+      getCaseTimeline: vi
+        .fn()
+        .mockResolvedValueOnce(caseDetail.activities)
+        .mockResolvedValue([
+          ...caseDetail.activities,
+          {
+            id: "a2",
+            activityType: "INOCULATION_RECORDED",
+            note: "BOTTLE-001 - Blood culture bottle",
+          },
+        ]),
       getReagentLotOverview: vi.fn().mockResolvedValue({
         requirements: [requirement],
         usages: [],

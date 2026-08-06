@@ -192,18 +192,26 @@ const MicrobiologyCaseView = ({
     if (showLoading) {
       setLoading(true);
     }
-    return service.getCaseDetail(caseId).then((detail) => {
-      if (!detail || detail.status) {
-        setError(intl.formatMessage({ id: "microbiology.case.loadError" }));
-        setCaseDetail(null);
-      } else {
-        setError("");
-        setCaseDetail(detail);
-      }
-      if (showLoading) {
-        setLoading(false);
-      }
-    });
+    const timelinePromise = service.getCaseTimeline
+      ? service.getCaseTimeline(caseId)
+      : Promise.resolve(null);
+    return Promise.all([service.getCaseDetail(caseId), timelinePromise]).then(
+      ([detail, timeline]) => {
+        if (!detail || detail.status) {
+          setError(intl.formatMessage({ id: "microbiology.case.loadError" }));
+          setCaseDetail(null);
+        } else {
+          setError("");
+          setCaseDetail({
+            ...detail,
+            activities: Array.isArray(timeline) ? timeline : detail.activities,
+          });
+        }
+        if (showLoading) {
+          setLoading(false);
+        }
+      },
+    );
   };
 
   useEffect(() => {
@@ -218,7 +226,10 @@ const MicrobiologyCaseView = ({
       service.getCaseInoculations
         ? service.getCaseInoculations(caseId)
         : Promise.resolve([]),
-    ]).then(([detail, projection, overview, caseInoculations]) => {
+      service.getCaseTimeline
+        ? service.getCaseTimeline(caseId)
+        : Promise.resolve(null),
+    ]).then(([detail, projection, overview, caseInoculations, timeline]) => {
       if (!active) {
         return;
       }
@@ -227,7 +238,10 @@ const MicrobiologyCaseView = ({
         setCaseDetail(null);
       } else {
         setError("");
-        setCaseDetail(detail);
+        setCaseDetail({
+          ...detail,
+          activities: Array.isArray(timeline) ? timeline : detail.activities,
+        });
       }
       setProjectedResultIds(projection?.projectedResultIds || []);
       setReagentOverview({
@@ -282,6 +296,28 @@ const MicrobiologyCaseView = ({
       .catch((inoculationError) => {
         setActionError(inoculationError?.message || String(inoculationError));
         throw inoculationError;
+      })
+      .finally(() => setSaving(false));
+  };
+
+  const addTimelineNote = (text) => {
+    setSaving(true);
+    setActionError("");
+    return service
+      .addCaseNote(caseId, text)
+      .then((result) => {
+        if (!result || result.error || result.statusCode >= 400) {
+          throw new Error(
+            formatMicrobiologyEnum(result?.message || result?.error),
+          );
+        }
+        return service.getCaseTimeline(caseId).then((timeline) => {
+          setCaseDetail((current) => ({ ...current, activities: timeline }));
+        });
+      })
+      .catch((noteError) => {
+        setActionError(noteError?.message || String(noteError));
+        throw noteError;
       })
       .finally(() => setSaving(false));
   };
@@ -604,6 +640,8 @@ const MicrobiologyCaseView = ({
                 <CaseTimelinePanel
                   activities={caseDetail.activities}
                   timelineSectionId="microbiology-timeline"
+                  onAddNote={addTimelineNote}
+                  saving={saving}
                 />
               </AccordionItem>
               <AccordionItem
