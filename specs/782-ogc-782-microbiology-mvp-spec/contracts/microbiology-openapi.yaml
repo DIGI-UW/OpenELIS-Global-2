@@ -139,6 +139,24 @@ paths:
                 $ref: "#/components/schemas/AstSetup"
         "400":
           description: Isolate is not identified or its configured panel is unavailable
+  /microbiology/ast/panels/{panelId}/antibiotics:
+    get:
+      summary: List the configured ordered drugs for an AST panel adjustment
+      parameters:
+        - name: panelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ordered panel membership
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AstRunAntibiotic"
   /microbiology/ast/runs:
     get:
       summary: List AST runs and readings for an isolate
@@ -174,6 +192,8 @@ paths:
                 $ref: "#/components/schemas/AstRun"
         "400":
           description: Isolate context is insufficient for AST
+        "409":
+          description: The requested drug set cannot be reconciled with the selected panel
   /microbiology/ast/runs/{astRunId}/readings:
     post:
       summary: Append a manual AST reading to a run
@@ -208,6 +228,8 @@ paths:
                 $ref: "#/components/schemas/AstRun"
         "400":
           description: AST run is not reviewable
+        "409":
+          description: One or more ordered drugs has no recorded result
   /microbiology/ast/runs/{astRunId}/attempts:
     post:
       summary: Start a repeat or retest AST run while preserving the source run
@@ -594,6 +616,14 @@ components:
           type: string
         panelAdjustmentReason:
           type: string
+          description: Required when the panel or ordered drug membership differs from the upstream order.
+        orderedAntibioticIds:
+          type: array
+          description: Exact ordered drug membership to snapshot when explicitly adjusting the upstream order.
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
         breakpointStandardId:
           type: string
         technique:
