@@ -398,6 +398,61 @@ describe("AstEntryPanel", () => {
     });
   });
 
+  it("explains a save-time lot conflict with the reagent and corrective action", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([
+          { id: "panel-1", label: "Gram negative AST panel" },
+        ]),
+      getAstSetupForIsolate: vi.fn().mockResolvedValue({
+        isolateId: "iso-1",
+        orderedPanelId: "panel-1",
+        orderedPanelLabel: "Gram negative AST panel",
+        orderedPanelVersion: 3,
+        panelProvenance: "ORGANISM_DEFAULT",
+      }),
+      getAntibiotics: vi
+        .fn()
+        .mockResolvedValue([{ id: "abx-1", label: "Ciprofloxacin" }]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-eucast", label: "EUCAST 2026" }]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+      startAstRun: vi.fn().mockResolvedValue({
+        error: "MICROBIOLOGY_LOT_CONFLICT",
+        message: "INVENTORY_LOT_EXPIRED",
+        lotNumber: "AST-FIFO",
+        statusCode: 409,
+      }),
+    };
+
+    renderPanel(service, { reagentRequirements });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Start AST run" }),
+      ).not.toBeDisabled(),
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Breakpoint standard"),
+      "std-eucast",
+    );
+    await user.click(screen.getByLabelText(/AST-FIFO/));
+    await user.click(screen.getByRole("button", { name: "Start AST run" }));
+
+    expect(
+      await screen.findByText(
+        "AST card lot AST-FIFO expired; pick another lot.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("requires a reason before adjusting the ordered AST panel", async () => {
     const user = userEvent.setup();
     const service = {

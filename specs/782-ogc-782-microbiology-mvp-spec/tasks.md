@@ -536,9 +536,11 @@ opens exactly one resulting case containing those details.
 
 ### M-12 And NFR Qualification
 
-- [ ] T259 [R1] Add shared-component tests for required/optional/substitute lot rules, filtered eligible lots, oldest-expiry ordering, QC/expiry race validation, and specific corrective messages.
-- [ ] T260 [R1] Align the shared lot picker and service validation in both culture and AST hosts; add scanner-ready lot/card entry using an existing barcode input pattern.
-- [ ] T261 [R1] Keep Test Catalog linkage administration, reagent reverse view, inventory quantities, and seed definitions as explicit external dependencies; do not duplicate them in microbiology.
+- [x] T259 [R1] Add shared-component and service tests for visible eligible/blocked lots, oldest-expiry ordering, QC state, locked QC/expiry/quantity race validation, no partial microbiology usage link, and specific corrective messages. Required/optional/substitute policy is deliberately separated into T288 because the current shared catalog cannot express it.
+- [x] T260 [R1] Align the shared lot picker and service validation in both culture and AST hosts; add exact scanner-style lot/card entry using the existing Carbon Search interaction with no arbitrary waits. The shared host/component suite passes 42 tests, the focused service suite passes 7 tests, and the registered `core-app` culture-to-AST provenance journey passes against PostgreSQL in 7.2 seconds.
+- [x] T261 [R1] Keep Test Catalog linkage administration, reagent reverse view, inventory quantities, and seed definitions as explicit external dependencies; do not duplicate them in microbiology. The source's proposed schema, route, and component signatures are implementation leakage rather than acceptance constraints.
+- [ ] T288 [External dependency] Define required/optional/substitute reagent-selection policy in the shared Test Catalog contract and administration workflow, then enforce it through the shared picker. Do not map `PRIMARY`/`SECONDARY` to those policies and do not add a microbiology-owned policy table.
+- [x] T289 [R1] Repair the runtime-only inoculation persistence failure exposed by the registered M-12 journey: map the existing String-shaped Method ID to the numeric FK with the repository's standard Hibernate type. Add a service-created transaction integration test covering inoculation plus exact lot provenance. No migration is required because the database model was already correct. The 3-test transaction suite and the full browser journey pass.
 - [ ] T262 [R1] Prove the picker latency and WCAG behavior at the source ceiling with service-created fixtures.
 - [ ] T263 [R1] Qualify the case and both worklist grains at source scale using service-layer fixtures; record server and browser timings separately.
 - [ ] T264 [R1] Audit keyboard, focus, labels, status text, contrast, and compact layouts for every touched action with axe plus direct interactions.

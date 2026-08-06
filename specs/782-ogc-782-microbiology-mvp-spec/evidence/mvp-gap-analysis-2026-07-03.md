@@ -13,6 +13,14 @@ supersedes this artifact where later evidence claimed that M-03/FR-002 was
 resolved. The current supported Add Order workflow does not implement the
 required visible Program/details behavior.
 
+**2026-08-06 M-12 correction:** the R1 branch now implements the shared
+culture/AST lot-consuming path, visible QC/FEFO guidance, exact scanner-style
+entry, locked race handling, actionable conflict messages, and Inventory usage
+provenance. Required/optional/substitute semantics remain blocked on a shared
+Test Catalog contract and are not inferred from `PRIMARY`/`SECONDARY`. The
+authoritative alignment record supersedes the historical “not built” wording
+below.
+
 ## Already satisfied: cross-cutting M-00 decisions
 
 The MVP honors the M-00 parent's landed cross-cutting decisions before any gap
@@ -75,7 +83,9 @@ work:
 - **Cause:** deliberate simplification, flagged in [mock-comparison-2026-06-27.md](./mock-comparison-2026-06-27.md) as a feature-depth gap.
 - **Disposition: Split.**
   - **MVP (build this session):** per-run breakpoint-standard selection — let the tech pick an active standard when starting a run, snapshot it on `MicroAstRun`, and interpret against the chosen standard instead of the hardcoded default.
-  - **V2 (not built):** reagent/card lot linkage (M-12/OGC-784) and multi-row AST run metadata.
+  - **Follow-on:** reagent/card lot linkage and multi-row AST run metadata were
+    delivered in the clinical-completeness stack and tightened in R1; exact-SHA
+    qualification and the external catalog-policy dependency remain open.
 
 ### 6. Deferred by design (no action, already tracked)
 
@@ -117,10 +127,10 @@ see `microbiology-case-workbench.spec.ts` and
 
 | # | Gap | Disposition | Built this session? |
 | --- | --- | --- | --- |
-| 1 | FR-002 culture-aware Program/order-entry detail capture | MVP | No; R1 remediation open |
-| 2 | Amendment/reidentification history; MVP has final mutation lock only | V2 | No |
+| 1 | FR-002 culture-aware Program/order-entry detail capture | MVP | No at this checkpoint; implemented in R1, acceptance remains open |
+| 2 | Amendment/reidentification history; MVP has final mutation lock only | V2 | No at this checkpoint; follow-on implementation exists, R1 acceptance remains open |
 | 3 | M-11 Alerts Dashboard (FR-018) | MVP | Yes (resolved) |
 | 4 | M-09 WHONET export + mapping UI | Partial follow-on delivery in M3/M4; broader M-09 remains deferred | M4 implementation complete locally; acceptance open |
 | 5a | M-05 per-run breakpoint selection | MVP | Yes (resolved) |
-| 5b | M-05 reagent lot + multi-row AST metadata | V2 | No |
+| 5b | M-05 reagent lot + multi-row AST metadata | V2 | No at this checkpoint; consuming path implemented in follow-on/R1, qualification and catalog policy remain open |
 | 6 | M-06/M-13/M-14/M-15 | Deferred by design | No |

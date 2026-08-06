@@ -8,12 +8,6 @@ const accordionButton = (page: Page, name: string) =>
     .getByTestId("microbiology-case-view")
     .getByRole("button", { name, exact: true });
 
-const chooseCarbonRadio = async (radio: ReturnType<Page["getByRole"]>) => {
-  await radio.focus();
-  await radio.press("Space");
-  await expect(radio).toBeChecked();
-};
-
 const attachScreenshot = async (
   page: Page,
   testInfo: TestInfo,
@@ -41,20 +35,42 @@ test.describe("Microbiology reagent and card lot traceability", () => {
         page.getByRole("heading", { name: "Microbiology case" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
 
-      const expired = page.getByRole("radio", {
+      const setup = page.getByRole("region", { name: "Inoculation" });
+      await setup.getByRole("button", { name: "Start inoculation" }).click();
+      await setup
+        .getByRole("textbox", { name: "Bottle or plate ID" })
+        .fill("UAT-MICRO-BOTTLE-R1");
+      await setup
+        .getByRole("textbox", { name: "Media or bottle" })
+        .fill("Blood culture bottle");
+
+      const expired = setup.getByRole("radio", {
         name: /UAT-MICRO-MEDIA-EXPIRED/,
       });
-      const recommended = page.getByRole("radio", {
+      const recommended = setup.getByRole("radio", {
         name: /UAT-MICRO-MEDIA-FEFO/,
       });
       await expect(expired).toBeDisabled();
-      await expect(page.getByText("Blocked: Expired")).toBeVisible();
-      await expect(page.getByText("FEFO - use first")).toHaveCount(2);
-      await expect(page.getByText("Primary", { exact: true })).toBeVisible();
-      await chooseCarbonRadio(recommended);
+      await expect(setup.getByText("Blocked: Expired")).toBeVisible();
+      await expect(setup.getByText("FEFO - use first")).toHaveCount(2);
+      await expect(setup.getByText("QC passed").first()).toBeVisible();
+      await expect(setup.getByText("Primary", { exact: true })).toBeVisible();
+      await expect(
+        setup.getByRole("button", {
+          name: /Lots are ordered by earliest expiry/,
+        }),
+      ).toBeVisible();
+      const scanner = setup.getByRole("searchbox", {
+        name: "Scan or enter lot number",
+      });
+      await scanner.fill("UAT-MICRO-MEDIA-FEFO");
+      await scanner.press("Enter");
+      await expect(
+        setup.getByText("Selected lot UAT-MICRO-MEDIA-FEFO."),
+      ).toBeVisible();
       await expect(recommended).toBeChecked();
 
-      await page.getByRole("button", { name: "Start inoculation" }).click();
+      await setup.getByRole("button", { name: "Save media" }).click();
       const usageTable = page.getByRole("table", {
         name: "Recorded lot usage",
       });
@@ -67,9 +83,20 @@ test.describe("Microbiology reagent and card lot traceability", () => {
 
     await test.step("Create the isolate needed for AST", async () => {
       await accordionButton(page, "Isolates").click();
-      await page.getByLabel("Preliminary organism").fill("Escherichia coli");
+      await page.getByLabel("Gram stain").fill("Gram negative rods");
+      await page
+        .getByLabel("Colony morphology")
+        .fill("Lactose fermenting colonies");
       await page.getByRole("button", { name: "Create isolate" }).click();
-      await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({
+      await expect(page.getByText("Identification pending")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await page.getByRole("button", { name: "Identify organism" }).click();
+      await page.getByLabel("Organism").selectOption(seeded.organismId);
+      await page.getByLabel("ID method").selectOption("MALDI_TOF");
+      await page.getByLabel("ID confidence (%)").fill("99.5");
+      await page.getByRole("button", { name: "Save identification" }).click();
+      await expect(page.getByText("Identified", { exact: true })).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
     });
@@ -77,17 +104,22 @@ test.describe("Microbiology reagent and card lot traceability", () => {
     await test.step("Choose and retain the exact AST card lot", async () => {
       await accordionButton(page, "Manual AST").click();
       await expect(page).toHaveURL(/section=ast$/);
-      const card = page.getByRole("radio", {
+      const ast = page.getByTestId("microbiology-ast-card");
+      const card = ast.getByRole("radio", {
         name: /UAT-MICRO-CARD-FEFO/,
       });
       await expect(card).toBeEnabled({ timeout: LONG_TIMEOUT });
+      await expect(ast.getByText("Secondary", { exact: true })).toBeVisible();
+      const scanner = ast.getByRole("searchbox", {
+        name: "Scan or enter lot number",
+      });
+      await scanner.fill("UAT-MICRO-CARD-FEFO");
+      await scanner.press("Enter");
       await expect(
-        page
-          .getByTestId("microbiology-ast-card")
-          .getByText("Secondary", { exact: true }),
+        ast.getByText("Selected lot UAT-MICRO-CARD-FEFO."),
       ).toBeVisible();
-      await chooseCarbonRadio(card);
-      await page.getByRole("button", { name: "Start AST run" }).click();
+      await expect(card).toBeChecked();
+      await ast.getByRole("button", { name: "Start AST run" }).click();
 
       await expect(
         page.getByTestId("microbiology-ast-run-status"),

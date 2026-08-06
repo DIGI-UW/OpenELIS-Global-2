@@ -43,6 +43,7 @@ import { getMicrobiologyCurrentStep } from "./MicrobiologyCaseState";
 import OrderDetailPanel from "./OrderDetailPanel";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import ReportReadinessPanel from "./ReportReadinessPanel";
+import { formatReagentLotConflict } from "./ReagentLotPicker";
 import "./MicrobiologyCaseView.css";
 
 const progressItems = [
@@ -295,8 +296,19 @@ const MicrobiologyCaseView = ({
       .recordCaseInoculation(caseId, payload)
       .then((result) => {
         if (!result || result.error || result.statusCode >= 400) {
+          const selectedLots = Object.fromEntries(
+            (payload.lotSelections || []).map((selection) => [
+              `${selection.analysisId}:${selection.testReagentLinkId}`,
+              selection,
+            ]),
+          );
           throw new Error(
-            formatMicrobiologyEnum(result?.message || result?.error),
+            formatReagentLotConflict(
+              result,
+              reagentOverview.requirements || [],
+              selectedLots,
+              intl,
+            ) || formatMicrobiologyEnum(result?.message || result?.error),
           );
         }
         return Promise.all([
