@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
   DataTable,
+  FilterableMultiSelect,
   InlineNotification,
   RadioButton,
   RadioButtonGroup,
@@ -57,6 +58,8 @@ const AstEntryPanel = ({
   const [astSetup, setAstSetup] = useState(null);
   const [adjustingPanel, setAdjustingPanel] = useState(false);
   const [panelAdjustmentReason, setPanelAdjustmentReason] = useState("");
+  const [panelAntibioticIds, setPanelAntibioticIds] = useState([]);
+  const [adjustedAntibioticIds, setAdjustedAntibioticIds] = useState([]);
   const [selectedAntibioticId, setSelectedAntibioticId] = useState("");
   const [selectedStandardId, setSelectedStandardId] = useState("");
   const [technique, setTechnique] = useState("VITEK_2");
@@ -255,6 +258,9 @@ const AstEntryPanel = ({
   const panelAdjusted = Boolean(
     astSetup && selectedPanelId !== astSetup.orderedPanelId,
   );
+  const drugSetAdjusted =
+    adjustedAntibioticIds.join("|") !== panelAntibioticIds.join("|");
+  const orderAdjusted = panelAdjusted || drugSetAdjusted;
   const setupUnavailable = Boolean(
     service.getAstSetupForIsolate &&
     isolateIdentified &&
@@ -335,7 +341,10 @@ const AstEntryPanel = ({
         panelId: selectedPanelId,
         breakpointStandardId: selectedStandardId,
         technique,
-        ...(panelAdjusted
+        ...(adjustingPanel
+          ? { orderedAntibioticIds: adjustedAntibioticIds }
+          : {}),
+        ...(orderAdjusted
           ? { panelAdjustmentReason: panelAdjustmentReason.trim() }
           : {}),
         ...(lotSelections.length > 0 ? { lotSelections } : {}),
@@ -370,6 +379,33 @@ const AstEntryPanel = ({
         rawValue,
       }),
     );
+
+  const loadPanelAntibiotics = (panelId) => {
+    setPanelAntibioticIds([]);
+    setAdjustedAntibioticIds([]);
+    return service
+      .getAstPanelAntibiotics(panelId)
+      .then((rows = []) => {
+        const antibioticIds = rows.map((row) => row.antibioticId);
+        setPanelAntibioticIds(antibioticIds);
+        setAdjustedAntibioticIds(antibioticIds);
+      })
+      .catch(() =>
+        setActionError(formatMicrobiologyEnum("AST_SETUP_UNAVAILABLE")),
+      );
+  };
+
+  const beginPanelAdjustment = () => {
+    setAdjustingPanel(true);
+    setPanelAdjustmentReason("");
+    loadPanelAntibiotics(selectedPanelId);
+  };
+
+  const changeAdjustedPanel = (panelId) => {
+    setSelectedPanelId(panelId);
+    setPanelAdjustmentReason("");
+    loadPanelAntibiotics(panelId);
+  };
 
   const overrideReading = () =>
     runOperation(() =>
@@ -491,7 +527,7 @@ const AstEntryPanel = ({
                     kind="ghost"
                     size="sm"
                     type="button"
-                    onClick={() => setAdjustingPanel(true)}
+                    onClick={beginPanelAdjustment}
                   >
                     {intl.formatMessage({
                       id: "microbiology.ast.adjustPanel",
@@ -506,7 +542,9 @@ const AstEntryPanel = ({
                       id: "microbiology.ast.panel",
                     })}
                     value={selectedPanelId}
-                    onChange={(event) => setSelectedPanelId(event.target.value)}
+                    onChange={(event) =>
+                      changeAdjustedPanel(event.target.value)
+                    }
                   >
                     {panels.map((panel) => (
                       <SelectItem
@@ -516,7 +554,23 @@ const AstEntryPanel = ({
                       />
                     ))}
                   </Select>
-                  {panelAdjusted && (
+                  <FilterableMultiSelect
+                    id="microbiology-ast-ordered-antibiotics"
+                    titleText={intl.formatMessage({
+                      id: "microbiology.ast.orderedAntibiotics",
+                    })}
+                    items={antibiotics}
+                    itemToString={(item) => item?.label || ""}
+                    selectedItems={antibiotics.filter((antibiotic) =>
+                      adjustedAntibioticIds.includes(antibiotic.id),
+                    )}
+                    onChange={({ selectedItems }) =>
+                      setAdjustedAntibioticIds(
+                        selectedItems.map((antibiotic) => antibiotic.id),
+                      )
+                    }
+                  />
+                  {orderAdjusted && (
                     <TextArea
                       id="microbiology-ast-panel-adjustment-reason"
                       labelText={intl.formatMessage({
@@ -536,6 +590,8 @@ const AstEntryPanel = ({
                       onClick={() => {
                         setSelectedPanelId(astSetup.orderedPanelId);
                         setPanelAdjustmentReason("");
+                        setPanelAntibioticIds([]);
+                        setAdjustedAntibioticIds([]);
                         setAdjustingPanel(false);
                       }}
                     >
@@ -606,7 +662,9 @@ const AstEntryPanel = ({
                         !isolateIdentified ||
                         setupUnavailable ||
                         !selectedPanelId ||
-                        (panelAdjusted && !panelAdjustmentReason.trim())
+                        (adjustingPanel &&
+                          adjustedAntibioticIds.length === 0) ||
+                        (orderAdjusted && !panelAdjustmentReason.trim())
                       }
                     >
                       {intl.formatMessage({ id: "microbiology.ast.startRun" })}
