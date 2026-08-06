@@ -260,16 +260,20 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   keep the mounted Carbon table stable while data is in flight. Use a shared
   interval constant and fake-clock component evidence; do not use sleeps or
   reload the route.
-- Derive culture timing from authoritative inoculation and protocol data. When
-  the protocol does not provide a structured maximum day, follow the source
+- Derive culture timing from authoritative inoculation and Method-bound setup
+  data. When
+  the setup does not provide a structured maximum day, follow the source
   fallback and show an accurate stage label rather than fabricating a day or
   treating an incubating culture as ready for isolate identification.
 - The repository already represents microbiology culture setup as a
   Method-bound extension (`MicroCultureSetup`), so structured timing belongs in
   that extension and its existing admin/service surface. Do not add a second
   protocol master or parse the current free-text incubation defaults. Add a
-  Liquibase change only for the new durable numeric timing fields, then let the
-  worklist consume the service-compiled values in bounded batches.
+  Liquibase change only for the new durable numeric timing fields. Migration
+  `080` adds positive-valued routine-read, subculture, and maximum-day fields;
+  the worklist consumes the maximum day and first inoculation timestamp through
+  bounded service projections. Missing values deliberately produce the source
+  stage-label fallback.
 - Keep Macro Library as a separate cross-cutting feature stack and review
   deployment. Microbiology carries only a small consumer integration after the
   macro feature is independently accepted.
