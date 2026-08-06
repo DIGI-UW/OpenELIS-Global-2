@@ -164,7 +164,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AstRunRequest"
+              $ref: "#/components/schemas/AstStartRequest"
       responses:
         "200":
           description: AST run created
@@ -218,7 +218,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AstRunRequest"
+              $ref: "#/components/schemas/AstAttemptRequest"
       responses:
         "200":
           description: Preserved new AST attempt
@@ -580,8 +580,13 @@ components:
           type: string
         identificationStatus:
           type: string
-    AstRunRequest:
+    AstStartRequest:
       type: object
+      required:
+        - isolateId
+        - panelId
+        - breakpointStandardId
+        - technique
       properties:
         isolateId:
           type: string
@@ -591,10 +596,28 @@ components:
           type: string
         breakpointStandardId:
           type: string
+        technique:
+          $ref: "#/components/schemas/AstTechnique"
         lotSelections:
           type: array
           items:
             type: object
+    AstAttemptRequest:
+      type: object
+      required:
+        - attemptType
+        - reason
+        - technique
+      properties:
+        attemptType:
+          type: string
+          enum:
+            - REPEAT
+            - RETEST
+        reason:
+          type: string
+        technique:
+          $ref: "#/components/schemas/AstTechnique"
     AstRun:
       type: object
       properties:
@@ -617,8 +640,15 @@ components:
           type: string
         breakpointVersion:
           type: string
+        technique:
+          $ref: "#/components/schemas/AstTechnique"
+        measurementType:
+          $ref: "#/components/schemas/AstMeasurementType"
         method:
-          type: string
+          allOf:
+            - $ref: "#/components/schemas/AstMeasurementType"
+          deprecated: true
+          description: Compatibility alias for measurementType.
         status:
           type: string
         readings:
@@ -645,16 +675,10 @@ components:
       type: object
       required:
         - antibioticId
-        - method
         - rawValue
       properties:
         antibioticId:
           type: string
-        method:
-          type: string
-          enum:
-            - MIC
-            - ZONE
         rawValue:
           type: number
     AstReading:
@@ -666,8 +690,13 @@ components:
           type: string
         antibioticId:
           type: string
+        measurementType:
+          $ref: "#/components/schemas/AstMeasurementType"
         method:
-          type: string
+          allOf:
+            - $ref: "#/components/schemas/AstMeasurementType"
+          deprecated: true
+          description: Compatibility alias for measurementType.
         rawValue:
           type: number
         interpretation:
@@ -697,6 +726,19 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AstOverrideEvent"
+    AstTechnique:
+      type: string
+      enum:
+        - DISK_DIFFUSION
+        - VITEK_2
+        - PHOENIX
+        - ETEST
+        - BROTH_MICRODILUTION
+    AstMeasurementType:
+      type: string
+      enum:
+        - MIC
+        - ZONE
     AstOverrideEvent:
       type: object
       properties:

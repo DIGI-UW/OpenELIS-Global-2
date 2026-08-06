@@ -255,15 +255,20 @@ Validation:
 
 ### MicroAstRun
 
-AST workflow for one isolate and one panel/method.
+AST workflow for one isolate, one ordered panel, and one laboratory technique.
 
 Fields:
 
 - `id`
 - `isolateId`
 - `panelId`
-- `method`
+- `panelVersion`
+- `panelProvenance`
+- `panelAdjustmentReason`
+- `technique`
+- `measurementType` (persisted in the legacy `method` column)
 - `breakpointStandardId`
+- `breakpointVersion`
 - `status`
 - `startedAt`
 - `reviewedAt`
@@ -279,6 +284,10 @@ Relationships:
 Validation:
 
 - Only reviewed AST can satisfy final release readiness.
+- A supported technique deterministically derives MIC or zone measurement type;
+  clients do not classify the same reading independently.
+- Historical rows backfill to an explicit legacy-unspecified technique according
+  to their stored measurement type and require a real technique for new work.
 - Repeat/retest creates a new run or linked repeat record rather than
   overwriting prior readings.
 
@@ -291,7 +300,7 @@ Fields:
 - `id`
 - `astRunId`
 - `antibioticId`
-- `method` (current MIC/ZONE measurement mode)
+- `measurementType` (MIC or ZONE; persisted in the legacy `method` column)
 - `rawValue`
 - `rawText`
 - `units`
@@ -309,9 +318,10 @@ Validation:
 - Override requires a reason and preserves the original interpreted value.
 - Missing breakpoint records `matchedBy=NONE` and requires visible local-policy
   guidance rather than silently implying an interpretation.
-- Numeric readings validate precision and allowed ranges by method.
-- Laboratory technique remains a distinct open design decision; it must not be
-  inferred from the MIC/ZONE measurement mode.
+- Numeric readings validate precision and allowed ranges by the run's derived
+  measurement type.
+- A reading inherits measurement type from its run technique; request payloads
+  cannot override it.
 
 ### MicroAstOverrideEvent
 
