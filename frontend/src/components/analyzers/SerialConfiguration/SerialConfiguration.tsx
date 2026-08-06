@@ -334,11 +334,8 @@ const SerialConfiguration = ({
             id="baudRate"
             label={intl.formatMessage({ id: "serial.config.baudRate.label" })}
             value={formData.baudRate}
-            onChange={(e) =>
-              handleFieldChange(
-                "baudRate",
-                e.imaginaryTarget?.value || e.target.value,
-              )
+            onChange={(_, { value }) =>
+              handleFieldChange("baudRate", Number(value))
             }
             invalid={!!errors.baudRate}
             invalidText={errors.baudRate}
@@ -352,11 +349,8 @@ const SerialConfiguration = ({
             id="dataBits"
             label={intl.formatMessage({ id: "serial.config.dataBits.label" })}
             value={formData.dataBits}
-            onChange={(e) =>
-              handleFieldChange(
-                "dataBits",
-                e.imaginaryTarget?.value || e.target.value,
-              )
+            onChange={(_, { value }) =>
+              handleFieldChange("dataBits", Number(value))
             }
             invalid={!!errors.dataBits}
             invalidText={errors.dataBits}

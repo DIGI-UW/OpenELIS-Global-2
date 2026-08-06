@@ -478,7 +478,7 @@ const ValidationRuleEditor = ({
                     defaultMessage: "Minimum",
                   })}
                   value={rangeMin}
-                  onChange={(e) => setRangeMin(e.target.value)}
+                  onChange={(_, { value }) => setRangeMin(String(value))}
                   allowEmpty
                   data-testid="range-min-input"
                 />
@@ -491,7 +491,7 @@ const ValidationRuleEditor = ({
                     defaultMessage: "Maximum",
                   })}
                   value={rangeMax}
-                  onChange={(e) => setRangeMax(e.target.value)}
+                  onChange={(_, { value }) => setRangeMax(String(value))}
                   allowEmpty
                   data-testid="range-max-input"
                 />
@@ -575,7 +575,7 @@ const ValidationRuleEditor = ({
                     defaultMessage: "Minimum Length",
                   })}
                   value={lengthMin}
-                  onChange={(e) => setLengthMin(e.target.value)}
+                  onChange={(_, { value }) => setLengthMin(String(value))}
                   allowEmpty
                   min={0}
                   data-testid="length-min-input"
@@ -589,7 +589,7 @@ const ValidationRuleEditor = ({
                     defaultMessage: "Maximum Length",
                   })}
                   value={lengthMax}
-                  onChange={(e) => setLengthMax(e.target.value)}
+                  onChange={(_, { value }) => setLengthMax(String(value))}
                   allowEmpty
                   min={0}
                   data-testid="length-max-input"
