@@ -259,6 +259,55 @@ describe("MicrobiologyCaseView", () => {
     );
   });
 
+  it("canonicalizes an unscoped case to its current AST step", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        stage: "AST_IN_PROGRESS",
+      }),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "section=ast",
+      ),
+    );
+    expect(getAccordionButton("Manual AST")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      screen.getByTestId("microbiology-current-step-action"),
+    ).toHaveTextContent("Manual AST");
+  });
+
+  it("preserves an explicitly bookmarked non-current section", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        stage: "AST_IN_PROGRESS",
+      }),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=timeline");
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=timeline",
+    );
+    expect(getAccordionButton("Timeline")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
   it("opens a case-targeted critical communication from the header", async () => {
     const user = userEvent.setup();
     const service = {

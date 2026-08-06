@@ -54,6 +54,10 @@ test.describe("Microbiology case workbench", () => {
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page).toHaveURL(/section=setup/);
+    await expect(
+      page.getByTestId("microbiology-current-step-action"),
+    ).toContainText("Inoculation");
     const caseHeader = page.locator("header");
     const caseView = page.getByTestId("microbiology-case-view");
     await expect(caseHeader.getByTitle("Received")).toBeVisible();
