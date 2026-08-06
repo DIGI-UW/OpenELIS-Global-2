@@ -22,6 +22,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.testmethod.service.TestMethodService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroOrderRoutingServiceTest {
@@ -38,10 +39,13 @@ public class MicroOrderRoutingServiceTest {
     @Mock
     private MicroCaseAnalysisService caseAnalysisService;
 
+    @Mock
+    private TestMethodService testMethodService;
+
     @Test
     public void routeAnalysesIgnoresNonMicrobiologyTests() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService, caseAnalysisService);
+                orderDetailService, caseAnalysisService, testMethodService);
 
         List<MicroCase> routed = service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(analysis(null, "1")),
                 "1");
@@ -54,7 +58,7 @@ public class MicroOrderRoutingServiceTest {
     @Test
     public void routeAnalysesCreatesOneCasePerWorkflowWithConfiguredCultureSetup() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService, caseAnalysisService);
+                orderDetailService, caseAnalysisService, testMethodService);
         when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
                 .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
 
@@ -71,7 +75,7 @@ public class MicroOrderRoutingServiceTest {
     @Test(expected = IllegalStateException.class)
     public void routeAnalysesRejectsWorkflowWithoutConfiguredCultureSetup() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService, caseAnalysisService);
+                orderDetailService, caseAnalysisService, testMethodService);
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
                 List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1");
@@ -80,7 +84,7 @@ public class MicroOrderRoutingServiceTest {
     @Test
     public void routeAnalysesWithOrderDetailPersistsDetailOnEveryRoutedCase() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService, caseAnalysisService);
+                orderDetailService, caseAnalysisService, testMethodService);
         when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
                 .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
         MicroCase routedCase = new MicroCase();
@@ -96,9 +100,67 @@ public class MicroOrderRoutingServiceTest {
     }
 
     @Test
+    public void routeAnalysesUsesTheSelectedLinkedCultureMethod() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService);
+        when(testMethodService.testMethodLinkExists("test-BACTERIOLOGY-1", "2")).thenReturn(true);
+        when(referenceService.getActiveCultureSetupForMethod("2", MicroWorkflowType.BACTERIOLOGY))
+                .thenReturn(cultureSetup("2", MicroWorkflowType.BACTERIOLOGY));
+        MicroCase routedCase = new MicroCase();
+        routedCase.setId("case-1");
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1")).thenReturn(routedCase);
+        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.cultureMethodId = "2";
+
+        service.routeAnalysesForSampleItem(sampleItem("1001"),
+                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
+
+        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void routeAnalysesRejectsSelectedMethodNotLinkedToTheTest() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService);
+        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.cultureMethodId = "2";
+
+        service.routeAnalysesForSampleItem(sampleItem("1001"),
+                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
+    }
+
+    @Test
+    public void routeAnalysesKeepsSiblingWorkflowOnItsOwnDefaultMethod() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService);
+        when(testMethodService.testMethodLinkExists("test-BACTERIOLOGY-1", "2")).thenReturn(true);
+        when(referenceService.getActiveCultureSetupForMethod("2", MicroWorkflowType.BACTERIOLOGY))
+                .thenReturn(cultureSetup("2", MicroWorkflowType.BACTERIOLOGY));
+        when(referenceService.getActiveCultureSetupForMethod("9", MicroWorkflowType.MYCOBACTERIOLOGY_TB))
+                .thenReturn(cultureSetup("9", MicroWorkflowType.MYCOBACTERIOLOGY_TB));
+        MicroCase bacteriologyCase = new MicroCase();
+        bacteriologyCase.setId("case-bacteriology");
+        MicroCase tbCase = new MicroCase();
+        tbCase.setId("case-tb");
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1"))
+                .thenReturn(bacteriologyCase);
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.MYCOBACTERIOLOGY_TB, "9", "1")).thenReturn(tbCase);
+        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.cultureMethodId = "2";
+
+        service.routeAnalysesForSampleItem(sampleItem("1001"),
+                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1"),
+                        analysis(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), "9")),
+                "1", orderDetail);
+
+        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1");
+        verify(caseService).createOrGetCase("1001", MicroWorkflowType.MYCOBACTERIOLOGY_TB, "9", "1");
+    }
+
+    @Test
     public void routeAnalysesSkipsOrderDetailPersistenceWhenNoDetailProvided() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService, caseAnalysisService);
+                orderDetailService, caseAnalysisService, testMethodService);
         when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
                 .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
         MicroCase routedCase = new MicroCase();
@@ -115,7 +177,7 @@ public class MicroOrderRoutingServiceTest {
     @Test
     public void routeAnalysesLinksPersistedAnalysesToTheCaseAndReportMapping() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService, caseAnalysisService);
+                orderDetailService, caseAnalysisService, testMethodService);
         MicroCultureSetup setup = cultureSetup("1", MicroWorkflowType.BACTERIOLOGY);
         setup.setReportableTestAnalyteId("17");
         MicroCase microCase = new MicroCase();

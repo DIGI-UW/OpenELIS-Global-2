@@ -12,6 +12,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testmethod.service.TestMethodService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +23,16 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     private final MicrobiologyReferenceService referenceService;
     private final MicroCaseOrderDetailService orderDetailService;
     private final MicroCaseAnalysisService caseAnalysisService;
+    private final TestMethodService testMethodService;
 
     public MicroOrderRoutingServiceImpl(MicroCaseService caseService, MicrobiologyReferenceService referenceService,
-            MicroCaseOrderDetailService orderDetailService, MicroCaseAnalysisService caseAnalysisService) {
+            MicroCaseOrderDetailService orderDetailService, MicroCaseAnalysisService caseAnalysisService,
+            TestMethodService testMethodService) {
         this.caseService = caseService;
         this.referenceService = referenceService;
         this.orderDetailService = orderDetailService;
         this.caseAnalysisService = caseAnalysisService;
+        this.testMethodService = testMethodService;
     }
 
     @Override
@@ -46,14 +50,20 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
             return List.of();
         }
 
-        Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
+        Map<MicroWorkflowType, List<Test>> testsByWorkflow = new LinkedHashMap<>();
         for (Analysis analysis : analyses) {
             Test test = analysis == null ? null : analysis.getTest();
             MicroWorkflowType workflowType = workflowTypeFor(test);
-            if (workflowType == null || configurationsByWorkflow.containsKey(workflowType)) {
-                continue;
+            if (workflowType != null) {
+                testsByWorkflow.computeIfAbsent(workflowType, ignored -> new ArrayList<>()).add(test);
             }
-            String methodId = methodIdFor(test);
+        }
+
+        validateSelectedMethod(orderDetail, testsByWorkflow);
+        Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
+        for (Map.Entry<MicroWorkflowType, List<Test>> entry : testsByWorkflow.entrySet()) {
+            MicroWorkflowType workflowType = entry.getKey();
+            String methodId = methodIdFor(entry.getValue(), orderDetail);
             MicroCultureSetup setup = referenceService.getActiveCultureSetupForMethod(methodId, workflowType);
             if (setup == null) {
                 throw new IllegalStateException("No active microbiology culture setup for method " + methodId
@@ -88,7 +98,29 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         }
     }
 
-    private String methodIdFor(Test test) {
+    private void validateSelectedMethod(MicroCaseOrderDetailRequestForm orderDetail,
+            Map<MicroWorkflowType, List<Test>> testsByWorkflow) {
+        if (orderDetail == null || orderDetail.cultureMethodId == null
+                || orderDetail.cultureMethodId.trim().isEmpty()) {
+            return;
+        }
+        boolean linked = testsByWorkflow.values().stream().flatMap(List::stream)
+                .anyMatch(test -> testMethodService.testMethodLinkExists(test.getId(), orderDetail.cultureMethodId));
+        if (!linked) {
+            throw new IllegalArgumentException("Selected culture method is not linked to an ordered culture test");
+        }
+    }
+
+    private String methodIdFor(List<Test> tests, MicroCaseOrderDetailRequestForm orderDetail) {
+        if (orderDetail != null && orderDetail.cultureMethodId != null
+                && !orderDetail.cultureMethodId.trim().isEmpty()) {
+            boolean linkedToWorkflow = tests.stream().anyMatch(
+                    test -> testMethodService.testMethodLinkExists(test.getId(), orderDetail.cultureMethodId));
+            if (linkedToWorkflow) {
+                return orderDetail.cultureMethodId;
+            }
+        }
+        Test test = tests.get(0);
         Method method = test.getMethod();
         if (method == null || method.getId() == null || method.getId().trim().isEmpty()) {
             throw new IllegalStateException("Microbiology workflow tests require a culture method");

@@ -22,14 +22,16 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.program.service.ProgramService;
+import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.qc.dao.TestQcThresholdDAO;
 import org.openelisglobal.role.service.RoleService;
-import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
@@ -43,39 +45,34 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping(value = "/rest/")
 public class SampleEntryTestsForTypeProviderRestController extends BaseRestController {
 
-    private static String USER_TEST_SECTION_ID;
+    private final PanelService panelService;
+    private final TestSectionService testSectionService;
+    private final TypeOfSamplePanelService samplePanelService;
+    private final PanelItemService panelItemService;
+    private final TypeOfSampleService typeOfSampleService;
+    private final UserService userService;
+    private final RoleService roleService;
+    private final ProgramService programService;
+    private final TestMethodService testMethodService;
+    private final TestQcThresholdDAO testQcThresholdDAO;
+    private final TestService testService;
 
-    private PanelService panelService = SpringContext.getBean(PanelService.class);
-
-    private TestSectionService testSectionService = SpringContext.getBean(TestSectionService.class);
-
-    private TypeOfSamplePanelService samplePanelService = SpringContext.getBean(TypeOfSamplePanelService.class);
-
-    private PanelItemService panelItemService = SpringContext.getBean(PanelItemService.class);
-
-    private TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
-
-    private UserService userService = SpringContext.getBean(UserService.class);
-
-    private RoleService roleService = SpringContext.getBean(RoleService.class);
-
-    private TestQcThresholdDAO testQcThresholdDAO = SpringContext.getBean(TestQcThresholdDAO.class);
-
-    private TestService testService = SpringContext.getBean(TestService.class);
-
-    ArrayList<PanelTestMap> panelsMapList = new ArrayList<>();
-
-    ArrayList<TestMap> testsMapList = new ArrayList<>();
-
-    SampleEntryTests sampleEntryTests;
-
-    private void initializeGlobalVariables() {
-        USER_TEST_SECTION_ID = testSectionService.getTestSectionByName("user").getId();
-        sampleEntryTests = new SampleEntryTests();
-    }
-
-    public SampleEntryTestsForTypeProviderRestController() {
-        initializeGlobalVariables();
+    public SampleEntryTestsForTypeProviderRestController(PanelService panelService,
+            TestSectionService testSectionService, TypeOfSamplePanelService samplePanelService,
+            PanelItemService panelItemService, TypeOfSampleService typeOfSampleService, UserService userService,
+            RoleService roleService, ProgramService programService, TestMethodService testMethodService,
+            TestQcThresholdDAO testQcThresholdDAO, TestService testService) {
+        this.panelService = panelService;
+        this.testSectionService = testSectionService;
+        this.samplePanelService = samplePanelService;
+        this.panelItemService = panelItemService;
+        this.typeOfSampleService = typeOfSampleService;
+        this.userService = userService;
+        this.roleService = roleService;
+        this.programService = programService;
+        this.testMethodService = testMethodService;
+        this.testQcThresholdDAO = testQcThresholdDAO;
+        this.testService = testService;
     }
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -94,9 +91,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             testSections.forEach(test -> testUnitIds.add(test.getId()));
         }
 
-        createSearchResultXML(sampleType, testUnitIds);
-
-        return sampleEntryTests;
+        return createSearchResult(sampleType, testUnitIds);
     }
 
     /**
@@ -146,15 +141,18 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
     @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public List<IdValuePair> getUserSPrograms(HttpServletRequest request, HttpServletResponse response)
+    public List<ProgramOption> getUserSPrograms(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
-        return userService.getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION);
+        return userService.getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION).stream().map(option -> {
+            Program program = programService.get(option.getId());
+            return program == null ? null : new ProgramOption(option.getId(), option.getValue(), program.getCode());
+        }).filter(java.util.Objects::nonNull).toList();
     }
 
-    private void createSearchResultXML(String sampleType, List<String> testUnitIds) {
+    private SampleEntryTests createSearchResult(String sampleType, List<String> testUnitIds) {
 
-        List<Test> tests = typeOfSampleService.getActiveTestsBySampleTypeIdAndTestUnit(sampleType, true, testUnitIds);
+        List<Test> tests = new ArrayList<>(
+                typeOfSampleService.getActiveTestsBySampleTypeIdAndTestUnit(sampleType, true, testUnitIds));
 
         Collections.sort(tests, new Comparator<Test>() {
 
@@ -162,8 +160,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             public int compare(Test t1, Test t2) {
                 if (GenericValidator.isBlankOrNull(t1.getSortOrder())
                         || GenericValidator.isBlankOrNull(t2.getSortOrder())) {
-                    return TestServiceImpl.getUserLocalizedTestName(t1)
-                            .compareTo(TestServiceImpl.getUserLocalizedTestName(t2));
+                    return localizedTestName(t1).compareTo(localizedTestName(t2));
                 }
 
                 try {
@@ -179,23 +176,19 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
                     }
 
                 } catch (NumberFormatException e) {
-                    return TestServiceImpl.getUserLocalizedTestName(t1)
-                            .compareTo(TestServiceImpl.getUserLocalizedTestName(t2));
+                    return localizedTestName(t1).compareTo(localizedTestName(t2));
                 }
             }
         });
 
-        sampleEntryTests.setSampleTypeId(StringUtil.snipToMaxIdLength(sampleType));
-        addTests(tests);
-
         List<TypeOfSamplePanel> panelList = getPanelList(sampleType);
         List<PanelTestMap> panelMap = linkTestsToPanels(panelList, tests);
-
-        addPanels(panelMap);
+        return new SampleEntryTests(StringUtil.snipToMaxIdLength(sampleType), addPanels(panelMap), addTests(tests));
     }
 
-    private void addTests(List<Test> tests) {
-        testsMapList.clear();
+    private ArrayList<TestMap> addTests(List<Test> tests) {
+        String userTestSectionId = testSectionService.getTestSectionByName("user").getId();
+        ArrayList<TestMap> testsMapList = new ArrayList<>();
         java.util.Set<Integer> testsWithQcThreshold;
         try {
             testsWithQcThreshold = testQcThresholdDAO.findAllConfiguredTestIds();
@@ -209,25 +202,24 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             } catch (NumberFormatException ignored) {
             }
             boolean hasQc = testIdNum != null && testsWithQcThreshold.contains(testIdNum);
-            // test.default_test_result_id is null for most tests in practice
-            // (~178/185 in the seed DB), so we resolve the result type via the
-            // test_result rows instead of test.getDefaultTestResult().
             String resultType = testService.getResultType(test);
-            testsMapList.add(new TestMap(test.getId(), TestServiceImpl.getUserLocalizedTestName(test),
-                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId()), hasQc, resultType,
-                    test.getTimeHolding(), test.getCultureWorkflowType()));
+            List<TestMethodDto> methods = GenericValidator.isBlankOrNull(test.getCultureWorkflowType()) ? List.of()
+                    : testMethodService.getLinkedMethodDtos(test.getId());
+            testsMapList.add(new TestMap(test.getId(), localizedTestName(test),
+                    userTestSectionId.equals(test.getTestSection().getId()), hasQc, resultType, test.getTimeHolding(),
+                    test.getCultureWorkflowType(), methods));
         }
-        sampleEntryTests.setTests(testsMapList);
+        return testsMapList;
     }
 
-    private void addPanels(List<PanelTestMap> panelMap) {
+    private ArrayList<PanelTestMap> addPanels(List<PanelTestMap> panelMap) {
         panelMap = sortPanels(panelMap);
-        panelsMapList.clear();
+        ArrayList<PanelTestMap> panelsMapList = new ArrayList<>();
         for (PanelTestMap testMap : panelMap) {
             panelsMapList.add(new PanelTestMap(testMap.getId(), testMap.getPanelOrder(), testMap.getName(),
                     testMap.getTestIds()));
         }
-        sampleEntryTests.setPanels(panelsMapList);
+        return panelsMapList;
     }
 
     private List<PanelTestMap> sortPanels(List<PanelTestMap> panelMap) {
@@ -250,17 +242,16 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     private List<PanelTestMap> linkTestsToPanels(List<TypeOfSamplePanel> panelList, List<Test> tests) {
         List<PanelTestMap> selected = new ArrayList<>();
 
-        Map<String, Integer> testNameOrderMap = new HashMap<>();
+        Map<String, String> testIdsByName = new HashMap<>();
 
-        for (int i = 0; i < tests.size(); i++) {
-            testNameOrderMap.put(TestServiceImpl.getUserLocalizedTestName(tests.get(i)), i);
+        for (Test test : tests) {
+            testIdsByName.put(localizedTestName(test), test.getId());
         }
 
         for (TypeOfSamplePanel samplePanel : panelList) {
             Panel panel = panelService.getPanelById(samplePanel.getPanelId());
             if ("Y".equals(panel.getIsActive())) {
-                String matchTests = getTestIndexesForPanels(samplePanel.getPanelId(), testNameOrderMap,
-                        panelItemService);
+                String matchTests = getTestIdsForPanel(samplePanel.getPanelId(), testIdsByName, panelItemService);
                 if (!GenericValidator.isBlankOrNull(matchTests)) {
                     int panelOrder = panelService.getPanelById(samplePanel.getPanelId()).getSortOrderInt();
                     selected.add(new PanelTestMap(samplePanel.getPanelId(), panelOrder, panel.getLocalizedName(),
@@ -272,40 +263,34 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         return selected;
     }
 
-    @SuppressWarnings("unchecked")
-    private String getTestIndexesForPanels(String panelId, Map<String, Integer> testIdOrderMap,
+    private String getTestIdsForPanel(String panelId, Map<String, String> testIdsByName,
             PanelItemService panelItemService) {
-        StringBuilder indexes = new StringBuilder();
+        StringBuilder testIds = new StringBuilder();
         List<PanelItem> items = panelItemService.getPanelItemsForPanel(panelId);
 
         for (PanelItem item : items) {
-            String derivedNameFromPanel = getDerivedNameFromPanel(item);
-            if (derivedNameFromPanel != null) {
-                String ItemId = item.getTest().getId();
-
-                if (ItemId != null) {
-                    indexes.append(ItemId);
-                    indexes.append(",");
-                }
+            String testId = item.getTest() == null ? testIdsByName.get(item.getTestName()) : item.getTest().getId();
+            if (testId != null && testIdsByName.containsValue(testId)) {
+                testIds.append(testId).append(",");
             }
         }
 
-        String withExtraComma = indexes.toString();
+        String withExtraComma = testIds.toString();
         return withExtraComma.length() > 0 ? withExtraComma.substring(0, withExtraComma.length() - 1) : "";
     }
 
-    private String getDerivedNameFromPanel(PanelItem item) {
-        // This cover the transition in the DB between the panel_item being linked by
-        // name
-        // to being linked by id
-        if (item.getTest() != null) {
-            return TestServiceImpl.getUserLocalizedTestName(item.getTest());
-        } else {
-            return item.getTestName();
+    private String localizedTestName(Test test) {
+        if (test == null) {
+            return "";
+        }
+        try {
+            return test.getLocalizedTestName().getLocalizedValue();
+        } catch (RuntimeException e) {
+            return test.getDescription() == null ? "" : test.getDescription();
         }
     }
 
-    public class SampleEntryTests {
+    public static class SampleEntryTests {
 
         private String sampleTypeId;
 
@@ -313,7 +298,10 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         private ArrayList<TestMap> tests;
 
-        public SampleEntryTests() {
+        public SampleEntryTests(String sampleTypeId, ArrayList<PanelTestMap> panels, ArrayList<TestMap> tests) {
+            this.sampleTypeId = sampleTypeId;
+            this.panels = panels;
+            this.tests = tests;
         }
 
         public String getSampleTypeId() {
@@ -341,7 +329,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         }
     }
 
-    public class PanelTestMap {
+    public static class PanelTestMap {
 
         private String name;
 
@@ -376,7 +364,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         }
     }
 
-    public class TestMap {
+    public static class TestMap {
 
         String id;
 
@@ -392,29 +380,41 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         String cultureWorkflowType;
 
+        List<TestMethodDto> methods;
+
         public TestMap(String id, String name, boolean userBenchChoice) {
-            this(id, name, userBenchChoice, false, null, null, null);
+            this(id, name, userBenchChoice, false, null, null, null, List.of());
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold) {
-            this(id, name, userBenchChoice, hasQcThreshold, null, null, null);
+            this(id, name, userBenchChoice, hasQcThreshold, null, null, null, List.of());
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType) {
-            this(id, name, userBenchChoice, hasQcThreshold, resultType, null, null);
+            this(id, name, userBenchChoice, hasQcThreshold, resultType, null, null, List.of());
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, String cultureWorkflowType) {
-            this(id, name, userBenchChoice, false, null, null, cultureWorkflowType);
+            this(id, name, userBenchChoice, false, null, null, cultureWorkflowType, List.of());
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
                 String timeHolding) {
-            this(id, name, userBenchChoice, hasQcThreshold, resultType, timeHolding, null);
+            this(id, name, userBenchChoice, hasQcThreshold, resultType, timeHolding, null, List.of());
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
                 String timeHolding, String cultureWorkflowType) {
+            this(id, name, userBenchChoice, hasQcThreshold, resultType, timeHolding, cultureWorkflowType, List.of());
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, String cultureWorkflowType,
+                List<TestMethodDto> methods) {
+            this(id, name, userBenchChoice, false, null, null, cultureWorkflowType, methods);
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
+                String timeHolding, String cultureWorkflowType, List<TestMethodDto> methods) {
             this.id = id;
             this.name = name;
             this.userBenchChoice = userBenchChoice;
@@ -422,6 +422,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             this.resultType = resultType;
             this.timeHolding = timeHolding;
             this.cultureWorkflowType = cultureWorkflowType;
+            this.methods = methods == null ? List.of() : methods;
         }
 
         public String getId() {
@@ -478,6 +479,34 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         public void setCultureWorkflowType(String cultureWorkflowType) {
             this.cultureWorkflowType = cultureWorkflowType;
+        }
+
+        public List<TestMethodDto> getMethods() {
+            return methods;
+        }
+    }
+
+    public static class ProgramOption {
+        private final String id;
+        private final String value;
+        private final String code;
+
+        public ProgramOption(String id, String value, String code) {
+            this.id = id;
+            this.value = value;
+            this.code = code;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public String getCode() {
+            return code;
         }
     }
 }

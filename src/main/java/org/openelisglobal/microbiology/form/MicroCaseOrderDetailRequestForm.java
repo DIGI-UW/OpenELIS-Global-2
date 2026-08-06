@@ -8,6 +8,9 @@ import jakarta.validation.constraints.Size;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MicroCaseOrderDetailRequestForm {
 
+    @Size(max = 20)
+    public String cultureMethodId;
+
     @Size(max = 255)
     public String patientOrigin;
 

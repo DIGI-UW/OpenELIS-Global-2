@@ -10,10 +10,12 @@ import {
   SelectItem,
   DatePicker,
   DatePickerInput,
+  InlineNotification,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import Questionnaire from "../../../common/Questionnaire";
 import VectorFieldSurveyPanel from "./VectorFieldSurveyPanel";
+import MicrobiologyOrderEntrySection from "../../../microbiology/MicrobiologyOrderEntrySection";
 
 /**
  * ProgramSection - Program selection with dynamic additional fields
@@ -23,11 +25,17 @@ import VectorFieldSurveyPanel from "./VectorFieldSurveyPanel";
  * - Program-specific additional fields (VL, EID, TB, etc.)
  */
 
-const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
+const ProgramSection = ({
+  orderData,
+  setOrderData,
+  samples = [],
+  isReadOnly,
+}) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
 
   const [programs, setPrograms] = useState([]);
+  const [programsLoaded, setProgramsLoaded] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [questionnaire, setQuestionnaire] = useState(
     orderData?.sampleOrderItems?.questionnaire || null,
@@ -38,6 +46,12 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
 
   // Track last initialized programId to avoid re-initializing when user manually changes
   const lastInitializedProgramIdRef = useRef(null);
+  const hasCultureWorkflow = samples.some((sample) =>
+    (sample.tests || []).some((test) => test.cultureWorkflowType),
+  );
+  const microbiologyProgram = programs.find(
+    (program) => program.code?.toUpperCase() === "MICROBIOLOGY",
+  );
 
   // Convert questionnaire to response format
   const convertQuestionnaireToResponse = (questionnaireData) => {
@@ -67,6 +81,7 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
     getFromOpenElisServer("/rest/user-programs", (response) => {
       if (componentMounted.current && response) {
         setPrograms(response);
+        setProgramsLoaded(true);
       }
     });
     return () => {
@@ -110,6 +125,40 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
       }
     }
   }, [orderData?.sampleOrderItems?.programId, programs]);
+
+  useEffect(() => {
+    if (!hasCultureWorkflow || !microbiologyProgram) {
+      return;
+    }
+
+    setSelectedProgram(microbiologyProgram);
+    lastInitializedProgramIdRef.current = microbiologyProgram.id;
+    if (
+      String(orderData?.sampleOrderItems?.programId || "") !==
+        String(microbiologyProgram.id) ||
+      String(orderData?.sampleOrderItems?.microbiologyProgramId || "") !==
+        String(microbiologyProgram.id)
+    ) {
+      setOrderData((previous) => ({
+        ...previous,
+        sampleOrderItems: {
+          ...previous.sampleOrderItems,
+          microbiologyPreviousProgramId:
+            previous.sampleOrderItems?.microbiologyPreviousProgramId ??
+            previous.sampleOrderItems?.programId ??
+            "",
+          programId: microbiologyProgram.id,
+          microbiologyProgramId: microbiologyProgram.id,
+        },
+      }));
+      fetchProgramQuestionnaire(microbiologyProgram.id);
+    }
+  }, [
+    hasCultureWorkflow,
+    microbiologyProgram,
+    orderData?.sampleOrderItems?.programId,
+    setOrderData,
+  ]);
 
   // Fetch program-specific questionnaire
   // preserveResponses = true when loading saved order with existing responses
@@ -519,6 +568,29 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
           </p>
         </Column>
       </Grid>
+
+      {hasCultureWorkflow && programsLoaded && !microbiologyProgram && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "microbiology.orderEntry.programMissingTitle",
+          })}
+          subtitle={intl.formatMessage({
+            id: "microbiology.orderEntry.programMissingMessage",
+          })}
+        />
+      )}
+
+      {hasCultureWorkflow && (
+        <MicrobiologyOrderEntrySection
+          samples={samples}
+          orderFormValues={orderData}
+          setOrderFormValues={setOrderData}
+          isReadOnly={isReadOnly}
+        />
+      )}
 
       {/* Additional Order Information - Program Specific */}
       {selectedProgram && (
