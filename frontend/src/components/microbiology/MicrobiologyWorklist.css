@@ -174,7 +174,8 @@
 }
 
 .microbiology-worklist__due-action,
-.microbiology-worklist__context,
+.microbiology-worklist__lab-context,
+.microbiology-worklist__last-activity,
 .microbiology-worklist__stage-status,
 .microbiology-worklist__ast-status {
   align-items: flex-start;
@@ -184,7 +185,8 @@
 }
 
 .microbiology-worklist__due-action span,
-.microbiology-worklist__context span,
+.microbiology-worklist__lab-context span,
+.microbiology-worklist__last-activity span,
 .microbiology-worklist__stage-status span,
 .microbiology-worklist__ast-status span {
   color: var(--microbiology-text-secondary);

@@ -10,6 +10,9 @@ public class MicroWorklistRowForm {
     public String grain;
     public String caseId;
     public String sampleItemId;
+    public String accessionNumber;
+    public String patientDisplay;
+    public String specimenDisplay;
     public String workflowType;
     public String stage;
     public String priority;
@@ -22,9 +25,12 @@ public class MicroWorklistRowForm {
     public String organismDisplay;
     public String astRunId;
     public String panelId;
+    public String panelName;
     public String astStatus;
     public Timestamp astStartedAt;
     public boolean analyzerResultsAvailable;
     public List<String> siblingWorkflows = new ArrayList<>();
     public Timestamp createdAt;
+    public Timestamp lastActivityAt;
+    public String lastActivityBy;
 }
