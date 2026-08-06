@@ -19,4 +19,8 @@ public class MicrobiologyUatScenarioForm {
     public String activeBreakpointStandardId;
     public String loadedBreakpointStandardId;
     public String methodId;
+    public String sampleTypeId;
+    public String cultureTestId;
+    public String tbCultureTestId;
+    public String nonCultureTestId;
 }

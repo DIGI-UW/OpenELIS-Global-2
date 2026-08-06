@@ -46,8 +46,6 @@ const SampleTestSection = ({
   const [testSearchTerms, setTestSearchTerms] = useState({});
   const [panelSearchTerms, setPanelSearchTerms] = useState({});
 
-  // Loading state
-  const [isLoading, setIsLoading] = useState(true);
   const [loadingPerSample, setLoadingPerSample] = useState({});
   const [pendingSamples, setPendingSamples] = useState(null);
 
@@ -58,16 +56,44 @@ const SampleTestSection = ({
       tests: [...(sample.tests || [])],
     }));
 
+  // Fetch tests and panels for a specific sample
+  const fetchTestsForSampleType = (sampleIndex, sampleTypeId) => {
+    if (!sampleTypeId) {
+      setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
+      setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
+      return;
+    }
+
+    setLoadingPerSample((prev) => ({ ...prev, [sampleIndex]: true }));
+    getFromOpenElisServer(
+      `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
+      (response) => {
+        if (componentMounted.current && response) {
+          setPanelsPerSample((prev) => ({
+            ...prev,
+            [sampleIndex]: response.panels || [],
+          }));
+          setTestsPerSample((prev) => ({
+            ...prev,
+            [sampleIndex]: response.tests || [],
+          }));
+          setLoadingPerSample((prev) => ({
+            ...prev,
+            [sampleIndex]: false,
+          }));
+        }
+      },
+    );
+  };
+
   // Fetch sample types on mount
   useEffect(() => {
     componentMounted.current = true;
-    setIsLoading(true);
 
     // Fetch sample types
     getFromOpenElisServer("/rest/user-sample-types", (response) => {
       if (componentMounted.current && response) {
         setSampleTypes(response);
-        setIsLoading(false);
       }
     });
 
@@ -91,34 +117,7 @@ const SampleTestSection = ({
         fetchTestsForSampleType(index, sampleTypeId);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [samples]);
-
-  // Fetch tests and panels for a specific sample
-  const fetchTestsForSampleType = (sampleIndex, sampleTypeId) => {
-    if (!sampleTypeId) {
-      setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
-      setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
-      return;
-    }
-
-    setLoadingPerSample((prev) => ({ ...prev, [sampleIndex]: true }));
-    getFromOpenElisServer(
-      `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
-      (response) => {
-        if (componentMounted.current && response) {
-          // Set panels for this sample
-          const panels = response.panels || [];
-          setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: panels }));
-
-          // Set tests for this sample
-          const tests = response.tests || [];
-          setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: tests }));
-          setLoadingPerSample((prev) => ({ ...prev, [sampleIndex]: false }));
-        }
-      },
-    );
-  };
 
   // Get filtered tests for a sample
   const getFilteredTests = (sampleIndex) => {
@@ -364,7 +363,10 @@ const SampleTestSection = ({
   };
 
   return (
-    <Tile className="order-section sample-test-section">
+    <Tile
+      className="order-section sample-test-section"
+      data-testid="order-sample-test-section"
+    >
       <Modal
         open={pendingSamples !== null}
         modalHeading={intl.formatMessage({

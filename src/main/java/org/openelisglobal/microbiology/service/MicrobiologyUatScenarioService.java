@@ -60,6 +60,8 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.valueholder.TestMethod;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -88,6 +90,8 @@ public class MicrobiologyUatScenarioService {
     private static final String UAT_METHOD_NAME = "UAT micro culture";
     private static final String UAT_METHOD_DESCRIPTION = "UAT microbiology culture method";
     private static final String UAT_TEST_DESCRIPTION = "UAT microbiology culture";
+    private static final String UAT_TB_TEST_DESCRIPTION = "UAT microbiology TB culture";
+    private static final String UAT_NON_CULTURE_TEST_DESCRIPTION = "UAT routine non-culture test";
     private static final String UAT_ANALYTE_NAME = "UAT microbiology culture result";
     private static final String UAT_SAMPLE_TYPE_DESCRIPTION = "UAT micro specimen";
     private static final String UAT_PATIENT_EXTERNAL_ID_PREFIX = "UATMICRO-";
@@ -111,6 +115,7 @@ public class MicrobiologyUatScenarioService {
     private final TestAnalyteService testAnalyteService;
     private final AnalysisService analysisService;
     private final TestResultService testResultService;
+    private final TestMethodService testMethodService;
     private final IStatusService statusService;
     private final MicrobiologyConfigurationService configurationService;
     private final MicroCaseService caseService;
@@ -129,7 +134,7 @@ public class MicrobiologyUatScenarioService {
             TypeOfSampleTestService typeOfSampleTestService, TestService testService,
             TestSectionService testSectionService, LocalizationService localizationService,
             AnalyteService analyteService, TestAnalyteService testAnalyteService, AnalysisService analysisService,
-            TestResultService testResultService, IStatusService statusService,
+            TestResultService testResultService, TestMethodService testMethodService, IStatusService statusService,
             MicrobiologyConfigurationService configurationService, MicroCaseService caseService,
             MicroOrderRoutingService orderRoutingService, InventoryItemService inventoryItemService,
             InventoryLotService inventoryLotService, InventoryManagementService inventoryManagementService,
@@ -150,6 +155,7 @@ public class MicrobiologyUatScenarioService {
         this.testAnalyteService = testAnalyteService;
         this.analysisService = analysisService;
         this.testResultService = testResultService;
+        this.testMethodService = testMethodService;
         this.statusService = statusService;
         this.configurationService = configurationService;
         this.caseService = caseService;
@@ -196,6 +202,15 @@ public class MicrobiologyUatScenarioService {
         ensureSampleType(sampleItem, performedBy);
         Method method = getOrCreateUatMethod(performedBy);
         Test test = getOrCreateUatTest(method, performedBy);
+        Test tbTest = null;
+        Test nonCultureTest = null;
+        if (CLASSIFICATION_SCENARIO.equals(scenario)) {
+            tbTest = getOrCreateUatTest(UAT_TB_TEST_DESCRIPTION, MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), true,
+                    method, performedBy);
+            nonCultureTest = getOrCreateUatTest(UAT_NON_CULTURE_TEST_DESCRIPTION, null, false, method, performedBy);
+            ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), tbTest, performedBy);
+            ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), nonCultureTest, performedBy);
+        }
         ensureInventoryTraceability(test, performedBy);
         ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
         ensureRemarkTestResult(test, performedBy);
@@ -226,6 +241,10 @@ public class MicrobiologyUatScenarioService {
         form.analysisId = analysis.getId();
         form.reportableTestAnalyteId = reportableTestAnalyte.getId();
         form.methodId = method.getId();
+        form.sampleTypeId = sampleItem.getTypeOfSample().getId();
+        form.cultureTestId = test.getId();
+        form.tbCultureTestId = tbTest == null ? null : tbTest.getId();
+        form.nonCultureTestId = nonCultureTest == null ? null : nonCultureTest.getId();
         form.organismId = referenceAdminData == null ? astReferenceData.organism().getId()
                 : referenceAdminData.organismId();
         form.antibioticId = referenceAdminData == null ? astReferenceData.antibiotic().getId()
@@ -596,26 +615,31 @@ public class MicrobiologyUatScenarioService {
     }
 
     private Test getOrCreateUatTest(Method method, String performedBy) {
-        Test test = testService.getTestByDescription(UAT_TEST_DESCRIPTION);
+        return getOrCreateUatTest(UAT_TEST_DESCRIPTION, BACTERIOLOGY, true, method, performedBy);
+    }
+
+    private Test getOrCreateUatTest(String description, String workflowType, boolean antimicrobialResistance,
+            Method method, String performedBy) {
+        Test test = testService.getTestByDescription(description);
         if (test == null) {
             test = new Test();
-            test.setName(UAT_TEST_DESCRIPTION);
-            test.setDescription(UAT_TEST_DESCRIPTION);
-            test.setGuid(UUID.nameUUIDFromBytes(UAT_TEST_DESCRIPTION.getBytes(StandardCharsets.UTF_8)).toString());
+            test.setName(description);
+            test.setDescription(description);
+            test.setGuid(UUID.nameUUIDFromBytes(description.getBytes(StandardCharsets.UTF_8)).toString());
             test.setDomain("CLINICAL");
             test.setOrderable(true);
-            test.setAntimicrobialResistance(true);
+            test.setAntimicrobialResistance(antimicrobialResistance);
         }
         if (test.getLocalizedTestName() == null) {
-            test.setLocalizedTestName(createUatTestLocalization("UAT microbiology test name", performedBy));
+            test.setLocalizedTestName(createUatTestLocalization(description + " test name", description, performedBy));
         }
         if (test.getLocalizedReportingName() == null) {
             test.setLocalizedReportingName(
-                    createUatTestLocalization("UAT microbiology reporting test name", performedBy));
+                    createUatTestLocalization(description + " reporting test name", description, performedBy));
         }
         test.setMethod(method);
         test.setTestSection(getUatReportTestSection());
-        test.setCultureWorkflowType(BACTERIOLOGY);
+        test.setCultureWorkflowType(workflowType);
         test.setIsActive(IActionConstants.YES);
         test.setIsReportable(IActionConstants.YES);
         test.setSysUserId(performedBy);
@@ -624,19 +648,34 @@ public class MicrobiologyUatScenarioService {
         } else {
             testService.update(test);
         }
+        ensureTestMethodLink(test, method, performedBy);
         return test;
     }
 
-    private Localization createUatTestLocalization(String description, String performedBy) {
+    private void ensureTestMethodLink(Test test, Method method, String performedBy) {
+        if (testMethodService.testMethodLinkExists(test.getId(), method.getId())) {
+            return;
+        }
+        TestMethod link = new TestMethod();
+        link.setTestId(test.getId());
+        link.setMethodId(method.getId());
+        link.setIsDefaultMethod(true);
+        link.setEffectiveDate(new Date(System.currentTimeMillis()));
+        link.setIsActive(IActionConstants.YES);
+        link.setSysUserId(performedBy);
+        testMethodService.linkMethod(link);
+    }
+
+    private Localization createUatTestLocalization(String description, String displayName, String performedBy) {
         Localization localization = new Localization();
         localization.setDescription(description);
         localization.setSysUserId(performedBy);
         List<Locale> activeLocales = localizationService.getAllActiveLocales();
         if (activeLocales.isEmpty()) {
-            localization.setEnglish(UAT_TEST_DESCRIPTION);
+            localization.setEnglish(displayName);
         } else {
             for (Locale locale : activeLocales) {
-                localization.setLocalizedValue(locale.getLanguage(), UAT_TEST_DESCRIPTION);
+                localization.setLocalizedValue(locale.getLanguage(), displayName);
             }
         }
         localizationService.insert(localization);

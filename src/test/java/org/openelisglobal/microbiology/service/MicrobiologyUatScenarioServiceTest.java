@@ -69,6 +69,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.valueholder.TestMethod;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -125,6 +127,9 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Mock
     private TestResultService testResultService;
+
+    @Mock
+    private TestMethodService testMethodService;
 
     @Mock
     private AnalysisService analysisService;
@@ -199,9 +204,9 @@ public class MicrobiologyUatScenarioServiceTest {
         service = new MicrobiologyUatScenarioService(methodService, sampleService, sampleItemService, patientService,
                 personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
                 testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
-                testResultService, statusService, configurationService, caseService, orderRoutingService,
-                inventoryItemService, inventoryLotService, inventoryManagementService, testReagentLinkService,
-                referenceAdminService, breakpointAdminService, breakpointImportService);
+                testResultService, testMethodService, statusService, configurationService, caseService,
+                orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
+                testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService);
     }
 
     @After
@@ -249,6 +254,11 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("UAT microbiology culture", test.getLocalizedTestName().getEnglish());
         assertNotNull(test.getLocalizedReportingName());
         assertEquals("UAT microbiology culture", test.getLocalizedReportingName().getEnglish());
+        ArgumentCaptor<TestMethod> methodLinkCaptor = ArgumentCaptor.forClass(TestMethod.class);
+        verify(testMethodService).linkMethod(methodLinkCaptor.capture());
+        assertEquals(test.getId(), methodLinkCaptor.getValue().getTestId());
+        assertEquals(method.getId(), methodLinkCaptor.getValue().getMethodId());
+        assertTrue(methodLinkCaptor.getValue().getIsDefaultMethod());
         ArgumentCaptor<TestResult> testResultCaptor = ArgumentCaptor.forClass(TestResult.class);
         verify(testResultService).insert(testResultCaptor.capture());
         assertEquals(test, testResultCaptor.getValue().getTest());
@@ -406,6 +416,17 @@ public class MicrobiologyUatScenarioServiceTest {
         MicroCase unassignedCase = microCase("case-unassigned");
         unassignedCase.setWorkflowType(MicroWorkflowType.UNASSIGNED.name());
         configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, routedCase);
+        when(testService.getTestByDescription("UAT microbiology TB culture")).thenReturn(null);
+        when(testService.getTestByDescription("UAT routine non-culture test")).thenReturn(null);
+        doAnswer(invocation -> {
+            org.openelisglobal.test.valueholder.Test inserted = invocation.getArgument(0);
+            if ("UAT microbiology TB culture".equals(inserted.getDescription())) {
+                inserted.setId("test-tb");
+            } else if ("UAT routine non-culture test".equals(inserted.getDescription())) {
+                inserted.setId("test-routine");
+            }
+            return null;
+        }).when(testService).insert(any(org.openelisglobal.test.valueholder.Test.class));
         when(caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1"))
                 .thenReturn(unassignedCase);
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
@@ -417,6 +438,11 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("case-unassigned", result.caseId);
         assertEquals("case-bacteriology", result.siblingCaseId);
         assertEquals("method-1", result.methodId);
+        assertEquals("sample-type-1", result.sampleTypeId);
+        assertEquals("test-1", result.cultureTestId);
+        assertEquals("test-tb", result.tbCultureTestId);
+        assertEquals("test-routine", result.nonCultureTestId);
+        verify(testMethodService, times(3)).linkMethod(any(TestMethod.class));
         verify(caseService).createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1");
         ArgumentCaptor<org.openelisglobal.microbiology.valueholder.MicroCultureSetup> setupCaptor = ArgumentCaptor
                 .forClass(org.openelisglobal.microbiology.valueholder.MicroCultureSetup.class);
