@@ -381,6 +381,28 @@ describe("MicrobiologyCaseView", () => {
     );
   });
 
+  it("moves focus into an expanded inline section and announces it", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    await user.click(getAccordionButton("Timeline"));
+
+    const timelineSection = await screen.findByTestId(
+      "microbiology-case-section-timeline",
+    );
+    await waitFor(() => expect(timelineSection).toHaveFocus());
+    expect(
+      screen.getByRole("status", { name: "Section status" }),
+    ).toHaveTextContent("Timeline expanded");
+  });
+
   it("opens a case-targeted critical communication from the header", async () => {
     const user = userEvent.setup();
     const service = {

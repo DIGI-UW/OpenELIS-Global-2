@@ -8209,6 +8209,8 @@
   "microbiology.case.cultureAction": "Culture action",
   "microbiology.case.atmosphere": "Atmosphere",
   "microbiology.case.eyebrow": "Microbiology case workbench",
+  "microbiology.case.sectionExpanded": "{section} expanded",
+  "microbiology.case.sectionStatus": "Section status",
   "microbiology.case.error": "Microbiology case error",
   "microbiology.case.isolateLabel": "Isolate label",
   "microbiology.case.isolates": "Isolates",

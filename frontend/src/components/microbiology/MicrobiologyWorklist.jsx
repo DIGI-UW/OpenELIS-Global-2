@@ -738,7 +738,15 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 clicked={tile.selected}
                 data-testid={`microbiology-worklist-summary-${tile.id}`}
                 aria-label={intl.formatMessage({ id: tile.labelId })}
-                onClick={() => updateFilters(tile.changes)}
+                href={getMicrobiologyWorklistUrl({
+                  ...filters,
+                  ...tile.changes,
+                  page: 1,
+                })}
+                onClick={(event) => {
+                  event.preventDefault();
+                  updateFilters(tile.changes);
+                }}
               >
                 <span className="microbiology-worklist__summary-value">
                   {tile.value}
