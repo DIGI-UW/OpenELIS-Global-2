@@ -12,7 +12,6 @@ import {
   Switch,
   Accordion,
   AccordionItem,
-  Link,
 } from "@carbon/react";
 import { Printer } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
@@ -397,8 +396,10 @@ const OrderEnter = () => {
                   })}
                   disabled={isReadOnly && !isEditMode}
                 />
-                <Link
+                <Button
                   className="generate-link"
+                  kind="ghost"
+                  size="sm"
                   onClick={handleGenerateLabNumber}
                   disabled={isGeneratingLabNo || (isReadOnly && !isEditMode)}
                 >
@@ -413,7 +414,7 @@ const OrderEnter = () => {
                       defaultMessage="Generate"
                     />
                   )}
-                </Link>
+                </Button>
               </div>
               <p className="helper-text">
                 <FormattedMessage

@@ -456,7 +456,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                   </Button>
                 </TableToolbarContent>
               </TableToolbar>
-              <Table size="lg" useZebraStyles>
+              <Table size="lg" useZebraStyles tabIndex={0}>
                 <TableHead>
                   <TableRow>
                     {headers.map((header) => (
@@ -703,7 +703,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                     ))}
                   </Select>
                 </div>
-                <Table size="lg" useZebraStyles>
+                <Table size="lg" useZebraStyles tabIndex={0}>
                   <TableHead>
                     <TableRow>
                       {headers.map((header) => (
