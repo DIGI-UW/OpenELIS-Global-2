@@ -10,6 +10,7 @@ import {
   TableBody,
   TableCell,
   Tag,
+  OperationalTag,
   InlineNotification,
 } from "@carbon/react";
 import { Checkmark } from "@carbon/icons-react";
@@ -29,9 +30,9 @@ import TestAssignmentModal from "./TestAssignmentModal";
 const RequestedTestsSection = ({
   samples,
   setSamples,
-  testSampleAssignments,
+  testSampleAssignments: _testSampleAssignments,
   assignTestToSample,
-  removeTestFromSample,
+  removeTestFromSample: _removeTestFromSample,
   sampleTypes,
   isReadOnly,
 }) => {
@@ -45,7 +46,7 @@ const RequestedTestsSection = ({
 
   // Test-to-sample-type compatibility cache
   const [testSampleTypeMap, setTestSampleTypeMap] = useState({});
-  const [isLoadingCompatibility, setIsLoadingCompatibility] = useState(false);
+  const [loadedCompatibilityIds, setLoadedCompatibilityIds] = useState("");
 
   // Collect all unique tests from all samples
   const allTests = [];
@@ -80,15 +81,16 @@ const RequestedTestsSection = ({
     ...allPanels.map((p) => ({ ...p, isPanel: true })),
     ...allTests.map((t) => ({ ...t, isPanel: false })),
   ];
+  const testIds = allTests.map((test) => test.id).join(",");
+  const isLoadingCompatibility =
+    Boolean(testIds) && loadedCompatibilityIds !== testIds;
 
   // Fetch test-sample-type compatibility when tests change
   useEffect(() => {
     componentMounted.current = true;
 
-    const testIds = allTests.map((t) => t.id).join(",");
     if (!testIds) return;
 
-    setIsLoadingCompatibility(true);
     getFromOpenElisServer(
       `/rest/test-sample-types?testIds=${testIds}`,
       (response) => {
@@ -98,7 +100,7 @@ const RequestedTestsSection = ({
             map[t.testId] = t.compatibleSampleTypes || [];
           });
           setTestSampleTypeMap(map);
-          setIsLoadingCompatibility(false);
+          setLoadedCompatibilityIds(testIds);
         }
       },
     );
@@ -106,7 +108,7 @@ const RequestedTestsSection = ({
     return () => {
       componentMounted.current = false;
     };
-  }, [allTests.length]);
+  }, [testIds]);
 
   // Get compatible sample types for a test
   const getCompatibleSampleTypes = (testId) => {
@@ -255,31 +257,31 @@ const RequestedTestsSection = ({
             <span className="loading-text">Loading...</span>
           ) : compatibleTypes.length > 0 ? (
             compatibleTypes.map((st) => (
-              <Tag
+              <OperationalTag
                 key={st.id}
                 type="green"
                 size="sm"
                 className="sample-type-tag clickable"
+                text={`+ ${st.name}${st.code ? ` (${st.code})` : ""}`}
                 onClick={() => handleSampleTypeClick(item, st)}
-              >
-                + {st.name} {st.code ? `(${st.code})` : ""}
-              </Tag>
+              />
             ))
           ) : (
             // If no compatibility data, show all sample types as options
-            sampleTypes.slice(0, 5).map((st) => (
-              <Tag
-                key={st.id}
-                type="green"
-                size="sm"
-                className="sample-type-tag clickable"
-                onClick={() =>
-                  handleSampleTypeClick(item, { id: st.id, name: st.value })
-                }
-              >
-                + {st.value}
-              </Tag>
-            ))
+            sampleTypes
+              .slice(0, 5)
+              .map((st) => (
+                <OperationalTag
+                  key={st.id}
+                  type="green"
+                  size="sm"
+                  className="sample-type-tag clickable"
+                  text={`+ ${st.value}`}
+                  onClick={() =>
+                    handleSampleTypeClick(item, { id: st.id, name: st.value })
+                  }
+                />
+              ))
           )}
         </div>
       ),

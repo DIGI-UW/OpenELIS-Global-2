@@ -30,3 +30,26 @@ export const buildLoadedOrderData = (response, prior = {}) => ({
     labNo: response.labNumber,
   },
 });
+
+export const buildSubmissionSampleOrderItems = (sampleOrderItems = {}) => {
+  const serializableItems = { ...sampleOrderItems };
+  [
+    "questionnaire",
+    "vlProgramFields",
+    "paymentStatus",
+    "program",
+    "microbiologyProgramId",
+    "microbiologyPreviousProgramId",
+    "domain",
+  ].forEach((field) => delete serializableItems[field]);
+
+  return {
+    ...serializableItems,
+    priorityList: [],
+    programList: [],
+    referringSiteList: [],
+    providersList: [],
+    paymentOptions: [],
+    testLocationCodeList: [],
+  };
+};

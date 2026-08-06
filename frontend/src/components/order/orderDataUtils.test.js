@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildLoadedOrderData } from "./orderDataUtils";
+import {
+  buildLoadedOrderData,
+  buildSubmissionSampleOrderItems,
+} from "./orderDataUtils";
 
 describe("buildLoadedOrderData", () => {
   it("restores durable microbiology detail after the order-entry reload", () => {
@@ -69,5 +72,36 @@ describe("buildLoadedOrderData", () => {
       district: "North",
       site: "updated",
     });
+  });
+});
+
+describe("buildSubmissionSampleOrderItems", () => {
+  it("keeps server fields and removes client-only program state", () => {
+    expect(
+      buildSubmissionSampleOrderItems({
+        labNo: "20260806-003",
+        programId: "9",
+        program: "Microbiology",
+        questionnaire: { id: "client-only" },
+        microbiologyProgramId: "9",
+        microbiologyPreviousProgramId: "1",
+        domain: "clinical",
+        priorityList: [{ id: "1" }],
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        labNo: "20260806-003",
+        programId: "9",
+        priorityList: [],
+      }),
+    );
+
+    const serialized = buildSubmissionSampleOrderItems({
+      microbiologyProgramId: "9",
+      microbiologyPreviousProgramId: "1",
+    });
+    expect(serialized).not.toHaveProperty("microbiologyProgramId");
+    expect(serialized).not.toHaveProperty("microbiologyPreviousProgramId");
+    expect(serialized).not.toHaveProperty("domain");
   });
 });

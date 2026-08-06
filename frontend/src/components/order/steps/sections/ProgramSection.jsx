@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
@@ -11,6 +11,7 @@ import {
   DatePicker,
   DatePickerInput,
   InlineNotification,
+  Modal,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import Questionnaire from "../../../common/Questionnaire";
@@ -33,27 +34,40 @@ const ProgramSection = ({
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
+  const questionnaireProgramIdRef = useRef(null);
 
   const [programs, setPrograms] = useState([]);
   const [programsLoaded, setProgramsLoaded] = useState(false);
-  const [selectedProgram, setSelectedProgram] = useState(null);
   const [questionnaire, setQuestionnaire] = useState(
     orderData?.sampleOrderItems?.questionnaire || null,
   );
-  const [questionnaireResponse, setQuestionnaireResponse] = useState(
-    orderData?.sampleOrderItems?.additionalQuestions || null,
-  );
+  const [pendingProgram, setPendingProgram] = useState(undefined);
 
-  // Track last initialized programId to avoid re-initializing when user manually changes
-  const lastInitializedProgramIdRef = useRef(null);
   const hasCultureWorkflow = samples.some((sample) =>
     (sample.tests || []).some((test) => test.cultureWorkflowType),
   );
   const microbiologyProgram = programs.find(
     (program) => program.code?.toUpperCase() === "MICROBIOLOGY",
   );
+  const currentProgramId = orderData?.sampleOrderItems?.programId;
+  const effectiveProgramId =
+    hasCultureWorkflow && microbiologyProgram
+      ? microbiologyProgram.id
+      : currentProgramId;
+  const selectedProgram =
+    programs.find(
+      (program) => String(program.id) === String(effectiveProgramId || ""),
+    ) || null;
   const microbiologyProgramSelected =
     selectedProgram?.code?.toUpperCase() === "MICROBIOLOGY";
+  const displayedQuestionnaire = microbiologyProgramSelected
+    ? null
+    : questionnaire;
+  const questionnaireResponse =
+    orderData?.sampleOrderItems?.additionalQuestions || null;
+  const hasMicrobiologyDetail = Object.values(
+    orderData?.microbiologyOrderDetail || {},
+  ).some((value) => value !== "" && value !== null && value !== false);
 
   // Convert questionnaire to response format
   const convertQuestionnaireToResponse = (questionnaireData) => {
@@ -91,50 +105,11 @@ const ProgramSection = ({
     };
   }, []);
 
-  // Initialize selected program when orderData.sampleOrderItems.programId changes (e.g., from barcode scan)
-  useEffect(() => {
-    const currentProgramId = orderData?.sampleOrderItems?.programId;
-
-    // Initialize if:
-    // 1. We have a programId in orderData
-    // 2. Programs list is loaded
-    // 3. Either no program is selected OR the programId has changed from what we last initialized
-    if (currentProgramId && programs.length > 0) {
-      const programIdToFind = String(currentProgramId);
-
-      // Check if already initialized with this programId
-      if (
-        String(currentProgramId) === String(lastInitializedProgramIdRef.current)
-      ) {
-        return;
-      }
-
-      const found = programs.find((p) => String(p.id) === programIdToFind);
-
-      if (found) {
-        lastInitializedProgramIdRef.current = currentProgramId;
-        setSelectedProgram(found);
-
-        // Check if we have saved questionnaire responses from loaded order
-        const savedResponses = orderData?.sampleOrderItems?.additionalQuestions;
-        if (savedResponses) {
-          setQuestionnaireResponse(savedResponses);
-          // Still need to fetch the questionnaire structure for rendering
-          fetchProgramQuestionnaire(found.id, true); // true = don't overwrite responses
-        } else {
-          fetchProgramQuestionnaire(found.id);
-        }
-      }
-    }
-  }, [orderData?.sampleOrderItems?.programId, programs]);
-
   useEffect(() => {
     if (!hasCultureWorkflow || !microbiologyProgram) {
       return;
     }
 
-    setSelectedProgram(microbiologyProgram);
-    lastInitializedProgramIdRef.current = microbiologyProgram.id;
     if (
       String(orderData?.sampleOrderItems?.programId || "") !==
         String(microbiologyProgram.id) ||
@@ -153,7 +128,6 @@ const ProgramSection = ({
           microbiologyProgramId: microbiologyProgram.id,
         },
       }));
-      fetchProgramQuestionnaire(microbiologyProgram.id);
     }
   }, [
     hasCultureWorkflow,
@@ -162,59 +136,80 @@ const ProgramSection = ({
     setOrderData,
   ]);
 
-  // Fetch program-specific questionnaire
-  // preserveResponses = true when loading saved order with existing responses
-  const fetchProgramQuestionnaire = (programId, preserveResponses = false) => {
-    if (!programId) {
-      setQuestionnaire(null);
-      setQuestionnaireResponse(null);
+  // Fetch program-specific questionnaire. Saved responses remain canonical in
+  // orderData; this component only owns the fetched questionnaire structure.
+  const fetchProgramQuestionnaire = useCallback(
+    (programId, preserveResponses = false) => {
+      if (!programId) {
+        return;
+      }
+      getFromOpenElisServer(
+        `/rest/program/${programId}/questionnaire`,
+        (response) => {
+          if (componentMounted.current && response?.item) {
+            setQuestionnaire(response);
+
+            const convertedResponse = preserveResponses
+              ? undefined
+              : convertQuestionnaireToResponse(response);
+            setOrderData((prev) => ({
+              ...prev,
+              sampleOrderItems: {
+                ...prev.sampleOrderItems,
+                questionnaire: response,
+                ...(preserveResponses
+                  ? {}
+                  : { additionalQuestions: convertedResponse }),
+              },
+            }));
+          } else if (componentMounted.current) {
+            setQuestionnaire(null);
+            if (!preserveResponses) {
+              setOrderData((prev) => ({
+                ...prev,
+                sampleOrderItems: {
+                  ...prev.sampleOrderItems,
+                  questionnaire: null,
+                  additionalQuestions: null,
+                },
+              }));
+            }
+          }
+        },
+      );
+    },
+    [setOrderData],
+  );
+
+  useEffect(() => {
+    if (
+      !programsLoaded ||
+      !selectedProgram ||
+      selectedProgram.code?.toUpperCase() === "MICROBIOLOGY"
+    ) {
+      questionnaireProgramIdRef.current = null;
       return;
     }
-    getFromOpenElisServer(
-      `/rest/program/${programId}/questionnaire`,
-      (response) => {
-        if (componentMounted.current && response?.item) {
-          setQuestionnaire(response);
+    if (
+      String(questionnaireProgramIdRef.current) === String(selectedProgram.id)
+    ) {
+      return;
+    }
 
-          // Only create new blank responses if not preserving existing ones
-          if (!preserveResponses) {
-            const convertedResponse = convertQuestionnaireToResponse(response);
-            setQuestionnaireResponse(convertedResponse);
-            setOrderData((prev) => ({
-              ...prev,
-              sampleOrderItems: {
-                ...prev.sampleOrderItems,
-                questionnaire: response,
-                additionalQuestions: convertedResponse,
-              },
-            }));
-          } else {
-            // Just set the questionnaire structure for rendering, keep existing responses
-            setOrderData((prev) => ({
-              ...prev,
-              sampleOrderItems: {
-                ...prev.sampleOrderItems,
-                questionnaire: response,
-              },
-            }));
-          }
-        } else {
-          setQuestionnaire(null);
-          if (!preserveResponses) {
-            setQuestionnaireResponse(null);
-          }
-        }
-      },
+    questionnaireProgramIdRef.current = selectedProgram.id;
+    fetchProgramQuestionnaire(
+      selectedProgram.id,
+      Boolean(orderData?.sampleOrderItems?.additionalQuestions),
     );
-  };
+  }, [
+    fetchProgramQuestionnaire,
+    orderData?.sampleOrderItems?.additionalQuestions,
+    programsLoaded,
+    selectedProgram,
+  ]);
 
-  // Handle program selection
-  const handleProgramChange = ({ selectedItem }) => {
-    setSelectedProgram(selectedItem);
-
+  const applyProgramChange = (selectedItem, discardMicrobiologyDetail) => {
     if (selectedItem) {
-      // Track this as user-initiated change so useEffect doesn't override
-      lastInitializedProgramIdRef.current = selectedItem.id;
       setOrderData((prev) => ({
         ...prev,
         sampleOrderItems: {
@@ -225,8 +220,22 @@ const ProgramSection = ({
               ? selectedItem.id
               : undefined,
         },
+        ...(discardMicrobiologyDetail
+          ? {
+              microbiologyOrderDetail: {
+                cultureMethodId: "",
+                patientOrigin: "",
+                numberOfSets: "",
+                clinicalHistory: "",
+                antibioticExposure: false,
+                criticalNotificationPreference: null,
+              },
+            }
+          : {}),
       }));
-      fetchProgramQuestionnaire(selectedItem.id);
+      if (selectedItem.code?.toUpperCase() === "MICROBIOLOGY") {
+        setQuestionnaire(null);
+      }
     } else {
       setOrderData((prev) => ({
         ...prev,
@@ -235,11 +244,42 @@ const ProgramSection = ({
           programId: "",
           questionnaire: null,
           additionalQuestions: null,
+          microbiologyProgramId: undefined,
         },
+        ...(discardMicrobiologyDetail
+          ? {
+              microbiologyOrderDetail: {
+                cultureMethodId: "",
+                patientOrigin: "",
+                numberOfSets: "",
+                clinicalHistory: "",
+                antibioticExposure: false,
+                criticalNotificationPreference: null,
+              },
+            }
+          : {}),
       }));
       setQuestionnaire(null);
-      setQuestionnaireResponse(null);
     }
+  };
+
+  // Handle program selection. A typed culture test owns the derived Program,
+  // while the manual fallback can be changed after confirming data loss.
+  const handleProgramChange = ({ selectedItem }) => {
+    const leavesManualMicrobiology =
+      microbiologyProgramSelected &&
+      !hasCultureWorkflow &&
+      selectedItem?.code?.toUpperCase() !== "MICROBIOLOGY";
+    if (leavesManualMicrobiology && hasMicrobiologyDetail) {
+      setPendingProgram(selectedItem ?? null);
+      return;
+    }
+    applyProgramChange(selectedItem, false);
+  };
+
+  const confirmProgramChange = () => {
+    applyProgramChange(pendingProgram ?? null, true);
+    setPendingProgram(undefined);
   };
 
   // Get answer for a questionnaire item
@@ -361,7 +401,6 @@ const ProgramSection = ({
       }
     }
 
-    setQuestionnaireResponse(updatedQuestionnaireResponse);
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {
@@ -543,6 +582,25 @@ const ProgramSection = ({
 
   return (
     <Tile className="order-section program-section">
+      <Modal
+        open={pendingProgram !== undefined}
+        modalHeading={intl.formatMessage({
+          id: "microbiology.orderEntry.programDiscardHeading",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "microbiology.orderEntry.discardConfirm",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
+        danger
+        onRequestSubmit={confirmProgramChange}
+        onRequestClose={() => setPendingProgram(undefined)}
+      >
+        <p>
+          {intl.formatMessage({
+            id: "microbiology.orderEntry.programDiscardMessage",
+          })}
+        </p>
+      </Modal>
       <h4 className="section-title">
         <FormattedMessage id="label.program" defaultMessage="Program" />
       </h4>
@@ -564,13 +622,17 @@ const ProgramSection = ({
               id: "program.placeholder",
               defaultMessage: "Type to filter or select from the list",
             })}
-            disabled={isReadOnly}
+            disabled={isReadOnly || hasCultureWorkflow}
           />
           <p className="helper-text">
-            <FormattedMessage
-              id="program.helper"
-              defaultMessage="Type to filter or select from the list. Selecting a program displays its specific Additional Order Information fields below."
-            />
+            {hasCultureWorkflow ? (
+              <FormattedMessage id="microbiology.orderEntry.programDerived" />
+            ) : (
+              <FormattedMessage
+                id="program.helper"
+                defaultMessage="Type to filter or select from the list. Selecting a program displays its specific Additional Order Information fields below."
+              />
+            )}
           </p>
         </Column>
       </Grid>
@@ -620,16 +682,16 @@ const ProgramSection = ({
           {/* Render program-specific fields or fall back to the generic Questionnaire */}
           {isVLProgram ? (
             renderVLProgramFields()
-          ) : isVectorFieldSurvey && questionnaire ? (
+          ) : isVectorFieldSurvey && displayedQuestionnaire ? (
             <VectorFieldSurveyPanel
-              questionnaire={questionnaire}
+              questionnaire={displayedQuestionnaire}
               getAnswer={getAnswer}
               onAnswerChange={handleAnswerChange}
               isReadOnly={isReadOnly}
             />
-          ) : questionnaire ? (
+          ) : displayedQuestionnaire ? (
             <Questionnaire
-              questionnaire={questionnaire}
+              questionnaire={displayedQuestionnaire}
               onAnswerChange={handleAnswerChange}
               getAnswer={getAnswer}
             />

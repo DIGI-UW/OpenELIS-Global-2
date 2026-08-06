@@ -18,6 +18,10 @@ export interface SeededMicrobiologyCase {
   loadedBreakpointStandardId?: string;
   unmappedOrganismId?: string;
   methodId?: string;
+  sampleTypeId?: string;
+  cultureTestId?: string;
+  tbCultureTestId?: string;
+  nonCultureTestId?: string;
 }
 
 export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {

@@ -1347,7 +1347,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                       return (
                                         <TableCell key={cell.id}>
                                           <OverflowMenu
-                                            ariaLabel={intl.formatMessage({
+                                            aria-label={intl.formatMessage({
                                               id: "microbiology.worklist.rowActions",
                                             })}
                                             iconDescription={intl.formatMessage(

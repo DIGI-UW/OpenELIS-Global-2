@@ -19,7 +19,10 @@ import {
 } from "./api/sampleTypeRequestApi";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { ConfigurationContext } from "../layout/Layout";
-import { buildLoadedOrderData } from "./orderDataUtils";
+import {
+  buildLoadedOrderData,
+  buildSubmissionSampleOrderItems,
+} from "./orderDataUtils";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -631,36 +634,12 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         // Flag for decoupled workflow: samples not required when orderEntryOnly=true
         orderEntryOnly: orderEntryOnly,
         // Clean up display lists that shouldn't be sent
-        sampleOrderItems: {
-          ...orderData.sampleOrderItems,
-          priorityList: [],
-          programList: [],
-          referringSiteList: [],
-          providersList: [],
-          paymentOptions: [],
-          testLocationCodeList: [],
-        },
+        sampleOrderItems: buildSubmissionSampleOrderItems(
+          orderData.sampleOrderItems,
+        ),
         initialSampleConditionList: [],
         testSectionList: [],
       };
-
-      // Remove extra fields from sampleOrderItems that backend doesn't expect or that fail validation
-      if (submitData.sampleOrderItems.questionnaire) {
-        delete submitData.sampleOrderItems.questionnaire;
-      }
-      if (submitData.sampleOrderItems.vlProgramFields) {
-        delete submitData.sampleOrderItems.vlProgramFields;
-      }
-      if (submitData.sampleOrderItems.paymentStatus) {
-        delete submitData.sampleOrderItems.paymentStatus;
-      }
-      // Remove 'program' field - it contains the name (e.g., "Histopathology") but validation
-      // expects a numeric ID. The backend uses 'programId' instead.
-      if (submitData.sampleOrderItems.program) {
-        delete submitData.sampleOrderItems.program;
-      }
-      // domain is frontend-only (drives step visibility), not a backend field.
-      delete submitData.sampleOrderItems.domain;
 
       return new Promise((resolve, reject) => {
         // Always use SamplePatientEntry endpoint - the backend handles both insert and update
@@ -880,7 +859,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         }
         entrySampleXML = buildSampleXML(stampedSamples, envFields);
       }
-
       // Prepare order data WITHOUT sample items
       const submitData = {
         ...orderData,
@@ -888,38 +866,16 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         referralItems: [],
         useReferral: false,
         orderEntryOnly: true, // Flag for backend to skip sample validation
-        sampleOrderItems: {
-          ...orderData.sampleOrderItems,
-          // Use the merged envFields so vector per-sample observations
-          // (trap-count/nights, lifecycle, trap-type) reach the backend; the
-          // original orderData.environmentalFields is missing that merge.
-          environmentalFields: envFields,
-          priorityList: [],
-          programList: [],
-          referringSiteList: [],
-          providersList: [],
-          paymentOptions: [],
-          testLocationCodeList: [],
-        },
+        sampleOrderItems: buildSubmissionSampleOrderItems(
+          {
+            ...orderData.sampleOrderItems,
+            // Include per-sample vector observations merged above.
+            environmentalFields: envFields,
+          },
+        ),
         initialSampleConditionList: [],
         testSectionList: [],
       };
-
-      // Remove extra fields that fail validation
-      if (submitData.sampleOrderItems.questionnaire) {
-        delete submitData.sampleOrderItems.questionnaire;
-      }
-      if (submitData.sampleOrderItems.vlProgramFields) {
-        delete submitData.sampleOrderItems.vlProgramFields;
-      }
-      if (submitData.sampleOrderItems.paymentStatus) {
-        delete submitData.sampleOrderItems.paymentStatus;
-      }
-      if (submitData.sampleOrderItems.program) {
-        delete submitData.sampleOrderItems.program;
-      }
-      // domain is frontend-only (drives step visibility), not a backend field.
-      delete submitData.sampleOrderItems.domain;
 
       return new Promise((resolve, reject) => {
         const endpoint = "/rest/SamplePatientEntry";
@@ -1135,7 +1091,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         (idx) => idx !== sampleIndex,
       );
       if (assignedToSamples.length === 0) {
-        const { [testId]: removed, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[testId];
         return rest;
       }
       return {

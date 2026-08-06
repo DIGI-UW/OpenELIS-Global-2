@@ -452,4 +452,10 @@
   <!-- OGC-782 R1: durable order detail across decoupled sample collection -->
   <include relativeToChangelogFile="true" file="082-microbiology-order-detail-draft.xml"/>
 
+  <!-- OGC-782 R1: support the canonical MICROBIOLOGY program code -->
+  <include relativeToChangelogFile="true" file="083-program-code-length.xml"/>
+
+  <!-- OGC-782 R1: make activity actors real SystemUser references -->
+  <include relativeToChangelogFile="true" file="084-microbiology-activity-actor-reference.xml"/>
+
 </databaseChangeLog>

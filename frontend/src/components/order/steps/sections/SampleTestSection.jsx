@@ -110,7 +110,6 @@ const SampleTestSection = ({
         fetchTestsForSampleType(index, sampleTypeId);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [samples]);
 
   const fetchTestsForSampleType = (sampleIndex, sampleTypeId) => {
@@ -164,6 +163,7 @@ const SampleTestSection = ({
     }
   };
 
+  // Get filtered tests for a sample
   const getFilteredTests = (sampleIndex) => {
     const tests = testsPerSample[sampleIndex] || [];
     const term = (testSearchTerms[sampleIndex] || "").toLowerCase();
@@ -1243,7 +1243,10 @@ const SampleTestSection = ({
 
   // Non-environmental: original card layout (vector + clinical unchanged)
   return (
-    <Tile className="order-section sample-test-section">
+    <Tile
+      className="order-section sample-test-section"
+      data-testid="order-sample-test-section"
+    >
       <Modal
         open={pendingSamples !== null}
         modalHeading={intl.formatMessage({
