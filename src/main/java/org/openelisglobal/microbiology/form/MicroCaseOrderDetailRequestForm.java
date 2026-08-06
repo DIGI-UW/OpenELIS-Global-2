@@ -15,15 +15,13 @@ public class MicroCaseOrderDetailRequestForm {
     public String patientOrigin;
 
     @Min(1)
-    @Max(99)
+    @Max(10)
     public Integer numberOfSets;
 
-    @Size(max = 4000)
+    @Size(max = 1000)
     public String clinicalHistory;
 
-    @Size(max = 4000)
-    public String antibioticExposure;
+    public Boolean antibioticExposure;
 
-    @Size(max = 255)
-    public String criticalNotificationPreference;
+    public Boolean criticalNotificationPreference;
 }

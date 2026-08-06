@@ -74,6 +74,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
                     .map(Analysis::getTest).filter(java.util.Objects::nonNull).toList());
         }
 
+        validateOrderDetail(orderDetail);
         validateSelectedMethod(orderDetail, testsByWorkflow);
         Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
         for (Map.Entry<MicroWorkflowType, List<Test>> entry : testsByWorkflow.entrySet()) {
@@ -142,6 +143,18 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         }
     }
 
+    private void validateOrderDetail(MicroCaseOrderDetailRequestForm orderDetail) {
+        if (orderDetail == null) {
+            return;
+        }
+        if (orderDetail.numberOfSets != null && (orderDetail.numberOfSets < 1 || orderDetail.numberOfSets > 10)) {
+            throw new IllegalArgumentException("Number of culture sets must be between 1 and 10");
+        }
+        if (orderDetail.clinicalHistory != null && orderDetail.clinicalHistory.length() > 1000) {
+            throw new IllegalArgumentException("Clinical history must be 1000 characters or fewer");
+        }
+    }
+
     private String methodIdFor(List<Test> tests, MicroCaseOrderDetailRequestForm orderDetail) {
         if (orderDetail != null && orderDetail.cultureMethodId != null
                 && !orderDetail.cultureMethodId.trim().isEmpty()) {
@@ -152,11 +165,15 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
             }
         }
         Test test = tests.get(0);
-        Method method = test.getMethod();
-        if (method == null || method.getId() == null || method.getId().trim().isEmpty()) {
+        String defaultMethodId = testMethodService.getDefaultMethodId(test.getId());
+        if (defaultMethodId != null && !defaultMethodId.trim().isEmpty()) {
+            return defaultMethodId;
+        }
+        Method legacyMethod = test.getMethod();
+        if (legacyMethod == null || legacyMethod.getId() == null || legacyMethod.getId().trim().isEmpty()) {
             throw new IllegalStateException("Microbiology workflow tests require a culture method");
         }
-        return method.getId();
+        return legacyMethod.getId();
     }
 
     private void linkPersistedAnalyses(MicroCase microCase, List<Test> routedTests, MicroCultureSetup cultureSetup,

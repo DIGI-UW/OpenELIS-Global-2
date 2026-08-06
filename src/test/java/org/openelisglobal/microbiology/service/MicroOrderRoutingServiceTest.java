@@ -154,6 +154,45 @@ public class MicroOrderRoutingServiceTest {
         verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1");
     }
 
+    @Test
+    public void routeAnalysesUsesTheTestMethodDefaultBeforeTheLegacyMethod() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService, "");
+        when(testMethodService.getDefaultMethodId("test-BACTERIOLOGY-1")).thenReturn("2");
+        when(referenceService.getActiveCultureSetupForMethod("2", MicroWorkflowType.BACTERIOLOGY))
+                .thenReturn(cultureSetup("2", MicroWorkflowType.BACTERIOLOGY));
+        MicroCase routedCase = new MicroCase();
+        routedCase.setId("case-1");
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1")).thenReturn(routedCase);
+
+        service.routeAnalysesForSampleItem(sampleItem("1001"),
+                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1");
+
+        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void routeAnalysesRejectsMoreThanTenCultureSets() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService, "");
+        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.numberOfSets = 11;
+
+        service.routeAnalysesForSampleItem(sampleItem("1001"),
+                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void routeAnalysesRejectsClinicalHistoryOverOneThousandCharacters() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService, "");
+        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.clinicalHistory = "x".repeat(1001);
+
+        service.routeAnalysesForSampleItem(sampleItem("1001"),
+                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void routeAnalysesRejectsSelectedMethodNotLinkedToTheTest() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,

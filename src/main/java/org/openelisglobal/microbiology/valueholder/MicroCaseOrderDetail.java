@@ -31,10 +31,10 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
     private String clinicalHistory;
 
     @Column(name = "antibiotic_exposure")
-    private String antibioticExposure;
+    private Boolean antibioticExposure;
 
-    @Column(name = "critical_notification_preference", length = 255)
-    private String criticalNotificationPreference;
+    @Column(name = "critical_notification_preference")
+    private Boolean criticalNotificationPreference;
 
     @Column(name = "created_at", nullable = false)
     private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
@@ -90,19 +90,19 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
         this.clinicalHistory = clinicalHistory;
     }
 
-    public String getAntibioticExposure() {
+    public Boolean getAntibioticExposure() {
         return antibioticExposure;
     }
 
-    public void setAntibioticExposure(String antibioticExposure) {
+    public void setAntibioticExposure(Boolean antibioticExposure) {
         this.antibioticExposure = antibioticExposure;
     }
 
-    public String getCriticalNotificationPreference() {
+    public Boolean getCriticalNotificationPreference() {
         return criticalNotificationPreference;
     }
 
-    public void setCriticalNotificationPreference(String criticalNotificationPreference) {
+    public void setCriticalNotificationPreference(Boolean criticalNotificationPreference) {
         this.criticalNotificationPreference = criticalNotificationPreference;
     }
 

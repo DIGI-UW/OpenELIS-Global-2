@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -35,6 +37,9 @@ import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.valueholder.TestMethod;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.stereotype.Component;
@@ -50,25 +55,30 @@ public class MicrobiologyTestFixtures {
     private final MethodService methodService;
     private final SampleService sampleService;
     private final SampleItemService sampleItemService;
+    private final AnalysisService analysisService;
     private final TestService testService;
     private final TypeOfSampleService typeOfSampleService;
     private final LocalizationService localizationService;
+    private final TestMethodService testMethodService;
     private final IStatusService statusService;
     private final StatusOfSampleService statusOfSampleService;
     private final SystemUserService systemUserService;
     private final MicrobiologyConfigurationService configurationService;
 
     public MicrobiologyTestFixtures(MethodService methodService, SampleService sampleService,
-            SampleItemService sampleItemService, TestService testService, TypeOfSampleService typeOfSampleService,
-            LocalizationService localizationService, IStatusService statusService,
+            SampleItemService sampleItemService, AnalysisService analysisService, TestService testService,
+            TypeOfSampleService typeOfSampleService, LocalizationService localizationService,
+            TestMethodService testMethodService, IStatusService statusService,
             StatusOfSampleService statusOfSampleService, SystemUserService systemUserService,
             MicrobiologyConfigurationService configurationService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
+        this.analysisService = analysisService;
         this.testService = testService;
         this.typeOfSampleService = typeOfSampleService;
         this.localizationService = localizationService;
+        this.testMethodService = testMethodService;
         this.statusService = statusService;
         this.statusOfSampleService = statusOfSampleService;
         this.systemUserService = systemUserService;
@@ -205,8 +215,46 @@ public class MicrobiologyTestFixtures {
     }
 
     public org.openelisglobal.test.valueholder.Test createCatalogTest() {
+        return createCatalogTest(null, null);
+    }
+
+    public Test createCatalogCultureTest(String methodId, MicroWorkflowType workflowType) {
+        Method method = methodService.findById(methodId);
+        if (method == null) {
+            throw new IllegalArgumentException("Method not found: " + methodId);
+        }
+        Test test = createCatalogTest(workflowType, method);
+
+        TestMethod link = new TestMethod();
+        link.setTestId(test.getId());
+        link.setMethodId(methodId);
+        link.setIsDefaultMethod(true);
+        link.setEffectiveDate(new Date(System.currentTimeMillis()));
+        link.setIsActive(IActionConstants.YES);
+        link.setSysUserId(defaultUserId());
+        testMethodService.linkMethod(link);
+        return test;
+    }
+
+    public Analysis createAnalysis(SampleItem sampleItem, Test test) {
+        Analysis analysis = new Analysis();
+        analysis.setSampleItem(sampleItem);
+        analysis.setTest(test);
+        analysis.setMethod(test.getMethod());
+        analysis.setAnalysisType("MANUAL");
+        analysis.setIsReportable(IActionConstants.YES);
+        analysis.setRevision("0");
+        analysis.setStartedDate(Timestamp.from(Instant.now()));
+        analysis.setStatusId(ensureAnalysisNotStartedStatus());
+        analysis.setFhirUuid(UUID.randomUUID());
+        analysis.setSysUserId(defaultUserId());
+        analysisService.insert(analysis);
+        return analysis;
+    }
+
+    private Test createCatalogTest(MicroWorkflowType workflowType, Method method) {
         String suffix = uniqueSuffix();
-        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        Test test = new Test();
         test.setName("MicroCatalogIT " + suffix);
         test.setDescription("MicroCatalogIT " + suffix);
         test.setIsActive(IActionConstants.YES);
@@ -214,6 +262,10 @@ public class MicrobiologyTestFixtures {
         test.setDomain("CLINICAL");
         test.setAntimicrobialResistance(true);
         test.setOrderable(true);
+        test.setCultureWorkflowType(workflowType == null ? null : workflowType.name());
+        if (method != null) {
+            test.setMethod(method);
+        }
         test.setSysUserId(defaultUserId());
         testService.insert(test);
         return test;

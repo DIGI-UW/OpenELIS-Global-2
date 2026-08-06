@@ -91,8 +91,8 @@ public class SamplePatientEntryFormLabelBindingTest {
     public void deserializesMicrobiologyOrderDetailFromSaveBody() throws Exception {
         String body = "{\"warning\":false,\"microbiologyOrderDetail\":{"
                 + "\"patientOrigin\":\"Emergency department\",\"numberOfSets\":2,"
-                + "\"clinicalHistory\":\"Fever\",\"antibioticExposure\":\"Ceftriaxone\","
-                + "\"criticalNotificationPreference\":\"Call attending\"}}";
+                + "\"clinicalHistory\":\"Fever\",\"antibioticExposure\":true,"
+                + "\"criticalNotificationPreference\":false}}";
 
         SamplePatientEntryForm form = JSON.readValue(body, SamplePatientEntryForm.class);
 
@@ -100,7 +100,7 @@ public class SamplePatientEntryFormLabelBindingTest {
         assertEquals("Emergency department", form.getMicrobiologyOrderDetail().patientOrigin);
         assertEquals(Integer.valueOf(2), form.getMicrobiologyOrderDetail().numberOfSets);
         assertEquals("Fever", form.getMicrobiologyOrderDetail().clinicalHistory);
-        assertEquals("Ceftriaxone", form.getMicrobiologyOrderDetail().antibioticExposure);
-        assertEquals("Call attending", form.getMicrobiologyOrderDetail().criticalNotificationPreference);
+        assertEquals(Boolean.TRUE, form.getMicrobiologyOrderDetail().antibioticExposure);
+        assertEquals(Boolean.FALSE, form.getMicrobiologyOrderDetail().criticalNotificationPreference);
     }
 }

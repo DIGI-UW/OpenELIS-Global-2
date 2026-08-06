@@ -52,8 +52,8 @@ public class MicroCaseOrderDetailServiceTest {
         request.patientOrigin = "Inpatient ward 3";
         request.numberOfSets = 2;
         request.clinicalHistory = "Fever, suspected sepsis";
-        request.antibioticExposure = "Ceftriaxone started yesterday";
-        request.criticalNotificationPreference = "Call attending immediately";
+        request.antibioticExposure = true;
+        request.criticalNotificationPreference = true;
 
         MicroCaseOrderDetail saved = service.saveOrderDetail("case-1", request, "1");
 
@@ -61,8 +61,8 @@ public class MicroCaseOrderDetailServiceTest {
         assertEquals("Inpatient ward 3", saved.getPatientOrigin());
         assertEquals(Integer.valueOf(2), saved.getNumberOfSets());
         assertEquals("Fever, suspected sepsis", saved.getClinicalHistory());
-        assertEquals("Ceftriaxone started yesterday", saved.getAntibioticExposure());
-        assertEquals("Call attending immediately", saved.getCriticalNotificationPreference());
+        assertEquals(Boolean.TRUE, saved.getAntibioticExposure());
+        assertEquals(Boolean.TRUE, saved.getCriticalNotificationPreference());
         assertNotNull(saved.getCreatedAt());
         verify(orderDetailDAO).insert(saved);
         verify(orderDetailDAO, never()).update(any(MicroCaseOrderDetail.class));
