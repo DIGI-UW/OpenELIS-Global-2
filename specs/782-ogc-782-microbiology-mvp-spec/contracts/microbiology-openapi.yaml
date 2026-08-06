@@ -1214,10 +1214,20 @@ components:
       properties:
         caseId:
           type: string
+        finalReleaseReady:
+          type: boolean
         blockers:
           type: array
           items:
             type: string
+        astRunsComplete:
+          type: integer
+        astRunsTotal:
+          type: integer
+        significantIsolatesAwaitingAstSetup:
+          type: integer
+        isolatesPendingIdentification:
+          type: integer
     WhonetReadinessRow:
       type: object
       properties:

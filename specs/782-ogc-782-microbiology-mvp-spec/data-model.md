@@ -495,6 +495,29 @@ Validation:
 
 - Filters and sorting must be stable for at least 200 in-flight seeded cases.
 
+### CaseReadiness
+
+Server-computed release gates and AST progress for one case.
+
+Fields:
+
+- `finalReleaseReady`
+- `blockers`
+- `astRunsComplete`
+- `astRunsTotal`
+- `significantIsolatesAwaitingAstSetup`
+- `isolatesPendingIdentification`
+
+Validation:
+
+- Only reviewed/accepted AST runs count as complete.
+- Invalidated and rerun-required historical attempts remain visible but do not
+  inflate the active-run denominator.
+- A confirmed clinically significant isolate with no active run counts as
+  awaiting setup.
+- Any isolate without confirmed organism identity counts as pending
+  identification and blocks final release with a named reason.
+
 ### WhonetReadiness
 
 Computed readiness result over finalized microbiology cases.
