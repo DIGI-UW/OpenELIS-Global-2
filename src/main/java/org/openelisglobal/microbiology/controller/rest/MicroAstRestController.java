@@ -3,7 +3,6 @@ package org.openelisglobal.microbiology.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
-import org.openelisglobal.microbiology.form.MicroAstAnalyzerResultRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstOverrideRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingForm;
@@ -12,8 +11,6 @@ import org.openelisglobal.microbiology.form.MicroAstRunAntibioticForm;
 import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
-import org.openelisglobal.microbiology.service.MicroAstAnalyzerReading;
-import org.openelisglobal.microbiology.service.MicroAstAnalyzerResultBatch;
 import org.openelisglobal.microbiology.service.MicroAstRunSetupCommand;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
@@ -84,23 +81,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
                 lotSelections(request.lotSelections), request.orderedAntibioticIds, request.awaitAnalyzerResults,
                 request.analyzerInstrumentId, request.analyzerCardId);
         return ResponseEntity.ok(toRunForm(astService.startRun(command, authenticatedUserId(httpRequest))));
-    }
-
-    @PostMapping("/runs/{runId}/analyzer-results")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MicroAstRunForm> receiveAnalyzerResults(@PathVariable String runId,
-            @RequestBody MicroAstAnalyzerResultRequestForm request, HttpServletRequest httpRequest) {
-        List<MicroAstAnalyzerReading> readings = request.readings.stream()
-                .map(reading -> new MicroAstAnalyzerReading(reading.antibioticId, reading.rawValue, reading.units,
-                        reading.instrumentInterpretation, reading.analyzerResultReference))
-                .toList();
-        MicroAstAnalyzerResultBatch batch = new MicroAstAnalyzerResultBatch(runId, request.sourceEventId,
-                request.analyzerInstrumentId, request.analyzerCardId, request.analyzerSoftwareVersion,
-                request.analyzerOrganismId, request.analyzerOrganismName, request.analyzerOrganismConfidence,
-                request.analyzerExpertFlags, request.instrumentQcReference, request.qcPassed, request.loadedAt,
-                request.completedAt, request.analyzerMessageCodes, readings);
-        return ResponseEntity
-                .ok(toRunFormWithReadings(astService.applyAnalyzerResults(batch, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{runId}/analyzer-flags/acknowledge")

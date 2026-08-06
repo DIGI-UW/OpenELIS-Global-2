@@ -765,6 +765,23 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void qcEventMovesAnAwaitingRunToAVisibleBlockedState() {
+        MicroAstRun run = awaitingAnalyzerRun();
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(runDAO.update(run)).thenReturn(run);
+
+        MicroAstRun failed = service.recordAnalyzerQcFailure("run-1", "qc-17", List.of("CONTROL_OUT_OF_RANGE"),
+                "event-qc-1", "7");
+
+        assertEquals(MicroAstRunStatus.QC_FAILED.name(), failed.getStatus());
+        assertEquals("FAILED", failed.getQcState());
+        assertEquals("qc-17", failed.getInstrumentQcReference());
+        assertEquals("CONTROL_OUT_OF_RANGE", failed.getAnalyzerMessageCodes());
+        assertEquals("event-qc-1", failed.getSourceEventId());
+    }
+
+    @Test
     public void selectingReportableAttemptClearsSiblingSelection() {
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate()));
         MicroAstRun original = reviewedRun("run-1");

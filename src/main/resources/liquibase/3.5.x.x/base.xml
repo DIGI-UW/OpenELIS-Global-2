@@ -437,4 +437,7 @@
   <!-- OGC-782 R1: analyzer AST lifecycle, provenance, and reading revisions -->
   <include relativeToChangelogFile="true" file="077-microbiology-ast-analyzer-lifecycle.xml"/>
 
+  <!-- OGC-782 R1: durable analyzer event reconciliation envelope -->
+  <include relativeToChangelogFile="true" file="078-analyzer-event-reconciliation.xml"/>
+
 </databaseChangeLog>
