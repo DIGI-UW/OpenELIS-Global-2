@@ -22,6 +22,14 @@ const inProgressRun = {
   technique: "VITEK_2",
   measurementType: "MIC",
   status: "IN_PROGRESS",
+  orderedAntibiotics: [
+    {
+      antibioticId: "abx-1",
+      displayOrder: 1,
+      tier: 1,
+      reportBehavior: "ALWAYS",
+    },
+  ],
   readings: [],
 };
 
@@ -415,6 +423,40 @@ describe("AstEntryPanel", () => {
         panelAdjustmentReason: "Urine-specific panel required",
       }),
     );
+  });
+
+  it("limits manual entry to the run's snapshotted ordered antibiotics", async () => {
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "GN-STD" }]),
+      getAstSetupForIsolate: vi.fn().mockResolvedValue({
+        isolateId: "iso-1",
+        orderedPanelId: "panel-1",
+        orderedPanelLabel: "GN-STD",
+        orderedPanelVersion: 3,
+        panelProvenance: "ORGANISM_DEFAULT",
+      }),
+      getAntibiotics: vi.fn().mockResolvedValue([
+        { id: "abx-1", label: "Ciprofloxacin" },
+        { id: "abx-2", label: "Gentamicin" },
+      ]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([inProgressRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["AST_REVIEW_REQUIRED"],
+      }),
+    };
+
+    renderPanel(service);
+
+    expect(
+      await screen.findByRole("option", { name: "Ciprofloxacin" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Gentamicin" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps AST write actions disabled when a final case is locked", async () => {

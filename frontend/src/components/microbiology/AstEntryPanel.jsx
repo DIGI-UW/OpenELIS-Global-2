@@ -180,9 +180,32 @@ const AstEntryPanel = ({
     );
   }, [runs, selectedRunId]);
   const currentReadings = currentRun?.readings || [];
+  const orderedAntibiotics = useMemo(() => {
+    if (!currentRun) {
+      return [];
+    }
+    if (!Array.isArray(currentRun.orderedAntibiotics)) {
+      return antibiotics;
+    }
+    return currentRun.orderedAntibiotics.map((ordered) => {
+      const antibiotic = antibiotics.find(
+        (candidate) => candidate.id === ordered.antibioticId,
+      );
+      return {
+        ...ordered,
+        id: ordered.antibioticId,
+        label: antibiotic?.label || ordered.antibioticId,
+      };
+    });
+  }, [antibiotics, currentRun]);
   const currentReading =
     currentReadings.find((reading) => reading.id === selectedReadingId) ||
     currentReadings[0];
+  const activeAntibioticId = orderedAntibiotics.some(
+    (antibiotic) => antibiotic.id === selectedAntibioticId,
+  )
+    ? selectedAntibioticId
+    : orderedAntibiotics[0]?.id || "";
 
   const readingHeaders = useMemo(
     () => [
@@ -343,7 +366,7 @@ const AstEntryPanel = ({
   const recordReading = () =>
     runOperation(() =>
       service.recordAstReading(currentRun.id, {
-        antibioticId: selectedAntibioticId,
+        antibioticId: activeAntibioticId,
         rawValue,
       }),
     );
@@ -618,12 +641,12 @@ const AstEntryPanel = ({
                     labelText={intl.formatMessage({
                       id: "microbiology.ast.antibiotic",
                     })}
-                    value={selectedAntibioticId}
+                    value={activeAntibioticId}
                     onChange={(event) =>
                       setSelectedAntibioticId(event.target.value)
                     }
                   >
-                    {antibiotics.map((antibiotic) => (
+                    {orderedAntibiotics.map((antibiotic) => (
                       <SelectItem
                         key={antibiotic.id}
                         value={antibiotic.id}
@@ -648,7 +671,7 @@ const AstEntryPanel = ({
                       busy ||
                       readOnly ||
                       isReviewed ||
-                      !selectedAntibioticId ||
+                      !activeAntibioticId ||
                       !rawValue.trim()
                     }
                   >

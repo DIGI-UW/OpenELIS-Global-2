@@ -26,5 +26,6 @@ public class MicroAstRunForm {
     public String startedBy;
     public Timestamp reviewedAt;
     public String reviewedBy;
+    public List<MicroAstRunAntibioticForm> orderedAntibiotics = new ArrayList<>();
     public List<MicroAstReadingForm> readings = new ArrayList<>();
 }
