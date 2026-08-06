@@ -284,6 +284,25 @@ export const closeCriticalCommunication = (communicationId, payload) =>
     );
   });
 
+export const getNceCategories = () =>
+  new Promise((resolve) => {
+    getFromOpenElisServer("/rest/nce/categories", resolve);
+  });
+
+export const getNceReportingUnits = () =>
+  new Promise((resolve) => {
+    getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", resolve);
+  });
+
+export const reportCaseNonconformance = (caseId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/nonconformances`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
 export const getReportProjection = (caseId) =>
   new Promise((resolve) => {
     getFromOpenElisServer(
@@ -415,6 +434,9 @@ const MicrobiologyService = {
   logCriticalCommunication,
   acknowledgeCriticalCommunication,
   closeCriticalCommunication,
+  getNceCategories,
+  getNceReportingUnits,
+  reportCaseNonconformance,
   getReportProjection,
   releasePreliminaryReport,
   releaseFinalReport,

@@ -22,6 +22,7 @@ import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
 import AstEntryPanel from "./AstEntryPanel";
 import CaseInoculationPanel from "./CaseInoculationPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
+import CaseNonconformancePanel from "./CaseNonconformancePanel";
 import ChangeWorkflowPanel from "./ChangeWorkflowPanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
@@ -384,6 +385,31 @@ const MicrobiologyCaseView = ({
     );
   };
 
+  const openNonconformance = (action) => {
+    history.push(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "nonconformance",
+        action,
+        targetType: "",
+        targetId: "",
+      }),
+    );
+  };
+
+  const completeNonconformance = () => {
+    loadCase({ showLoading: false });
+    history.replace(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "timeline",
+        action: "",
+        targetType: "",
+        targetId: "",
+      }),
+    );
+  };
+
   const focusedSection = routeState.section || "case-info";
   const focusedProgressIndex = Math.max(
     0,
@@ -510,6 +536,22 @@ const MicrobiologyCaseView = ({
             >
               {formatMicrobiologyEnum(caseDetail.stage, intl)}
             </Tag>
+            <Button
+              kind="ghost"
+              size="sm"
+              disabled={finalReleased}
+              onClick={() => openNonconformance("report-nce")}
+            >
+              {intl.formatMessage({ id: "microbiology.nce.report" })}
+            </Button>
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              disabled={finalReleased}
+              onClick={() => openNonconformance("mark-lost")}
+            >
+              {intl.formatMessage({ id: "microbiology.nce.markLost" })}
+            </Button>
             <Button
               kind="tertiary"
               size="sm"
@@ -690,6 +732,24 @@ const MicrobiologyCaseView = ({
                   onAddNote={addTimelineNote}
                   saving={saving}
                 />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.nce.sectionTitle",
+                })}
+                open={focusedSection === "nonconformance"}
+                onHeadingClick={() => selectSection("nonconformance")}
+              >
+                {routeState.section === "nonconformance" &&
+                  ["report-nce", "mark-lost"].includes(routeState.action) && (
+                    <CaseNonconformancePanel
+                      caseId={caseDetail.id}
+                      mode={routeState.action}
+                      service={service}
+                      onComplete={completeNonconformance}
+                      onCancel={() => selectSection("timeline")}
+                    />
+                  )}
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
