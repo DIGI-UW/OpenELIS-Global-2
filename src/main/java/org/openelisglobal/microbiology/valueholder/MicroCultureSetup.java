@@ -34,6 +34,15 @@ public class MicroCultureSetup extends BaseObject<String> {
     @Column(name = "incubation_defaults")
     private String incubationDefaults;
 
+    @Column(name = "incubation_hours")
+    private Integer incubationHours;
+
+    @Column(name = "subculture_at_hours")
+    private Integer subcultureAtHours;
+
+    @Column(name = "max_incubation_days")
+    private Integer maxIncubationDays;
+
     @Column(name = "atmosphere_defaults")
     private String atmosphereDefaults;
 
@@ -95,6 +104,30 @@ public class MicroCultureSetup extends BaseObject<String> {
 
     public void setIncubationDefaults(String incubationDefaults) {
         this.incubationDefaults = incubationDefaults;
+    }
+
+    public Integer getIncubationHours() {
+        return incubationHours;
+    }
+
+    public void setIncubationHours(Integer incubationHours) {
+        this.incubationHours = incubationHours;
+    }
+
+    public Integer getSubcultureAtHours() {
+        return subcultureAtHours;
+    }
+
+    public void setSubcultureAtHours(Integer subcultureAtHours) {
+        this.subcultureAtHours = subcultureAtHours;
+    }
+
+    public Integer getMaxIncubationDays() {
+        return maxIncubationDays;
+    }
+
+    public void setMaxIncubationDays(Integer maxIncubationDays) {
+        this.maxIncubationDays = maxIncubationDays;
     }
 
     public String getAtmosphereDefaults() {

@@ -17,6 +17,8 @@ public class MicroWorklistRowForm {
     public String stage;
     public String priority;
     public String dueAction;
+    public Integer incubationDay;
+    public Integer maxIncubationDays;
     public String urgency;
     public boolean needsAstReview;
     public boolean hasOpenCriticalCommunication;

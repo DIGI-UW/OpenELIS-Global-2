@@ -137,6 +137,10 @@ export const REFERENCE_DEFINITIONS = {
         key: "incubationDefaults",
         label: "microbiology.admin.field.incubation",
       },
+      {
+        key: "maxIncubationDays",
+        label: "microbiology.admin.field.maxIncubationDays",
+      },
     ],
     fields: [
       {
@@ -168,6 +172,27 @@ export const REFERENCE_DEFINITIONS = {
         key: "incubationDefaults",
         label: "microbiology.admin.field.incubation",
         type: "textarea",
+      },
+      {
+        key: "incubationHours",
+        label: "microbiology.admin.field.incubationHours",
+        type: "number",
+        min: 1,
+        max: 8760,
+      },
+      {
+        key: "subcultureAtHours",
+        label: "microbiology.admin.field.subcultureAtHours",
+        type: "number",
+        min: 1,
+        max: 8760,
+      },
+      {
+        key: "maxIncubationDays",
+        label: "microbiology.admin.field.maxIncubationDays",
+        type: "number",
+        min: 1,
+        max: 365,
       },
       {
         key: "atmosphereDefaults",

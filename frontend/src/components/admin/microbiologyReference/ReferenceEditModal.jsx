@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Checkbox,
   ComposedModal,
@@ -6,6 +6,7 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader,
+  NumberInput,
   Select,
   SelectItem,
   TextArea,
@@ -17,19 +18,17 @@ const emptyValue = (fields) =>
   fields.reduce(
     (value, field) => ({
       ...value,
-      [field.key]: field.type === "checkbox" ? true : field.defaultValue || "",
+      [field.key]:
+        field.type === "checkbox"
+          ? true
+          : field.type === "number"
+            ? (field.defaultValue ?? null)
+            : field.defaultValue || "",
     }),
     {},
   );
 
-const ReferenceEditModal = ({
-  open,
-  titleId,
-  fields,
-  value,
-  onClose,
-  onSave,
-}) => {
+const ReferenceEditModal = ({ titleId, fields, value, onClose, onSave }) => {
   const intl = useIntl();
   const initialValue = useMemo(
     () => ({ ...emptyValue(fields), ...(value || {}) }),
@@ -38,13 +37,6 @@ const ReferenceEditModal = ({
   const [draft, setDraft] = useState(initialValue);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      setDraft(initialValue);
-      setError("");
-    }
-  }, [initialValue, open]);
 
   const update = (key, next) =>
     setDraft((current) => ({ ...current, [key]: next }));
@@ -65,7 +57,7 @@ const ReferenceEditModal = ({
   };
 
   return (
-    <ComposedModal open={open} onClose={onClose} size="sm">
+    <ComposedModal open onClose={onClose} size="sm">
       <ModalHeader
         title={intl.formatMessage({ id: titleId })}
         closeModal={onClose}
@@ -139,6 +131,24 @@ const ReferenceEditModal = ({
                   labelText={label}
                   value={draft[field.key] || ""}
                   onChange={(event) => update(field.key, event.target.value)}
+                />
+              );
+            }
+            if (field.type === "number") {
+              return (
+                <NumberInput
+                  key={field.key}
+                  id={`microbiology-${field.key}`}
+                  label={label}
+                  value={draft[field.key] ?? ""}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step || 1}
+                  allowEmpty
+                  onChange={(event, state = {}) => {
+                    const next = state.value ?? event.target.value;
+                    update(field.key, next === "" ? null : Number(next));
+                  }}
                 />
               );
             }

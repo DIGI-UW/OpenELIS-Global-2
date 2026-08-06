@@ -28,11 +28,13 @@ import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
+import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 
@@ -148,6 +150,47 @@ public class MicrobiologyReferenceAdminServiceTest {
 
         assertEquals("method-1", service.getOptions("methods").get(0).id);
         assertEquals("Routine culture", service.getOptions("methods").get(0).label);
+    }
+
+    @Test
+    public void saveCultureSetupPersistsValidatedStructuredTimingOnMethodExtension() {
+        Method culture = new Method();
+        culture.setId("method-1");
+        culture.setMethodName("Routine blood culture");
+        when(methodService.findById("method-1")).thenReturn(culture);
+        when(cultureSetupDAO.findByMethodAndWorkflowType("method-1", "BACTERIOLOGY")).thenReturn(Optional.empty());
+        MicroCultureSetupAdminForm request = new MicroCultureSetupAdminForm();
+        request.methodId = "method-1";
+        request.name = "Routine blood culture";
+        request.workflowType = "BACTERIOLOGY";
+        request.incubationHours = 24;
+        request.subcultureAtHours = 48;
+        request.maxIncubationDays = 5;
+
+        MicroCultureSetupAdminForm saved = service.saveCultureSetup(null, request, "42");
+
+        ArgumentCaptor<MicroCultureSetup> captor = ArgumentCaptor.forClass(MicroCultureSetup.class);
+        verify(cultureSetupDAO).insert(captor.capture());
+        assertEquals(Integer.valueOf(24), captor.getValue().getIncubationHours());
+        assertEquals(Integer.valueOf(48), captor.getValue().getSubcultureAtHours());
+        assertEquals(Integer.valueOf(5), captor.getValue().getMaxIncubationDays());
+        assertEquals(Integer.valueOf(5), saved.maxIncubationDays);
+        assertEquals("42", captor.getValue().getLastUpdatedBy());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void saveCultureSetupRejectsNonPositiveMaxIncubationDays() {
+        Method culture = new Method();
+        culture.setId("method-1");
+        when(methodService.findById("method-1")).thenReturn(culture);
+        when(cultureSetupDAO.findByMethodAndWorkflowType("method-1", "BACTERIOLOGY")).thenReturn(Optional.empty());
+        MicroCultureSetupAdminForm request = new MicroCultureSetupAdminForm();
+        request.methodId = "method-1";
+        request.name = "Routine blood culture";
+        request.workflowType = "BACTERIOLOGY";
+        request.maxIncubationDays = 0;
+
+        service.saveCultureSetup(null, request, "42");
     }
 
     @Test

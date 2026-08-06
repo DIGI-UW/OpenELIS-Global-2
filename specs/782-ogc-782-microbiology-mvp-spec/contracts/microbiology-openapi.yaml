@@ -633,6 +633,16 @@ components:
           type: string
         dueAction:
           type: string
+        incubationDay:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Elapsed incubation day when both inoculation time and configured timing are available.
+        maxIncubationDays:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Configured maximum incubation days for the case Method and workflow.
         urgency:
           type: string
         priority:

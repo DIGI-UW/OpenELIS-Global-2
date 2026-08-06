@@ -253,4 +253,7 @@
   <!-- OGC-782 R1: positive culture stage and complete stage constraint -->
   <include relativeToChangelogFile="true" file="079-microbiology-positive-culture-stage.xml"/>
 
+  <!-- OGC-782 R1: structured Method-bound culture timing -->
+  <include relativeToChangelogFile="true" file="080-microbiology-culture-timing.xml"/>
+
 </databaseChangeLog>

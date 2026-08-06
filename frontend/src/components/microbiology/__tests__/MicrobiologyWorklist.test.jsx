@@ -139,6 +139,51 @@ describe("MicrobiologyWorklist", () => {
     expect(screen.getAllByText("Morgan Lee")).toHaveLength(2);
   });
 
+  it("shows day-aware incubation detail and the accurate no-timing fallback", async () => {
+    const service = {
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            caseId: "case-timed",
+            sampleItemId: "1001",
+            workflowType: "BACTERIOLOGY",
+            stage: "INCUBATING",
+            dueAction: "INCUBATING",
+            incubationDay: 2,
+            maxIncubationDays: 5,
+            urgency: "ROUTINE",
+            siblingWorkflows: [],
+          },
+          {
+            caseId: "case-fallback",
+            sampleItemId: "1002",
+            workflowType: "BACTERIOLOGY",
+            stage: "INCUBATING",
+            dueAction: "INCUBATING",
+            urgency: "ROUTINE",
+            siblingWorkflows: [],
+          },
+        ],
+        total: 2,
+        page: 1,
+        pageSize: 20,
+      }),
+    };
+
+    renderWorklist(service);
+
+    const timed = await screen.findByTestId(
+      "microbiology-worklist-row-case-timed",
+    );
+    const fallback = screen.getByTestId(
+      "microbiology-worklist-row-case-fallback",
+    );
+    expect(timed).toHaveTextContent("Incubating");
+    expect(timed).toHaveTextContent("Day 2 of 5");
+    expect(fallback).toHaveTextContent("Incubating");
+    expect(fallback).not.toHaveTextContent(/Day \d+ of \d+/);
+  });
+
   it("preserves worklist filters when opening a case", async () => {
     const user = userEvent.setup();
     const service = {

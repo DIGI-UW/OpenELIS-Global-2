@@ -7,6 +7,8 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
+import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
+import org.openelisglobal.microbiology.form.MicroWorklistInoculationContext;
 import org.openelisglobal.microbiology.form.MicroWorklistRecentActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistSpecimenContext;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -35,6 +37,12 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
             + "activity.activityType, activity.note from MicroCaseActivity activity "
             + "left join SystemUser user on user.id = activity.performedBy "
             + "where activity.caseId in (:caseIds) order by activity.occurredAt desc, activity.id desc";
+
+    static final String FIRST_INOCULATION_CONTEXT_HQL = "select inoculation.caseId, min(inoculation.occurredAt) "
+            + "from MicroCaseInoculation inoculation where inoculation.caseId in (:caseIds) group by inoculation.caseId";
+
+    static final String CULTURE_TIMING_CONTEXT_HQL = "select setup.methodId, setup.workflowType, setup.maxIncubationDays "
+            + "from MicroCultureSetup setup where setup.isActive = 'Y' and setup.methodId in (:methodIds)";
 
     public MicroWorklistContextDAOImpl() {
         super(MicroCase.class);
@@ -78,6 +86,33 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
         return query.list().stream()
                 .map(values -> new MicroWorklistRecentActivityContext(text(values[0]), (Timestamp) values[1],
                         text(values[2]), text(values[3]), text(values[4]), text(values[5]), text(values[6])))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroWorklistInoculationContext> getFirstInoculationContexts(List<String> caseIds) {
+        if (caseIds.isEmpty()) {
+            return List.of();
+        }
+        Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(FIRST_INOCULATION_CONTEXT_HQL,
+                Object[].class);
+        query.setParameterList("caseIds", caseIds);
+        return query.list().stream()
+                .map(values -> new MicroWorklistInoculationContext(text(values[0]), (Timestamp) values[1])).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroWorklistCultureTimingContext> getCultureTimingContexts(List<String> methodIds) {
+        if (methodIds.isEmpty()) {
+            return List.of();
+        }
+        Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(CULTURE_TIMING_CONTEXT_HQL,
+                Object[].class);
+        query.setParameterList("methodIds", methodIds);
+        return query.list().stream().map(
+                values -> new MicroWorklistCultureTimingContext(text(values[0]), text(values[1]), (Integer) values[2]))
                 .toList();
     }
 
