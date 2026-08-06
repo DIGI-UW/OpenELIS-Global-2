@@ -18,6 +18,8 @@ export const MICROBIOLOGY_CASE_ACTIONS = [
   "log-critical",
   "report-nce",
   "mark-lost",
+  "mark-positive",
+  "mark-no-growth",
 ];
 export const MICROBIOLOGY_CRITICAL_TARGET_TYPES = ["CASE", "ISOLATE"];
 
@@ -106,11 +108,13 @@ const toSearch = (state, caseState = {}) => {
   if (MICROBIOLOGY_CASE_SECTIONS.includes(caseState.section)) {
     params.set("section", caseState.section);
   }
-  if (caseState.section === "ast" && textValue(caseState.astRunId)) {
+  if (caseState.section === "ast") {
     if (textValue(caseState.astIsolateId)) {
       params.set("astIsolateId", textValue(caseState.astIsolateId));
     }
-    params.set("astRunId", textValue(caseState.astRunId));
+    if (textValue(caseState.astRunId)) {
+      params.set("astRunId", textValue(caseState.astRunId));
+    }
   }
   if (MICROBIOLOGY_CASE_ACTIONS.includes(caseState.action)) {
     params.set("action", caseState.action);
@@ -167,7 +171,7 @@ export const parseMicrobiologyCaseSearch = (search = "") => {
     astRunId:
       params.get("section") === "ast" ? textValue(params.get("astRunId")) : "",
     astIsolateId:
-      params.get("section") === "ast" && textValue(params.get("astRunId"))
+      params.get("section") === "ast"
         ? textValue(params.get("astIsolateId"))
         : "",
   };

@@ -106,7 +106,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             if (MicroCaseStage.INCUBATING.name().equals(row.stage)) {
                 summary.incubating++;
             }
-            if ("POSITIVE_SIGNAL".equals(row.stage)) {
+            if (MicroCaseStage.POSITIVE_SIGNAL.name().equals(row.stage)) {
                 summary.positiveSignals++;
             }
             if (MicroCaseStage.GROWTH_DETECTED.name().equals(row.stage)) {
@@ -211,7 +211,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             return MicroCaseStage.INCUBATING.name().equals(row.stage);
         }
         if ("positive".equals(status)) {
-            return "POSITIVE_SIGNAL".equals(row.stage);
+            return MicroCaseStage.POSITIVE_SIGNAL.name().equals(row.stage);
         }
         if ("growth".equals(status)) {
             return MicroCaseStage.GROWTH_DETECTED.name().equals(row.stage);
@@ -384,6 +384,9 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         }
         if (MicroCaseStage.RECEIVED.name().equals(microCase.getStage())) {
             return "SETUP";
+        }
+        if (MicroCaseStage.POSITIVE_SIGNAL.name().equals(microCase.getStage())) {
+            return "SUBCULTURE_GRAM_STAIN";
         }
         if (isolates.isEmpty()) {
             return "ISOLATE_ID";

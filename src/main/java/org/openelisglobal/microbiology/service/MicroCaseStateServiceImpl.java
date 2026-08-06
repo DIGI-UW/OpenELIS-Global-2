@@ -27,7 +27,8 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
         ALLOWED_TRANSITIONS.put(MicroCaseStage.SETUP_RECORDED,
                 EnumSet.of(MicroCaseStage.INCUBATING, MicroCaseStage.REJECTED));
         ALLOWED_TRANSITIONS.put(MicroCaseStage.INCUBATING,
-                EnumSet.of(MicroCaseStage.GROWTH_DETECTED, MicroCaseStage.NO_GROWTH_READY, MicroCaseStage.REJECTED));
+                EnumSet.of(MicroCaseStage.POSITIVE_SIGNAL, MicroCaseStage.NO_GROWTH_READY, MicroCaseStage.REJECTED));
+        ALLOWED_TRANSITIONS.put(MicroCaseStage.POSITIVE_SIGNAL, EnumSet.of(MicroCaseStage.GROWTH_DETECTED));
         ALLOWED_TRANSITIONS.put(MicroCaseStage.GROWTH_DETECTED, EnumSet.of(MicroCaseStage.IDENTIFICATION));
         ALLOWED_TRANSITIONS.put(MicroCaseStage.IDENTIFICATION, EnumSet.of(MicroCaseStage.AST_READY));
         ALLOWED_TRANSITIONS.put(MicroCaseStage.AST_READY, EnumSet.of(MicroCaseStage.AST_IN_PROGRESS));

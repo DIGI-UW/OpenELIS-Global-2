@@ -171,4 +171,19 @@ describe("MicrobiologyRoutes", () => {
       targetId: "",
     });
   });
+
+  it("keeps culture observation actions in canonical case state", () => {
+    expect(
+      getMicrobiologyCaseUrl("case-1", {
+        section: "setup",
+        action: "mark-positive",
+      }),
+    ).toBe("/Microbiology/cases/case-1?section=setup&action=mark-positive");
+    expect(
+      parseMicrobiologyCaseSearch("?section=setup&action=mark-no-growth"),
+    ).toMatchObject({
+      section: "setup",
+      action: "mark-no-growth",
+    });
+  });
 });

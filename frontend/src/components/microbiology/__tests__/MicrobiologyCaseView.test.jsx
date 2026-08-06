@@ -107,6 +107,61 @@ const getAccordionButton = (name) => {
 };
 
 describe("MicrobiologyCaseView", () => {
+  it.each([
+    {
+      action: "mark-positive",
+      buttonName: "Confirm positive signal",
+      nextStage: "POSITIVE_SIGNAL",
+      note: "Culture marked positive",
+    },
+    {
+      action: "mark-no-growth",
+      buttonName: "Confirm no growth",
+      nextStage: "NO_GROWTH_READY",
+      note: "Incubation complete with no growth",
+    },
+  ])(
+    "confirms $action from the case and clears the routed action",
+    async ({ action, buttonName, nextStage, note }) => {
+      const user = userEvent.setup();
+      const updatedCase = {
+        ...caseDetail,
+        stage: nextStage,
+      };
+      const service = {
+        ...astServiceStubs,
+        getCaseDetail: vi.fn().mockResolvedValue({
+          ...caseDetail,
+          stage: "INCUBATING",
+        }),
+        recordCaseActivity: vi.fn().mockResolvedValue(updatedCase),
+        createIsolate: vi.fn(),
+      };
+
+      renderCase(
+        service,
+        `/Microbiology/cases/case-1?section=setup&action=${action}`,
+      );
+
+      await user.click(await screen.findByRole("button", { name: buttonName }));
+
+      await waitFor(() =>
+        expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
+          nextStage,
+          note,
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("microbiology-current-url"),
+        ).toHaveTextContent("/Microbiology/cases/case-1?section=setup"),
+      );
+      expect(
+        screen.getByTestId("microbiology-current-url"),
+      ).not.toHaveTextContent("action=");
+    },
+  );
+
   it("records primary inoculation with a service-managed timeline and lot", async () => {
     const user = userEvent.setup();
     const requirement = {

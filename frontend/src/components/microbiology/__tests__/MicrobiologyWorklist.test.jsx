@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -89,6 +89,7 @@ describe("MicrobiologyWorklist", () => {
   });
 
   it("preserves worklist filters when opening a case", async () => {
+    const user = userEvent.setup();
     const service = {
       getWorklistRows: vi.fn().mockResolvedValue({
         rows: [
@@ -116,7 +117,8 @@ describe("MicrobiologyWorklist", () => {
     );
 
     await screen.findByRole("heading", { name: "Microbiology worklist" });
-    fireEvent.click(screen.getByRole("button", { name: "Open case" }));
+    await user.click(screen.getByRole("button", { name: "Row actions" }));
+    await user.click(await screen.findByText("Open case"));
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
@@ -341,10 +343,49 @@ describe("MicrobiologyWorklist", () => {
     expect(row).toHaveTextContent("GN-STD");
     expect(row).toHaveTextContent("Results In");
 
-    await user.click(screen.getByRole("button", { name: "Open case" }));
+    await user.click(screen.getByRole("button", { name: "Row actions" }));
+    await user.click(await screen.findByText("Open case"));
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
         "/Microbiology/cases/case-1?grain=ast&section=ast&astIsolateId=isolate-1&astRunId=run-1",
+      ),
+    );
+  });
+
+  it("navigates culture row actions into the case without mutating the queue", async () => {
+    const user = userEvent.setup();
+    const service = {
+      recordCaseActivity: vi.fn(),
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            rowId: "case-1",
+            caseId: "case-1",
+            sampleItemId: "1001",
+            workflowType: "BACTERIOLOGY",
+            stage: "INCUBATING",
+            dueAction: "INCUBATING",
+            urgency: "ROUTINE",
+            siblingWorkflows: [],
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+    };
+
+    renderWorklist(service, "/Microbiology/worklist?status=incubating");
+
+    await user.click(
+      await screen.findByRole("button", { name: "Row actions" }),
+    );
+    await user.click(await screen.findByText("Mark positive"));
+
+    expect(service.recordCaseActivity).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?status=incubating&section=setup&action=mark-positive",
       ),
     );
   });

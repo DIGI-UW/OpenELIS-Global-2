@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="079-microbiology-positive-culture-stage" author="OGC-782">
+        <sql>
+            ALTER TABLE clinlims.micro_case DROP CONSTRAINT micro_case_stage_chk;
+            ALTER TABLE clinlims.micro_case
+            ADD CONSTRAINT micro_case_stage_chk
+            CHECK (stage IN (
+                'RECEIVED', 'SETUP_RECORDED', 'INCUBATING', 'POSITIVE_SIGNAL',
+                'GROWTH_DETECTED', 'NO_GROWTH_READY', 'IDENTIFICATION', 'AST_READY',
+                'AST_IN_PROGRESS', 'REVIEW_READY', 'PRELIM_RELEASED', 'FINAL_RELEASED',
+                'AMENDED', 'REJECTED', 'LOST_SPECIMEN', 'LOST_SPECIMEN_POSITIVE'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.micro_case DROP CONSTRAINT micro_case_stage_chk;
+                ALTER TABLE clinlims.micro_case
+                ADD CONSTRAINT micro_case_stage_chk
+                CHECK (stage IN (
+                    'RECEIVED', 'SETUP_RECORDED', 'INCUBATING', 'GROWTH_DETECTED',
+                    'NO_GROWTH_READY', 'IDENTIFICATION', 'AST_READY', 'AST_IN_PROGRESS',
+                    'REVIEW_READY', 'PRELIM_RELEASED', 'FINAL_RELEASED', 'AMENDED', 'REJECTED'));
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
