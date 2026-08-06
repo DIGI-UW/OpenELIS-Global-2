@@ -15,6 +15,7 @@ import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
+import org.openelisglobal.microbiology.service.MicroCaseWorkflowService;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
@@ -37,7 +38,8 @@ public class MicroCaseLookupRestControllerTest {
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service, accessService,
                 userModuleService, org.mockito.Mockito.mock(MicroCaseStateService.class),
-                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCasesForSampleItem("1001", request);
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class),
+                org.mockito.Mockito.mock(MicroCaseWorkflowService.class)).getCasesForSampleItem("1001", request);
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(2, response.getBody().size());
@@ -56,7 +58,8 @@ public class MicroCaseLookupRestControllerTest {
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service, accessService,
                 userModuleService, org.mockito.Mockito.mock(MicroCaseStateService.class),
-                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCasesForSampleItem("1001", request);
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class),
+                org.mockito.Mockito.mock(MicroCaseWorkflowService.class)).getCasesForSampleItem("1001", request);
 
         assertEquals(403, response.getStatusCode().value());
         verify(service, never()).getSiblingCases("1001");

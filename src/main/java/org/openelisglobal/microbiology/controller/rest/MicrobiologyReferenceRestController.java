@@ -9,6 +9,7 @@ import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
@@ -67,6 +68,21 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         List<MicroReferenceOptionForm> forms = new ArrayList<>();
         for (MicroBreakpointStandard standard : breakpointService.getActiveStandards()) {
             forms.add(toStandardForm(standard));
+        }
+        return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/culture-methods")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getCultureMethods(@RequestParam String workflowType) {
+        List<MicroReferenceOptionForm> forms = new ArrayList<>();
+        for (MicroCultureSetup setup : referenceService
+                .getActiveCultureSetups(MicroWorkflowType.valueOf(workflowType))) {
+            MicroReferenceOptionForm form = new MicroReferenceOptionForm();
+            form.id = setup.getMethodId();
+            form.label = setup.getName();
+            form.code = setup.getWorkflowType();
+            forms.add(form);
         }
         return ResponseEntity.ok(forms);
     }

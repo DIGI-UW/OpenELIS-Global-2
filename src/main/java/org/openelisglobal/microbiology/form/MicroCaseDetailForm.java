@@ -21,7 +21,9 @@ public class MicroCaseDetailForm {
     public Timestamp closedAt;
     public String closedBy;
     public String finalReleaseState;
+    public boolean workflowChangeRequiresConfirmation;
     public MicroCaseOrderDetailForm orderDetail;
     public List<MicroCaseActivityForm> activities = new ArrayList<>();
     public List<MicroIsolateForm> isolates = new ArrayList<>();
+    public List<MicroCaseLookupForm> siblingCases = new ArrayList<>();
 }

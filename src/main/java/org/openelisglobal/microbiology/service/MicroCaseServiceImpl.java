@@ -8,6 +8,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseActivityForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
+import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailForm;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -108,8 +109,16 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         for (MicroCaseActivity activity : activityDAO.getByCaseId(caseId)) {
             form.activities.add(toActivityForm(activity));
         }
-        for (MicroIsolate isolate : isolateDAO.getByCaseId(caseId)) {
+        List<MicroIsolate> isolates = isolateDAO.getByCaseId(caseId);
+        for (MicroIsolate isolate : isolates) {
             form.isolates.add(toIsolateForm(isolate));
+        }
+        form.workflowChangeRequiresConfirmation = !MicroCaseStage.RECEIVED.name().equals(microCase.getStage())
+                || !isolates.isEmpty();
+        for (MicroCase sibling : caseDAO.getBySampleItem(microCase.getSampleItemId())) {
+            if (!microCase.getId().equals(sibling.getId())) {
+                form.siblingCases.add(toLookupForm(sibling));
+            }
         }
         MicroCaseOrderDetail orderDetail = orderDetailDAO.getByCaseId(caseId);
         if (orderDetail != null) {
@@ -211,6 +220,16 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         form.significance = isolate.getSignificance();
         form.identificationStatus = isolate.getIdentificationStatus();
         form.createdAt = isolate.getCreatedAt();
+        return form;
+    }
+
+    private MicroCaseLookupForm toLookupForm(MicroCase microCase) {
+        MicroCaseLookupForm form = new MicroCaseLookupForm();
+        form.id = microCase.getId();
+        form.sampleItemId = microCase.getSampleItemId();
+        form.workflowType = microCase.getWorkflowType();
+        form.stage = microCase.getStage();
+        form.priority = microCase.getPriority();
         return form;
     }
 }

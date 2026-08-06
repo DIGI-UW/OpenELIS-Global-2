@@ -78,6 +78,31 @@ export const getBreakpointStandards = () =>
     );
   });
 
+export const getCultureMethods = (workflowType) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/reference/culture-methods?workflowType=${encodeURIComponent(
+        workflowType,
+      )}`,
+      resolve,
+    );
+  });
+
+export const changeCaseWorkflow = (caseId, payload) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/workflow`,
+      JSON.stringify(payload),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
 export const getAstRunsForIsolate = (isolateId) =>
   new Promise((resolve) => {
     getFromOpenElisServer(
@@ -337,6 +362,8 @@ const MicrobiologyService = {
   getAntibiotics,
   getOrganisms,
   getBreakpointStandards,
+  getCultureMethods,
+  changeCaseWorkflow,
   getAstRunsForIsolate,
   startAstRun,
   startRepeatAstRun,

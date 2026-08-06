@@ -79,7 +79,7 @@ describe("MicrobiologyOrderEntrySection", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Bacteriology")).toBeInTheDocument();
     expect(
-      screen.getByRole("combobox", { name: "Culture method" }),
+      screen.getByRole("combobox", { name: "Culture Method" }),
     ).toHaveValue("Blood Culture Standard");
     expect(
       screen.getByRole("spinbutton", { name: "Number of sets" }),
