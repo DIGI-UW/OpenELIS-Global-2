@@ -307,6 +307,16 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
         if (MicroIsolateIdentificationStatus.PENDING.name().equals(isolate.getIdentificationStatus())) {
             return null;
         }
+        if (!MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())) {
+            if (!hasText(isolate.getGramStain())) {
+                return null;
+            }
+            String workup = "Gram stain: " + isolate.getGramStain().trim();
+            if (hasText(isolate.getColonyMorphology())) {
+                workup += "; Colony morphology: " + isolate.getColonyMorphology().trim();
+            }
+            return workup;
+        }
         if (hasText(isolate.getOrganismId())) {
             MicroOrganism organism = organismDAO.get(isolate.getOrganismId()).orElse(null);
             if (organism != null && hasText(organism.getDisplayName())) {

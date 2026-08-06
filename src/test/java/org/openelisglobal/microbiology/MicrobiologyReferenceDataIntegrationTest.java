@@ -46,6 +46,7 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
@@ -258,8 +259,11 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     public void finalReleaseAppearsInTheStandardPatientReportWithReviewedSirResults() throws Exception {
         String performedBy = fixtures.defaultUserId();
         MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(scenarioRequest("MVP"), performedBy);
-        MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "ISO-1", null, "Escherichia coli",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
+        MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
+        isolateService.updateIdentification(isolate.getId(), scenario.organismId, "Escherichia coli",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "MALDI_TOF", new BigDecimal("99.5"), performedBy);
         MicroBreakpointStandard standard = breakpointService.getActiveStandard("CLSI", "2026");
         String panelId = referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
                 .filter(panel -> "Gram negative AST panel (UAT)".equals(panel.getName())).findFirst().orElseThrow()

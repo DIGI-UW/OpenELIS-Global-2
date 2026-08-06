@@ -226,13 +226,15 @@ public class MicrobiologyUatScenarioService {
         form.analysisId = analysis.getId();
         form.reportableTestAnalyteId = reportableTestAnalyte.getId();
         form.methodId = method.getId();
-        if (referenceAdminData != null) {
-            form.organismId = referenceAdminData.organismId();
-            form.antibioticId = referenceAdminData.antibioticId();
-            form.astPanelId = referenceAdminData.astPanelId();
-            form.activeBreakpointStandardId = referenceAdminData.activeStandardId();
-            form.loadedBreakpointStandardId = referenceAdminData.loadedStandardId();
-        }
+        form.organismId = referenceAdminData == null ? astReferenceData.organism().getId()
+                : referenceAdminData.organismId();
+        form.antibioticId = referenceAdminData == null ? astReferenceData.antibiotic().getId()
+                : referenceAdminData.antibioticId();
+        form.astPanelId = referenceAdminData == null ? astReferenceData.panel().getId()
+                : referenceAdminData.astPanelId();
+        form.activeBreakpointStandardId = referenceAdminData == null ? astReferenceData.standard().getId()
+                : referenceAdminData.activeStandardId();
+        form.loadedBreakpointStandardId = referenceAdminData == null ? null : referenceAdminData.loadedStandardId();
         form.unmappedOrganismId = unmappedOrganism == null ? null : unmappedOrganism.getId();
         return form;
     }
@@ -430,12 +432,14 @@ public class MicrobiologyUatScenarioService {
                 "GRAM_NEGATIVE");
         configurationService.getOrCreatePanelAntibiotic(panel.getId(), ciprofloxacin.getId(), 1);
         configurationService.getOrCreatePanelAntibiotic(panel.getId(), gentamicin.getId(), 2);
+        MicroOrganism organism = configurationService.getOrCreateOrganism("Escherichia coli (UAT)", "ECOUAT",
+                panel.getId());
 
         MicroBreakpointStandard standard = configurationService.getOrCreateBreakpointStandard("CLSI", "2026",
                 new Date(System.currentTimeMillis()));
         configurationService.getOrCreateBreakpointRule(micBreakpointRule(standard.getId(), ciprofloxacin.getId()));
         configurationService.getOrCreateBreakpointRule(micBreakpointRule(standard.getId(), gentamicin.getId()));
-        return new AstReferenceData(panel, standard);
+        return new AstReferenceData(organism, ciprofloxacin, panel, standard);
     }
 
     private ReferenceAdminData createReferenceAdminData(AstReferenceData astReferenceData, String performedBy) {
@@ -795,7 +799,8 @@ public class MicrobiologyUatScenarioService {
         return uuid.toString().replace("-", "").substring(0, 10).toUpperCase(Locale.ROOT);
     }
 
-    private record AstReferenceData(MicroAstPanel panel, MicroBreakpointStandard standard) {
+    private record AstReferenceData(MicroOrganism organism, MicroAntibiotic antibiotic, MicroAstPanel panel,
+            MicroBreakpointStandard standard) {
     }
 
     private record ReferenceAdminData(String organismId, String antibioticId, String astPanelId,

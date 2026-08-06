@@ -226,4 +226,7 @@
   <!-- OGC-782 R1: inoculation records and subculture lineage -->
   <include relativeToChangelogFile="true" file="070-microbiology-inoculation-lineage.xml"/>
 
+  <!-- OGC-782 R1: two-pass isolate workup -->
+  <include relativeToChangelogFile="true" file="071-microbiology-isolate-workup.xml"/>
+
 </databaseChangeLog>

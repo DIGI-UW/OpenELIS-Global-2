@@ -119,14 +119,17 @@ public class MicroCaseRestControllerTest {
         isolate.setId("iso-1");
         isolate.setCaseId("case-1");
         isolate.setIsolateLabel("ISO-1");
-        isolate.setPreliminaryOrganismText("Escherichia coli");
+        isolate.setGramStain("Gram negative rods");
+        isolate.setColonyMorphology("Lactose fermenting colonies");
         isolate.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
-        when(isolateService.createIsolate(eq("case-1"), eq("ISO-1"), eq(null), eq("Escherichia coli"),
-                eq(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT), eq("42"))).thenReturn(isolate);
+        when(isolateService.createIsolate(eq("case-1"), eq("ISO-1"), eq("Gram negative rods"),
+                eq("Lactose fermenting colonies"), eq(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT), eq("42")))
+                .thenReturn(isolate);
         MicroIsolateRequestForm request = new MicroIsolateRequestForm();
         request.caseId = "case-1";
         request.isolateLabel = "ISO-1";
-        request.preliminaryOrganismText = "Escherichia coli";
+        request.gramStain = "Gram negative rods";
+        request.colonyMorphology = "Lactose fermenting colonies";
         request.significance = MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name();
 
         ResponseEntity<MicroIsolateForm> response = new MicroIsolateRestController(isolateService,

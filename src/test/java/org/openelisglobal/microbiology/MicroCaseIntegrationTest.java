@@ -14,6 +14,7 @@ import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,8 +68,12 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
                 fixtures.defaultUserId());
         stateService.advanceStage(microCase.getId(), MicroCaseStage.SETUP_RECORDED, fixtures.defaultUserId(),
                 "setup complete");
-        isolateService.createIsolate(microCase.getId(), "ISO-1", referenceData.organism().getId(),
+        var isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
+        isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
                 referenceData.organism().getDisplayName(), MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new java.math.BigDecimal("99.5"),
                 fixtures.defaultUserId());
 
         MicroCaseDetailForm detail = caseService.getCaseDetail(microCase.getId());

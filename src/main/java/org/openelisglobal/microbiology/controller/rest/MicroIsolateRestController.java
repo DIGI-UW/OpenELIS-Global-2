@@ -38,8 +38,8 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroIsolateForm> createIsolate(@RequestBody MicroIsolateRequestForm request,
             HttpServletRequest httpRequest) {
-        MicroIsolate isolate = isolateService.createIsolate(request.caseId, request.isolateLabel, request.organismId,
-                request.preliminaryOrganismText, significance(request.significance), authenticatedUserId(httpRequest));
+        MicroIsolate isolate = isolateService.createIsolate(request.caseId, request.isolateLabel, request.gramStain,
+                request.colonyMorphology, significance(request.significance), authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toForm(isolate));
     }
 
@@ -49,8 +49,8 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
             @RequestBody MicroIsolateRequestForm request, HttpServletRequest httpRequest) {
         MicroIsolate isolate = isolateService.updateIdentification(isolateId, request.organismId,
                 request.preliminaryOrganismText, significance(request.significance),
-                identificationStatus(request.identificationStatus), request.identificationReason,
-                authenticatedUserId(httpRequest));
+                identificationStatus(request.identificationStatus), request.identificationMethod,
+                request.identificationConfidence, request.identificationReason, authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toForm(isolate));
     }
 
@@ -82,6 +82,10 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
         form.isolateLabel = isolate.getIsolateLabel();
         form.organismId = isolate.getOrganismId();
         form.preliminaryOrganismText = isolate.getPreliminaryOrganismText();
+        form.gramStain = isolate.getGramStain();
+        form.colonyMorphology = isolate.getColonyMorphology();
+        form.identificationMethod = isolate.getIdentificationMethod();
+        form.identificationConfidence = isolate.getIdentificationConfidence();
         form.significance = isolate.getSignificance();
         form.identificationStatus = isolate.getIdentificationStatus();
         form.createdAt = isolate.getCreatedAt();
@@ -98,10 +102,14 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
         form.previousOrganismText = event.getPreviousOrganismText();
         form.previousSignificance = event.getPreviousSignificance();
         form.previousIdentificationStatus = event.getPreviousIdentificationStatus();
+        form.previousIdentificationMethod = event.getPreviousIdentificationMethod();
+        form.previousIdentificationConfidence = event.getPreviousIdentificationConfidence();
         form.newOrganismId = event.getNewOrganismId();
         form.newOrganismText = event.getNewOrganismText();
         form.newSignificance = event.getNewSignificance();
         form.newIdentificationStatus = event.getNewIdentificationStatus();
+        form.newIdentificationMethod = event.getNewIdentificationMethod();
+        form.newIdentificationConfidence = event.getNewIdentificationConfidence();
         form.reason = event.getReason();
         form.changedAt = event.getChangedAt();
         form.changedBy = event.getChangedBy();

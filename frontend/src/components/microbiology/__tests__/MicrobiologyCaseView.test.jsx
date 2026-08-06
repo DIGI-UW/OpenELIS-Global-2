@@ -318,9 +318,10 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByRole("heading", { name: "Microbiology case" }),
     ).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
     await user.type(
-      screen.getByLabelText("Preliminary organism"),
-      "Escherichia coli",
+      screen.getByLabelText("Colony morphology"),
+      "Lactose fermenting colonies",
     );
     await user.click(screen.getByRole("button", { name: "Create isolate" }));
 
@@ -328,7 +329,8 @@ describe("MicrobiologyCaseView", () => {
       expect(service.createIsolate).toHaveBeenCalledWith({
         caseId: "case-1",
         isolateLabel: "ISO-1",
-        preliminaryOrganismText: "Escherichia coli",
+        gramStain: "Gram negative rods",
+        colonyMorphology: "Lactose fermenting colonies",
         significance: "CLINICALLY_SIGNIFICANT",
       }),
     );
@@ -437,9 +439,7 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByText("Final case is read-only"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Update identification" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Edit isolate" })).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Create isolate" }),
     ).toBeDisabled();

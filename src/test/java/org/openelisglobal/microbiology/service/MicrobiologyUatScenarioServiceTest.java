@@ -513,6 +513,9 @@ public class MicrobiologyUatScenarioServiceTest {
         when(configurationService.getOrCreateAntibiotic("Gentamicin (UAT)", "GENUAT", "Aminoglycoside"))
                 .thenReturn(gentamicin);
         when(configurationService.getOrCreateAstPanel(anyString(), anyString(), anyString())).thenReturn(panel);
+        MicroOrganism organism = new MicroOrganism();
+        organism.setId("organism-1");
+        when(configurationService.getOrCreateOrganism(anyString(), anyString(), anyString())).thenReturn(organism);
         when(configurationService.getOrCreateBreakpointStandard(anyString(), anyString(), any())).thenReturn(standard);
 
         when(methodService.getMethods(anyString())).thenReturn(List.of(method));

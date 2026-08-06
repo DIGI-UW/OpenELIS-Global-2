@@ -262,6 +262,26 @@ public class MicroReportProjectionServiceTest {
     }
 
     @Test
+    public void preliminaryReleaseProjectsGramStainBeforeOrganismIdentification() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.IDENTIFICATION);
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setIsolateLabel("Isolate A");
+        isolate.setGramStain("Gram negative rods");
+        isolate.setColonyMorphology("Lactose fermenting colonies");
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.PRELIMINARY.name());
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+
+        MicroReportProjectionResult result = service.releasePreliminary("case-1", "9");
+
+        assertEquals("Isolate A: Gram stain: Gram negative rods; Colony morphology: Lactose fermenting colonies",
+                result.getContent());
+        assertTrue(result.hasReportableContent());
+    }
+
+    @Test
     public void multipleReviewedAttemptsRequireOneSelectionAndProjectOnlyThatRun() {
         MicroCase microCase = microCase("case-1", MicroCaseStage.REVIEW_READY);
         MicroIsolate isolate = isolate("iso-1");

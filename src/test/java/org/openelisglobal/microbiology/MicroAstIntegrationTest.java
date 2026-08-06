@@ -21,6 +21,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,9 +60,10 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         AlternativeBreakpointData alternative = fixtures.createAlternativeBreakpoint(referenceData);
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
                 fixtures.defaultUserId());
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
-                referenceData.organism().getId(), referenceData.organism().getDisplayName(),
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
+        identify(isolate);
 
         MicroAstRun defaultRun = astService.startRun(isolate.getId(), referenceData.panel().getId(),
                 fixtures.defaultUserId());
@@ -82,9 +84,10 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     public void astRunStoresReadingsInterpretationOverrideAndReview() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
                 fixtures.defaultUserId());
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
-                referenceData.organism().getId(), referenceData.organism().getDisplayName(),
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
+        identify(isolate);
 
         MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(), fixtures.defaultUserId());
         MicroAstReading reading = astService.recordReading(run.getId(), referenceData.antibiotic().getId(),
@@ -103,9 +106,10 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     public void repeatAttemptPersistsProvenanceAndExplicitReportableSelection() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
                 fixtures.defaultUserId());
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
-                referenceData.organism().getId(), referenceData.organism().getDisplayName(),
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
+        identify(isolate);
         MicroAstRun original = astService.startRun(isolate.getId(), referenceData.panel().getId(),
                 fixtures.defaultUserId());
         astService.recordReading(original.getId(), referenceData.antibiotic().getId(), MicroAstMethod.MIC,
@@ -130,5 +134,12 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(true, astService.selectReportableRun(original.getId(), fixtures.defaultUserId()).isReportable());
         assertEquals(true, astService.selectReportableRun(repeat.getId(), fixtures.defaultUserId()).isReportable());
         assertEquals(2, astService.getRunsForIsolate(isolate.getId()).size());
+    }
+
+    private void identify(MicroIsolate isolate) {
+        isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
+                referenceData.organism().getDisplayName(), MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"),
+                fixtures.defaultUserId());
     }
 }

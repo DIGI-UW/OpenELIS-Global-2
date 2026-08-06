@@ -217,6 +217,10 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         form.isolateLabel = isolate.getIsolateLabel();
         form.organismId = isolate.getOrganismId();
         form.preliminaryOrganismText = isolate.getPreliminaryOrganismText();
+        form.gramStain = isolate.getGramStain();
+        form.colonyMorphology = isolate.getColonyMorphology();
+        form.identificationMethod = isolate.getIdentificationMethod();
+        form.identificationConfidence = isolate.getIdentificationConfidence();
         form.significance = isolate.getSignificance();
         form.identificationStatus = isolate.getIdentificationStatus();
         form.createdAt = isolate.getCreatedAt();

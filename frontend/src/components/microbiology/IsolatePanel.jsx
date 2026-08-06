@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Button,
+  NumberInput,
   Select,
   SelectItem,
   Tag,
@@ -20,7 +21,12 @@ const SIGNIFICANCE_OPTIONS = [
   { value: "CONTAMINANT", labelId: "microbiology.isolate.contaminant" },
   { value: "NORMAL_FLORA", labelId: "microbiology.isolate.normalFlora" },
 ];
-const IDENTIFICATION_STATUS_OPTIONS = ["PRELIMINARY", "CONFIRMED"];
+const IDENTIFICATION_METHOD_OPTIONS = [
+  "MALDI_TOF",
+  "VITEK_2",
+  "MANUAL_BIOCHEMISTRY",
+  "PCR",
+];
 
 const IsolatePanel = ({
   caseId,
@@ -34,11 +40,14 @@ const IsolatePanel = ({
 }) => {
   const intl = useIntl();
   const [isolateLabel, setIsolateLabel] = useState("ISO-1");
+  const [gramStain, setGramStain] = useState("");
+  const [colonyMorphology, setColonyMorphology] = useState("");
   const [organismId, setOrganismId] = useState("");
   const [preliminaryOrganismText, setPreliminaryOrganismText] = useState("");
   const [significance, setSignificance] = useState("CLINICALLY_SIGNIFICANT");
-  const [identificationStatus, setIdentificationStatus] =
-    useState("PRELIMINARY");
+  const [identificationMethod, setIdentificationMethod] = useState("");
+  const [identificationConfidence, setIdentificationConfidence] =
+    useState(99.5);
   const [editingIsolateId, setEditingIsolateId] = useState("");
   const [identificationReason, setIdentificationReason] = useState("");
   const [organisms, setOrganisms] = useState([]);
@@ -94,10 +103,13 @@ const IsolatePanel = ({
   const resetForm = () => {
     setEditingIsolateId("");
     setIsolateLabel("ISO-1");
+    setGramStain("");
+    setColonyMorphology("");
     setOrganismId("");
     setPreliminaryOrganismText("");
     setSignificance("CLINICALLY_SIGNIFICANT");
-    setIdentificationStatus("PRELIMINARY");
+    setIdentificationMethod("");
+    setIdentificationConfidence(99.5);
     setIdentificationReason("");
   };
 
@@ -105,18 +117,19 @@ const IsolatePanel = ({
     const payload = {
       caseId,
       isolateLabel,
-      preliminaryOrganismText,
+      gramStain,
+      colonyMorphology,
       significance,
     };
-    if (organismId) {
-      payload.organismId = organismId;
-    }
     if (editingIsolateId) {
       onUpdateIdentification(editingIsolateId, {
         organismId,
-        preliminaryOrganismText,
+        preliminaryOrganismText:
+          organismLabels[organismId] || preliminaryOrganismText,
         significance,
-        identificationStatus,
+        identificationStatus: "CONFIRMED",
+        identificationMethod,
+        identificationConfidence: Number(identificationConfidence),
         ...(amendmentOpen
           ? { identificationReason: identificationReason.trim() }
           : {}),
@@ -130,17 +143,24 @@ const IsolatePanel = ({
   const editIsolate = (isolate) => {
     setEditingIsolateId(isolate.id);
     setIsolateLabel(isolate.isolateLabel);
+    setGramStain(isolate.gramStain || "");
+    setColonyMorphology(isolate.colonyMorphology || "");
     setOrganismId(isolate.organismId || "");
     setPreliminaryOrganismText(isolate.preliminaryOrganismText || "");
     setSignificance(isolate.significance || "UNKNOWN");
-    setIdentificationStatus(isolate.identificationStatus || "PRELIMINARY");
+    setIdentificationMethod(isolate.identificationMethod || "");
+    setIdentificationConfidence(isolate.identificationConfidence ?? 99.5);
   };
 
   const submitDisabled = Boolean(
     saving ||
     readOnly ||
     !isolateLabel.trim() ||
-    (!preliminaryOrganismText.trim() && !organismId) ||
+    (!editingIsolateId && !gramStain.trim()) ||
+    (editingIsolateId &&
+      (!organismId ||
+        !identificationMethod ||
+        identificationConfidence === "")) ||
     (editingIsolateId && amendmentOpen && !identificationReason.trim()),
   );
 
@@ -171,7 +191,10 @@ const IsolatePanel = ({
         ) : (
           <ul className="microbiology-list">
             {isolates.map((isolate) => (
-              <li className="microbiology-list__row" key={isolate.id}>
+              <li
+                className="microbiology-list__row microbiology-isolate-row"
+                key={isolate.id}
+              >
                 <div>
                   <strong>{isolate.isolateLabel}</strong>
                   {organismLabels[isolate.organismId] ||
@@ -181,10 +204,52 @@ const IsolatePanel = ({
                         isolate.preliminaryOrganismText
                       }`
                     : ""}
-                  <div className="microbiology-list__meta">
-                    {formatMicrobiologyEnum(isolate.significance)} ·{" "}
-                    {formatMicrobiologyEnum(isolate.identificationStatus)}
-                  </div>
+                  <Tag
+                    type={
+                      isolate.identificationStatus === "CONFIRMED"
+                        ? "green"
+                        : "warm-gray"
+                    }
+                  >
+                    {intl.formatMessage({
+                      id:
+                        isolate.identificationStatus === "CONFIRMED"
+                          ? "microbiology.isolate.identified"
+                          : "microbiology.isolate.pending",
+                    })}
+                  </Tag>
+                  <dl className="microbiology-isolate-details">
+                    <div>
+                      <dt>
+                        {intl.formatMessage({
+                          id: "microbiology.isolate.gramStain",
+                        })}
+                      </dt>
+                      <dd>{isolate.gramStain || "-"}</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        {intl.formatMessage({
+                          id: "microbiology.isolate.colonyMorphology",
+                        })}
+                      </dt>
+                      <dd>{isolate.colonyMorphology || "-"}</dd>
+                    </div>
+                    {isolate.identificationStatus === "CONFIRMED" && (
+                      <div>
+                        <dt>
+                          {intl.formatMessage({
+                            id: "microbiology.isolate.identification",
+                          })}
+                        </dt>
+                        <dd>
+                          {formatMicrobiologyEnum(isolate.identificationMethod)}{" "}
+                          · {isolate.identificationConfidence}% ·{" "}
+                          {formatMicrobiologyEnum(isolate.significance)}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
                   {(identificationHistory[isolate.id] || []).length > 0 && (
                     <div className="microbiology-identification-history">
                       <strong>
@@ -227,12 +292,22 @@ const IsolatePanel = ({
                   )}
                 </div>
                 <Button
-                  kind="ghost"
+                  kind={
+                    isolate.identificationStatus === "CONFIRMED"
+                      ? "ghost"
+                      : "tertiary"
+                  }
                   size="sm"
                   onClick={() => editIsolate(isolate)}
                   disabled={readOnly}
                 >
-                  {intl.formatMessage({ id: "microbiology.isolate.edit" })}
+                  {intl.formatMessage({
+                    id: amendmentOpen
+                      ? "microbiology.isolate.reidentify"
+                      : isolate.identificationStatus === "CONFIRMED"
+                        ? "microbiology.isolate.edit"
+                        : "microbiology.isolate.identify",
+                  })}
                 </Button>
               </li>
             ))}
@@ -248,37 +323,23 @@ const IsolatePanel = ({
             disabled={readOnly || Boolean(editingIsolateId)}
             onChange={(event) => setIsolateLabel(event.target.value)}
           />
-          <Select
-            id="microbiology-isolate-organism"
-            labelText={intl.formatMessage({
-              id: "microbiology.isolate.organism",
-            })}
-            value={organismId}
-            disabled={readOnly}
-            onChange={(event) => setOrganismId(event.target.value)}
-          >
-            <SelectItem
-              value=""
-              text={intl.formatMessage({
-                id: "microbiology.isolate.organism.freeText",
-              })}
-            />
-            {organisms.map((organism) => (
-              <SelectItem
-                key={organism.id}
-                value={organism.id}
-                text={organism.label}
-              />
-            ))}
-          </Select>
           <TextInput
-            id="microbiology-preliminary-organism"
+            id="microbiology-isolate-gram-stain"
             labelText={intl.formatMessage({
-              id: "microbiology.case.preliminaryOrganism",
+              id: "microbiology.isolate.gramStain",
             })}
-            value={preliminaryOrganismText}
-            disabled={readOnly}
-            onChange={(event) => setPreliminaryOrganismText(event.target.value)}
+            value={gramStain}
+            disabled={readOnly || Boolean(editingIsolateId)}
+            onChange={(event) => setGramStain(event.target.value)}
+          />
+          <TextInput
+            id="microbiology-isolate-colony-morphology"
+            labelText={intl.formatMessage({
+              id: "microbiology.isolate.colonyMorphology",
+            })}
+            value={colonyMorphology}
+            disabled={readOnly || Boolean(editingIsolateId)}
+            onChange={(event) => setColonyMorphology(event.target.value)}
           />
           <Select
             id="microbiology-isolate-significance"
@@ -299,22 +360,64 @@ const IsolatePanel = ({
           </Select>
           {editingIsolateId && (
             <Select
-              id="microbiology-isolate-identification-status"
+              id="microbiology-isolate-organism"
               labelText={intl.formatMessage({
-                id: "microbiology.isolate.identificationStatus",
+                id: "microbiology.isolate.organism",
               })}
-              value={identificationStatus}
+              value={organismId}
               disabled={readOnly}
-              onChange={(event) => setIdentificationStatus(event.target.value)}
+              onChange={(event) => setOrganismId(event.target.value)}
             >
-              {IDENTIFICATION_STATUS_OPTIONS.map((status) => (
+              <SelectItem
+                value=""
+                text={intl.formatMessage({
+                  id: "microbiology.isolate.organism.select",
+                })}
+              />
+              {organisms.map((organism) => (
                 <SelectItem
-                  key={status}
-                  value={status}
-                  text={formatMicrobiologyEnum(status)}
+                  key={organism.id}
+                  value={organism.id}
+                  text={organism.label}
                 />
               ))}
             </Select>
+          )}
+          {editingIsolateId && (
+            <Select
+              id="microbiology-isolate-identification-method"
+              labelText={intl.formatMessage({
+                id: "microbiology.isolate.identificationMethod",
+              })}
+              value={identificationMethod}
+              disabled={readOnly}
+              onChange={(event) => setIdentificationMethod(event.target.value)}
+            >
+              <SelectItem value="" text="" />
+              {IDENTIFICATION_METHOD_OPTIONS.map((methodOption) => (
+                <SelectItem
+                  key={methodOption}
+                  value={methodOption}
+                  text={formatMicrobiologyEnum(methodOption)}
+                />
+              ))}
+            </Select>
+          )}
+          {editingIsolateId && (
+            <NumberInput
+              id="microbiology-isolate-identification-confidence"
+              label={intl.formatMessage({
+                id: "microbiology.isolate.identificationConfidence",
+              })}
+              min={0}
+              max={100}
+              step={0.1}
+              value={identificationConfidence}
+              disabled={readOnly}
+              onChange={(event, state) =>
+                setIdentificationConfidence(state?.value ?? event.target.value)
+              }
+            />
           )}
           {editingIsolateId && amendmentOpen && (
             <div className="microbiology-form-grid__wide">

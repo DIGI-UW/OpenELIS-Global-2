@@ -86,9 +86,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
             assertEquals("AMENDMENT_ALREADY_OPEN", expected.getMessage());
         }
 
-        isolateService.updateIdentification(fixture.isolateId(), null, "Klebsiella pneumoniae",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
-                "Confirmatory identification corrected the organism", fixture.userId());
+        isolateService.updateIdentification(fixture.isolateId(), fixture.organismId(), "Klebsiella pneumoniae",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
         reportReleaseService.releaseAmended(fixture.caseId(), fixture.userId());
 
         List<MicroReportVersion> versions = reportVersionService.getVersions(fixture.caseId());
@@ -142,8 +142,11 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         request.scenario = "MVP";
         request.scenarioKey = "amendment-integration-" + UUID.randomUUID();
         MicrobiologyUatScenarioForm scenario = scenarioService.provision(request, userId);
-        MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "ISO-1", null, "Escherichia coli",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, userId);
+        MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, userId);
+        isolateService.updateIdentification(isolate.getId(), scenario.organismId, "Escherichia coli",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "MALDI_TOF", new BigDecimal("99.5"), userId);
 
         String panelId = referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
                 .filter(panel -> "Gram negative AST panel (UAT)".equals(panel.getName())).findFirst().orElseThrow()
@@ -155,7 +158,7 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         astService.recordReading(run.getId(), antibiotic.getId(), MicroAstMethod.MIC, new BigDecimal("4"), userId);
         astService.reviewRun(run.getId(), userId);
         reportReleaseService.releaseFinal(scenario.caseId, userId);
-        return new FinalCase(scenario.caseId, isolate.getId(), userId);
+        return new FinalCase(scenario.caseId, isolate.getId(), scenario.organismId, userId);
     }
 
     private String fixturesUserId() {
@@ -163,6 +166,6 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
                 .defaultUserId();
     }
 
-    private record FinalCase(String caseId, String isolateId, String userId) {
+    private record FinalCase(String caseId, String isolateId, String organismId, String userId) {
     }
 }

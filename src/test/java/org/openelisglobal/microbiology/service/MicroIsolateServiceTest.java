@@ -2,11 +2,13 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,24 +56,27 @@ public class MicroIsolateServiceTest {
     }
 
     @Test
-    public void createIsolateRequiresCaseAndRecordsActivity() {
-        MicroIsolate isolate = service.createIsolate("case-1", "ISO-1", "org-1", "E. coli",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
+    public void createIsolateRecordsPreliminaryWorkupAndAdvancesCase() {
+        MicroIsolate isolate = service.createIsolate("case-1", "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
 
         assertEquals("case-1", isolate.getCaseId());
         assertEquals("ISO-1", isolate.getIsolateLabel());
-        assertEquals("org-1", isolate.getOrganismId());
+        assertEquals("Gram negative rods", isolate.getGramStain());
+        assertEquals("Lactose fermenting colonies", isolate.getColonyMorphology());
+        assertNull(isolate.getOrganismId());
         assertEquals(MicroIsolateIdentificationStatus.PRELIMINARY.name(), isolate.getIdentificationStatus());
         verify(isolateDAO).insert(isolate);
         verify(activityDAO).insert(any(MicroCaseActivity.class));
+        ArgumentCaptor<MicroCase> caseCaptor = ArgumentCaptor.forClass(MicroCase.class);
+        verify(caseDAO).update(caseCaptor.capture());
+        assertEquals(MicroCaseStage.IDENTIFICATION.name(), caseCaptor.getValue().getStage());
     }
 
     @Test
-    public void createIsolateNormalizesBlankOrganismIdToNull() {
-        MicroIsolate isolate = service.createIsolate("case-1", "ISO-1", "", "E. coli",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
-
-        assertNull(isolate.getOrganismId());
+    public void createIsolateRequiresGramStain() {
+        assertThrows(IllegalArgumentException.class, () -> service.createIsolate("case-1", "ISO-1", " ", "colonies",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1"));
     }
 
     @Test
@@ -84,26 +89,30 @@ public class MicroIsolateServiceTest {
         when(isolateDAO.update(isolate)).thenReturn(isolate);
 
         MicroIsolate updated = service.updateIdentification("iso-1", "org-1", "E. coli",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "1");
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "MALDI_TOF", new BigDecimal("99.5"), "1");
 
         assertEquals("org-1", updated.getOrganismId());
+        assertEquals("MALDI_TOF", updated.getIdentificationMethod());
+        assertEquals(new BigDecimal("99.5"), updated.getIdentificationConfidence());
         assertEquals(MicroIsolateIdentificationStatus.CONFIRMED.name(), updated.getIdentificationStatus());
         verify(activityDAO).insert(any(MicroCaseActivity.class));
     }
 
     @Test
-    public void updateIdentificationNormalizesBlankOrganismIdToNull() {
-        MicroIsolate isolate = new MicroIsolate();
-        isolate.setId("iso-1");
-        isolate.setCaseId("case-1");
-        isolate.setIsolateLabel("ISO-1");
-        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
-        when(isolateDAO.update(isolate)).thenReturn(isolate);
+    public void updateIdentificationRejectsBlankOrganismId() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateIdentification("iso-1", "  ", "E. coli",
+                        MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                        "MALDI_TOF", new BigDecimal("99.5"), "1"));
+    }
 
-        MicroIsolate updated = service.updateIdentification("iso-1", "  ", "E. coli",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "1");
-
-        assertNull(updated.getOrganismId());
+    @Test
+    public void updateIdentificationRejectsACompletedWorkupWithPreliminaryStatus() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateIdentification("iso-1", "org-1", "E. coli",
+                        MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.PRELIMINARY,
+                        "MALDI_TOF", new BigDecimal("99.5"), "1"));
     }
 
     @Test
@@ -124,8 +133,8 @@ public class MicroIsolateServiceTest {
         when(isolateDAO.update(isolate)).thenReturn(isolate);
 
         MicroIsolate updated = service.updateIdentification("iso-1", "org-new", "Klebsiella pneumoniae",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
-                "Corrected after confirmatory identification", "9");
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Corrected after confirmatory identification", "9");
 
         assertEquals("org-new", updated.getOrganismId());
         verify(identificationHistoryService).recordChange(any(MicroIsolate.class), any(MicroIsolate.class),
@@ -145,8 +154,8 @@ public class MicroIsolateServiceTest {
         finalCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
         when(caseDAO.get("case-1")).thenReturn(Optional.of(finalCase));
 
-        service.createIsolate("case-1", "ISO-1", "org-1", "E. coli", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
-                "1");
+        service.createIsolate("case-1", "ISO-1", "Gram negative rods", "colonies",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
     }
 
     private MicroCase mutableCase() {

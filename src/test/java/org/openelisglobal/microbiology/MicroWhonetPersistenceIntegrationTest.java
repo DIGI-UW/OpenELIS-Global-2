@@ -32,6 +32,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun;
 import org.openelisglobal.reports.service.MicroWhonetExportResult;
@@ -84,8 +85,11 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         request.scenarioKey = "integration-m4-" + UUID.randomUUID();
         MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(request, performedBy);
 
-        MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "WHONET-INTEGRATION", scenario.organismId,
-                "Reference organism (integration)", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
+        MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "WHONET-INTEGRATION", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
+        isolateService.updateIdentification(isolate.getId(), scenario.organismId, "Reference organism (integration)",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "MALDI_TOF", new BigDecimal("99.5"), performedBy);
         MicroAntibiotic exportAntibiotic = referenceService.getActiveAntibiotics().stream()
                 .filter(candidate -> "CIPUAT".equals(candidate.getWhonetCode())).findFirst()
                 .orElseThrow(() -> new IllegalStateException("M4 export antibiotic was not provisioned"));

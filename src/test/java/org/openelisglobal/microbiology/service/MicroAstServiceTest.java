@@ -37,6 +37,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 
 /**
  * M-05: per-run breakpoint-standard selection. A run started with an explicit
@@ -85,9 +86,7 @@ public class MicroAstServiceTest {
 
     @Test
     public void startRunWithExplicitStandardPersistsItOnTheRun() {
-        MicroIsolate isolate = new MicroIsolate();
-        isolate.setId("iso-1");
-        isolate.setCaseId("case-1");
+        MicroIsolate isolate = identifiedIsolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
 
         MicroAstRun run = service.startRun("iso-1", "panel-1", "eucast-std", "1");
@@ -98,14 +97,23 @@ public class MicroAstServiceTest {
 
     @Test
     public void startRunWithoutStandardLeavesItNull() {
-        MicroIsolate isolate = new MicroIsolate();
-        isolate.setId("iso-1");
-        isolate.setCaseId("case-1");
+        MicroIsolate isolate = identifiedIsolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
 
         MicroAstRun run = service.startRun("iso-1", "panel-1", "1");
 
         assertNull(run.getBreakpointStandardId());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void startRunRejectsAnIsolatePendingIdentification() {
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.PRELIMINARY.name());
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+
+        service.startRun("iso-1", "panel-1", "1");
     }
 
     @Test
@@ -161,9 +169,7 @@ public class MicroAstServiceTest {
 
     @Test(expected = IllegalStateException.class)
     public void startRunRejectsFinalReleasedCases() {
-        MicroIsolate isolate = new MicroIsolate();
-        isolate.setId("iso-1");
-        isolate.setCaseId("case-1");
+        MicroIsolate isolate = identifiedIsolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
         MicroCase finalCase = mutableCase();
         finalCase.setStage(MicroCaseStage.FINAL_RELEASED.name());
@@ -183,9 +189,7 @@ public class MicroAstServiceTest {
         amendment.setId("amendment-1");
         amendment.setCaseId("case-1");
         when(amendmentDAO.getOpenByCaseId("case-1")).thenReturn(amendment);
-        MicroIsolate isolate = new MicroIsolate();
-        isolate.setId("iso-1");
-        isolate.setCaseId("case-1");
+        MicroIsolate isolate = identifiedIsolate();
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
 
         MicroAstRun amendmentRun = service.startRun("iso-1", "panel-1", "1");
@@ -321,6 +325,13 @@ public class MicroAstServiceTest {
         MicroIsolate isolate = new MicroIsolate();
         isolate.setId("iso-1");
         isolate.setCaseId("case-1");
+        return isolate;
+    }
+
+    private MicroIsolate identifiedIsolate() {
+        MicroIsolate isolate = isolate();
+        isolate.setOrganismId("org-1");
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
         return isolate;
     }
 
