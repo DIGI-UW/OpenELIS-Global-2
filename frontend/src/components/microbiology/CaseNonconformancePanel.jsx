@@ -53,7 +53,20 @@ const CaseNonconformancePanel = ({
         const safeCategories = Array.isArray(categoryRows) ? categoryRows : [];
         setCategories(safeCategories);
         setReportingUnits(Array.isArray(unitRows) ? unitRows : []);
-        if (lostMode) {
+        if (!lostMode) {
+          const preAnalytical = safeCategories.find((category) =>
+            String(category.name || "")
+              .toLowerCase()
+              .replace(/[^a-z]/g, "")
+              .includes("preanalytical"),
+          );
+          if (preAnalytical) {
+            setForm((current) => ({
+              ...current,
+              categoryId: String(preAnalytical.id),
+            }));
+          }
+        } else {
           const match = safeCategories
             .flatMap((category) =>
               (category.types || []).map((type) => ({ category, type })),

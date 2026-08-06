@@ -12,6 +12,7 @@ public class MicroCaseDetailForm {
     public String patientName;
     public String accessionNumber;
     public String specimenType;
+    public String requestingLocation;
     public String workflowType;
     public String stage;
     public String priority;
@@ -21,6 +22,9 @@ public class MicroCaseDetailForm {
     public Timestamp closedAt;
     public String closedBy;
     public String finalReleaseState;
+    public String lastActivityBy;
+    public Timestamp lastActivityAt;
+    public int nonconformanceCount;
     public boolean workflowChangeRequiresConfirmation;
     public MicroCaseOrderDetailForm orderDetail;
     public List<MicroCaseActivityForm> activities = new ArrayList<>();

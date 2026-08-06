@@ -9,6 +9,8 @@ describe("CaseInfoSummary", () => {
     render(
       <IntlProvider locale="en" messages={messages}>
         <CaseInfoSummary
+          accessionNumber="UATMICRO001"
+          requestingLocation="Medical ward 2"
           orderDetail={{
             clinicalHistory: "Fever and suspected sepsis",
             patientOrigin: "INPATIENT",
@@ -29,5 +31,17 @@ describe("CaseInfoSummary", () => {
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
     expect(screen.getByText("No")).toBeInTheDocument();
+    expect(screen.getByText(/UATMICRO001/)).toBeInTheDocument();
+    expect(screen.getByText(/Medical ward 2/)).toBeInTheDocument();
+  });
+
+  it("does not turn uncaptured order context into a negative clinical answer", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseInfoSummary orderDetail={null} />
+      </IntlProvider>,
+    );
+
+    expect(screen.getAllByText("Not provided").length).toBeGreaterThan(1);
   });
 });

@@ -24,12 +24,19 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.qaevent.service.NceSpecimenService;
+import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
+import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -55,6 +62,15 @@ public class MicroCaseServiceTest {
 
     @Mock
     private PatientService patientService;
+
+    @Mock
+    private SampleOrganizationService sampleOrganizationService;
+
+    @Mock
+    private SystemUserService systemUserService;
+
+    @Mock
+    private NceSpecimenService nceSpecimenService;
 
     @Test
     public void createOrGetCaseReturnsExistingCaseWithoutDuplicateActivity() {
@@ -145,6 +161,13 @@ public class MicroCaseServiceTest {
         when(sampleItemService.getData("1001")).thenReturn(sampleItem);
         when(sampleHumanService.getPatientForSample(sample)).thenReturn(patient);
         when(patientService.getLastFirstName(patient)).thenReturn("Microbiology, UAT");
+        SampleOrganization sampleOrganization = new SampleOrganization();
+        Organization organization = new Organization();
+        organization.setOrganizationName("Medical ward 2");
+        sampleOrganization.setOrganization(organization);
+        when(sampleOrganizationService.getDataBySample(sample)).thenReturn(sampleOrganization);
+        when(nceSpecimenService.getSpecimenBySampleItemId(1001))
+                .thenReturn(java.util.List.of(new NceSpecimen(), new NceSpecimen()));
 
         MicroCaseDetailForm form = service().getCaseDetail("case-1");
 
@@ -152,6 +175,38 @@ public class MicroCaseServiceTest {
         assertEquals("Microbiology, UAT", form.patientName);
         assertEquals("UATMICRO001", form.accessionNumber);
         assertEquals("Blood", form.specimenType);
+        assertEquals("Medical ward 2", form.requestingLocation);
+        assertEquals(2, form.nonconformanceCount);
+    }
+
+    @Test
+    public void getCaseDetailResolvesLastActivityActorForDisplay() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        MicroCaseActivity first = new MicroCaseActivity();
+        first.setId("1");
+        first.setCaseId("case-1");
+        first.setPerformedBy("7");
+        first.setOccurredAt(java.sql.Timestamp.valueOf("2026-08-05 08:00:00"));
+        MicroCaseActivity latest = new MicroCaseActivity();
+        latest.setId("2");
+        latest.setCaseId("case-1");
+        latest.setPerformedBy("8");
+        latest.setOccurredAt(java.sql.Timestamp.valueOf("2026-08-05 09:00:00"));
+        SystemUser user = new SystemUser();
+        user.setFirstName("Amina");
+        user.setLastName("Diallo");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of(first, latest));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(systemUserService.getUserById("7")).thenReturn(null);
+        when(systemUserService.getUserById("8")).thenReturn(user);
+
+        MicroCaseDetailForm form = service().getCaseDetail("case-1");
+
+        assertEquals("Amina Diallo", form.activities.get(1).performedByDisplay);
+        assertEquals("Amina Diallo", form.lastActivityBy);
+        assertEquals(latest.getOccurredAt(), form.lastActivityAt);
     }
 
     @Test
@@ -181,6 +236,6 @@ public class MicroCaseServiceTest {
 
     private MicroCaseService service() {
         return new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO, sampleItemService,
-                sampleHumanService, patientService);
+                sampleHumanService, patientService, sampleOrganizationService, systemUserService, nceSpecimenService);
     }
 }
