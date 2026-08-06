@@ -13,6 +13,7 @@ const renderPanel = ({
   onUpdateIdentification = vi.fn(),
   readOnly = false,
   amendmentOpen = false,
+  onLogCritical = vi.fn(),
   service = { getOrganisms: vi.fn().mockResolvedValue([]) },
 } = {}) =>
   render(
@@ -24,6 +25,7 @@ const renderPanel = ({
         onUpdateIdentification={onUpdateIdentification}
         readOnly={readOnly}
         amendmentOpen={amendmentOpen}
+        onLogCritical={onLogCritical}
         service={service}
         saving={false}
       />
@@ -200,5 +202,27 @@ describe("IsolatePanel", () => {
     expect(
       screen.getByRole("button", { name: "Create isolate" }),
     ).toBeDisabled();
+  });
+
+  it("opens critical communication for the selected isolate", async () => {
+    const user = userEvent.setup();
+    const onLogCritical = vi.fn();
+    const isolate = {
+      id: "isolate-1",
+      isolateLabel: "ISO-1",
+      gramStain: "Gram negative rods",
+      significance: "UNKNOWN",
+      identificationStatus: "PRELIMINARY",
+    };
+
+    renderPanel({ isolates: [isolate], onLogCritical });
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Log critical notification for ISO-1",
+      }),
+    );
+
+    expect(onLogCritical).toHaveBeenCalledWith(isolate);
   });
 });

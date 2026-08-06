@@ -13,6 +13,8 @@ export const MICROBIOLOGY_CASE_SECTIONS = [
   "reports",
   "amendment",
 ];
+export const MICROBIOLOGY_CASE_ACTIONS = ["log-critical"];
+export const MICROBIOLOGY_CRITICAL_TARGET_TYPES = ["CASE", "ISOLATE"];
 
 const DEFAULT_WORKLIST_STATE = {
   workflow: "",
@@ -49,7 +51,7 @@ const normalizeWorklistState = (state = {}) => ({
     : DEFAULT_WORKLIST_STATE.pageSize,
 });
 
-const toSearch = (state, section = "") => {
+const toSearch = (state, caseState = {}) => {
   const params = new URLSearchParams();
   if (state.workflow) {
     params.set("workflow", state.workflow);
@@ -75,8 +77,18 @@ const toSearch = (state, section = "") => {
   if (state.pageSize !== DEFAULT_WORKLIST_STATE.pageSize) {
     params.set("pageSize", String(state.pageSize));
   }
-  if (MICROBIOLOGY_CASE_SECTIONS.includes(section)) {
-    params.set("section", section);
+  if (MICROBIOLOGY_CASE_SECTIONS.includes(caseState.section)) {
+    params.set("section", caseState.section);
+  }
+  if (MICROBIOLOGY_CASE_ACTIONS.includes(caseState.action)) {
+    params.set("action", caseState.action);
+    if (
+      MICROBIOLOGY_CRITICAL_TARGET_TYPES.includes(caseState.targetType) &&
+      textValue(caseState.targetId)
+    ) {
+      params.set("targetType", caseState.targetType);
+      params.set("targetId", textValue(caseState.targetId));
+    }
   }
   const query = params.toString();
   return query ? `?${query}` : "";
@@ -98,11 +110,22 @@ export const parseMicrobiologyWorklistSearch = (search = "") => {
 
 export const parseMicrobiologyCaseSearch = (search = "") => {
   const params = new URLSearchParams(search);
+  const action = MICROBIOLOGY_CASE_ACTIONS.includes(params.get("action"))
+    ? params.get("action")
+    : "";
+  const targetType = MICROBIOLOGY_CRITICAL_TARGET_TYPES.includes(
+    params.get("targetType"),
+  )
+    ? params.get("targetType")
+    : "";
   return {
     ...parseMicrobiologyWorklistSearch(search),
     section: MICROBIOLOGY_CASE_SECTIONS.includes(params.get("section"))
       ? params.get("section")
       : "",
+    action,
+    targetType: action ? targetType : "",
+    targetId: action && targetType ? textValue(params.get("targetId")) : "",
   };
 };
 
@@ -113,6 +136,6 @@ export const getMicrobiologyCaseUrl = (caseId, state = {}) => {
   const normalized = normalizeWorklistState(state);
   return `${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(caseId)}${toSearch(
     normalized,
-    state.section,
+    state,
   )}`;
 };

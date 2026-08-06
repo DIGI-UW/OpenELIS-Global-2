@@ -42,6 +42,18 @@
   gap: 0.5rem 1rem;
 }
 
+.microbiology-workbench__hero-actions,
+.microbiology-isolate-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.microbiology-workbench__hero-actions {
+  justify-content: flex-end;
+}
+
 .microbiology-sibling-links {
   display: flex;
   flex-wrap: wrap;

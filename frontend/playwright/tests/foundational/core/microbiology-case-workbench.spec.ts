@@ -29,6 +29,17 @@ test.describe("Microbiology case workbench", () => {
     const caseView = page.getByTestId("microbiology-case-view");
     await expect(caseHeader.getByTitle("Received")).toBeVisible();
 
+    await caseHeader
+      .getByRole("button", { name: "Log critical notification" })
+      .click();
+    await expect(page).toHaveURL(
+      new RegExp(
+        `section=critical-communication&action=log-critical&targetType=CASE&targetId=${seeded.caseId}`,
+      ),
+    );
+    await expect(page.getByLabel("Critical result target")).toBeDisabled();
+    await expect(page.getByLabel("Target record")).toHaveValue(seeded.caseId);
+
     await caseView
       .getByRole("button", { name: "Inoculation", exact: true })
       .click();
@@ -101,6 +112,20 @@ test.describe("Microbiology case workbench", () => {
     await expect(
       page.getByRole("button", { name: "Start AST run" }),
     ).toBeEnabled();
+
+    await page
+      .getByRole("button", {
+        name: "Log critical notification for ISO-1",
+      })
+      .click();
+    await expect(page).toHaveURL(
+      /section=critical-communication&action=log-critical&targetType=ISOLATE&targetId=/,
+    );
+    await expect(page.getByLabel("Critical result target")).toHaveValue(
+      "ISOLATE",
+    );
+    await expect(page.getByLabel("Critical result target")).toBeDisabled();
+    await expect(page.getByLabel("Target record")).toBeDisabled();
 
     await caseView
       .getByRole("button", { name: "Timeline", exact: true })

@@ -7413,6 +7413,8 @@
   "microbiology.critical.followUp": "Follow-up needed",
   "microbiology.critical.hint": "Log critical-result callbacks and acknowledge them inline.",
   "microbiology.critical.log": "Log communication",
+  "microbiology.critical.logForIsolate": "Log critical notification for {isolate}",
+  "microbiology.critical.logNotification": "Log critical notification",
   "microbiology.critical.method": "Communication method",
   "microbiology.critical.message": "Message",
   "microbiology.critical.messageRequired": "Message is required",
