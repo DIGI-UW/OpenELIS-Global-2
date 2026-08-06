@@ -20,6 +20,7 @@ import {
 } from "react-router-dom";
 import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
 import AstEntryPanel from "./AstEntryPanel";
+import CaseInfoSummary from "./CaseInfoSummary";
 import CaseInoculationPanel from "./CaseInoculationPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CaseNonconformancePanel from "./CaseNonconformancePanel";
@@ -37,6 +38,7 @@ import {
   MICROBIOLOGY_CASE_READY_MARK,
 } from "./MicrobiologyPerformance";
 import MicrobiologyService from "./MicrobiologyService";
+import { getMicrobiologyCurrentStep } from "./MicrobiologyCaseState";
 import OrderDetailPanel from "./OrderDetailPanel";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import ReportReadinessPanel from "./ReportReadinessPanel";
@@ -266,15 +268,21 @@ const MicrobiologyCaseView = ({
   }, [caseDetail, error, loading]);
 
   useEffect(() => {
-    if (
-      caseDetail?.workflowType === "UNASSIGNED" &&
+    if (!caseDetail || !location.pathname.startsWith("/Microbiology/cases/")) {
+      return;
+    }
+    const currentStep = getMicrobiologyCurrentStep(caseDetail);
+    const section =
+      caseDetail.workflowType === "UNASSIGNED" &&
       profileDependentSections.has(routeState.section)
-    ) {
+        ? "case-info"
+        : routeState.section || currentStep.section;
+    if (section !== routeState.section) {
       history.replace(
-        getMicrobiologyCaseUrl(caseId, { ...routeState, section: "case-info" }),
+        getMicrobiologyCaseUrl(caseId, { ...routeState, section }),
       );
     }
-  }, [caseDetail, caseId, history, routeState.section]);
+  }, [caseDetail, caseId, history, location.pathname, routeState.section]);
 
   const recordInoculation = (payload) => {
     setSaving(true);
@@ -410,7 +418,8 @@ const MicrobiologyCaseView = ({
     );
   };
 
-  const focusedSection = routeState.section || "case-info";
+  const currentStep = getMicrobiologyCurrentStep(caseDetail || {});
+  const focusedSection = routeState.section || currentStep.section;
   const focusedProgressIndex = Math.max(
     0,
     progressItems.findIndex((item) => item.section === focusedSection),
@@ -661,19 +670,7 @@ const MicrobiologyCaseView = ({
                 open={focusedSection === "case-info"}
                 onHeadingClick={() => selectSection("case-info")}
               >
-                <Layer
-                  className="microbiology-case-summary"
-                  data-testid="microbiology-case-summary"
-                >
-                  <span>
-                    {intl.formatMessage({ id: "microbiology.case.sampleItem" })}
-                    : {caseDetail.sampleItemId}
-                  </span>
-                  <span>
-                    {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
-                    {formatMicrobiologyEnum(caseDetail.workflowType)}
-                  </span>
-                </Layer>
+                <CaseInfoSummary orderDetail={caseDetail.orderDetail} />
                 <ChangeWorkflowPanel
                   caseId={caseDetail.id}
                   workflowType={caseDetail.workflowType}
@@ -867,6 +864,28 @@ const MicrobiologyCaseView = ({
                 />
               </AccordionItem>
             </Accordion>
+            <footer
+              className="microbiology-current-step-action"
+              data-testid="microbiology-current-step-action"
+            >
+              <div>
+                <p className="microbiology-workbench__eyebrow">
+                  {intl.formatMessage({ id: "microbiology.currentStep.title" })}
+                </p>
+                <strong>
+                  {intl.formatMessage({ id: currentStep.labelId })}
+                </strong>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => selectSection(currentStep.section)}
+              >
+                {intl.formatMessage(
+                  { id: "microbiology.currentStep.open" },
+                  { step: intl.formatMessage({ id: currentStep.labelId }) },
+                )}
+              </Button>
+            </footer>
           </div>
         </div>
       </Stack>

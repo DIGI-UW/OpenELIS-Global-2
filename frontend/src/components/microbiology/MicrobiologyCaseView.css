@@ -217,6 +217,19 @@
   justify-content: flex-end;
 }
 
+.microbiology-current-step-action {
+  align-items: center;
+  background: #ffffff;
+  border-top: 1px solid #c6c6c6;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  position: sticky;
+  z-index: 2;
+}
+
 @media (max-width: 42rem) {
   .microbiology-form-grid {
     grid-template-columns: minmax(0, 1fr);
