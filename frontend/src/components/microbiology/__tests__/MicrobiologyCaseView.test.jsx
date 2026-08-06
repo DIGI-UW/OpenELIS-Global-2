@@ -43,6 +43,8 @@ const astServiceStubs = {
   getAstPanels: vi.fn().mockResolvedValue([]),
   getAntibiotics: vi.fn().mockResolvedValue([]),
   getBreakpointStandards: vi.fn().mockResolvedValue([]),
+  getCultureMethods: vi.fn().mockResolvedValue([]),
+  changeCaseWorkflow: vi.fn(),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
   saveOrderDetail: vi.fn().mockResolvedValue({}),
   getCaseReadiness: vi.fn().mockResolvedValue({
@@ -328,6 +330,44 @@ describe("MicrobiologyCaseView", () => {
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
         "/Microbiology/worklist?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+      ),
+    );
+  });
+
+  it("holds profile-specific actions until an unassigned case is classified", async () => {
+    const unassignedCase = {
+      ...caseDetail,
+      workflowType: "UNASSIGNED",
+      siblingCases: [
+        {
+          id: "case-tb",
+          workflowType: "MYCOBACTERIOLOGY_TB",
+          stage: "RECEIVED",
+        },
+      ],
+    };
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(unassignedCase),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=ast");
+
+    expect(
+      await screen.findByText("Workflow classification required"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Change workflow")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start AST" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Mycobacteriology TB (Received)"),
+    ).toHaveAttribute("href", "/Microbiology/cases/case-tb?section=case-info");
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?section=case-info",
       ),
     );
   });

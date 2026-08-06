@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -151,6 +152,31 @@ public class MicroCaseServiceTest {
         assertEquals("Microbiology, UAT", form.patientName);
         assertEquals("UATMICRO001", form.accessionNumber);
         assertEquals("Blood", form.specimenType);
+    }
+
+    @Test
+    public void getCaseDetailIncludesSiblingWorkflowLinksAndPreservationWarning() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setSampleItemId("1001");
+        microCase.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
+        microCase.setStage(MicroCaseStage.SETUP_RECORDED.name());
+        MicroCase sibling = new MicroCase();
+        sibling.setId("case-2");
+        sibling.setSampleItemId("1001");
+        sibling.setWorkflowType(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name());
+        sibling.setStage(MicroCaseStage.RECEIVED.name());
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(caseDAO.getBySampleItem("1001")).thenReturn(java.util.List.of(microCase, sibling));
+
+        MicroCaseDetailForm form = service().getCaseDetail("case-1");
+
+        assertTrue(form.workflowChangeRequiresConfirmation);
+        assertEquals(1, form.siblingCases.size());
+        assertEquals("case-2", form.siblingCases.get(0).id);
+        assertEquals(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), form.siblingCases.get(0).workflowType);
     }
 
     private MicroCaseService service() {

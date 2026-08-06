@@ -11,10 +11,16 @@ import {
   Tag,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useLocation, useParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useHistory,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
 import AstEntryPanel from "./AstEntryPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
+import ChangeWorkflowPanel from "./ChangeWorkflowPanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
@@ -73,12 +79,22 @@ const progressItems = [
   },
 ];
 
+const profileDependentSections = new Set([
+  "setup",
+  "isolates",
+  "ast",
+  "reports",
+]);
+
 const hasActivity = (caseDetail, activityType) =>
   (caseDetail.activities || []).some(
     (activity) => activity.activityType === activityType,
   );
 
 const getProgressStatus = (caseDetail, itemId) => {
+  if (caseDetail.workflowType === "UNASSIGNED") {
+    return itemId === "case-info" ? "current" : "todo";
+  }
   const hasIsolate = (caseDetail.isolates || []).length > 0;
   const astReviewed = hasActivity(caseDetail, "AST_REVIEWED");
   const finalReleased = caseDetail.stage === "FINAL_RELEASED";
@@ -107,6 +123,9 @@ const getProgressStatus = (caseDetail, itemId) => {
 };
 
 const getNextStepMessageId = (caseDetail) => {
+  if (caseDetail.workflowType === "UNASSIGNED") {
+    return "microbiology.next.classifyWorkflow";
+  }
   if (caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS") {
     return "microbiology.next.completeAmendment";
   }
@@ -221,6 +240,17 @@ const MicrobiologyCaseView = ({
     }
   }, [caseDetail, error, loading]);
 
+  useEffect(() => {
+    if (
+      caseDetail?.workflowType === "UNASSIGNED" &&
+      profileDependentSections.has(routeState.section)
+    ) {
+      history.replace(
+        getMicrobiologyCaseUrl(caseId, { ...routeState, section: "case-info" }),
+      );
+    }
+  }, [caseDetail, caseId, history, routeState.section]);
+
   const recordActivity = (payload) => {
     setSaving(true);
     setActionError("");
@@ -259,6 +289,13 @@ const MicrobiologyCaseView = ({
     });
   };
 
+  const workflowChanged = (detail) => {
+    setCaseDetail(detail);
+    history.replace(
+      getMicrobiologyCaseUrl(caseId, { ...routeState, section: "case-info" }),
+    );
+  };
+
   const selectSection = (section) => {
     history.push(getMicrobiologyCaseUrl(caseId, { ...routeState, section }));
   };
@@ -289,6 +326,7 @@ const MicrobiologyCaseView = ({
     caseDetail.stage === "FINAL_RELEASED";
   const amendmentOpen =
     caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS";
+  const unassigned = caseDetail.workflowType === "UNASSIGNED";
 
   return (
     <main
@@ -350,6 +388,36 @@ const MicrobiologyCaseView = ({
                 </span>
               )}
             </div>
+            {(caseDetail.siblingCases || []).length > 0 && (
+              <nav
+                className="microbiology-sibling-links"
+                aria-label={intl.formatMessage({
+                  id: "microbiology.case.relatedWorkflows",
+                })}
+              >
+                <span>
+                  {intl.formatMessage({
+                    id: "microbiology.case.relatedWorkflows",
+                  })}
+                  :
+                </span>
+                {(caseDetail.siblingCases || []).map((sibling) => (
+                  <RouterLink
+                    key={sibling.id}
+                    aria-label={`${formatMicrobiologyEnum(
+                      sibling.workflowType,
+                    )} (${formatMicrobiologyEnum(sibling.stage)})`}
+                    to={getMicrobiologyCaseUrl(sibling.id, {
+                      ...routeState,
+                      section: "case-info",
+                    })}
+                  >
+                    {formatMicrobiologyEnum(sibling.workflowType)} (
+                    {formatMicrobiologyEnum(sibling.stage)})
+                  </RouterLink>
+                ))}
+              </nav>
+            )}
           </div>
           <Tag type={caseDetail.stage === "FINAL_RELEASED" ? "green" : "blue"}>
             {formatMicrobiologyEnum(caseDetail.stage)}
@@ -380,6 +448,20 @@ const MicrobiologyCaseView = ({
             })}
             subtitle={intl.formatMessage({
               id: "microbiology.amendment.inProgress.message",
+            })}
+          />
+        )}
+
+        {unassigned && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.workflowChange.requiredTitle",
+            })}
+            subtitle={intl.formatMessage({
+              id: "microbiology.workflowChange.requiredMessage",
             })}
           />
         )}
@@ -453,6 +535,16 @@ const MicrobiologyCaseView = ({
                     {formatMicrobiologyEnum(caseDetail.workflowType)}
                   </span>
                 </Layer>
+                <ChangeWorkflowPanel
+                  caseId={caseDetail.id}
+                  workflowType={caseDetail.workflowType}
+                  cultureMethodId={caseDetail.cultureMethodId}
+                  requiresConfirmation={
+                    caseDetail.workflowChangeRequiresConfirmation
+                  }
+                  service={service}
+                  onChanged={workflowChanged}
+                />
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -474,16 +566,19 @@ const MicrobiologyCaseView = ({
                 })}
                 open={focusedSection === "setup"}
                 onHeadingClick={() => selectSection("setup")}
+                disabled={unassigned}
               >
-                <CaseTimelinePanel
-                  activities={caseDetail.activities}
-                  onRecordActivity={recordActivity}
-                  saving={saving}
-                  setupSectionId="microbiology-setup"
-                  showTimeline={false}
-                  reagentRequirements={reagentOverview.requirements}
-                  reagentUsages={reagentOverview.usages}
-                />
+                {!unassigned && (
+                  <CaseTimelinePanel
+                    activities={caseDetail.activities}
+                    onRecordActivity={recordActivity}
+                    saving={saving}
+                    setupSectionId="microbiology-setup"
+                    showTimeline={false}
+                    reagentRequirements={reagentOverview.requirements}
+                    reagentUsages={reagentOverview.usages}
+                  />
+                )}
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -506,39 +601,45 @@ const MicrobiologyCaseView = ({
                 })}
                 open={focusedSection === "isolates"}
                 onHeadingClick={() => selectSection("isolates")}
+                disabled={unassigned}
               >
-                <IsolatePanel
-                  caseId={caseDetail.id}
-                  isolates={caseDetail.isolates}
-                  onCreateIsolate={createIsolate}
-                  onUpdateIdentification={updateIdentification}
-                  saving={saving}
-                  readOnly={finalReleased}
-                  amendmentOpen={amendmentOpen}
-                  service={service}
-                />
+                {!unassigned && (
+                  <IsolatePanel
+                    caseId={caseDetail.id}
+                    isolates={caseDetail.isolates}
+                    onCreateIsolate={createIsolate}
+                    onUpdateIdentification={updateIdentification}
+                    saving={saving}
+                    readOnly={finalReleased}
+                    amendmentOpen={amendmentOpen}
+                    service={service}
+                  />
+                )}
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({ id: "microbiology.ast.title" })}
                 open={focusedSection === "ast"}
                 onHeadingClick={() => selectSection("ast")}
+                disabled={unassigned}
               >
-                <AstEntryPanel
-                  caseId={caseDetail.id}
-                  workflowType={caseDetail.workflowType}
-                  isolates={caseDetail.isolates}
-                  service={service}
-                  saving={saving}
-                  onAstUpdated={() => {
-                    setReadinessRefreshToken(
-                      (currentValue) => currentValue + 1,
-                    );
-                    loadReagentOverview();
-                  }}
-                  readOnly={finalReleased}
-                  reagentRequirements={reagentOverview.requirements}
-                  reagentUsages={reagentOverview.usages}
-                />
+                {!unassigned && (
+                  <AstEntryPanel
+                    caseId={caseDetail.id}
+                    workflowType={caseDetail.workflowType}
+                    isolates={caseDetail.isolates}
+                    service={service}
+                    saving={saving}
+                    onAstUpdated={() => {
+                      setReadinessRefreshToken(
+                        (currentValue) => currentValue + 1,
+                      );
+                      loadReagentOverview();
+                    }}
+                    readOnly={finalReleased}
+                    reagentRequirements={reagentOverview.requirements}
+                    reagentUsages={reagentOverview.usages}
+                  />
+                )}
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({
@@ -562,19 +663,22 @@ const MicrobiologyCaseView = ({
                 })}
                 open={focusedSection === "reports"}
                 onHeadingClick={() => selectSection("reports")}
+                disabled={unassigned}
               >
-                <ReportReadinessPanel
-                  caseId={caseDetail.id}
-                  service={service}
-                  finalReleaseState={
-                    caseDetail.finalReleaseState || caseDetail.stage
-                  }
-                  amendmentOpen={amendmentOpen}
-                  patientId={caseDetail.patientId}
-                  onReleased={() => loadCase({ showLoading: false })}
-                  onProjectionLoaded={setProjectedResultIds}
-                  refreshToken={readinessRefreshToken}
-                />
+                {!unassigned && (
+                  <ReportReadinessPanel
+                    caseId={caseDetail.id}
+                    service={service}
+                    finalReleaseState={
+                      caseDetail.finalReleaseState || caseDetail.stage
+                    }
+                    amendmentOpen={amendmentOpen}
+                    patientId={caseDetail.patientId}
+                    onReleased={() => loadCase({ showLoading: false })}
+                    onProjectionLoaded={setProjectedResultIds}
+                    refreshToken={readinessRefreshToken}
+                  />
+                )}
               </AccordionItem>
               <AccordionItem
                 title={intl.formatMessage({

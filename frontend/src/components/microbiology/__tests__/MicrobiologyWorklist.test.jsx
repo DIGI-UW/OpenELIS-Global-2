@@ -77,7 +77,7 @@ describe("MicrobiologyWorklist", () => {
     expect(worklistRow).toHaveTextContent("Critical communication");
     expect(
       screen.getByTestId("microbiology-worklist-siblings"),
-    ).toHaveTextContent("Mycobacteriology Tb");
+    ).toHaveTextContent("Mycobacteriology TB");
     expect(
       screen.getByTestId("microbiology-worklist-summary-ast-review"),
     ).toHaveTextContent("AST review");

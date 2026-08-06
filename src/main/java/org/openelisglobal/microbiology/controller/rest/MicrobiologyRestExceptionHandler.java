@@ -5,6 +5,7 @@ import org.openelisglobal.inventory.service.InventoryLotUnavailableException;
 import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
 import org.openelisglobal.microbiology.service.MicroAstConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
+import org.openelisglobal.microbiology.service.MicroCaseWorkflowConflictException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,6 +36,12 @@ public class MicrobiologyRestExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleLockedCase(MicroCaseLockedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
                 "MICROBIOLOGY_CASE_LOCKED", "message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MicroCaseWorkflowConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleWorkflowConflict(MicroCaseWorkflowConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
+                "MICROBIOLOGY_WORKFLOW_CONFLICT", "message", exception.getMessage()));
     }
 
     @ExceptionHandler(InventoryLotUnavailableException.class)

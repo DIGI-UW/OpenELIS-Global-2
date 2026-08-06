@@ -10,6 +10,7 @@ import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
+import org.openelisglobal.microbiology.service.MicroCaseWorkflowService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +26,8 @@ public class MicroCaseLookupRestControllerTest {
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service,
                 org.mockito.Mockito.mock(MicroCaseStateService.class),
-                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCasesForSampleItem("1001");
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class),
+                org.mockito.Mockito.mock(MicroCaseWorkflowService.class)).getCasesForSampleItem("1001");
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(2, response.getBody().size());

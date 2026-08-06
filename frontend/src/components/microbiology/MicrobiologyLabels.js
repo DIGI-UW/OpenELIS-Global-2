@@ -7,6 +7,7 @@ export const formatMicrobiologyEnum = (value) => {
     ast: "AST",
     id: "ID",
     mic: "MIC",
+    tb: "TB",
     whonet: "WHONET",
   };
 

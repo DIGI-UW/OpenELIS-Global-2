@@ -42,6 +42,17 @@
   gap: 0.5rem 1rem;
 }
 
+.microbiology-sibling-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+}
+
+.microbiology-sibling-links span {
+  font-weight: 600;
+}
+
 .microbiology-workbench__layout {
   display: grid;
   gap: 1.5rem;

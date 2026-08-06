@@ -17,6 +17,7 @@ import org.openelisglobal.microbiology.controller.rest.MicrobiologyRestException
 import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
 import org.openelisglobal.microbiology.service.MicroAstConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
+import org.openelisglobal.microbiology.service.MicroCaseWorkflowConflictException;
 import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.springframework.http.MediaType;
@@ -59,6 +60,16 @@ public class MicrobiologyRestExceptionHandlerTest {
         assertEquals(409, response.getStatusCode().value());
         assertEquals("MICROBIOLOGY_AST_CONFLICT", response.getBody().get("error"));
         assertEquals("AST_SOURCE_RUN_REVIEW_REQUIRED", response.getBody().get("message"));
+    }
+
+    @Test
+    public void workflowConflictReturnsNamedConflict() {
+        ResponseEntity<Map<String, Object>> response = new MicrobiologyRestExceptionHandler()
+                .handleWorkflowConflict(new MicroCaseWorkflowConflictException("MICROBIOLOGY_WORKFLOW_SIBLING_EXISTS"));
+
+        assertEquals(409, response.getStatusCode().value());
+        assertEquals("MICROBIOLOGY_WORKFLOW_CONFLICT", response.getBody().get("error"));
+        assertEquals("MICROBIOLOGY_WORKFLOW_SIBLING_EXISTS", response.getBody().get("message"));
     }
 
     @Test
