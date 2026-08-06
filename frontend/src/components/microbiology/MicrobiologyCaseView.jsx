@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   Accordion,
   AccordionItem,
+  Button,
   InlineNotification,
   Layer,
   Loading,
@@ -308,7 +309,7 @@ const MicrobiologyCaseView = ({
       .then((result) => {
         if (!result || result.error || result.statusCode >= 400) {
           throw new Error(
-            formatMicrobiologyEnum(result?.message || result?.error),
+            formatMicrobiologyEnum(result?.message || result?.error, intl),
           );
         }
         return service.getCaseTimeline(caseId).then((timeline) => {
@@ -348,7 +349,39 @@ const MicrobiologyCaseView = ({
   };
 
   const selectSection = (section) => {
-    history.push(getMicrobiologyCaseUrl(caseId, { ...routeState, section }));
+    history.push(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section,
+        action: "",
+        targetType: "",
+        targetId: "",
+      }),
+    );
+  };
+
+  const openCriticalCommunication = (targetType, targetId) => {
+    history.push(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "critical-communication",
+        action: "log-critical",
+        targetType,
+        targetId,
+      }),
+    );
+  };
+
+  const completeCriticalEntry = () => {
+    history.replace(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "critical-communication",
+        action: "",
+        targetType: "",
+        targetId: "",
+      }),
+    );
   };
 
   const focusedSection = routeState.section || "case-info";
@@ -457,22 +490,36 @@ const MicrobiologyCaseView = ({
                     key={sibling.id}
                     aria-label={`${formatMicrobiologyEnum(
                       sibling.workflowType,
-                    )} (${formatMicrobiologyEnum(sibling.stage)})`}
+                      intl,
+                    )} (${formatMicrobiologyEnum(sibling.stage, intl)})`}
                     to={getMicrobiologyCaseUrl(sibling.id, {
                       ...routeState,
                       section: "case-info",
                     })}
                   >
-                    {formatMicrobiologyEnum(sibling.workflowType)} (
-                    {formatMicrobiologyEnum(sibling.stage)})
+                    {formatMicrobiologyEnum(sibling.workflowType, intl)} (
+                    {formatMicrobiologyEnum(sibling.stage, intl)})
                   </RouterLink>
                 ))}
               </nav>
             )}
           </div>
-          <Tag type={caseDetail.stage === "FINAL_RELEASED" ? "green" : "blue"}>
-            {formatMicrobiologyEnum(caseDetail.stage, intl)}
-          </Tag>
+          <div className="microbiology-workbench__hero-actions">
+            <Tag
+              type={caseDetail.stage === "FINAL_RELEASED" ? "green" : "blue"}
+            >
+              {formatMicrobiologyEnum(caseDetail.stage, intl)}
+            </Tag>
+            <Button
+              kind="tertiary"
+              size="sm"
+              onClick={() => openCriticalCommunication("CASE", caseDetail.id)}
+            >
+              {intl.formatMessage({
+                id: "microbiology.critical.logNotification",
+              })}
+            </Button>
+          </div>
         </header>
 
         {finalReleased && (
@@ -661,6 +708,9 @@ const MicrobiologyCaseView = ({
                     saving={saving}
                     readOnly={finalReleased}
                     amendmentOpen={amendmentOpen}
+                    onLogCritical={(isolate) =>
+                      openCriticalCommunication("ISOLATE", isolate.id)
+                    }
                     service={service}
                   />
                 )}
@@ -702,8 +752,19 @@ const MicrobiologyCaseView = ({
                   sampleItemId={caseDetail.sampleItemId}
                   isolates={caseDetail.isolates}
                   projectedResultIds={projectedResultIds}
+                  entryTargetType={
+                    routeState.action === "log-critical"
+                      ? routeState.targetType
+                      : ""
+                  }
+                  entryTargetId={
+                    routeState.action === "log-critical"
+                      ? routeState.targetId
+                      : ""
+                  }
                   service={service}
                   onCaseUpdated={() => loadCase({ showLoading: false })}
+                  onEntryComplete={completeCriticalEntry}
                 />
               </AccordionItem>
               <AccordionItem

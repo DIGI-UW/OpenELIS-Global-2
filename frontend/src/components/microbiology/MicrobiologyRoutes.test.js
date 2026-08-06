@@ -64,6 +64,9 @@ describe("MicrobiologyRoutes", () => {
       page: 1,
       pageSize: 20,
       section: "isolates",
+      action: "",
+      targetType: "",
+      targetId: "",
     });
   });
 
@@ -74,5 +77,24 @@ describe("MicrobiologyRoutes", () => {
     expect(parseMicrobiologyCaseSearch("?section=amendment").section).toBe(
       "amendment",
     );
+  });
+
+  it("preserves a fixed critical communication target in canonical case state", () => {
+    const url = getMicrobiologyCaseUrl("case-1", {
+      section: "critical-communication",
+      action: "log-critical",
+      targetType: "ISOLATE",
+      targetId: "isolate-1",
+    });
+
+    expect(url).toBe(
+      "/Microbiology/cases/case-1?section=critical-communication&action=log-critical&targetType=ISOLATE&targetId=isolate-1",
+    );
+    expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
+      section: "critical-communication",
+      action: "log-critical",
+      targetType: "ISOLATE",
+      targetId: "isolate-1",
+    });
   });
 });

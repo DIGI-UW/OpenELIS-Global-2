@@ -28,8 +28,11 @@ const CriticalCommunicationPanel = ({
   sampleItemId,
   isolates = [],
   projectedResultIds = [],
+  entryTargetType = "",
+  entryTargetId = "",
   service = MicrobiologyService,
   onCaseUpdated,
+  onEntryComplete,
 }) => {
   const intl = useIntl();
   const [communications, setCommunications] = useState([]);
@@ -44,19 +47,30 @@ const CriticalCommunicationPanel = ({
   const [resolutionNote, setResolutionNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const targetLocked = Boolean(entryTargetType && entryTargetId);
 
+  const effectiveTargetType = targetLocked ? entryTargetType : targetType;
   const targetOptions = useMemo(() => {
-    if (targetType === "ISOLATE") {
+    if (effectiveTargetType === "ISOLATE") {
       return isolates.map((isolate) => ({
         id: isolate.id,
         label: isolate.isolateLabel,
       }));
     }
-    if (targetType === "RESULT") {
+    if (effectiveTargetType === "RESULT") {
       return projectedResultIds.map((id) => ({ id, label: id }));
     }
     return [];
-  }, [isolates, projectedResultIds, targetType]);
+  }, [effectiveTargetType, isolates, projectedResultIds]);
+  const defaultTargetId =
+    effectiveTargetType === "CASE"
+      ? caseId
+      : effectiveTargetType === "SAMPLE_ITEM"
+        ? sampleItemId || ""
+        : targetOptions[0]?.id || "";
+  const effectiveTargetId = targetLocked
+    ? entryTargetId
+    : targetId || defaultTargetId;
 
   const loadCommunications = () => {
     service.getCriticalCommunications(caseId).then((rows) => {
@@ -66,20 +80,7 @@ const CriticalCommunicationPanel = ({
 
   useEffect(() => {
     loadCommunications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
-
-  useEffect(() => {
-    if (targetType === "CASE") {
-      setTargetId(caseId);
-      return;
-    }
-    if (targetType === "SAMPLE_ITEM") {
-      setTargetId(sampleItemId || "");
-      return;
-    }
-    setTargetId(targetOptions[0]?.id || "");
-  }, [caseId, sampleItemId, targetOptions, targetType]);
 
   const refresh = () => {
     loadCommunications();
@@ -89,7 +90,7 @@ const CriticalCommunicationPanel = ({
   };
 
   const logCommunication = () => {
-    if (!recipient.trim() || !message.trim() || !targetId) {
+    if (!recipient.trim() || !message.trim() || !effectiveTargetId) {
       setError(intl.formatMessage({ id: "microbiology.critical.required" }));
       return;
     }
@@ -97,8 +98,8 @@ const CriticalCommunicationPanel = ({
     setError("");
     service
       .logCriticalCommunication(caseId, {
-        targetType,
-        targetId,
+        targetType: effectiveTargetType,
+        targetId: effectiveTargetId,
         recipient,
         recipientContact,
         communicationMethod,
@@ -111,6 +112,9 @@ const CriticalCommunicationPanel = ({
         setMessage("");
         setFollowUpNeeded(true);
         refresh();
+        if (onEntryComplete) {
+          onEntryComplete();
+        }
       })
       .finally(() => setSaving(false));
   };
@@ -185,8 +189,12 @@ const CriticalCommunicationPanel = ({
             labelText={intl.formatMessage({
               id: "microbiology.critical.target",
             })}
-            value={targetType}
-            onChange={(event) => setTargetType(event.target.value)}
+            value={effectiveTargetType}
+            disabled={targetLocked}
+            onChange={(event) => {
+              setTargetType(event.target.value);
+              setTargetId("");
+            }}
           >
             {TARGET_TYPES.map((type) => (
               <SelectItem
@@ -202,7 +210,8 @@ const CriticalCommunicationPanel = ({
               labelText={intl.formatMessage({
                 id: "microbiology.critical.targetId",
               })}
-              value={targetId}
+              value={effectiveTargetId}
+              disabled={targetLocked}
               onChange={(event) => setTargetId(event.target.value)}
             >
               {targetOptions.map((option) => (
@@ -219,8 +228,12 @@ const CriticalCommunicationPanel = ({
               labelText={intl.formatMessage({
                 id: "microbiology.critical.targetId",
               })}
-              value={targetId}
-              disabled={targetType === "CASE" || targetType === "SAMPLE_ITEM"}
+              value={effectiveTargetId}
+              disabled={
+                targetLocked ||
+                effectiveTargetType === "CASE" ||
+                effectiveTargetType === "SAMPLE_ITEM"
+              }
               onChange={(event) => setTargetId(event.target.value)}
             />
           )}

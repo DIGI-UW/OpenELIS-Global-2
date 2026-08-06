@@ -36,6 +36,7 @@ const IsolatePanel = ({
   saving,
   readOnly = false,
   amendmentOpen = false,
+  onLogCritical,
   service = MicrobiologyService,
 }) => {
   const intl = useIntl();
@@ -294,24 +295,40 @@ const IsolatePanel = ({
                     </div>
                   )}
                 </div>
-                <Button
-                  kind={
-                    isolate.identificationStatus === "CONFIRMED"
-                      ? "ghost"
-                      : "tertiary"
-                  }
-                  size="sm"
-                  onClick={() => editIsolate(isolate)}
-                  disabled={readOnly}
-                >
-                  {intl.formatMessage({
-                    id: amendmentOpen
-                      ? "microbiology.isolate.reidentify"
-                      : isolate.identificationStatus === "CONFIRMED"
-                        ? "microbiology.isolate.edit"
-                        : "microbiology.isolate.identify",
-                  })}
-                </Button>
+                <div className="microbiology-isolate-row__actions">
+                  {onLogCritical && (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => onLogCritical(isolate)}
+                    >
+                      {intl.formatMessage(
+                        {
+                          id: "microbiology.critical.logForIsolate",
+                        },
+                        { isolate: isolate.isolateLabel },
+                      )}
+                    </Button>
+                  )}
+                  <Button
+                    kind={
+                      isolate.identificationStatus === "CONFIRMED"
+                        ? "ghost"
+                        : "tertiary"
+                    }
+                    size="sm"
+                    onClick={() => editIsolate(isolate)}
+                    disabled={readOnly}
+                  >
+                    {intl.formatMessage({
+                      id: amendmentOpen
+                        ? "microbiology.isolate.reidentify"
+                        : isolate.identificationStatus === "CONFIRMED"
+                          ? "microbiology.isolate.edit"
+                          : "microbiology.isolate.identify",
+                    })}
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>

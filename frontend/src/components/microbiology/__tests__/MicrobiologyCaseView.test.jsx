@@ -256,6 +256,29 @@ describe("MicrobiologyCaseView", () => {
     );
   });
 
+  it("opens a case-targeted critical communication from the header", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Log critical notification",
+      }),
+    );
+
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=critical-communication&action=log-critical&targetType=CASE&targetId=case-1",
+    );
+    expect(screen.getByLabelText("Critical result target")).toBeDisabled();
+    expect(screen.getByLabelText("Target record")).toHaveValue("case-1");
+  });
+
   it("opens amendment history from its canonical section URL", async () => {
     const service = {
       ...astServiceStubs,
