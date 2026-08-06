@@ -300,9 +300,11 @@ inside product requirements.
   targeting `/Microbiology/worklist`.
 - Use `/Microbiology/cases/:caseId` for case destinations and preserve legacy
   route redirects without creating a second workflow implementation.
-- Compose worklist state with `workflow`, `urgency`, `due`, and `sort` query
-  parameters; compose case progress with `section` while carrying worklist
-  context through case navigation and back-navigation.
+- Compose worklist state with one `grain` (`cultures` or `ast`), one
+  grain-specific `status`, and orthogonal workflow, urgency, search, sort, and
+  paging query parameters. Compose case progress with `section`; an AST-row
+  destination also carries the focused isolate and run while preserving the
+  worklist return context.
 - Cover the navigation and URL behavior in the registered `core-app`
   Playwright project, not only through an interactive browser walkthrough.
 - Use the external OpenELIS UAT Review Harness for deployed human review.
