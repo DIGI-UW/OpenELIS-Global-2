@@ -10,8 +10,57 @@ import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 
 const enabled = (value) => value === true || value === "true";
 
-const CaseInfoSummary = ({ orderDetail = {} }) => {
+export const CaseInfoCompactSummary = ({
+  accessionNumber,
+  requestingLocation,
+  orderDetail = {},
+}) => {
   const intl = useIntl();
+  const detail = orderDetail || {};
+  const exposure =
+    detail.antibioticExposure == null
+      ? intl.formatMessage({ id: "microbiology.caseInfo.notProvided" })
+      : intl.formatMessage({
+          id: enabled(detail.antibioticExposure)
+            ? "microbiology.caseInfo.yes"
+            : "microbiology.caseInfo.no",
+        });
+  const values = [
+    accessionNumber &&
+      `${intl.formatMessage({
+        id: "microbiology.case.accessionNumber",
+      })}: ${accessionNumber}`,
+    detail.patientOrigin &&
+      `${intl.formatMessage({
+        id: "microbiology.orderDetail.patientOrigin",
+      })}: ${formatMicrobiologyEnum(detail.patientOrigin)}`,
+    requestingLocation &&
+      `${intl.formatMessage({
+        id: "microbiology.case.requestingLocation",
+      })}: ${requestingLocation}`,
+    detail.numberOfSets != null &&
+      `${intl.formatMessage({
+        id: "microbiology.orderDetail.numberOfSets",
+      })}: ${detail.numberOfSets}`,
+    `${intl.formatMessage({
+      id: "microbiology.orderDetail.antibioticExposure",
+    })}: ${exposure}`,
+  ].filter(Boolean);
+
+  return (
+    <span className="microbiology-case-info__compact">
+      {values.join(" | ")}
+    </span>
+  );
+};
+
+const CaseInfoSummary = ({
+  accessionNumber,
+  requestingLocation,
+  orderDetail = {},
+}) => {
+  const intl = useIntl();
+  const detail = orderDetail || {};
   const display = (value) =>
     value || intl.formatMessage({ id: "microbiology.caseInfo.notProvided" });
   const booleanDisplay = (value) =>
@@ -25,7 +74,7 @@ const CaseInfoSummary = ({ orderDetail = {} }) => {
     <StructuredListWrapper
       isCondensed
       isFlush
-      ariaLabel={intl.formatMessage({ id: "microbiology.caseInfo.summary" })}
+      aria-label={intl.formatMessage({ id: "microbiology.caseInfo.summary" })}
     >
       <StructuredListBody>
         <StructuredListRow>
@@ -37,8 +86,28 @@ const CaseInfoSummary = ({ orderDetail = {} }) => {
             </strong>
           </StructuredListCell>
           <StructuredListCell>
-            {display(orderDetail.clinicalHistory)}
+            {display(detail.clinicalHistory)}
           </StructuredListCell>
+        </StructuredListRow>
+        <StructuredListRow>
+          <StructuredListCell>
+            <strong>
+              {intl.formatMessage({
+                id: "microbiology.case.accessionNumber",
+              })}
+            </strong>
+          </StructuredListCell>
+          <StructuredListCell>{display(accessionNumber)}</StructuredListCell>
+        </StructuredListRow>
+        <StructuredListRow>
+          <StructuredListCell>
+            <strong>
+              {intl.formatMessage({
+                id: "microbiology.case.requestingLocation",
+              })}
+            </strong>
+          </StructuredListCell>
+          <StructuredListCell>{display(requestingLocation)}</StructuredListCell>
         </StructuredListRow>
         <StructuredListRow>
           <StructuredListCell>
@@ -49,7 +118,7 @@ const CaseInfoSummary = ({ orderDetail = {} }) => {
             </strong>
           </StructuredListCell>
           <StructuredListCell>
-            {display(formatMicrobiologyEnum(orderDetail.patientOrigin))}
+            {display(formatMicrobiologyEnum(detail.patientOrigin))}
           </StructuredListCell>
         </StructuredListRow>
         <StructuredListRow>
@@ -61,7 +130,7 @@ const CaseInfoSummary = ({ orderDetail = {} }) => {
             </strong>
           </StructuredListCell>
           <StructuredListCell>
-            {display(orderDetail.numberOfSets)}
+            {display(detail.numberOfSets)}
           </StructuredListCell>
         </StructuredListRow>
         <StructuredListRow>
@@ -73,7 +142,9 @@ const CaseInfoSummary = ({ orderDetail = {} }) => {
             </strong>
           </StructuredListCell>
           <StructuredListCell>
-            {booleanDisplay(orderDetail.antibioticExposure)}
+            {detail.antibioticExposure == null
+              ? display(null)
+              : booleanDisplay(detail.antibioticExposure)}
           </StructuredListCell>
         </StructuredListRow>
         <StructuredListRow>
@@ -85,7 +156,9 @@ const CaseInfoSummary = ({ orderDetail = {} }) => {
             </strong>
           </StructuredListCell>
           <StructuredListCell>
-            {booleanDisplay(orderDetail.criticalNotificationPreference)}
+            {detail.criticalNotificationPreference == null
+              ? display(null)
+              : booleanDisplay(detail.criticalNotificationPreference)}
           </StructuredListCell>
         </StructuredListRow>
       </StructuredListBody>

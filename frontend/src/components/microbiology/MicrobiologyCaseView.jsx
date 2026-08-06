@@ -20,7 +20,7 @@ import {
 } from "react-router-dom";
 import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
 import AstEntryPanel from "./AstEntryPanel";
-import CaseInfoSummary from "./CaseInfoSummary";
+import CaseInfoSummary, { CaseInfoCompactSummary } from "./CaseInfoSummary";
 import CaseInoculationPanel from "./CaseInoculationPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CaseNonconformancePanel from "./CaseNonconformancePanel";
@@ -506,6 +506,23 @@ const MicrobiologyCaseView = ({
                   : <strong>{caseDetail.specimenType}</strong>
                 </span>
               )}
+              {caseDetail.lastActivityBy && (
+                <span>
+                  {intl.formatMessage({
+                    id: "microbiology.case.lastActivityBy",
+                  })}
+                  : <strong>{caseDetail.lastActivityBy}</strong>
+                  {caseDetail.lastActivityAt && (
+                    <>
+                      {" "}
+                      {intl.formatDate(caseDetail.lastActivityAt, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </>
+                  )}
+                </span>
+              )}
             </div>
             {(caseDetail.siblingCases || []).length > 0 && (
               <nav
@@ -545,6 +562,14 @@ const MicrobiologyCaseView = ({
             >
               {formatMicrobiologyEnum(caseDetail.stage, intl)}
             </Tag>
+            {caseDetail.nonconformanceCount > 0 && (
+              <Tag type="red">
+                {intl.formatMessage(
+                  { id: "microbiology.case.nonconformanceCount" },
+                  { count: caseDetail.nonconformanceCount },
+                )}
+              </Tag>
+            )}
             <Button
               kind="ghost"
               size="sm"
@@ -665,13 +690,28 @@ const MicrobiologyCaseView = ({
 
             <Accordion>
               <AccordionItem
-                title={intl.formatMessage({
-                  id: "microbiology.progress.caseInfo",
-                })}
+                title={
+                  <span className="microbiology-case-info__heading">
+                    <span>
+                      {intl.formatMessage({
+                        id: "microbiology.progress.caseInfo",
+                      })}
+                    </span>
+                    <CaseInfoCompactSummary
+                      accessionNumber={caseDetail.accessionNumber}
+                      requestingLocation={caseDetail.requestingLocation}
+                      orderDetail={caseDetail.orderDetail}
+                    />
+                  </span>
+                }
                 open={focusedSection === "case-info"}
                 onHeadingClick={() => selectSection("case-info")}
               >
-                <CaseInfoSummary orderDetail={caseDetail.orderDetail} />
+                <CaseInfoSummary
+                  accessionNumber={caseDetail.accessionNumber}
+                  requestingLocation={caseDetail.requestingLocation}
+                  orderDetail={caseDetail.orderDetail}
+                />
                 <ChangeWorkflowPanel
                   caseId={caseDetail.id}
                   workflowType={caseDetail.workflowType}

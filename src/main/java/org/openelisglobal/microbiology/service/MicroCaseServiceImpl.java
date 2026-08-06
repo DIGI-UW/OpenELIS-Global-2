@@ -1,7 +1,9 @@
 package org.openelisglobal.microbiology.service;
 
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
@@ -20,10 +22,15 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
+import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,10 +44,15 @@ public class MicroCaseServiceImpl implements MicroCaseService {
     private final SampleItemService sampleItemService;
     private final SampleHumanService sampleHumanService;
     private final PatientService patientService;
+    private final SampleOrganizationService sampleOrganizationService;
+    private final SystemUserService systemUserService;
+    private final NceSpecimenService nceSpecimenService;
 
     public MicroCaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroIsolateDAO isolateDAO,
             MicroCaseOrderDetailDAO orderDetailDAO, SampleItemService sampleItemService,
-            SampleHumanService sampleHumanService, PatientService patientService) {
+            SampleHumanService sampleHumanService, PatientService patientService,
+            SampleOrganizationService sampleOrganizationService, SystemUserService systemUserService,
+            NceSpecimenService nceSpecimenService) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.isolateDAO = isolateDAO;
@@ -48,6 +60,9 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         this.sampleItemService = sampleItemService;
         this.sampleHumanService = sampleHumanService;
         this.patientService = patientService;
+        this.sampleOrganizationService = sampleOrganizationService;
+        this.systemUserService = systemUserService;
+        this.nceSpecimenService = nceSpecimenService;
     }
 
     @Override
@@ -106,8 +121,15 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         }
         MicroCaseDetailForm form = toDetailForm(microCase);
         compileSpecimenContext(form, microCase.getSampleItemId());
+        Map<String, String> userDisplayById = new HashMap<>();
         for (MicroCaseActivity activity : activityDAO.getByCaseId(caseId)) {
-            form.activities.add(toActivityForm(activity));
+            MicroCaseActivityForm activityForm = toActivityForm(activity, userDisplayById);
+            form.activities.add(activityForm);
+            if (activity.getOccurredAt() != null
+                    && (form.lastActivityAt == null || activity.getOccurredAt().after(form.lastActivityAt))) {
+                form.lastActivityAt = activity.getOccurredAt();
+                form.lastActivityBy = activityForm.performedByDisplay;
+            }
         }
         List<MicroIsolate> isolates = isolateDAO.getByCaseId(caseId);
         for (MicroIsolate isolate : isolates) {
@@ -138,6 +160,10 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         Sample sample = sampleItem.getSample();
         if (sample != null) {
             form.accessionNumber = sample.getAccessionNumber();
+            SampleOrganization sampleOrganization = sampleOrganizationService.getDataBySample(sample);
+            if (sampleOrganization != null && sampleOrganization.getOrganization() != null) {
+                form.requestingLocation = sampleOrganization.getOrganization().getOrganizationName();
+            }
             Patient patient = sampleHumanService.getPatientForSample(sample);
             if (patient != null) {
                 form.patientId = patient.getId();
@@ -146,6 +172,13 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         }
         if (sampleItem.getTypeOfSample() != null) {
             form.specimenType = sampleItem.getTypeOfSample().getDescription();
+        }
+        try {
+            List<?> linkedNonconformances = nceSpecimenService
+                    .getSpecimenBySampleItemId(Integer.valueOf(sampleItem.getId()));
+            form.nonconformanceCount = linkedNonconformances == null ? 0 : linkedNonconformances.size();
+        } catch (NumberFormatException ignored) {
+            form.nonconformanceCount = 0;
         }
     }
 
@@ -187,16 +220,36 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         return form;
     }
 
-    private MicroCaseActivityForm toActivityForm(MicroCaseActivity activity) {
+    private MicroCaseActivityForm toActivityForm(MicroCaseActivity activity, Map<String, String> userDisplayById) {
         MicroCaseActivityForm form = new MicroCaseActivityForm();
         form.id = activity.getId();
         form.caseId = activity.getCaseId();
         form.activityType = activity.getActivityType();
         form.occurredAt = activity.getOccurredAt();
         form.performedBy = activity.getPerformedBy();
+        form.performedByDisplay = resolveUserDisplay(activity.getPerformedBy(), userDisplayById);
         form.note = activity.getNote();
         form.structuredData = activity.getStructuredData();
         return form;
+    }
+
+    private String resolveUserDisplay(String userId, Map<String, String> userDisplayById) {
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+        if (userDisplayById.containsKey(userId)) {
+            return userDisplayById.get(userId);
+        }
+        SystemUser user = systemUserService.getUserById(userId);
+        String display = userId;
+        if (user != null) {
+            String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
+            String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
+            String fullName = (firstName + " " + lastName).trim();
+            display = fullName.isEmpty() ? userId : fullName;
+        }
+        userDisplayById.put(userId, display);
+        return display;
     }
 
     private MicroCaseOrderDetailForm toOrderDetailForm(MicroCaseOrderDetail orderDetail) {

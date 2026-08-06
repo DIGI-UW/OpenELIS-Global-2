@@ -185,7 +185,7 @@ describe("MicrobiologyCaseView", () => {
       await screen.findByRole("heading", { name: "Microbiology case" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Microbiology, UAT")).toBeInTheDocument();
-    expect(screen.getByText("UATMICRO001")).toBeInTheDocument();
+    expect(screen.getAllByText(/UATMICRO001/).length).toBeGreaterThan(0);
     expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Start inoculation" }));
@@ -284,6 +284,24 @@ describe("MicrobiologyCaseView", () => {
     expect(
       screen.getByTestId("microbiology-current-step-action"),
     ).toHaveTextContent("Manual AST");
+  });
+
+  it("shows the latest activity actor and linked NCE count in the case header", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        lastActivityBy: "Amina Diallo",
+        lastActivityAt: "2026-08-05T09:00:00Z",
+        nonconformanceCount: 2,
+      }),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    expect(await screen.findByText(/Amina Diallo/)).toBeInTheDocument();
+    expect(screen.getByText("2 NCEs")).toBeInTheDocument();
   });
 
   it("preserves an explicitly bookmarked non-current section", async () => {

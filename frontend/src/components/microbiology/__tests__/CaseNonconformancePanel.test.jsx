@@ -50,7 +50,7 @@ describe("CaseNonconformancePanel", () => {
     const user = userEvent.setup();
     const { service, onComplete } = renderPanel();
 
-    await user.selectOptions(await screen.findByLabelText("Category"), "10");
+    expect(await screen.findByLabelText("Category")).toHaveValue("10");
     await user.selectOptions(screen.getByLabelText("Type"), "12");
     await user.selectOptions(screen.getByLabelText("Reporting unit"), "7");
     await user.click(screen.getByRole("radio", { name: "Major" }));
