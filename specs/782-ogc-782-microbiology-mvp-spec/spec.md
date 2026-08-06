@@ -143,13 +143,17 @@ confirming the case shows the next required action.
 2. **Given** a case in culture setup, **When** the technologist records media or
    bottle setup, **Then** the case moves forward and records who performed the
    action and when.
-3. **Given** growth or a positive signal is observed, **When** the technologist
-   records the observation, **Then** the case prompts isolate workup and makes
-   the event visible in the case history.
-4. **Given** growth is present, **When** the technologist records Gram stain and
+3. **Given** a culture is incubating, **When** a technologist records a positive
+   signal or the connected instrument reports one, **Then** the case preserves
+   that signal as distinct from confirmed growth and prompts subculture and Gram
+   stain work.
+4. **Given** a positive signal, **When** growth is confirmed through the bench
+   workflow, **Then** the case records the progression to observed growth and
+   makes both events visible in its history.
+5. **Given** growth is present, **When** the technologist records Gram stain and
    colony morphology, **Then** the case preserves a preliminary isolate that can
    contribute to preliminary reporting without presenting AST as available.
-5. **Given** the preliminary isolate is identified, **When** the technologist
+6. **Given** the preliminary isolate is identified, **When** the technologist
    records the organism, identification method, confidence, and clinical
    significance, **Then** the case marks the isolate identified and supports AST
    setup for it.

@@ -230,12 +230,19 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   analyzer-event envelope. The microbiology consumer applies the event to an
   awaiting run; unresolved events remain visible in the existing Analyzer
   Import Issues surface rather than creating a second reconciliation product.
+- Receive normalized positive-culture signals through the same event envelope.
+  Resolve a unique incubating case from an explicit case reference or recorded
+  culture-container identifier; ambiguous, unmatched, duplicate, or invalid-
+  state events remain idempotent and use the same reconciliation surface.
 - Preserve analyzer organism identity, interpretations, QC references, flags,
   and card/software provenance as evidence. Case isolate identity remains
   authoritative until changed through the explicit identification workflow.
 - Add schema migrations only where observable behavior needs new durable state
   or a current constraint rejects a valid state. UI state, routes, fixtures,
   and test scenarios do not receive migrations.
+- Keep positive signal distinct from confirmed growth in the case state
+  machine. Manual worklist commands navigate into a case-scoped confirmation;
+  they never perform a clinical write directly from the queue.
 - Implement the worklist as one resource with an explicit grain in canonical
   URL and server query state. Culture rows and AST-run rows use different DTO
   projections but share navigation, filtering, paging, refresh, and empty-state
