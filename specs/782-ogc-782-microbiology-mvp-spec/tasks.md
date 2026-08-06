@@ -486,15 +486,15 @@ opens exactly one resulting case containing those details.
 
 ### M-04 Case Workbench Alignment
 
-- [ ] T234 [R1] Add focused service/controller and React tests for visible `UNASSIGNED` classification, early-case workflow change, required reason and compatible Method, result-preservation warning, final-release block, and audit history.
-- [ ] T235 [R1] Implement the inline Change Workflow action and hold profile-dependent work while a case is unassigned; add durable state only where the existing model cannot preserve the required history.
-- [ ] T236 [R1] Add sibling-case links in the case header with live workflow/stage context and state-preserving navigation.
+- [x] T234 [R1] Add focused service/controller and React tests for visible `UNASSIGNED` classification, early-case workflow change, required reason and compatible Method, result-preservation warning, final-release block, and audit history (`cfbdb9025`).
+- [x] T235 [R1] Implement the inline Change Workflow action and hold profile-dependent work while a case is unassigned; add durable state only where the existing model cannot preserve the required history (`cfbdb9025`).
+- [x] T236 [R1] Add sibling-case links in the case header with live workflow/stage context and state-preserving navigation (`cfbdb9025`).
 - [ ] T237 [R1] Replace generic setup activity entry with explicit Start inoculation/Add subculture behavior, parent lineage, barcode-ready identifiers, automatic timeline projection, and shared reagent-lot selection.
 - [ ] T238 [R1] Restrict Timeline manual entry to notes/observations and project automatic domain/audit events without creating a duplicate history system.
 - [ ] T239 [R1] Complete two-pass isolate behavior: Gram/colony preliminary data, identified status with method/confidence/significance, disabled AST until identification, and edit versus post-final reidentify actions.
 - [ ] T240 [R1] Add header/isolate critical entry points and reuse the existing NCE/rejection workflow for Report NCE and Mark lost; do not introduce microbiology-only NCE storage.
 - [ ] T241 [R1] Focus the case on its deterministic current step, complete compact clinical-history-first Case Info, and add the sticky stage-appropriate action area without duplicating progress state.
-- [ ] T242 [R1] Add registered Playwright and Grist stories for classification, sibling navigation, setup/subculture, isolate identification, critical entry points, NCE/lost specimen, and final-lock behavior.
+- [ ] T242 [R1] Add registered Playwright and separate Grist stories for classification, sibling navigation, setup/subculture, isolate identification, critical entry points, NCE/lost specimen, and final-lock behavior. The service-created R1 classification journey is registered in `core-app` (`a10a2d13e`); deployed runtime evidence, its separate Grist story, and all remaining journeys are open.
 
 ### M-05 AST Alignment
 

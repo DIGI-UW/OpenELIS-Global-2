@@ -4,7 +4,7 @@
 **Authority revision:**
 [`DIGI-UW/openelis-work@a1f720d7b3b0`](https://github.com/DIGI-UW/openelis-work/commit/a1f720d7b3b01db63387361495f4aa6589105003)
 **Implementation baseline:** `08b5b3888af4ba9f1c506fc555138218e0d043a4`
-**Remediation code through:** `1136be1a6`
+**Remediation code through:** `a10a2d13e`
 **Remediation branch:**
 `feat/782-ogc-782-microbiology-r1-authoritative-alignment`
 
@@ -67,7 +67,7 @@ The implementation status is deliberately narrower than “code exists.”
 | 11. M-05        | Enter and interpret AST                                               | MVP M5 plus M8                         | Multi-reading AST, standards, repeat/retest, override, and review exist                                                                                        | Source-level interaction and human UAT pending                                  |
 | 12. M-06        | Review expert-rule findings                                           | Deferred product outcome               | No expert-rule workflow                                                                                                                                        | Not started; separate future milestone                                          |
 | 13. M-11        | Log and follow critical communication                                 | MVP M6/M7 remediation                  | Clinical record and Alert synchronization exist                                                                                                                | Automated evidence exists; human UAT pending                                    |
-| 14. M-04        | Reclassify an unassigned or misrouted case                            | Edge case only; no deterministic tasks | No supported Change Workflow action                                                                                                                            | Not started; add product and engineering slice                                  |
+| 14. M-04        | Reclassify an unassigned or misrouted case                            | US8; T234-T242                          | Inline classification, compatible-Method validation, authenticated audit history, final lock, held profile actions, sibling links, focused tests, and a registered service-created Playwright journey exist                    | Implemented, evidence pending: deployed Playwright, separate Grist story, and human UAT remain |
 | 15. M-14        | Run the operational TB workflow                                       | Deferred product outcome               | Workflow enum/sibling scaffolding only                                                                                                                         | Not started; separate future milestone                                          |
 | 16. M-13        | Produce cumulative antibiograms                                       | Deferred product outcome               | No antibiogram workflow                                                                                                                                        | Not started; separate future milestone                                          |
 | 17. M-09        | Validate and export WHONET data                                       | M10 WHONET spec/tasks                  | Manual long-format configure/preview/repair/generate exists                                                                                                    | Partial; exact package/compatibility and later delivery scope remain            |
@@ -100,7 +100,7 @@ in the named acceptance criterion is absent or unproven.
 
 | Module                  | Automated evidence already present                                                                                      | Material implementation drift                                                                                                                                                                                                                                                                                                                                | Roadmap/spec correction                                                                                                  |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| M-04 Case Workbench     | Case creation, basic progress rail, generic setup/timeline, isolate CRUD, amendments, report release, final lock        | No dedicated inoculation/subculture lineage; no sibling header links; no Change Workflow; isolate Gram/colony/method/confidence flow incomplete; AST can start before confirmed ID; no report NCE/lost-specimen path; no analyzer-event reconciliation; header/isolate critical entry points absent; current-step focus and compact Case Info are incomplete | Split each behavior into independent TDD/UAT stories; do not call M-04 complete                                          |
+| M-04 Case Workbench     | Case creation, basic progress rail, generic setup/timeline, isolate CRUD, amendments, report release, final lock, workflow classification, sibling navigation | No dedicated inoculation/subculture lineage; isolate Gram/colony/method/confidence flow incomplete; AST can start before confirmed ID; no report NCE/lost-specimen path; no analyzer-event reconciliation; header/isolate critical entry points absent; current-step focus and compact Case Info are incomplete | Keep each remaining behavior in independent TDD/UAT stories; classification is implemented but not accepted             |
 | M-05 AST                | Manual readings, breakpoint interpretation, selectable standard, overrides, review, repeat/retest runs, reagent capture | Panel is a blank setup choice rather than upstream provenance; no matched-level display/revert history; no `RESULTS_IN`/QC/analyzer metadata path; no accept blockers; no single-drug repeat/NCE convergence; method/source distinction is incomplete                                                                                                        | Preserve manual AST as delivered subset; add analyzer/QC and provenance slices explicitly                                |
 | M-07 Worklist           | Shared culture queue, URL filters/search/sort/page, summary actions, sibling marker, critical flag, responsive table    | No Cultures/AST grain switch; no AST-run rows; incomplete deterministic due mapping; no row overflow actions; no resistance strip/recent activity; no phase-disabled controls; no auto-refresh focus/scroll proof; permission is authentication-only                                                                                                         | Replace the stale V2 clarification with required source-alignment tasks                                                  |
 | M-12 Reagent Lot Picker | One component is reused in setup and AST; service records Inventory usage; repeat metadata and usage history exist      | Picker exposes blocked lots disabled rather than filtering them; FIFO guidance is a label/tag rather than a tooltip; required/substitute semantics and actionable stale-selection errors are incomplete; barcode/scanner path and exact latency/a11y evidence are missing                                                                                    | Limit Microbiology ownership to picker behavior; keep Test Catalog/Inventory administration dependencies outside this PR |
@@ -138,3 +138,20 @@ For each required row, the implementation task must identify:
 Direct navigation to an unsupported/legacy route, label-only assertions, API
 inspection in place of visible behavior, or an unreviewed screenshot cannot
 promote a behavior to Complete.
+
+## R1 M-04 Classification Evidence
+
+- **Code:** `cfbdb9025` implements the transactional workflow transition,
+  named conflict behavior, authenticated actor history, final lock, held
+  profile actions, canonical section state, and sibling links.
+- **Fixture and journey:** `a10a2d13e` provisions the unassigned and typed
+  sibling cases through application services and registers the visible
+  classification journey in the `core-app` Playwright project.
+- **Automated checks passed locally:** focused
+  `MicrobiologyUatScenarioServiceTest` and `MicroCaseWorkflowServiceTest`;
+  Playwright project-registration validation; selector-policy scan; source
+  formatting and `git diff --check`.
+- **Still open:** no OpenELIS stack was listening on local HTTPS, so the new
+  Playwright journey has not run against this exact SHA. Deployment, separate
+  Grist story publication, live overlay verification, and human UAT remain
+  pending.
