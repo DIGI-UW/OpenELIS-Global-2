@@ -3,7 +3,7 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -144,6 +144,41 @@ describe("SerialConfiguration", () => {
 
     await waitFor(() => {
       expect(serialService.createSerialPortConfiguration).toHaveBeenCalled();
+    });
+  });
+
+  it("updates baud rate when using NumberInput steppers", async () => {
+    render(
+      <IntlWrapper>
+        <SerialConfiguration analyzerId={1} open={true} onClose={() => {}} />
+      </IntlWrapper>,
+    );
+
+    const baudRateInput = screen.getByLabelText("Baud Rate");
+    const baudRateWrapper = baudRateInput.closest(".cds--number");
+
+    expect(baudRateInput).toHaveValue(9600);
+
+    fireEvent.click(
+      within(baudRateWrapper).getByRole("button", {
+        name: "Increment number",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(baudRateInput).toHaveValue(19200);
+      expect(baudRateInput).not.toHaveValue(null);
+    });
+
+    fireEvent.click(
+      within(baudRateWrapper).getByRole("button", {
+        name: "Decrement number",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(baudRateInput).toHaveValue(9600);
+      expect(baudRateInput).not.toHaveValue(null);
     });
   });
 });
