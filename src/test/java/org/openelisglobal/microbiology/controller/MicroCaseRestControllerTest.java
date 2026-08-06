@@ -8,15 +8,19 @@ import static org.mockito.Mockito.when;
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseNonconformanceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
 import org.openelisglobal.microbiology.form.MicroCaseActivityRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
+import org.openelisglobal.microbiology.form.MicroCaseNonconformanceRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseWorkflowChangeRequestForm;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
 import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
+import org.openelisglobal.microbiology.service.MicroCaseNonconformanceResult;
+import org.openelisglobal.microbiology.service.MicroCaseNonconformanceService;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
@@ -209,6 +213,22 @@ public class MicroCaseRestControllerTest {
         assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), response.getBody().workflowType);
         verify(workflowService).changeWorkflow("case-1", MicroWorkflowType.BACTERIOLOGY, "method-1", "Correct routing",
                 false, "42");
+    }
+
+    @Test
+    public void reportNonconformanceUsesAuthenticatedActor() {
+        MicroCaseNonconformanceService service = org.mockito.Mockito.mock(MicroCaseNonconformanceService.class);
+        MicroCaseNonconformanceRequestForm request = new MicroCaseNonconformanceRequestForm();
+        MicroCaseNonconformanceResult result = new MicroCaseNonconformanceResult("1", "NCE-2026-00001", "FLAG_ONLY",
+                "NONCONFORMANCE", java.util.List.of("case-1"));
+        when(service.report("case-1", request, "42")).thenReturn(result);
+
+        ResponseEntity<MicroCaseNonconformanceResult> response = new MicroCaseNonconformanceRestController(service)
+                .report("case-1", request, requestFor("42"));
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("NCE-2026-00001", response.getBody().nceNumber());
+        verify(service).report("case-1", request, "42");
     }
 
     private MockHttpServletRequest requestFor(String userId) {
