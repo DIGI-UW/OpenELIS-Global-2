@@ -264,6 +264,12 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   the protocol does not provide a structured maximum day, follow the source
   fallback and show an accurate stage label rather than fabricating a day or
   treating an incubating culture as ready for isolate identification.
+- The repository already represents microbiology culture setup as a
+  Method-bound extension (`MicroCultureSetup`), so structured timing belongs in
+  that extension and its existing admin/service surface. Do not add a second
+  protocol master or parse the current free-text incubation defaults. Add a
+  Liquibase change only for the new durable numeric timing fields, then let the
+  worklist consume the service-compiled values in bounded batches.
 - Keep Macro Library as a separate cross-cutting feature stack and review
   deployment. Microbiology carries only a small consumer integration after the
   macro feature is independently accepted.
