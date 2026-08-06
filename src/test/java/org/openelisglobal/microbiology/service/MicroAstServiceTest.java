@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -684,6 +685,86 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void analyzerRunWaitsForResultsAndSnapshotsRoutingIdentity() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+
+        MicroAstRun run = service.startRun(new MicroAstRunSetupCommand("iso-1", "panel-1", "eucast-std", null,
+                MicroAstTechnique.VITEK_2, List.of(), null, true, "7", "card-42"), "1");
+
+        assertEquals(MicroAstRunStatus.AWAITING_RESULTS.name(), run.getStatus());
+        assertEquals("7", run.getAnalyzerInstrumentId());
+        assertEquals("card-42", run.getAnalyzerCardId());
+    }
+
+    @Test
+    public void analyzerResultsAppendReadingsAndKeepAnalyzerIdentityInformational() {
+        MicroAstRun run = awaitingAnalyzerRun();
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(runDAO.update(run)).thenReturn(run);
+        when(interpretationService.interpret(any(), any(), any())).thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
+
+        service.applyAnalyzerResults(new MicroAstAnalyzerResultBatch("run-1", "event-1", "7", "card-42", "v9.02",
+                "org-analyzer", "E. coli", new BigDecimal("99.5"), List.of("ESBL"), "qc-1", true, new Timestamp(1000),
+                new Timestamp(2000), List.of("AES-1"),
+                List.of(new MicroAstAnalyzerReading("abx-1", new BigDecimal("4"), "ug/mL", "RESISTANT", "r-1"))), "1");
+
+        ArgumentCaptor<MicroAstReading> reading = ArgumentCaptor.forClass(MicroAstReading.class);
+        verify(readingDAO).insert(reading.capture());
+        assertEquals("ANALYZER_AUTO", reading.getValue().getSource());
+        assertEquals("RESISTANT", reading.getValue().getInstrumentInterpretation());
+        assertEquals("r-1", reading.getValue().getAnalyzerResultReference());
+        assertEquals(MicroAstRunStatus.RESULTS_IN.name(), run.getStatus());
+        assertEquals("org-analyzer", run.getAnalyzerOrganismId());
+        assertEquals("org-1", identifiedIsolate().getOrganismId());
+    }
+
+    @Test
+    public void analyzerMismatchAndExpertFlagsBlockReviewUntilAcknowledged() {
+        MicroAstRun run = awaitingAnalyzerRun();
+        run.setStatus(MicroAstRunStatus.RESULTS_IN.name());
+        run.setAnalyzerExpertFlags("ESBL");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(runDAO.update(run)).thenReturn(run);
+        when(runAntibioticDAO.getByRunId("run-1")).thenReturn(List.of(orderedAntibiotic("run-1", "abx-1", 1)));
+        MicroAstReading reading = reading("reading-1", "run-1", MicroAstInterpretation.SUSCEPTIBLE);
+        reading.setAntibioticId("abx-1");
+        reading.setSource("ANALYZER_AUTO");
+        reading.setInstrumentInterpretation(MicroAstInterpretation.RESISTANT.name());
+        when(readingDAO.getByRunId("run-1")).thenReturn(List.of(reading));
+
+        assertReviewConflict("AST_ANALYZER_FLAGS_UNRESOLVED");
+        service.acknowledgeAnalyzerFlags("run-1", "Reviewed discordance with supervisor", "7");
+        assertReviewConflict("AST_INSTRUMENT_INTERPRETATION_MISMATCH");
+
+        reading.setOverrideInterpretation(MicroAstInterpretation.RESISTANT.name());
+        MicroAstRun reviewed = service.reviewRun("run-1", "7");
+        assertEquals(MicroAstRunStatus.REVIEWED.name(), reviewed.getStatus());
+    }
+
+    @Test
+    public void qcFailureBlocksReviewAndInvalidationCreatesPreservedRepeat() {
+        MicroAstRun run = awaitingAnalyzerRun();
+        run.setStatus(MicroAstRunStatus.QC_FAILED.name());
+        run.setQcState("FAILED");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(runDAO.update(any(MicroAstRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(runAntibioticDAO.getByRunId("run-1")).thenReturn(List.of(orderedAntibiotic("run-1", "abx-1", 1)));
+
+        assertReviewConflict("AST_QC_FAILURE_UNRESOLVED");
+        MicroAstRun repeat = service.invalidateAndRepeat("run-1", "On-board control out of range", "card-43", "7");
+
+        assertEquals(MicroAstRunStatus.INVALIDATED.name(), run.getStatus());
+        assertEquals("run-1", repeat.getSourceRunId());
+        assertEquals(MicroAstAttemptType.REPEAT.name(), repeat.getAttemptType());
+        assertEquals(MicroAstRunStatus.AWAITING_RESULTS.name(), repeat.getStatus());
+        assertEquals("card-43", repeat.getAnalyzerCardId());
+        verify(runDAO).insert(repeat);
+    }
+
+    @Test
     public void selectingReportableAttemptClearsSiblingSelection() {
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate()));
         MicroAstRun original = reviewedRun("run-1");
@@ -749,6 +830,31 @@ public class MicroAstServiceTest {
         run.setPanelId("panel-1");
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         return run;
+    }
+
+    private MicroAstRun awaitingAnalyzerRun() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        run.setPanelId("panel-1");
+        run.setPanelVersion(3);
+        run.setBreakpointStandardId("eucast-std");
+        run.setBreakpointVersion("2025");
+        run.setTechnique(MicroAstTechnique.VITEK_2.name());
+        run.setMethod(MicroAstMethod.MIC.name());
+        run.setAnalyzerInstrumentId("7");
+        run.setAnalyzerCardId("card-42");
+        run.setStatus(MicroAstRunStatus.AWAITING_RESULTS.name());
+        return run;
+    }
+
+    private void assertReviewConflict(String message) {
+        try {
+            service.reviewRun("run-1", "7");
+            fail("Expected review to be blocked by " + message);
+        } catch (MicroAstConflictException expected) {
+            assertEquals(message, expected.getMessage());
+        }
     }
 
     private MicroAstReading reading(String id, String runId, MicroAstInterpretation interpretation) {

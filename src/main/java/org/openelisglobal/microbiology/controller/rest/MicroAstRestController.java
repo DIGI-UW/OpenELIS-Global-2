@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.microbiology.form.MicroAstAnalyzerResultRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstOverrideRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingForm;
@@ -11,6 +12,9 @@ import org.openelisglobal.microbiology.form.MicroAstRunAntibioticForm;
 import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
+import org.openelisglobal.microbiology.service.MicroAstAnalyzerReading;
+import org.openelisglobal.microbiology.service.MicroAstAnalyzerResultBatch;
+import org.openelisglobal.microbiology.service.MicroAstRunSetupCommand;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
@@ -75,9 +79,52 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request,
             HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
+        MicroAstRunSetupCommand command = new MicroAstRunSetupCommand(request.isolateId, request.panelId,
                 request.breakpointStandardId, request.panelAdjustmentReason, technique(request.technique),
-                lotSelections(request.lotSelections), request.orderedAntibioticIds, authenticatedUserId(httpRequest))));
+                lotSelections(request.lotSelections), request.orderedAntibioticIds, request.awaitAnalyzerResults,
+                request.analyzerInstrumentId, request.analyzerCardId);
+        return ResponseEntity.ok(toRunForm(astService.startRun(command, authenticatedUserId(httpRequest))));
+    }
+
+    @PostMapping("/runs/{runId}/analyzer-results")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MicroAstRunForm> receiveAnalyzerResults(@PathVariable String runId,
+            @RequestBody MicroAstAnalyzerResultRequestForm request, HttpServletRequest httpRequest) {
+        List<MicroAstAnalyzerReading> readings = request.readings.stream()
+                .map(reading -> new MicroAstAnalyzerReading(reading.antibioticId, reading.rawValue, reading.units,
+                        reading.instrumentInterpretation, reading.analyzerResultReference))
+                .toList();
+        MicroAstAnalyzerResultBatch batch = new MicroAstAnalyzerResultBatch(runId, request.sourceEventId,
+                request.analyzerInstrumentId, request.analyzerCardId, request.analyzerSoftwareVersion,
+                request.analyzerOrganismId, request.analyzerOrganismName, request.analyzerOrganismConfidence,
+                request.analyzerExpertFlags, request.instrumentQcReference, request.qcPassed, request.loadedAt,
+                request.completedAt, request.analyzerMessageCodes, readings);
+        return ResponseEntity
+                .ok(toRunFormWithReadings(astService.applyAnalyzerResults(batch, authenticatedUserId(httpRequest))));
+    }
+
+    @PostMapping("/runs/{runId}/analyzer-flags/acknowledge")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VALIDATION')")
+    public ResponseEntity<MicroAstRunForm> acknowledgeAnalyzerFlags(@PathVariable String runId,
+            @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(toRunFormWithReadings(
+                astService.acknowledgeAnalyzerFlags(runId, request.reason, authenticatedUserId(httpRequest))));
+    }
+
+    @PostMapping("/runs/{runId}/qc/override")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VALIDATION')")
+    public ResponseEntity<MicroAstRunForm> overrideQcFailure(@PathVariable String runId,
+            @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(toRunFormWithReadings(
+                astService.overrideQcFailure(runId, request.reason, authenticatedUserId(httpRequest))));
+    }
+
+    @PostMapping("/runs/{runId}/invalidate-and-repeat")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MicroAstRunForm> invalidateAndRepeat(@PathVariable String runId,
+            @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(toRunFormWithReadings(astService.invalidateAndRepeat(runId, request.reason,
+                request.analyzerCardId, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{sourceRunId}/attempts")
@@ -178,6 +225,25 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.startedBy = run.getStartedBy();
         form.reviewedAt = run.getReviewedAt();
         form.reviewedBy = run.getReviewedBy();
+        form.analyzerInstrumentId = run.getAnalyzerInstrumentId();
+        form.analyzerCardId = run.getAnalyzerCardId();
+        form.analyzerSoftwareVersion = run.getAnalyzerSoftwareVersion();
+        form.analyzerOrganismId = run.getAnalyzerOrganismId();
+        form.analyzerOrganismName = run.getAnalyzerOrganismName();
+        form.analyzerOrganismConfidence = run.getAnalyzerOrganismConfidence();
+        form.analyzerExpertFlags = run.getAnalyzerExpertFlags();
+        form.instrumentQcReference = run.getInstrumentQcReference();
+        form.qcState = run.getQcState();
+        form.qcOverrideReason = run.getQcOverrideReason();
+        form.qcOverriddenAt = run.getQcOverriddenAt();
+        form.qcOverriddenBy = run.getQcOverriddenBy();
+        form.analyzerFlagsAcknowledgedAt = run.getAnalyzerFlagsAcknowledgedAt();
+        form.analyzerFlagsAcknowledgedBy = run.getAnalyzerFlagsAcknowledgedBy();
+        form.analyzerFlagsAcknowledgementReason = run.getAnalyzerFlagsAcknowledgementReason();
+        form.analyzerLoadedAt = run.getAnalyzerLoadedAt();
+        form.analyzerCompletedAt = run.getAnalyzerCompletedAt();
+        form.analyzerMessageCodes = run.getAnalyzerMessageCodes();
+        form.sourceEventId = run.getSourceEventId();
         for (MicroAstRunAntibiotic ordered : astService.getOrderedAntibioticsForRun(run.getId())) {
             MicroAstRunAntibioticForm orderedForm = new MicroAstRunAntibioticForm();
             orderedForm.antibioticId = ordered.getAntibioticId();
@@ -208,6 +274,8 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.source = reading.getSource();
         form.matchedBy = reading.getMatchedBy();
         form.units = reading.getUnits();
+        form.instrumentInterpretation = reading.getInstrumentInterpretation();
+        form.analyzerResultReference = reading.getAnalyzerResultReference();
         form.overrideInterpretation = reading.getOverrideInterpretation();
         form.overrideReason = reading.getOverrideReason();
         form.createdAt = reading.getCreatedAt();

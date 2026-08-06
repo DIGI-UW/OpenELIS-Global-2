@@ -434,4 +434,7 @@
   <!-- OGC-782 R1: immutable per-run ordered antibiotic set -->
   <include relativeToChangelogFile="true" file="076-microbiology-ast-ordered-antibiotics.xml"/>
 
+  <!-- OGC-782 R1: analyzer AST lifecycle, provenance, and reading revisions -->
+  <include relativeToChangelogFile="true" file="077-microbiology-ast-analyzer-lifecycle.xml"/>
+
 </databaseChangeLog>
