@@ -215,6 +215,17 @@ case action.
    **When** the user views the worklist, **Then** both are distinguishable
    without merging their lifecycles or implying that TB bench processing is
    available.
+4. **Given** the user needs to work culture cases or AST attempts, **When** the
+   user switches the worklist view, **Then** the same shared page presents one
+   row per culture case or one row per actionable isolate attempt with
+   view-specific status counts and columns.
+5. **Given** an instrument has not returned an AST result or has returned a
+   result needing review, **When** the worklist refreshes, **Then** the user can
+   distinguish awaiting-results from results-in-review without importing or
+   transcribing a result on the worklist.
+6. **Given** a supervisor needs situational awareness, **When** the worklist is
+   opened, **Then** resistance-hit context and recent microbiology activity are
+   available on the same page without implying ownership of a case.
 
 ---
 
@@ -328,6 +339,16 @@ or missing mapping for export.
 - **FR-014**: The system MUST make sibling workflow records on the same specimen
   distinguishable in the worklist while keeping their lifecycles and reports
   separate.
+- **FR-014A**: The worklist MUST remain one shared page with separate Culture
+  and AST views, view-specific status counts and columns, and navigation from
+  an AST row to the exact isolate attempt that needs work.
+- **FR-014B**: Analyzer-driven results MUST appear automatically as awaiting or
+  review-ready work. The worklist MUST NOT require a manual import action, and
+  unmatched instrument messages MUST direct users to the existing
+  reconciliation experience.
+- **FR-014C**: The worklist MUST include resistance-hit context and recent
+  microbiology activity, while visibly identifying future controls that are
+  unavailable in the current phase.
 - **FR-015**: Users MUST be able to release preliminary reports when reportable
   culture observations or isolate work-up are available, including Gram stain
   and colony morphology before organism identification, and final reports only

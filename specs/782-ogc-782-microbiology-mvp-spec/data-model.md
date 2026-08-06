@@ -478,6 +478,8 @@ Computed service response, not a dedicated table for MVP.
 
 Fields:
 
+- `rowId`
+- `grain`
 - `caseId`
 - `accessionNumber`
 - `sampleItemId`
@@ -490,6 +492,15 @@ Fields:
 - `needsReview`
 - `hasCriticalOpen`
 - `lastActivityAt`
+- Culture projection: `stage`, `dueAction`, sibling-workflow context, and
+  analyzer-results-in indicator.
+- AST projection: `isolateId`, isolate label, organism display, run identity,
+  panel display, run status, start time, and analyzer-results-in indicator.
+
+An identified clinically significant isolate without an active AST attempt is
+represented as pending setup. Invalidated, cancelled, and superseded attempts
+do not inflate the live queue. This is a computed projection and requires no
+schema migration.
 
 Validation:
 

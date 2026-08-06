@@ -505,14 +505,19 @@ opens exactly one resulting case containing those details.
 
 ### M-07 Worklist Alignment
 
-- [ ] T251 [R1] Add URL/parser/service tests for canonical `grain=cultures|ast`, per-grain status, and state-preserving AST-run case links.
-- [ ] T252 [R1] Add the server-side AST-run projection and per-grain summaries without introducing worklist writes or per-case ownership.
-- [ ] T253 [R1] Build one Carbon worklist with a Cultures/AST segmented control, grain-specific DataTable headers/rows, deterministic due actions, summary filters, and empty states.
+- [x] T251 [R1] Add URL/parser/service tests for canonical `grain=cultures|ast`, per-grain status, and state-preserving AST-run case links. `398a69003` adds the server/URL contract; `bd27e76d9` proves the exact isolate and run open in the case without prop-to-state synchronization effects.
+- [x] T252 [R1] Add the server-side AST-run projection and per-grain summaries without introducing worklist writes or per-case ownership. `398a69003` projects active runs plus significant isolates pending setup and excludes invalidated, rerun-required, and cancelled history. Accession, patient, specimen, panel-name, and last-activity enrichment remains T276.
+- [ ] T253 [R1] Build one Carbon worklist with a Cultures/AST segmented control, grain-specific DataTable headers/rows, deterministic due actions, summary filters, and empty states. `bd27e76d9` completes the shared Carbon structure, URL-backed cards, columns, exact-run links, and compact source-aligned layout. Positive state/due behavior remains blocked by T275; visual runtime evidence remains T257.
 - [ ] T254 [R1] Add row overflow commands that navigate to existing case actions; do not mutate clinical state directly from the worklist.
 - [ ] T255 [R1] Add the resistance-hit strip, collapsible recent activity, results-in badge, awaiting-analyzer state, and visibly disabled future controls with tooltips.
 - [ ] T256 [R1] Implement refresh that preserves focus, scroll, URL state, and selected row context; enforce the existing case-view permission rather than authentication alone.
 - [ ] T257 [R1] Add desktop/mobile Carbon interaction, keyboard, URL-reload, and 200-row performance tests without arbitrary waits.
 - [ ] T258 [R1] Add separate Culture Worklist and AST Worklist Grist stories and registered Playwright journeys.
+
+### Cross-Stack Drift Discovered During M-07
+
+- [ ] T275 [R1] Restore the authoritative culture progression and actions: incubating to positive signal to growth detected, automatic analyzer positive signal, manual Mark positive, and Mark no growth. Add only durable state required by the behavior; do not relabel growth as positive. This blocks a truthful Positive summary card and its worklist action.
+- [ ] T276 [R1] Enrich both worklist grains with the authoritative lab/accession number, patient display, specimen display, panel name, and last-activity actor using bounded batch reads suitable for 200 rows. Do not issue per-row service/DAO queries or duplicate patient/specimen data into microbiology tables.
 
 ### M-12 And NFR Qualification
 
