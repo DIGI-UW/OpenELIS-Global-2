@@ -291,6 +291,27 @@ public class MicrobiologyUatScenarioServiceTest {
     }
 
     @Test
+    public void provisionsStructuredOrganismChoicesThroughConfigurationService() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "MVP";
+        request.scenarioKey = "playwright-amendment-organisms";
+
+        service.provision(request, "1");
+
+        verify(configurationService).getOrCreateOrganism("Escherichia coli (UAT)", "ECOUAT", "panel-1");
+        verify(configurationService).getOrCreateOrganism("Klebsiella pneumoniae (UAT)", "KPNUAT", "panel-1");
+    }
+
+    @Test
     public void repairsExistingUatPatientMissingRequiredOrderDemographics() {
         Sample sample = sample("sample-1");
         SampleItem sampleItem = sampleItem("sample-item-1");
@@ -536,6 +557,9 @@ public class MicrobiologyUatScenarioServiceTest {
         when(configurationService.getOrCreateAntibiotic("Gentamicin (UAT)", "GENUAT", "Aminoglycoside"))
                 .thenReturn(gentamicin);
         when(configurationService.getOrCreateAstPanel(anyString(), anyString(), anyString())).thenReturn(panel);
+        MicroOrganism organism = new MicroOrganism();
+        organism.setId("organism-1");
+        when(configurationService.getOrCreateOrganism(anyString(), anyString(), anyString())).thenReturn(organism);
         when(configurationService.getOrCreateBreakpointStandard(anyString(), anyString(), any())).thenReturn(standard);
 
         when(methodService.getMethods(anyString())).thenReturn(List.of(method));

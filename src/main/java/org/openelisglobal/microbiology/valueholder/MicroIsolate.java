@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -32,6 +33,18 @@ public class MicroIsolate extends BaseObject<String> {
 
     @Column(name = "preliminary_organism_text")
     private String preliminaryOrganismText;
+
+    @Column(name = "gram_stain")
+    private String gramStain;
+
+    @Column(name = "colony_morphology")
+    private String colonyMorphology;
+
+    @Column(name = "identification_method", length = 80)
+    private String identificationMethod;
+
+    @Column(name = "identification_confidence", precision = 5, scale = 2)
+    private BigDecimal identificationConfidence;
 
     @Column(name = "significance", nullable = false, length = 40)
     private String significance = MicroIsolateSignificance.UNKNOWN.name();
@@ -93,6 +106,38 @@ public class MicroIsolate extends BaseObject<String> {
 
     public void setPreliminaryOrganismText(String preliminaryOrganismText) {
         this.preliminaryOrganismText = preliminaryOrganismText;
+    }
+
+    public String getGramStain() {
+        return gramStain;
+    }
+
+    public void setGramStain(String gramStain) {
+        this.gramStain = gramStain;
+    }
+
+    public String getColonyMorphology() {
+        return colonyMorphology;
+    }
+
+    public void setColonyMorphology(String colonyMorphology) {
+        this.colonyMorphology = colonyMorphology;
+    }
+
+    public String getIdentificationMethod() {
+        return identificationMethod;
+    }
+
+    public void setIdentificationMethod(String identificationMethod) {
+        this.identificationMethod = identificationMethod;
+    }
+
+    public BigDecimal getIdentificationConfidence() {
+        return identificationConfidence;
+    }
+
+    public void setIdentificationConfidence(BigDecimal identificationConfidence) {
+        this.identificationConfidence = identificationConfidence;
     }
 
     public String getSignificance() {

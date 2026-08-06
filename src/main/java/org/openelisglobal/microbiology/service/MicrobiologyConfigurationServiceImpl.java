@@ -54,6 +54,33 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
 
     @Override
     @Transactional
+    public MicroOrganism getOrCreateOrganism(String displayName, String whonetCode, String defaultAstPanelId) {
+        requireText(displayName, "organism.displayName");
+        requireText(whonetCode, "organism.whonetCode");
+        List<MicroOrganism> existing = organismDAO.getAllMatching(Map.of("whonetCode", whonetCode));
+        if (!existing.isEmpty()) {
+            MicroOrganism organism = existing.get(0);
+            boolean changed = false;
+            if (!java.util.Objects.equals(defaultAstPanelId, organism.getDefaultAstPanelId())) {
+                organism.setDefaultAstPanelId(defaultAstPanelId);
+                changed = true;
+            }
+            if (!"Y".equals(organism.getIsActive())) {
+                organism.setIsActive("Y");
+                changed = true;
+            }
+            return changed ? organismDAO.update(organism) : organism;
+        }
+
+        MicroOrganism organism = new MicroOrganism();
+        organism.setDisplayName(displayName);
+        organism.setWhonetCode(whonetCode);
+        organism.setDefaultAstPanelId(defaultAstPanelId);
+        return createOrganism(organism);
+    }
+
+    @Override
+    @Transactional
     public MicroAntibiotic createAntibiotic(MicroAntibiotic antibiotic) {
         requireText(antibiotic == null ? null : antibiotic.getDisplayName(), "antibiotic.displayName");
         antibioticDAO.insert(antibiotic);

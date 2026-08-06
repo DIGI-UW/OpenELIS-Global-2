@@ -9,6 +9,7 @@ import {
   Tag,
   TextArea,
   TextInput,
+  Tooltip,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import AstAttemptTable from "./AstAttemptTable";
@@ -55,6 +56,13 @@ const AstEntryPanel = ({
   const [selectedLots, setSelectedLots] = useState({});
 
   const activeIsolateId = selectedIsolateId || isolates[0]?.id || "";
+  const activeIsolate = isolates.find(
+    (isolate) => isolate.id === activeIsolateId,
+  );
+  const isolateIdentified = Boolean(
+    activeIsolate?.organismId &&
+    activeIsolate?.identificationStatus === "CONFIRMED",
+  );
 
   useEffect(() => {
     if (!workflowType) {
@@ -326,19 +334,40 @@ const AstEntryPanel = ({
                   />
                 ))}
               </Select>
-              <div>
-                <Button
-                  onClick={startRun}
-                  disabled={
-                    busy ||
-                    readOnly ||
-                    !!currentRun ||
-                    !activeIsolateId ||
-                    !selectedPanelId
+              <div className="microbiology-ast-start-action">
+                {!isolateIdentified && (
+                  <p className="microbiology-card__hint">
+                    {intl.formatMessage({
+                      id: "microbiology.ast.identificationRequired",
+                    })}
+                  </p>
+                )}
+                <Tooltip
+                  align="top"
+                  label={
+                    isolateIdentified
+                      ? intl.formatMessage({ id: "microbiology.ast.startRun" })
+                      : intl.formatMessage({
+                          id: "microbiology.ast.identificationRequired",
+                        })
                   }
                 >
-                  {intl.formatMessage({ id: "microbiology.ast.startRun" })}
-                </Button>
+                  <span>
+                    <Button
+                      onClick={startRun}
+                      disabled={
+                        busy ||
+                        readOnly ||
+                        !!currentRun ||
+                        !activeIsolateId ||
+                        !isolateIdentified ||
+                        !selectedPanelId
+                      }
+                    >
+                      {intl.formatMessage({ id: "microbiology.ast.startRun" })}
+                    </Button>
+                  </span>
+                </Tooltip>
               </div>
               <div className="microbiology-form-grid__wide">
                 <ReagentLotPicker

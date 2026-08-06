@@ -43,10 +43,14 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
         event.setPreviousOrganismText(previous.getPreliminaryOrganismText());
         event.setPreviousSignificance(previous.getSignificance());
         event.setPreviousIdentificationStatus(previous.getIdentificationStatus());
+        event.setPreviousIdentificationMethod(previous.getIdentificationMethod());
+        event.setPreviousIdentificationConfidence(previous.getIdentificationConfidence());
         event.setNewOrganismId(updated.getOrganismId());
         event.setNewOrganismText(updated.getPreliminaryOrganismText());
         event.setNewSignificance(updated.getSignificance());
         event.setNewIdentificationStatus(updated.getIdentificationStatus());
+        event.setNewIdentificationMethod(updated.getIdentificationMethod());
+        event.setNewIdentificationConfidence(updated.getIdentificationConfidence());
         event.setReason(hasText(reason) ? reason.trim() : "Identification updated");
         event.setChangedAt(MicroCaseServiceImpl.now());
         event.setChangedBy(performedBy);
@@ -70,6 +74,8 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
             isolate.setPreliminaryOrganismText(source.getPreviousOrganismText());
             isolate.setSignificance(source.getPreviousSignificance());
             isolate.setIdentificationStatus(source.getPreviousIdentificationStatus());
+            isolate.setIdentificationMethod(source.getPreviousIdentificationMethod());
+            isolate.setIdentificationConfidence(source.getPreviousIdentificationConfidence());
             isolateDAO.update(isolate);
             appendRevertEvent(amendmentId, current, isolate, reason, performedBy);
         }
@@ -95,6 +101,8 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
         snapshot.setPreliminaryOrganismText(isolate.getPreliminaryOrganismText());
         snapshot.setSignificance(isolate.getSignificance());
         snapshot.setIdentificationStatus(isolate.getIdentificationStatus());
+        snapshot.setIdentificationMethod(isolate.getIdentificationMethod());
+        snapshot.setIdentificationConfidence(isolate.getIdentificationConfidence());
         return snapshot;
     }
 
@@ -108,10 +116,14 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
         event.setPreviousOrganismText(previous.getPreliminaryOrganismText());
         event.setPreviousSignificance(previous.getSignificance());
         event.setPreviousIdentificationStatus(previous.getIdentificationStatus());
+        event.setPreviousIdentificationMethod(previous.getIdentificationMethod());
+        event.setPreviousIdentificationConfidence(previous.getIdentificationConfidence());
         event.setNewOrganismId(updated.getOrganismId());
         event.setNewOrganismText(updated.getPreliminaryOrganismText());
         event.setNewSignificance(updated.getSignificance());
         event.setNewIdentificationStatus(updated.getIdentificationStatus());
+        event.setNewIdentificationMethod(updated.getIdentificationMethod());
+        event.setNewIdentificationConfidence(updated.getIdentificationConfidence());
         event.setReason(reason);
         event.setChangedAt(MicroCaseServiceImpl.now());
         event.setChangedBy(performedBy);

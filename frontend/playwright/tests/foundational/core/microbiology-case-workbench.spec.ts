@@ -6,10 +6,15 @@ import {
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test.describe("Microbiology case workbench", () => {
-  test("records inoculation lineage and creates an isolate", async ({
+  test("records inoculation lineage and completes two-pass isolate identification", async ({
     page,
   }) => {
     const seeded = await seedMicrobiologyCase(page);
+    if (!seeded.organismId) {
+      throw new Error(
+        "Case fixture must provide an organism for identification",
+      );
+    }
     await page.goto(
       `/Microbiology/cases/${seeded.caseId}?workflow=BACTERIOLOGY&sort=newest`,
       {
@@ -71,17 +76,38 @@ test.describe("Microbiology case workbench", () => {
       .getByRole("button", { name: "Isolates", exact: true })
       .click();
     await expect(page).toHaveURL(/section=isolates/);
-    await page.getByLabel("Preliminary organism").fill("Escherichia coli");
+    await page.getByLabel("Gram stain").fill("Gram negative rods");
+    await page
+      .getByLabel("Colony morphology")
+      .fill("Lactose fermenting colonies");
     await page.getByRole("button", { name: "Create isolate" }).click();
-    await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({
+    await expect(page.getByText("Identification pending")).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
+    await expect(page.getByText("Gram negative rods")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Start AST run" }),
+    ).toBeDisabled();
+
+    await page.getByRole("button", { name: "Identify organism" }).click();
+    await page.getByLabel("Organism").selectOption(seeded.organismId);
+    await page.getByLabel("ID method").selectOption("MALDI_TOF");
+    await page.getByLabel("ID confidence (%)").fill("99.5");
+    await page.getByRole("button", { name: "Save identification" }).click();
+    await expect(page.getByText("Identified", { exact: true })).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    await expect(page.getByText(/Maldi Tof.*99.5%/)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Start AST run" }),
+    ).toBeEnabled();
 
     await caseView
       .getByRole("button", { name: "Timeline", exact: true })
       .click();
     await expect(page).toHaveURL(/section=timeline/);
     await expect(page.getByText(/Isolate Created/)).toBeVisible();
+    await expect(page.getByText(/Isolate Updated/)).toBeVisible();
   });
 
   test("classifies unassigned work before profile-specific actions", async ({

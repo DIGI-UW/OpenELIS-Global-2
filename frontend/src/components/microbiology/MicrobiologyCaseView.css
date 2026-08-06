@@ -254,6 +254,38 @@
   font-size: 0.75rem;
 }
 
+.microbiology-isolate-row {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.microbiology-isolate-details {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0.75rem 0 0;
+}
+
+.microbiology-isolate-details > div {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(8rem, 0.35fr) minmax(0, 1fr);
+}
+
+.microbiology-isolate-details dt {
+  color: #525252;
+  font-weight: 600;
+}
+
+.microbiology-isolate-details dd {
+  margin: 0;
+}
+
+.microbiology-ast-start-action {
+  align-self: end;
+}
+
 .microbiology-table {
   border-collapse: collapse;
   font-size: 0.875rem;

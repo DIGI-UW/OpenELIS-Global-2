@@ -109,9 +109,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
             assertEquals("AMENDMENT_ALREADY_OPEN", expected.getMessage());
         }
 
-        isolateService.updateIdentification(fixture.isolateId(), null, "Klebsiella pneumoniae",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
-                "Confirmatory identification corrected the organism", fixture.userId());
+        isolateService.updateIdentification(fixture.isolateId(), fixture.organismId(), "Klebsiella pneumoniae",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
         reportReleaseService.releaseAmended(fixture.caseId(), fixture.userId());
 
         List<MicroReportVersion> versions = reportVersionService.getVersions(fixture.caseId());
@@ -172,15 +172,20 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
                 userId);
         linkReportableAnalysis(microCase, sampleItem, referenceData, userId);
 
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", null,
-                referenceData.organism().getDisplayName(), MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, userId);
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, userId);
+        isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
+                referenceData.organism().getDisplayName(),
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "MALDI_TOF", new BigDecimal("99.5"), userId);
         MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
                 referenceData.standard().getId(), userId);
         astService.recordReading(run.getId(), referenceData.antibiotic().getId(), MicroAstMethod.MIC,
                 new BigDecimal("4"), userId);
         astService.reviewRun(run.getId(), userId);
         reportReleaseService.releaseFinal(microCase.getId(), userId);
-        return new FinalCase(microCase.getId(), isolate.getId(), referenceData.organism().getDisplayName(), userId);
+        return new FinalCase(microCase.getId(), isolate.getId(), referenceData.organism().getId(),
+                referenceData.organism().getDisplayName(), userId);
     }
 
     private void linkReportableAnalysis(MicroCase microCase, SampleItem sampleItem, ReferenceData referenceData,
@@ -226,6 +231,7 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         caseAnalysisService.linkAnalysis(microCase, analysis, referenceData.cultureSetup());
     }
 
-    private record FinalCase(String caseId, String isolateId, String originalOrganismText, String userId) {
+    private record FinalCase(String caseId, String isolateId, String organismId, String originalOrganismText,
+            String userId) {
     }
 }

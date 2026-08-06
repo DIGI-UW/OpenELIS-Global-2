@@ -25,6 +25,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.stereotype.Service;
@@ -85,6 +86,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        if (!MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())
+                || isolate.getOrganismId() == null || isolate.getOrganismId().trim().isEmpty()) {
+            throw new IllegalStateException("AST_ISOLATE_IDENTIFICATION_REQUIRED");
+        }
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
         MicroAstRun run = new MicroAstRun();
         run.setIsolateId(isolateId);

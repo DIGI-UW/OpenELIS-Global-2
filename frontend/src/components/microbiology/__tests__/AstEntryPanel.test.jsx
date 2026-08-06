@@ -11,6 +11,8 @@ const isolate = {
   id: "iso-1",
   isolateLabel: "ISO-1",
   significance: "CLINICALLY_SIGNIFICANT",
+  organismId: "organism-1",
+  identificationStatus: "CONFIRMED",
 };
 
 const inProgressRun = {
@@ -276,6 +278,38 @@ describe("AstEntryPanel", () => {
     expect(
       await screen.findByRole("button", { name: "Start AST run" }),
     ).toBeDisabled();
+  });
+
+  it("keeps AST setup disabled until the selected isolate is identified", async () => {
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "Gram negative panel" }]),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["ISOLATE_IDENTIFICATION_REQUIRED"],
+      }),
+    };
+
+    renderPanel(service, {
+      isolates: [
+        {
+          ...isolate,
+          organismId: null,
+          identificationStatus: "PRELIMINARY",
+        },
+      ],
+    });
+
+    expect(
+      await screen.findByRole("button", { name: "Start AST run" }),
+    ).toBeDisabled();
+    expect(
+      screen.getAllByText("Identify the isolate before setting up AST."),
+    ).not.toHaveLength(0);
   });
 
   it("keeps earlier culture usage visible with AST usage", async () => {
