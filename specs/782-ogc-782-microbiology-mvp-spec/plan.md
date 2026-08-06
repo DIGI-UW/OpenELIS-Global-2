@@ -257,6 +257,19 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   Do not parse AST override reasons as phenotype classifications; the source's
   manual-override count requires a separate product ruling and explicit
   confirmation workflow before implementation.
+- Treat OpenELIS Work's `micro.case.view` as a product permission name, not a
+  requirement to invent a new authority. For this remediation, map analyst,
+  validator, and manager access to the repository's existing Results,
+  Validation, and Global Administrator/Admin roles at both the frontend route
+  and worklist endpoint. The broader write-permission audit remains separate.
+- Revalidate the worklist every 30 seconds from the current canonical query and
+  keep the mounted Carbon table stable while data is in flight. Use a shared
+  interval constant and fake-clock component evidence; do not use sleeps or
+  reload the route.
+- Derive culture timing from authoritative inoculation and protocol data. When
+  the protocol does not provide a structured maximum day, follow the source
+  fallback and show an accurate stage label rather than fabricating a day or
+  treating an incubating culture as ready for isolate identification.
 - Keep Macro Library as a separate cross-cutting feature stack and review
   deployment. Microbiology carries only a small consumer integration after the
   macro feature is independently accepted.

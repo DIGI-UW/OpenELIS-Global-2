@@ -60,6 +60,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WorklistPage"
+        "401":
+          description: Authentication required
+        "403":
+          description: The authenticated user cannot view microbiology cases
   /microbiology/cases/{caseId}:
     get:
       summary: Get compiled microbiology case detail
