@@ -20,6 +20,8 @@ import org.openelisglobal.microbiology.dao.MicroBreakpointActivationEventDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
@@ -124,6 +126,31 @@ public class MicroBreakpointAdminServiceTest {
         when(ruleDAO.get("rule-1")).thenReturn(Optional.of(rule));
 
         assertEquals("rule-1", service.getRule("standard", "rule-1").id);
+    }
+
+    @Test
+    public void techniqueAwareRulePersistsWithItsDerivedMeasurementType() {
+        when(standardDAO.get("standard"))
+                .thenReturn(Optional.of(standard("standard", "CLSI", "2026", "LOADED")));
+        MicroAntibiotic antibiotic = new MicroAntibiotic();
+        antibiotic.setId("cip");
+        when(antibioticDAO.get("cip")).thenReturn(Optional.of(antibiotic));
+        when(ruleDAO.findByNaturalKey("standard", null, "Enterobacterales", "cip", "DISK_DIFFUSION", null,
+                "ZONE")).thenReturn(Optional.empty());
+        org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm request =
+                new org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm();
+        request.organismGroup = "Enterobacterales";
+        request.antibioticId = "cip";
+        request.method = MicroAstTechnique.DISK_DIFFUSION.name();
+        request.breakpointType = "ZONE";
+        request.susceptibleValue = new java.math.BigDecimal("20");
+
+        service.saveRule("standard", null, request, "42");
+
+        ArgumentCaptor<MicroBreakpointRule> rule = ArgumentCaptor.forClass(MicroBreakpointRule.class);
+        verify(ruleDAO).insert(rule.capture());
+        assertEquals(MicroAstTechnique.DISK_DIFFUSION.name(), rule.getValue().getMethod());
+        assertEquals("ZONE", rule.getValue().getBreakpointType());
     }
 
     private MicroBreakpointStandard standard(String id, String authority, String version, String status) {

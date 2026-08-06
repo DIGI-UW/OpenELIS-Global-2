@@ -20,9 +20,9 @@ import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
-import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -83,13 +83,13 @@ public class MicroAstRestControllerTest {
         repeat.setId("run-2");
         repeat.setSourceRunId("run-1");
         repeat.setAttemptType(MicroAstAttemptType.REPEAT.name());
-        when(service.startRepeatRun("run-1", MicroAstAttemptType.REPEAT, "Control failed", MicroAstMethod.MIC, "42"))
-                .thenReturn(repeat);
+        when(service.startRepeatRun("run-1", MicroAstAttemptType.REPEAT, "Control failed", MicroAstTechnique.VITEK_2,
+                "42")).thenReturn(repeat);
         when(service.selectReportableRun("run-2", "42")).thenReturn(repeat);
         MicroAstRunRequestForm request = new MicroAstRunRequestForm();
         request.attemptType = MicroAstAttemptType.REPEAT.name();
         request.reason = "Control failed";
-        request.method = MicroAstMethod.MIC.name();
+        request.technique = MicroAstTechnique.VITEK_2.name();
         MicroAstRestController controller = new MicroAstRestController(service);
 
         ResponseEntity<MicroAstRunForm> created = controller.startRepeatRun("run-1", request, requestFor("42"));
@@ -97,7 +97,8 @@ public class MicroAstRestControllerTest {
 
         assertEquals("run-1", created.getBody().sourceRunId);
         assertEquals(MicroAstAttemptType.REPEAT.name(), created.getBody().attemptType);
-        verify(service).startRepeatRun("run-1", MicroAstAttemptType.REPEAT, "Control failed", MicroAstMethod.MIC, "42");
+        verify(service).startRepeatRun("run-1", MicroAstAttemptType.REPEAT, "Control failed", MicroAstTechnique.VITEK_2,
+                "42");
         verify(service).selectReportableRun("run-2", "42");
     }
 
@@ -124,18 +125,35 @@ public class MicroAstRestControllerTest {
         request.panelId = "panel-1";
         request.breakpointStandardId = "standard-1";
         request.panelAdjustmentReason = "Urine-specific panel required";
+        request.technique = MicroAstTechnique.DISK_DIFFUSION.name();
         MicroLotSelectionRequestForm selection = new MicroLotSelectionRequestForm();
         selection.analysisId = "41";
         selection.testReagentLinkId = "link-1";
         selection.lotId = 7L;
         request.lotSelections.add(selection);
         when(service.startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
-                java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42")).thenReturn(run);
+                MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42"))
+                .thenReturn(run);
 
         new MicroAstRestController(service).startRun(request, requestFor("42"));
 
         verify(service).startRun("isolate-1", "panel-1", "standard-1", "Urine-specific panel required",
-                java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42");
+                MicroAstTechnique.DISK_DIFFUSION, java.util.List.of(new MicroLotSelection("41", "link-1", 7L)), "42");
+    }
+
+    @Test
+    public void readingDerivesMeasurementFromTheRunInsteadOfTheRequest() {
+        MicroAstService service = org.mockito.Mockito.mock(MicroAstService.class);
+        MicroAstReading reading = new MicroAstReading();
+        reading.setId("reading-1");
+        org.openelisglobal.microbiology.form.MicroAstReadingRequestForm request = new org.openelisglobal.microbiology.form.MicroAstReadingRequestForm();
+        request.antibioticId = "abx-1";
+        request.rawValue = new java.math.BigDecimal("4");
+        when(service.recordReading("run-1", "abx-1", new java.math.BigDecimal("4"), "42")).thenReturn(reading);
+
+        new MicroAstRestController(service).recordReading("run-1", request, requestFor("42"));
+
+        verify(service).recordReading("run-1", "abx-1", new java.math.BigDecimal("4"), "42");
     }
 
     @Test

@@ -91,7 +91,16 @@ const AstAttemptTable = ({
                         id: "microbiology.ast.noSourceAttempt",
                       })}
                 </TableCell>
-                <TableCell>{run.method || "-"}</TableCell>
+                <TableCell>
+                  {run.technique
+                    ? formatMicrobiologyEnum(run.technique)
+                    : run.method || "-"}
+                  {(run.measurementType || run.method) && (
+                    <div className="microbiology-card__hint">
+                      {run.measurementType || run.method}
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Tag type={run.status === "REVIEWED" ? "green" : "cyan"}>
                     {formatMicrobiologyEnum(run.status, intl)}

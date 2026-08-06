@@ -13,6 +13,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ public class MicroCaseWorkflowServiceImpl implements MicroCaseWorkflowService {
     private final MicrobiologyReferenceService referenceService;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public MicroCaseWorkflowServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
             MicroIsolateDAO isolateDAO, MicrobiologyReferenceService referenceService) {
         this(caseDAO, activityDAO, isolateDAO, referenceService, new ObjectMapper());

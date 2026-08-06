@@ -13,6 +13,6 @@ public class MicroAstRunRequestForm {
     public String breakpointStandardId;
     public String attemptType;
     public String reason;
-    public String method;
+    public String technique;
     public List<MicroLotSelectionRequestForm> lotSelections = new ArrayList<>();
 }

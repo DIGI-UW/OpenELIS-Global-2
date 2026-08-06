@@ -25,8 +25,17 @@ import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import ReagentLotPicker from "./ReagentLotPicker";
 import ReagentUsageHistory from "./ReagentUsageHistory";
 
-const METHOD_OPTIONS = ["MIC", "ZONE"];
+const TECHNIQUE_OPTIONS = [
+  "VITEK_2",
+  "PHOENIX",
+  "ETEST",
+  "BROTH_MICRODILUTION",
+  "DISK_DIFFUSION",
+];
 const OVERRIDE_OPTIONS = ["SUSCEPTIBLE", "INTERMEDIATE", "RESISTANT"];
+
+const measurementTypeForTechnique = (technique) =>
+  technique === "DISK_DIFFUSION" ? "ZONE" : "MIC";
 
 const AstEntryPanel = ({
   caseId,
@@ -50,7 +59,7 @@ const AstEntryPanel = ({
   const [panelAdjustmentReason, setPanelAdjustmentReason] = useState("");
   const [selectedAntibioticId, setSelectedAntibioticId] = useState("");
   const [selectedStandardId, setSelectedStandardId] = useState("");
-  const [method, setMethod] = useState("MIC");
+  const [technique, setTechnique] = useState("VITEK_2");
   const [rawValue, setRawValue] = useState("4");
   const [overrideInterpretation, setOverrideInterpretation] =
     useState("RESISTANT");
@@ -62,7 +71,7 @@ const AstEntryPanel = ({
   const [selectedReadingId, setSelectedReadingId] = useState("");
   const [attemptType, setAttemptType] = useState("REPEAT");
   const [attemptReason, setAttemptReason] = useState("");
-  const [attemptMethod, setAttemptMethod] = useState("");
+  const [attemptTechnique, setAttemptTechnique] = useState("");
   const [readiness, setReadiness] = useState(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -217,7 +226,8 @@ const AstEntryPanel = ({
   const busy = saving || caseSaving;
   const isReviewed = currentRun?.status === "REVIEWED";
   const hasInProgressRun = runs.some((run) => run.status === "IN_PROGRESS");
-  const effectiveAttemptMethod = attemptMethod || currentRun?.method || "MIC";
+  const effectiveAttemptTechnique =
+    attemptTechnique || currentRun?.technique || "VITEK_2";
   const lotSelections = Object.values(selectedLots);
   const panelAdjusted = Boolean(
     astSetup && selectedPanelId !== astSetup.orderedPanelId,
@@ -227,11 +237,16 @@ const AstEntryPanel = ({
     isolateIdentified &&
     astSetup?.isolateId !== activeIsolateId,
   );
-  const measurementMode = currentRun?.method || method;
+  const measurementMode =
+    currentRun?.measurementType ||
+    currentRun?.method ||
+    measurementTypeForTechnique(technique);
   const readingRows = currentReadings.map((reading) => ({
     id: reading.id,
     antibiotic: antibioticLabelFor(reading),
-    method: reading.method,
+    method: formatMicrobiologyEnum(
+      reading.technique || currentRun?.technique || reading.method,
+    ),
     result: `${reading.rawValue ?? reading.rawText ?? ""}${
       reading.units ? ` ${reading.units}` : ""
     }`,
@@ -256,7 +271,7 @@ const AstEntryPanel = ({
 
   const viewRun = (runId) => {
     setSelectedRunId(runId);
-    setAttemptMethod("");
+    setAttemptTechnique("");
     setAttemptReason("");
   };
 
@@ -296,6 +311,7 @@ const AstEntryPanel = ({
         isolateId: activeIsolateId,
         panelId: selectedPanelId,
         breakpointStandardId: selectedStandardId,
+        technique,
         ...(panelAdjusted
           ? { panelAdjustmentReason: panelAdjustmentReason.trim() }
           : {}),
@@ -313,7 +329,7 @@ const AstEntryPanel = ({
       service.startRepeatAstRun(currentRun.id, {
         attemptType,
         reason: attemptReason,
-        method: effectiveAttemptMethod,
+        technique: effectiveAttemptTechnique,
         ...(lotSelections.length > 0 ? { lotSelections } : {}),
       }),
     ).then((run) => {
@@ -328,7 +344,6 @@ const AstEntryPanel = ({
     runOperation(() =>
       service.recordAstReading(currentRun.id, {
         antibioticId: selectedAntibioticId,
-        method: currentRun.method || method,
         rawValue,
       }),
     );
@@ -507,6 +522,23 @@ const AstEntryPanel = ({
                 </div>
               )}
               <Select
+                id="microbiology-ast-technique"
+                labelText={intl.formatMessage({
+                  id: "microbiology.ast.method",
+                })}
+                value={technique}
+                onChange={(event) => setTechnique(event.target.value)}
+                disabled={Boolean(currentRun)}
+              >
+                {TECHNIQUE_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option}
+                    value={option}
+                    text={formatMicrobiologyEnum(option)}
+                  />
+                ))}
+              </Select>
+              <Select
                 id="microbiology-ast-breakpoint-standard"
                 labelText={intl.formatMessage({
                   id: "microbiology.ast.breakpointStandard",
@@ -597,19 +629,6 @@ const AstEntryPanel = ({
                         value={antibiotic.id}
                         text={antibiotic.label}
                       />
-                    ))}
-                  </Select>
-                  <Select
-                    id="microbiology-ast-method"
-                    labelText={intl.formatMessage({
-                      id: "microbiology.ast.method",
-                    })}
-                    value={currentRun.method || method}
-                    onChange={(event) => setMethod(event.target.value)}
-                    disabled={isReviewed || !!currentRun.method}
-                  >
-                    {METHOD_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={option} text={option} />
                     ))}
                   </Select>
                   <TextInput
@@ -949,16 +968,16 @@ const AstEntryPanel = ({
                         labelText={intl.formatMessage({
                           id: "microbiology.ast.attemptMethod",
                         })}
-                        value={effectiveAttemptMethod}
+                        value={effectiveAttemptTechnique}
                         onChange={(event) =>
-                          setAttemptMethod(event.target.value)
+                          setAttemptTechnique(event.target.value)
                         }
                       >
-                        {METHOD_OPTIONS.map((option) => (
+                        {TECHNIQUE_OPTIONS.map((option) => (
                           <SelectItem
                             key={option}
                             value={option}
-                            text={option}
+                            text={formatMicrobiologyEnum(option)}
                           />
                         ))}
                       </Select>

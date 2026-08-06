@@ -15,6 +15,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class MicroCaseInoculationServiceImpl implements MicroCaseInoculationServ
     private final MicroReagentLotService reagentLotService;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public MicroCaseInoculationServiceImpl(MicroCaseDAO caseDAO, MicroCaseInoculationDAO inoculationDAO,
             MicroCaseActivityDAO activityDAO, MicroReagentLotService reagentLotService) {
         this(caseDAO, inoculationDAO, activityDAO, reagentLotService, new ObjectMapper());

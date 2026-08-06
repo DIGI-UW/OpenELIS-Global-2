@@ -23,6 +23,7 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.sample.service.SampleItemRejectionService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
     private final SampleItemRejectionService rejectionService;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public MicroCaseNonconformanceServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
             SampleItemService sampleItemService, NceReportService nceReportService,
             SampleItemRejectionService rejectionService) {

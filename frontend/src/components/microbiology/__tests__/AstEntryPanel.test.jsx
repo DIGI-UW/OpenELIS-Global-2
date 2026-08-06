@@ -19,6 +19,8 @@ const inProgressRun = {
   id: "run-1",
   isolateId: "iso-1",
   panelId: "panel-1",
+  technique: "VITEK_2",
+  measurementType: "MIC",
   status: "IN_PROGRESS",
   readings: [],
 };
@@ -74,7 +76,8 @@ const reviewedRun = {
   ...runWithOverride,
   status: "REVIEWED",
   attemptType: "ORIGINAL",
-  method: "MIC",
+  technique: "VITEK_2",
+  measurementType: "MIC",
   reportable: true,
 };
 
@@ -84,7 +87,8 @@ const reviewedRepeatRun = {
   attemptType: "REPEAT",
   sourceRunId: "run-1",
   attemptReason: "Control failed",
-  method: "ZONE",
+  technique: "DISK_DIFFUSION",
+  measurementType: "ZONE",
   reportable: false,
   readings: [
     {
@@ -279,6 +283,7 @@ describe("AstEntryPanel", () => {
         isolateId: "iso-1",
         panelId: "panel-1",
         breakpointStandardId: "std-eucast",
+        technique: "VITEK_2",
         lotSelections: [
           {
             analysisId: "41",
@@ -353,7 +358,6 @@ describe("AstEntryPanel", () => {
     ).toBeDisabled();
     expect(service.recordAstReading).toHaveBeenCalledWith("run-1", {
       antibioticId: "abx-1",
-      method: "MIC",
       rawValue: "4",
     });
   });
@@ -407,6 +411,7 @@ describe("AstEntryPanel", () => {
         isolateId: "iso-1",
         panelId: "panel-2",
         breakpointStandardId: "std-clsi",
+        technique: "VITEK_2",
         panelAdjustmentReason: "Urine-specific panel required",
       }),
     );
@@ -547,7 +552,10 @@ describe("AstEntryPanel", () => {
       "Control failed",
     );
     await user.click(screen.getByRole("radio", { name: "Retest" }));
-    await user.selectOptions(screen.getByLabelText("Attempt method"), "ZONE");
+    await user.selectOptions(
+      screen.getByLabelText("Attempt method"),
+      "DISK_DIFFUSION",
+    );
     await user.click(
       screen.getByRole("button", { name: "Start retest attempt" }),
     );
@@ -556,10 +564,11 @@ describe("AstEntryPanel", () => {
       expect(service.startRepeatAstRun).toHaveBeenCalledWith("run-1", {
         attemptType: "RETEST",
         reason: "Control failed",
-        method: "ZONE",
+        technique: "DISK_DIFFUSION",
       }),
     );
     expect(await screen.findByText("Retest")).toBeInTheDocument();
+    expect(screen.getByLabelText("Zone diameter (mm)")).toBeInTheDocument();
   });
 
   it("shows attempt relationships and requires an explicit reportable selection", async () => {

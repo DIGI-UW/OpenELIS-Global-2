@@ -54,6 +54,9 @@ public class MicroAstRun extends BaseObject<String> {
     @Column(name = "method", length = 20)
     private String method;
 
+    @Column(name = "technique", nullable = false, length = 40)
+    private String technique = MicroAstTechnique.LEGACY_UNSPECIFIED_MIC.name();
+
     @Column(name = "reportable", nullable = false)
     private boolean reportable;
 
@@ -176,6 +179,14 @@ public class MicroAstRun extends BaseObject<String> {
 
     public void setMethod(String method) {
         this.method = method;
+    }
+
+    public String getTechnique() {
+        return technique;
+    }
+
+    public void setTechnique(String technique) {
+        this.technique = technique;
     }
 
     public boolean isReportable() {

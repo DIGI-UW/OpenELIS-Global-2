@@ -9,6 +9,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 
 public interface MicroAstService {
 
@@ -27,6 +28,9 @@ public interface MicroAstService {
     MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String panelAdjustmentReason,
             List<MicroLotSelection> lotSelections, String performedBy);
 
+    MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String panelAdjustmentReason,
+            MicroAstTechnique technique, List<MicroLotSelection> lotSelections, String performedBy);
+
     MicroAstSetupForm getSetup(String isolateId);
 
     MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
@@ -34,6 +38,14 @@ public interface MicroAstService {
 
     MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
             MicroAstMethod method, List<MicroLotSelection> lotSelections, String performedBy);
+
+    MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
+            MicroAstTechnique technique, String performedBy);
+
+    MicroAstRun startRepeatRun(String sourceRunId, MicroAstAttemptType attemptType, String reason,
+            MicroAstTechnique technique, List<MicroLotSelection> lotSelections, String performedBy);
+
+    MicroAstReading recordReading(String runId, String antibioticId, BigDecimal rawValue, String performedBy);
 
     MicroAstReading recordReading(String runId, String antibioticId, MicroAstMethod method, BigDecimal rawValue,
             String performedBy);

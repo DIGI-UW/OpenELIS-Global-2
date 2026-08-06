@@ -13,9 +13,9 @@ import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
-import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,8 +58,8 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request,
             HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
-                request.breakpointStandardId, request.panelAdjustmentReason, lotSelections(request.lotSelections),
-                authenticatedUserId(httpRequest))));
+                request.breakpointStandardId, request.panelAdjustmentReason, technique(request.technique),
+                lotSelections(request.lotSelections), authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{sourceRunId}/attempts")
@@ -69,20 +69,18 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         if (request.lotSelections == null || request.lotSelections.isEmpty()) {
             return ResponseEntity.ok(
                     toRunForm(astService.startRepeatRun(sourceRunId, MicroAstAttemptType.valueOf(request.attemptType),
-                            request.reason, MicroAstMethod.valueOf(request.method), authenticatedUserId(httpRequest))));
+                            request.reason, technique(request.technique), authenticatedUserId(httpRequest))));
         }
-        return ResponseEntity
-                .ok(toRunForm(astService.startRepeatRun(sourceRunId, MicroAstAttemptType.valueOf(request.attemptType),
-                        request.reason, MicroAstMethod.valueOf(request.method), lotSelections(request.lotSelections),
-                        authenticatedUserId(httpRequest))));
+        return ResponseEntity.ok(toRunForm(astService.startRepeatRun(sourceRunId,
+                MicroAstAttemptType.valueOf(request.attemptType), request.reason, technique(request.technique),
+                lotSelections(request.lotSelections), authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{runId}/readings")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstReadingForm> recordReading(@PathVariable String runId,
             @RequestBody MicroAstReadingRequestForm request, HttpServletRequest httpRequest) {
-        MicroAstReading reading = astService.recordReading(runId, request.antibioticId,
-                requiredEnum(MicroAstMethod.class, request.method, "method"), request.rawValue,
+        MicroAstReading reading = astService.recordReading(runId, request.antibioticId, request.rawValue,
                 authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toReadingForm(reading));
     }
@@ -129,6 +127,17 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         return form;
     }
 
+    private MicroAstTechnique technique(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("AST_TECHNIQUE_REQUIRED");
+        }
+        MicroAstTechnique technique = MicroAstTechnique.valueOf(value);
+        if (technique.isLegacyUnspecified()) {
+            throw new IllegalArgumentException("AST_TECHNIQUE_REQUIRED");
+        }
+        return technique;
+    }
+
     private MicroAstRunForm toRunForm(MicroAstRun run) {
         MicroAstRunForm form = new MicroAstRunForm();
         form.id = run.getId();
@@ -143,6 +152,8 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.sourceRunId = run.getSourceRunId();
         form.attemptReason = run.getAttemptReason();
         form.method = run.getMethod();
+        form.technique = run.getTechnique();
+        form.measurementType = run.getMethod();
         form.reportable = run.isReportable();
         form.status = run.getStatus();
         form.startedAt = run.getStartedAt();
