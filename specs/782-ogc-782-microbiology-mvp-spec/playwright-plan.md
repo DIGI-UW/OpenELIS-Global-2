@@ -4,17 +4,20 @@
 
 - Flow: `microbiology-case-workbench`
 - Route: `/Microbiology/cases/:caseId`
-- Setup: seed one bacteriology `micro_case` with a `sample_item` and initial
-  `CASE_CREATED` activity through test-only Postgres setup.
+- Setup: provision one bacteriology case and its reference prerequisites through
+  the property-gated UAT scenario service.
 - User actions:
   - open the case workbench,
   - record setup activity with next stage `SETUP_RECORDED`,
-  - create isolate `ISO-1` with preliminary organism text.
+  - create isolate `ISO-1` from Gram stain and colony morphology,
+  - confirm AST remains unavailable,
+  - identify the organism with method, confidence, and significance.
 - Expected outcomes:
   - case header renders sample item, workflow, and current stage,
   - visible stage changes to `SETUP_RECORDED`,
   - timeline shows the setup note,
-  - isolate list shows `ISO-1: Escherichia coli`,
+  - isolate list first shows pending identification and then `Escherichia coli`,
+  - AST becomes available only after identification,
   - timeline shows the `ISOLATE_CREATED` activity after case refresh.
 - Project: `core-app`
 - Evidence command:
@@ -28,9 +31,9 @@
 
 - Flow: `ogc-782-microbiology-mvp`
 - Route: `/Microbiology/cases/:caseId`
-- Setup: seed one bacteriology `micro_case` with a `sample_item`, AST panel,
-  antibiotic, CLSI 2026 standard, and one MIC breakpoint rule through
-  test-only Postgres setup.
+- Setup: provision one bacteriology case, AST panel, antibiotic, CLSI 2026
+  standard, and one MIC breakpoint rule through the property-gated UAT scenario
+  service.
 - User actions:
   - open the case workbench,
   - record setup activity,
@@ -66,8 +69,9 @@
 
 - Flow: `microbiology-worklist-critical`
 - Routes: `/Microbiology/cases/:caseId`, `/Microbiology/worklist`
-- Setup: seed one bacteriology case with a sibling TB workflow on the same
-  sample item and AST reference prerequisites through test-only Postgres setup.
+- Setup: provision one bacteriology case with a sibling TB workflow on the same
+  sample item and AST reference prerequisites through the property-gated UAT
+  scenario service.
 - User actions:
   - open the bacteriology case,
   - log a critical communication with a free-text recipient and follow-up flag,
