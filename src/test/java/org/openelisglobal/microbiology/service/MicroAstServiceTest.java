@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -18,6 +19,7 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.microbiology.dao.MicroAstOverrideEventDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
@@ -30,6 +32,8 @@ import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstOverrideAction;
+import org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
@@ -43,6 +47,8 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
  * M-05: per-run breakpoint-standard selection. A run started with an explicit
@@ -86,12 +92,19 @@ public class MicroAstServiceTest {
     @Mock
     private MicroAstPanelDAO panelDAO;
 
+    @Mock
+    private MicroAstOverrideEventDAO overrideEventDAO;
+
+    @Mock
+    private SystemUserService systemUserService;
+
     private MicroAstService service;
 
     @Before
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
-                interpretationService, amendmentDAO, reagentLotService, organismDAO, panelDAO);
+                interpretationService, amendmentDAO, reagentLotService, organismDAO, panelDAO, overrideEventDAO,
+                systemUserService);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
         MicroOrganism organism = new MicroOrganism();
         organism.setId("org-1");
@@ -220,6 +233,80 @@ public class MicroAstServiceTest {
         assertEquals("NONE", reading.getMatchedBy());
         assertEquals("mm", reading.getUnits());
         assertEquals(MicroAstInterpretation.NO_BREAKPOINT.name(), reading.getInterpretation());
+    }
+
+    @Test
+    public void overrideAndRevertPreserveImmutableActorLinkedHistory() {
+        MicroAstReading reading = reading("reading-1", "run-1", MicroAstInterpretation.SUSCEPTIBLE);
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        when(readingDAO.get("reading-1")).thenReturn(Optional.of(reading));
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(readingDAO.update(reading)).thenReturn(reading);
+
+        service.overrideReading("reading-1", MicroAstInterpretation.RESISTANT, "Clinical exception", "42");
+        service.revertOverride("reading-1", "Repeat confirmed the original", "84");
+
+        ArgumentCaptor<MicroAstOverrideEvent> eventCaptor = ArgumentCaptor.forClass(MicroAstOverrideEvent.class);
+        verify(overrideEventDAO, org.mockito.Mockito.times(2)).insert(eventCaptor.capture());
+        List<MicroAstOverrideEvent> events = eventCaptor.getAllValues();
+        assertEquals(MicroAstOverrideAction.OVERRIDE.name(), events.get(0).getAction());
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), events.get(0).getFromInterpretation());
+        assertEquals(MicroAstInterpretation.RESISTANT.name(), events.get(0).getToInterpretation());
+        assertEquals("Clinical exception", events.get(0).getReason());
+        assertEquals("42", events.get(0).getPerformedBy());
+        assertNotNull(events.get(0).getPerformedAt());
+        assertEquals(MicroAstOverrideAction.REVERT.name(), events.get(1).getAction());
+        assertEquals(MicroAstInterpretation.RESISTANT.name(), events.get(1).getFromInterpretation());
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), events.get(1).getToInterpretation());
+        assertEquals("Repeat confirmed the original", events.get(1).getReason());
+        assertEquals("84", events.get(1).getPerformedBy());
+        assertNotNull(events.get(1).getPerformedAt());
+        assertEquals(null, reading.getOverrideInterpretation());
+        assertEquals(null, reading.getOverrideReason());
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), reading.getInterpretation());
+    }
+
+    @Test
+    public void overrideHistoryResolvesTheActorForDisplay() {
+        MicroAstOverrideEvent event = new MicroAstOverrideEvent();
+        event.setId("event-1");
+        event.setReadingId("reading-1");
+        event.setAction(MicroAstOverrideAction.OVERRIDE.name());
+        event.setFromInterpretation(MicroAstInterpretation.SUSCEPTIBLE.name());
+        event.setToInterpretation(MicroAstInterpretation.RESISTANT.name());
+        event.setReason("Clinical exception");
+        event.setPerformedAt(MicroCaseServiceImpl.now());
+        event.setPerformedBy("42");
+        when(overrideEventDAO.getByRunId("run-1")).thenReturn(List.of(event));
+        SystemUser user = new SystemUser();
+        user.setId("42");
+        user.setFirstName("Olivia");
+        user.setLastName("Mendez");
+        when(systemUserService.getUserById("42")).thenReturn(user);
+
+        org.openelisglobal.microbiology.form.MicroAstOverrideEventForm form = service.getOverrideHistoryForRun("run-1")
+                .get(0);
+
+        assertEquals("Olivia Mendez", form.performedByDisplay);
+        assertEquals("42", form.performedBy);
+    }
+
+    @Test
+    public void revertRejectsReadingWithoutAnActiveOverride() {
+        MicroAstReading reading = reading("reading-1", "run-1", MicroAstInterpretation.SUSCEPTIBLE);
+        when(readingDAO.get("reading-1")).thenReturn(Optional.of(reading));
+
+        try {
+            service.revertOverride("reading-1", "Not applicable", "84");
+            fail("Expected revert without an override to fail");
+        } catch (MicroAstConflictException expected) {
+            assertEquals("AST_OVERRIDE_NOT_ACTIVE", expected.getMessage());
+        }
+
+        verify(overrideEventDAO, never()).insert(any(MicroAstOverrideEvent.class));
     }
 
     @Test
@@ -422,6 +509,14 @@ public class MicroAstServiceTest {
         run.setIsolateId("iso-1");
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         return run;
+    }
+
+    private MicroAstReading reading(String id, String runId, MicroAstInterpretation interpretation) {
+        MicroAstReading reading = new MicroAstReading();
+        reading.setId(id);
+        reading.setAstRunId(runId);
+        reading.setInterpretation(interpretation.name());
+        return reading;
     }
 
     private MicroAstPanel panel(String id, String name, int version) {

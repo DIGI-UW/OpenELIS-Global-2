@@ -235,4 +235,7 @@
   <!-- OGC-782 R1: AST reading source, match level, and units -->
   <include relativeToChangelogFile="true" file="073-microbiology-ast-reading-provenance.xml"/>
 
+  <!-- OGC-782 R1: immutable AST override and revert history -->
+  <include relativeToChangelogFile="true" file="074-microbiology-ast-override-history.xml"/>
+
 </databaseChangeLog>

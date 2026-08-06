@@ -55,6 +55,8 @@ const AstEntryPanel = ({
   const [overrideInterpretation, setOverrideInterpretation] =
     useState("RESISTANT");
   const [overrideReason, setOverrideReason] = useState("");
+  const [expandedHistoryReadingId, setExpandedHistoryReadingId] = useState("");
+  const [revertReason, setRevertReason] = useState("");
   const [runs, setRuns] = useState([]);
   const [selectedRunId, setSelectedRunId] = useState("");
   const [selectedReadingId, setSelectedReadingId] = useState("");
@@ -233,7 +235,9 @@ const AstEntryPanel = ({
     result: `${reading.rawValue ?? reading.rawText ?? ""}${
       reading.units ? ` ${reading.units}` : ""
     }`,
-    source: formatMicrobiologyEnum(reading.source || "UNKNOWN"),
+    source: formatMicrobiologyEnum(
+      reading.overrideInterpretation ? "OVERRIDE" : reading.source || "UNKNOWN",
+    ),
     matchedBy: formatMicrobiologyEnum(reading.matchedBy || "NONE"),
     interpretation: reading.interpretation,
     override:
@@ -335,6 +339,17 @@ const AstEntryPanel = ({
         overrideReason,
       }),
     );
+
+  const revertOverride = (readingId) =>
+    runOperation(() =>
+      service.revertAstOverride(readingId, {
+        overrideReason: revertReason.trim(),
+      }),
+    ).then((reading) => {
+      if (reading) {
+        setRevertReason("");
+      }
+    });
 
   const reviewRun = () =>
     runOperation(() => service.reviewAstRun(currentRun.id));
@@ -645,35 +660,138 @@ const AstEntryPanel = ({
                                 const reading = currentReadings.find(
                                   (item) => item.id === row.id,
                                 );
+                                const history = reading?.overrideHistory || [];
+                                const historyExpanded =
+                                  expandedHistoryReadingId === reading?.id;
                                 return (
-                                  <TableRow
-                                    key={row.id}
-                                    {...getRowProps({ row })}
-                                    data-testid="microbiology-ast-reading-row"
-                                  >
-                                    {row.cells.map((cell) => (
-                                      <TableCell
-                                        key={cell.id}
-                                        data-testid={
-                                          cell.info.header === "interpretation"
-                                            ? "microbiology-ast-interpretation"
-                                            : undefined
-                                        }
-                                      >
-                                        {cell.info.header ===
-                                        "interpretation" ? (
-                                          <>
-                                            <strong>{cell.value}</strong>
-                                            {reading?.overrideInterpretation
-                                              ? ` (${reading.overrideInterpretation})`
-                                              : ""}
-                                          </>
-                                        ) : (
-                                          cell.value
-                                        )}
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
+                                  <React.Fragment key={row.id}>
+                                    <TableRow
+                                      {...getRowProps({ row })}
+                                      data-testid="microbiology-ast-reading-row"
+                                    >
+                                      {row.cells.map((cell) => (
+                                        <TableCell
+                                          key={cell.id}
+                                          data-testid={
+                                            cell.info.header ===
+                                            "interpretation"
+                                              ? "microbiology-ast-interpretation"
+                                              : undefined
+                                          }
+                                        >
+                                          {cell.info.header ===
+                                          "interpretation" ? (
+                                            <>
+                                              <strong>{cell.value}</strong>
+                                              {reading?.overrideInterpretation
+                                                ? ` (${reading.overrideInterpretation})`
+                                                : ""}
+                                            </>
+                                          ) : cell.info.header ===
+                                            "override" ? (
+                                            <div>
+                                              <span>{cell.value}</span>
+                                              {history.length > 0 ? (
+                                                <Button
+                                                  kind="ghost"
+                                                  size="sm"
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setExpandedHistoryReadingId(
+                                                      historyExpanded
+                                                        ? ""
+                                                        : reading.id,
+                                                    );
+                                                    setRevertReason("");
+                                                  }}
+                                                >
+                                                  {intl.formatMessage({
+                                                    id: historyExpanded
+                                                      ? "microbiology.ast.hideOriginal"
+                                                      : "microbiology.ast.showOriginal",
+                                                  })}
+                                                </Button>
+                                              ) : null}
+                                            </div>
+                                          ) : (
+                                            cell.value
+                                          )}
+                                        </TableCell>
+                                      ))}
+                                    </TableRow>
+                                    {historyExpanded ? (
+                                      <TableRow data-testid="microbiology-ast-override-history">
+                                        <TableCell colSpan={headers.length}>
+                                          <div className="microbiology-ast-override-history">
+                                            <h4>
+                                              {intl.formatMessage({
+                                                id: "microbiology.ast.overrideHistory",
+                                              })}
+                                            </h4>
+                                            {history.map((event) => (
+                                              <p key={event.id}>
+                                                {formatMicrobiologyEnum(
+                                                  event.fromInterpretation,
+                                                )}{" "}
+                                                {intl.formatMessage({
+                                                  id: "microbiology.ast.historyTo",
+                                                })}{" "}
+                                                {formatMicrobiologyEnum(
+                                                  event.toInterpretation,
+                                                )}
+                                                {` - ${event.reason} - ${
+                                                  event.performedByDisplay ||
+                                                  event.performedBy
+                                                }`}
+                                                {event.performedAt
+                                                  ? ` - ${intl.formatDate(
+                                                      event.performedAt,
+                                                    )} ${intl.formatTime(
+                                                      event.performedAt,
+                                                    )}`
+                                                  : ""}
+                                              </p>
+                                            ))}
+                                            {reading.overrideInterpretation ? (
+                                              <div className="microbiology-form-grid">
+                                                <TextArea
+                                                  id={`microbiology-ast-revert-reason-${reading.id}`}
+                                                  labelText={intl.formatMessage(
+                                                    {
+                                                      id: "microbiology.ast.revertReason",
+                                                    },
+                                                  )}
+                                                  value={revertReason}
+                                                  onChange={(event) =>
+                                                    setRevertReason(
+                                                      event.target.value,
+                                                    )
+                                                  }
+                                                />
+                                                <Button
+                                                  kind="danger--tertiary"
+                                                  type="button"
+                                                  onClick={() =>
+                                                    revertOverride(reading.id)
+                                                  }
+                                                  disabled={
+                                                    busy ||
+                                                    readOnly ||
+                                                    isReviewed ||
+                                                    !revertReason.trim()
+                                                  }
+                                                >
+                                                  {intl.formatMessage({
+                                                    id: "microbiology.ast.revertOverride",
+                                                  })}
+                                                </Button>
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    ) : null}
+                                  </React.Fragment>
                                 );
                               })}
                             </TableBody>

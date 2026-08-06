@@ -1,7 +1,10 @@
 package org.openelisglobal.microbiology.service;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.openelisglobal.microbiology.dao.MicroAstOverrideEventDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
@@ -10,10 +13,13 @@ import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstOverrideAction;
+import org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
@@ -30,6 +36,8 @@ import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,11 +58,14 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroReagentLotService reagentLotService;
     private final MicroOrganismDAO organismDAO;
     private final MicroAstPanelDAO panelDAO;
+    private final MicroAstOverrideEventDAO overrideEventDAO;
+    private final SystemUserService systemUserService;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
             MicroAstInterpretationService interpretationService, MicroCaseAmendmentDAO amendmentDAO,
-            MicroReagentLotService reagentLotService, MicroOrganismDAO organismDAO, MicroAstPanelDAO panelDAO) {
+            MicroReagentLotService reagentLotService, MicroOrganismDAO organismDAO, MicroAstPanelDAO panelDAO,
+            MicroAstOverrideEventDAO overrideEventDAO, SystemUserService systemUserService) {
         this.runDAO = runDAO;
         this.readingDAO = readingDAO;
         this.isolateDAO = isolateDAO;
@@ -66,6 +77,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         this.reagentLotService = reagentLotService;
         this.organismDAO = organismDAO;
         this.panelDAO = panelDAO;
+        this.overrideEventDAO = overrideEventDAO;
+        this.systemUserService = systemUserService;
     }
 
     @Override
@@ -263,12 +276,60 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         requireMutableRun(run, isolate.getCaseId());
+        String fromInterpretation = effectiveInterpretation(reading);
         reading.setOverrideInterpretation(overrideInterpretation.name());
-        reading.setOverrideReason(overrideReason);
+        reading.setOverrideReason(overrideReason.trim());
+        recordOverrideEvent(readingId, MicroAstOverrideAction.OVERRIDE, fromInterpretation,
+                overrideInterpretation.name(), overrideReason, performedBy);
         MicroAstReading updated = readingDAO.update(reading);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
                 "AST interpretation overridden", "{\"readingId\":\"" + readingId + "\"}");
         return updated;
+    }
+
+    @Override
+    @Transactional
+    public MicroAstReading revertOverride(String readingId, String reason, String performedBy) {
+        MicroCaseServiceImpl.requireText(readingId, "readingId");
+        MicroCaseServiceImpl.requireText(reason, "reason");
+        MicroAstReading reading = readingDAO.get(readingId)
+                .orElseThrow(() -> new IllegalArgumentException("AST reading not found"));
+        if (reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank()) {
+            throw new MicroAstConflictException("AST_OVERRIDE_NOT_ACTIVE");
+        }
+        MicroAstRun run = runDAO.get(reading.getAstRunId())
+                .orElseThrow(() -> new IllegalArgumentException("AST run not found"));
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableRun(run, isolate.getCaseId());
+        recordOverrideEvent(readingId, MicroAstOverrideAction.REVERT, reading.getOverrideInterpretation(),
+                reading.getInterpretation(), reason, performedBy);
+        reading.setOverrideInterpretation(null);
+        reading.setOverrideReason(null);
+        MicroAstReading updated = readingDAO.update(reading);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
+                "AST interpretation override reverted", "{\"readingId\":\"" + readingId + "\"}");
+        return updated;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAstOverrideEventForm> getOverrideHistoryForRun(String runId) {
+        MicroCaseServiceImpl.requireText(runId, "runId");
+        Map<String, String> userDisplayById = new HashMap<>();
+        return overrideEventDAO.getByRunId(runId).stream().map(event -> {
+            MicroAstOverrideEventForm form = new MicroAstOverrideEventForm();
+            form.id = event.getId();
+            form.readingId = event.getReadingId();
+            form.action = event.getAction();
+            form.fromInterpretation = event.getFromInterpretation();
+            form.toInterpretation = event.getToInterpretation();
+            form.reason = event.getReason();
+            form.performedAt = event.getPerformedAt();
+            form.performedBy = event.getPerformedBy();
+            form.performedByDisplay = resolveUserDisplay(event.getPerformedBy(), userDisplayById);
+            return form;
+        }).toList();
     }
 
     @Override
@@ -378,6 +439,45 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     private String defaultUnits(MicroAstMethod method) {
         return MicroAstMethod.ZONE.equals(method) ? "mm" : "ug/mL";
+    }
+
+    private String effectiveInterpretation(MicroAstReading reading) {
+        return reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank()
+                ? reading.getInterpretation()
+                : reading.getOverrideInterpretation();
+    }
+
+    private void recordOverrideEvent(String readingId, MicroAstOverrideAction action, String fromInterpretation,
+            String toInterpretation, String reason, String performedBy) {
+        MicroCaseServiceImpl.requireText(performedBy, "performedBy");
+        MicroAstOverrideEvent event = new MicroAstOverrideEvent();
+        event.setReadingId(readingId);
+        event.setAction(action.name());
+        event.setFromInterpretation(fromInterpretation);
+        event.setToInterpretation(toInterpretation);
+        event.setReason(reason.trim());
+        event.setPerformedAt(MicroCaseServiceImpl.now());
+        event.setPerformedBy(performedBy);
+        overrideEventDAO.insert(event);
+    }
+
+    private String resolveUserDisplay(String userId, Map<String, String> userDisplayById) {
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+        if (userDisplayById.containsKey(userId)) {
+            return userDisplayById.get(userId);
+        }
+        SystemUser user = systemUserService.getUserById(userId);
+        String display = userId;
+        if (user != null) {
+            String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
+            String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
+            String fullName = (firstName + " " + lastName).trim();
+            display = fullName.isEmpty() ? userId : fullName;
+        }
+        userDisplayById.put(userId, display);
+        return display;
     }
 
     private void snapshotOrValidateMethod(MicroAstRun run, MicroAstMethod method) {

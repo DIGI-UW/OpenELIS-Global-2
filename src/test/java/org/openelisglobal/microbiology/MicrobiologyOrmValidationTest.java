@@ -10,6 +10,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
@@ -66,6 +67,7 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroIsolateIdentificationEvent.class));
         assertNotNull(metamodel.entity(MicroAstRun.class));
         assertNotNull(metamodel.entity(MicroAstReading.class));
+        assertNotNull(metamodel.entity(MicroAstOverrideEvent.class));
         assertNotNull(metamodel.entity(MicroCriticalCommunication.class));
         assertNotNull(metamodel.entity(MicroCaseOrderDetail.class));
         assertNotNull(metamodel.entity(MicroReportVersion.class));
