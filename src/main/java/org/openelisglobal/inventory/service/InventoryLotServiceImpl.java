@@ -33,6 +33,39 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         return inventoryLotDAO;
     }
 
+    /**
+     * inventory_lot.barcode is UNIQUE but nullable, so "no barcode" must be NULL:
+     * two lots saved with an empty string collide on inventory_lot_barcode_key.
+     * Normalized on the way in rather than at each caller, since any client that
+     * posts a blank barcode would otherwise break the next one.
+     */
+    private void normalizeBarcode(InventoryLot lot) {
+        if (lot != null && lot.getBarcode() != null && lot.getBarcode().trim().isEmpty()) {
+            lot.setBarcode(null);
+        }
+    }
+
+    @Override
+    @Transactional
+    public Long insert(InventoryLot lot) {
+        normalizeBarcode(lot);
+        return super.insert(lot);
+    }
+
+    @Override
+    @Transactional
+    public InventoryLot save(InventoryLot lot) {
+        normalizeBarcode(lot);
+        return super.save(lot);
+    }
+
+    @Override
+    @Transactional
+    public InventoryLot update(InventoryLot lot) {
+        normalizeBarcode(lot);
+        return super.update(lot);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<InventoryLot> getAvailableLotsByItemFEFO(String itemId) {

@@ -200,6 +200,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           inventoryItem: formData.inventoryItem,
           initialQuantity: lot.initialQuantity,
           version: lot.version,
+          // barcode is UNIQUE: blank has to be null, or a second blank collides
+          barcode: formData.barcode?.trim() || null,
         });
       } else {
         const savedLot = await InventoryManagementAPI.receive({
@@ -215,7 +217,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           receiptDate: formData.receiptDate.toISOString(),
           qcStatus: formData.qcStatus,
           status: formData.status,
-          barcode: formData.barcode || null,
+          barcode: formData.barcode?.trim() || null,
         });
 
         if (pendingAssignment && savedLot?.id) {
