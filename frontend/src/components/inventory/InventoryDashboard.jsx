@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -63,7 +69,18 @@ const InventoryDashboard = () => {
 
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
+  // Item codes the backend reports as below their low-stock threshold.
+  const [lowStockItemIds, setLowStockItemIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
+
+  // Guards setState after awaits when the tab unmounts mid-fetch.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [metrics, setMetrics] = useState({
     totalLots: 0,
@@ -180,86 +197,87 @@ const InventoryDashboard = () => {
   const fetchLots = async () => {
     setLoading(true);
     try {
-      const lotsResponse = await InventoryLotAPI.getAll({
-        status: statusFilter !== "ALL" ? statusFilter : undefined,
-      });
+      // Low stock comes from the backend rather than being recomputed here:
+      // it is judged against an item's usable quantity summed across lots
+      // (InventoryItemService.getLowStockItems), which a per-lot comparison in
+      // the browser cannot reproduce. Keeps this tile, /items/low-stock and the
+      // Low Stock report agreeing.
+      const [lotsResponse, itemsResponse, lowStockResponse] = await Promise.all(
+        [
+          InventoryLotAPI.getAll({
+            status: statusFilter !== "ALL" ? statusFilter : undefined,
+          }),
+          InventoryItemAPI.getAll(),
+          InventoryItemAPI.getLowStock(),
+        ],
+      );
+      if (!isMountedRef.current) return;
 
       const validLots = Array.isArray(lotsResponse) ? lotsResponse : [];
       setLots(validLots);
 
-      const uniqueItemIds = [
-        ...new Set(
-          validLots.map((lot) => lot.inventoryItem?.id).filter(Boolean),
-        ),
-      ];
-
-      const itemsMap = {};
-      await Promise.all(
-        uniqueItemIds.map(async (itemId) => {
-          try {
-            const item = await InventoryItemAPI.getById(itemId);
-            itemsMap[itemId] = item;
-          } catch (error) {
-            console.error(`Error fetching item ${itemId}:`, error);
-          }
-        }),
+      const itemsMap = Object.fromEntries(
+        (Array.isArray(itemsResponse) ? itemsResponse : []).map((item) => [
+          item.id,
+          item,
+        ]),
       );
-
       setItems(itemsMap);
 
-      calculateMetrics(validLots, itemsMap);
+      const lowStockIds = new Set(
+        (Array.isArray(lowStockResponse) ? lowStockResponse : []).map(
+          (item) => item.id,
+        ),
+      );
+      setLowStockItemIds(lowStockIds);
+
+      calculateMetrics(validLots, itemsMap, lowStockIds);
     } catch (error) {
       console.error("Error fetching inventory:", error);
+      if (!isMountedRef.current) return;
       setLots([]);
       setItems({});
+      setLowStockItemIds(new Set());
       addNotification({
         kind: "error",
         title: intl.formatMessage({ id: "notification.error" }),
         message: "Error loading inventory data",
       });
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
-  const calculateMetrics = (lotsData, itemsData) => {
-    let lowStockCount = 0;
+  const calculateMetrics = (lotsData, itemsData, lowStockIds) => {
     let expiringSoonCount = 0;
     let expiredCount = 0;
 
     lotsData.forEach((lot) => {
       const item = itemsData[lot.inventoryItem?.id];
-      if (!item) return;
+      if (!item || !lot.expirationDate) return;
 
-      const currentQty = lot.currentQuantity || 0;
-      const minStock = item.minimumStockLevel || 0;
+      const expiryDate = new Date(lot.expirationDate);
+      const today = new Date();
+      const daysUntilExpiry = Math.floor(
+        (expiryDate - today) / (1000 * 60 * 60 * 24),
+      );
 
-      if (lot.expirationDate) {
-        const expiryDate = new Date(lot.expirationDate);
-        const today = new Date();
-        const daysUntilExpiry = Math.floor(
-          (expiryDate - today) / (1000 * 60 * 60 * 24),
-        );
-
-        if (daysUntilExpiry < 0) {
-          expiredCount++;
-          return;
-        }
-
-        const alertDays = item.expirationAlertDays || 30;
-        if (daysUntilExpiry <= alertDays) {
-          expiringSoonCount++;
-        }
+      if (daysUntilExpiry < 0) {
+        expiredCount++;
+        return;
       }
 
-      if (currentQty > 0 && currentQty <= minStock) {
-        lowStockCount++;
+      const alertDays = item.expirationAlertDays || 30;
+      if (daysUntilExpiry <= alertDays) {
+        expiringSoonCount++;
       }
     });
 
     setMetrics({
       totalLots: lotsData.length,
-      lowStock: lowStockCount,
+      // Items below threshold, not lots — one item short on stock is one thing
+      // to reorder however many lots it is spread across.
+      lowStock: lowStockIds.size,
       expiringSoon: expiringSoonCount,
       expired: expiredCount,
     });
@@ -272,7 +290,6 @@ const InventoryDashboard = () => {
     if (!item) return null;
 
     const currentQty = lot.currentQuantity || 0;
-    const minStock = item.minimumStockLevel || 0;
 
     if (lot.expirationDate) {
       const expiryDate = new Date(lot.expirationDate);
@@ -299,7 +316,7 @@ const InventoryDashboard = () => {
       return { type: "outOfStock", label: "Out of Stock", kind: "red" };
     }
 
-    if (currentQty < minStock) {
+    if (lowStockItemIds.has(lot.inventoryItem.id)) {
       return { type: "lowStock", label: "Low Stock", kind: "warm-gray" };
     }
 

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Modal,
   TextInput,
@@ -45,6 +51,15 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   });
 
   const [saving, setSaving] = useState(false);
+  // Guards setState after awaits when this view unmounts mid-fetch.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const [error, setError] = useState(null);
   const [itemTypes, setItemTypes] = useState([]);
 
@@ -53,6 +68,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     const loadItemTypes = async () => {
       try {
         const types = await InventoryItemAPI.getItemTypes();
+        if (!isMountedRef.current) return;
         const formattedTypes = types.map((type) => ({
           id: type,
           text: getItemTypeLabel(type),
@@ -214,6 +230,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         sanitizedData.id = formData.code?.trim() || null;
         await InventoryItemAPI.create(sanitizedData);
       }
+      if (!isMountedRef.current) return;
       setSaving(false);
       onSave();
     } catch (err) {
@@ -226,6 +243,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         ? intl.formatMessage({ id: err.errorCode }, err.params)
         : err.message ||
           intl.formatMessage({ id: "catalog.item.error.saveGeneric" });
+      if (!isMountedRef.current) return;
       setError(errorMessage);
       setSaving(false);
       notify({

@@ -140,6 +140,10 @@ export const InventoryItemAPI = {
   // Get all item types
   getItemTypes: () => get("/items/types"),
 
+  // Items below their low-stock threshold — judged server-side against usable
+  // quantity summed across lots, so callers must not recompute it locally
+  getLowStock: () => get("/items/low-stock"),
+
   // Create new item
   create: (item) => post("/items", item),
 

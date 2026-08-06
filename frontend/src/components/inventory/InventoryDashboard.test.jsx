@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -17,6 +17,7 @@ vi.mock("./InventoryService", () => ({
     getAll: vi.fn(),
     getById: vi.fn(),
     getItemTypes: vi.fn(),
+    getLowStock: vi.fn(),
   },
   InventoryLotAPI: {
     getAll: vi.fn(),
@@ -99,17 +100,78 @@ const lotWithoutLocation = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  InventoryItemAPI.getById.mockResolvedValue({
+  const malariaRdt = {
     id: "MALARIA_RDT",
     name: "Malaria RDT",
     itemType: "RDT",
     units: "kits",
-  });
+    lowStockThreshold: 20,
+  };
+  InventoryItemAPI.getById.mockResolvedValue(malariaRdt);
+  InventoryItemAPI.getAll.mockResolvedValue([malariaRdt]);
+  InventoryItemAPI.getLowStock.mockResolvedValue([]);
   InventoryItemAPI.getItemTypes.mockResolvedValue([
     "REAGENT",
     "RDT",
     "CARTRIDGE",
   ]);
+});
+
+describe("InventoryDashboard low stock", () => {
+  // Regression: the tile and badge previously compared a lot's quantity to
+  // `item.minimumStockLevel`, a field that does not exist on InventoryItem, so
+  // the threshold was always 0 — the tile read 0 and the badge never rendered.
+  it("reports the low-stock count from the backend, not a local recomputation", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([lotWithLocation]);
+    InventoryItemAPI.getLowStock.mockResolvedValue([
+      { id: "MALARIA_RDT", name: "Malaria RDT" },
+    ]);
+    renderDashboard();
+
+    await waitFor(() =>
+      expect(InventoryItemAPI.getLowStock).toHaveBeenCalled(),
+    );
+    const tile = document.querySelector(".metric-warning .metric-value");
+    await waitFor(() => expect(tile).toHaveTextContent("1"));
+  });
+
+  // Scope badge assertions to the table: the metric tile's own label is also
+  // "Low Stock", so an unscoped query matches it and passes either way.
+  it("badges a lot's row as Low Stock when its item is below threshold", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([lotWithLocation]);
+    InventoryItemAPI.getLowStock.mockResolvedValue([
+      { id: "MALARIA_RDT", name: "Malaria RDT" },
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    const table = document.querySelector("table");
+    await waitFor(() =>
+      expect(within(table).getByText("Low Stock")).toBeInTheDocument(),
+    );
+  });
+
+  it("shows no low-stock badge when the backend reports nothing low", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([lotWithLocation]);
+    InventoryItemAPI.getLowStock.mockResolvedValue([]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    const table = document.querySelector("table");
+    expect(within(table).queryByText("Low Stock")).not.toBeInTheDocument();
+  });
+
+  it("loads items in one batched call rather than one request per lot", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      lotWithLocation,
+      lotWithoutLocation,
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    expect(InventoryItemAPI.getAll).toHaveBeenCalledTimes(1);
+    expect(InventoryItemAPI.getById).not.toHaveBeenCalled();
+  });
 });
 
 describe("InventoryDashboard type filter", () => {
