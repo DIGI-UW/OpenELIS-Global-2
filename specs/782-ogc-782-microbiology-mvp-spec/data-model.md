@@ -433,8 +433,16 @@ Validation:
 - `externalEventId` is unique so retries cannot duplicate clinical work.
 - AST consumers accept result-available and QC-failure events and resolve the
   target by explicit run or analyzer/card identity.
+- The culture consumer accepts a positive signal only for an incubating case,
+  resolved by an explicit case reference or one unique recorded culture-
+  container identifier. A positive signal does not imply confirmed growth.
 - Events that cannot be applied remain durable with a named failure and appear
   in the existing Analyzer Import Issues reconciliation surface.
+
+The durable case stage constraint includes `POSITIVE_SIGNAL` between incubation
+and confirmed growth. Migration `079-microbiology-positive-culture-stage.xml`
+also reconciles the constraint with the existing lost-specimen terminal states;
+routes, worklist filters, and confirmation panels require no schema changes.
 
 ### MicroCriticalCommunication
 

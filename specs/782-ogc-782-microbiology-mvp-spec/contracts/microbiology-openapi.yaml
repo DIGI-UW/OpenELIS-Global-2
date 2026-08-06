@@ -329,13 +329,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AstAnalyzerEvent"
+                $ref: "#/components/schemas/AnalyzerEvent"
         "422":
           description: Event retained for reconciliation because it could not be applied
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AstAnalyzerEvent"
+                $ref: "#/components/schemas/AnalyzerEvent"
+  /analyzer/events/culture:
+    post:
+      summary: Receive an idempotent normalized positive-culture signal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CultureAnalyzerEventRequest"
+      responses:
+        "202":
+          description: Signal applied to one incubating culture case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzerEvent"
+        "422":
+          description: Signal retained for reconciliation because it could not be applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzerEvent"
   /microbiology/ast/readings/{readingId}/override:
     put:
       summary: Override an AST interpretation with a required reason
@@ -836,7 +858,28 @@ components:
           type: string
         analyzerResultReference:
           type: string
-    AstAnalyzerEvent:
+    CultureAnalyzerEventRequest:
+      type: object
+      required:
+        - externalEventId
+        - eventType
+      properties:
+        externalEventId:
+          type: string
+        eventType:
+          type: string
+          enum:
+            - POSITIVE_SIGNAL
+        analyzerId:
+          type: string
+        sourceId:
+          type: string
+          description: Recorded culture-container identifier used when targetCaseId is absent.
+        targetCaseId:
+          type: string
+        note:
+          type: string
+    AnalyzerEvent:
       type: object
       properties:
         id:
