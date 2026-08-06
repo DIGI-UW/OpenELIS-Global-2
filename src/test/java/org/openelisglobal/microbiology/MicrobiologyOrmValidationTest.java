@@ -114,6 +114,12 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
             assertNotNull(entityManager.createQuery(
                     "from MicroPatientOrigin o where o.isActive = 'Y' order by o.sortOrder, o.displayName",
                     MicroPatientOrigin.class));
+            assertNotNull(
+                    entityManager.createQuery("from MicroPatientOrigin o where 1 = 1 order by lower(o.displayName) asc",
+                            MicroPatientOrigin.class));
+            assertNotNull(entityManager.createQuery("select count(o.id) from MicroPatientOrigin o where 1 = 1"
+                    + " and (lower(o.displayName) like :q or lower(o.code) like :q"
+                    + " or lower(o.whonetCode) like :q) and o.isActive = :active", Long.class));
             assertNotNull(entityManager.createQuery(
                     "select d.patientOriginId from MicroPatientOriginDefault d where d.organizationId = :organizationId",
                     String.class));

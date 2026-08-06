@@ -8,4 +8,8 @@ public interface MicroPatientOriginDAO extends BaseDAO<MicroPatientOrigin, Strin
     List<MicroPatientOrigin> getActivePatientOrigins();
 
     boolean existsActiveCode(String code);
+
+    List<MicroPatientOrigin> search(String q, String status, String sort, int offset, int limit);
+
+    long countSearch(String q, String status);
 }

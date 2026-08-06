@@ -127,6 +127,96 @@ describe("microbiology reference administration", () => {
     expect(setQuery).toHaveBeenLastCalledWith({ edit: "new" });
   });
 
+  it("renders Patient Origins as a read-only Carbon reference list", async () => {
+    const setQuery = vi.fn();
+    getReferencePage.mockResolvedValue({
+      rows: [
+        {
+          id: "origin-1",
+          code: "INPATIENT",
+          displayName: "Inpatient",
+          whonetCode: "INP",
+          active: true,
+        },
+      ],
+      total: 1,
+    });
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS["patient-origins"]}
+        query={query}
+        setQuery={setQuery}
+      />,
+    );
+
+    expect(await screen.findByText("Inpatient")).toBeInTheDocument();
+    expect(screen.getByText("INPATIENT")).toBeInTheDocument();
+    expect(screen.getByText("INP")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Add patient origin/i }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Options" })).toBeNull();
+  });
+
+  it("reconciles Carbon rows when a reference response becomes filtered", async () => {
+    const setQuery = vi.fn();
+    getReferencePage.mockImplementation((_resource, requestQuery) =>
+      Promise.resolve({
+        rows: requestQuery.includes("q=Long-term+Care")
+          ? [
+              {
+                id: "origin-2",
+                code: "LONG_TERM_CARE",
+                displayName: "Long-term Care",
+                whonetCode: "LTC",
+                active: true,
+              },
+            ]
+          : [
+              {
+                id: "origin-1",
+                code: "INPATIENT",
+                displayName: "Inpatient",
+                whonetCode: "INP",
+                active: true,
+              },
+              {
+                id: "origin-2",
+                code: "LONG_TERM_CARE",
+                displayName: "Long-term Care",
+                whonetCode: "LTC",
+                active: true,
+              },
+            ],
+        total: requestQuery.includes("q=Long-term+Care") ? 1 : 2,
+      }),
+    );
+    const view = renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS["patient-origins"]}
+        query={query}
+        setQuery={setQuery}
+      />,
+    );
+    expect(await screen.findByText("Inpatient")).toBeInTheDocument();
+
+    view.rerender(
+      <BrowserRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <ReferenceDataPage
+            definition={REFERENCE_DEFINITIONS["patient-origins"]}
+            query={{ ...query, q: "Long-term Care" }}
+            setQuery={setQuery}
+          />
+        </IntlProvider>
+      </BrowserRouter>,
+    );
+
+    expect(await screen.findByText("Long-term Care")).toBeInTheDocument();
+    expect(screen.queryByText("Inpatient")).toBeNull();
+  });
+
   it("opens the AST panel editor through canonical edit state", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();

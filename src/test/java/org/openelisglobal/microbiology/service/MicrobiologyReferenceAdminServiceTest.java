@@ -25,17 +25,20 @@ import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroCultureSetupDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -52,6 +55,8 @@ public class MicrobiologyReferenceAdminServiceTest {
     @Mock
     private MicroCultureSetupDAO cultureSetupDAO;
     @Mock
+    private MicroPatientOriginDAO patientOriginDAO;
+    @Mock
     private MethodService methodService;
     @Mock
     private TypeOfSampleService typeOfSampleService;
@@ -61,7 +66,7 @@ public class MicrobiologyReferenceAdminServiceTest {
     @Before
     public void setUp() {
         service = new MicrobiologyReferenceAdminServiceImpl(organismDAO, antibioticDAO, panelDAO, panelAntibioticDAO,
-                cultureSetupDAO, methodService, typeOfSampleService);
+                cultureSetupDAO, patientOriginDAO, methodService, typeOfSampleService);
     }
 
     @Test
@@ -138,6 +143,32 @@ public class MicrobiologyReferenceAdminServiceTest {
 
         verify(organismDAO).search("", "ALL", null, "name", 0, 20);
         verify(organismDAO).countSearch("", "ALL", null);
+    }
+
+    @Test
+    public void patientOriginListUsesPagedReadOnlyReferenceQuery() {
+        MicroPatientOrigin inpatient = new MicroPatientOrigin();
+        inpatient.setId("origin-1");
+        inpatient.setCode("INPATIENT");
+        inpatient.setDisplayName("Inpatient");
+        inpatient.setWhonetCode("INP");
+        inpatient.setIsActive("Y");
+        when(patientOriginDAO.search("patient", "ACTIVE", "name-desc", 20, 20)).thenReturn(List.of(inpatient));
+        when(patientOriginDAO.countSearch("patient", "ACTIVE")).thenReturn(1L);
+        MicroReferenceAdminQueryForm query = new MicroReferenceAdminQueryForm();
+        query.q = " patient ";
+        query.status = "active";
+        query.sort = "name-desc";
+        query.page = 2;
+
+        MicroPatientOriginAdminForm row = service.getPatientOrigins(query).rows.get(0);
+
+        assertEquals("INPATIENT", row.code);
+        assertEquals("Inpatient", row.displayName);
+        assertEquals("INP", row.whonetCode);
+        assertTrue(row.active);
+        assertEquals(1L, service.getPatientOrigins(query).total);
+        verify(patientOriginDAO, never()).getAll();
     }
 
     @Test

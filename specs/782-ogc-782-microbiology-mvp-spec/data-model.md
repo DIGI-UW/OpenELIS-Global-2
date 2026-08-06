@@ -458,6 +458,9 @@ Fields:
 Validation:
 
 - Override requires a reason and preserves the original interpreted value.
+- A found unscoped rule records `matchedBy=STANDARD`; `matchedBy=NONE` is
+  reserved for an absent rule so review does not confuse a generic standard
+  interpretation with a missing breakpoint.
 - Missing breakpoint records `matchedBy=NONE` and requires visible local-policy
   guidance rather than silently implying an interpretation.
 - Numeric readings validate precision and allowed ranges by the run's derived

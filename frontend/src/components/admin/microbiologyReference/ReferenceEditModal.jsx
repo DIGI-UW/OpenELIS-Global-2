@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Checkbox,
   ComposedModal,
@@ -37,6 +37,14 @@ const ReferenceEditModal = ({ titleId, fields, value, onClose, onSave }) => {
   const [draft, setDraft] = useState(initialValue);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const mounted = useRef(true);
+
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   const update = (key, next) =>
     setDraft((current) => ({ ...current, [key]: next }));
@@ -47,12 +55,14 @@ const ReferenceEditModal = ({ titleId, fields, value, onClose, onSave }) => {
     try {
       await onSave(draft);
     } catch (requestError) {
-      setError(
-        requestError.message ||
-          intl.formatMessage({ id: "microbiology.admin.error.save" }),
-      );
+      if (mounted.current) {
+        setError(
+          requestError.message ||
+            intl.formatMessage({ id: "microbiology.admin.error.save" }),
+        );
+      }
     } finally {
-      setSaving(false);
+      if (mounted.current) setSaving(false);
     }
   };
 
