@@ -82,12 +82,12 @@ _GATE: Passed before Phase 0 research. Re-check after Phase 1 design._
 ## Clarification Result
 
 The 2026-08-05 source-alignment audit supersedes the earlier claim that all
-material MVP ambiguity was resolved. Final-case amendment behavior and
-operational TB remain outside the initial PR, but M-03 Program/order-entry
-behavior is a blocking implementation and evidence gap. The pinned source also
-contains two open product contradictions: untyped-test fallback and mixed
-bacteriology/TB handling. Rulings and the complete guided-workflow crosswalk are
-recorded in
+material MVP ambiguity was resolved. Final-case amendment behavior remains
+outside the initial PR but is part of R1; operational TB remains a separate
+feature. The pinned detailed M-03 source resolves untyped-test fallback and
+mixed bacteriology/TB handling: use a configured default or `UNASSIGNED`, and
+create sibling workflows on one specimen. The complete guided-workflow
+crosswalk is recorded in
 `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
 
 The historical MVP boundary above remains unchanged. Follow-on stack branches
@@ -103,16 +103,16 @@ _GATE: This feature exceeds three days; each milestone is intended as one PR._
 
 ### Milestone Table
 
-| ID | Branch Suffix | Scope | User Stories | Verification | Depends On |
-| --- | --- | --- | --- | --- | --- |
-| M1 | `m1-catalog-reference-foundations` | Minimal microbiology reference/config foundation: workflow type on culture-capable tests, organism/antibiotic seeds, AST panel model, breakpoint standard/version import, culture method metadata | US1, US3, US6 | Liquibase rollback test, ORM validation, reference lookup unit tests, Test Catalog save/load regression tests | - |
-| M2 | `m2-case-core` | Backend case core: microbiology case, activity timeline, isolate lifecycle, case DTO compilation anchored to `SampleItem + workflow` | US2 | Service unit tests, DAO/integration tests, uniqueness and sibling workflow tests, no controller transaction scan | M1 |
-| M3 | `m3-order-routing` | Order/sample save hook that creates or finds the correct microbiology case from ordered test workflow configuration | US1 | Integration test for non-micro order, bacteriology order, and bacteriology + TB sibling workflows on one SampleItem | M2 |
-| M4 | `m4-case-workbench` | REST and React case workbench for setup, incubation/growth/no-growth/rejection events, isolate creation/update, and case history | US2 | MockMvc controller tests, React interaction tests, Playwright case-workflow smoke plan | M3 |
-| M5 | `m5-manual-ast` | Manual AST setup, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit | US3 | Breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests | M4 |
-| M6 | `m6-worklists-critical` | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing | US4, US5 | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks | M5 |
-| M7 | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2 | US5, US6 | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow | M6 |
-| R1 | `r1-authoritative-alignment` | Repair M-03 on the supported Add Order workflow, reconcile false completion claims, and establish source-to-code-to-UAT traceability | US1 | Unit/component/service tests plus configured-navigation Playwright, desktop/mobile source comparison, and separate human UAT story | M10 follow-on head |
+| ID  | Branch Suffix                       | Scope                                                                                                                                                                                             | User Stories  | Verification                                                                                                                                                                           | Depends On         |
+| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| M1  | `m1-catalog-reference-foundations`  | Minimal microbiology reference/config foundation: workflow type on culture-capable tests, organism/antibiotic seeds, AST panel model, breakpoint standard/version import, culture method metadata | US1, US3, US6 | Liquibase rollback test, ORM validation, reference lookup unit tests, Test Catalog save/load regression tests                                                                          | -                  |
+| M2  | `m2-case-core`                      | Backend case core: microbiology case, activity timeline, isolate lifecycle, case DTO compilation anchored to `SampleItem + workflow`                                                              | US2           | Service unit tests, DAO/integration tests, uniqueness and sibling workflow tests, no controller transaction scan                                                                       | M1                 |
+| M3  | `m3-order-routing`                  | Order/sample save hook that creates or finds the correct microbiology case from ordered test workflow configuration                                                                               | US1           | Integration test for non-micro order, bacteriology order, and bacteriology + TB sibling workflows on one SampleItem                                                                    | M2                 |
+| M4  | `m4-case-workbench`                 | REST and React case workbench for setup, incubation/growth/no-growth/rejection events, isolate creation/update, and case history                                                                  | US2           | MockMvc controller tests, React interaction tests, Playwright case-workflow smoke plan                                                                                                 | M3                 |
+| M5  | `m5-manual-ast`                     | Manual AST setup, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit                                                                               | US3           | Breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests                                                                                | M4                 |
+| M6  | `m6-worklists-critical`             | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing                                                          | US4, US5      | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks                                                                          | M5                 |
+| M7  | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2                                      | US5, US6      | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow                                                                               | M6                 |
+| R1  | `r1-authoritative-alignment`        | Repair implementation and artifact drift across M-03, M-04, M-05, M-07, M-12, and applicable M-NFR outcomes; establish source-to-code-to-UAT traceability                                         | US1, US8-US11 | Focused service/controller/component tests, registered configured-navigation Playwright, desktop/mobile source comparison, source-scale/a11y qualification, and separate Grist stories | M10 follow-on head |
 
 ### Milestone Dependency Graph
 
@@ -138,8 +138,9 @@ graph LR
   [#3789](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3789) carries the
   combined routine-bacteriology implementation.
 - **Active follow-on stack**: clinical completeness, reference administration,
-  WHONET export, then the R1 authoritative-alignment PR. Each PR targets the
-  preceding branch and retains its own acceptance gate.
+  WHONET export, then one R1 authoritative-alignment PR containing the
+  full-microbiology drift repair. Each PR targets the preceding branch and
+  retains its own acceptance gate.
 - **Macro Library**: extract core/runtime/administration into a separate
   cross-cutting stack. Keep only microbiology consumption in a small
   integration PR.
@@ -199,6 +200,32 @@ new case workflow, while integrating with existing `sampleitem`, `test`,
 `testcatalog`, `method`, `result`, `alert`, and `reports` services through
 service-layer dependencies. Use `frontend/src/components/microbiology/` for the
 new workflow UI and add routes in `frontend/src/App.jsx`.
+
+## Authoritative Remediation Design
+
+- Keep the current milestone stack as the baseline and deliver the complete
+  microbiology drift repair in one official remediation PR stacked on M10.
+- Treat the typed test workflow as authoritative. The persisted Microbiology
+  Program is a server-verified fallback only; an explicit deployment default
+  may classify it, otherwise the case remains `UNASSIGNED` until an audited
+  workbench action classifies it.
+- Extend existing case, activity, AST, inventory, result, alert, and amendment
+  services where they already own the behavior. Do not reproduce History/Note,
+  NCE, analyzer reconciliation, or Inventory as microbiology-only systems.
+- Add schema migrations only where observable behavior needs new durable state
+  or a current constraint rejects a valid state. UI state, routes, fixtures,
+  and test scenarios do not receive migrations.
+- Implement the worklist as one resource with an explicit grain in canonical
+  URL and server query state. Culture rows and AST-run rows use different DTO
+  projections but share navigation, filtering, paging, refresh, and empty-state
+  infrastructure.
+- Keep Macro Library as a separate cross-cutting feature stack and review
+  deployment. Microbiology carries only a small consumer integration after the
+  macro feature is independently accepted.
+- Validate each source acceptance slice with focused JUnit 4/service or
+  controller evidence, Carbon interaction tests, registered Playwright, visual
+  comparison, and a separate Grist story. Human UAT remains distinct from
+  automation.
 
 ## Complexity Tracking
 
