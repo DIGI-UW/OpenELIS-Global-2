@@ -379,6 +379,27 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void genericStandardRuleIsNotRecordedAsAMissingBreakpoint() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        run.setBreakpointStandardId("clsi-std");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        MicroBreakpointRule rule = new MicroBreakpointRule();
+        rule.setId("generic-rule");
+        when(breakpointService.findBreakpointRule("clsi-std", "org-1", null, "abx-1", "MIC", null, "MIC"))
+                .thenReturn(rule);
+        when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
+                .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
+
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
+
+        assertEquals("STANDARD", reading.getMatchedBy());
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), reading.getInterpretation());
+    }
+
+    @Test
     public void readingUsesRunTechniqueAndFallsBackToLegacyMeasurementRule() {
         MicroAstRun run = new MicroAstRun();
         run.setId("run-1");

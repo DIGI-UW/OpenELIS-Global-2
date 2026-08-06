@@ -267,6 +267,7 @@ async function ensureReviewedAstIsolate(
           isolateId: isolate.id,
           panelId: seeded.astPanelId,
           breakpointStandardId: seeded.activeBreakpointStandardId,
+          technique: "BROTH_MICRODILUTION",
         },
       }),
     ));
@@ -428,12 +429,16 @@ async function requireJsonResponse<T>(
 
 interface PreparedMicrobiologyAstCase extends SeededMicrobiologyAstWorklistCase {
   antibioticId: string;
+  orderedAntibioticIds: string[];
 }
 
 async function prepareMicrobiologyAstCase(
   page: Page,
 ): Promise<PreparedMicrobiologyAstCase> {
   const seeded = await seedMicrobiologyMvpCase(page);
+  if (!seeded.organismId) {
+    throw new Error("Microbiology MVP scenario is missing organismId");
+  }
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
 
   const isolate = await requireJsonResponse<{ id: string }>(
@@ -443,6 +448,8 @@ async function prepareMicrobiologyAstCase(
       data: {
         caseId: seeded.caseId,
         isolateLabel: "ISO-1",
+        gramStain: "Gram negative rods",
+        colonyMorphology: "Synthetic lactose-fermenting colonies",
         preliminaryOrganismText: "Escherichia coli",
         significance: "CLINICALLY_SIGNIFICANT",
       },
@@ -455,9 +462,12 @@ async function prepareMicrobiologyAstCase(
       {
         headers,
         data: {
+          organismId: seeded.organismId,
           preliminaryOrganismText: "Escherichia coli",
           significance: "CLINICALLY_SIGNIFICANT",
           identificationStatus: "CONFIRMED",
+          identificationMethod: "MALDI_TOF",
+          identificationConfidence: 99.5,
         },
       },
     ),
@@ -495,6 +505,21 @@ async function prepareMicrobiologyAstCase(
   if (!panel || !standard || !antibiotic) {
     throw new Error("Microbiology UAT AST reference data is incomplete");
   }
+  const panelDetail = await requireJsonResponse<{
+    antibiotics: Array<{ antibioticId: string }>;
+  }>(
+    "Load selected AST panel",
+    await page.request.get(
+      `${API_PREFIX}/rest/microbiology/admin/reference/ast-panels/${encodeURIComponent(panel.id)}`,
+    ),
+  );
+  const panelAntibioticIds = panelDetail.antibiotics.map(
+    (row) => row.antibioticId,
+  );
+  if (!panelAntibioticIds.includes(antibiotic.id)) {
+    throw new Error("Microbiology UAT AST panel has no usable ordered drugs");
+  }
+  const orderedAntibioticIds = [antibiotic.id];
 
   const run = await requireJsonResponse<{ id: string }>(
     "Start AST run",
@@ -503,7 +528,11 @@ async function prepareMicrobiologyAstCase(
       data: {
         isolateId: isolate.id,
         panelId: panel.id,
+        panelAdjustmentReason:
+          "Reference-admin evidence uses the seeded single-drug breakpoint",
         breakpointStandardId: standard.id,
+        technique: "BROTH_MICRODILUTION",
+        orderedAntibioticIds,
       },
     }),
   );
@@ -512,6 +541,7 @@ async function prepareMicrobiologyAstCase(
     isolateId: isolate.id,
     astRunId: run.id,
     antibioticId: antibiotic.id,
+    orderedAntibioticIds,
   };
 }
 
@@ -536,20 +566,22 @@ export async function seedReviewedMicrobiologyCase(
   const seeded = await prepareMicrobiologyAstCase(page);
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
 
-  await requireJsonResponse(
-    "Record AST reading",
-    await page.request.post(
-      `${API_PREFIX}/rest/microbiology/ast/runs/${seeded.astRunId}/readings`,
-      {
-        headers,
-        data: {
-          antibioticId: seeded.antibioticId,
-          method: "MIC",
-          rawValue: 4,
+  for (const antibioticId of seeded.orderedAntibioticIds) {
+    await requireJsonResponse(
+      "Record ordered AST reading",
+      await page.request.post(
+        `${API_PREFIX}/rest/microbiology/ast/runs/${seeded.astRunId}/readings`,
+        {
+          headers,
+          data: {
+            antibioticId,
+            method: "MIC",
+            rawValue: 4,
+          },
         },
-      },
-    ),
-  );
+      ),
+    );
+  }
   await requireJsonResponse(
     "Review AST run",
     await page.request.post(
@@ -624,6 +656,7 @@ export async function seedDenseMicrobiologyCase(
             isolateId: isolate.id,
             panelId: panel.id,
             breakpointStandardId: standard.id,
+            technique: "BROTH_MICRODILUTION",
           },
         }),
       );

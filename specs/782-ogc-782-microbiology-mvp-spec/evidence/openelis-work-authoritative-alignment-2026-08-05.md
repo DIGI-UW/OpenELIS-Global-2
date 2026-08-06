@@ -55,7 +55,7 @@ The implementation status is deliberately narrower than “code exists.”
 
 | Step            | Product behavior                                                      | Downstream location                    | Current evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Status / required action                                                                                                          |
 | --------------- | --------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 1. M-01         | Administer organism and antibiotic masters used by microbiology       | M9 reference-admin spec/tasks          | Administration code and automated tests exist                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Automated evidence exists; authoritative visual UAT pending                                                                       |
+| 1. M-01         | Administer microbiology reference data and view deployment Patient Origins | M9 reference-admin plus R1 T284/T286 | Organism/antibiotic administration and the deployment-backed six-value Patient Origin vocabulary exist; Patient Origin has a shared read-only Carbon list and no Phase 1B mutation actions | Automated evidence exists; authoritative visual/deployed UAT pending |
 | 2. M-02         | Load, review, and activate breakpoint versions                        | M9 reference-admin spec/tasks          | Import/activation code and automated tests exist                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Automated evidence exists; authoritative visual UAT pending                                                                       |
 | 3. M-08         | Author and use reusable text macros                                   | Separate Macro Library stack           | Managed runtime and administration code exist above the micro stack                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Separate cross-cutting feature; extract to its own PR/UAT stack                                                                   |
 | 4. M-12         | Link tests and reagent/card lots and capture the lot used             | M8 clinical-completeness spec/tasks    | Lot capture exists; full administration/reverse-link behavior is not proven                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Partial; complete source crosswalk and UAT                                                                                        |
@@ -83,7 +83,7 @@ the 17-screen walkthrough. Neither is implemented.
 | Culture test derives Program = Microbiology                        | US1 scenario 1; FR-001        | T210/T214/T215      | Direct and panel selections preserve workflow/Method metadata; typed culture work derives a disabled visible Program, while manual fallback is limited to untyped work                                                                                 | Component and configured-route Playwright evidence passed; deployed UAT pending               |
 | Details appear in the supported Add Order flow                     | US1 scenario 1; FR-002        | T211/T216           | Shared Carbon detail controls render in `/order/enter`; the compatibility flow consumes the same controls                                                                                                                                              | Component and configured-route Playwright evidence passed; deployed UAT pending               |
 | Culture Method is required/defaulted/adjustable                    | FR-002                        | T211/T216/T218      | The shared Method control is required, the service-created catalog supplies a real default `TestMethod`, and routing resolves it before legacy fallback                                                                                                | Component, service, migration, and complete supported-save browser proof passed               |
-| Patient Origin uses deployment reference data                      | FR-002                        | T211/T216/T284/T286 | One active deployment vocabulary now supplies the six ruled choices and WHONET codes to both order entry and the case panel; writes normalize and validate the stable code, and an explicit optional Organization mapping supplies a default without name heuristics | M-03 implementation aligned; M-01 read-only administration list was missing from the roadmap and remains T286 |
+| Patient Origin uses deployment reference data                      | FR-002                        | T211/T216/T284/T286 | One active deployment vocabulary supplies the six ruled choices and WHONET codes to order entry and the case panel; writes normalize and validate the stable code; an explicit optional Organization mapping supplies a default; the shared admin shell exposes the same vocabulary read-only | Runtime and Phase 1A reference-list behavior aligned; visual/deployed UAT remains |
 | Number of Sets uses ruled bounds/default                           | FR-002                        | T211/T216/T218      | UI and service enforce 1-10; the browser journey persists and restores the typed value across collection                                                                                                                                               | Focused automated and complete save-path browser evidence passed                              |
 | Clinical History accepts multi-line text and macros when available | FR-002                        | T211/T216/T274/T285 | Multiline input and the 1000-character service bound exist; `clinical` macros wait on the separate Macro Library base                                                                                                                                  | Partial; macro consumer integration remains explicitly blocked                                |
 | Antibiotic Exposure is a checkbox                                  | FR-002                        | T211/T216/T218      | UI and persistence use binary checkbox/boolean semantics                                                                                                                                                                                               | Focused automated and complete save-path browser evidence passed                              |
@@ -151,8 +151,42 @@ the 17-screen walkthrough. Neither is implemented.
   intentionally prohibited because it could silently misclassify clinical
   context.
 - M-01 separately requires a Phase 1A read-only Patient Origin administration
-  list. That surface was absent from the roadmap and remains T286; Phase 1B
-  CRUD remains out of this remediation slice.
+  list. That surface was absent from the original roadmap; T286 adds it to the
+  shared reference-data section registry, with canonical search/filter/sort/page
+  state and no mutation controls. Phase 1B CRUD remains out of this remediation
+  slice.
+- M-01 calls Patient Origin the fifth sidenav item. That ordinal is stale:
+  Breakpoint Standards and the existing Method-backed Culture Methods surface
+  are also present in the current shared reference shell. Patient Origin is
+  discoverable in that shell, but its numeric position is not treated as a
+  product requirement.
+- The Patient Origin Playwright story exposed a pre-existing shared admin defect:
+  canonical query parameters were written to the URL but `@ModelAttribute`
+  could not bind `MicroReferenceAdminQueryForm` because it had public fields
+  without JavaBean accessors. The shared form now binds all supported search,
+  filter, sort, and paging fields, so the visible table and bookmarkable URL no
+  longer diverge across reference sections.
+- The first real filtered response then exposed a second shared race: Carbon
+  could retain its previous row model for one render while the page had already
+  installed the new response array. Status rendering no longer cross-looks up
+  those two states, and row actions fail closed during the transition instead
+  of dereferencing a removed row.
+- The complete reference-admin browser suite also exposed two stale shared-test
+  assumptions: its AST helper omitted the now-required Gram/colony isolate
+  work-up, and the common edit modal could finish an async save after its URL
+  state had already unmounted it. Fixtures now remain service-created but send
+  clinically valid work-up, and the modal cancels post-unmount state updates.
+- That same browser path exposed an AST lifecycle defect: a found generic
+  standard-level breakpoint was labeled `matchedBy=NONE`, which the review gate
+  correctly reserves for a missing breakpoint. The service now records generic
+  rules as `STANDARD`; focused JUnit coverage and the full reference-admin
+  Playwright file prove that valid interpreted work reviews without weakening
+  the missing-breakpoint blocker.
+- Validation on 2026-08-06: focused reference service/controller tests passed;
+  ORM validation compiled the real paging HQL; three frontend files passed 26
+  Carbon interaction tests; strict ESLint, Prettier, Spotless, Playwright bucket
+  guard, and project validation passed; the complete registered reference-admin
+  Playwright file passed 7/7 in 26.0 seconds without arbitrary waits.
 
 ## Full-Stack Acceptance Drift
 

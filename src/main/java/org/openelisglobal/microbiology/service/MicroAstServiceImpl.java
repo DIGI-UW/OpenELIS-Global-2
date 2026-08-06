@@ -929,7 +929,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (rule.getOrganismGroup() != null && !rule.getOrganismGroup().isBlank()) {
             return "GROUP";
         }
-        return "NONE";
+        return "STANDARD";
     }
 
     private String defaultUnits(MicroAstMethod method) {

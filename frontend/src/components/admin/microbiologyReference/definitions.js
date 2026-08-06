@@ -1,6 +1,18 @@
 const option = (value, label) => ({ value, label });
 
 export const REFERENCE_DEFINITIONS = {
+  "patient-origins": {
+    resource: "patient-origins",
+    title: "microbiology.admin.patientOrigins.title",
+    description: "microbiology.admin.patientOrigins.description",
+    readOnly: true,
+    columns: [
+      { key: "code", label: "microbiology.admin.field.code" },
+      { key: "displayName", label: "microbiology.admin.field.name" },
+      { key: "whonetCode", label: "microbiology.admin.field.whonetCode" },
+    ],
+    fields: [],
+  },
   organisms: {
     resource: "organisms",
     title: "microbiology.admin.organisms.title",

@@ -16,11 +16,13 @@ import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroCultureSetupDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
@@ -29,6 +31,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.stereotype.Service;
@@ -48,18 +51,20 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
     @SuppressWarnings("unused")
     private final MicroCultureSetupDAO cultureSetupDAO;
+    private final MicroPatientOriginDAO patientOriginDAO;
     private final MethodService methodService;
     private final TypeOfSampleService typeOfSampleService;
 
     public MicrobiologyReferenceAdminServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
-            MicroCultureSetupDAO cultureSetupDAO, MethodService methodService,
+            MicroCultureSetupDAO cultureSetupDAO, MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
             TypeOfSampleService typeOfSampleService) {
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
         this.cultureSetupDAO = cultureSetupDAO;
+        this.patientOriginDAO = patientOriginDAO;
         this.methodService = methodService;
         this.typeOfSampleService = typeOfSampleService;
     }
@@ -267,6 +272,18 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                 .map(this::toCultureSetupForm).toList();
         return page(rows, cultureSetupDAO.countSearch(normalized.q, normalized.status, normalized.workflow),
                 normalized);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroReferenceAdminPageForm<MicroPatientOriginAdminForm> getPatientOrigins(
+            MicroReferenceAdminQueryForm query) {
+        MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
+        int offset = (normalized.page - 1) * normalized.pageSize;
+        List<MicroPatientOriginAdminForm> rows = patientOriginDAO
+                .search(normalized.q, normalized.status, normalized.sort, offset, normalized.pageSize).stream()
+                .map(this::toPatientOriginForm).toList();
+        return page(rows, patientOriginDAO.countSearch(normalized.q, normalized.status), normalized);
     }
 
     @Override
@@ -481,6 +498,16 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.atmosphereDefaults = setup.getAtmosphereDefaults();
         form.reportableTestAnalyteId = setup.getReportableTestAnalyteId();
         form.active = "Y".equals(setup.getIsActive());
+        return form;
+    }
+
+    private MicroPatientOriginAdminForm toPatientOriginForm(MicroPatientOrigin origin) {
+        MicroPatientOriginAdminForm form = new MicroPatientOriginAdminForm();
+        form.id = origin.getId();
+        form.code = origin.getCode();
+        form.displayName = origin.getDisplayName();
+        form.whonetCode = origin.getWhonetCode();
+        form.active = "Y".equals(origin.getIsActive());
         return form;
     }
 

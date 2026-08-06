@@ -137,6 +137,12 @@ sequential stacked PR based on the preceding slice._
 | M7  | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2                                             | US5, US6      | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow                                                                               | M6                 |
 | R1  | `r1-authoritative-alignment`        | Repair implementation and artifact drift across M-03, M-04, M-05, M-07, M-12, and applicable M-NFR outcomes; establish source-to-code-to-UAT traceability                                                | US1, US8-US11 | Focused service/controller/component tests, registered configured-navigation Playwright, desktop/mobile source comparison, source-scale/a11y qualification, and separate Grist stories | M10 follow-on head |
 
+R1 treats breakpoint provenance as a lifecycle invariant: a found generic
+standard rule is recorded as `STANDARD`, while `NONE` is reserved for an absent
+rule that requires local judgment before review. This distinction is verified
+at the service boundary and through the complete reference-administration
+browser flow.
+
 ### Milestone Dependency Graph
 
 ```mermaid
@@ -323,8 +329,8 @@ inside product requirements.
 ### Test Types
 
 - [x] **Unit Tests**: JUnit 4 + Mockito service tests for routing decisions,
-      state transitions, readiness gates, breakpoint interpretation, and
-      override validation.
+      state transitions, readiness gates, breakpoint interpretation/provenance,
+      and override validation.
 - [x] **DAO/Integration Tests**: `BaseWebContextSensitiveTest` tests for
       persistence, uniqueness, sibling workflow lookup, read-after-write, and
       rollback-safe migrations.
