@@ -21,6 +21,8 @@ public class MicroAstReadingForm {
     public String source;
     public String matchedBy;
     public String units;
+    public String instrumentInterpretation;
+    public String analyzerResultReference;
     public String overrideInterpretation;
     public String overrideReason;
     public Timestamp createdAt;

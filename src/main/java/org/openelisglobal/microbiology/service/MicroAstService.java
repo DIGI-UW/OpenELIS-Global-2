@@ -15,6 +15,8 @@ import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 
 public interface MicroAstService {
 
+    MicroAstRun startRun(MicroAstRunSetupCommand command, String performedBy);
+
     MicroAstRun startRun(String isolateId, String panelId, String performedBy);
 
     /**
@@ -64,6 +66,14 @@ public interface MicroAstService {
     List<MicroAstOverrideEventForm> getOverrideHistoryForRun(String runId);
 
     MicroAstRun reviewRun(String runId, String performedBy);
+
+    MicroAstRun applyAnalyzerResults(MicroAstAnalyzerResultBatch batch, String performedBy);
+
+    MicroAstRun acknowledgeAnalyzerFlags(String runId, String reason, String performedBy);
+
+    MicroAstRun overrideQcFailure(String runId, String reason, String performedBy);
+
+    MicroAstRun invalidateAndRepeat(String runId, String reason, String analyzerCardId, String performedBy);
 
     MicroAstRun selectReportableRun(String runId, String performedBy);
 

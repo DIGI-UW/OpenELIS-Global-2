@@ -1,12 +1,15 @@
 package org.openelisglobal.microbiology.valueholder;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
 @Table(name = "micro_ast_run", schema = "clinlims")
@@ -74,6 +77,64 @@ public class MicroAstRun extends BaseObject<String> {
 
     @Column(name = "reviewed_by", length = 20)
     private String reviewedBy;
+
+    @Column(name = "analyzer_instrument_id", precision = 10, scale = 0)
+    @Convert(converter = StringToIntegerConverter.class)
+    private String analyzerInstrumentId;
+
+    @Column(name = "analyzer_card_id", length = 100)
+    private String analyzerCardId;
+
+    @Column(name = "analyzer_software_version", length = 100)
+    private String analyzerSoftwareVersion;
+
+    @Column(name = "analyzer_organism_id", length = 100)
+    private String analyzerOrganismId;
+
+    @Column(name = "analyzer_organism_name", length = 255)
+    private String analyzerOrganismName;
+
+    @Column(name = "analyzer_organism_confidence", precision = 7, scale = 3)
+    private BigDecimal analyzerOrganismConfidence;
+
+    @Column(name = "analyzer_expert_flags")
+    private String analyzerExpertFlags;
+
+    @Column(name = "instrument_qc_reference", length = 100)
+    private String instrumentQcReference;
+
+    @Column(name = "qc_state", nullable = false, length = 20)
+    private String qcState = "NOT_REPORTED";
+
+    @Column(name = "qc_override_reason")
+    private String qcOverrideReason;
+
+    @Column(name = "qc_overridden_at")
+    private Timestamp qcOverriddenAt;
+
+    @Column(name = "qc_overridden_by", length = 20)
+    private String qcOverriddenBy;
+
+    @Column(name = "analyzer_flags_acknowledged_at")
+    private Timestamp analyzerFlagsAcknowledgedAt;
+
+    @Column(name = "analyzer_flags_acknowledged_by", length = 20)
+    private String analyzerFlagsAcknowledgedBy;
+
+    @Column(name = "analyzer_flags_acknowledgement_reason")
+    private String analyzerFlagsAcknowledgementReason;
+
+    @Column(name = "analyzer_loaded_at")
+    private Timestamp analyzerLoadedAt;
+
+    @Column(name = "analyzer_completed_at")
+    private Timestamp analyzerCompletedAt;
+
+    @Column(name = "analyzer_message_codes")
+    private String analyzerMessageCodes;
+
+    @Column(name = "source_event_id", length = 100)
+    private String sourceEventId;
 
     @Override
     public String getId() {
@@ -235,5 +296,157 @@ public class MicroAstRun extends BaseObject<String> {
 
     public void setReviewedBy(String reviewedBy) {
         this.reviewedBy = reviewedBy;
+    }
+
+    public String getAnalyzerInstrumentId() {
+        return analyzerInstrumentId;
+    }
+
+    public void setAnalyzerInstrumentId(String analyzerInstrumentId) {
+        this.analyzerInstrumentId = analyzerInstrumentId;
+    }
+
+    public String getAnalyzerCardId() {
+        return analyzerCardId;
+    }
+
+    public void setAnalyzerCardId(String analyzerCardId) {
+        this.analyzerCardId = analyzerCardId;
+    }
+
+    public String getAnalyzerSoftwareVersion() {
+        return analyzerSoftwareVersion;
+    }
+
+    public void setAnalyzerSoftwareVersion(String analyzerSoftwareVersion) {
+        this.analyzerSoftwareVersion = analyzerSoftwareVersion;
+    }
+
+    public String getAnalyzerOrganismId() {
+        return analyzerOrganismId;
+    }
+
+    public void setAnalyzerOrganismId(String analyzerOrganismId) {
+        this.analyzerOrganismId = analyzerOrganismId;
+    }
+
+    public String getAnalyzerOrganismName() {
+        return analyzerOrganismName;
+    }
+
+    public void setAnalyzerOrganismName(String analyzerOrganismName) {
+        this.analyzerOrganismName = analyzerOrganismName;
+    }
+
+    public BigDecimal getAnalyzerOrganismConfidence() {
+        return analyzerOrganismConfidence;
+    }
+
+    public void setAnalyzerOrganismConfidence(BigDecimal analyzerOrganismConfidence) {
+        this.analyzerOrganismConfidence = analyzerOrganismConfidence;
+    }
+
+    public String getAnalyzerExpertFlags() {
+        return analyzerExpertFlags;
+    }
+
+    public void setAnalyzerExpertFlags(String analyzerExpertFlags) {
+        this.analyzerExpertFlags = analyzerExpertFlags;
+    }
+
+    public String getInstrumentQcReference() {
+        return instrumentQcReference;
+    }
+
+    public void setInstrumentQcReference(String instrumentQcReference) {
+        this.instrumentQcReference = instrumentQcReference;
+    }
+
+    public String getQcState() {
+        return qcState;
+    }
+
+    public void setQcState(String qcState) {
+        this.qcState = qcState;
+    }
+
+    public String getQcOverrideReason() {
+        return qcOverrideReason;
+    }
+
+    public void setQcOverrideReason(String qcOverrideReason) {
+        this.qcOverrideReason = qcOverrideReason;
+    }
+
+    public Timestamp getQcOverriddenAt() {
+        return qcOverriddenAt;
+    }
+
+    public void setQcOverriddenAt(Timestamp qcOverriddenAt) {
+        this.qcOverriddenAt = qcOverriddenAt;
+    }
+
+    public String getQcOverriddenBy() {
+        return qcOverriddenBy;
+    }
+
+    public void setQcOverriddenBy(String qcOverriddenBy) {
+        this.qcOverriddenBy = qcOverriddenBy;
+    }
+
+    public Timestamp getAnalyzerFlagsAcknowledgedAt() {
+        return analyzerFlagsAcknowledgedAt;
+    }
+
+    public void setAnalyzerFlagsAcknowledgedAt(Timestamp analyzerFlagsAcknowledgedAt) {
+        this.analyzerFlagsAcknowledgedAt = analyzerFlagsAcknowledgedAt;
+    }
+
+    public String getAnalyzerFlagsAcknowledgedBy() {
+        return analyzerFlagsAcknowledgedBy;
+    }
+
+    public void setAnalyzerFlagsAcknowledgedBy(String analyzerFlagsAcknowledgedBy) {
+        this.analyzerFlagsAcknowledgedBy = analyzerFlagsAcknowledgedBy;
+    }
+
+    public String getAnalyzerFlagsAcknowledgementReason() {
+        return analyzerFlagsAcknowledgementReason;
+    }
+
+    public void setAnalyzerFlagsAcknowledgementReason(String analyzerFlagsAcknowledgementReason) {
+        this.analyzerFlagsAcknowledgementReason = analyzerFlagsAcknowledgementReason;
+    }
+
+    public Timestamp getAnalyzerLoadedAt() {
+        return analyzerLoadedAt;
+    }
+
+    public void setAnalyzerLoadedAt(Timestamp analyzerLoadedAt) {
+        this.analyzerLoadedAt = analyzerLoadedAt;
+    }
+
+    public Timestamp getAnalyzerCompletedAt() {
+        return analyzerCompletedAt;
+    }
+
+    public void setAnalyzerCompletedAt(Timestamp analyzerCompletedAt) {
+        this.analyzerCompletedAt = analyzerCompletedAt;
+    }
+
+    public String getAnalyzerMessageCodes() {
+        return analyzerMessageCodes;
+    }
+
+    public void setAnalyzerMessageCodes(String analyzerMessageCodes) {
+        this.analyzerMessageCodes = analyzerMessageCodes;
+    }
+
+    public String getSourceEventId() {
+        return sourceEventId;
+    }
+
+    public void setSourceEventId(String sourceEventId) {
+        this.sourceEventId = sourceEventId;
     }
 }

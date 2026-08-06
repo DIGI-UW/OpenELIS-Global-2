@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -141,11 +142,23 @@ public class MicroAstServiceImpl implements MicroAstService {
     public MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId,
             String panelAdjustmentReason, MicroAstTechnique technique, List<MicroLotSelection> lotSelections,
             List<String> orderedAntibioticIds, String performedBy) {
-        MicroCaseServiceImpl.requireText(isolateId, "isolateId");
+        return startRun(new MicroAstRunSetupCommand(isolateId, panelId, breakpointStandardId, panelAdjustmentReason,
+                technique, lotSelections, orderedAntibioticIds, false, null, null), performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun startRun(MicroAstRunSetupCommand command, String performedBy) {
+        MicroCaseServiceImpl.requireText(command.isolateId(), "isolateId");
+        MicroAstTechnique technique = command.technique();
         if (technique == null) {
             throw new IllegalArgumentException("AST_TECHNIQUE_REQUIRED");
         }
-        MicroIsolate isolate = isolateDAO.get(isolateId)
+        if (command.awaitAnalyzerResults()) {
+            MicroCaseServiceImpl.requireText(command.analyzerInstrumentId(), "analyzerInstrumentId");
+            MicroCaseServiceImpl.requireText(command.analyzerCardId(), "analyzerCardId");
+        }
+        MicroIsolate isolate = isolateDAO.get(command.isolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         if (!MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())
                 || isolate.getOrganismId() == null || isolate.getOrganismId().trim().isEmpty()) {
@@ -154,30 +167,33 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
         MicroOrganism organism = organismDAO.get(isolate.getOrganismId())
                 .orElseThrow(() -> new IllegalArgumentException("AST_ORGANISM_NOT_FOUND"));
-        PanelSelection panelSelection = resolvePanel(organism, panelId);
+        PanelSelection panelSelection = resolvePanel(organism, command.panelId());
         OrderedSelection orderedSelection = resolveOrderedAntibiotics(panelSelection.panel.getId(),
-                orderedAntibioticIds);
+                command.orderedAntibioticIds());
         boolean adjusted = panelSelection.adjusted || orderedSelection.adjusted;
-        if (adjusted && (panelAdjustmentReason == null || panelAdjustmentReason.trim().isEmpty())) {
+        if (adjusted && (command.panelAdjustmentReason() == null || command.panelAdjustmentReason().trim().isEmpty())) {
             throw new IllegalArgumentException("AST_PANEL_ADJUSTMENT_REASON_REQUIRED");
         }
-        MicroBreakpointStandard standard = resolveStandard(breakpointStandardId);
+        MicroBreakpointStandard standard = resolveStandard(command.breakpointStandardId());
         MicroAstRun run = new MicroAstRun();
-        run.setIsolateId(isolateId);
+        run.setIsolateId(command.isolateId());
         run.setPanelId(panelSelection.panel.getId());
         run.setPanelVersion(panelSelection.panel.getVersionNumber());
         run.setPanelProvenance(adjusted ? "ADJUSTED" : "ORGANISM_DEFAULT");
-        run.setPanelAdjustmentReason(adjusted ? panelAdjustmentReason.trim() : null);
+        run.setPanelAdjustmentReason(adjusted ? command.panelAdjustmentReason().trim() : null);
         run.setBreakpointStandardId(standard.getId());
         run.setBreakpointVersion(standard.getVersion());
         run.setAttemptType(MicroAstAttemptType.ORIGINAL.name());
         run.setTechnique(technique.name());
         run.setMethod(technique.measurementType().name());
+        run.setAnalyzerInstrumentId(trimToNull(command.analyzerInstrumentId()));
+        run.setAnalyzerCardId(trimToNull(command.analyzerCardId()));
         run.setReportable(false);
         if (isAmendmentInProgress(microCase)) {
             run.setAmendmentId(requireOpenAmendment(microCase.getId()).getId());
         }
-        run.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
+        run.setStatus(command.awaitAnalyzerResults() ? MicroAstRunStatus.AWAITING_RESULTS.name()
+                : MicroAstRunStatus.IN_PROGRESS.name());
         run.setStartedAt(MicroCaseServiceImpl.now());
         run.setStartedBy(performedBy);
         runDAO.insert(run);
@@ -185,7 +201,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CREATED, performedBy, "AST run created",
                 "{\"astRunId\":\"" + run.getId() + "\"}");
         reagentLotService.recordSelections(isolate.getCaseId(), MicroInventoryUsageContext.AST_SETUP, run.getId(),
-                lotSelections, performedBy);
+                command.lotSelections(), performedBy);
         return run;
     }
 
@@ -423,7 +439,9 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         requireMutableRun(run, isolate.getCaseId());
+        requireReviewableLifecycle(run);
         requireCompleteOrderedResults(runId);
+        requireResolvedAnalyzerFlags(run, latestReadings(runId));
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         run.setReviewedAt(MicroCaseServiceImpl.now());
         run.setReviewedBy(performedBy);
@@ -445,6 +463,134 @@ public class MicroAstServiceImpl implements MicroAstService {
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_REVIEWED, performedBy, "AST reviewed",
                 "{\"astRunId\":\"" + runId + "\"}");
         return updated;
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun applyAnalyzerResults(MicroAstAnalyzerResultBatch batch, String performedBy) {
+        if (batch == null) {
+            throw new IllegalArgumentException("AST_ANALYZER_BATCH_REQUIRED");
+        }
+        MicroCaseServiceImpl.requireText(batch.runId(), "runId");
+        MicroAstRun run = requireRun(batch.runId());
+        if (batch.sourceEventId() != null && batch.sourceEventId().equals(run.getSourceEventId())) {
+            return run;
+        }
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableRun(run, isolate.getCaseId());
+        if (!MicroAstRunStatus.AWAITING_RESULTS.name().equals(run.getStatus())
+                && !MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())) {
+            throw new MicroAstConflictException("AST_RUN_NOT_AWAITING_ANALYZER_RESULTS");
+        }
+        if (batch.readings().isEmpty()) {
+            throw new IllegalArgumentException("AST_ANALYZER_READINGS_REQUIRED");
+        }
+        if (run.getAnalyzerInstrumentId() != null && batch.analyzerInstrumentId() != null
+                && !run.getAnalyzerInstrumentId().equals(batch.analyzerInstrumentId())) {
+            throw new MicroAstConflictException("AST_ANALYZER_INSTRUMENT_MISMATCH");
+        }
+        if (run.getAnalyzerCardId() != null && batch.analyzerCardId() != null
+                && !run.getAnalyzerCardId().equals(batch.analyzerCardId())) {
+            throw new MicroAstConflictException("AST_ANALYZER_CARD_MISMATCH");
+        }
+        run.setAnalyzerInstrumentId(firstNonBlank(batch.analyzerInstrumentId(), run.getAnalyzerInstrumentId()));
+        run.setAnalyzerCardId(firstNonBlank(batch.analyzerCardId(), run.getAnalyzerCardId()));
+        run.setAnalyzerSoftwareVersion(trimToNull(batch.analyzerSoftwareVersion()));
+        run.setAnalyzerOrganismId(trimToNull(batch.analyzerOrganismId()));
+        run.setAnalyzerOrganismName(trimToNull(batch.analyzerOrganismName()));
+        run.setAnalyzerOrganismConfidence(batch.analyzerOrganismConfidence());
+        run.setAnalyzerExpertFlags(join(batch.analyzerExpertFlags()));
+        run.setInstrumentQcReference(trimToNull(batch.instrumentQcReference()));
+        run.setAnalyzerLoadedAt(batch.loadedAt());
+        run.setAnalyzerCompletedAt(batch.completedAt());
+        run.setAnalyzerMessageCodes(join(batch.analyzerMessageCodes()));
+        run.setSourceEventId(trimToNull(batch.sourceEventId()));
+
+        for (MicroAstAnalyzerReading analyzerReading : batch.readings()) {
+            appendAnalyzerReading(run, isolate, analyzerReading, performedBy);
+        }
+        if (Boolean.FALSE.equals(batch.qcPassed())) {
+            run.setQcState("FAILED");
+            run.setStatus(MicroAstRunStatus.QC_FAILED.name());
+        } else {
+            run.setQcState(Boolean.TRUE.equals(batch.qcPassed()) ? "PASSED" : "NOT_REPORTED");
+            run.setStatus(MicroAstRunStatus.RESULTS_IN.name());
+        }
+        MicroAstRun updated = runDAO.update(run);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_ANALYZER_RESULTS_RECEIVED, performedBy,
+                "Analyzer AST results received", "{\"astRunId\":\"" + run.getId() + "\"}");
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun acknowledgeAnalyzerFlags(String runId, String reason, String performedBy) {
+        MicroCaseServiceImpl.requireText(reason, "reason");
+        MicroAstRun run = requireRun(runId);
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableRun(run, isolate.getCaseId());
+        run.setAnalyzerFlagsAcknowledgedAt(MicroCaseServiceImpl.now());
+        run.setAnalyzerFlagsAcknowledgedBy(performedBy);
+        run.setAnalyzerFlagsAcknowledgementReason(reason.trim());
+        MicroAstRun updated = runDAO.update(run);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_ANALYZER_FLAGS_ACKNOWLEDGED, performedBy,
+                "Analyzer AST flags acknowledged", "{\"astRunId\":\"" + runId + "\"}");
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun overrideQcFailure(String runId, String reason, String performedBy) {
+        MicroCaseServiceImpl.requireText(reason, "reason");
+        MicroAstRun run = requireRun(runId);
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableRun(run, isolate.getCaseId());
+        if (!MicroAstRunStatus.QC_FAILED.name().equals(run.getStatus())) {
+            throw new MicroAstConflictException("AST_QC_FAILURE_NOT_ACTIVE");
+        }
+        run.setQcState("OVERRIDDEN");
+        run.setQcOverrideReason(reason.trim());
+        run.setQcOverriddenAt(MicroCaseServiceImpl.now());
+        run.setQcOverriddenBy(performedBy);
+        run.setStatus(MicroAstRunStatus.RESULTS_IN.name());
+        MicroAstRun updated = runDAO.update(run);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_QC_OVERRIDDEN, performedBy,
+                "Analyzer AST QC failure overridden", "{\"astRunId\":\"" + runId + "\"}");
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRun invalidateAndRepeat(String runId, String reason, String analyzerCardId, String performedBy) {
+        requireAttemptReason(reason);
+        MicroAstRun source = requireRun(runId);
+        MicroIsolate isolate = isolateDAO.get(source.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        requireMutableRun(source, isolate.getCaseId());
+        if (!MicroAstRunStatus.QC_FAILED.name().equals(source.getStatus())
+                && !MicroAstRunStatus.RESULTS_IN.name().equals(source.getStatus())) {
+            throw new MicroAstConflictException("AST_RUN_CANNOT_BE_INVALIDATED");
+        }
+        source.setStatus(MicroAstRunStatus.INVALIDATED.name());
+        source.setReportable(false);
+        runDAO.update(source);
+
+        MicroAstRun repeat = copyRunForAttempt(source, MicroAstAttemptType.REPEAT, reason, performedBy);
+        if (source.getAnalyzerInstrumentId() != null) {
+            MicroCaseServiceImpl.requireText(analyzerCardId, "analyzerCardId");
+            repeat.setAnalyzerCardId(analyzerCardId.trim());
+        }
+        repeat.setStatus(source.getAnalyzerInstrumentId() == null ? MicroAstRunStatus.IN_PROGRESS.name()
+                : MicroAstRunStatus.AWAITING_RESULTS.name());
+        runDAO.insert(repeat);
+        copyOrderedAntibiotics(source, repeat);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_INVALIDATED, performedBy,
+                "AST run invalidated and repeated",
+                "{\"astRunId\":\"" + runId + "\",\"repeatRunId\":\"" + repeat.getId() + "\"}");
+        return repeat;
     }
 
     @Override
@@ -511,6 +657,128 @@ public class MicroAstServiceImpl implements MicroAstService {
                 .anyMatch(antibioticId -> !enteredAntibioticIds.contains(antibioticId))) {
             throw new MicroAstConflictException("AST_ORDERED_RESULTS_INCOMPLETE");
         }
+    }
+
+    private void requireReviewableLifecycle(MicroAstRun run) {
+        if (MicroAstRunStatus.QC_FAILED.name().equals(run.getStatus()) || "FAILED".equals(run.getQcState())) {
+            throw new MicroAstConflictException("AST_QC_FAILURE_UNRESOLVED");
+        }
+        if (MicroAstRunStatus.AWAITING_RESULTS.name().equals(run.getStatus())) {
+            throw new MicroAstConflictException("AST_ANALYZER_RESULTS_PENDING");
+        }
+        if (!MicroAstRunStatus.IN_PROGRESS.name().equals(run.getStatus())
+                && !MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())) {
+            throw new MicroAstConflictException("AST_RUN_NOT_REVIEWABLE");
+        }
+    }
+
+    private void requireResolvedAnalyzerFlags(MicroAstRun run, List<MicroAstReading> latestReadings) {
+        if (run.getAnalyzerExpertFlags() != null && !run.getAnalyzerExpertFlags().isBlank()
+                && run.getAnalyzerFlagsAcknowledgedAt() == null) {
+            throw new MicroAstConflictException("AST_ANALYZER_FLAGS_UNRESOLVED");
+        }
+        if (latestReadings.stream().anyMatch(reading -> "NONE".equals(reading.getMatchedBy())
+                && (reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank()))) {
+            throw new MicroAstConflictException("AST_NO_BREAKPOINT_UNRESOLVED");
+        }
+        if (latestReadings.stream().anyMatch(this::hasUnresolvedInstrumentMismatch)) {
+            throw new MicroAstConflictException("AST_INSTRUMENT_INTERPRETATION_MISMATCH");
+        }
+    }
+
+    private boolean hasUnresolvedInstrumentMismatch(MicroAstReading reading) {
+        return reading.getInstrumentInterpretation() != null && !reading.getInstrumentInterpretation().isBlank()
+                && !reading.getInstrumentInterpretation().equals(reading.getInterpretation())
+                && (reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank());
+    }
+
+    private List<MicroAstReading> latestReadings(String runId) {
+        Map<String, MicroAstReading> latestByAntibiotic = new HashMap<>();
+        Comparator<MicroAstReading> revisionOrder = Comparator
+                .comparing(MicroAstReading::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder()))
+                .thenComparing(MicroAstReading::getId, Comparator.nullsFirst(Comparator.naturalOrder()));
+        for (MicroAstReading reading : readingDAO.getByRunId(runId)) {
+            latestByAntibiotic.merge(reading.getAntibioticId(), reading,
+                    (current, candidate) -> revisionOrder.compare(candidate, current) > 0 ? candidate : current);
+        }
+        return List.copyOf(latestByAntibiotic.values());
+    }
+
+    private void appendAnalyzerReading(MicroAstRun run, MicroIsolate isolate, MicroAstAnalyzerReading analyzerReading,
+            String performedBy) {
+        MicroCaseServiceImpl.requireText(analyzerReading.antibioticId(), "antibioticId");
+        if (runAntibioticDAO.getByRunIdAndAntibioticId(run.getId(), analyzerReading.antibioticId()).isEmpty()) {
+            throw new MicroAstConflictException("AST_ANTIBIOTIC_NOT_ORDERED");
+        }
+        MicroAstMethod method = measurementTypeFor(run);
+        MicroOrganism organism = organismDAO.get(isolate.getOrganismId()).orElse(null);
+        MicroBreakpointRule rule = findRule(run, isolate, organism, analyzerReading.antibioticId(), method);
+        MicroAstReading reading = new MicroAstReading();
+        reading.setAstRunId(run.getId());
+        reading.setAntibioticId(analyzerReading.antibioticId());
+        reading.setMethod(method.name());
+        reading.setRawValue(analyzerReading.rawValue());
+        reading.setRawText(analyzerReading.rawValue() == null ? null : analyzerReading.rawValue().toPlainString());
+        reading.setInterpretation(interpretationService.interpret(rule, method, analyzerReading.rawValue()).name());
+        reading.setBreakpointRuleId(rule == null ? null : rule.getId());
+        reading.setSource("ANALYZER_AUTO");
+        reading.setMatchedBy(matchedBy(rule));
+        reading.setUnits(firstNonBlank(analyzerReading.units(), defaultUnits(method)));
+        reading.setInstrumentInterpretation(validInterpretation(analyzerReading.instrumentInterpretation()));
+        reading.setAnalyzerResultReference(trimToNull(analyzerReading.analyzerResultReference()));
+        reading.setCreatedAt(MicroCaseServiceImpl.now());
+        reading.setCreatedBy(performedBy);
+        readingDAO.insert(reading);
+    }
+
+    private String validInterpretation(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return MicroAstInterpretation.valueOf(value.trim()).name();
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("AST_INSTRUMENT_INTERPRETATION_INVALID");
+        }
+    }
+
+    private MicroAstRun copyRunForAttempt(MicroAstRun source, MicroAstAttemptType attemptType, String reason,
+            String performedBy) {
+        MicroAstRun repeat = new MicroAstRun();
+        repeat.setIsolateId(source.getIsolateId());
+        repeat.setPanelId(source.getPanelId());
+        repeat.setPanelVersion(source.getPanelVersion());
+        repeat.setPanelProvenance(source.getPanelProvenance());
+        repeat.setPanelAdjustmentReason(source.getPanelAdjustmentReason());
+        repeat.setBreakpointStandardId(source.getBreakpointStandardId());
+        repeat.setBreakpointVersion(source.getBreakpointVersion());
+        repeat.setAttemptType(attemptType.name());
+        repeat.setSourceRunId(source.getId());
+        repeat.setAttemptReason(reason.trim());
+        repeat.setTechnique(source.getTechnique());
+        repeat.setMethod(source.getMethod());
+        repeat.setAnalyzerInstrumentId(source.getAnalyzerInstrumentId());
+        repeat.setAnalyzerCardId(null);
+        repeat.setReportable(false);
+        repeat.setStartedAt(MicroCaseServiceImpl.now());
+        repeat.setStartedBy(performedBy);
+        return repeat;
+    }
+
+    private String join(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        return values.stream().map(this::trimToNull).filter(value -> value != null).collect(Collectors.joining("|"));
+    }
+
+    private String firstNonBlank(String preferred, String fallback) {
+        String normalized = trimToNull(preferred);
+        return normalized == null ? trimToNull(fallback) : normalized;
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private void snapshotOrderedAntibiotics(String runId, List<OrderedAntibiotic> antibiotics) {

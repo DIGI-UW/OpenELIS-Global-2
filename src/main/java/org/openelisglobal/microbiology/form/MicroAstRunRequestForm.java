@@ -14,6 +14,9 @@ public class MicroAstRunRequestForm {
     public String attemptType;
     public String reason;
     public String technique;
+    public boolean awaitAnalyzerResults;
+    public String analyzerInstrumentId;
+    public String analyzerCardId;
     public List<String> orderedAntibioticIds;
     public List<MicroLotSelectionRequestForm> lotSelections = new ArrayList<>();
 }
