@@ -423,6 +423,22 @@ or missing mapping for export.
   current row context.
 - **FR-026**: Only users permitted to view or work microbiology cases may open
   the worklist or read its data.
+- **FR-027**: Every Microbiology worklist, case, order-detail, AST, and reference
+  action MUST be operable without a mouse, expose its name and status to
+  assistive technology, preserve a visible logical focus position, and never
+  use color as the only carrier of meaning.
+- **FR-028**: At the authoritative source-scale ceiling, each worklist view
+  MUST render 200 active items in under two seconds, worklist filtering MUST
+  complete in under 300 milliseconds, and a case with five isolates and up to
+  100 AST readings MUST render in under one second while preserving its full
+  audit history.
+- **FR-029**: During intermittent connectivity, users MUST be able to read the
+  last successfully loaded worklist with a clear offline state. Bench edits
+  made after connectivity is lost MUST not be silently discarded, and a user
+  MUST be able to resolve a conflict explicitly after reconnection.
+- **FR-030**: Automated accessibility and performance evidence MUST identify
+  the exact application revision and realistic data volume tested. Automated
+  scans do not replace deployed review or human acceptance.
 
 ### Historical Initial-MVP Deferrals And Current Status
 
@@ -469,16 +485,17 @@ inside the current combined review candidate but remains unaccepted until its
 own PR, exact-SHA checklist, and human UAT records are complete.
 
 The R1 remediation boundary includes the authoritative M-03, M-04, M-05, M-07,
-M-12, and applicable M-NFR behavior described in User Stories 8-11 and the
+M-12, and applicable M-NFR behavior described in User Stories 8-12 and the
 source-alignment record. That promotion does not retroactively expand PR
 #3789's historical acceptance boundary.
 
 The delivered stack is not the full microbiology module. Authoritative
 wide-format WHONET/profile packaging, the remaining mapping vocabularies,
 scheduled delivery, expert rules, Macro Library runtime/administration,
-operational TB, antibiograms, GLASS reporting, catalog subscription, and NFRs
-explicitly excluded in the pinned source-alignment record remain follow-up
-work.
+operational TB, antibiograms, GLASS reporting, catalog subscription, and the
+M-NFR outcomes not completed in R1 remain follow-up work. In particular,
+offline read continuity, queued bench edits, and conflict resolution are not
+implemented and cannot be inferred from online browser evidence.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -621,6 +638,32 @@ longer eligible.
 3. A lot that becomes invalid after selection produces a specific message
    naming the reagent, lot, and corrective action.
 
+### User Story 12 - Work Reliably With Keyboard, Assistive Technology, And Intermittent Connectivity
+
+As a bench user, I can complete microbiology work with the input and assistive
+technology available to me, at normal laboratory volume, without losing my
+place or silently losing work when connectivity is interrupted.
+
+**Acceptance Scenarios**:
+
+1. A keyboard-only user can open the worklist, choose a summary view, open a
+   case, expand its current section, add and identify an isolate, enter and
+   review AST, and release a preliminary report without a mouse.
+2. Expanding an inline section moves focus into that section and announces the
+   change; closing an inline section or dialog restores focus to the initiating
+   control.
+3. Status, provenance, and urgency remain understandable without color, all
+   controls and tables expose meaningful names, and focus is always visible.
+4. With 200 active items in either worklist view, initial display completes in
+   under two seconds and filtering completes in under 300 milliseconds. A case
+   with five isolates and up to 100 AST readings displays in under one second,
+   defaults to its newest 30 Timeline events, and retains complete history on
+   demand.
+5. If connectivity is lost after a worklist has loaded, the last loaded work
+   remains readable and is clearly marked offline. A bench edit made while
+   disconnected is not silently lost, and a conflicting change requires an
+   explicit user resolution after reconnection.
+
 ## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
@@ -651,6 +694,15 @@ longer eligible.
 - **SC-010**: A user can reach the worklist from primary navigation, bookmark a
   filtered view, open a case, refresh either page, and return without losing
   the relevant worklist or case-section context.
+- **SC-011**: A keyboard-only user can complete the order-to-preliminary-report
+  path with visible focus and announced inline-section changes.
+- **SC-012**: Exact-revision source-scale measurements pass every threshold in
+  FR-028; a threshold miss remains a failed criterion rather than a rounded or
+  accepted result.
+- **SC-013**: A deployed connectivity-loss exercise proves the last-loaded
+  worklist remains readable, offline state is visible, an interrupted bench
+  edit survives reconnection, and a conflicting edit requires an explicit
+  resolution.
 
 PR #3789 did not claim the source M-NFR 200-item worklist and sub-second read
 p95 target. The later M8 branch now carries repeatable service-created API and

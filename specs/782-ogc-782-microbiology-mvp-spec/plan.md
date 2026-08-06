@@ -309,6 +309,10 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   controller evidence, Carbon interaction tests, registered Playwright, visual
   comparison, and a separate Grist story. Human UAT remains distinct from
   automation.
+- Treat the M-NFR offline behavior as an application-wide state-management
+  dependency. Do not add a microbiology-only cache, replay queue, or conflict
+  resolver; T266 remains open until a reusable OpenELIS pattern is selected and
+  proven through connectivity-loss tests.
 
 ## Complexity Tracking
 
@@ -349,6 +353,15 @@ inside product requirements.
       `/plan-record-playwright`; cover order -> worklist -> setup -> isolate ->
       AST -> review -> blocked/final release. Cypress is not expanded unless a
       project blocker prevents Playwright.
+- **Accessibility qualification**: Registered Playwright projects combine axe
+  scans at desktop/mobile sizes with direct keyboard, focus, announcement, and
+  focus-return interactions. Human review remains a separate acceptance gate.
+- **Performance qualification**: Service-created source-scale fixtures record
+  server and browser timings separately on an exact revision. Any p95 above a
+  source threshold is reported as failed.
+- **Connectivity qualification**: Once a shared offline pattern exists,
+  browser tests disconnect after loading, prove readable last-loaded data,
+  exercise replay after reconnection, and require explicit conflict handling.
 
 ### Test Data Management
 
