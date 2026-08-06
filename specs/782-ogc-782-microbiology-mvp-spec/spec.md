@@ -397,7 +397,10 @@ or missing mapping for export.
   acknowledgment from either workflow MUST remain synchronized.
 - **FR-019**: The system MUST support reference data needed for MVP
   microbiology work: organisms, antibiotics, AST panels, culture setup recipes,
-  breakpoint standards, patient origin, and specimen mapping.
+  breakpoint standards, patient origin, and specimen mapping. Phase 1A users
+  with reference-data access MUST be able to view the six configured Patient
+  Origin choices and their WHONET codes; adding or changing those choices is a
+  later deployment need.
 - **FR-020**: The system MUST prepare finalized microbiology data for WHONET
   surveillance export by tracking export-relevant organism, specimen,
   antibiotic, breakpoint, and interpretation information.

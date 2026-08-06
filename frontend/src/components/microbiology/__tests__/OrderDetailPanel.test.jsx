@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
+import { vi } from "vitest";
 import OrderDetailPanel from "../OrderDetailPanel";
 import messages from "../../../languages/en.json";
 
@@ -13,10 +14,19 @@ const renderPanel = (props) =>
     </IntlProvider>,
   );
 
+const patientOrigins = [
+  { code: "INPATIENT", label: "Inpatient", whonetCode: "INP" },
+  { code: "EMERGENCY", label: "Emergency", whonetCode: "EME" },
+];
+
 describe("OrderDetailPanel", () => {
   it("saves captured order detail fields", async () => {
     const user = userEvent.setup();
     const service = {
+      getPatientOrigins: vi.fn().mockResolvedValue({
+        defaultCode: null,
+        options: patientOrigins,
+      }),
       saveOrderDetail: vi.fn().mockResolvedValue({
         orderDetail: {
           cultureMethodId: "",
@@ -31,6 +41,7 @@ describe("OrderDetailPanel", () => {
 
     renderPanel({ service });
 
+    await screen.findByRole("option", { name: "Emergency" });
     await user.selectOptions(
       screen.getByLabelText("Patient origin"),
       "EMERGENCY",
@@ -58,7 +69,7 @@ describe("OrderDetailPanel", () => {
     );
   });
 
-  it("prefills fields from an existing captured order detail", () => {
+  it("prefills fields from an existing captured order detail", async () => {
     renderPanel({
       orderDetail: {
         cultureMethodId: "method-1",
@@ -68,9 +79,16 @@ describe("OrderDetailPanel", () => {
         antibioticExposure: true,
         criticalNotificationPreference: true,
       },
-      service: { saveOrderDetail: vi.fn() },
+      service: {
+        getPatientOrigins: vi.fn().mockResolvedValue({
+          defaultCode: null,
+          options: patientOrigins,
+        }),
+        saveOrderDetail: vi.fn(),
+      },
     });
 
+    await screen.findByRole("option", { name: "Inpatient" });
     expect(screen.getByLabelText("Patient origin")).toHaveValue("INPATIENT");
     expect(screen.getByLabelText("Number of sets")).toHaveValue(3);
     expect(

@@ -138,6 +138,17 @@ export const getCultureMethods = (workflowType) =>
     );
   });
 
+export const getPatientOrigins = (organizationId) =>
+  new Promise((resolve) => {
+    const query = organizationId
+      ? `?organizationId=${encodeURIComponent(organizationId)}`
+      : "";
+    getFromOpenElisServer(
+      `/rest/microbiology/reference/patient-origins${query}`,
+      resolve,
+    );
+  });
+
 export const changeCaseWorkflow = (caseId, payload) =>
   new Promise((resolve) => {
     putToOpenElisServerFullResponse(
@@ -483,6 +494,7 @@ const MicrobiologyService = {
   getOrganisms,
   getBreakpointStandards,
   getCultureMethods,
+  getPatientOrigins,
   changeCaseWorkflow,
   getAstRunsForIsolate,
   getAnalyzers,

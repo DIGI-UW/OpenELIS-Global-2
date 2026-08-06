@@ -37,11 +37,15 @@ public class MicroCaseOrderDetailServiceTest {
     @Mock
     private MicroCaseActivityDAO activityDAO;
 
+    @Mock
+    private MicrobiologyReferenceService referenceService;
+
     private MicroCaseOrderDetailService service;
 
     @Before
     public void setUp() {
-        service = new MicroCaseOrderDetailServiceImpl(orderDetailDAO, caseDAO, activityDAO);
+        when(referenceService.isActivePatientOriginCode(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        service = new MicroCaseOrderDetailServiceImpl(orderDetailDAO, caseDAO, activityDAO, referenceService);
     }
 
     @Test
@@ -51,7 +55,7 @@ public class MicroCaseOrderDetailServiceTest {
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(null);
         MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.patientOrigin = "Inpatient ward 3";
+        request.patientOrigin = "INPATIENT";
         request.numberOfSets = 2;
         request.clinicalHistory = "Fever, suspected sepsis";
         request.antibioticExposure = true;
@@ -60,7 +64,7 @@ public class MicroCaseOrderDetailServiceTest {
         MicroCaseOrderDetail saved = service.saveOrderDetail("case-1", request, "1");
 
         assertEquals("case-1", saved.getCaseId());
-        assertEquals("Inpatient ward 3", saved.getPatientOrigin());
+        assertEquals("INPATIENT", saved.getPatientOrigin());
         assertEquals(Integer.valueOf(2), saved.getNumberOfSets());
         assertEquals("Fever, suspected sepsis", saved.getClinicalHistory());
         assertEquals(Boolean.TRUE, saved.getAntibioticExposure());
@@ -81,16 +85,16 @@ public class MicroCaseOrderDetailServiceTest {
         MicroCaseOrderDetail existing = new MicroCaseOrderDetail();
         existing.setId("detail-1");
         existing.setCaseId("case-1");
-        existing.setPatientOrigin("Emergency department");
+        existing.setPatientOrigin("EMERGENCY");
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(existing);
         MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.patientOrigin = "Inpatient ward 3";
+        request.patientOrigin = "INPATIENT";
         request.numberOfSets = 3;
 
         MicroCaseOrderDetail saved = service.saveOrderDetail("case-1", request, "2");
 
         assertEquals("detail-1", saved.getId());
-        assertEquals("Inpatient ward 3", saved.getPatientOrigin());
+        assertEquals("INPATIENT", saved.getPatientOrigin());
         assertEquals(Integer.valueOf(3), saved.getNumberOfSets());
         verify(orderDetailDAO).update(existing);
         verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
@@ -154,5 +158,16 @@ public class MicroCaseOrderDetailServiceTest {
         assertEquals("Sepsis query", reloaded.clinicalHistory);
         assertEquals(Boolean.FALSE, reloaded.antibioticExposure);
         assertEquals(Boolean.TRUE, reloaded.criticalNotificationPreference);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void saveOrderDraftRejectsUnknownPatientOriginCode() {
+        when(referenceService.isActivePatientOriginCode("FREE_TEXT")).thenReturn(false);
+        Sample sample = new Sample();
+        sample.setId("99");
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "FREE_TEXT";
+
+        service.saveOrderDraft(sample, request, "7");
     }
 }

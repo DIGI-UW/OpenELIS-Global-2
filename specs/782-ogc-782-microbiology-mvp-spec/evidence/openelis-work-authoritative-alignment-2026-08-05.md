@@ -60,7 +60,7 @@ The implementation status is deliberately narrower than “code exists.”
 | 3. M-08         | Author and use reusable text macros                                   | Separate Macro Library stack           | Managed runtime and administration code exist above the micro stack                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Separate cross-cutting feature; extract to its own PR/UAT stack                                                                   |
 | 4. M-12         | Link tests and reagent/card lots and capture the lot used             | M8 clinical-completeness spec/tasks    | Lot capture exists; full administration/reverse-link behavior is not proven                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Partial; complete source crosswalk and UAT                                                                                        |
 | 5. Test Catalog | Configure the microbiology workflow on culture-capable tests          | MVP M1 and Test Catalog implementation | Configuration is implemented and tested                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Automated evidence passed; human UAT pending                                                                                      |
-| 6. M-03         | Derive visible Program and collect culture details during order entry | FR-001/FR-002; Phase 14                | Supported order entry preserves workflow/Method metadata, derives and locks Program for typed culture work, renders the ruled controls, confirms discard, and supports safe manual fallback only outside typed culture workflow. Typed booleans, bounds, default-Method resolution, a durable Sample-owned draft across the enter/collect reload, order-search projection, service-created routing/detail/idempotency integration, and the four configured-route browser stories pass. Patient Origin is still a hardcoded client list and Clinical History is not macro-enabled. | Partial; deployment reference data, Macro consumer integration, visual/deployed evidence, and human UAT remain                    |
+| 6. M-03         | Derive visible Program and collect culture details during order entry | FR-001/FR-002; Phase 14                | Supported order entry preserves workflow/Method metadata, derives and locks Program for typed culture work, renders the ruled controls, confirms discard, and supports safe manual fallback only outside typed culture workflow. Typed booleans, bounds, default-Method resolution, a durable Sample-owned draft across the enter/collect reload, order-search projection, service-created routing/detail/idempotency integration, and the configured-route browser stories pass. Patient Origin now comes from the six-value deployment vocabulary, rejects free text, retains WHONET codes, and can default through explicit requesting-organization configuration. Clinical History is not macro-enabled. | Partial; Macro consumer integration, visual/deployed evidence, and human UAT remain                    |
 | 7. M-04         | Create linked workflow cases for one specimen                         | MVP M2/M3 plus Phase 14                | Typed sibling creation and safe unassigned fallback are implemented                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Automated evidence exists; complete shared-specimen visual UAT pending                                                            |
 | 8. M-07         | Work from the shared Culture/AST queue                                | MVP M6 and worklist remediation        | Canonical Culture/AST grain and status state, bounded accession/patient/specimen/panel/activity/timing context, active AST-run projection, pending-setup isolates, Carbon grain switch/cards/tables, exact isolate/run navigation, sibling context, critical flags, complete row menus, positive-signal progression/emphasis, analyzer resistance strip, recent activity, stable 30-second refresh, day-aware incubation fallback, full-row pointer/keyboard navigation, repository-role access enforcement, and registered desktop/mobile/keyboard/reload/200-case tests exist   | Partial; manual resistance confirmation, exact-SHA performance/visual evidence, separate Culture/AST UAT, and human review remain |
 | 9. M-04         | Work the culture case by current step                                 | MVP M4 plus T237-T242                  | Deterministic current-step focus, collapsed order/origin/location/sets/exposure context, clinical-history-first expansion, last-activity actor, sticky stage action, explicit inoculation/subculture lineage, shared lots, timeline Notes, critical entry points, shared NCE reporting, and lost-specimen rejection are implemented                                                                                                                                                                                                                                               | Implemented in code and automated tests; exact-SHA runtime evidence and human UAT pending                                         |
@@ -83,7 +83,7 @@ the 17-screen walkthrough. Neither is implemented.
 | Culture test derives Program = Microbiology                        | US1 scenario 1; FR-001        | T210/T214/T215      | Direct and panel selections preserve workflow/Method metadata; typed culture work derives a disabled visible Program, while manual fallback is limited to untyped work                                                                                 | Component and configured-route Playwright evidence passed; deployed UAT pending               |
 | Details appear in the supported Add Order flow                     | US1 scenario 1; FR-002        | T211/T216           | Shared Carbon detail controls render in `/order/enter`; the compatibility flow consumes the same controls                                                                                                                                              | Component and configured-route Playwright evidence passed; deployed UAT pending               |
 | Culture Method is required/defaulted/adjustable                    | FR-002                        | T211/T216/T218      | The shared Method control is required, the service-created catalog supplies a real default `TestMethod`, and routing resolves it before legacy fallback                                                                                                | Component, service, migration, and complete supported-save browser proof passed               |
-| Patient Origin uses deployment reference data                      | FR-002                        | T211/T216/T284      | The free-text control became a dropdown, but its five values are hardcoded and it does not default from requester location                                                                                                                             | Open implementation and roadmap drift; controlled UI alone is not source parity               |
+| Patient Origin uses deployment reference data                      | FR-002                        | T211/T216/T284/T286 | One active deployment vocabulary now supplies the six ruled choices and WHONET codes to both order entry and the case panel; writes normalize and validate the stable code, and an explicit optional Organization mapping supplies a default without name heuristics | M-03 implementation aligned; M-01 read-only administration list was missing from the roadmap and remains T286 |
 | Number of Sets uses ruled bounds/default                           | FR-002                        | T211/T216/T218      | UI and service enforce 1-10; the browser journey persists and restores the typed value across collection                                                                                                                                               | Focused automated and complete save-path browser evidence passed                              |
 | Clinical History accepts multi-line text and macros when available | FR-002                        | T211/T216/T274/T285 | Multiline input and the 1000-character service bound exist; `clinical` macros wait on the separate Macro Library base                                                                                                                                  | Partial; macro consumer integration remains explicitly blocked                                |
 | Antibiotic Exposure is a checkbox                                  | FR-002                        | T211/T216/T218      | UI and persistence use binary checkbox/boolean semantics                                                                                                                                                                                               | Focused automated and complete save-path browser evidence passed                              |
@@ -104,9 +104,11 @@ the 17-screen walkthrough. Neither is implemented.
   `/order/enter` to `/order/collect` boundary instead of synchronizing a browser
   draft to an unrelated store.
 - `npm run pw:test -- playwright/tests/foundational/core/microbiology-order-entry.spec.ts --project=core-app --workers=1`
-  passed setup plus four user stories in 18.7 seconds: durable details and one
+  passed setup plus four user stories in 24.5 seconds: durable details and one
   case, non-culture exclusion, guarded discard, and same-specimen
-  bacteriology/TB siblings. The tests use Carbon-accessible interactions and
+  bacteriology/TB siblings. The order-entry assertions now also prove all six
+  deployment Patient Origin choices, including Long-term Care and Unknown,
+  before selecting and persisting the stable code. The tests use Carbon-accessible interactions and
   readiness assertions, with no arbitrary waits. The repository bucket guard
   and project-registration validator pass, and the selector audit found no
   forced actions, blind first/last selectors, or response-status assertions.
@@ -119,16 +121,38 @@ the 17-screen walkthrough. Neither is implemented.
   column, and numeric authenticated user IDs could not join the varchar
   activity actor column. Migrations `083` and `084` contain only those durable
   model corrections and have explicit rollback tests.
+- Focused Patient Origin service/controller tests, five Carbon component
+  interactions, ORM registration, and PostgreSQL migration
+  update/rollback/reapply all pass. Seed identifiers are database-generated;
+  no test SQL, fixed primary key, or DAO-bypass fixture was added.
 - The touched worklist no longer uses Carbon's deprecated `ariaLabel` prop.
   The shared harness still records URL-less shell 404 messages and aborted
   requests during route transitions; no API assertion failed, but this remains
   evidence-harness noise to diagnose separately.
-- Remaining M-03 gaps are Patient Origin reference/default behavior (T284),
-  Macro Library consumption after the separate macro feature exists (T285),
+- Remaining M-03 gaps are Macro Library consumption after the separate macro
+  feature exists (T285),
   source-mock screenshots, Grist publication, exact-SHA deployment, and human
   acceptance. The direct Java `SamplePatientEntryService.persistData`
   integration requested by T212 is also still open even though the browser
   journey now proves the real runtime path.
+
+### Patient Origin source-quality ruling
+
+- The authoritative product behavior is a controlled six-value vocabulary,
+  WHONET-ready identity, and an optional requesting-location default. That is
+  implemented without client-owned choices or free-text persistence.
+- M-01's instruction to use a particular table and foreign key is
+  implementation leakage. The engineering model uses microbiology-owned
+  reference entities and validates the stored stable code at the service
+  boundary; product acceptance does not depend on a particular column layout.
+- The source never defines how a requesting unit or ward maps to an origin.
+  The deterministic default is explicit Organization-to-origin configuration;
+  no configured mapping means no default. Organization-name inference is
+  intentionally prohibited because it could silently misclassify clinical
+  context.
+- M-01 separately requires a Phase 1A read-only Patient Origin administration
+  list. That surface was absent from the roadmap and remains T286; Phase 1B
+  CRUD remains out of this remediation slice.
 
 ## Full-Stack Acceptance Drift
 

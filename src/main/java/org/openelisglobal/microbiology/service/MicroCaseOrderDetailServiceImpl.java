@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.service;
 
+import java.util.Locale;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
@@ -24,12 +25,14 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     private final MicroCaseOrderDetailDAO orderDetailDAO;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
+    private final MicrobiologyReferenceService referenceService;
 
     public MicroCaseOrderDetailServiceImpl(MicroCaseOrderDetailDAO orderDetailDAO, MicroCaseDAO caseDAO,
-            MicroCaseActivityDAO activityDAO) {
+            MicroCaseActivityDAO activityDAO, MicrobiologyReferenceService referenceService) {
         this.orderDetailDAO = orderDetailDAO;
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
+        this.referenceService = referenceService;
     }
 
     @Override
@@ -115,8 +118,14 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     }
 
     private void apply(MicroCaseOrderDetail detail, MicroCaseOrderDetailRequestForm request) {
+        String patientOrigin = request.patientOrigin == null ? null
+                : request.patientOrigin.trim().toUpperCase(Locale.ROOT);
+        if (patientOrigin != null && !patientOrigin.isEmpty()
+                && !referenceService.isActivePatientOriginCode(patientOrigin)) {
+            throw new IllegalArgumentException("Unknown or inactive patient origin code");
+        }
         detail.setCultureMethodId(request.cultureMethodId);
-        detail.setPatientOrigin(request.patientOrigin);
+        detail.setPatientOrigin(patientOrigin);
         detail.setNumberOfSets(request.numberOfSets);
         detail.setClinicalHistory(request.clinicalHistory);
         detail.setAntibioticExposure(request.antibioticExposure);

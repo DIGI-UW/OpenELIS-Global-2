@@ -105,7 +105,17 @@ async function fillMicrobiologyDetails(page: Page) {
   await expect(
     page.getByRole("combobox", { name: "Culture Method" }),
   ).not.toHaveValue("");
-  await page.getByLabel("Patient Origin").selectOption("INPATIENT");
+  const patientOrigin = page.getByLabel("Patient Origin");
+  await expect(patientOrigin.locator("option")).toHaveCount(7, {
+    timeout: LONG_TIMEOUT,
+  });
+  await expect(
+    patientOrigin.locator('option[value="LONG_TERM_CARE"]'),
+  ).toHaveText("Long-term Care");
+  await expect(patientOrigin.locator('option[value="UNKNOWN"]')).toHaveText(
+    "Unknown",
+  );
+  await patientOrigin.selectOption("INPATIENT");
   await page.getByRole("spinbutton", { name: "Number of Sets" }).fill("2");
   await page
     .getByLabel("Clinical History")

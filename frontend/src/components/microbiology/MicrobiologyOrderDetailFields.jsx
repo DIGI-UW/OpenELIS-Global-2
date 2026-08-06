@@ -18,18 +18,11 @@ export const emptyMicrobiologyOrderDetail = {
   criticalNotificationPreference: null,
 };
 
-export const patientOriginOptions = [
-  { value: "EMERGENCY", messageId: "microbiology.patientOrigin.emergency" },
-  { value: "INPATIENT", messageId: "microbiology.patientOrigin.inpatient" },
-  { value: "OUTPATIENT", messageId: "microbiology.patientOrigin.outpatient" },
-  { value: "INTENSIVE_CARE", messageId: "microbiology.patientOrigin.icu" },
-  { value: "OTHER", messageId: "microbiology.patientOrigin.other" },
-];
-
 const MicrobiologyOrderDetailFields = ({
   fields,
   onChange,
   methods = [],
+  patientOrigins = [],
   idPrefix = "microbiology-order-detail",
   isReadOnly = false,
   showCultureMethod = true,
@@ -71,11 +64,11 @@ const MicrobiologyOrderDetailFields = ({
         disabled={isReadOnly}
       >
         <SelectItem value="" text="" />
-        {patientOriginOptions.map((option) => (
+        {patientOrigins.map((option) => (
           <SelectItem
-            key={option.value}
-            value={option.value}
-            text={intl.formatMessage({ id: option.messageId })}
+            key={option.code}
+            value={option.code}
+            text={option.label}
           />
         ))}
       </Select>

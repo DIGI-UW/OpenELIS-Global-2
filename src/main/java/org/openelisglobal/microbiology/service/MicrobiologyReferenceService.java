@@ -17,4 +17,8 @@ public interface MicrobiologyReferenceService {
     List<MicroCultureSetup> getActiveCultureSetups(MicroWorkflowType workflowType);
 
     MicroCultureSetup getActiveCultureSetupForMethod(String methodId, MicroWorkflowType workflowType);
+
+    MicroPatientOriginOptions getPatientOrigins(String organizationId);
+
+    boolean isActivePatientOriginCode(String code);
 }
