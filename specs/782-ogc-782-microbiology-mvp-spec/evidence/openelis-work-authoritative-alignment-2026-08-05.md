@@ -4,7 +4,7 @@
 **Authority revision:**
 [`DIGI-UW/openelis-work@a1f720d7b3b0`](https://github.com/DIGI-UW/openelis-work/commit/a1f720d7b3b01db63387361495f4aa6589105003)
 **Implementation baseline:** `08b5b3888af4ba9f1c506fc555138218e0d043a4`
-**Remediation code through:** `a10a2d13e`
+**Remediation code through:** `131ba1471`
 **Remediation branch:**
 `feat/782-ogc-782-microbiology-r1-authoritative-alignment`
 
@@ -62,7 +62,7 @@ The implementation status is deliberately narrower than “code exists.”
 | 6. M-03         | Derive visible Program and collect culture details during order entry | FR-001/FR-002; Phase 14                | Supported order entry now preserves workflow/Method metadata, derives Program, renders the ruled controls, confirms discard, and supports safe manual fallback | Focused component/service evidence passed; full save Playwright and UAT pending |
 | 7. M-04         | Create linked workflow cases for one specimen                         | MVP M2/M3 plus Phase 14                | Typed sibling creation and safe unassigned fallback are implemented                                                                                            | Automated evidence exists; complete shared-specimen visual UAT pending          |
 | 8. M-07         | Work from the shared pending-cultures queue                           | MVP M6 and worklist remediation        | Core queue, URLs, nav, filters, and actions exist                                                                                                              | Partial; richer row context/views/ownership/recent activity remain              |
-| 9. M-04         | Work the culture case by current step                                 | MVP M4                                 | Core case workbench and timeline exist                                                                                                                         | Partial; source-level setup/workflow comparison required                        |
+| 9. M-04         | Work the culture case by current step                                 | MVP M4 plus T237-T242                  | Explicit primary inoculation and subculture records, same-case parent lineage, barcode-ready IDs, shared lot selection, automatic timeline projection, and a registered Playwright journey exist                               | Implemented, evidence pending for setup lineage; other current-step actions remain partial |
 | 10. M-04        | Record isolate work-up and identification                             | MVP M4                                 | Isolate creation/update exists                                                                                                                                 | Partial; richer Gram/colony/preliminary/final ID behavior remains               |
 | 11. M-05        | Enter and interpret AST                                               | MVP M5 plus M8                         | Multi-reading AST, standards, repeat/retest, override, and review exist                                                                                        | Source-level interaction and human UAT pending                                  |
 | 12. M-06        | Review expert-rule findings                                           | Deferred product outcome               | No expert-rule workflow                                                                                                                                        | Not started; separate future milestone                                          |
@@ -100,7 +100,7 @@ in the named acceptance criterion is absent or unproven.
 
 | Module                  | Automated evidence already present                                                                                      | Material implementation drift                                                                                                                                                                                                                                                                                                                                | Roadmap/spec correction                                                                                                  |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| M-04 Case Workbench     | Case creation, basic progress rail, generic setup/timeline, isolate CRUD, amendments, report release, final lock, workflow classification, sibling navigation | No dedicated inoculation/subculture lineage; isolate Gram/colony/method/confidence flow incomplete; AST can start before confirmed ID; no report NCE/lost-specimen path; no analyzer-event reconciliation; header/isolate critical entry points absent; current-step focus and compact Case Info are incomplete | Keep each remaining behavior in independent TDD/UAT stories; classification is implemented but not accepted             |
+| M-04 Case Workbench     | Case creation, progress rail, typed inoculation/subculture lineage, automatic timeline projection, isolate CRUD, amendments, report release, final lock, workflow classification, sibling navigation | Timeline Add note is absent; isolate Gram/colony/method/confidence flow incomplete; AST can start before confirmed ID; no report NCE/lost-specimen path; no analyzer-event reconciliation; header/isolate critical entry points absent; current-step focus and compact Case Info are incomplete | Keep each remaining behavior in independent TDD/UAT stories; implemented slices are not accepted until deployed UAT     |
 | M-05 AST                | Manual readings, breakpoint interpretation, selectable standard, overrides, review, repeat/retest runs, reagent capture | Panel is a blank setup choice rather than upstream provenance; no matched-level display/revert history; no `RESULTS_IN`/QC/analyzer metadata path; no accept blockers; no single-drug repeat/NCE convergence; method/source distinction is incomplete                                                                                                        | Preserve manual AST as delivered subset; add analyzer/QC and provenance slices explicitly                                |
 | M-07 Worklist           | Shared culture queue, URL filters/search/sort/page, summary actions, sibling marker, critical flag, responsive table    | No Cultures/AST grain switch; no AST-run rows; incomplete deterministic due mapping; no row overflow actions; no resistance strip/recent activity; no phase-disabled controls; no auto-refresh focus/scroll proof; permission is authentication-only                                                                                                         | Replace the stale V2 clarification with required source-alignment tasks                                                  |
 | M-12 Reagent Lot Picker | One component is reused in setup and AST; service records Inventory usage; repeat metadata and usage history exist      | Picker exposes blocked lots disabled rather than filtering them; FIFO guidance is a label/tag rather than a tooltip; required/substitute semantics and actionable stale-selection errors are incomplete; barcode/scanner path and exact latency/a11y evidence are missing                                                                                    | Limit Microbiology ownership to picker behavior; keep Test Catalog/Inventory administration dependencies outside this PR |
@@ -155,3 +155,23 @@ promote a behavior to Complete.
   Playwright journey has not run against this exact SHA. Deployment, separate
   Grist story publication, live overlay verification, and human UAT remain
   pending.
+
+## R1 M-04 Inoculation And Subculture Evidence
+
+- **Code:** `131ba1471` adds one durable inoculation record with a nullable
+  same-case parent, Method reference, authenticated actor, media/container
+  details, automatic typed activity, and shared inventory usage in one service
+  transaction. It removes the unreachable generic setup form rather than
+  retaining two write paths.
+- **Migration:** `070-microbiology-inoculation-lineage.xml` is the only schema
+  change for this slice and includes rollback. Its XML and test harness compile;
+  update/rollback execution is blocked locally because no Docker daemon is
+  available.
+- **Automated checks passed locally:** focused service/controller/architecture
+  tests, Java main and test compilation, 19 microbiology frontend files with 67
+  tests, targeted ESLint, XML validation, Playwright project registration and
+  selector-policy scan, formatting, and `git diff --check`.
+- **Still open:** the registered primary/subculture Playwright journey has not
+  run against this exact SHA because no local OpenELIS HTTPS stack is running.
+  Desktop/mobile visual comparison, separate Grist story, deployed overlay,
+  migration runtime, and human UAT remain pending.
