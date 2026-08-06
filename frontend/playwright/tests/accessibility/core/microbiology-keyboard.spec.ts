@@ -59,15 +59,15 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await page.keyboard.press("Tab");
       await expect(page).toHaveURL(/workflow=BACTERIOLOGY/);
 
-      const search = page.getByPlaceholder("Search sample or workflow");
+      const search = page.getByRole("searchbox", { name: "Filter table" });
       await tabTo(page, search);
-      await page.keyboard.type(workingCase.sampleItemId);
+      await page.keyboard.type(workingCase.accessionNumber);
       await expect(page).toHaveURL(
-        new RegExp(`q=${encodeURIComponent(workingCase.sampleItemId)}`),
+        new RegExp(`q=${encodeURIComponent(workingCase.accessionNumber)}`),
       );
 
       const caseLink = page.getByRole("link", {
-        name: workingCase.sampleItemId,
+        name: workingCase.accessionNumber,
         exact: true,
       });
       await tabTo(page, caseLink);
@@ -91,15 +91,48 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/section=isolates/);
 
-      const organism = page.getByLabel("Preliminary organism");
-      await tabTo(page, organism);
-      await page.keyboard.type("Escherichia coli");
+      const gramStain = page.getByLabel("Gram stain");
+      await tabTo(page, gramStain);
+      await page.keyboard.type("Gram negative rods");
+      const colonyMorphology = page.getByLabel("Colony morphology");
+      await tabTo(page, colonyMorphology);
+      await page.keyboard.type("Lactose fermenting colonies");
       const createIsolate = page.getByRole("button", {
         name: "Create isolate",
       });
       await tabTo(page, createIsolate);
       await page.keyboard.press("Enter");
-      await expect(page.getByText(/ISO-1: Escherichia coli/)).toBeVisible({
+      await expect(page.getByText("Identification pending")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+
+      const identifyOrganism = page.getByRole("button", {
+        name: "Identify organism",
+      });
+      await tabTo(page, identifyOrganism);
+      await page.keyboard.press("Enter");
+      const organism = page.getByLabel("Organism");
+      const organismLabel = "Escherichia coli (UAT)";
+      await expect(
+        organism.locator("option", { hasText: organismLabel }),
+      ).toHaveAttribute("value", workingCase.organismId!);
+      await tabTo(page, organism);
+      await page.keyboard.type(organismLabel);
+      await expect(organism).toHaveValue(workingCase.organismId!);
+      const idMethod = page.getByLabel("ID method");
+      await tabTo(page, idMethod);
+      await page.keyboard.type("MALDI TOF");
+      await expect(idMethod).toHaveValue("MALDI_TOF");
+      const confidence = page.getByLabel("ID confidence (%)");
+      await tabTo(page, confidence);
+      await page.keyboard.press("ControlOrMeta+A");
+      await page.keyboard.type("99.5");
+      const saveIdentification = page.getByRole("button", {
+        name: "Save identification",
+      });
+      await tabTo(page, saveIdentification);
+      await page.keyboard.press("Enter");
+      await expect(page.getByText("Identified", { exact: true })).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
 
@@ -113,11 +146,19 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/section=ast/);
 
-      const cardLot = page.getByRole("radio", {
+      const ast = page.getByTestId("microbiology-ast-card");
+      const lotScanner = ast.getByRole("searchbox", {
+        name: "Scan or enter lot number",
+      });
+      await tabTo(page, lotScanner);
+      await page.keyboard.type("UAT-MICRO-CARD-FEFO");
+      await page.keyboard.press("Enter");
+      await expect(
+        ast.getByText("Selected lot UAT-MICRO-CARD-FEFO."),
+      ).toBeVisible();
+      const cardLot = ast.getByRole("radio", {
         name: /UAT-MICRO-CARD-FEFO/,
       });
-      await tabTo(page, cardLot);
-      await page.keyboard.press("Space");
       await expect(cardLot).toBeChecked();
 
       const startRun = page.getByRole("button", { name: "Start AST run" });
@@ -138,7 +179,20 @@ test.describe("Microbiology keyboard-only workflow", () => {
         page.getByTestId("microbiology-ast-interpretation"),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
 
+      const antibiotic = ast.getByLabel("Antibiotic", { exact: true });
+      await tabTo(page, antibiotic);
+      await page.keyboard.type("Gentamicin (UAT)");
+      await expect(antibiotic.locator("option:checked")).toHaveText(
+        "Gentamicin (UAT)",
+      );
+      await tabTo(page, recordReading);
+      await page.keyboard.press("Enter");
+      await expect(
+        page.getByTestId("microbiology-ast-reading-row"),
+      ).toHaveCount(2, { timeout: LONG_TIMEOUT });
+
       const reviewRun = page.getByRole("button", { name: "Review AST run" });
+      await expect(reviewRun).toBeEnabled({ timeout: LONG_TIMEOUT });
       await tabTo(page, reviewRun);
       await page.keyboard.press("Enter");
       await expect(

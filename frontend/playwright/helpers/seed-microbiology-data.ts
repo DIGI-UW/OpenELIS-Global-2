@@ -265,6 +265,7 @@ async function ensureReviewedAstIsolate(
           isolateId: isolate.id,
           panelId: seeded.astPanelId,
           breakpointStandardId: seeded.activeBreakpointStandardId,
+          panelAdjustmentReason: "Synthetic UAT fixture panel assignment",
           technique: "BROTH_MICRODILUTION",
         },
       }),

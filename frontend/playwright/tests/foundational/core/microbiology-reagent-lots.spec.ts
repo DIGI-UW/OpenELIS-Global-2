@@ -1,12 +1,11 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page, TestInfo } from "@playwright/test";
 import { seedMicrobiologyMvpCase } from "../../../helpers/seed-microbiology-data";
+import {
+  createAndIdentifyMicrobiologyIsolate,
+  openMicrobiologyCaseSection,
+} from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
-
-const accordionButton = (page: Page, name: string) =>
-  page
-    .getByTestId("microbiology-case-view")
-    .getByRole("button", { name, exact: true });
 
 const attachScreenshot = async (
   page: Page,
@@ -82,27 +81,11 @@ test.describe("Microbiology reagent and card lot traceability", () => {
     });
 
     await test.step("Create the isolate needed for AST", async () => {
-      await accordionButton(page, "Isolates").click();
-      await page.getByLabel("Gram stain").fill("Gram negative rods");
-      await page
-        .getByLabel("Colony morphology")
-        .fill("Lactose fermenting colonies");
-      await page.getByRole("button", { name: "Create isolate" }).click();
-      await expect(page.getByText("Identification pending")).toBeVisible({
-        timeout: LONG_TIMEOUT,
-      });
-      await page.getByRole("button", { name: "Identify organism" }).click();
-      await page.getByLabel("Organism").selectOption(seeded.organismId);
-      await page.getByLabel("ID method").selectOption("MALDI_TOF");
-      await page.getByLabel("ID confidence (%)").fill("99.5");
-      await page.getByRole("button", { name: "Save identification" }).click();
-      await expect(page.getByText("Identified", { exact: true })).toBeVisible({
-        timeout: LONG_TIMEOUT,
-      });
+      await createAndIdentifyMicrobiologyIsolate(page, seeded.organismId!);
     });
 
     await test.step("Choose and retain the exact AST card lot", async () => {
-      await accordionButton(page, "Manual AST").click();
+      await openMicrobiologyCaseSection(page, "Manual AST");
       await expect(page).toHaveURL(/section=ast$/);
       const ast = page.getByTestId("microbiology-ast-card");
       const card = ast.getByRole("radio", {
