@@ -16,6 +16,8 @@ import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
+import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
+import org.openelisglobal.microbiology.form.MicroWorklistInoculationContext;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.form.MicroWorklistRecentActivityContext;
@@ -83,6 +85,13 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 contextDAO.getSpecimenContexts(sampleItemIds), MicroWorklistSpecimenContext::sampleItemId);
         Map<String, MicroWorklistActivityContext> activityContextByCase = indexBy(
                 contextDAO.getLatestActivityContexts(caseIds), MicroWorklistActivityContext::caseId);
+        Map<String, MicroWorklistInoculationContext> inoculationContextByCase = indexBy(
+                contextDAO.getFirstInoculationContexts(caseIds), MicroWorklistInoculationContext::caseId);
+        List<String> methodIds = openCases.stream().map(MicroCase::getCultureMethodId)
+                .filter(methodId -> methodId != null && !methodId.isBlank()).distinct().toList();
+        Map<String, MicroWorklistCultureTimingContext> timingContextByMethodAndWorkflow = indexBy(
+                contextDAO.getCultureTimingContexts(methodIds),
+                timing -> cultureTimingKey(timing.methodId(), timing.workflowType()));
         List<MicroWorklistRecentActivityContext> recentActivityContexts = contextDAO.getRecentActivityContexts(caseIds,
                 RECENT_ACTIVITY_LIMIT);
         List<String> panelIds = runsByIsolate.values().stream().flatMap(List::stream).map(MicroAstRun::getPanelId)
@@ -92,6 +101,8 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 ? toAstRows(openCases, isolatesByCase, runsByIsolate)
                 : toCultureRows(openCases, isolatesByCase, runsByIsolate, communicationsByCase, casesBySampleItem);
         enrichRows(rows, specimenContextBySampleItem, activityContextByCase, panelsById);
+        enrichCultureTiming(rows, indexBy(openCases, MicroCase::getId), inoculationContextByCase,
+                timingContextByMethodAndWorkflow);
         List<MicroWorklistRowForm> summaryRows = new ArrayList<>(rows);
         summaryRows.removeIf(row -> !matches(row, queryWithoutActionFilters(normalized)));
         rows.removeIf(row -> !matches(row, normalized));
@@ -486,6 +497,9 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         if (MicroCaseStage.RECEIVED.name().equals(microCase.getStage())) {
             return "SETUP";
         }
+        if (MicroCaseStage.INCUBATING.name().equals(microCase.getStage())) {
+            return "INCUBATING";
+        }
         if (MicroCaseStage.POSITIVE_SIGNAL.name().equals(microCase.getStage())) {
             return "SUBCULTURE_GRAM_STAIN";
         }
@@ -498,6 +512,36 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             }
         }
         return "CASE_REVIEW";
+    }
+
+    private void enrichCultureTiming(List<MicroWorklistRowForm> rows, Map<String, MicroCase> casesById,
+            Map<String, MicroWorklistInoculationContext> inoculationContextByCase,
+            Map<String, MicroWorklistCultureTimingContext> timingContextByMethodAndWorkflow) {
+        long millisPerDay = 24L * 60 * 60 * 1000;
+        long now = System.currentTimeMillis();
+        for (MicroWorklistRowForm row : rows) {
+            if (!CULTURES_GRAIN.equals(row.grain) || !MicroCaseStage.INCUBATING.name().equals(row.stage)) {
+                continue;
+            }
+            MicroCase microCase = casesById.get(row.caseId);
+            MicroWorklistInoculationContext inoculation = inoculationContextByCase.get(row.caseId);
+            if (microCase == null || inoculation == null || inoculation.firstInoculatedAt() == null
+                    || microCase.getCultureMethodId() == null) {
+                continue;
+            }
+            MicroWorklistCultureTimingContext timing = timingContextByMethodAndWorkflow
+                    .get(cultureTimingKey(microCase.getCultureMethodId(), microCase.getWorkflowType()));
+            if (timing == null || timing.maxIncubationDays() == null) {
+                continue;
+            }
+            long elapsed = Math.max(0, now - inoculation.firstInoculatedAt().getTime());
+            row.incubationDay = (int) (elapsed / millisPerDay) + 1;
+            row.maxIncubationDays = timing.maxIncubationDays();
+        }
+    }
+
+    private String cultureTimingKey(String methodId, String workflowType) {
+        return safe(methodId) + "|" + safe(workflowType);
     }
 
     private String urgency(MicroCase microCase, boolean needsAstReview, boolean hasOpenCriticalCommunication) {

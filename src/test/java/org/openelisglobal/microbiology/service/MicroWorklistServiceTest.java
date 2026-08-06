@@ -21,6 +21,8 @@ import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
+import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
+import org.openelisglobal.microbiology.form.MicroWorklistInoculationContext;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.form.MicroWorklistRecentActivityContext;
@@ -66,6 +68,8 @@ public class MicroWorklistServiceTest {
         when(contextDAO.getLatestActivityContexts(anyList())).thenReturn(List.of());
         when(contextDAO.getRecentActivityContexts(anyList(), org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(List.of());
+        when(contextDAO.getFirstInoculationContexts(anyList())).thenReturn(List.of());
+        when(contextDAO.getCultureTimingContexts(anyList())).thenReturn(List.of());
         when(panelDAO.getByIds(anyList())).thenReturn(List.of());
         service = new MicroWorklistServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO, contextDAO, panelDAO);
     }
@@ -200,6 +204,45 @@ public class MicroWorklistServiceTest {
         MicroWorklistQueryForm positiveQuery = new MicroWorklistQueryForm();
         positiveQuery.status = "positive";
         assertEquals(1, service.getWorklistPage(positiveQuery).total);
+    }
+
+    @Test
+    public void incubatingCaseShowsElapsedDayFromStructuredMethodTiming() {
+        MicroCase incubating = microCase("case-1", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.INCUBATING, "ROUTINE");
+        incubating.setCultureMethodId("method-1");
+        java.sql.Timestamp inoculatedAt = new java.sql.Timestamp(System.currentTimeMillis() - (30L * 60 * 60 * 1000));
+        when(caseDAO.getOpenCases()).thenReturn(List.of(incubating));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(incubating));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(contextDAO.getFirstInoculationContexts(List.of("case-1")))
+                .thenReturn(List.of(new MicroWorklistInoculationContext("case-1", inoculatedAt)));
+        when(contextDAO.getCultureTimingContexts(List.of("method-1")))
+                .thenReturn(List.of(new MicroWorklistCultureTimingContext("method-1", "BACTERIOLOGY", 5)));
+
+        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+
+        assertEquals("INCUBATING", row.dueAction);
+        assertEquals(Integer.valueOf(2), row.incubationDay);
+        assertEquals(Integer.valueOf(5), row.maxIncubationDays);
+    }
+
+    @Test
+    public void incubatingCaseUsesStageFallbackWhenTimingIsUnavailable() {
+        MicroCase incubating = microCase("case-1", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.INCUBATING, "ROUTINE");
+        incubating.setCultureMethodId("method-1");
+        when(caseDAO.getOpenCases()).thenReturn(List.of(incubating));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(incubating));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+
+        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+
+        assertEquals("INCUBATING", row.dueAction);
+        assertEquals(null, row.incubationDay);
+        assertEquals(null, row.maxIncubationDays);
     }
 
     @Test

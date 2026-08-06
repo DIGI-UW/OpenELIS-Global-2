@@ -1256,6 +1256,20 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                     if (cell.info.header === "due") {
                                       const detailId =
                                         DUE_ACTION_DETAIL_IDS[row.dueAction];
+                                      const incubationDetail =
+                                        row.dueAction === "INCUBATING" &&
+                                        row.incubationDay &&
+                                        row.maxIncubationDays
+                                          ? intl.formatMessage(
+                                              {
+                                                id: "microbiology.worklist.dueDetail.incubating",
+                                              },
+                                              {
+                                                day: row.incubationDay,
+                                                max: row.maxIncubationDays,
+                                              },
+                                            )
+                                          : "";
                                       return (
                                         <TableCell key={cell.id}>
                                           <div className="microbiology-worklist__due-action">
@@ -1272,6 +1286,9 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                                   id: detailId,
                                                 })}
                                               </span>
+                                            )}
+                                            {incubationDetail && (
+                                              <span>{incubationDetail}</span>
                                             )}
                                           </div>
                                         </TableCell>

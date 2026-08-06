@@ -53,10 +53,11 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
 
   const load = useCallback(
     (signal) => {
-      setLoading(true);
-      setError("");
       return getReferencePage(definition.resource, requestQuery, signal)
-        .then((response) => setPage(response))
+        .then((response) => {
+          setPage(response);
+          setError("");
+        })
         .catch((requestError) => {
           if (requestError.name !== "AbortError")
             setError(requestError.message);
@@ -98,7 +99,6 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
 
   useEffect(() => {
     if (!requestedId || page.rows.some((row) => row.id === requestedId)) {
-      setDetachedValue(null);
       return undefined;
     }
     const controller = new AbortController();
@@ -115,7 +115,8 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
     if (query.edit === "new") return {};
     if (deactivationId) return null;
     return (
-      page.rows.find((row) => row.id === query.edit) || detachedValue || null
+      page.rows.find((row) => row.id === query.edit) ||
+      (detachedValue?.id === query.edit ? detachedValue : null)
     );
   }, [deactivationId, detachedValue, page.rows, query.edit]);
 
@@ -352,14 +353,16 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
           </TableContainer>
         )}
       </DataTable>
-      <ReferenceEditModal
-        open={!!query.edit && !!editedValue}
-        titleId={definition.editTitle}
-        fields={modalFields}
-        value={editedValue}
-        onClose={closeEditor}
-        onSave={save}
-      />
+      {!!query.edit && !!editedValue && (
+        <ReferenceEditModal
+          key={`${definition.resource}-${query.edit}`}
+          titleId={definition.editTitle}
+          fields={modalFields}
+          value={editedValue}
+          onClose={closeEditor}
+          onSave={save}
+        />
+      )}
       <ComposedModal
         open={!!deactivationTarget}
         size="sm"

@@ -23,6 +23,7 @@ import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter, Route } from "react-router-dom";
+import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 import {
   applyBreakpointImport,
@@ -37,6 +38,7 @@ import {
   publishAstPanel,
   previewBreakpointImport,
   saveBreakpointRule,
+  saveReference,
   setReferenceActive,
 } from "./api";
 import AstPanelPage from "./AstPanelPage";
@@ -183,6 +185,68 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenCalledWith({ edit: "new" });
+  });
+
+  it("saves structured culture timing through Carbon number inputs", async () => {
+    const user = userEvent.setup();
+    const setQuery = vi.fn();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    getReferenceOptions.mockResolvedValue([
+      { id: "method-1", label: "Routine blood culture" },
+    ]);
+    saveReference.mockResolvedValue({});
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS["culture-setups"]}
+        query={{ ...query, edit: "new" }}
+        setQuery={setQuery}
+      />,
+    );
+
+    await user.selectOptions(
+      await screen.findByLabelText(messages["microbiology.admin.field.method"]),
+      "method-1",
+    );
+    await user.type(
+      screen.getByLabelText(messages["microbiology.admin.field.name"]),
+      "Routine blood culture",
+    );
+    await user.selectOptions(
+      screen.getByLabelText(messages["microbiology.admin.field.workflow"]),
+      "BACTERIOLOGY",
+    );
+    await user.type(
+      screen.getByLabelText(
+        messages["microbiology.admin.field.incubationHours"],
+      ),
+      "24",
+    );
+    await user.type(
+      screen.getByLabelText(
+        messages["microbiology.admin.field.subcultureAtHours"],
+      ),
+      "48",
+    );
+    const maxIncubationInput = screen.getByLabelText(
+      messages["microbiology.admin.field.maxIncubationDays"],
+    );
+    await user.type(maxIncubationInput, "7");
+    await user.clear(maxIncubationInput);
+    await user.type(maxIncubationInput, "5");
+    await user.click(
+      screen.getByRole("button", { name: messages["button.save"] }),
+    );
+
+    expect(saveReference).toHaveBeenCalledWith(
+      "culture-setups",
+      expect.objectContaining({
+        methodId: "method-1",
+        incubationHours: 24,
+        subcultureAtHours: 48,
+        maxIncubationDays: 5,
+      }),
+    );
   });
 
   it("renders the refreshed AST panel rows after publishing a version", async () => {

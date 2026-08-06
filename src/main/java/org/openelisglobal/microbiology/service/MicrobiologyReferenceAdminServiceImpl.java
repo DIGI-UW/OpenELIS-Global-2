@@ -295,6 +295,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         setup.setWorkflowType(workflow);
         setup.setMediaDefaults(trimToNull(request.mediaDefaults));
         setup.setIncubationDefaults(trimToNull(request.incubationDefaults));
+        setup.setIncubationHours(optionalPositive(request.incubationHours, "incubationHours"));
+        setup.setSubcultureAtHours(optionalPositive(request.subcultureAtHours, "subcultureAtHours"));
+        setup.setMaxIncubationDays(optionalPositive(request.maxIncubationDays, "maxIncubationDays"));
         setup.setAtmosphereDefaults(trimToNull(request.atmosphereDefaults));
         setup.setReportableTestAnalyteId(trimToNull(request.reportableTestAnalyteId));
         setup.setIsActive(request.active ? "Y" : "N");
@@ -472,6 +475,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.workflowType = setup.getWorkflowType();
         form.mediaDefaults = setup.getMediaDefaults();
         form.incubationDefaults = setup.getIncubationDefaults();
+        form.incubationHours = setup.getIncubationHours();
+        form.subcultureAtHours = setup.getSubcultureAtHours();
+        form.maxIncubationDays = setup.getMaxIncubationDays();
         form.atmosphereDefaults = setup.getAtmosphereDefaults();
         form.reportableTestAnalyteId = setup.getReportableTestAnalyteId();
         form.active = "Y".equals(setup.getIsActive());
@@ -544,6 +550,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
 
     private void requireActor(String actorId) {
         requireText(actorId, "authenticated actor");
+    }
+
+    private Integer optionalPositive(Integer value, String field) {
+        if (value != null && value <= 0) {
+            throw new IllegalArgumentException(field + " must be greater than zero");
+        }
+        return value;
     }
 
     private String trimToNull(String value) {
