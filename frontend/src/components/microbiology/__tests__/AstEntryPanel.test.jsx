@@ -31,12 +31,18 @@ const runWithReading = {
       interpretation: "SUSCEPTIBLE",
       method: "MIC",
       rawValue: 4,
+      source: "MANUAL_ENTRY",
+      matchedBy: "ORGANISM",
+      units: "ug/mL",
     },
     {
       id: "reading-2",
       interpretation: "INTERMEDIATE",
       method: "ZONE",
       rawValue: 16,
+      source: "MANUAL_ENTRY",
+      matchedBy: "NONE",
+      units: "mm",
     },
   ],
 };
@@ -231,6 +237,20 @@ describe("AstEntryPanel", () => {
     expect(
       screen.getAllByTestId("microbiology-ast-reading-row")[1],
     ).toHaveTextContent("INTERMEDIATE");
+    expect(
+      screen.getAllByTestId("microbiology-ast-reading-row")[0],
+    ).toHaveTextContent("Manual Entry");
+    expect(
+      screen.getAllByTestId("microbiology-ast-reading-row")[0],
+    ).toHaveTextContent("Organism");
+    expect(
+      screen.getAllByTestId("microbiology-ast-reading-row")[0],
+    ).toHaveTextContent("4 ug/mL");
+    expect(
+      screen.getByText(
+        "No standard breakpoint. Interpret this reading according to the local SOP.",
+      ),
+    ).toBeInTheDocument();
     await user.type(
       screen.getByLabelText("Override reason"),
       "mixed growth confirmed on repeat",

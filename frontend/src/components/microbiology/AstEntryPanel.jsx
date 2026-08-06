@@ -1,12 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
+  DataTable,
   InlineNotification,
   RadioButton,
   RadioButtonGroup,
   Select,
   SelectItem,
   Tag,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
   TextArea,
   TextInput,
   Tooltip,
@@ -165,6 +173,40 @@ const AstEntryPanel = ({
     currentReadings.find((reading) => reading.id === selectedReadingId) ||
     currentReadings[0];
 
+  const readingHeaders = useMemo(
+    () => [
+      {
+        key: "antibiotic",
+        header: intl.formatMessage({ id: "microbiology.ast.antibiotic" }),
+      },
+      {
+        key: "method",
+        header: intl.formatMessage({ id: "microbiology.ast.method" }),
+      },
+      {
+        key: "result",
+        header: intl.formatMessage({ id: "microbiology.ast.rawValue" }),
+      },
+      {
+        key: "source",
+        header: intl.formatMessage({ id: "microbiology.ast.source" }),
+      },
+      {
+        key: "matchedBy",
+        header: intl.formatMessage({ id: "microbiology.ast.matchedBy" }),
+      },
+      {
+        key: "interpretation",
+        header: intl.formatMessage({ id: "microbiology.ast.interpretation" }),
+      },
+      {
+        key: "override",
+        header: intl.formatMessage({ id: "microbiology.ast.override" }),
+      },
+    ],
+    [intl],
+  );
+
   const antibioticLabelFor = (reading) =>
     reading?.antibioticLabel ||
     antibiotics.find((antibiotic) => antibiotic.id === reading?.antibioticId)
@@ -183,6 +225,21 @@ const AstEntryPanel = ({
     isolateIdentified &&
     astSetup?.isolateId !== activeIsolateId,
   );
+  const measurementMode = currentRun?.method || method;
+  const readingRows = currentReadings.map((reading) => ({
+    id: reading.id,
+    antibiotic: antibioticLabelFor(reading),
+    method: reading.method,
+    result: `${reading.rawValue ?? reading.rawText ?? ""}${
+      reading.units ? ` ${reading.units}` : ""
+    }`,
+    source: formatMicrobiologyEnum(reading.source || "UNKNOWN"),
+    matchedBy: formatMicrobiologyEnum(reading.matchedBy || "NONE"),
+    interpretation: reading.interpretation,
+    override:
+      reading.overrideReason ||
+      intl.formatMessage({ id: "microbiology.ast.noOverride" }),
+  }));
 
   const selectLot = (selection) => {
     const selectionKey = `${selection.analysisId}:${selection.testReagentLinkId}`;
@@ -542,7 +599,10 @@ const AstEntryPanel = ({
                   <TextInput
                     id="microbiology-ast-raw-value"
                     labelText={intl.formatMessage({
-                      id: "microbiology.ast.rawValue",
+                      id:
+                        measurementMode === "ZONE"
+                          ? "microbiology.ast.measurement.zone"
+                          : "microbiology.ast.measurement.mic",
                     })}
                     value={rawValue}
                     onChange={(event) => setRawValue(event.target.value)}
@@ -564,61 +624,78 @@ const AstEntryPanel = ({
                 </div>
                 {currentReading ? (
                   <>
-                    <table className="microbiology-table">
-                      <thead>
-                        <tr>
-                          <th>
-                            {intl.formatMessage({
-                              id: "microbiology.ast.antibiotic",
-                            })}
-                          </th>
-                          <th>
-                            {intl.formatMessage({
-                              id: "microbiology.ast.method",
-                            })}
-                          </th>
-                          <th>
-                            {intl.formatMessage({
-                              id: "microbiology.ast.rawValue",
-                            })}
-                          </th>
-                          <th>
-                            {intl.formatMessage({
-                              id: "microbiology.ast.interpretation",
-                            })}
-                          </th>
-                          <th>
-                            {intl.formatMessage({
-                              id: "microbiology.ast.override",
-                            })}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentReadings.map((reading) => (
-                          <tr
-                            key={reading.id}
-                            data-testid="microbiology-ast-reading-row"
-                          >
-                            <td>{antibioticLabelFor(reading)}</td>
-                            <td>{reading.method}</td>
-                            <td>{reading.rawValue ?? reading.rawText}</td>
-                            <td data-testid="microbiology-ast-interpretation">
-                              <strong>{reading.interpretation}</strong>
-                              {reading.overrideInterpretation
-                                ? ` (${reading.overrideInterpretation})`
-                                : ""}
-                            </td>
-                            <td>
-                              {reading.overrideReason ||
-                                intl.formatMessage({
-                                  id: "microbiology.ast.noOverride",
-                                })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <DataTable rows={readingRows} headers={readingHeaders}>
+                      {({ rows, headers, getHeaderProps, getRowProps }) => (
+                        <TableContainer>
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={header.key}
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => {
+                                const reading = currentReadings.find(
+                                  (item) => item.id === row.id,
+                                );
+                                return (
+                                  <TableRow
+                                    key={row.id}
+                                    {...getRowProps({ row })}
+                                    data-testid="microbiology-ast-reading-row"
+                                  >
+                                    {row.cells.map((cell) => (
+                                      <TableCell
+                                        key={cell.id}
+                                        data-testid={
+                                          cell.info.header === "interpretation"
+                                            ? "microbiology-ast-interpretation"
+                                            : undefined
+                                        }
+                                      >
+                                        {cell.info.header ===
+                                        "interpretation" ? (
+                                          <>
+                                            <strong>{cell.value}</strong>
+                                            {reading?.overrideInterpretation
+                                              ? ` (${reading.overrideInterpretation})`
+                                              : ""}
+                                          </>
+                                        ) : (
+                                          cell.value
+                                        )}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                    {currentReadings.some(
+                      (reading) => reading.matchedBy === "NONE",
+                    ) ? (
+                      <InlineNotification
+                        kind="warning"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({
+                          id: "microbiology.ast.noBreakpointTitle",
+                        })}
+                        subtitle={intl.formatMessage({
+                          id: "microbiology.ast.noBreakpointGuidance",
+                        })}
+                      />
+                    ) : null}
                     <div className="microbiology-form-grid">
                       <Select
                         id="microbiology-ast-override-reading"

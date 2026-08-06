@@ -226,7 +226,8 @@ public class MicroAstServiceImpl implements MicroAstService {
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         requireMutableRun(run, isolate.getCaseId());
         snapshotOrValidateMethod(run, method);
-        MicroBreakpointRule rule = findRule(run, isolate, antibioticId, method);
+        MicroOrganism organism = organismDAO.get(isolate.getOrganismId()).orElse(null);
+        MicroBreakpointRule rule = findRule(run, isolate, organism, antibioticId, method);
         MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
 
         MicroAstReading reading = new MicroAstReading();
@@ -237,6 +238,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setRawText(rawValue == null ? null : rawValue.toPlainString());
         reading.setInterpretation(interpretation.name());
         reading.setBreakpointRuleId(rule == null ? null : rule.getId());
+        reading.setSource("MANUAL_ENTRY");
+        reading.setMatchedBy(matchedBy(rule));
+        reading.setUnits(rule != null && rule.getUnits() != null && !rule.getUnits().isBlank() ? rule.getUnits()
+                : defaultUnits(method));
         reading.setCreatedAt(MicroCaseServiceImpl.now());
         reading.setCreatedBy(performedBy);
         readingDAO.insert(reading);
@@ -339,8 +344,8 @@ public class MicroAstServiceImpl implements MicroAstService {
      * default so runs started before this field existed, or without an explicit
      * choice, keep working.
      */
-    private MicroBreakpointRule findRule(MicroAstRun run, MicroIsolate isolate, String antibioticId,
-            MicroAstMethod method) {
+    private MicroBreakpointRule findRule(MicroAstRun run, MicroIsolate isolate, MicroOrganism organism,
+            String antibioticId, MicroAstMethod method) {
         String standardId = run.getBreakpointStandardId();
         if (standardId == null || standardId.trim().isEmpty()) {
             MicroBreakpointStandard standard = breakpointService.getActiveStandard(DEFAULT_BREAKPOINT_AUTHORITY,
@@ -350,8 +355,29 @@ public class MicroAstServiceImpl implements MicroAstService {
             }
             standardId = standard.getId();
         }
-        return breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(), null, antibioticId,
-                method.name(), null, method.name());
+        return breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(),
+                organism == null ? null : organism.getOrganismGroup(), antibioticId, method.name(), null,
+                method.name());
+    }
+
+    private String matchedBy(MicroBreakpointRule rule) {
+        if (rule == null) {
+            return "NONE";
+        }
+        if (rule.getSpecimenTypeId() != null && !rule.getSpecimenTypeId().isBlank()) {
+            return "SPECIMEN";
+        }
+        if (rule.getOrganismId() != null && !rule.getOrganismId().isBlank()) {
+            return "ORGANISM";
+        }
+        if (rule.getOrganismGroup() != null && !rule.getOrganismGroup().isBlank()) {
+            return "GROUP";
+        }
+        return "NONE";
+    }
+
+    private String defaultUnits(MicroAstMethod method) {
+        return MicroAstMethod.ZONE.equals(method) ? "mm" : "ug/mL";
     }
 
     private void snapshotOrValidateMethod(MicroAstRun run, MicroAstMethod method) {

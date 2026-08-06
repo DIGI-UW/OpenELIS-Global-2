@@ -150,6 +150,9 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.rawText = reading.getRawText();
         form.interpretation = reading.getInterpretation();
         form.breakpointRuleId = reading.getBreakpointRuleId();
+        form.source = reading.getSource();
+        form.matchedBy = reading.getMatchedBy();
+        form.units = reading.getUnits();
         form.overrideInterpretation = reading.getOverrideInterpretation();
         form.overrideReason = reading.getOverrideReason();
         form.createdAt = reading.getCreatedAt();

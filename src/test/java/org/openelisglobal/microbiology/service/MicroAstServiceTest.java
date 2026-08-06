@@ -31,6 +31,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
@@ -186,15 +187,39 @@ public class MicroAstServiceTest {
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
         MicroBreakpointRule rule = new MicroBreakpointRule();
         rule.setId("rule-eucast");
+        rule.setOrganismId("org-1");
+        rule.setUnits("ug/mL");
         when(breakpointService.findBreakpointRule("eucast-std", "org-1", null, "abx-1", "MIC", null, "MIC"))
                 .thenReturn(rule);
         when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
                 .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
-        service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
 
         verify(breakpointService).findBreakpointRule("eucast-std", "org-1", null, "abx-1", "MIC", null, "MIC");
         verify(breakpointService, org.mockito.Mockito.never()).getActiveStandard(any(String.class), any(String.class));
+        assertEquals("MANUAL_ENTRY", reading.getSource());
+        assertEquals("ORGANISM", reading.getMatchedBy());
+        assertEquals("ug/mL", reading.getUnits());
+    }
+
+    @Test
+    public void noBreakpointReadingRetainsNoneProvenanceAndMethodUnits() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        run.setBreakpointStandardId("eucast-std");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(interpretationService.interpret(null, MicroAstMethod.ZONE, new BigDecimal("18")))
+                .thenReturn(MicroAstInterpretation.NO_BREAKPOINT);
+
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.ZONE, new BigDecimal("18"),
+                "1");
+
+        assertEquals("NONE", reading.getMatchedBy());
+        assertEquals("mm", reading.getUnits());
+        assertEquals(MicroAstInterpretation.NO_BREAKPOINT.name(), reading.getInterpretation());
     }
 
     @Test
