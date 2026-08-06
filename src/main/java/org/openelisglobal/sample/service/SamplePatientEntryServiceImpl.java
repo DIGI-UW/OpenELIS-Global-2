@@ -153,6 +153,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private OrderLabelRequestService orderLabelRequestService;
     @Autowired(required = false)
     private MicroOrderRoutingService microOrderRoutingService;
+    @Autowired(required = false)
+    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
 
     @Transactional
     @Override
@@ -406,6 +408,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             sampleService.insertDataWithAccessionNumber(updateData.getSample());
         }
 
+        persistMicrobiologyOrderDraft(updateData.getSample(), microbiologyOrderDetail, updateData.getCurrentUserId());
+
         for (SampleAdditionalField field : updateData.getSampleFields()) {
             field.setSample(updateData.getSample());
             sampleService.saveSampleAdditionalField(field);
@@ -628,6 +632,14 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
     private int normalizeLabelQuantity(Integer quantity) {
         return quantity != null && quantity > 0 ? quantity : 1;
+    }
+
+    void persistMicrobiologyOrderDraft(org.openelisglobal.sample.valueholder.Sample sample,
+            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm orderDetail, String performedBy) {
+        if (microCaseOrderDetailService == null || sample == null || sample.getId() == null || orderDetail == null) {
+            return;
+        }
+        microCaseOrderDetailService.saveOrderDraft(sample, orderDetail, performedBy);
     }
 
     private void routeMicrobiologyCases(SampleItem sampleItem, SampleTestCollection sampleTestCollection,

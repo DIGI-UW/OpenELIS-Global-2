@@ -73,6 +73,8 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroAstOverrideEvent.class));
         assertNotNull(metamodel.entity(MicroCriticalCommunication.class));
         assertNotNull(metamodel.entity(MicroCaseOrderDetail.class));
+        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class).getAttribute("sampleId"));
+        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class).getAttribute("cultureMethodId"));
         assertNotNull(metamodel.entity(MicroReportVersion.class));
         assertNotNull(metamodel.entity(MicroReportVersionSource.class));
         assertNotNull(metamodel.entity(MicroInventoryUsageLink.class));
@@ -84,6 +86,18 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
         try {
             assertNotNull(entityManager.createQuery("from MicroCaseAnalysis", MicroCaseAnalysis.class));
+        } finally {
+            entityManager.close();
+        }
+    }
+
+    @Test
+    public void microbiologyOrderDetailDraftHqlCompiles() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        try {
+            assertNotNull(entityManager.createQuery(
+                    "from MicroCaseOrderDetail d where d.sampleId = :sampleId and d.caseId is null",
+                    MicroCaseOrderDetail.class));
         } finally {
             entityManager.close();
         }

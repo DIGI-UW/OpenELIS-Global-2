@@ -449,4 +449,7 @@
   <!-- OGC-782 R1: typed order-entry checkbox values -->
   <include relativeToChangelogFile="true" file="081-microbiology-order-detail-booleans.xml"/>
 
+  <!-- OGC-782 R1: durable order detail across decoupled sample collection -->
+  <include relativeToChangelogFile="true" file="082-microbiology-order-detail-draft.xml"/>
+
 </databaseChangeLog>

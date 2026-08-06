@@ -9,6 +9,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,7 +23,13 @@ public class MicroCultureAnalyzerEventService {
     private final MicroCaseStateService stateService;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public MicroCultureAnalyzerEventService(AnalyzerEventPersistenceService persistenceService, MicroCaseDAO caseDAO,
+            MicroCaseInoculationDAO inoculationDAO, MicroCaseStateService stateService) {
+        this(persistenceService, caseDAO, inoculationDAO, stateService, new ObjectMapper());
+    }
+
+    MicroCultureAnalyzerEventService(AnalyzerEventPersistenceService persistenceService, MicroCaseDAO caseDAO,
             MicroCaseInoculationDAO inoculationDAO, MicroCaseStateService stateService, ObjectMapper objectMapper) {
         this.persistenceService = persistenceService;
         this.caseDAO = caseDAO;

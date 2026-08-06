@@ -19,6 +19,7 @@ import {
 } from "./api/sampleTypeRequestApi";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { ConfigurationContext } from "../layout/Layout";
+import { buildLoadedOrderData } from "./orderDataUtils";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -314,45 +315,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             setOrderId(response.id);
             setLabNumber(response.labNumber);
 
-            // Capture reference-data lists already loaded by the mount fetch
-            // ( /rest/SamplePatientEntry ) — /rest/order/search does not return
-            // them, so without this we'd clobber referralOrganizations,
-            // referralReasons, sampleTypes, etc. to null on every load.
-            const prior = orderDataRef.current || {};
-            const preservedRefData = {
-              sampleTypes: prior.sampleTypes,
-              testSectionList: prior.testSectionList,
-              rejectReasonList: prior.rejectReasonList,
-              referralOrganizations: prior.referralOrganizations,
-              referralReasons: prior.referralReasons,
-            };
-
-            // Build order data by merging response fields with defaults
-            // The backend returns patientProperties at top level and inside orderData
-            const loadedOrderData = {
-              ...SampleOrderFormValues,
-              ...preservedRefData,
-              ...(response.orderData || {}),
-              patientProperties: {
-                ...SampleOrderFormValues.patientProperties,
-                ...(response.patientProperties || {}),
-                ...(response.orderData?.patientProperties || {}),
-                // Keep patient status from response or default to NO_ACTION for subsequent saves
-                // Only set UPDATE when patient data has actually been modified
-                patientUpdateStatus:
-                  response.patientProperties?.patientUpdateStatus ||
-                  "NO_ACTION",
-              },
-              sampleOrderItems: {
-                ...SampleOrderFormValues.sampleOrderItems,
-                ...(response.sampleOrderItems || {}),
-                environmentalFields: {
-                  ...(prior?.sampleOrderItems?.environmentalFields || {}),
-                  ...(response.sampleOrderItems?.environmentalFields || {}),
-                },
-                labNo: response.labNumber,
-              },
-            };
+            const loadedOrderData = buildLoadedOrderData(
+              response,
+              orderDataRef.current,
+            );
 
             setOrderDataState(loadedOrderData);
 
