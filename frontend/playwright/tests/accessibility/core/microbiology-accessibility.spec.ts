@@ -2,12 +2,17 @@ import { test, expect } from "../../../helpers/test-base";
 import type { Locator } from "@playwright/test";
 import {
   seedFinalizedMicrobiologyCase,
+  seedMicrobiologyMvpCase,
   seedMicrobiologyReferenceAdmin,
   seedMicrobiologyWhonetExport,
   seedMicrobiologyWorklistCase,
   seedReviewedMicrobiologyCase,
 } from "../../../helpers/seed-microbiology-data";
 import { expectNoWcag21AaViolations } from "../../../helpers/accessibility";
+import {
+  createAndIdentifyMicrobiologyIsolate,
+  openMicrobiologyCaseSection,
+} from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test.describe("Microbiology WCAG 2.1 AA qualification", () => {
@@ -63,6 +68,43 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
         await expectNoWcag21AaViolations(page, testInfo, evidenceName);
       });
     }
+  });
+
+  test("shared reagent lot picker in culture and AST", async ({
+    page,
+  }, testInfo) => {
+    const seeded = await seedMicrobiologyMvpCase(page);
+
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?section=setup`, {
+      waitUntil: "domcontentloaded",
+    });
+    const setup = page.getByRole("region", { name: "Inoculation" });
+    await setup.getByRole("button", { name: "Start inoculation" }).click();
+    await expect(
+      setup.getByRole("searchbox", { name: "Scan or enter lot number" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(setup.getByText("FEFO - use first").first()).toBeVisible();
+    await expect(setup.getByText("QC passed").first()).toBeVisible();
+    await expectNoWcag21AaViolations(
+      page,
+      testInfo,
+      "microbiology-reagent-picker-culture",
+    );
+    await setup.getByRole("button", { name: "Cancel" }).click();
+
+    await createAndIdentifyMicrobiologyIsolate(page, seeded.organismId!);
+    await openMicrobiologyCaseSection(page, "Manual AST");
+    const ast = page.getByTestId("microbiology-ast-card");
+    await expect(
+      ast.getByRole("searchbox", { name: "Scan or enter lot number" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(ast.getByText("FEFO - use first").first()).toBeVisible();
+    await expect(ast.getByText("QC passed").first()).toBeVisible();
+    await expectNoWcag21AaViolations(
+      page,
+      testInfo,
+      "microbiology-reagent-picker-ast",
+    );
   });
 
   test("final-case amendment panel", async ({ page }, testInfo) => {
