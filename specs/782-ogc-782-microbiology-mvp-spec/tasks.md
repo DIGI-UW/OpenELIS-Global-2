@@ -498,8 +498,8 @@ opens exactly one resulting case containing those details.
 
 ### M-05 AST Alignment
 
-- [ ] T243 [R1] Add failing service and React tests for ordered-panel provenance, panel/version and standard/version snapshots, method-driven units, and matched-breakpoint display.
-- [ ] T244 [R1] Make AST setup confirm the upstream panel by default; require an audited reason for panel adjustment and retain the changed ordered-work provenance.
+- [ ] T243 [R1] Add failing service and React tests for ordered-panel provenance, panel/version and standard/version snapshots, method-driven units, and matched-breakpoint display. Ordered-panel and immutable version-snapshot tests are implemented in `92fb708c8`; reading source, method-driven units, and matched-level display remain open.
+- [ ] T244 [R1] Make AST setup confirm the upstream panel by default; require an audited reason for panel adjustment and retain the changed ordered-work provenance. Confirmation-first setup, server enforcement, actor-linked reason, and run snapshots are implemented in `92fb708c8`; a standard ordered-analysis projection and report-set reconciliation remain open rather than being implied by the run alone.
 - [ ] T245 [R1] Add inline original-to-override history and supervisor revert with actor, time, reason, and unchanged original reading.
 - [ ] T246 [R1] Add analyzer-result and QC lifecycle behavior: awaiting results, results-in review, mismatch/no-breakpoint/QC blockers, accept results, invalidate-and-repeat, and named reconciliation handoff for unmatched events.
 - [ ] T247 [R1] Capture analyzer provenance and keep analyzer organism identity informational; flag disagreement with the case isolate without silently replacing it.

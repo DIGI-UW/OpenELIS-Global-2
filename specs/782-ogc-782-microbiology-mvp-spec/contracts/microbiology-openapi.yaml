@@ -121,11 +121,44 @@ paths:
                 $ref: "#/components/schemas/MicroIsolate"
         "400":
           description: Invalid isolate update
-  /microbiology/isolates/{isolateId}/ast-runs:
+  /microbiology/ast/setup:
+    get:
+      summary: Resolve the ordered AST panel for an identified isolate
+      parameters:
+        - name: isolateId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server-resolved AST setup context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstSetup"
+        "400":
+          description: Isolate is not identified or its configured panel is unavailable
+  /microbiology/ast/runs:
+    get:
+      summary: List AST runs and readings for an isolate
+      parameters:
+        - name: isolateId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: AST runs with readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AstRun"
     post:
       summary: Start AST for an isolate
-      parameters:
-        - $ref: "#/components/parameters/IsolateId"
       requestBody:
         required: true
         content:
@@ -141,9 +174,9 @@ paths:
                 $ref: "#/components/schemas/AstRun"
         "400":
           description: Isolate context is insufficient for AST
-  /microbiology/ast-runs/{astRunId}/readings:
-    put:
-      summary: Save AST readings for a run
+  /microbiology/ast/runs/{astRunId}/readings:
+    post:
+      summary: Append a manual AST reading to a run
       parameters:
         - $ref: "#/components/parameters/AstRunId"
       requestBody:
@@ -151,24 +184,17 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - readings
-              properties:
-                readings:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/AstReadingRequest"
+              $ref: "#/components/schemas/AstReadingRequest"
       responses:
         "200":
-          description: AST run with interpreted readings
+          description: Interpreted AST reading
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AstRun"
+                $ref: "#/components/schemas/AstReading"
         "400":
           description: Invalid reading payload
-  /microbiology/ast-runs/{astRunId}/review:
+  /microbiology/ast/runs/{astRunId}/review:
     post:
       summary: Mark an AST run reviewed
       parameters:
@@ -182,6 +208,54 @@ paths:
                 $ref: "#/components/schemas/AstRun"
         "400":
           description: AST run is not reviewable
+  /microbiology/ast/runs/{astRunId}/attempts:
+    post:
+      summary: Start a repeat or retest AST run while preserving the source run
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstRunRequest"
+      responses:
+        "200":
+          description: Preserved new AST attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /microbiology/ast/runs/{astRunId}/reportable:
+    post:
+      summary: Select a reviewed AST run for reporting
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      responses:
+        "200":
+          description: Selected reportable AST run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /microbiology/ast/readings/{readingId}/override:
+    put:
+      summary: Override an AST interpretation with a required reason
+      parameters:
+        - $ref: "#/components/parameters/ReadingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstOverrideRequest"
+      responses:
+        "200":
+          description: Updated AST reading with original interpretation retained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstReading"
   /microbiology/cases/{caseId}/critical-communications:
     post:
       summary: Log a critical microbiology communication
@@ -296,6 +370,12 @@ components:
         type: string
     AstRunId:
       name: astRunId
+      in: path
+      required: true
+      schema:
+        type: string
+    ReadingId:
+      name: readingId
       in: path
       required: true
       schema:
@@ -485,12 +565,18 @@ components:
     AstRunRequest:
       type: object
       properties:
+        isolateId:
+          type: string
         panelId:
           type: string
-        method:
+        panelAdjustmentReason:
           type: string
         breakpointStandardId:
           type: string
+        lotSelections:
+          type: array
+          items:
+            type: object
     AstRun:
       type: object
       properties:
@@ -498,43 +584,92 @@ components:
           type: string
         isolateId:
           type: string
+        panelId:
+          type: string
+        panelVersion:
+          type: integer
+        panelProvenance:
+          type: string
+          enum:
+            - ORGANISM_DEFAULT
+            - ADJUSTED
+        panelAdjustmentReason:
+          type: string
+        breakpointStandardId:
+          type: string
+        breakpointVersion:
+          type: string
+        method:
+          type: string
         status:
           type: string
         readings:
           type: array
           items:
             $ref: "#/components/schemas/AstReading"
+    AstSetup:
+      type: object
+      properties:
+        isolateId:
+          type: string
+        orderedPanelId:
+          type: string
+        orderedPanelLabel:
+          type: string
+        orderedPanelVersion:
+          type: integer
+        panelProvenance:
+          type: string
+          enum:
+            - ORGANISM_DEFAULT
+            - UNASSIGNED
     AstReadingRequest:
       type: object
       required:
         - antibioticId
-        - readingValue
+        - method
+        - rawValue
       properties:
         antibioticId:
           type: string
-        readingType:
+        method:
           type: string
-        readingValue:
+          enum:
+            - MIC
+            - ZONE
+        rawValue:
+          type: number
+    AstReading:
+      type: object
+      properties:
+        id:
           type: string
-        readingUnit:
+        astRunId:
+          type: string
+        antibioticId:
+          type: string
+        method:
+          type: string
+        rawValue:
+          type: number
+        interpretation:
+          type: string
+        breakpointRuleId:
           type: string
         overrideInterpretation:
           type: string
         overrideReason:
           type: string
-    AstReading:
-      allOf:
-        - $ref: "#/components/schemas/AstReadingRequest"
-        - type: object
-          properties:
-            id:
-              type: string
-            interpretedValue:
-              type: string
-            finalInterpretation:
-              type: string
-            requiresManualJudgment:
-              type: boolean
+    AstOverrideRequest:
+      type: object
+      required:
+        - overrideInterpretation
+        - overrideReason
+      properties:
+        overrideInterpretation:
+          type: string
+        overrideReason:
+          type: string
     CriticalCommunicationRequest:
       type: object
       required:
