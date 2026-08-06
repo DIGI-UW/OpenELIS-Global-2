@@ -137,7 +137,11 @@ const CaseNonconformancePanel = ({
   };
 
   return (
-    <section className="microbiology-card" aria-busy={loading || saving}>
+    <section
+      className="microbiology-card"
+      data-testid="microbiology-nce-panel"
+      aria-busy={loading || saving}
+    >
       <Stack gap={5}>
         <div>
           <h3>

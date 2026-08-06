@@ -5,6 +5,35 @@ import {
 } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
+const selectConfiguredOption = async (
+  select: import("@playwright/test").Locator,
+  fieldName: string,
+) => {
+  await expect(select).toBeEnabled();
+  await expect
+    .poll(async () =>
+      select
+        .locator("option")
+        .evaluateAll((options) =>
+          options
+            .map((option) => (option as HTMLOptionElement).value)
+            .filter(Boolean),
+        ),
+    )
+    .not.toEqual([]);
+  const values = await select
+    .locator("option")
+    .evaluateAll((options) =>
+      options
+        .map((option) => (option as HTMLOptionElement).value)
+        .filter(Boolean),
+    );
+  if (!values[0]) {
+    throw new Error(`${fieldName} has no configured options`);
+  }
+  await select.selectOption(values[0]);
+};
+
 test.describe("Microbiology case workbench", () => {
   test("records inoculation lineage and completes two-pass isolate identification", async ({
     page,
@@ -191,5 +220,85 @@ test.describe("Microbiology case workbench", () => {
       page.getByText("Corrected during accession review"),
     ).toBeVisible();
     await expect(page.getByText("Workflow Changed")).toBeVisible();
+  });
+
+  test("reports an NCE and marks a separate specimen lost", async ({
+    page,
+  }) => {
+    const flagged = await seedMicrobiologyCase(page);
+    await page.goto(`/Microbiology/cases/${flagged.caseId}`, {
+      waitUntil: "commit",
+    });
+    const caseHeader = page.locator("header");
+    await expect(
+      page.getByRole("heading", { name: "Microbiology case" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+
+    await caseHeader.getByRole("button", { name: "Report NCE" }).click();
+    await expect(page).toHaveURL(/section=nonconformance&action=report-nce/);
+    const reportPanel = page.getByTestId("microbiology-nce-panel");
+    await expect(
+      reportPanel.getByRole("heading", { name: "Report nonconformance" }),
+    ).toBeVisible();
+    await selectConfiguredOption(
+      reportPanel.getByLabel("Category"),
+      "Category",
+    );
+    await selectConfiguredOption(
+      reportPanel.getByLabel("Reporting unit"),
+      "Reporting unit",
+    );
+    await reportPanel.getByRole("radio", { name: "Major" }).check();
+    await reportPanel
+      .getByLabel("Description")
+      .fill("Container arrived cracked during receipt");
+    await reportPanel.getByRole("radio", { name: "Flag only" }).check();
+    await reportPanel.getByRole("button", { name: "Report NCE" }).click();
+
+    await expect(page).toHaveURL(/section=timeline/);
+    await expect(
+      page.getByText("Container arrived cracked during receipt"),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page.getByText("Nonconformance Reported")).toBeVisible();
+
+    const lost = await seedMicrobiologyCase(page);
+    await page.goto(`/Microbiology/cases/${lost.caseId}`, {
+      waitUntil: "commit",
+    });
+    await expect(
+      page.getByRole("heading", { name: "Microbiology case" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await page
+      .locator("header")
+      .getByRole("button", { name: /Mark lost/ })
+      .click();
+    await expect(page).toHaveURL(/section=nonconformance&action=mark-lost/);
+    const lostPanel = page.getByTestId("microbiology-nce-panel");
+    await expect(
+      lostPanel.getByRole("heading", { name: "Mark specimen lost" }),
+    ).toBeVisible();
+    await expect(lostPanel.getByLabel("Category")).toBeDisabled();
+    await expect(lostPanel.getByLabel("Type")).toBeDisabled();
+    await expect(lostPanel.getByLabel("Type")).toHaveValue(/.+/);
+    await selectConfiguredOption(
+      lostPanel.getByLabel("Reporting unit"),
+      "Reporting unit",
+    );
+    await lostPanel.getByRole("radio", { name: "Major" }).check();
+    await lostPanel
+      .getByLabel("Description")
+      .fill("Specimen cannot be located after accession");
+    await expect(
+      lostPanel.getByRole("radio", { name: "Reject affected tests" }),
+    ).toBeChecked();
+    await lostPanel.getByRole("button", { name: "Mark lost" }).click();
+
+    await expect(page).toHaveURL(/section=timeline/);
+    await expect(
+      page.locator("header").getByTitle("Lost Specimen"),
+    ).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    await expect(page.getByText("Specimen Lost")).toBeVisible();
   });
 });
