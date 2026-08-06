@@ -19,8 +19,6 @@ import org.openelisglobal.menu.valueholder.Menu;
 import org.openelisglobal.systemmodule.service.SystemModuleUrlService;
 import org.openelisglobal.systemmodule.valueholder.SystemModuleParam;
 import org.openelisglobal.systemmodule.valueholder.SystemModuleUrl;
-import org.openelisglobal.systemusermodule.service.PermissionModuleService;
-import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -50,9 +48,6 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
 
     @Autowired
     private UserRoleService userRoleService;
-
-    @Autowired
-    private PermissionModuleService<PermissionModule> permissionModuleService;
 
     @Autowired
     private UserContextHolder userContextHolder;
@@ -133,13 +128,14 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
         }
         String sysUserId = userContextHolder.getCurrentSysUserId();
         if (GenericValidator.isBlankOrNull(sysUserId)) {
-            // No resolvable identity (anonymous or daemon context): return the tree
-            // rather than hiding every node with a declared policy.
+            // No resolvable identity: return the tree rather than hiding every node
+            // with a declared policy.
             return menuTree;
         }
 
-        Set<String> permittedModules = permittedModulesForRolesOf(sysUserId);
-        Map<String, List<SystemModuleUrl>> urlsByPath = indexModuleUrlsByPath();
+        Set<String> permittedModules = userRoleService.getAllPermittedPagesForUser(sysUserId);
+        Map<String, List<SystemModuleUrl>> urlsByPath = systemModuleUrlService.getAll().stream()
+                .collect(Collectors.groupingBy(SystemModuleUrl::getUrlPath));
         Set<String> visibleElementIds = new HashSet<>();
         collectIndependentlyVisible(menuTree, permittedModules, urlsByPath, visibleElementIds);
 
@@ -151,35 +147,8 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
 
     private boolean holdsAdminAuthority() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return true;
-        }
-        return authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+        return authentication != null && authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
                 .anyMatch(ADMIN_AUTHORITIES::contains);
-    }
-
-    /**
-     * ponytail: resolves privileges from the user's roles only. The USER value of
-     * the {@code permissions.agent} property is unsupported here — it is set in no
-     * deployment and {@code system_user_module} carries no rows.
-     */
-    private Set<String> permittedModulesForRolesOf(String sysUserId) {
-        Set<String> permittedModules = new HashSet<>();
-        List<String> roleIds = userRoleService.getRoleIdsForUser(sysUserId);
-        if (roleIds == null) {
-            return permittedModules;
-        }
-        for (String roleId : roleIds) {
-            if (!GenericValidator.isBlankOrNull(roleId)) {
-                permittedModules.addAll(
-                        permissionModuleService.getAllPermittedPagesFromAgentId(Integer.parseInt(roleId.trim())));
-            }
-        }
-        return permittedModules;
-    }
-
-    private Map<String, List<SystemModuleUrl>> indexModuleUrlsByPath() {
-        return systemModuleUrlService.getAll().stream().collect(Collectors.groupingBy(SystemModuleUrl::getUrlPath));
     }
 
     private void collectIndependentlyVisible(List<MenuItem> menuItems, Set<String> permittedModules,

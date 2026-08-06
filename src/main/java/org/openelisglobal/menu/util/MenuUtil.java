@@ -72,17 +72,11 @@ public class MenuUtil {
             createTree();
         }
 
-        List<MenuItem> menuTree = root;
+        List<MenuItem> menuTree = isMenuFilteringEnabled() ? filterMenuTree(root) : root;
 
-        // Apply menu filtering if enabled
-        if (isMenuFilteringEnabled()) {
-            menuTree = filterMenuTree(menuTree);
-        }
-
-        // Drop nodes the current user holds no privilege for. Applied last so the
-        // deployment-wide config filter above still bounds what any user can see, and
-        // applied here rather than in the controller so every consumer of the tree —
-        // including the legacy banner.jsp menu — is covered.
+        // Privilege filter applied last, so the deployment-wide config filter above
+        // still bounds every user; applied here rather than in the controller so every
+        // consumer of the tree — including the legacy banner.jsp menu — is covered.
         return menuService.filterByPrivilege(menuTree);
     }
 

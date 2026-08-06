@@ -48,17 +48,10 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * Reports an authorization failure as 401 rather than letting the
-     * RuntimeException handler below report it as 500.
-     *
-     * <p>
-     * {@code AccessDeniedException} is a RuntimeException, so every
-     * {@code @PreAuthorize} denial on a path that
-     * {@code ModuleAuthenticationInterceptor} does not cover — i.e. any path with
-     * no {@code system_module_url} row, which includes every endpoint carrying a
-     * path variable — surfaced as a generic server error. 401 matches the status
-     * the interceptor already returns for a denied REST call, so clients see one
-     * consistent code either way.
+     * {@code AccessDeniedException} is a RuntimeException, so the catch-all below
+     * reported every {@code @PreAuthorize} denial the interceptor does not cover
+     * (any endpoint carrying a path variable) as 500. 401 matches the status the
+     * interceptor already returns for a denied REST call.
      */
     @ExceptionHandler(value = { AccessDeniedException.class })
     protected ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {

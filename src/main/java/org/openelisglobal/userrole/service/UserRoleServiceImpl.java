@@ -2,8 +2,12 @@ package org.openelisglobal.userrole.service;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.systemusermodule.service.PermissionModuleService;
+import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.userrole.dao.UserLabUnitRolesDAO;
 import org.openelisglobal.userrole.dao.UserRoleDAO;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
@@ -21,6 +25,8 @@ public class UserRoleServiceImpl extends AuditableBaseObjectServiceImpl<UserRole
     protected UserRoleDAO baseObjectDAO;
     @Autowired
     protected UserLabUnitRolesDAO userLabUnitRolesDAO;
+    @Autowired
+    protected PermissionModuleService<PermissionModule> permissionModuleService;
 
     UserRoleServiceImpl() {
         super(UserRole.class);
@@ -37,6 +43,16 @@ public class UserRoleServiceImpl extends AuditableBaseObjectServiceImpl<UserRole
     @Transactional(readOnly = true)
     public List<String> getRoleIdsForUser(String userId) {
         return baseObjectDAO.getRoleIdsForUser(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getAllPermittedPagesForUser(String userId) {
+        Set<String> permittedPages = new HashSet<>();
+        for (String roleId : baseObjectDAO.getRoleIdsForUser(userId)) {
+            permittedPages.addAll(permissionModuleService.getAllPermittedPagesFromAgentId(Integer.parseInt(roleId)));
+        }
+        return permittedPages;
     }
 
     @Override

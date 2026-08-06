@@ -33,16 +33,11 @@ public class MenuController {
     }
 
     /**
-     * Serves the unfiltered tree for the menu configuration screens, which must be
-     * able to edit nodes the editing admin would not otherwise see.
-     *
-     * <p>
-     * Admin-only: without this the privilege filter on {@code /rest/menu} is
-     * trivially sidestepped, because any authenticated caller could read the
-     * unfiltered node here instead. The interceptor does not cover it — no
-     * {@code system_module_url} row maps this path, so {@code /rest/**} is
-     * auto-allowed. Every caller (the Billing, Patient, NonConformity and Global
-     * menu configuration screens) already sits behind a GLOBAL_ADMIN route.
+     * Serves the unfiltered tree for the menu configuration screens. Admin-only:
+     * otherwise any authenticated caller could read nodes the {@code /rest/menu}
+     * filter removed — the interceptor auto-allows this path, since no
+     * {@code system_module_url} row can match a path-variable URL. All callers sit
+     * behind GLOBAL_ADMIN routes.
      */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping(value = "/rest/admin/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)

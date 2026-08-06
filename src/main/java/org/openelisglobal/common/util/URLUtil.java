@@ -10,18 +10,10 @@ public class URLUtil {
 
     /**
      * Normalizes a raw path (optionally carrying a query string) to the form stored
-     * in {@code system_module_url.url_path}.
-     *
-     * <p>
-     * Extracted from {@link #getReourcePathFromRequest(HttpServletRequest)} so
-     * callers that hold a path string rather than a request — notably the menu
-     * privilege filter, which normalizes {@code menu.action_url} — resolve paths
-     * identically to the interceptor. Divergent normalization would let the menu
-     * advertise a link the interceptor rejects.
-     *
-     * <p>
-     * The body is a verbatim move; the pre-existing {@code /rest} prefix handling
-     * is intentionally unchanged here so the extraction cannot alter behaviour.
+     * in {@code system_module_url.url_path}. Extracted verbatim from
+     * {@link #getReourcePathFromRequest(HttpServletRequest)} so the menu privilege
+     * filter resolves paths exactly as the interceptor does — divergent
+     * normalization would let the menu advertise a link the interceptor rejects.
      */
     public static String getResourcePath(String pathAndQuery) {
         String pathWithoutQuery;
