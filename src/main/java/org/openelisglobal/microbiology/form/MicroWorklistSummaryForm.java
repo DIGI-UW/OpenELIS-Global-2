@@ -1,5 +1,8 @@
 package org.openelisglobal.microbiology.form;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * Counts for the action-first worklist summary. These counts intentionally
  * exclude selected stage and due-action filters so a summary tile remains
@@ -20,4 +23,5 @@ public class MicroWorklistSummaryForm {
     public int astInProgress;
     public int astAwaitingResults;
     public int astResultsIn;
+    public Map<String, Integer> resistanceHits = new LinkedHashMap<>();
 }

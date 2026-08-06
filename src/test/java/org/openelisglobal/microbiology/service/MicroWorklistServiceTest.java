@@ -23,6 +23,7 @@ import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
+import org.openelisglobal.microbiology.form.MicroWorklistRecentActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistRowForm;
 import org.openelisglobal.microbiology.form.MicroWorklistSpecimenContext;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
@@ -63,6 +64,8 @@ public class MicroWorklistServiceTest {
     public void setUp() {
         when(contextDAO.getSpecimenContexts(anyList())).thenReturn(List.of());
         when(contextDAO.getLatestActivityContexts(anyList())).thenReturn(List.of());
+        when(contextDAO.getRecentActivityContexts(anyList(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of());
         when(panelDAO.getByIds(anyList())).thenReturn(List.of());
         service = new MicroWorklistServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO, contextDAO, panelDAO);
     }
@@ -78,6 +81,8 @@ public class MicroWorklistServiceTest {
         run.setIsolateId("isolate-1");
         run.setPanelId("panel-1");
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
+        run.setAnalyzerExpertFlags("ESBL|MDR");
+        run.setAnalyzerCompletedAt(new java.sql.Timestamp(System.currentTimeMillis()));
         MicroAstPanel panel = new MicroAstPanel();
         panel.setId("panel-1");
         panel.setName("Gram negative standard");
@@ -91,11 +96,15 @@ public class MicroWorklistServiceTest {
                 List.of(new MicroWorklistSpecimenContext("sample-1", "LAB-1001", "Mendez, Olivia", "Blood")));
         when(contextDAO.getLatestActivityContexts(List.of("case-1"))).thenReturn(
                 List.of(new MicroWorklistActivityContext("case-1", lastActivityAt, "7", "Olivia", "Mendez")));
+        when(contextDAO.getRecentActivityContexts(List.of("case-1"), 25))
+                .thenReturn(List.of(new MicroWorklistRecentActivityContext("case-1", lastActivityAt, "7", "Olivia",
+                        "Mendez", "AST_REVIEWED", "AST run reviewed")));
         when(panelDAO.getByIds(List.of("panel-1"))).thenReturn(List.of(panel));
 
         MicroWorklistQueryForm cultureQuery = new MicroWorklistQueryForm();
         cultureQuery.q = "Mendez";
-        MicroWorklistRowForm cultureRow = service.getWorklistPage(cultureQuery).rows.get(0);
+        MicroWorklistPageForm culturePage = service.getWorklistPage(cultureQuery);
+        MicroWorklistRowForm cultureRow = culturePage.rows.get(0);
         MicroWorklistQueryForm astQuery = new MicroWorklistQueryForm();
         astQuery.grain = "ast";
         astQuery.q = "Gram negative";
@@ -109,8 +118,14 @@ public class MicroWorklistServiceTest {
         assertEquals("Gram negative standard", astRow.panelName);
         assertEquals("LAB-1001", astRow.accessionNumber);
         assertEquals("Mendez, Olivia", astRow.patientDisplay);
+        assertEquals(1, culturePage.summary.resistanceHits.get("ESBL").intValue());
+        assertEquals(1, culturePage.summary.resistanceHits.get("MDR").intValue());
+        assertEquals(1, culturePage.recentActivity.size());
+        assertEquals("LAB-1001", culturePage.recentActivity.get(0).accessionNumber);
+        assertEquals("Olivia Mendez", culturePage.recentActivity.get(0).performedByDisplay);
         verify(contextDAO, org.mockito.Mockito.times(2)).getSpecimenContexts(List.of("sample-1"));
         verify(contextDAO, org.mockito.Mockito.times(2)).getLatestActivityContexts(List.of("case-1"));
+        verify(contextDAO, org.mockito.Mockito.times(2)).getRecentActivityContexts(List.of("case-1"), 25);
         verify(panelDAO, org.mockito.Mockito.times(2)).getByIds(List.of("panel-1"));
     }
 

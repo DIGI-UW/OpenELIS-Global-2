@@ -20,6 +20,8 @@ public class MicroWorklistContextHqlValidationTest extends BaseWebContextSensiti
             assertNotNull(entityManager.createQuery(MicroWorklistContextDAOImpl.SPECIMEN_CONTEXT_HQL, Object[].class));
             assertNotNull(
                     entityManager.createQuery(MicroWorklistContextDAOImpl.LATEST_ACTIVITY_CONTEXT_HQL, Object[].class));
+            assertNotNull(
+                    entityManager.createQuery(MicroWorklistContextDAOImpl.RECENT_ACTIVITY_CONTEXT_HQL, Object[].class));
         } finally {
             entityManager.close();
         }
