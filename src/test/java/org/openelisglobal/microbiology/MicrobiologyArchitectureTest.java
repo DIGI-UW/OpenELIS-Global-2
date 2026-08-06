@@ -13,6 +13,7 @@ import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseInoculationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseTimelineRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCriticalCommunicationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroReportReleaseRestController;
@@ -27,10 +28,11 @@ public class MicrobiologyArchitectureTest {
     @Test
     public void microbiologyControllersDoNotDeclareTransactions() {
         Class<?>[] controllers = { MicroCaseRestController.class, MicroCaseInoculationRestController.class,
-                MicroIsolateRestController.class, MicroAstRestController.class, MicroCaseReadinessRestController.class,
-                MicrobiologyReferenceRestController.class, MicroWorklistRestController.class,
-                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
-                MicroWhonetReadinessRestController.class, MicrobiologyUatScenarioRestController.class };
+                MicroCaseTimelineRestController.class, MicroIsolateRestController.class, MicroAstRestController.class,
+                MicroCaseReadinessRestController.class, MicrobiologyReferenceRestController.class,
+                MicroWorklistRestController.class, MicroCriticalCommunicationRestController.class,
+                MicroReportReleaseRestController.class, MicroWhonetReadinessRestController.class,
+                MicrobiologyUatScenarioRestController.class };
         for (Class<?> controller : controllers) {
             assertFalse(controller.isAnnotationPresent(Transactional.class));
             for (Method method : controller.getDeclaredMethods()) {

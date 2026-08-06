@@ -43,6 +43,23 @@ export const recordCaseInoculation = (caseId, payload) =>
     );
   });
 
+export const getCaseTimeline = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/timeline`,
+      resolve,
+    );
+  });
+
+export const addCaseNote = (caseId, text) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/notes`,
+      JSON.stringify({ text }),
+      resolve,
+    );
+  });
+
 export const createIsolate = (payload) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
@@ -374,6 +391,8 @@ const MicrobiologyService = {
   recordCaseActivity,
   getCaseInoculations,
   recordCaseInoculation,
+  getCaseTimeline,
+  addCaseNote,
   getReagentLotOverview,
   createIsolate,
   updateIsolateIdentification,

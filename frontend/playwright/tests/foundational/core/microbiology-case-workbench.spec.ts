@@ -59,6 +59,13 @@ test.describe("Microbiology case workbench", () => {
     ).toBeVisible();
     await expect(page.getByText("Subculture Recorded")).toBeVisible();
     await expect(page.getByText(/PLATE-002 - MacConkey agar/)).toBeVisible();
+    await page.getByRole("button", { name: "Add note" }).click();
+    await page
+      .getByLabel("Note or observation")
+      .fill("Colonies visible at 18 hours");
+    await page.getByRole("button", { name: "Save note" }).click();
+    await expect(page.getByText("Colonies visible at 18 hours")).toBeVisible();
+    await expect(page.getByText("Manual")).toBeVisible();
 
     await caseView
       .getByRole("button", { name: "Isolates", exact: true })
