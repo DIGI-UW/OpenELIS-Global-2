@@ -354,6 +354,15 @@ in the named acceptance criterion is absent or unproven.
   keyboard-scrollable. Twenty-two focused Carbon tests pass; the expanded
   registered keyboard journey passes 2/2 entries including auth in 16.1
   seconds against the local PostgreSQL/OpenELIS stack without arbitrary waits.
+- **Routed case-action closure:** `a7a95944b` gives the Report NCE, Mark lost,
+  Mark positive, and No growth panels deterministic heading focus after the
+  Carbon accordion opens, while preventing the parent section from racing for
+  focus. Worklist overflow commands are activated through the keyboard. The
+  property-gated scenario now establishes the active Specimen lost vocabulary
+  idempotently through audited NCE services; it uses generated opaque IDs and
+  performs no SQL or DAO bypass. The focused suites pass 35 Carbon tests and 8
+  service tests, and the complete case-workbench Playwright file passes 4/4 in
+  15.5 seconds against local PostgreSQL/OpenELIS without arbitrary waits.
 - **Order and reference closure:** `62b31281a` reuses one service-created M-03
   setup helper and selects its patient by exact external ID, eliminating
   accumulated-name ambiguity. The shared Generate Lab Number command is a
@@ -375,10 +384,9 @@ in the named acceptance criterion is absent or unproven.
   `scrollable-region-focusable` violation in shared reference tables. The
   implementation fixes those causes rather than suppressing rules or adding
   test-only timing.
-- **Still open:** T264 remains open for direct interaction coverage of M-04
-  NCE, lost-specimen, mark-positive, and no-growth actions; M-05 analyzer/QC,
-  override/revert, repeat scope, and report readiness; and reference edit-modal
-  focus return. Exact AMR deployment and
+- **Still open:** T264 remains open for direct interaction coverage of M-05
+  analyzer/QC, override/revert, repeat scope, and report readiness plus
+  reference edit-modal focus return. Exact AMR deployment and
   human review remain T272-T273. The shared URL-less shell still produces a
   known 404 console message and is not recorded as clean-console evidence.
 
@@ -510,10 +518,16 @@ promote a behavior to Complete.
   `core-app` registration and selector-policy validation. `8e3337870` registers
   browser journeys for flag-only NCE and a separate destructive lost-specimen
   scenario without SQL fixtures, fixed primary keys, or arbitrary waits.
-- **Still open:** the new Playwright journey has not run against this exact SHA;
-  Grist stories, deployed overlay verification, stable desktop/mobile mock
-  comparison, and human UAT are pending. The sibling-loss cascade remains the
-  explicit product ruling above.
+- **Exact action evidence:** `a7a95944b` moves focus into the routed NCE/lost
+  and culture-transition panels, proves worklist commands through Carbon
+  keyboard interactions, and keeps section focus deterministic. Its
+  service-created fixture establishes required active NCE vocabulary through
+  `NceCategoryService` and `NceTypeService`, using generated IDs. Eight focused
+  fixture-service tests, 35 Carbon tests, and the registered case-workbench
+  Playwright file (4/4 in 15.5 seconds) pass locally.
+- **Still open:** Grist stories, deployed overlay verification, stable
+  desktop/mobile mock comparison, and human UAT are pending. The sibling-loss
+  cascade remains the explicit product ruling above.
 
 ## R1 M-05 Ordered Panel Provenance Evidence
 
