@@ -36,7 +36,7 @@ import {
   Tile,
   Pagination,
 } from "@carbon/react";
-import { View, TrashCan } from "@carbon/icons-react";
+import { View } from "@carbon/icons-react";
 import "./FreezerMonitoringDashboard.scss";
 import CorrectiveActions from "./CorrectiveActions";
 import HistoricalTrends from "./HistoricalTrends";
@@ -49,7 +49,6 @@ import {
   fetchOpenAlerts,
   acknowledgeAlert,
   resolveAlert,
-  deleteAlert,
 } from "./api";
 import AlertDetailModal from "./AlertDetailModal";
 import DeviceHistoryExpansion from "./DeviceHistoryExpansion";
@@ -57,7 +56,6 @@ import { toDate, formatDuration } from "./shared/timeUtils";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { hasRole, Roles } from "../utils/Utils";
 
 // Dashboard auto-refresh interval. The backend default Modbus poll cycle is
 // 5 minutes; refreshing every 60s is meaningfully fresher than "never" while
@@ -301,10 +299,6 @@ function FreezerMonitoringDashboard({ intl }) {
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const currentUserId = userSessionDetails?.userId;
-  // Alert deletion is ADMIN-only server-side (Roles.GLOBAL_ADMIN maps to the
-  // backend's ADMIN role) - hide the control for non-admins rather than
-  // showing it and relying solely on a 403 toast.
-  const isAdminUser = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
@@ -485,8 +479,6 @@ function FreezerMonitoringDashboard({ intl }) {
             currentUserId,
             "Resolved via Cold Storage dashboard",
           );
-        } else if (action === "delete") {
-          await deleteAlert(alertId);
         }
         await loadDashboardData();
         notify({
@@ -495,9 +487,7 @@ function FreezerMonitoringDashboard({ intl }) {
           subtitle:
             action === "acknowledge"
               ? "Alert acknowledged successfully"
-              : action === "resolve"
-                ? "Alert resolved successfully"
-                : "Alert deleted successfully",
+              : "Alert resolved successfully",
         });
       } catch (error) {
         const isForbidden = error?.status === 403;
@@ -522,11 +512,6 @@ function FreezerMonitoringDashboard({ intl }) {
 
   const handleResolveAlert = useCallback(
     (alertId) => handleAlertAction(alertId, "resolve"),
-    [handleAlertAction],
-  );
-
-  const handleDeleteAlert = useCallback(
-    (alertId) => handleAlertAction(alertId, "delete"),
     [handleAlertAction],
   );
 
@@ -1202,31 +1187,6 @@ function FreezerMonitoringDashboard({ intl }) {
                                                           "Acknowledge",
                                                       })}
                                                     </Button>
-                                                  )}
-                                                  {isAdminUser && (
-                                                    <Button
-                                                      kind="danger--ghost"
-                                                      size="sm"
-                                                      renderIcon={TrashCan}
-                                                      iconDescription={intl.formatMessage(
-                                                        {
-                                                          id: "coldStorage.dashboard.deleteAlert",
-                                                          defaultMessage:
-                                                            "Delete alert",
-                                                        },
-                                                      )}
-                                                      hasIconOnly
-                                                      disabled={
-                                                        actionInFlight ===
-                                                        alert.id
-                                                      }
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteAlert(
-                                                          alert.id,
-                                                        );
-                                                      }}
-                                                    />
                                                   )}
                                                 </div>
                                               </TableCell>
