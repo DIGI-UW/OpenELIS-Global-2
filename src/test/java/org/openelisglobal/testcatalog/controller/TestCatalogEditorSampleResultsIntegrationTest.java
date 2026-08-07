@@ -482,6 +482,12 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 "SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = 'SRIT-HIV1'", Long.class,
                 TEST_ID);
         assertEquals("no test_result row may keep the raw text", Long.valueOf(0L), rawRows);
+        // The save also refreshes the cached DICTIONARY_TEST_RESULTS display list
+        // (legacy Test Add / select-list pages) so the materialized entry is
+        // offered without a restart. The cache itself is a static singleton that
+        // other suites and the transactional test context both mutate, so its
+        // contents are asserted by the direct category query above, not through
+        // DisplayListService.
     }
 
     @org.junit.Test

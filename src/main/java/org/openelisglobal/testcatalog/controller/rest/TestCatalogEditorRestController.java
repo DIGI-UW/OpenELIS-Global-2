@@ -885,6 +885,10 @@ public class TestCatalogEditorRestController {
         }
         componentService.saveSampleResults(testId, desired, interpsByCode, optionsByCode, sysUserId);
         invalidateHealth();
+        // Free-text options are materialized into "Test Result" dictionary entries
+        // during the save; refresh the cached list the legacy Test Add /
+        // select-list pages read so the new entries show without a restart.
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.DICTIONARY_TEST_RESULTS);
         return ResponseEntity.ok(toSampleResults(testId));
     }
 
