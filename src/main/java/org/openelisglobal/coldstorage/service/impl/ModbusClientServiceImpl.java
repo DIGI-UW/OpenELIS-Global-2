@@ -15,8 +15,8 @@ import io.netty.channel.ChannelOption;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Optional;
-import org.openelisglobal.coldstorage.config.FreezerMonitoringProperties;
 import org.openelisglobal.coldstorage.service.ModbusClientService;
+import org.openelisglobal.coldstorage.service.SystemConfigService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.util.NetworkValidationUtil;
 import org.slf4j.Logger;
@@ -29,15 +29,35 @@ public class ModbusClientServiceImpl implements ModbusClientService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ModbusClientServiceImpl.class);
 
-    private final FreezerMonitoringProperties config;
+    /**
+     * Not admin-configurable: retrying more than once, or waiting longer between
+     * retries, is a rare enough tuning need that a code change is a reasonable bar,
+     * keeping the day-to-day configuration surface small.
+     */
+    private static final int RETRIES = 1;
+    private static final long RETRY_BACKOFF_MILLIS = 300;
 
-    public ModbusClientServiceImpl(FreezerMonitoringProperties config) {
-        this.config = config;
+    /**
+     * Floor for the TCP connect phase specifically, applied on top of the
+     * admin-configured timeout
+     * ({@link SystemConfigService#getModbusTimeoutMillis()}). Establishing a
+     * connection across a routed subnet or VPN tunnel - including TCP SYN
+     * retransmission on packet loss - routinely takes longer than the
+     * request/response exchange once connected, so a short admin-configured timeout
+     * tuned for a LAN device would otherwise abort the connection attempt itself,
+     * surfacing as a "disconnection" that isn't one (GitHub issue #3904).
+     */
+    private static final int MIN_CONNECT_TIMEOUT_MILLIS = 5000;
+
+    private final SystemConfigService systemConfigService;
+
+    public ModbusClientServiceImpl(SystemConfigService systemConfigService) {
+        this.systemConfigService = systemConfigService;
     }
 
     @Override
     public Optional<ReadingResult> readCurrentValues(Freezer freezer) {
-        int attempts = Math.max(1, config.getRetries() + 1);
+        int attempts = Math.max(1, RETRIES + 1);
         for (int attempt = 1; attempt <= attempts; attempt++) {
             try {
                 return Optional.of(readOnce(freezer));
@@ -64,10 +84,7 @@ public class ModbusClientServiceImpl implements ModbusClientService {
      * of other devices.
      */
     private void backoffBeforeRetry(Freezer freezer, int attempt) {
-        long backoffMillis = (long) config.getRetryBackoffMillis() * attempt;
-        if (backoffMillis <= 0) {
-            return;
-        }
+        long backoffMillis = RETRY_BACKOFF_MILLIS * attempt;
         try {
             Thread.sleep(backoffMillis);
         } catch (InterruptedException ie) {
@@ -91,10 +108,11 @@ public class ModbusClientServiceImpl implements ModbusClientService {
             throw new IllegalArgumentException("Connection to this address is not permitted: " + freezer.getHost());
         }
 
+        int timeoutMillis = systemConfigService.getModbusTimeoutMillis();
         NettyTcpClientTransport transport = NettyTcpClientTransport.create(cfg -> {
             cfg.setHostname(freezer.getHost());
             cfg.setPort(freezer.getPort());
-            cfg.setConnectTimeout(Duration.ofMillis(config.getConnectTimeoutMillis()));
+            cfg.setConnectTimeout(Duration.ofMillis(Math.max(timeoutMillis, MIN_CONNECT_TIMEOUT_MILLIS)));
             // SO_KEEPALIVE so a routed/VPN path that silently drops idle connections
             // (NAT/firewall connection-tracking expiry) is detected and torn down by the
             // OS instead of leaving a half-open socket that fails opaquely on next use
@@ -103,7 +121,7 @@ public class ModbusClientServiceImpl implements ModbusClientService {
         });
 
         ModbusTcpClient client = ModbusTcpClient.create(transport,
-                builder -> builder.setRequestTimeout(Duration.ofMillis(config.getTimeoutMillis())));
+                builder -> builder.setRequestTimeout(Duration.ofMillis(timeoutMillis)));
 
         try {
             try {
@@ -157,7 +175,7 @@ public class ModbusClientServiceImpl implements ModbusClientService {
         });
 
         ModbusRtuClient client = ModbusRtuClient.create(transport,
-                builder -> builder.setRequestTimeout(Duration.ofMillis(config.getTimeoutMillis())));
+                builder -> builder.setRequestTimeout(Duration.ofMillis(systemConfigService.getModbusTimeoutMillis())));
 
         try {
             client.connect();

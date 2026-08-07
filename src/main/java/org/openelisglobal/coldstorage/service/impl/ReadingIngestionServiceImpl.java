@@ -3,7 +3,6 @@ package org.openelisglobal.coldstorage.service.impl;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
-import org.openelisglobal.coldstorage.config.FreezerMonitoringProperties;
 import org.openelisglobal.coldstorage.service.FreezerReadingService;
 import org.openelisglobal.coldstorage.service.ReadingIngestionService;
 import org.openelisglobal.coldstorage.service.ThresholdEvaluationService;
@@ -21,18 +20,22 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReadingIngestionServiceImpl.class);
 
+    /**
+     * Not admin-configurable: how many consecutive failed polls before raising an
+     * offline alert is an internal alerting-sensitivity tuning knob, not something
+     * a lab admin needs day to day.
+     */
+    private static final int OFFLINE_ALERT_CONSECUTIVE_FAILURES = 3;
+
     private final ThresholdEvaluationService thresholdEvaluationService;
     private final FreezerReadingService freezerReadingService;
     private final ApplicationEventPublisher eventPublisher;
-    private final FreezerMonitoringProperties config;
 
     public ReadingIngestionServiceImpl(ThresholdEvaluationService thresholdEvaluationService,
-            FreezerReadingService freezerReadingService, ApplicationEventPublisher eventPublisher,
-            FreezerMonitoringProperties config) {
+            FreezerReadingService freezerReadingService, ApplicationEventPublisher eventPublisher) {
         this.thresholdEvaluationService = thresholdEvaluationService;
         this.freezerReadingService = freezerReadingService;
         this.eventPublisher = eventPublisher;
-        this.config = config;
     }
 
     @Override
@@ -74,7 +77,7 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
     }
 
     private boolean hasReachedConsecutiveFailureThreshold(Long freezerId) {
-        int threshold = config.getOfflineAlertConsecutiveFailures();
+        int threshold = OFFLINE_ALERT_CONSECUTIVE_FAILURES;
         List<FreezerReading> recent = freezerReadingService.getRecentReadings(freezerId, threshold);
         if (recent.size() < threshold) {
             return false;

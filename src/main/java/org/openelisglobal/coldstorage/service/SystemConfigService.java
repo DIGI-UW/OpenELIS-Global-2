@@ -14,6 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SystemConfigService {
 
+    private static final String MONITORING_ENABLED_KEY = "freezer.monitoring.enabled";
+    private static final String MODBUS_TIMEOUT_MILLIS_KEY = "freezer.modbus.timeout.ms";
+    private static final int DEFAULT_TIMEOUT_MILLIS = 2000;
+
     private final SiteInformationService siteInformationService;
     private final SiteInformationDomainService siteInformationDomainService;
 
@@ -37,6 +41,8 @@ public class SystemConfigService {
     public static class SystemConfigDTO {
         private Integer modbusTcpPort = 502;
         private Integer bacnetUdpPort = 47808;
+        private Boolean monitoringEnabled = Boolean.TRUE;
+        private Integer modbusTimeoutMillis = DEFAULT_TIMEOUT_MILLIS;
         private Boolean twoFactorAuthEnabled = Boolean.FALSE;
         private Integer sessionTimeoutMinutes = 30;
         private String systemVersion;
@@ -59,6 +65,22 @@ public class SystemConfigService {
 
         public void setBacnetUdpPort(Integer bacnetUdpPort) {
             this.bacnetUdpPort = bacnetUdpPort;
+        }
+
+        public Boolean getMonitoringEnabled() {
+            return monitoringEnabled;
+        }
+
+        public void setMonitoringEnabled(Boolean monitoringEnabled) {
+            this.monitoringEnabled = monitoringEnabled;
+        }
+
+        public Integer getModbusTimeoutMillis() {
+            return modbusTimeoutMillis;
+        }
+
+        public void setModbusTimeoutMillis(Integer modbusTimeoutMillis) {
+            this.modbusTimeoutMillis = modbusTimeoutMillis;
         }
 
         public Boolean getTwoFactorAuthEnabled() {
@@ -133,6 +155,9 @@ public class SystemConfigService {
             }
         }
 
+        config.setMonitoringEnabled(isMonitoringEnabled());
+        config.setModbusTimeoutMillis(getModbusTimeoutMillis());
+
         // Runtime metadata (computed on-the-fly)
         config.setLastUpdate(OffsetDateTime.now());
         long uptimeMillis = ManagementFactory.getRuntimeMXBean().getUptime();
@@ -179,11 +204,65 @@ public class SystemConfigService {
         bacnetUdpPort.setValue(String.valueOf(config.getBacnetUdpPort()));
         siteInformationService.persistData(bacnetUdpPort, false);
 
+        saveSetting(MONITORING_ENABLED_KEY, "Enable/disable freezer Modbus polling (default: true)",
+                String.valueOf(config.getMonitoringEnabled()));
+        saveSetting(MODBUS_TIMEOUT_MILLIS_KEY,
+                "Modbus connect/request timeout in milliseconds - raise this for devices reached over a "
+                        + "routed subnet or VPN (default: " + DEFAULT_TIMEOUT_MILLIS + ")",
+                String.valueOf(config.getModbusTimeoutMillis()));
+
         // Update runtime metadata
         config.setLastUpdate(OffsetDateTime.now());
         long uptimeMillis = ManagementFactory.getRuntimeMXBean().getUptime();
         config.setUptimeSeconds(uptimeMillis / 1000);
 
         return config;
+    }
+
+    private void saveSetting(String name, String description, String value) {
+        SiteInformation setting = siteInformationService.getSiteInformationByName(name);
+        if (setting == null) {
+            setting = new SiteInformation();
+            setting.setName(name);
+            setting.setDescription(description);
+            setting.setValueType("text");
+            setting.setEncrypted(false);
+            setting.setDomain(siteIdentityDomain);
+            setting.setGroup(0);
+            siteInformationService.persistData(setting, true);
+        }
+        setting.setValue(value);
+        siteInformationService.persistData(setting, false);
+    }
+
+    /**
+     * Live-read kill switch for {@code ModbusPollingService}'s poll cycle - a plain
+     * DB row rather than a static property so an admin can toggle monitoring
+     * without a restart. Defaults to enabled so a fresh install behaves the same as
+     * the previous static-property default.
+     */
+    @Transactional(readOnly = true)
+    public boolean isMonitoringEnabled() {
+        SiteInformation setting = siteInformationService.getSiteInformationByName(MONITORING_ENABLED_KEY);
+        return setting == null || setting.getValue() == null || Boolean.parseBoolean(setting.getValue());
+    }
+
+    /**
+     * Live-read Modbus connect/request timeout, in milliseconds. Read fresh on
+     * every poll (see {@code ModbusClientServiceImpl}) rather than cached, so a
+     * timeout tweak while troubleshooting a flaky cross-subnet/VPN link takes
+     * effect on the next poll cycle, not after a restart.
+     */
+    @Transactional(readOnly = true)
+    public int getModbusTimeoutMillis() {
+        SiteInformation setting = siteInformationService.getSiteInformationByName(MODBUS_TIMEOUT_MILLIS_KEY);
+        if (setting != null && setting.getValue() != null) {
+            try {
+                return Integer.parseInt(setting.getValue());
+            } catch (NumberFormatException e) {
+                // fall through to default
+            }
+        }
+        return DEFAULT_TIMEOUT_MILLIS;
     }
 }

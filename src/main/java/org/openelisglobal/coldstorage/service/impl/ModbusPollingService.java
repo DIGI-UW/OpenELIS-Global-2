@@ -5,13 +5,12 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import org.openelisglobal.coldstorage.config.FreezerMonitoringProperties;
 import org.openelisglobal.coldstorage.service.FreezerReadingService;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.service.ModbusClientService;
 import org.openelisglobal.coldstorage.service.ReadingIngestionService;
+import org.openelisglobal.coldstorage.service.SystemConfigService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
-import org.openelisglobal.config.condition.ConditionalOnProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,35 +18,42 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Polls active freezer devices via Modbus on a scheduled interval. Only created
- * when org.openelisglobal.freezermonitoring.enabled=true.
+ * Polls active freezer devices via Modbus on a scheduled interval. Gated by
+ * {@link SystemConfigService#isMonitoringEnabled()}, a live SiteInformation
+ * flag rather than a static property, so an admin can enable/disable monitoring
+ * from the System Configuration screen without a restart.
  */
 @Service
-@ConditionalOnProperty(property = "org.openelisglobal.freezermonitoring.enabled", havingValue = "true")
 @SuppressWarnings("unused")
 public class ModbusPollingService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ModbusPollingService.class);
 
-    private final FreezerMonitoringProperties config;
+    /**
+     * Reading retention window, in days. Not admin-configurable: an unusual enough
+     * need (compliance/audit policy) that a code change is a reasonable bar,
+     * keeping the day-to-day configuration surface small.
+     */
+    private static final int RETENTION_DAYS = 400;
+
+    private final SystemConfigService systemConfigService;
     private final FreezerService freezerService;
     private final ModbusClientService modbusClientService;
     private final ReadingIngestionService readingIngestionService;
     private final FreezerReadingService freezerReadingService;
     private final ExecutorService pollingExecutor;
 
-    public ModbusPollingService(FreezerMonitoringProperties config, FreezerService freezerService,
+    public ModbusPollingService(SystemConfigService systemConfigService, FreezerService freezerService,
             ModbusClientService modbusClientService, ReadingIngestionService readingIngestionService,
             FreezerReadingService freezerReadingService,
             @Qualifier("freezerPollingExecutor") ExecutorService pollingExecutor) {
-        this.config = config;
+        this.systemConfigService = systemConfigService;
         this.freezerService = freezerService;
         this.modbusClientService = modbusClientService;
         this.readingIngestionService = readingIngestionService;
         this.freezerReadingService = freezerReadingService;
         this.pollingExecutor = pollingExecutor;
-        config.validateConfig();
-        LOGGER.info("Freezer Modbus polling service ENABLED");
+        LOGGER.info("Freezer Modbus polling service registered");
     }
 
     /**
@@ -69,6 +75,11 @@ public class ModbusPollingService {
      */
     @Scheduled(initialDelayString = "#{T(java.time.Duration).parse('${org.openelisglobal.freezermonitoring.modbus.initial-delay:PT15S}').toMillis()}", fixedDelayString = "#{T(java.time.Duration).parse('${org.openelisglobal.freezermonitoring.modbus.poll-interval:PT5M}').toMillis()}")
     public void pollDevices() {
+        if (!systemConfigService.isMonitoringEnabled()) {
+            LOGGER.debug("Skipping freezer polling run - monitoring disabled");
+            return;
+        }
+
         List<Freezer> freezers = freezerService.getActiveFreezers();
         if (freezers.isEmpty()) {
             LOGGER.debug("Skipping freezer polling run - no active freezers configured");
@@ -106,7 +117,7 @@ public class ModbusPollingService {
                         result.temperatureCelsius());
             }, () -> {
                 LOGGER.warn("Failed to poll freezer '{}'", freezer.getName());
-                readingIngestionService.ingest(freezer, timestamp, null, null, false,
+                readingIngestionService.ingest(freezer, timestamp, null, null, null, false,
                         "Modbus read failure - see logs for details");
             });
         } catch (Exception ex) {
@@ -128,11 +139,7 @@ public class ModbusPollingService {
      */
     @Scheduled(cron = "${org.openelisglobal.freezermonitoring.retention-cron:0 30 2 * * ?}")
     public void cleanupOldReadings() {
-        int retentionDays = config.getRetentionDays();
-        if (retentionDays <= 0) {
-            LOGGER.debug("Freezer reading retention cleanup disabled (retention-days={})", retentionDays);
-            return;
-        }
+        int retentionDays = RETENTION_DAYS;
         OffsetDateTime cutoff = OffsetDateTime.now().minusDays(retentionDays);
         try {
             int deleted = freezerReadingService.deleteReadingsOlderThan(cutoff);

@@ -202,4 +202,7 @@
   <!-- Cold storage monitoring audit: second temperature probe support (issue #3904) -->
   <include relativeToChangelogFile="true" file="075-freezer-second-temperature-probe.xml"/>
 
+  <!-- Cold storage monitoring audit: move enabled/timeout to SiteInformation (issue #3904) -->
+  <include relativeToChangelogFile="true" file="076-freezer-monitoring-config-site-information.xml"/>
+
 </databaseChangeLog>
