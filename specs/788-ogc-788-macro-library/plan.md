@@ -50,11 +50,11 @@ adapter, while microbiology supplies only the field context.
 
 - Persist and audit phrase definitions.
 - Admin create, edit, activate/deactivate, search, filter, sort, and pagination.
-- Reusable keyboard-accessible expansion in culture activity note, clinical
-  history, and antibiotic exposure.
+- Reusable keyboard-accessible expansion in culture activity note and clinical
+  history. Antibiotic Exposure remains the authoritative binary order choice.
 - Service-created UAT fixture with a small non-clinical demonstration set.
 - Focused backend/frontend/Playwright/accessibility evidence, pinned code-qa,
-  synchronized Grist steps, video, and exact-SHA AMR deployment.
+  synchronized Grist steps, video, and exact-SHA phrases deployment.
 
 M1 deliberately proves the end-to-end behavior without claiming the draft 85
 clinical defaults are approved.

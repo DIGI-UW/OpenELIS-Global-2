@@ -1,10 +1,8 @@
 # Feature Specification: OGC-788 Macro Library
 
 **Feature Branch**: `spec/788-ogc-788-macro-library`  
-**Jira**: [OGC-788](https://uwdigi.atlassian.net/browse/OGC-788)  
 **Parent**: [OGC-782 Microbiology MVP](../782-ogc-782-microbiology-mvp-spec/spec.md)  
-**Workflow source**: [Microbiology Module workflow walkthrough](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256)  
-**Design intent**: [M-08 Macro Library](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-08-macro-library.md), [interactive mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-08-macro-library.html)
+**Product authority**: [M-08 Macro Library](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-08-macro-library.md), [interactive mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-08-macro-library.html)
 
 ## Scope
 
@@ -19,7 +17,7 @@ because repetitive culture descriptions are a high-frequency workflow, but the
 library must not be coupled to microbiology case storage.
 
 The first implementation milestone covers managed active phrases and real
-expansion in culture activity notes, clinical history, and antibiotic exposure.
+expansion in culture activity notes and clinical history.
 A follow-on milestone covers a clinically reviewed default package, restore or
 import behavior, export, bulk administration, and rollout to additional fields.
 
@@ -112,9 +110,9 @@ retaining locally authored content.
 - **FR-009**: Changes MUST become visible on a subsequent supported-form load;
   no particular client cache or invalidation mechanism is a product
   requirement.
-- **FR-010**: The first implementation MUST support culture activity notes,
-  microbiology clinical history, and antibiotic exposure without changing the
-  underlying clinical-record contracts.
+- **FR-010**: The first implementation MUST support culture activity notes and
+  microbiology clinical history without changing the underlying clinical-record
+  contracts.
 - **FR-011**: Packaged defaults MUST have clinically reviewed content and a
   versioned provenance before they are made available to laboratories.
 - **FR-012**: Existing locally authored phrases and already expanded clinical
@@ -127,6 +125,7 @@ retaining locally authored content.
 | Jira and M-08 prescribe `macro_library`, service/cache names, React component names, exact routes, modals, permission keys, and table columns. | Implementation leakage           | These are non-binding examples. Engineering chooses repo-aligned boundaries and Carbon interaction patterns.                              |
 | M-08 calls for 85 defaults but says the full list is still to be determined during implementation.                                             | Product gap / real contradiction | No unreviewed clinical text is seeded. Exact content, provenance, and reviewer are acceptance inputs for the follow-on package milestone. |
 | The mock presents a fixed category list while describing a cross-cutting capability.                                                           | Engineering decision needed      | User-visible contexts remain controlled and translatable; internal representation must permit later consumers without schema churn.       |
+| M-03 defines Antibiotic Exposure as a binary order-entry choice while M-08 lists it as a narrative macro consumer.                             | Real contradiction               | Keep the M-03 binary choice; add a macro consumer only if a distinct narrative exposure field is defined.                                 |
 | The mock requires next-page-load freshness and also prescribes a particular cache invalidation design.                                         | Implementation leakage           | Only the observable freshness requirement is binding.                                                                                     |
 | The mock alternates between Add/Edit/Delete modals and broad inline-interaction guidance.                                                      | Design inconsistency             | Use the clearest accessible Carbon flow; schema, route, modal, and component structure are not part of product acceptance.                |
 | OGC-788 names fifteen sub-stories, but Jira contains no child issues.                                                                          | Planning inconsistency           | This spec's milestone tasks are the deterministic delivery ledger; Jira should be reconciled without inventing completed children.        |
@@ -137,7 +136,8 @@ retaining locally authored content.
   culture activity note and save the expanded text through the existing case
   workflow.
 - **SC-002**: The same reusable interaction expands applicable phrases in
-  clinical history and antibiotic exposure without duplicating macro logic.
+  clinical history without duplicating macro logic or changing the separate
+  Antibiotic Exposure checkbox.
 - **SC-003**: An administrator can create, edit, search, filter, deactivate, and
   reactivate a phrase; reload from the canonical URL preserves list state.
 - **SC-004**: A spoofed actor value cannot affect attribution, and a
@@ -147,4 +147,4 @@ retaining locally authored content.
   fixed persisted IDs, or arbitrary waits.
 - **SC-006**: Each implementation milestone has pinned `code-qa` reports,
   validated desktop/mobile screenshots, an MP4 walkthrough, synchronized Grist
-  UAT steps, and an exact-SHA AMR deployment before manual acceptance.
+  UAT steps, and an exact-SHA phrases deployment before manual acceptance.
