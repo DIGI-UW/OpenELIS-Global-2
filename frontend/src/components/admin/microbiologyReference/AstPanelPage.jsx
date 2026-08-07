@@ -37,6 +37,7 @@ import {
   publishAstPanel,
 } from "./api";
 import { buildReferenceRequestQuery } from "./queryState";
+import useModalFocusReturn from "./useModalFocusReturn";
 
 const emptyPanel = {
   name: "",
@@ -51,17 +52,24 @@ const AstPanelPage = ({ query, setQuery }) => {
   const intl = useIntl();
   const [page, setPage] = useState({ rows: [], total: 0 });
   const [antibiotics, setAntibiotics] = useState([]);
-  const [draft, setDraft] = useState(null);
+  const [editor, setEditor] = useState({ key: "", draft: null });
   const [selectedAntibiotic, setSelectedAntibiotic] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [error, setError] = useState("");
+  const { rememberReturnFocus, restoreReturnFocus } = useModalFocusReturn();
   const requestQuery = buildReferenceRequestQuery(query);
+  const draft = query.edit
+    ? editor.key === query.edit
+      ? editor.draft
+      : query.edit === "new"
+        ? { ...emptyPanel, antibiotics: [] }
+        : null
+    : null;
 
   const load = useCallback(
     async (signal) => {
-      setLoading(true);
       try {
         const [panels, antibioticOptions] = await Promise.all([
           getReferencePage("ast-panels", requestQuery, signal),
@@ -87,22 +95,17 @@ const AstPanelPage = ({ query, setQuery }) => {
 
   useEffect(() => {
     const controller = new AbortController();
-    load(controller.signal);
+    Promise.resolve().then(() => load(controller.signal));
     return () => controller.abort();
   }, [load]);
 
   useEffect(() => {
-    if (!query.edit) {
-      setDraft(null);
-      return undefined;
-    }
-    if (query.edit === "new") {
-      setDraft({ ...emptyPanel, antibiotics: [] });
+    if (!query.edit || query.edit === "new") {
       return undefined;
     }
     const controller = new AbortController();
     getAstPanel(query.edit, controller.signal)
-      .then((panel) => setDraft(panel))
+      .then((panel) => setEditor({ key: query.edit, draft: panel }))
       .catch((requestError) => setError(requestError.message));
     return () => controller.abort();
   }, [query.edit]);
@@ -144,7 +147,7 @@ const AstPanelPage = ({ query, setQuery }) => {
   }));
 
   const updateDraft = (updates) =>
-    setDraft((current) => ({ ...current, ...updates }));
+    setEditor({ key: query.edit, draft: { ...draft, ...updates } });
 
   const updateRow = (index, updates) =>
     updateDraft({
@@ -191,7 +194,9 @@ const AstPanelPage = ({ query, setQuery }) => {
     try {
       await publishAstPanel(draft);
       setConfirmingPublish(false);
+      setEditor({ key: "", draft: null });
       setQuery({ edit: "" }, { replace: true });
+      restoreReturnFocus();
       await load();
     } catch (requestError) {
       setError(requestError.message);
@@ -202,7 +207,9 @@ const AstPanelPage = ({ query, setQuery }) => {
 
   const closeEditor = () => {
     setConfirmingPublish(false);
+    setEditor({ key: "", draft: null });
     setQuery({ edit: "" }, { replace: true });
+    restoreReturnFocus();
   };
 
   const readOnly = !!draft?.id && draft.current === false;
@@ -319,7 +326,14 @@ const AstPanelPage = ({ query, setQuery }) => {
                 </Select>
                 <Button
                   renderIcon={Add}
-                  onClick={() => setQuery({ edit: "new" })}
+                  onClick={(event) => {
+                    rememberReturnFocus(event.currentTarget);
+                    setEditor({
+                      key: "new",
+                      draft: { ...emptyPanel, antibiotics: [] },
+                    });
+                    setQuery({ edit: "new" });
+                  }}
                 >
                   {intl.formatMessage({
                     id: "microbiology.admin.astPanels.add",
@@ -370,7 +384,16 @@ const AstPanelPage = ({ query, setQuery }) => {
                                   ? "microbiology.admin.astPanels.publishVersion"
                                   : "microbiology.admin.astPanels.viewVersion",
                               })}
-                              onClick={() => setQuery({ edit: cell.value.id })}
+                              onClick={(event) => {
+                                const menuButton = event.currentTarget
+                                  .closest("td")
+                                  ?.querySelector(
+                                    ".cds--overflow-menu__trigger",
+                                  );
+                                rememberReturnFocus(menuButton);
+                                setEditor({ key: "", draft: null });
+                                setQuery({ edit: cell.value.id });
+                              }}
                             />
                           </OverflowMenu>
                         ) : (
@@ -397,6 +420,7 @@ const AstPanelPage = ({ query, setQuery }) => {
       <ComposedModal
         open={!!draft && !confirmingPublish}
         size="lg"
+        selectorPrimaryFocus="#microbiology-panel-name"
         onClose={closeEditor}
       >
         <ModalHeader
