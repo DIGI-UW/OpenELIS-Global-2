@@ -39,14 +39,15 @@ rulings in the review overlay.
 
 ## Live Review Handoff
 
-- AMR application: `https://amr.openelis-global.org/`
-- Macro Library: `https://amr.openelis-global.org/admin/MacroLibrary`
+- Phrases application: `https://phrases.openelis-global.org/`
+- Macro Library: `https://phrases.openelis-global.org/admin/MacroLibrary`
 - Review checklist:
-  `https://amr.openelis-global.org/__review/uat-amr.json`
-- Deployment guard: `https://amr.openelis-global.org/__review/target.json`
+  `https://phrases.openelis-global.org/__review/uat-amr.json`
+- Deployment guard: `https://phrases.openelis-global.org/__review/target.json`
 - Checklist revision:
-  `af9383f5a260695f022720cff23d2e919cecb742e41fbab16042077ed9b0375e`
+  `57379544553a890c9644183a09bd8f32fa17c11587cd649bbd659265bbdc62b8`
 
-The live checklist contains 16 stories and 51 steps: 50 required and one
-optional. Automated validation and video proof are complete; human review marks
-remain pending.
+The shared source contains 22 stories and 67 stable steps. Host filtering gives
+the phrases picker exactly the two OGC-788 stories and twelve required steps.
+Automated validation and video proof are complete; exact deployment verification
+and human review marks remain pending.

@@ -2,23 +2,23 @@
 
 Grist `UAT_Meta`, `UAT_Stories`, and `UAT_Steps` remain the live source of
 truth. This file records the repository-side contract that must match the AMR
-Review overlay after publication.
+review stream on the phrases deployment after publication.
 
 ## Published State
 
 - Instance: `amr`
-- Live checklist revision:
-  `af9383f5a260695f022720cff23d2e919cecb742e41fbab16042077ed9b0375e`
-- Stories: 16 (`AMR-S01` through `AMR-S16`)
-- Required steps: 50
-- Optional steps: 1 (`AMR-21`, TB shared-specimen reflection)
+- Live source revision:
+  `57379544553a890c9644183a09bd8f32fa17c11587cd649bbd659265bbdc62b8`
+- Shared source: 22 stories and 67 stable steps
+- Phrases host: 2 stories (`AMR-S15`, `AMR-S16`) and 12 required steps
 - Grist read: `https://grist.openelis-global.org/uat/amr.json`
-- AMR overlay read:
-  `https://amr.openelis-global.org/__review/uat-amr.json`
+- Phrases overlay read:
+  `https://phrases.openelis-global.org/__review/uat-amr.json`
 
-The two live reads return the same revision. Publication preserved all 14 prior
-stories and 39 prior step keys, then added `AMR-S15`, `AMR-S16`, and exactly
-`AMR-51` through `AMR-62`.
+The two Macro stories retain stable keys `AMR-S15`, `AMR-S16`, and exactly
+`AMR-51` through `AMR-62`. Their host filter limits them to
+`phrases.openelis-global.org`; the other shared AMR stories remain available on
+the AMR deployment.
 
 ## M1 Story
 
@@ -49,11 +49,11 @@ row, and complete canonical URL return unchanged after reload.
 ### AMR-52 - Maintain the reusable phrase
 
 **Do:** Edit `.uat_ng24`, retain the text `No growth at 24 hours`, select
-Culture activity, Clinical history, and Antibiotic exposure, keep it Active,
-and save.
+Culture activity and Clinical history, leave Antibiotic exposure unselected,
+keep it Active, and save.
 
 **Expect:** The saved row remains searchable as an active phrase and reopening
-it shows the same text and three field contexts.
+it shows the same text and two field contexts.
 
 **Route:** The canonical Macro Library URL from AMR-51.
 
@@ -79,13 +79,13 @@ case section returns from the copied URL.
 
 ### AMR-55 - Reuse field contexts
 
-**Do:** Open order entry, select the seeded UAT microbiology culture test, and
-expand `.uat_ng24` once in Clinical history and once in Antibiotic exposure.
+**Do:** Open order entry, select the seeded UAT microbiology culture test,
+expand `.uat_ng24` in Clinical history, and inspect Antibiotic Exposure.
 
-**Expect:** Both fields offer the active phrase because their contexts were
-selected, and each field receives independent editable expanded text.
+**Expect:** Clinical history receives editable expanded text. Antibiotic Exposure
+remains a separate binary checkbox and does not become a narrative macro field.
 
-**Route:** `/SamplePatientEntry`
+**Route:** `/order/enter`
 
 ### AMR-56 - Review responsive behavior
 
@@ -169,14 +169,11 @@ hidden from assistive technology.
 ## Publication Result
 
 - [x] Added both stories and all twelve required steps through Grist authoring.
-- [x] Updated the AMR checklist title and intro to name OGC-788 M1 and M2.
-- [x] Verified both `https://grist.openelis-global.org/uat/amr.json` and
-      `https://amr.openelis-global.org/__review/uat-amr.json` return `200`, have the
-      same revision, retain the 39 prior steps, and add exactly `AMR-51` through
-      `AMR-62` under `AMR-S15` and `AMR-S16`.
+- [x] Scoped `AMR-S15` and `AMR-S16` to `phrases.openelis-global.org` while
+      preserving all shared story and step keys.
+- [ ] Verify the Grist source and phrases overlay expose the same revision and
+      exactly `AMR-51` through `AMR-62` under `AMR-S15` and `AMR-S16`.
 - [x] Recorded automated evidence separately from human Pass/Fail/N/A marks.
-- [x] Published an exact-SHA AMR deployment and verified its target metadata,
-      application smoke checks, and live overlay. Deployment identity remains
-      authoritative at `https://amr.openelis-global.org/__review/target.json` and
-      in the implementation PR to avoid stale duplicated runtime state here.
+- [ ] Publish the exact synchronized M2 SHA to the phrases deployment and verify
+      its target metadata, application smoke checks, and live overlay.
 - [ ] Human Pass/Fail/N/A review remains pending.
