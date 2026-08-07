@@ -258,9 +258,11 @@ const Validation = (props) => {
                 hasIconOnly
                 renderIcon={Launch}
                 iconDescription={intl.formatMessage({
-                  id: "label.validation.viewPatient",
+                  id: "order.label.modify",
                 })}
-                href={`/PatientManagement?labNumber=${encodeURIComponent(
+                tooltipPosition="right"
+                tooltipAlignment="center"
+                href={`/ModifyOrder?accessionNumber=${encodeURIComponent(
                   row.accessionNumber,
                 )}`}
                 target="_blank"
