@@ -622,43 +622,57 @@ describe("MicrobiologyWorklist", () => {
     );
   });
 
-  it("navigates culture row actions into the case without mutating the queue", async () => {
-    const user = userEvent.setup();
-    const service = {
-      recordCaseActivity: vi.fn(),
-      getWorklistRows: vi.fn().mockResolvedValue({
-        rows: [
-          {
-            rowId: "case-1",
-            caseId: "case-1",
-            sampleItemId: "1001",
-            workflowType: "BACTERIOLOGY",
-            stage: "INCUBATING",
-            dueAction: "INCUBATING",
-            urgency: "ROUTINE",
-            siblingWorkflows: [],
-          },
-        ],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-      }),
-    };
+  it.each([
+    ["Mark positive", "mark-positive"],
+    ["Mark no growth", "mark-no-growth"],
+  ])(
+    "navigates the %s culture row action with the keyboard without mutating the queue",
+    async (actionLabel, action) => {
+      const user = userEvent.setup();
+      const service = {
+        recordCaseActivity: vi.fn(),
+        getWorklistRows: vi.fn().mockResolvedValue({
+          rows: [
+            {
+              rowId: "case-1",
+              caseId: "case-1",
+              sampleItemId: "1001",
+              workflowType: "BACTERIOLOGY",
+              stage: "INCUBATING",
+              dueAction: "INCUBATING",
+              urgency: "ROUTINE",
+              siblingWorkflows: [],
+            },
+          ],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+        }),
+      };
 
-    renderWorklist(service, "/Microbiology/worklist?status=incubating");
+      renderWorklist(service, "/Microbiology/worklist?status=incubating");
 
-    await user.click(
-      await screen.findByRole("button", { name: "Row actions" }),
-    );
-    await user.click(await screen.findByText("Mark positive"));
+      const rowActions = await screen.findByRole("button", {
+        name: "Row actions",
+      });
+      rowActions.focus();
+      await user.keyboard("{Enter}");
+      const actionText = await screen.findByText(actionLabel);
+      const actionItem = actionText.closest("button");
+      expect(actionItem).not.toBeNull();
+      actionItem.focus();
+      await user.keyboard("{Enter}");
 
-    expect(service.recordCaseActivity).not.toHaveBeenCalled();
-    await waitFor(() =>
-      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?status=incubating&section=setup&action=mark-positive",
-      ),
-    );
-  });
+      expect(service.recordCaseActivity).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("microbiology-current-url"),
+        ).toHaveTextContent(
+          `/Microbiology/cases/case-1?status=incubating&section=setup&action=${action}`,
+        ),
+      );
+    },
+  );
 
   it("opens the preserved new-attempt flow for a reviewed AST run", async () => {
     const user = userEvent.setup();

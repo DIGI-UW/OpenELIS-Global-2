@@ -143,7 +143,19 @@ describe("MicrobiologyCaseView", () => {
         `/Microbiology/cases/case-1?section=setup&action=${action}`,
       );
 
-      await user.click(await screen.findByRole("button", { name: buttonName }));
+      const section = await screen.findByTestId(
+        "microbiology-case-section-setup",
+      );
+      const transitionTitle = screen.getByRole("heading", {
+        name:
+          action === "mark-positive"
+            ? "Mark culture positive"
+            : "Mark culture as no growth",
+      });
+      await waitFor(() => expect(transitionTitle).toHaveFocus());
+      const confirm = screen.getByRole("button", { name: buttonName });
+      confirm.focus();
+      await user.keyboard("{Enter}");
 
       await waitFor(() =>
         expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
@@ -159,6 +171,7 @@ describe("MicrobiologyCaseView", () => {
       expect(
         screen.getByTestId("microbiology-current-url"),
       ).not.toHaveTextContent("action=");
+      await waitFor(() => expect(section).toHaveFocus());
     },
   );
 
@@ -436,21 +449,34 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(service);
 
-    await user.click(await screen.findByRole("button", { name: "Report NCE" }));
+    const reportNce = await screen.findByRole("button", {
+      name: "Report NCE",
+    });
+    reportNce.focus();
+    await user.keyboard("{Enter}");
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
       "section=nonconformance&action=report-nce",
     );
     expect(
       screen.getByRole("heading", { name: "Report nonconformance" }),
     ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Report nonconformance" }),
+      ).toHaveFocus(),
+    );
 
-    await user.click(screen.getByRole("button", { name: /Mark lost/ }));
+    const markLost = screen.getByRole("button", { name: /Mark lost/ });
+    markLost.focus();
+    await user.keyboard("{Enter}");
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
       "section=nonconformance&action=mark-lost",
     );
-    expect(
-      screen.getByRole("heading", { name: "Mark specimen lost" }),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Mark specimen lost" }),
+      ).toHaveFocus(),
+    );
   });
 
   it("opens amendment history from its canonical section URL", async () => {
