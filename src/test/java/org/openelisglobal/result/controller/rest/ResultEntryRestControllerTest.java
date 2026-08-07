@@ -5,6 +5,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -311,6 +312,130 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         } finally {
             reset(displayList);
         }
+    }
+
+    /**
+     * OGC-1022 (R3): numeric limits for test 1 — normal 70-100, critical <50 /
+     * >400.
+     */
+    private void seedNumericResultLimit() {
+        jdbc.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
+                + " low_normal, high_normal, low_valid, high_valid, low_reporting_range, high_reporting_range,"
+                + " low_critical, high_critical, always_validate, lastupdated) VALUES (9401, 1, 4, 0, 'Infinity',"
+                + " 70, 100, '-Infinity', 'Infinity', '-Infinity', 'Infinity', 50, 400, false, NOW())"
+                + " ON CONFLICT (id) DO NOTHING");
+    }
+
+    private org.springframework.test.web.servlet.ResultActions loadWorklistFor12345() throws Exception {
+        jdbc.update("UPDATE clinlims.sample SET status_id = 9109 WHERE id = 1");
+        jdbc.update("UPDATE clinlims.analysis SET status_id = 9103 WHERE id = 1");
+        DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
+        when(displayList.getList(DisplayListService.ListType.TEST_SECTION_ACTIVE))
+                .thenReturn(List.of(new IdValuePair("1", "TB"), new IdValuePair("2", "TestSection2")));
+        return mockMvc.perform(get("/rest/LogbookResults").param("labNumber", "12345").param("doRange", "false")
+                .param("finished", "false").session(session));
+    }
+
+    /**
+     * OGC-1022 (R3, FR-L1 + FR-A4) — a save outside the authored critical bounds
+     * flags the row CRITICAL on load and posts a CRITICAL_RESULT alert for the
+     * analysis; a repeat critical save dedupes into the same alert.
+     */
+    @Test
+    public void save_criticalValue_flagsRow_andPostsAlert() throws Exception {
+        seedNumericResultLimit();
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "500", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+
+        Integer alerts = jdbc.queryForObject("SELECT count(*) FROM clinlims.alert WHERE alert_type ="
+                + " 'CRITICAL_RESULT' AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = 1"
+                + " AND status = 'OPEN'", Integer.class);
+        assertEquals(Integer.valueOf(1), alerts);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "450", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        Integer deduped = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.alert WHERE alert_type ="
+                        + " 'CRITICAL_RESULT' AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = 1",
+                Integer.class);
+        assertEquals("a repeat critical save must not open a second alert", Integer.valueOf(1), deduped);
+
+        try {
+            loadWorklistFor12345().andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult[0].resultFlag").value("CRITICAL"))
+                    .andExpect(jsonPath("$.testResult[0].criticalRange").value("< 50.00 or > 400.00"));
+        } finally {
+            reset(webApplicationContext.getBean(DisplayListService.class));
+        }
+    }
+
+    @Test
+    public void save_normalValue_flagsNormal_andPostsNoAlert() throws Exception {
+        seedNumericResultLimit();
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+
+        Integer alerts = jdbc.queryForObject("SELECT count(*) FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'",
+                Integer.class);
+        assertEquals(Integer.valueOf(0), alerts);
+
+        try {
+            loadWorklistFor12345().andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult[0].resultFlag").value("NORMAL"));
+        } finally {
+            reset(webApplicationContext.getBean(DisplayListService.class));
+        }
+    }
+
+    /**
+     * OGC-1022 (R3) — acknowledging a critical alert records the session user and
+     * the resolution comment; the dashboard sends the comment under "notes".
+     */
+    @Test
+    public void criticalAlert_acknowledge_recordsSessionUserAndComment() throws Exception {
+        seedNumericResultLimit();
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "500", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        Long alertId = jdbc.queryForObject(
+                "SELECT id FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT' AND alert_entity_id = 1",
+                Long.class);
+
+        mockMvc.perform(put("/rest/alerts/dashboard/" + alertId + "/acknowledge")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"notes\":\"physician notified\"}").session(session))
+                .andExpect(status().isOk());
+
+        assertEquals("RESOLVED",
+                jdbc.queryForObject("SELECT status FROM clinlims.alert WHERE id = " + alertId, String.class));
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT acknowledged_by FROM clinlims.alert WHERE id = " + alertId, Integer.class));
+        assertEquals("physician notified",
+                jdbc.queryForObject("SELECT resolution_notes FROM clinlims.alert WHERE id = " + alertId, String.class));
+    }
+
+    /**
+     * OGC-1022 (R3, FR-H1/H2) — the timeline endpoint serves this analysis's own
+     * events (here: the note bound to it), normalizes off-menu page sizes to 25,
+     * and 404s for an unknown analysis.
+     */
+    @Test
+    public void analysisHistory_returnsOwnEvents_paginated() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(
+                        saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"), "\"note\":\"history probe note\""))
+                .session(session)).andExpect(status().isOk());
+
+        mockMvc.perform(get("/rest/results-entry/analysis/1/history").param("pageSize", "7").session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.pageSize").value(25))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.events[?(@.type == 'NOTE')].detail", org.hamcrest.CoreMatchers
+                        .hasItem(org.hamcrest.CoreMatchers.containsString("history probe note"))));
+
+        mockMvc.perform(get("/rest/results-entry/analysis/99999/history").session(session))
+                .andExpect(status().isNotFound());
     }
 
     @Test

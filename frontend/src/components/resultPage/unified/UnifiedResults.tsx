@@ -67,6 +67,7 @@ import ExpandedPanel, {
   PanelRow,
 } from "./ExpandedPanel";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
+import { FlagChip, accentClass } from "./flags";
 import "./unified-results.scss";
 
 /**
@@ -753,13 +754,16 @@ const UnifiedResults: React.FC = () => {
                           {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
                         </TableCell>
                         <TableCell>
-                          <PolymorphicResultCell
-                            row={row}
-                            editable={isRowEditable(state)}
-                            onValueChange={(field, value) =>
-                              handleValueChange(row, field, value)
-                            }
-                          />
+                          <span className={accentClass(row.resultFlag)}>
+                            <PolymorphicResultCell
+                              row={row}
+                              editable={isRowEditable(state)}
+                              onValueChange={(field, value) =>
+                                handleValueChange(row, field, value)
+                              }
+                            />
+                            <FlagChip flag={row.resultFlag} />
+                          </span>
                         </TableCell>
                         <TableCell>
                           {statusName(row.analysisStatusId)}

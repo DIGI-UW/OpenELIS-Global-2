@@ -124,6 +124,19 @@ public class TestResultItem implements ResultItem, Serializable {
     private double lowerCritical;
     private double higherCritical;
 
+    /**
+     * OGC-1022 (R3, FR-L1) — NORMAL | ABNORMAL | CRITICAL | INVALID, computed
+     * server-side from the patient-conditional ResultLimit for numeric results;
+     * null when there is no value or no limit to judge against.
+     */
+    private String resultFlag;
+
+    /**
+     * OGC-1022 (R3) — display string for the critical bounds ("&lt; 50", "&gt;
+     * 400", or "&lt; 50 or &gt; 400"); empty when no critical bounds are authored.
+     */
+    private String criticalRange = "";
+
     private int significantDigits = 0;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
@@ -986,6 +999,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setNormal(boolean normal) {
         this.normal = normal;
+    }
+
+    public String getResultFlag() {
+        return resultFlag;
+    }
+
+    public void setResultFlag(String resultFlag) {
+        this.resultFlag = resultFlag;
+    }
+
+    public String getCriticalRange() {
+        return criticalRange;
+    }
+
+    public void setCriticalRange(String criticalRange) {
+        this.criticalRange = criticalRange;
     }
 
     public boolean isDisplayResultAsLog() {

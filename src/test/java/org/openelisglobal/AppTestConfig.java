@@ -375,6 +375,11 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Bean
+    public org.openelisglobal.eqa.controller.rest.EQAAlertRestController eqaAlertRestController() {
+        return new org.openelisglobal.eqa.controller.rest.EQAAlertRestController();
+    }
+
+    @Bean
     public org.openelisglobal.login.controller.ChangePasswordLoginController changePasswordLoginController() {
         return new org.openelisglobal.login.controller.ChangePasswordLoginController();
     }

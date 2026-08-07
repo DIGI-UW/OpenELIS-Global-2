@@ -46,6 +46,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -907,6 +908,13 @@ public class ResultsLoadUtility {
         }
         setDictionaryResults(testItem, isConclusion, result, testResults);
 
+        // OGC-1022 (R3, FR-L1): computed here, after the value and result type are
+        // both on the item — setResultLimitDependencies runs before the value is
+        // set, so its valid/normal booleans can't see the saved value
+        testItem.setResultFlag(computeResultFlag(testItem.getResultValue(), testItem.getResultType(), resultLimit));
+        testItem.setCriticalRange(buildCriticalRangeDisplay(resultLimit,
+                testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
+
         testItem.setTechnician(techSignature);
         testItem.setTechnicianSignatureId(techSignatureId);
         testItem.setTestKitId(testKitId);
@@ -1148,6 +1156,66 @@ public class ResultsLoadUtility {
             }
         }
         return valid;
+    }
+
+    /**
+     * OGC-1022 (R3, FR-L1) — one flag per numeric value, judged against the
+     * patient-conditional limit: INVALID outside the valid range, CRITICAL outside
+     * an authored critical bound, ABNORMAL outside the reference range, NORMAL
+     * inside it. {@code Double.POSITIVE_INFINITY} is the editor's "not authored"
+     * sentinel for both critical bounds (see TestCatalogEditorRestController), so
+     * an unset bound never fires.
+     */
+    private String computeResultFlag(String resultValue, String resultType, ResultLimit limit) {
+        // a null id is the selector's synthetic empty limit (no authored range
+        // matched this patient) — no basis to call anything "normal"
+        if (GenericValidator.isBlankOrNull(resultValue) || limit == null
+                || GenericValidator.isBlankOrNull(limit.getId()) || !"N".equals(resultType)) {
+            return null;
+        }
+        try {
+            double value = Double.parseDouble(resultValue);
+            if (value < limit.getLowValid() || value > limit.getHighValid()) {
+                return "INVALID";
+            }
+            boolean criticalLow = limit.getLowCritical() != Double.POSITIVE_INFINITY && value < limit.getLowCritical();
+            boolean criticalHigh = limit.getHighCritical() != Double.POSITIVE_INFINITY
+                    && value > limit.getHighCritical();
+            if (criticalLow || criticalHigh) {
+                return "CRITICAL";
+            }
+            if (value < limit.getLowNormal() || value > limit.getHighNormal()) {
+                return "ABNORMAL";
+            }
+            return "NORMAL";
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * "&lt; 50", "&gt; 400", or "&lt; 50 or &gt; 400" — the zone(s) where a value
+     * turns critical. getDisplayCriticalRange renders a one-sided low bound as
+     * "Infinity - x" (its unset sentinel is POSITIVE_INFINITY, which
+     * getDisplayNormalRange doesn't recognize), so this is built directly.
+     */
+    private String buildCriticalRangeDisplay(ResultLimit limit, String significantDigits) {
+        if (limit == null) {
+            return "";
+        }
+        boolean hasLow = limit.getLowCritical() != Double.POSITIVE_INFINITY;
+        boolean hasHigh = limit.getHighCritical() != Double.POSITIVE_INFINITY;
+        if (hasLow && hasHigh) {
+            return "< " + StringUtil.doubleWithSignificantDigits(limit.getLowCritical(), significantDigits) + " or > "
+                    + StringUtil.doubleWithSignificantDigits(limit.getHighCritical(), significantDigits);
+        }
+        if (hasLow) {
+            return "< " + StringUtil.doubleWithSignificantDigits(limit.getLowCritical(), significantDigits);
+        }
+        if (hasHigh) {
+            return "> " + StringUtil.doubleWithSignificantDigits(limit.getHighCritical(), significantDigits);
+        }
+        return "";
     }
 
     private boolean getIsNormal(String resultValue, ResultLimit resultLimit) {

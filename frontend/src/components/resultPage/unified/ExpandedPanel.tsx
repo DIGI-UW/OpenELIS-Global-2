@@ -16,6 +16,9 @@ import PolymorphicResultCell, {
   worklistRowKey,
 } from "./PolymorphicResultCell";
 import ReferenceSection from "./ReferenceSection";
+import CriticalBanner from "./CriticalBanner";
+import HistorySection from "./HistorySection";
+import { FlagChip, accentClass } from "./flags";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
 import { dilutionApplies, computeReportedValue } from "./dilution";
 import {
@@ -63,6 +66,10 @@ export interface PanelRow extends ResultCellRow {
   analyzerId?: string;
   referredOut?: boolean;
   analysisNotes?: AnalysisNote[];
+  /** OGC-1022 (R3): NORMAL | ABNORMAL | CRITICAL | INVALID, computed server-side. */
+  resultFlag?: string;
+  /** OGC-1022 (R3): display string for the authored critical bounds. */
+  criticalRange?: string;
   [key: string]: unknown;
 }
 
@@ -202,18 +209,28 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             <div className="cds--label">
               <FormattedMessage id="label.results.result" />
             </div>
-            <div className="unifiedWorkZoneValue">
+            <div
+              className={`unifiedWorkZoneValue ${accentClass(row.resultFlag)}`}
+            >
               <PolymorphicResultCell
                 row={row}
                 editable={editable}
                 onValueChange={onValueChange}
               />
               {row.unitsOfMeasure && <span>{row.unitsOfMeasure}</span>}
+              <FlagChip flag={row.resultFlag} />
             </div>
             {row.normalRange && (
               <div className="unifiedWorkZoneRange">
                 {formatDomainMessage(intl, "label.results.range", domain)}:{" "}
                 {row.normalRange} {row.unitsOfMeasure || ""}
+                {row.criticalRange && (
+                  <span className="unifiedCriticalRange">
+                    {" "}
+                    <FormattedMessage id="label.results.critical.range" />:{" "}
+                    {row.criticalRange}
+                  </span>
+                )}
               </div>
             )}
             {editable && dilutionApplies(row.resultType) && (
@@ -412,6 +429,14 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         </div>
       </div>
 
+      {/* Critical banner (FR-C2) — the one full-width banner; ack never gates Save (FR-A4) */}
+      {row.resultFlag === "CRITICAL" && (
+        <CriticalBanner
+          analysisId={row.analysisId as string | undefined}
+          criticalRange={row.criticalRange}
+        />
+      )}
+
       {/* REFERENCE ZONE (FR-C3/C4/C5) */}
       <div className="unifiedRefZone">
         <div className="unifiedRefZoneHeader">
@@ -478,6 +503,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             </div>
           </ReferenceSection>
         )}
+
+        <HistorySection
+          analysisId={row.analysisId as string | undefined}
+          open={isSectionOpen(sectionLayout, "history", false)}
+          onToggle={(open) => toggleSection("history", open)}
+        />
       </div>
     </div>
   );
