@@ -3,7 +3,6 @@ package org.openelisglobal.coldstorage.controller.rest;
 import java.io.StringReader;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -67,8 +66,6 @@ public class FreezerAuditTrailController extends BaseRestController {
 
     @Autowired
     private CorrectiveActionService correctiveActionService;
-
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
@@ -150,8 +147,7 @@ public class FreezerAuditTrailController extends BaseRestController {
                             ackEvent.put("freezerId", String.valueOf(fId));
                             ackEvent.put("freezerName", freezerName);
                             ackEvent.put("actionType", "ALERT_ACKNOWLEDGED");
-                            ackEvent.put("performedAt",
-                                    ackTime.atZoneSameInstant(ZoneId.systemDefault()).format(DATE_FORMATTER));
+                            ackEvent.put("performedAt", ackTime.toString());
                             ackEvent.put("performedBy", getUserName(alert.getAcknowledgedBy()));
                             ackEvent.put("comment", "Temperature excursion alert for " + freezerName + " acknowledged");
                             ackEvent.put("details", alert.getMessage());
@@ -172,8 +168,7 @@ public class FreezerAuditTrailController extends BaseRestController {
                             resolveEvent.put("freezerId", String.valueOf(fId));
                             resolveEvent.put("freezerName", freezerName);
                             resolveEvent.put("actionType", "CRITICAL_ALERT_RESOLVED");
-                            resolveEvent.put("performedAt",
-                                    resolveTime.atZoneSameInstant(ZoneId.systemDefault()).format(DATE_FORMATTER));
+                            resolveEvent.put("performedAt", resolveTime.toString());
                             resolveEvent.put("performedBy", getUserName(alert.getResolvedBy()));
                             resolveEvent.put("comment", "Temperature excursion for " + freezerName + " resolved");
                             resolveEvent.put("details", alert.getResolutionNotes());
@@ -201,8 +196,7 @@ public class FreezerAuditTrailController extends BaseRestController {
                             actionEvent.put("freezerId", String.valueOf(fId));
                             actionEvent.put("freezerName", freezerName);
                             actionEvent.put("actionType", "CORRECTIVE_ACTION_LOGGED");
-                            actionEvent.put("performedAt",
-                                    actionTime.atZoneSameInstant(ZoneId.systemDefault()).format(DATE_FORMATTER));
+                            actionEvent.put("performedAt", actionTime.toString());
 
                             String performedBy = "Unknown";
                             try {
@@ -259,7 +253,7 @@ public class FreezerAuditTrailController extends BaseRestController {
             event.put("actionType", actionType);
 
             event.put("performedAt",
-                    history.getTimestamp().toInstant().atZone(ZoneId.systemDefault()).format(DATE_FORMATTER));
+                    history.getTimestamp().toInstant().atZone(ZoneId.systemDefault()).toOffsetDateTime().toString());
 
             String performedBy = getUserName(Integer.parseInt(history.getSysUserId()));
             event.put("performedBy", performedBy);
@@ -346,9 +340,7 @@ public class FreezerAuditTrailController extends BaseRestController {
         details.append("Status: ").append(action.getStatus()).append("\n");
 
         if (action.getCompletedAt() != null) {
-            details.append("Completed: ")
-                    .append(action.getCompletedAt().atZoneSameInstant(ZoneId.systemDefault()).format(DATE_FORMATTER))
-                    .append("\n");
+            details.append("Completed: ").append(action.getCompletedAt()).append("\n");
         }
 
         if (action.getCompletionNotes() != null) {

@@ -242,7 +242,7 @@ const mapAuditEvent = (event) => ({
   freezerId: event.freezerId ?? "—",
   actionType: formatActionLabel(event.actionType),
   performedBy: event.performedBy ?? "System",
-  timestamp: event.performedAt || "—", // Backend already formats the date
+  timestamp: formatDateTime(event.performedAt),
   comment: event.comment || event.details || "—",
   details: event.details || "",
 });
