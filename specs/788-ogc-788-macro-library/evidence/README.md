@@ -42,12 +42,13 @@ rulings in the review overlay.
 - Phrases application: `https://phrases.openelis-global.org/`
 - Macro Library: `https://phrases.openelis-global.org/admin/MacroLibrary`
 - Review checklist:
-  `https://phrases.openelis-global.org/__review/uat-amr.json`
+  `https://phrases.openelis-global.org/__review/uat-phrases.json`
 - Deployment guard: `https://phrases.openelis-global.org/__review/target.json`
 - Checklist revision:
   `57379544553a890c9644183a09bd8f32fa17c11587cd649bbd659265bbdc62b8`
 
 The shared source contains 22 stories and 67 stable steps. Host filtering gives
-the phrases picker exactly the two OGC-788 stories and twelve required steps.
+the phrases picker exactly the two OGC-788 stories and twelve required steps
+from the dedicated `phrases` checklist instance.
 Automated validation and video proof are complete; exact deployment verification
 and human review marks remain pending.
