@@ -61,10 +61,7 @@ public class ThresholdEvaluationServiceImpl implements ThresholdEvaluationServic
             return instantaneousStatus;
         }
 
-        // Hysteresis: only escalate a breach to WARNING/CRITICAL once it has
-        // persisted for at least minExcursionMinutes, so a reading oscillating
-        // exactly at a threshold boundary does not create+resolve an alert on
-        // every single poll.
+        // Only escalate once the breach has persisted for minExcursionMinutes.
         if (freezer == null || freezer.getId() == null || timestamp == null || profile.getMinExcursionMinutes() == null
                 || profile.getMinExcursionMinutes() <= 0) {
             return instantaneousStatus;
@@ -74,39 +71,21 @@ public class ThresholdEvaluationServiceImpl implements ThresholdEvaluationServic
     }
 
     /**
-     * Requires that the breach has been continuously present (every prior reading
-     * in the lookback window classifies as WARNING-or-worse for a WARNING
-     * candidate, or CRITICAL for a CRITICAL candidate) for the full
-     * {@code minExcursionMinutes} window before escalating. If there is no prior
-     * reading history at all in the window (i.e. this is the first reading since
-     * the breach began) it has by definition not yet persisted for the full window,
-     * so the reading is reported as NORMAL until enough time/history accumulates to
-     * confirm a sustained excursion.
+     * Escalates only once every reading in a continuous breaching streak leading up
+     * to {@code timestamp} spans at least {@code minExcursionMinutes}.
      *
      * <p>
-     * Note: {@code maxDurationMinutes} is a distinct, separately-modeled field
-     * intended for something like auto-escalating severity once a WARNING has
-     * persisted past a duration. Its intended semantics are ambiguous from the
-     * existing code/tests (e.g. is it a hard alerting cutoff, an auto-acknowledge
-     * window, or something else) so it is intentionally left unwired here rather
-     * than guessing at behavior - see the field javadoc on
+     * {@code maxDurationMinutes} is a separate field left unwired here - its
+     * intended semantics (hard cutoff? auto-acknowledge window?) are ambiguous from
+     * the existing code/tests; see
      * {@link ThresholdProfile#getMaxDurationMinutes()}.
      */
     private FreezerReading.Status applyMinExcursionHysteresis(Freezer freezer, OffsetDateTime timestamp,
             ThresholdProfile profile, FreezerReading.Status instantaneousStatus) {
         int minExcursionMinutes = profile.getMinExcursionMinutes();
-        // Query a window wider than minExcursionMinutes (double it) as a safety
-        // margin. Poll timestamps land wherever the poll actually ran, essentially
-        // never exactly on a `timestamp - minExcursionMinutes` boundary, so requiring
-        // a reading to land exactly at the window edge (an earlier version of this
-        // check did) would make escalation practically unreachable. Instead, the
-        // real excursion duration is reconstructed below from the readings
-        // themselves by walking the continuous breaching streak back from `timestamp`.
+        // Widen the query rather than requiring a reading to land exactly on the window
+        // boundary.
         OffsetDateTime lookupStart = timestamp.minusMinutes((long) minExcursionMinutes * 2);
-        // The current reading is evaluated before it is saved (see
-        // ReadingIngestionServiceImpl.ingest()), so this only returns *prior*
-        // readings, ordered oldest-first (see
-        // FreezerReadingDAOImpl.findByFreezerWithin).
         List<FreezerReading> priorReadings;
         try {
             priorReadings = freezerReadingService.getReadingsBetween(freezer.getId(), lookupStart, timestamp);
@@ -117,18 +96,11 @@ public class ThresholdEvaluationServiceImpl implements ThresholdEvaluationServic
         }
 
         if (priorReadings == null || priorReadings.isEmpty()) {
-            // No history at all in the lookback window - this is the first reading of a
-            // (possibly new) excursion, so it cannot yet have persisted for the required
-            // duration. Don't escalate yet.
             return FreezerReading.Status.NORMAL;
         }
 
-        // Walk backward from the most recent prior reading, accumulating a
-        // continuous breaching streak at the same-or-worse severity as the current
-        // reading. Stop at the first non-breaching or transmission-failed reading,
-        // or when history runs out. `earliestContinuousBreachTime` starts at
-        // `timestamp` itself (the current, not-yet-saved reading) so the duration
-        // calculation below always includes the current sample.
+        // Walk backward accumulating a continuous same-or-worse-severity streak,
+        // stopping at the first non-breaching or transmission-failed reading.
         OffsetDateTime earliestContinuousBreachTime = timestamp;
         for (int i = priorReadings.size() - 1; i >= 0; i--) {
             FreezerReading reading = priorReadings.get(i);
@@ -178,16 +150,11 @@ public class ThresholdEvaluationServiceImpl implements ThresholdEvaluationServic
     }
 
     private boolean isWarningTemperature(BigDecimal temperature, ThresholdProfile profile) {
-        // Warning range is between warning and critical thresholds
-        // Inclusive of warning boundary, exclusive of critical boundary
-        boolean warningLow = profile.getWarningMin() != null && profile.getCriticalMin() != null
-                && temperature.compareTo(profile.getCriticalMin()) >= 0
-                && temperature.compareTo(profile.getWarningMin()) <= 0;
-
-        boolean warningHigh = profile.getWarningMax() != null && profile.getCriticalMax() != null
-                && temperature.compareTo(profile.getWarningMax()) >= 0
-                && temperature.compareTo(profile.getCriticalMax()) < 0;
-
+        // No bound against critical needed: isCriticalTemperature runs first, so a
+        // value beyond critical never reaches here (an earlier version bounded this
+        // too, leaving the exact critical value unclassified by either method).
+        boolean warningLow = profile.getWarningMin() != null && temperature.compareTo(profile.getWarningMin()) <= 0;
+        boolean warningHigh = profile.getWarningMax() != null && temperature.compareTo(profile.getWarningMax()) >= 0;
         return warningLow || warningHigh;
     }
 

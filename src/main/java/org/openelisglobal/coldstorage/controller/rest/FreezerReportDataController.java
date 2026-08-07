@@ -3,9 +3,9 @@ package org.openelisglobal.coldstorage.controller.rest;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.openelisglobal.coldstorage.service.FreezerReadingService;
 import org.openelisglobal.coldstorage.service.FreezerService;
+import org.openelisglobal.coldstorage.service.dto.FreezerExcursionData;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +28,10 @@ public class FreezerReportDataController extends BaseRestController {
 
     @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/excursions")
-    public ResponseEntity<List<Map<String, Object>>> getExcursions(@RequestParam(required = false) Long freezerId,
+    public ResponseEntity<List<FreezerExcursionData>> getExcursions(@RequestParam(required = false) Long freezerId,
             @RequestParam String start, @RequestParam String end) {
 
-        List<Map<String, Object>> excursions = new ArrayList<>();
+        List<FreezerExcursionData> excursions = new ArrayList<>();
 
         try {
             OffsetDateTime startTime = OffsetDateTime.parse(start);

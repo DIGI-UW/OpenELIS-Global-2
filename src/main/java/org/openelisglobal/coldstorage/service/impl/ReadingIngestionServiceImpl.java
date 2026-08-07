@@ -2,6 +2,8 @@ package org.openelisglobal.coldstorage.service.impl;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
+import org.openelisglobal.coldstorage.config.FreezerMonitoringProperties;
 import org.openelisglobal.coldstorage.service.FreezerReadingService;
 import org.openelisglobal.coldstorage.service.ReadingIngestionService;
 import org.openelisglobal.coldstorage.service.ThresholdEvaluationService;
@@ -22,12 +24,15 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
     private final ThresholdEvaluationService thresholdEvaluationService;
     private final FreezerReadingService freezerReadingService;
     private final ApplicationEventPublisher eventPublisher;
+    private final FreezerMonitoringProperties config;
 
     public ReadingIngestionServiceImpl(ThresholdEvaluationService thresholdEvaluationService,
-            FreezerReadingService freezerReadingService, ApplicationEventPublisher eventPublisher) {
+            FreezerReadingService freezerReadingService, ApplicationEventPublisher eventPublisher,
+            FreezerMonitoringProperties config) {
         this.thresholdEvaluationService = thresholdEvaluationService;
         this.freezerReadingService = freezerReadingService;
         this.eventPublisher = eventPublisher;
+        this.config = config;
     }
 
     @Override
@@ -40,27 +45,41 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
                     freezer.getName());
         }
 
-        FreezerReading.Status status = determineStatus(freezer, recordedAt, temperature, humidity, transmissionOk,
+        // Instantaneous status is what gets stored; escalation (hysteresis-gated) only
+        // decides whether to alert. Escalation must be computed before saveReading, or
+        // it would see this reading as its own evidence of a sustained breach.
+        FreezerReading.Status instantaneousStatus = determineInstantaneousStatus(temperature, humidity, transmissionOk,
                 profile);
+        FreezerReading.Status escalationStatus = (transmissionOk && profile != null)
+                ? thresholdEvaluationService.evaluateStatus(temperature, humidity, profile, freezer, recordedAt)
+                : null;
+
         FreezerReading savedReading = freezerReadingService.saveReading(freezer, recordedAt, temperature, humidity,
-                status, transmissionOk, errorMessage);
+                instantaneousStatus, transmissionOk, errorMessage);
 
         if (!transmissionOk) {
-            // Dead-man's switch: a failed poll has no temperature to compare against a
-            // threshold, so it can never reach the checks below. It must still surface
-            // as its own alert or a disconnected sensor goes unnoticed indefinitely.
-            publishTransmissionFailedEvent(freezer.getId(), errorMessage, savedReading.getId());
+            if (hasReachedConsecutiveFailureThreshold(freezer.getId())) {
+                publishTransmissionFailedEvent(freezer.getId(), errorMessage, savedReading.getId());
+            }
             return;
         }
 
-        // Check temperature thresholds and publish events for alert system
         if (profile != null) {
-            // Use advanced ThresholdProfile if available
-            checkTemperatureThresholdsWithProfile(freezer, temperature, savedReading.getId(), profile);
+            if (escalationStatus != FreezerReading.Status.NORMAL) {
+                checkTemperatureThresholdsWithProfile(freezer, temperature, savedReading.getId(), profile);
+            }
         } else {
-            // Fall back to simple freezer thresholds if no profile assigned
             checkSimpleTemperatureThresholds(freezer, temperature, savedReading.getId());
         }
+    }
+
+    private boolean hasReachedConsecutiveFailureThreshold(Long freezerId) {
+        int threshold = config.getOfflineAlertConsecutiveFailures();
+        List<FreezerReading> recent = freezerReadingService.getRecentReadings(freezerId, threshold);
+        if (recent.size() < threshold) {
+            return false;
+        }
+        return recent.stream().allMatch(reading -> Boolean.FALSE.equals(reading.getTransmissionOk()));
     }
 
     private void publishTransmissionFailedEvent(Long freezerId, String errorMessage, Long readingId) {
@@ -70,12 +89,12 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
         LOGGER.warn("Published transmission failure event for freezer {}: {}", freezerId, errorMessage);
     }
 
-    private FreezerReading.Status determineStatus(Freezer freezer, OffsetDateTime recordedAt, BigDecimal temperature,
-            BigDecimal humidity, boolean transmissionOk, ThresholdProfile profile) {
+    private FreezerReading.Status determineInstantaneousStatus(BigDecimal temperature, BigDecimal humidity,
+            boolean transmissionOk, ThresholdProfile profile) {
         if (!transmissionOk) {
             return FreezerReading.Status.CRITICAL;
         }
-        return thresholdEvaluationService.evaluateStatus(temperature, humidity, profile, freezer, recordedAt);
+        return thresholdEvaluationService.evaluateStatus(temperature, humidity, profile);
     }
 
     /**

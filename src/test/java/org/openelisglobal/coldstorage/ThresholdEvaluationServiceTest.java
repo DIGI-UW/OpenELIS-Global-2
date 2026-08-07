@@ -171,6 +171,25 @@ public class ThresholdEvaluationServiceTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void evaluateStatus_shouldNotFallThroughToNormalExactlyAtCriticalMax() {
+        // Regression test: isWarningTemperature previously required temp strictly
+        // < criticalMax while isCriticalTemperature required strictly > criticalMax,
+        // leaving temp == criticalMax classified as neither - silently NORMAL.
+        ThresholdProfile profile = new ThresholdProfile();
+        profile.setWarningMin(new BigDecimal("1.0"));
+        profile.setWarningMax(new BigDecimal("9.0"));
+        profile.setCriticalMin(new BigDecimal("0.0"));
+        profile.setCriticalMax(new BigDecimal("10.0"));
+
+        BigDecimal temperature = new BigDecimal("10.0"); // Exactly at critical max
+
+        FreezerReading.Status status = thresholdEvaluationService.evaluateStatus(temperature, null, profile);
+
+        assertEquals("Status must not silently fall through to NORMAL at the critical boundary",
+                FreezerReading.Status.WARNING, status);
+    }
+
+    @Test
     public void evaluateStatusWithHysteresis_shouldSuppressEscalationOnFirstBreach() {
         // Ultra-Low Freezer Profile (id=100) has min_excursion_minutes=5. With no
         // prior reading history at all, a breach cannot yet have persisted for the

@@ -14,13 +14,14 @@ import org.openelisglobal.coldstorage.service.FreezerAlertService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
-@Transactional
 public class FreezerAlertServiceImpl implements FreezerAlertService {
 
     private static final Logger logger = LoggerFactory.getLogger(FreezerAlertServiceImpl.class);
@@ -53,7 +54,11 @@ public class FreezerAlertServiceImpl implements FreezerAlertService {
                 message, contextDataJson);
     }
 
-    @EventListener
+    // AFTER_COMMIT so a rolled-back ingest() never leaves behind a false alert.
+    // REQUIRES_NEW gives createFreezerTemperatureAlert below a real transaction to
+    // run in (self-invocation bypasses its own @Transactional).
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @Async
     public void handleFreezerTemperatureThresholdViolated(FreezerTemperatureThresholdViolatedEvent event) {
         try {
@@ -65,7 +70,8 @@ public class FreezerAlertServiceImpl implements FreezerAlertService {
     }
 
     @Override
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @Async
     public void handleFreezerTransmissionFailed(FreezerTransmissionFailedEvent event) {
         try {

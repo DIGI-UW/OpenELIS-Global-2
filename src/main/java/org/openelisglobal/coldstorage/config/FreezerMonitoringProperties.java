@@ -39,6 +39,9 @@ public class FreezerMonitoringProperties {
     @Value("${org.openelisglobal.freezermonitoring.retention-cron:0 30 2 * * ?}")
     private String retentionCron;
 
+    @Value("${org.openelisglobal.freezermonitoring.offline-alert-consecutive-failures:3}")
+    private int offlineAlertConsecutiveFailures;
+
     /**
      * Validates configuration at startup. Nonsensical values (negative/zero poll
      * interval, negative timeout, negative retries, etc.) are rejected outright
@@ -116,6 +119,12 @@ public class FreezerMonitoringProperties {
         if (retentionDays <= 0) {
             throw new IllegalStateException(
                     "org.openelisglobal.freezermonitoring.retention-days must be positive, was: " + retentionDays);
+        }
+
+        if (offlineAlertConsecutiveFailures <= 0) {
+            throw new IllegalStateException(
+                    "org.openelisglobal.freezermonitoring.offline-alert-consecutive-failures must be positive, was: "
+                            + offlineAlertConsecutiveFailures);
         }
     }
 }

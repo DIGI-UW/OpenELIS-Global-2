@@ -1122,7 +1122,13 @@ function FreezerMonitoringDashboard({ intl }) {
                                                     kind="ghost"
                                                     size="sm"
                                                     renderIcon={View}
-                                                    iconDescription="View alert details"
+                                                    iconDescription={intl.formatMessage(
+                                                      {
+                                                        id: "coldStorage.dashboard.viewAlertDetails",
+                                                        defaultMessage:
+                                                          "View alert details",
+                                                      },
+                                                    )}
                                                     hasIconOnly
                                                     onClick={(e) => {
                                                       e.stopPropagation();
@@ -1159,7 +1165,13 @@ function FreezerMonitoringDashboard({ intl }) {
                                                       kind="danger--ghost"
                                                       size="sm"
                                                       renderIcon={TrashCan}
-                                                      iconDescription="Delete alert"
+                                                      iconDescription={intl.formatMessage(
+                                                        {
+                                                          id: "coldStorage.dashboard.deleteAlert",
+                                                          defaultMessage:
+                                                            "Delete alert",
+                                                        },
+                                                      )}
                                                       hasIconOnly
                                                       disabled={
                                                         actionInFlight ===

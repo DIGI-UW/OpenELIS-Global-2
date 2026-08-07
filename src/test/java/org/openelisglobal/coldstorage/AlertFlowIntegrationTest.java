@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -13,9 +14,11 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.coldstorage.service.FreezerReadingService;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.service.ReadingIngestionService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.coldstorage.valueholder.FreezerReading;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
@@ -25,6 +28,9 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private FreezerService freezerService;
+
+    @Autowired
+    private FreezerReadingService freezerReadingService;
 
     @Autowired
     private AlertService alertService;
@@ -290,5 +296,49 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
 
         Long activeCount = alertService.countActiveAlertsForEntity("Freezer", freezerId);
         assertEquals("Should have 2 active alerts (OPEN alerts, resolved excluded)", Long.valueOf(2), activeCount);
+    }
+
+    @Test
+    public void testFirstBreachSuppressesAlertButStoresTruthfulStatus() throws InterruptedException {
+        // Freezer 102 / profile 3 keeps the default 5-minute minExcursionMinutes.
+        Long freezerId = 102L;
+        Freezer freezer = freezerService.findById(freezerId).orElse(null);
+        assertNotNull("Freezer should exist", freezer);
+
+        BigDecimal criticalTemp = new BigDecimal("5.0"); // Above -20°C critical max
+
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, true, null);
+        Thread.sleep(500);
+
+        List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);
+        assertTrue("Hysteresis should suppress the alert on the first breach", alerts.isEmpty());
+
+        Optional<FreezerReading> reading = freezerReadingService.getLatestReading(freezerId);
+        assertTrue("Reading should have been saved", reading.isPresent());
+        assertEquals(
+                "Stored status must reflect the truthful instantaneous classification, "
+                        + "not the hysteresis-suppressed one",
+                FreezerReading.Status.CRITICAL, reading.get().getStatus());
+    }
+
+    @Test
+    public void testOfflineAlertRequiresConsecutiveFailures() throws InterruptedException {
+        // Default threshold is 3 consecutive transmission failures.
+        Long freezerId = 100L;
+        Freezer freezer = freezerService.findById(freezerId).orElse(null);
+        assertNotNull("Freezer should exist", freezer);
+
+        readingIngestionService.ingest(freezer, OffsetDateTime.now().minusMinutes(2), null, null, false, "timeout");
+        readingIngestionService.ingest(freezer, OffsetDateTime.now().minusMinutes(1), null, null, false, "timeout");
+        Thread.sleep(300);
+        assertTrue("Two failures should not yet raise an offline alert",
+                alertService.getAlertsByEntity("Freezer", freezerId).isEmpty());
+
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), null, null, false, "timeout");
+        Thread.sleep(300);
+
+        List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);
+        assertEquals("Third consecutive failure should raise the offline alert", 1, alerts.size());
+        assertEquals(AlertType.FREEZER_OFFLINE, alerts.get(0).getAlertType());
     }
 }
