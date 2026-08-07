@@ -135,6 +135,12 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(setup.getByText("FEFO - use first").first()).toBeVisible();
     await expect(setup.getByText("QC passed").first()).toBeVisible();
+    await attachViewportEvidence(
+      page,
+      testInfo,
+      "microbiology-reagent-picker-culture",
+      setup.getByRole("searchbox", { name: "Scan or enter lot number" }),
+    );
     await expectNoWcag21AaViolations(
       page,
       testInfo,
@@ -150,6 +156,12 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(ast.getByText("FEFO - use first").first()).toBeVisible();
     await expect(ast.getByText("QC passed").first()).toBeVisible();
+    await attachViewportEvidence(
+      page,
+      testInfo,
+      "microbiology-reagent-picker-ast",
+      ast.getByRole("searchbox", { name: "Scan or enter lot number" }),
+    );
     await expectNoWcag21AaViolations(
       page,
       testInfo,
