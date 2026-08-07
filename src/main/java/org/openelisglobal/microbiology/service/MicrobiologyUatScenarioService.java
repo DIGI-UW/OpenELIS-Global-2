@@ -48,6 +48,10 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.qaevent.service.NceCategoryService;
+import org.openelisglobal.qaevent.service.NceTypeService;
+import org.openelisglobal.qaevent.valueholder.NceCategory;
+import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -99,6 +103,8 @@ public class MicrobiologyUatScenarioService {
     private static final String UAT_PATIENT_BIRTH_DATE = "1990-03-13 00:00:00";
     private static final String UAT_MEDIA_NAME = "UAT microbiology blood agar";
     private static final String UAT_AST_CARD_NAME = "UAT microbiology AST card";
+    private static final String UAT_NCE_CATEGORY_NAME = "Pre-analytical";
+    private static final String UAT_NCE_TYPE_NAME = "Specimen lost";
 
     private final MethodService methodService;
     private final SampleService sampleService;
@@ -127,6 +133,8 @@ public class MicrobiologyUatScenarioService {
     private final MicrobiologyReferenceAdminService referenceAdminService;
     private final MicroBreakpointAdminService breakpointAdminService;
     private final MicroBreakpointImportService breakpointImportService;
+    private final NceCategoryService nceCategoryService;
+    private final NceTypeService nceTypeService;
 
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, PatientService patientService, PersonService personService,
@@ -139,7 +147,8 @@ public class MicrobiologyUatScenarioService {
             MicroOrderRoutingService orderRoutingService, InventoryItemService inventoryItemService,
             InventoryLotService inventoryLotService, InventoryManagementService inventoryManagementService,
             TestReagentLinkService testReagentLinkService, MicrobiologyReferenceAdminService referenceAdminService,
-            MicroBreakpointAdminService breakpointAdminService, MicroBreakpointImportService breakpointImportService) {
+            MicroBreakpointAdminService breakpointAdminService, MicroBreakpointImportService breakpointImportService,
+            NceCategoryService nceCategoryService, NceTypeService nceTypeService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -167,6 +176,8 @@ public class MicrobiologyUatScenarioService {
         this.referenceAdminService = referenceAdminService;
         this.breakpointAdminService = breakpointAdminService;
         this.breakpointImportService = breakpointImportService;
+        this.nceCategoryService = nceCategoryService;
+        this.nceTypeService = nceTypeService;
     }
 
     @Transactional
@@ -212,6 +223,7 @@ public class MicrobiologyUatScenarioService {
             ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), nonCultureTest, performedBy);
         }
         ensureInventoryTraceability(test, performedBy);
+        ensureSpecimenLostVocabulary(performedBy);
         ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
         ensureRemarkTestResult(test, performedBy);
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
@@ -274,6 +286,45 @@ public class MicrobiologyUatScenarioService {
         ensureLot(media, "UAT-MICRO-MEDIA-LATER", 90, 20.0, performedBy);
         ensureLot(astCard, "UAT-MICRO-CARD-FEFO", 45, 10.0, performedBy);
         ensureLot(astCard, "UAT-MICRO-CARD-LATER", 120, 10.0, performedBy);
+    }
+
+    private void ensureSpecimenLostVocabulary(String performedBy) {
+        NceCategory category = nceCategoryService.getAllNceCategories().stream()
+                .filter(candidate -> normalizedName(candidate.getName()).equals(normalizedName(UAT_NCE_CATEGORY_NAME)))
+                .findFirst().orElse(null);
+        if (category == null) {
+            category = new NceCategory();
+            category.setName(UAT_NCE_CATEGORY_NAME);
+            category.setDisplayKey("nce.category.preanalytical");
+            category.setActive(true);
+            category.setSysUserId(performedBy);
+            nceCategoryService.insert(category);
+        } else if (!Boolean.TRUE.equals(category.getActive())) {
+            category.setActive(true);
+            category.setSysUserId(performedBy);
+            nceCategoryService.update(category);
+        }
+
+        NceType type = nceTypeService.getAllNceTypes().stream()
+                .filter(candidate -> normalizedName(candidate.getName()).equals(normalizedName(UAT_NCE_TYPE_NAME)))
+                .findFirst().orElse(null);
+        if (type == null) {
+            type = new NceType();
+            type.setName(UAT_NCE_TYPE_NAME);
+            type.setDisplayKey("microbiology.uat.nce.specimenLost");
+            type.setCategoryId(category.getId());
+            type.setActive(true);
+            type.setSysUserId(performedBy);
+            nceTypeService.insert(type);
+        } else if (!Boolean.TRUE.equals(type.getActive())) {
+            type.setActive(true);
+            type.setSysUserId(performedBy);
+            nceTypeService.update(type);
+        }
+    }
+
+    private String normalizedName(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
     private InventoryItem getOrCreateInventoryItem(String name, ItemType itemType, String units, String performedBy) {

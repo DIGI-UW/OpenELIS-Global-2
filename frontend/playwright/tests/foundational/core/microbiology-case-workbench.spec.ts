@@ -89,7 +89,9 @@ test.describe("Microbiology case workbench", () => {
     await expect(page.getByRole("cell", { name: "BOTTLE-001" })).toBeVisible();
 
     await page.getByRole("button", { name: "Add subculture" }).click();
-    await page.getByLabel("Parent media").selectOption({ label: /BOTTLE-001/ });
+    await page
+      .getByLabel("Parent media")
+      .selectOption({ label: "BOTTLE-001 - Blood culture bottle" });
     await page.getByLabel("Bottle or plate ID").fill("PLATE-002");
     await page.getByLabel("Media or bottle").fill("MacConkey agar");
     await page.getByRole("button", { name: "Save media" }).click();
@@ -102,11 +104,16 @@ test.describe("Microbiology case workbench", () => {
       .getByRole("button", { name: "Timeline", exact: true })
       .click();
     await expect(page).toHaveURL(/section=timeline/);
-    await expect(page.getByText("Inoculation Recorded")).toBeVisible();
+    const timeline = page.getByTestId("microbiology-timeline-card");
+    await expect(
+      timeline.getByText("Inoculation Recorded", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByText(/BOTTLE-001 - Blood culture bottle/),
     ).toBeVisible();
-    await expect(page.getByText("Subculture Recorded")).toBeVisible();
+    await expect(
+      timeline.getByText("Subculture Recorded", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText(/PLATE-002 - MacConkey agar/)).toBeVisible();
     await page.getByRole("button", { name: "Add note" }).click();
     await page
@@ -114,7 +121,7 @@ test.describe("Microbiology case workbench", () => {
       .fill("Colonies visible at 18 hours");
     await page.getByRole("button", { name: "Save note" }).click();
     await expect(page.getByText("Colonies visible at 18 hours")).toBeVisible();
-    await expect(page.getByText("Manual")).toBeVisible();
+    await expect(timeline.getByText("Manual", { exact: true })).toBeVisible();
 
     await caseView
       .getByRole("button", { name: "Isolates", exact: true })
@@ -128,10 +135,22 @@ test.describe("Microbiology case workbench", () => {
     await expect(page.getByText("Identification pending")).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
-    await expect(page.getByText("Gram negative rods")).toBeVisible();
+    await expect(
+      page
+        .getByTestId("microbiology-isolates-card")
+        .getByText("Gram negative rods", { exact: true }),
+    ).toBeVisible();
+    await caseView
+      .getByRole("button", { name: "Manual AST", exact: true })
+      .click();
+    await expect(page).toHaveURL(/section=ast/);
     await expect(
       page.getByRole("button", { name: "Start AST run" }),
     ).toBeDisabled();
+
+    await caseView
+      .getByRole("button", { name: "Isolates", exact: true })
+      .click();
 
     await page.getByRole("button", { name: "Identify organism" }).click();
     await page.getByLabel("Organism").selectOption(seeded.organismId);
@@ -142,9 +161,16 @@ test.describe("Microbiology case workbench", () => {
       timeout: LONG_TIMEOUT,
     });
     await expect(page.getByText(/Maldi Tof.*99.5%/)).toBeVisible();
+    await caseView
+      .getByRole("button", { name: "Manual AST", exact: true })
+      .click();
     await expect(
       page.getByRole("button", { name: "Start AST run" }),
     ).toBeEnabled();
+
+    await caseView
+      .getByRole("button", { name: "Isolates", exact: true })
+      .click();
 
     await page
       .getByRole("button", {
@@ -201,9 +227,15 @@ test.describe("Microbiology case workbench", () => {
       new RegExp(`/Microbiology/cases/${seeded.siblingCaseId}`),
     );
 
-    await page.getByLabel("Workflow").selectOption("MYCOBACTERIOLOGY_TB");
-    await expect(page.getByLabel("Culture Method")).toBeEnabled();
-    await page.getByLabel("Culture Method").selectOption(seeded.methodId);
+    await page
+      .getByLabel("Workflow", { exact: true })
+      .selectOption("MYCOBACTERIOLOGY_TB");
+    await expect(
+      page.getByLabel("Culture Method", { exact: true }),
+    ).toBeEnabled();
+    await page
+      .getByLabel("Culture Method", { exact: true })
+      .selectOption(seeded.methodId);
     await page
       .getByLabel("Reason for change")
       .fill("Corrected during accession review");
@@ -220,10 +252,13 @@ test.describe("Microbiology case workbench", () => {
     ).toBeEnabled();
     await page.getByRole("button", { name: "Timeline", exact: true }).click();
     await expect(page).toHaveURL(/section=timeline/);
+    const timeline = page.getByTestId("microbiology-timeline-card");
     await expect(
-      page.getByText("Corrected during accession review"),
+      timeline.getByText(/Corrected during accession review/),
     ).toBeVisible();
-    await expect(page.getByText("Workflow Changed")).toBeVisible();
+    await expect(
+      timeline.getByText("Workflow Changed", { exact: true }),
+    ).toBeVisible();
   });
 
   test("reports an NCE and marks a separate specimen lost", async ({
@@ -238,8 +273,13 @@ test.describe("Microbiology case workbench", () => {
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
 
-    await caseHeader.getByRole("button", { name: "Report NCE" }).click();
+    const reportNce = caseHeader.getByRole("button", { name: "Report NCE" });
+    await reportNce.focus();
+    await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/section=nonconformance&action=report-nce/);
+    await expect(
+      page.getByRole("heading", { name: "Report nonconformance" }),
+    ).toBeFocused();
     const reportPanel = page.getByTestId("microbiology-nce-panel");
     await expect(
       reportPanel.getByRole("heading", { name: "Report nonconformance" }),
@@ -252,14 +292,25 @@ test.describe("Microbiology case workbench", () => {
       reportPanel.getByLabel("Reporting unit"),
       "Reporting unit",
     );
-    await reportPanel.getByRole("radio", { name: "Major" }).check();
+    const reportMajor = reportPanel.getByRole("radio", { name: "Major" });
+    await reportMajor.focus();
+    await page.keyboard.press("Space");
+    await expect(reportMajor).toBeChecked();
     await reportPanel
       .getByLabel("Description")
       .fill("Container arrived cracked during receipt");
-    await reportPanel.getByRole("radio", { name: "Flag only" }).check();
-    await reportPanel.getByRole("button", { name: "Report NCE" }).click();
+    const flagOnly = reportPanel.getByRole("radio", { name: "Flag only" });
+    await flagOnly.focus();
+    await page.keyboard.press("Space");
+    await expect(flagOnly).toBeChecked();
+    const submitNce = reportPanel.getByRole("button", { name: "Report NCE" });
+    await submitNce.focus();
+    await page.keyboard.press("Enter");
 
     await expect(page).toHaveURL(/section=timeline/);
+    await expect(
+      page.getByTestId("microbiology-case-section-timeline"),
+    ).toBeFocused();
     await expect(
       page.getByText("Container arrived cracked during receipt"),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
@@ -272,11 +323,15 @@ test.describe("Microbiology case workbench", () => {
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await page
+    const markLost = page
       .locator("header")
-      .getByRole("button", { name: /Mark lost/ })
-      .click();
+      .getByRole("button", { name: /Mark lost/ });
+    await markLost.focus();
+    await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/section=nonconformance&action=mark-lost/);
+    await expect(
+      page.getByRole("heading", { name: "Mark specimen lost" }),
+    ).toBeFocused();
     const lostPanel = page.getByTestId("microbiology-nce-panel");
     await expect(
       lostPanel.getByRole("heading", { name: "Mark specimen lost" }),
@@ -288,16 +343,24 @@ test.describe("Microbiology case workbench", () => {
       lostPanel.getByLabel("Reporting unit"),
       "Reporting unit",
     );
-    await lostPanel.getByRole("radio", { name: "Major" }).check();
+    const lostMajor = lostPanel.getByRole("radio", { name: "Major" });
+    await lostMajor.focus();
+    await page.keyboard.press("Space");
+    await expect(lostMajor).toBeChecked();
     await lostPanel
       .getByLabel("Description")
       .fill("Specimen cannot be located after accession");
     await expect(
       lostPanel.getByRole("radio", { name: "Reject affected tests" }),
     ).toBeChecked();
-    await lostPanel.getByRole("button", { name: "Mark lost" }).click();
+    const submitLost = lostPanel.getByRole("button", { name: "Mark lost" });
+    await submitLost.focus();
+    await page.keyboard.press("Enter");
 
     await expect(page).toHaveURL(/section=timeline/);
+    await expect(
+      page.getByTestId("microbiology-case-section-timeline"),
+    ).toBeFocused();
     await expect(
       page.locator("header").getByTitle("Lost Specimen"),
     ).toBeVisible({

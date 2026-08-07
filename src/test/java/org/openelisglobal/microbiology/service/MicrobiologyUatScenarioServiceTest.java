@@ -57,6 +57,10 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.qaevent.service.NceCategoryService;
+import org.openelisglobal.qaevent.service.NceTypeService;
+import org.openelisglobal.qaevent.valueholder.NceCategory;
+import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -159,6 +163,12 @@ public class MicrobiologyUatScenarioServiceTest {
     private TestReagentLinkService testReagentLinkService;
 
     @Mock
+    private NceCategoryService nceCategoryService;
+
+    @Mock
+    private NceTypeService nceTypeService;
+
+    @Mock
     private MicrobiologyReferenceAdminService referenceAdminService;
 
     @Mock
@@ -206,7 +216,8 @@ public class MicrobiologyUatScenarioServiceTest {
                 testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
                 testResultService, testMethodService, statusService, configurationService, caseService,
                 orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
-                testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService);
+                testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
+                nceCategoryService, nceTypeService);
     }
 
     @After
@@ -296,6 +307,40 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("UAT-MICRO-MEDIA-EXPIRED", lotCaptor.getAllValues().get(0).getLotNumber());
         assertTrue(lotCaptor.getAllValues().get(0).isExpired());
         assertEquals("UAT-MICRO-MEDIA-FEFO", lotCaptor.getAllValues().get(1).getLotNumber());
+    }
+
+    @Test
+    public void provisionsSpecimenLostVocabularyThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+        doAnswer(invocation -> {
+            NceCategory category = invocation.getArgument(0);
+            Integer generatedId = System.identityHashCode(category);
+            category.setId(generatedId);
+            return generatedId;
+        }).when(nceCategoryService).insert(any(NceCategory.class));
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "MVP";
+        request.scenarioKey = "playwright-nce-vocabulary";
+
+        service.provision(request, "1");
+
+        ArgumentCaptor<NceCategory> categoryCaptor = ArgumentCaptor.forClass(NceCategory.class);
+        verify(nceCategoryService).insert(categoryCaptor.capture());
+        assertEquals("Pre-analytical", categoryCaptor.getValue().getName());
+        assertTrue(categoryCaptor.getValue().getActive());
+        ArgumentCaptor<NceType> typeCaptor = ArgumentCaptor.forClass(NceType.class);
+        verify(nceTypeService).insert(typeCaptor.capture());
+        assertEquals("Specimen lost", typeCaptor.getValue().getName());
+        assertEquals(categoryCaptor.getValue().getId(), typeCaptor.getValue().getCategoryId());
+        assertTrue(typeCaptor.getValue().getActive());
     }
 
     @Test

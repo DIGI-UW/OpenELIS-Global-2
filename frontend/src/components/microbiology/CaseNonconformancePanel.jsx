@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   InlineNotification,
@@ -53,6 +53,12 @@ const CaseNonconformancePanel = ({
   const [astRuns, setAstRuns] = useState([]);
   const [antibiotics, setAntibiotics] = useState([]);
   const [loadingRetest, setLoadingRetest] = useState(false);
+  const titleRef = useRef(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => titleRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [mode]);
 
   useEffect(() => {
     let active = true;
@@ -223,11 +229,12 @@ const CaseNonconformancePanel = ({
     <section
       className="microbiology-card"
       data-testid="microbiology-nce-panel"
+      aria-labelledby="microbiology-nce-panel-title"
       aria-busy={loading || saving}
     >
       <Stack gap={5}>
         <div>
-          <h3>
+          <h3 ref={titleRef} id="microbiology-nce-panel-title" tabIndex={-1}>
             {intl.formatMessage({
               id: lostMode
                 ? "microbiology.nce.markLostTitle"

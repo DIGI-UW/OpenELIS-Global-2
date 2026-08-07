@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button, ButtonSet, InlineNotification, Stack } from "@carbon/react";
 import { useIntl } from "react-intl";
 
@@ -30,6 +30,12 @@ const CaseCultureTransitionPanel = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const transition = TRANSITIONS[action];
+  const titleRef = useRef(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => titleRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [action]);
 
   if (!transition) {
     return null;
@@ -55,7 +61,11 @@ const CaseCultureTransitionPanel = ({
     >
       <Stack gap={4}>
         <div>
-          <h3 id="microbiology-culture-transition-title">
+          <h3
+            ref={titleRef}
+            id="microbiology-culture-transition-title"
+            tabIndex={-1}
+          >
             {intl.formatMessage({ id: transition.titleId })}
           </h3>
           <p>{intl.formatMessage({ id: transition.detailId })}</p>

@@ -499,16 +499,26 @@ const MicrobiologyCaseView = ({
   });
 
   useEffect(() => {
+    const actionOwnsFocus = [
+      "report-nce",
+      "mark-lost",
+      "mark-positive",
+      "mark-no-growth",
+    ].includes(routeState.action);
     if (
       loading ||
       error ||
       !caseDetail ||
       routeState.section !== focusedSection ||
-      !focusedSectionRef.current
+      !focusedSectionRef.current ||
+      actionOwnsFocus
     ) {
       return;
     }
-    focusedSectionRef.current.focus();
+    const frame = window.requestAnimationFrame(() =>
+      focusedSectionRef.current?.focus(),
+    );
+    return () => window.cancelAnimationFrame(frame);
   }, [
     error,
     focusedSection,
