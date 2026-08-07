@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Add } from "@carbon/icons-react";
 import {
   Button,
@@ -37,6 +37,12 @@ const CaseInoculationPanel = ({
   const [incubation, setIncubation] = useState("");
   const [atmosphere, setAtmosphere] = useState("");
   const [selectedLots, setSelectedLots] = useState({});
+  const primaryTriggerRef = useRef(null);
+  const subcultureTriggerRef = useRef(null);
+  const activeTriggerRef = useRef(null);
+  const sourceFieldRef = useRef(null);
+  const identifierFieldRef = useRef(null);
+  const previousModeRef = useRef("");
 
   const byId = useMemo(
     () =>
@@ -72,8 +78,7 @@ const CaseInoculationPanel = ({
     },
   ];
 
-  const resetForm = () => {
-    setMode("");
+  const clearForm = () => {
     setSourceInoculationId("");
     setContainerIdentifier("");
     setMedia("");
@@ -81,6 +86,28 @@ const CaseInoculationPanel = ({
     setAtmosphere("");
     setSelectedLots({});
   };
+
+  const openForm = (nextMode, triggerRef) => {
+    clearForm();
+    activeTriggerRef.current = triggerRef.current;
+    setMode(nextMode);
+  };
+
+  const closeForm = () => {
+    clearForm();
+    setMode("");
+  };
+
+  useEffect(() => {
+    if (mode === "subculture") {
+      sourceFieldRef.current?.focus();
+    } else if (mode === "primary") {
+      identifierFieldRef.current?.focus();
+    } else if (previousModeRef.current) {
+      activeTriggerRef.current?.focus();
+    }
+    previousModeRef.current = mode;
+  }, [mode]);
 
   const valid =
     containerIdentifier.trim() &&
@@ -98,7 +125,7 @@ const CaseInoculationPanel = ({
       lotSelections: Object.values(selectedLots),
     };
     Promise.resolve(onRecord(payload))
-      .then(resetForm)
+      .then(closeForm)
       .catch(() => undefined);
   };
 
@@ -114,24 +141,20 @@ const CaseInoculationPanel = ({
 
         <div className="microbiology-inline-actions">
           <Button
+            ref={primaryTriggerRef}
             kind="tertiary"
             renderIcon={Add}
             disabled={saving || readOnly}
-            onClick={() => {
-              resetForm();
-              setMode("primary");
-            }}
+            onClick={() => openForm("primary", primaryTriggerRef)}
           >
             {intl.formatMessage({ id: "microbiology.inoculation.start" })}
           </Button>
           <Button
+            ref={subcultureTriggerRef}
             kind="tertiary"
             renderIcon={Add}
             disabled={saving || readOnly || inoculations.length === 0}
-            onClick={() => {
-              resetForm();
-              setMode("subculture");
-            }}
+            onClick={() => openForm("subculture", subcultureTriggerRef)}
           >
             {intl.formatMessage({
               id: "microbiology.inoculation.addSubculture",
@@ -160,7 +183,7 @@ const CaseInoculationPanel = ({
                   id: "microbiology.inoculation.recorded",
                 })}
               >
-                <Table {...getTableProps()}>
+                <Table {...getTableProps()} tabIndex={0}>
                   <TableHead>
                     <TableRow>
                       {tableHeaders.map((header) => (
@@ -210,7 +233,15 @@ const CaseInoculationPanel = ({
         )}
 
         {mode && (
-          <section aria-labelledby="microbiology-inoculation-form-title">
+          <section
+            aria-labelledby="microbiology-inoculation-form-title"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !saving) {
+                event.preventDefault();
+                closeForm();
+              }
+            }}
+          >
             <Stack gap={5}>
               <h4 id="microbiology-inoculation-form-title">
                 {intl.formatMessage({
@@ -222,6 +253,7 @@ const CaseInoculationPanel = ({
               </h4>
               {mode === "subculture" && (
                 <Select
+                  ref={sourceFieldRef}
                   id="microbiology-inoculation-source"
                   labelText={intl.formatMessage({
                     id: "microbiology.inoculation.parent",
@@ -248,6 +280,7 @@ const CaseInoculationPanel = ({
               )}
               <div className="microbiology-form-grid">
                 <TextInput
+                  ref={identifierFieldRef}
                   id="microbiology-inoculation-identifier"
                   labelText={intl.formatMessage({
                     id: "microbiology.inoculation.identifier",
@@ -302,13 +335,24 @@ const CaseInoculationPanel = ({
                 <Button onClick={submit} disabled={!valid || saving}>
                   {intl.formatMessage({ id: "microbiology.inoculation.save" })}
                 </Button>
-                <Button kind="secondary" onClick={resetForm} disabled={saving}>
+                <Button kind="secondary" onClick={closeForm} disabled={saving}>
                   {intl.formatMessage({ id: "button.cancel" })}
                 </Button>
               </div>
             </Stack>
           </section>
         )}
+
+        <div className="cds--visually-hidden" role="status" aria-live="polite">
+          {mode
+            ? intl.formatMessage({
+                id:
+                  mode === "subculture"
+                    ? "microbiology.inoculation.subcultureExpanded"
+                    : "microbiology.inoculation.primaryExpanded",
+              })
+            : ""}
+        </div>
 
         <ReagentUsageHistory
           usages={reagentUsages.filter(

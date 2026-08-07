@@ -17,6 +17,23 @@ const renderPanel = (props = {}) =>
   );
 
 describe("CaseInoculationPanel", () => {
+  it("moves focus into primary setup and restores it after cancel", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    const trigger = screen.getByRole("button", { name: "Start inoculation" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByLabelText("Bottle or plate ID")).toHaveFocus();
+    expect(screen.getByText("Inoculation form expanded")).toHaveAttribute(
+      "role",
+      "status",
+    );
+    await user.keyboard("{Escape}");
+    expect(trigger).toHaveFocus();
+  });
+
   it("keeps subculture unavailable until parent media exists", async () => {
     const user = userEvent.setup();
     renderPanel();
@@ -49,6 +66,11 @@ describe("CaseInoculationPanel", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "Add subculture" }));
+    expect(screen.getByLabelText("Parent media")).toHaveFocus();
+    expect(screen.getByText("Subculture form expanded")).toHaveAttribute(
+      "role",
+      "status",
+    );
     await user.selectOptions(
       screen.getByLabelText("Parent media"),
       "inoculation-1",
@@ -65,5 +87,8 @@ describe("CaseInoculationPanel", () => {
       atmosphere: "",
       lotSelections: [],
     });
+    expect(
+      screen.getByRole("button", { name: "Add subculture" }),
+    ).toHaveFocus();
   });
 });

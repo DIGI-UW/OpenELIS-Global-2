@@ -99,6 +99,78 @@ test.describe("Microbiology keyboard-only workflow", () => {
       ).toBeFocused({ timeout: LONG_TIMEOUT });
     });
 
+    await test.step("Record culture lineage and a Timeline note with inline focus", async () => {
+      const startInoculation = page.getByRole("button", {
+        name: "Start inoculation",
+      });
+      await tabTo(page, startInoculation);
+      await page.keyboard.press("Enter");
+      const containerIdentifier = page.getByLabel("Bottle or plate ID");
+      await expect(containerIdentifier).toBeFocused();
+      await expect(page.getByText("Inoculation form expanded")).toHaveAttribute(
+        "role",
+        "status",
+      );
+      await page.keyboard.type("BOTTLE-A11Y");
+      const media = page.getByLabel("Media or bottle");
+      await tabTo(page, media);
+      await page.keyboard.type("Blood culture bottle");
+      const saveMedia = page.getByRole("button", { name: "Save media" });
+      await tabTo(page, saveMedia);
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("cell", { name: "BOTTLE-A11Y" })).toBeVisible(
+        { timeout: LONG_TIMEOUT },
+      );
+      await expect(startInoculation).toBeFocused();
+
+      const addSubculture = page.getByRole("button", {
+        name: "Add subculture",
+      });
+      await tabTo(page, addSubculture);
+      await page.keyboard.press("Enter");
+      const parentMedia = page.getByLabel("Parent media");
+      await expect(parentMedia).toBeFocused();
+      await expect(page.getByText("Subculture form expanded")).toHaveAttribute(
+        "role",
+        "status",
+      );
+      await page.keyboard.type("BOTTLE-A11Y");
+      await tabTo(page, containerIdentifier);
+      await page.keyboard.type("PLATE-A11Y");
+      await tabTo(page, media);
+      await page.keyboard.type("MacConkey agar");
+      await tabTo(page, saveMedia);
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("cell", { name: "PLATE-A11Y" })).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(addSubculture).toBeFocused();
+
+      const timelinePanel = page
+        .getByTestId("microbiology-case-view")
+        .getByRole("button", { name: "Timeline", exact: true });
+      await tabTo(page, timelinePanel);
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/section=timeline/);
+      const addNote = page.getByRole("button", { name: "Add note" });
+      await tabTo(page, addNote);
+      await page.keyboard.press("Enter");
+      const note = page.getByLabel("Note or observation");
+      await expect(note).toBeFocused();
+      await expect(page.getByText("Note form expanded")).toHaveAttribute(
+        "role",
+        "status",
+      );
+      await page.keyboard.type("Keyboard qualification note");
+      const saveNote = page.getByRole("button", { name: "Save note" });
+      await tabTo(page, saveNote);
+      await page.keyboard.press("Enter");
+      await expect(page.getByText("Keyboard qualification note")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(addNote).toBeFocused();
+    });
+
     await test.step("Create an isolate and record AST with the keyboard", async () => {
       const isolatesPanel = page
         .getByTestId("microbiology-case-view")

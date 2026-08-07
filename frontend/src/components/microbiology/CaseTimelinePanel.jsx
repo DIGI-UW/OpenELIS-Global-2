@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Add } from "@carbon/icons-react";
 import { Button, Stack, Tag, TextArea } from "@carbon/react";
 import { useIntl } from "react-intl";
@@ -16,6 +16,9 @@ const CaseTimelinePanel = ({
   const [addingNote, setAddingNote] = useState(false);
   const [note, setNote] = useState("");
   const [showAllEvents, setShowAllEvents] = useState(false);
+  const addNoteTriggerRef = useRef(null);
+  const noteFieldRef = useRef(null);
+  const wasAddingNoteRef = useRef(false);
   const hasOlderEvents = activities.length > RECENT_TIMELINE_EVENT_LIMIT;
   const visibleActivities = showAllEvents
     ? activities
@@ -29,6 +32,20 @@ const CaseTimelinePanel = ({
       })
       .catch(() => undefined);
   };
+
+  const closeNote = () => {
+    setNote("");
+    setAddingNote(false);
+  };
+
+  useEffect(() => {
+    if (addingNote) {
+      noteFieldRef.current?.focus();
+    } else if (wasAddingNoteRef.current) {
+      addNoteTriggerRef.current?.focus();
+    }
+    wasAddingNoteRef.current = addingNote;
+  }, [addingNote]);
 
   return (
     <section
@@ -52,6 +69,7 @@ const CaseTimelinePanel = ({
             {intl.formatMessage({ id: "microbiology.case.events" })}
           </Tag>
           <Button
+            ref={addNoteTriggerRef}
             kind="tertiary"
             size="sm"
             renderIcon={Add}
@@ -63,39 +81,53 @@ const CaseTimelinePanel = ({
         </div>
       </div>
       {addingNote && (
-        <Stack gap={4}>
-          <TextArea
-            id="microbiology-timeline-note"
-            labelText={intl.formatMessage({
-              id: "microbiology.case.timeline.note",
-            })}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-          <div className="microbiology-inline-actions">
-            <Button
-              size="sm"
-              disabled={!note.trim() || saving}
-              onClick={saveNote}
-            >
-              {intl.formatMessage({
-                id: "microbiology.case.timeline.saveNote",
+        <div
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && !saving) {
+              event.preventDefault();
+              closeNote();
+            }
+          }}
+        >
+          <Stack gap={4}>
+            <TextArea
+              ref={noteFieldRef}
+              id="microbiology-timeline-note"
+              labelText={intl.formatMessage({
+                id: "microbiology.case.timeline.note",
               })}
-            </Button>
-            <Button
-              kind="secondary"
-              size="sm"
-              disabled={saving}
-              onClick={() => {
-                setNote("");
-                setAddingNote(false);
-              }}
-            >
-              {intl.formatMessage({ id: "button.cancel" })}
-            </Button>
-          </div>
-        </Stack>
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
+            <div className="microbiology-inline-actions">
+              <Button
+                size="sm"
+                disabled={!note.trim() || saving}
+                onClick={saveNote}
+              >
+                {intl.formatMessage({
+                  id: "microbiology.case.timeline.saveNote",
+                })}
+              </Button>
+              <Button
+                kind="secondary"
+                size="sm"
+                disabled={saving}
+                onClick={closeNote}
+              >
+                {intl.formatMessage({ id: "button.cancel" })}
+              </Button>
+            </div>
+          </Stack>
+        </div>
       )}
+      <div className="cds--visually-hidden" role="status" aria-live="polite">
+        {addingNote
+          ? intl.formatMessage({
+              id: "microbiology.case.timeline.noteExpanded",
+            })
+          : ""}
+      </div>
       {activities.length === 0 ? (
         <p>{intl.formatMessage({ id: "microbiology.case.timeline.empty" })}</p>
       ) : (

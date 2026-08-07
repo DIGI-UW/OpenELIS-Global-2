@@ -7,6 +7,28 @@ import CaseTimelinePanel from "../CaseTimelinePanel";
 import messages from "../../../languages/en.json";
 
 describe("CaseTimelinePanel", () => {
+  it("moves focus into a note and restores it after cancel", async () => {
+    const user = userEvent.setup();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseTimelinePanel
+          timelineSectionId="timeline"
+          activities={[]}
+          onAddNote={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Add note" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByLabelText("Note or observation")).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Note form expanded");
+    await user.keyboard("{Escape}");
+    expect(trigger).toHaveFocus();
+  });
+
   it("offers only a note action and labels system versus manual history", async () => {
     const user = userEvent.setup();
     const onAddNote = vi.fn().mockResolvedValue({});
@@ -42,6 +64,7 @@ describe("CaseTimelinePanel", () => {
     await user.click(screen.getByRole("button", { name: "Save note" }));
 
     expect(onAddNote).toHaveBeenCalledWith("Colonies visible at 18 hours");
+    expect(screen.getByRole("button", { name: "Add note" })).toHaveFocus();
   });
 
   it("shows the newest 30 events by default and preserves full history on demand", async () => {
@@ -67,9 +90,12 @@ describe("CaseTimelinePanel", () => {
       screen.getByRole("button", { name: "Show all 35 events" }),
     );
     expect(screen.getByText(": Timeline event 1")).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Show recent 30 events" }),
-    );
+    const showRecent = screen.getByRole("button", {
+      name: "Show recent 30 events",
+    });
+    expect(showRecent).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(showRecent).toHaveFocus();
     expect(screen.queryByText(": Timeline event 1")).not.toBeInTheDocument();
   });
 });
