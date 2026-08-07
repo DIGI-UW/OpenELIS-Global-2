@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -10,7 +11,9 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.junit.Test;
 import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseAmendmentRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseInoculationRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseNonconformanceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseTimelineRestController;
@@ -37,6 +40,32 @@ public class MicrobiologyArchitectureTest {
             assertFalse(controller.isAnnotationPresent(Transactional.class));
             for (Method method : controller.getDeclaredMethods()) {
                 assertFalse(method.isAnnotationPresent(Transactional.class));
+            }
+        }
+    }
+
+    @Test
+    public void userFacingMicrobiologyWriteControllersRequireBenchRoleBundles() {
+        Class<?>[] controllers = { MicroCaseRestController.class, MicroCaseInoculationRestController.class,
+                MicroCaseTimelineRestController.class, MicroCaseNonconformanceRestController.class,
+                MicroIsolateRestController.class, MicroAstRestController.class,
+                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
+                MicroCaseAmendmentRestController.class };
+        for (Class<?> controller : controllers) {
+            var authorization = controller
+                    .getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
+            assertNotNull(controller.getName() + " must declare a role-bundle boundary", authorization);
+            assertFalse(controller.getName() + " must not authorize every authenticated account",
+                    authorization.value().contains("isAuthenticated"));
+            for (Method method : controller.getDeclaredMethods()) {
+                var methodAuthorization = method
+                        .getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
+                if (methodAuthorization != null) {
+                    assertFalse(
+                            controller.getName() + "." + method.getName()
+                                    + " must not weaken the class role-bundle boundary",
+                            methodAuthorization.value().contains("isAuthenticated"));
+                }
             }
         }
     }

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/isolates")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroIsolateRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroIsolateService isolateService;
@@ -35,7 +36,6 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
     }
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroIsolateForm> createIsolate(@RequestBody MicroIsolateRequestForm request,
             HttpServletRequest httpRequest) {
         MicroIsolate isolate = isolateService.createIsolate(request.caseId, request.isolateLabel, request.gramStain,
@@ -44,7 +44,6 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
     }
 
     @PutMapping("/{isolateId}/identification")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroIsolateForm> updateIdentification(@PathVariable String isolateId,
             @RequestBody MicroIsolateRequestForm request, HttpServletRequest httpRequest) {
         MicroIsolate isolate = isolateService.updateIdentification(isolateId, request.organismId,
@@ -55,7 +54,6 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
     }
 
     @GetMapping("/{isolateId}/identification-history")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroIdentificationEventForm>> getIdentificationHistory(@PathVariable String isolateId) {
         return ResponseEntity
                 .ok(identificationHistoryService.getHistory(isolateId).stream().map(this::toForm).toList());

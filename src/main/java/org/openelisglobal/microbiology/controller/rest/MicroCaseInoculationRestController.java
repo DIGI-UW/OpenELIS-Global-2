@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/inoculations")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseInoculationRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseInoculationService inoculationService;
@@ -26,13 +27,11 @@ public class MicroCaseInoculationRestController extends MicrobiologyRestControll
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroCaseInoculationForm>> getByCaseId(@PathVariable String caseId) {
         return ResponseEntity.ok(inoculationService.getByCaseId(caseId));
     }
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseInoculationForm> record(@PathVariable String caseId,
             @RequestBody MicroCaseInoculationRequestForm request, HttpServletRequest httpRequest) {
         MicroCaseInoculation inoculation = inoculationService.record(caseId, request.sourceInoculationId,

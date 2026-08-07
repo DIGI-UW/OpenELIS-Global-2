@@ -437,6 +437,10 @@ or missing mapping for export.
 - **FR-030**: Automated accessibility and performance evidence MUST identify
   the exact application revision and realistic data volume tested. Automated
   scans do not replace deployed review or human acceptance.
+- **FR-031**: Only users authorized for microbiology bench work may view or
+  change case data. Final release and amendment actions require a
+  supervisor-capable user, and the identity recorded for any action MUST come
+  from the signed-in session rather than submitted form data.
 
 ### Historical Initial-MVP Deferrals And Current Status
 
@@ -702,6 +706,9 @@ place or silently losing work when connectivity is interrupted.
   worklist remains readable, offline state is visible, an interrupted bench
   edit survives reconnection, and a conflicting edit requires an explicit
   resolution.
+- **SC-014**: An authenticated user without a microbiology bench role receives
+  a forbidden response; a results-entry user cannot release a final report;
+  and a submitted alternate actor identifier cannot change audit attribution.
 
 OpenELIS Work's M-NFR document includes numeric timing and fixture prescriptions
 that first appeared in the May 27, 2026 authored specification, not in the

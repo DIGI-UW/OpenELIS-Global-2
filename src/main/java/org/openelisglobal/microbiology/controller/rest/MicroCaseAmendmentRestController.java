@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/amendments")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseAmendmentRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseAmendmentService amendmentService;
@@ -36,13 +37,11 @@ public class MicroCaseAmendmentRestController extends MicrobiologyRestController
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroCaseAmendmentForm>> getHistory(@PathVariable String caseId) {
         return ResponseEntity.ok(amendmentService.getHistory(caseId).stream().map(this::toForm).toList());
     }
 
     @GetMapping("/report-versions")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroReportVersionForm>> getReportVersions(@PathVariable String caseId) {
         Map<String, List<MicroReportVersionSource>> sources = reportVersionService.getSourcesForCase(caseId).stream()
                 .collect(Collectors.groupingBy(MicroReportVersionSource::getReportVersionId));
@@ -51,7 +50,7 @@ public class MicroCaseAmendmentRestController extends MicrobiologyRestController
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS')")
+    @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroCaseAmendmentForm> open(@PathVariable String caseId,
             @RequestBody MicroCaseAmendmentRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity
@@ -59,7 +58,7 @@ public class MicroCaseAmendmentRestController extends MicrobiologyRestController
     }
 
     @PostMapping("/current/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS')")
+    @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroCaseAmendmentForm> cancel(@PathVariable String caseId,
             @RequestBody MicroCaseAmendmentRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity

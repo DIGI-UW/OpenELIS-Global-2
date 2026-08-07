@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseTimelineRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseTimelineService timelineService;
@@ -25,13 +26,11 @@ public class MicroCaseTimelineRestController extends MicrobiologyRestControllerS
     }
 
     @GetMapping("/timeline")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroCaseActivityForm>> getTimeline(@PathVariable String caseId) {
         return ResponseEntity.ok(timelineService.getTimeline(caseId));
     }
 
     @PostMapping("/notes")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseActivityForm> addNote(@PathVariable String caseId,
             @RequestBody MicroCaseNoteRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(timelineService.addNote(caseId, request.text, authenticatedUserId(httpRequest)));

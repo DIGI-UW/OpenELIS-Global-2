@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/ast")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroAstRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroAstService astService;
@@ -41,7 +42,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @GetMapping("/runs")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroAstRunForm>> getRunsForIsolate(@RequestParam String isolateId) {
         List<MicroAstRunForm> forms = new ArrayList<>();
         for (MicroAstRun run : astService.getRunsForIsolate(isolateId)) {
@@ -51,13 +51,11 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @GetMapping("/setup")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstSetupForm> getSetup(@RequestParam String isolateId) {
         return ResponseEntity.ok(astService.getSetup(isolateId));
     }
 
     @GetMapping("/panels/{panelId}/antibiotics")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroAstRunAntibioticForm>> getPanelAntibiotics(@PathVariable String panelId) {
         List<MicroAstRunAntibioticForm> forms = new ArrayList<>();
         for (org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic ordered : astService
@@ -73,7 +71,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/runs")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request,
             HttpServletRequest httpRequest) {
         MicroAstRunSetupCommand command = new MicroAstRunSetupCommand(request.isolateId, request.panelId,
@@ -100,7 +97,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/runs/{runId}/invalidate-and-repeat")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> invalidateAndRepeat(@PathVariable String runId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunFormWithReadings(astService.invalidateAndRepeat(runId, request.reason,
@@ -108,7 +104,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/runs/{sourceRunId}/attempts")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRepeatRun(@PathVariable String sourceRunId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
         if (request.lotSelections == null || request.lotSelections.isEmpty()) {
@@ -127,7 +122,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/runs/{runId}/readings")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstReadingForm> recordReading(@PathVariable String runId,
             @RequestBody MicroAstReadingRequestForm request, HttpServletRequest httpRequest) {
         MicroAstReading reading = astService.recordReading(runId, request.antibioticId, request.rawValue,
@@ -155,14 +149,12 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/runs/{runId}/review")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> reviewRun(@PathVariable String runId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunForm(astService.reviewRun(runId, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{runId}/reportable")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> selectReportableRun(@PathVariable String runId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunForm(astService.selectReportableRun(runId, authenticatedUserId(httpRequest))));

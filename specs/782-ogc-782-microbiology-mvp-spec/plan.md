@@ -283,8 +283,13 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
 - Treat OpenELIS Work's `micro.case.view` as a product permission name, not a
   requirement to invent a new authority. For this remediation, map analyst,
   validator, and manager access to the repository's existing Results,
-  Validation, and Global Administrator/Admin roles at both the frontend route
-  and worklist endpoint. The broader write-permission audit remains separate.
+  Validation, and Global Administrator/Admin roles at the frontend route,
+  worklist endpoint, and user-facing case/reference APIs. Final release and
+  amendment use Validation/Admin. Bridge-originated analyzer events remain a
+  separate machine-authentication decision because OpenELIS currently gives
+  Basic-auth callers their normal account roles and has no analyzer service
+  authority; do not invent one or silently require Admin without deployment
+  evidence.
 - Revalidate the worklist every 30 seconds from the current canonical query and
   keep the mounted Carbon table stable while data is in flight. Use a shared
   interval constant and fake-clock component evidence; do not use sleeps or

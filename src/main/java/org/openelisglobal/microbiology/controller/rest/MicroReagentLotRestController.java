@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/reagent-lots")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroReagentLotRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroReagentLotService reagentLotService;
@@ -20,7 +21,6 @@ public class MicroReagentLotRestController extends MicrobiologyRestControllerSup
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroReagentLotOverviewForm> getOverview(@PathVariable String caseId) {
         MicroReagentLotOverviewForm form = new MicroReagentLotOverviewForm();
         form.requirements.addAll(reagentLotService.getRequirements(caseId));
