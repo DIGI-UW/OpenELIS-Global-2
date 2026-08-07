@@ -161,9 +161,15 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         if (StringUtils.isNumeric(value) && dictionaryService.getDictionaryById(value) != null) {
             return;
         }
+        // Scoped to the result-option category. Matching on the name alone reused
+        // whatever active entry happened to have the lowest id — "Negative" and
+        // "Invalid" exist several times over across unrelated categories, so an
+        // option could end up sharing a demographic entry, and renaming that entry
+        // would silently rename the option. The category is part of the identity.
         Map<String, Object> properties = new HashMap<>();
         properties.put("dictEntry", value);
         properties.put("isActive", IActionConstants.YES);
+        properties.put("dictionaryCategory.categoryName", RESULT_OPTION_DICTIONARY_CATEGORY);
         List<Dictionary> matches = dictionaryService.getAllMatching(properties);
         if (!matches.isEmpty()) {
             matches.sort(Comparator.comparingInt(d -> Integer.parseInt(d.getId())));
