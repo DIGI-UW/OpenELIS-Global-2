@@ -37,9 +37,10 @@ served by the existing OpenELIS web app
 frontend
 **Performance Goals**: Worklist users can identify urgent
 positive/growth/AST-review work through deterministic priority and filter
-controls; individual ORM validation tests must run in under 5 seconds. The
-source M-NFR 200-case/sub-second-p95 target requires a separate, repeatable
-performance qualification and is not claimed by this MVP
+controls; individual ORM validation tests must run in under 5 seconds. Numeric
+M-NFR timings are engineering qualification inputs, not product constraints;
+qualification must name its runtime, hardware, data shape, and measurement
+boundary before interpreting a threshold
 **Constraints**: Service-layer transactions only; no controller transactions;
 Carbon-only UI; React Intl for all user-facing text; Liquibase-only schema
 changes with rollback; configuration-driven variation; no product artifact may
@@ -363,8 +364,11 @@ inside product requirements.
   scans at desktop/mobile sizes with direct keyboard, focus, announcement, and
   focus-return interactions. Human review remains a separate acceptance gate.
 - **Performance qualification**: Service-created source-scale fixtures record
-  server and browser timings separately on an exact revision. Any p95 above a
-  source threshold is reported as failed.
+  server and browser timings separately on an exact revision. Numeric targets
+  copied from M-NFR are diagnostic engineering baselines. A miss is reported
+  with its environment and data-shape variance and becomes blocking only when
+  a representative deployed workflow is observably degraded or an engineering
+  baseline has been explicitly adopted.
 - **Connectivity qualification**: Once a shared offline pattern exists,
   browser tests disconnect after loading, prove readable last-loaded data,
   exercise replay after reconnection, and require explicit conflict handling.

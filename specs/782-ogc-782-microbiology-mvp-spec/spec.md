@@ -427,11 +427,9 @@ or missing mapping for export.
   action MUST be operable without a mouse, expose its name and status to
   assistive technology, preserve a visible logical focus position, and never
   use color as the only carrier of meaning.
-- **FR-028**: At the authoritative source-scale ceiling, each worklist view
-  MUST render 200 active items in under two seconds, worklist filtering MUST
-  complete in under 300 milliseconds, and a case with five isolates and up to
-  100 AST readings MUST render in under one second while preserving its full
-  audit history.
+- **FR-028**: Worklist and case interactions MUST remain responsive at a
+  small-to-medium clinical laboratory's realistic daily volume so that loading,
+  filtering, and moving between bench actions do not interrupt routine work.
 - **FR-029**: During intermittent connectivity, users MUST be able to read the
   last successfully loaded worklist with a clear offline state. Bench edits
   made after connectivity is lost MUST not be silently discarded, and a user
@@ -698,18 +696,23 @@ place or silently losing work when connectivity is interrupted.
   the relevant worklist or case-section context.
 - **SC-011**: A keyboard-only user can complete the order-to-preliminary-report
   path with visible focus and announced inline-section changes.
-- **SC-012**: Exact-revision source-scale measurements pass every threshold in
-  FR-028; a threshold miss remains a failed criterion rather than a rounded or
-  accepted result.
+- **SC-012**: Exact-revision measurements record the application runtime,
+  environment, data volume, server time, browser-ready time, and interaction
+  time. Reviewers can distinguish a user-visible regression from harness,
+  development-runtime, hardware, or intentionally above-source stress cost.
 - **SC-013**: A deployed connectivity-loss exercise proves the last-loaded
   worklist remains readable, offline state is visible, an interrupted bench
   edit survives reconnection, and a conflicting edit requires an explicit
   resolution.
 
-PR #3789 did not claim the source M-NFR 200-item worklist and sub-second read
-p95 target. The later M8 branch now carries repeatable service-created API and
-browser measurements for that target; those follow-up results do not alter the
-MVP PR's historical evidence.
+OpenELIS Work's M-NFR document includes numeric timing and fixture prescriptions
+that first appeared in the May 27, 2026 authored specification, not in the
+workflow mock. Those numbers are retained as engineering qualification inputs,
+not product acceptance requirements: "render," hardware, runtime mode, network,
+and representative deployment conditions must be defined before a threshold
+can be deterministic. The later M8 branch carries repeatable service-created
+API and browser measurements; those results do not alter PR #3789's historical
+MVP evidence.
 
 ## Planning Notes
 
