@@ -107,18 +107,23 @@ const sectionLabelIds = {
 };
 
 const CaseSectionFocusTarget = forwardRef(
-  ({ section, focused, label, children }, ref) => (
-    <div
-      ref={focused ? ref : undefined}
-      className="microbiology-workbench__section-focus"
-      data-testid={`microbiology-case-section-${section}`}
-      role="region"
-      aria-label={label}
-      tabIndex={focused ? -1 : undefined}
-    >
-      {children}
-    </div>
-  ),
+  ({ section, focused, label, children }, ref) => {
+    if (!focused) {
+      return null;
+    }
+    return (
+      <div
+        ref={ref}
+        className="microbiology-workbench__section-focus"
+        data-testid={`microbiology-case-section-${section}`}
+        role="region"
+        aria-label={label}
+        tabIndex={-1}
+      >
+        {children}
+      </div>
+    );
+  },
 );
 
 CaseSectionFocusTarget.displayName = "CaseSectionFocusTarget";

@@ -107,6 +107,31 @@ const getAccordionButton = (name) => {
 };
 
 describe("MicrobiologyCaseView", () => {
+  it("mounts only the canonical active accordion body", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=setup");
+
+    expect(
+      await screen.findByTestId("microbiology-case-section-setup"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("microbiology-case-section-timeline"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("microbiology-case-section-isolates"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("microbiology-case-section-ast"),
+    ).not.toBeInTheDocument();
+    expect(service.getIdentificationHistory).not.toHaveBeenCalled();
+    expect(service.getAstRunsForIsolate).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       action: "mark-positive",
@@ -541,6 +566,11 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByRole("heading", { name: "Microbiology case" }),
     ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-case-section-isolates"),
+      ).toHaveFocus(),
+    );
     await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
     await user.type(
       screen.getByLabelText("Colony morphology"),
