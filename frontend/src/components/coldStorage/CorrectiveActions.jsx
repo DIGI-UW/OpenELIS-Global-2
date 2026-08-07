@@ -708,6 +708,12 @@ export default function CorrectiveActions() {
         temperatureOffset: parseFloat(formData.temperatureOffset),
         humidityScale: parseFloat(formData.humidityScale),
         humidityOffset: parseFloat(formData.humidityOffset),
+        temperatureRegister2:
+          formData.temperatureRegister2 != null
+            ? parseInt(formData.temperatureRegister2)
+            : null,
+        temperatureScale2: parseFloat(formData.temperatureScale2),
+        temperatureOffset2: parseFloat(formData.temperatureOffset2),
         active: true,
       };
       delete deviceData.deviceType;

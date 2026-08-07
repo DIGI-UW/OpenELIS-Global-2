@@ -49,7 +49,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         BigDecimal criticalTemp = new BigDecimal("5.0"); // Way above -20°C critical threshold
         OffsetDateTime recordedAt = OffsetDateTime.now();
 
-        readingIngestionService.ingest(freezer, recordedAt, criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, recordedAt, criticalTemp, null, null, true, null);
 
         Thread.sleep(500);
 
@@ -74,7 +74,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         BigDecimal warningTemp = new BigDecimal("-23.0"); // Between -25 (warning) and -20 (critical)
         OffsetDateTime recordedAt = OffsetDateTime.now();
 
-        readingIngestionService.ingest(freezer, recordedAt, warningTemp, null, true, null);
+        readingIngestionService.ingest(freezer, recordedAt, warningTemp, null, null, true, null);
 
         Thread.sleep(500);
 
@@ -96,7 +96,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         BigDecimal criticalTemp = new BigDecimal("5.0");
         OffsetDateTime recordedAt1 = OffsetDateTime.now();
 
-        readingIngestionService.ingest(freezer, recordedAt1, criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, recordedAt1, criticalTemp, null, null, true, null);
         Thread.sleep(500); // Allow async processing
 
         List<Alert> alertsAfterFirst = alertService.getAlertsByEntity("Freezer", freezerId);
@@ -107,7 +107,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
 
         // When: Second temperature violation occurs within 30 minutes
         OffsetDateTime recordedAt2 = OffsetDateTime.now().plusMinutes(5);
-        readingIngestionService.ingest(freezer, recordedAt2, criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, recordedAt2, criticalTemp, null, null, true, null);
         Thread.sleep(500); // Allow async processing
 
         List<Alert> alertsAfterSecond = alertService.getAlertsByEntity("Freezer", freezerId);
@@ -128,13 +128,15 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
 
         BigDecimal criticalTemp = new BigDecimal("5.0");
 
-        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, null, true, null);
         Thread.sleep(500);
 
-        readingIngestionService.ingest(freezer, OffsetDateTime.now().plusMinutes(5), criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, OffsetDateTime.now().plusMinutes(5), criticalTemp, null, null, true,
+                null);
         Thread.sleep(500);
 
-        readingIngestionService.ingest(freezer, OffsetDateTime.now().plusMinutes(10), criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, OffsetDateTime.now().plusMinutes(10), criticalTemp, null, null, true,
+                null);
         Thread.sleep(500);
 
         List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);
@@ -151,7 +153,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         BigDecimal normalTemp = new BigDecimal("-80.0");
         OffsetDateTime recordedAt = OffsetDateTime.now();
 
-        readingIngestionService.ingest(freezer, recordedAt, normalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, recordedAt, normalTemp, null, null, true, null);
         Thread.sleep(500);
 
         List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);
@@ -165,7 +167,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         assertNotNull("Freezer should exist", freezer);
 
         BigDecimal criticalTemp = new BigDecimal("5.0");
-        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, null, true, null);
         Thread.sleep(500);
 
         alertService.createAlert(AlertType.EQUIPMENT_FAILURE, "Freezer", freezerId, AlertSeverity.CRITICAL,
@@ -188,7 +190,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         assertNotNull("Freezer should exist", freezer);
 
         BigDecimal criticalTemp = new BigDecimal("5.0");
-        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, null, true, null);
         Thread.sleep(500);
 
         List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);
@@ -209,7 +211,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         assertNotNull("Freezer should exist", freezer);
 
         BigDecimal criticalTemp = new BigDecimal("5.0");
-        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, null, true, null);
         Thread.sleep(500);
 
         List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);
@@ -232,7 +234,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         assertNotNull("Freezer should exist", freezer);
 
         BigDecimal criticalTemp = new BigDecimal("5.0");
-        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, null, true, null);
         Thread.sleep(500);
 
         List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);
@@ -265,8 +267,8 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         BigDecimal temp1 = new BigDecimal("5.0");
         BigDecimal temp2 = new BigDecimal("10.0");
 
-        readingIngestionService.ingest(freezer1, OffsetDateTime.now(), temp1, null, true, null);
-        readingIngestionService.ingest(freezer2, OffsetDateTime.now(), temp2, null, true, null);
+        readingIngestionService.ingest(freezer1, OffsetDateTime.now(), temp1, null, null, true, null);
+        readingIngestionService.ingest(freezer2, OffsetDateTime.now(), temp2, null, null, true, null);
         Thread.sleep(500);
 
         List<Alert> alerts1 = alertService.getAlertsByEntity("Freezer", freezerId1);
@@ -307,7 +309,7 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
 
         BigDecimal criticalTemp = new BigDecimal("5.0"); // Above -20°C critical max
 
-        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, true, null);
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), criticalTemp, null, null, true, null);
         Thread.sleep(500);
 
         List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);
@@ -328,13 +330,15 @@ public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
         Freezer freezer = freezerService.findById(freezerId).orElse(null);
         assertNotNull("Freezer should exist", freezer);
 
-        readingIngestionService.ingest(freezer, OffsetDateTime.now().minusMinutes(2), null, null, false, "timeout");
-        readingIngestionService.ingest(freezer, OffsetDateTime.now().minusMinutes(1), null, null, false, "timeout");
+        readingIngestionService.ingest(freezer, OffsetDateTime.now().minusMinutes(2), null, null, null, false,
+                "timeout");
+        readingIngestionService.ingest(freezer, OffsetDateTime.now().minusMinutes(1), null, null, null, false,
+                "timeout");
         Thread.sleep(300);
         assertTrue("Two failures should not yet raise an offline alert",
                 alertService.getAlertsByEntity("Freezer", freezerId).isEmpty());
 
-        readingIngestionService.ingest(freezer, OffsetDateTime.now(), null, null, false, "timeout");
+        readingIngestionService.ingest(freezer, OffsetDateTime.now(), null, null, null, false, "timeout");
         Thread.sleep(300);
 
         List<Alert> alerts = alertService.getAlertsByEntity("Freezer", freezerId);

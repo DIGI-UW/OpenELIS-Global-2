@@ -134,6 +134,9 @@ public class FreezerServiceImpl implements FreezerService {
         existing.setHumidityRegister(updatedFreezer.getHumidityRegister());
         existing.setHumidityScale(updatedFreezer.getHumidityScale());
         existing.setHumidityOffset(updatedFreezer.getHumidityOffset());
+        existing.setTemperatureRegister2(updatedFreezer.getTemperatureRegister2());
+        existing.setTemperatureScale2(updatedFreezer.getTemperatureScale2());
+        existing.setTemperatureOffset2(updatedFreezer.getTemperatureOffset2());
         existing.setTargetTemperature(updatedFreezer.getTargetTemperature());
         existing.setWarningThreshold(updatedFreezer.getWarningThreshold());
         existing.setCriticalThreshold(updatedFreezer.getCriticalThreshold());

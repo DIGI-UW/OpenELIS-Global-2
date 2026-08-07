@@ -223,11 +223,11 @@ public class ThresholdEvaluationServiceTest extends BaseWebContextSensitiveTest 
         // Simulate a breach that has already been present for the full 5-minute
         // minExcursionMinutes window: prior readings at -6, -4, -2 minutes, all
         // already critical.
-        freezerReadingService.saveReading(freezer, now.minusMinutes(6), criticalTemperature, null,
+        freezerReadingService.saveReading(freezer, now.minusMinutes(6), criticalTemperature, null, null,
                 FreezerReading.Status.CRITICAL, true, null);
-        freezerReadingService.saveReading(freezer, now.minusMinutes(4), criticalTemperature, null,
+        freezerReadingService.saveReading(freezer, now.minusMinutes(4), criticalTemperature, null, null,
                 FreezerReading.Status.CRITICAL, true, null);
-        freezerReadingService.saveReading(freezer, now.minusMinutes(2), criticalTemperature, null,
+        freezerReadingService.saveReading(freezer, now.minusMinutes(2), criticalTemperature, null, null,
                 FreezerReading.Status.CRITICAL, true, null);
 
         FreezerReading.Status status = thresholdEvaluationService.evaluateStatus(criticalTemperature, null, profile,

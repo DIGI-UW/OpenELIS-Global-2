@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-075-freezer-second-temperature-probe" author="cold-storage-monitoring-audit">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="freezer" columnName="temperature_register_2" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Support a second, independent temperature probe on a single device
+      (e.g. dual-probe sensors), so users no longer have to register the same
+      physical device twice under different names to read both probes
+      (GitHub issue #3904). Optional, like the existing humidity register.</comment>
+    <addColumn tableName="freezer" schemaName="clinlims">
+      <column name="temperature_register_2" type="INTEGER"/>
+      <column name="temperature_scale_2" type="DECIMAL(10,4)" defaultValueNumeric="1.0"/>
+      <column name="temperature_offset_2" type="DECIMAL(6,2)" defaultValueNumeric="0.0"/>
+    </addColumn>
+    <addColumn tableName="freezer_reading" schemaName="clinlims">
+      <column name="temperature_celsius_2" type="DECIMAL(6,2)"/>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

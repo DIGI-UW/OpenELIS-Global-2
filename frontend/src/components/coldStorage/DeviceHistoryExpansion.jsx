@@ -53,6 +53,22 @@ const TIME_RANGE_OPTIONS = [
   { id: "all", label: "All Time" },
 ];
 
+const METRIC_OPTIONS = [
+  {
+    id: "temperature",
+    label: "Temperature",
+    field: "temperatureCelsius",
+    unit: "°C",
+  },
+  { id: "humidity", label: "Humidity", field: "humidityPercentage", unit: "%" },
+  {
+    id: "temperature2",
+    label: "Temperature (Probe 2)",
+    field: "temperatureCelsius2",
+    unit: "°C",
+  },
+];
+
 const RANGE_TO_DURATION = {
   "24h": 24 * 60 * 60 * 1000,
   "7d": 7 * 24 * 60 * 60 * 1000,
@@ -72,6 +88,7 @@ function DeviceHistoryExpansion({ device }) {
   const [pageSize, setPageSize] = useState(5);
 
   const [timeRange, setTimeRange] = useState("24h");
+  const [selectedMetric, setSelectedMetric] = useState("temperature");
   const [chartData, setChartData] = useState([]);
   const [trendsLoading, setTrendsLoading] = useState(false);
   const [trendsError, setTrendsError] = useState(null);
@@ -184,12 +201,13 @@ function DeviceHistoryExpansion({ device }) {
             return;
           }
 
+          const metric = METRIC_OPTIONS.find((m) => m.id === selectedMetric);
           const normalizedReadings = (readings || [])
-            .filter((reading) => reading.temperatureCelsius != null)
+            .filter((reading) => reading[metric.field] != null)
             .map((reading) => ({
-              group: "Temperature",
+              group: metric.label,
               date: toDate(reading.recordedAt),
-              value: reading.temperatureCelsius,
+              value: reading[metric.field],
             }))
             .filter((reading) => reading.date !== null)
             .sort((a, b) => a.date - b.date);
@@ -199,8 +217,8 @@ function DeviceHistoryExpansion({ device }) {
           if (controller.signal.aborted) {
             return;
           }
-          console.error("Error loading temperature readings:", error);
-          setTrendsError(error.message || "Unable to load temperature data.");
+          console.error("Error loading readings:", error);
+          setTrendsError(error.message || "Unable to load reading data.");
           setChartData([]);
         } finally {
           if (!controller.signal.aborted) {
@@ -209,7 +227,7 @@ function DeviceHistoryExpansion({ device }) {
         }
       })();
     },
-    [device, timeRange],
+    [device, timeRange, selectedMetric],
   );
 
   useEffect(() => {
@@ -340,6 +358,11 @@ function DeviceHistoryExpansion({ device }) {
     };
   }, [chartData]);
 
+  const selectedMetricOption = useMemo(
+    () => METRIC_OPTIONS.find((m) => m.id === selectedMetric),
+    [selectedMetric],
+  );
+
   const formattedChartData = useMemo(() => {
     return chartData.map((point) => ({
       group: point.group,
@@ -361,6 +384,7 @@ function DeviceHistoryExpansion({ device }) {
 
   const chartOptions = useMemo(() => {
     const { minTemp, maxTemp } = deviceThresholds;
+    const metric = METRIC_OPTIONS.find((m) => m.id === selectedMetric);
 
     return {
       title: "",
@@ -371,7 +395,7 @@ function DeviceHistoryExpansion({ device }) {
           scaleType: "labels",
         },
         left: {
-          title: "Temperature",
+          title: `${metric.label} (${metric.unit})`,
           mapsTo: "value",
           scaleType: "linear",
         },
@@ -383,25 +407,30 @@ function DeviceHistoryExpansion({ device }) {
       tooltip: {
         showTotal: false,
       },
-      thresholds: [
-        {
-          value: maxTemp,
-          label: "Warning",
-          fillColor: "#FF832B",
-        },
-        {
-          value: minTemp,
-          label: "Alert",
-          fillColor: "#DA1E28",
-        },
-      ],
+      // Threshold lines are temperature-specific (device min/max in °C) - only
+      // meaningful when that's the metric being charted.
+      ...(selectedMetric === "temperature" && {
+        thresholds: [
+          {
+            value: maxTemp,
+            label: "Warning",
+            fillColor: "#FF832B",
+          },
+          {
+            value: minTemp,
+            label: "Alert",
+            fillColor: "#DA1E28",
+          },
+        ],
+      }),
     };
-  }, [deviceThresholds]);
+  }, [deviceThresholds, selectedMetric]);
 
   const handleExportCsv = () => {
     if (!chartData.length) return;
 
-    const csvHeader = "Timestamp,Temperature (°C)\n";
+    const metric = METRIC_OPTIONS.find((m) => m.id === selectedMetric);
+    const csvHeader = `Timestamp,${metric.label} (${metric.unit})\n`;
     const csvRows = chartData
       .map((point) => `${point.date.toISOString()},${point.value}`)
       .join("\n");
@@ -779,7 +808,7 @@ function DeviceHistoryExpansion({ device }) {
             <div>
               {/* Time Range and Export Controls */}
               <Grid className="oe-deviceHistory-controlsGrid">
-                <Column lg={6} md={4} sm={4}>
+                <Column lg={5} md={4} sm={4}>
                   <div className="oe-deviceHistory-timeRangeControl">
                     <span className="oe-deviceHistory-timeRangeLabel">
                       <FormattedMessage
@@ -806,8 +835,35 @@ function DeviceHistoryExpansion({ device }) {
                     />
                   </div>
                 </Column>
+                <Column lg={5} md={4} sm={4}>
+                  <div className="oe-deviceHistory-timeRangeControl">
+                    <span className="oe-deviceHistory-timeRangeLabel">
+                      <FormattedMessage
+                        id="coldStorage.deviceHistory.metric"
+                        defaultMessage="Metric:"
+                      />
+                    </span>
+                    <Dropdown
+                      id="metric-dropdown"
+                      titleText=""
+                      label={
+                        METRIC_OPTIONS.find((opt) => opt.id === selectedMetric)
+                          ?.label || "Temperature"
+                      }
+                      items={METRIC_OPTIONS}
+                      itemToString={(item) => (item ? item.label : "")}
+                      selectedItem={METRIC_OPTIONS.find(
+                        (opt) => opt.id === selectedMetric,
+                      )}
+                      onChange={({ selectedItem }) =>
+                        setSelectedMetric(selectedItem?.id || "temperature")
+                      }
+                      size="md"
+                    />
+                  </div>
+                </Column>
                 <Column
-                  lg={10}
+                  lg={6}
                   md={4}
                   sm={4}
                   className="oe-deviceHistory-exportColumn"
@@ -833,14 +889,15 @@ function DeviceHistoryExpansion({ device }) {
                   <div className="oe-deviceHistory-metricCard">
                     <div className="oe-deviceHistory-metricLabel">
                       <FormattedMessage
-                        id="coldStorage.deviceHistory.averageTemp"
-                        defaultMessage="Average Temp"
+                        id="coldStorage.deviceHistory.averageMetric"
+                        defaultMessage="Average {metric}"
+                        values={{ metric: selectedMetricOption.label }}
                       />
                     </div>
                     <div className="oe-deviceHistory-metricValue">
                       {temperatureStats.avg === "—"
                         ? "—"
-                        : `${temperatureStats.avg}°C`}
+                        : `${temperatureStats.avg}${selectedMetricOption.unit}`}
                     </div>
                   </div>
                 </Column>
@@ -848,14 +905,15 @@ function DeviceHistoryExpansion({ device }) {
                   <div className="oe-deviceHistory-metricCard">
                     <div className="oe-deviceHistory-metricLabel">
                       <FormattedMessage
-                        id="coldStorage.deviceHistory.minTemp"
-                        defaultMessage="Min Temp"
+                        id="coldStorage.deviceHistory.minMetric"
+                        defaultMessage="Min {metric}"
+                        values={{ metric: selectedMetricOption.label }}
                       />
                     </div>
                     <div className="oe-deviceHistory-metricValue oe-deviceHistory-metricValue--min">
                       {temperatureStats.min === "—"
                         ? "—"
-                        : `${temperatureStats.min}°C`}
+                        : `${temperatureStats.min}${selectedMetricOption.unit}`}
                     </div>
                   </div>
                 </Column>
@@ -863,14 +921,15 @@ function DeviceHistoryExpansion({ device }) {
                   <div className="oe-deviceHistory-metricCard">
                     <div className="oe-deviceHistory-metricLabel">
                       <FormattedMessage
-                        id="coldStorage.deviceHistory.maxTemp"
-                        defaultMessage="Max Temp"
+                        id="coldStorage.deviceHistory.maxMetric"
+                        defaultMessage="Max {metric}"
+                        values={{ metric: selectedMetricOption.label }}
                       />
                     </div>
                     <div className="oe-deviceHistory-metricValue oe-deviceHistory-metricValue--max">
                       {temperatureStats.max === "—"
                         ? "—"
-                        : `${temperatureStats.max}°C`}
+                        : `${temperatureStats.max}${selectedMetricOption.unit}`}
                     </div>
                   </div>
                 </Column>

@@ -31,7 +31,8 @@ public class FreezerReadingServiceImpl implements FreezerReadingService {
     @Override
     @Transactional
     public FreezerReading saveReading(Freezer freezer, OffsetDateTime recordedAt, BigDecimal temperature,
-            BigDecimal humidity, FreezerReading.Status status, boolean transmissionOk, String errorMessage) {
+            BigDecimal humidity, BigDecimal temperature2, FreezerReading.Status status, boolean transmissionOk,
+            String errorMessage) {
         // Get a managed reference to the freezer entity
         Freezer managedFreezer = entityManager.getReference(Freezer.class, freezer.getId());
 
@@ -40,6 +41,7 @@ public class FreezerReadingServiceImpl implements FreezerReadingService {
         reading.setRecordedAt(recordedAt);
         reading.setTemperatureCelsius(temperature);
         reading.setHumidityPercentage(humidity);
+        reading.setTemperatureCelsius2(temperature2);
         reading.setStatus(status == null ? FreezerReading.Status.NORMAL : status);
         reading.setTransmissionOk(transmissionOk);
         reading.setErrorMessage(errorMessage);

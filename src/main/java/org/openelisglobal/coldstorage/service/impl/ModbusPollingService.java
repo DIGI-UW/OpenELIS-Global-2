@@ -100,6 +100,7 @@ public class ModbusPollingService {
             modbusClientService.readCurrentValues(freezer).ifPresentOrElse(result -> {
                 readingIngestionService.ingest(freezer, timestamp, BigDecimal.valueOf(result.temperatureCelsius()),
                         result.humidityPercentage() != null ? BigDecimal.valueOf(result.humidityPercentage()) : null,
+                        result.temperatureCelsius2() != null ? BigDecimal.valueOf(result.temperatureCelsius2()) : null,
                         true, null);
                 LOGGER.debug("Recorded freezer reading for {} at {} °C", freezer.getName(),
                         result.temperatureCelsius());

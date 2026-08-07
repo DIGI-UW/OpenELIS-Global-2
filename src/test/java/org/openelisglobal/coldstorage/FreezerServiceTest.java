@@ -2,6 +2,7 @@ package org.openelisglobal.coldstorage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -109,6 +110,43 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
         Optional<Freezer> freezerOpt = freezerService.findById(freezerId);
 
         assertFalse("Freezer should not be found", freezerOpt.isPresent());
+    }
+
+    @Test
+    public void createFreezer_shouldAllowReusingNameFromADeletedFreezer() {
+        // Regression test for issue #3904: findByName only checks deleted=false, but
+        // freezer.name previously had an unconditional unique index/constraint, so a
+        // soft-deleted name could never be reused - the app thought it was free, but
+        // the DB rejected the insert with a raw, uncaught constraint violation
+        // (surfaced to users as a generic "internal storage error").
+        Freezer first = new Freezer();
+        first.setName("pcr");
+        first.setProtocol(Freezer.Protocol.TCP);
+        first.setHost("192.168.1.201");
+        first.setPort(502);
+        first.setSlaveId(11);
+        first.setTemperatureRegister(0);
+        first.setTemperatureScale(BigDecimal.ONE);
+        first.setTemperatureOffset(BigDecimal.ZERO);
+
+        Freezer createdFirst = freezerService.createFreezer(first, 1L, "1");
+        freezerService.deleteFreezer(createdFirst.getId());
+
+        Freezer second = new Freezer();
+        second.setName("pcr");
+        second.setProtocol(Freezer.Protocol.TCP);
+        second.setHost("192.168.1.202");
+        second.setPort(502);
+        second.setSlaveId(12);
+        second.setTemperatureRegister(0);
+        second.setTemperatureScale(BigDecimal.ONE);
+        second.setTemperatureOffset(BigDecimal.ZERO);
+
+        Freezer createdSecond = freezerService.createFreezer(second, 1L, "1");
+
+        assertNotNull("Freezer reusing a deleted freezer's name should be created", createdSecond.getId());
+        assertNotEquals("The reused-name freezer should be a distinct row from the deleted one", createdFirst.getId(),
+                createdSecond.getId());
     }
 
     @Test

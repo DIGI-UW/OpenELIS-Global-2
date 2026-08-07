@@ -24,6 +24,18 @@ public class FreezerMonitoringProperties {
     @Value("${org.openelisglobal.freezermonitoring.modbus.timeout-millis:2000}")
     private int timeoutMillis;
 
+    /**
+     * TCP connect timeout, separate from {@link #timeoutMillis} (the Modbus
+     * request/response timeout once connected). Defaults higher than the request
+     * timeout because establishing a connection across a routed subnet or VPN
+     * tunnel can take noticeably longer than a LAN connection - including TCP SYN
+     * retransmission on packet loss - and a short connect timeout tuned for local
+     * devices causes spurious "disconnections" that are really just aborted
+     * connection attempts (GitHub issue #3904).
+     */
+    @Value("${org.openelisglobal.freezermonitoring.modbus.connect-timeout-millis:5000}")
+    private int connectTimeoutMillis;
+
     @Value("${org.openelisglobal.freezermonitoring.modbus.retries:1}")
     private int retries;
 
@@ -54,6 +66,7 @@ public class FreezerMonitoringProperties {
         log.info("  Modbus Poll Interval: {}", pollInterval);
         log.info("  Modbus Initial Delay: {}", initialDelay);
         log.info("  Modbus Timeout: {}ms", timeoutMillis);
+        log.info("  Modbus Connect Timeout: {}ms", connectTimeoutMillis);
         log.info("  Modbus Retries: {}", retries);
         log.info("  Modbus Retry Backoff: {}ms", retryBackoffMillis);
         log.info("  Modbus Poll Pool Size: {}", pollPoolSize);
@@ -66,6 +79,15 @@ public class FreezerMonitoringProperties {
         }
         if (timeoutMillis < 500 || timeoutMillis > 30000) {
             log.warn("Modbus timeout {}ms is outside recommended range (500-30000ms)", timeoutMillis);
+        }
+
+        if (connectTimeoutMillis <= 0) {
+            throw new IllegalStateException(
+                    "org.openelisglobal.freezermonitoring.modbus.connect-timeout-millis must be positive, was: "
+                            + connectTimeoutMillis);
+        }
+        if (connectTimeoutMillis < 1000 || connectTimeoutMillis > 30000) {
+            log.warn("Modbus connect timeout {}ms is outside recommended range (1000-30000ms)", connectTimeoutMillis);
         }
 
         if (retries < 0) {

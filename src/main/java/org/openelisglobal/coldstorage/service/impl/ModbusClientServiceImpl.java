@@ -11,6 +11,7 @@ import com.digitalpetri.modbus.pdu.ReadHoldingRegistersResponse;
 import com.digitalpetri.modbus.serial.client.SerialPortClientTransport;
 import com.digitalpetri.modbus.tcp.client.NettyTcpClientTransport;
 import com.fazecast.jSerialComm.SerialPort;
+import io.netty.channel.ChannelOption;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Optional;
@@ -93,14 +94,23 @@ public class ModbusClientServiceImpl implements ModbusClientService {
         NettyTcpClientTransport transport = NettyTcpClientTransport.create(cfg -> {
             cfg.setHostname(freezer.getHost());
             cfg.setPort(freezer.getPort());
-            cfg.setConnectTimeout(Duration.ofMillis(config.getTimeoutMillis()));
+            cfg.setConnectTimeout(Duration.ofMillis(config.getConnectTimeoutMillis()));
+            // SO_KEEPALIVE so a routed/VPN path that silently drops idle connections
+            // (NAT/firewall connection-tracking expiry) is detected and torn down by the
+            // OS instead of leaving a half-open socket that fails opaquely on next use
+            // (GitHub issue #3904 cross-subnet disconnection reports).
+            cfg.setBootstrapCustomizer(bootstrap -> bootstrap.option(ChannelOption.SO_KEEPALIVE, true));
         });
 
         ModbusTcpClient client = ModbusTcpClient.create(transport,
                 builder -> builder.setRequestTimeout(Duration.ofMillis(config.getTimeoutMillis())));
 
         try {
-            client.connect();
+            try {
+                client.connect();
+            } catch (Exception ex) {
+                throw new ModbusConnectException(freezer.getHost(), freezer.getPort(), ex);
+            }
             double temperature = readRegister(client, freezer, freezer.getTemperatureRegister(),
                     freezer.getTemperatureScale(), freezer.getTemperatureOffset());
             Double humidity = null;
@@ -108,7 +118,12 @@ public class ModbusClientServiceImpl implements ModbusClientService {
                 humidity = readRegister(client, freezer, freezer.getHumidityRegister(), freezer.getHumidityScale(),
                         freezer.getHumidityOffset());
             }
-            return new ReadingResult(temperature, humidity);
+            Double temperature2 = null;
+            if (freezer.getTemperatureRegister2() != null) {
+                temperature2 = readRegister(client, freezer, freezer.getTemperatureRegister2(),
+                        freezer.getTemperatureScale2(), freezer.getTemperatureOffset2());
+            }
+            return new ReadingResult(temperature, humidity, temperature2);
         } finally {
             safeDisconnect(client);
         }
@@ -153,7 +168,12 @@ public class ModbusClientServiceImpl implements ModbusClientService {
                 humidity = readRegister(client, freezer, freezer.getHumidityRegister(), freezer.getHumidityScale(),
                         freezer.getHumidityOffset());
             }
-            return new ReadingResult(temperature, humidity);
+            Double temperature2 = null;
+            if (freezer.getTemperatureRegister2() != null) {
+                temperature2 = readRegister(client, freezer, freezer.getTemperatureRegister2(),
+                        freezer.getTemperatureScale2(), freezer.getTemperatureOffset2());
+            }
+            return new ReadingResult(temperature, humidity, temperature2);
         } finally {
             safeDisconnect(client);
         }
@@ -266,5 +286,19 @@ public class ModbusClientServiceImpl implements ModbusClientService {
 
     private int defaultInteger(Integer value, int defaultValue) {
         return value != null ? value : defaultValue;
+    }
+
+    /**
+     * Wraps a TCP connect failure with the host/port and underlying cause type
+     * (e.g. connect timeout vs connection refused vs no route to host), so the
+     * retry-loop log line in {@link #readCurrentValues} tells an operator whether a
+     * cross-subnet/VPN link is timing out, actively refusing, or unreachable,
+     * instead of a bare Netty exception message (GitHub issue #3904).
+     */
+    private static final class ModbusConnectException extends Exception {
+        ModbusConnectException(String host, int port, Throwable cause) {
+            super("Failed to connect to " + host + ":" + port + " (" + cause.getClass().getSimpleName() + ": "
+                    + cause.getMessage() + ")", cause);
+        }
     }
 }

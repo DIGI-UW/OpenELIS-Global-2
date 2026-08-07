@@ -3,6 +3,7 @@ import {
   postToOpenElisServerJsonResponse,
   postToOpenElisServerForPDF,
   putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../utils/Utils";
 import config from "../../config.json";
 
@@ -310,16 +311,33 @@ export const updateDevice = async (id, deviceData) => {
     params.append("roomId", roomId);
   }
   const queryString = params.toString() ? `?${params.toString()}` : "";
+  // putToOpenElisServer only exposes the status code, so a validation
+  // failure's actual message (e.g. duplicate name/code) never reached the
+  // user - putToOpenElisServerFullResponse gives the real Response to parse.
   return new Promise((resolve, reject) => {
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/coldstorage/devices/${id}${queryString}`,
       JSON.stringify(freezer),
-      (status) => {
-        if (status === 200) {
-          resolve({ success: true });
-        } else {
-          reject(new Error(`Failed with status: ${status}`));
+      (response) => {
+        if (!response) {
+          reject(new Error("Failed to update device: network error"));
+          return;
         }
+        response
+          .json()
+          .catch(() => ({}))
+          .then((json) => {
+            if (!response.ok) {
+              const error = new Error(
+                json.message ||
+                  `Failed to update device: HTTP ${response.status}`,
+              );
+              error.status = response.status;
+              reject(error);
+            } else {
+              resolve(json);
+            }
+          });
       },
     );
   });

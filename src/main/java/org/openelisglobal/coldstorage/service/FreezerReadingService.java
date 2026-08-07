@@ -11,7 +11,7 @@ import org.openelisglobal.coldstorage.valueholder.FreezerReading;
 public interface FreezerReadingService {
 
     FreezerReading saveReading(Freezer freezer, OffsetDateTime recordedAt, BigDecimal temperature, BigDecimal humidity,
-            FreezerReading.Status status, boolean transmissionOk, String errorMessage);
+            BigDecimal temperature2, FreezerReading.Status status, boolean transmissionOk, String errorMessage);
 
     Optional<FreezerReading> getLatestReading(Long freezerId);
 

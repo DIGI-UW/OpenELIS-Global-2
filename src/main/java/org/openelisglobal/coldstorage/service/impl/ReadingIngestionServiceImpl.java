@@ -38,7 +38,7 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
     @Override
     @Transactional
     public void ingest(Freezer freezer, OffsetDateTime recordedAt, BigDecimal temperature, BigDecimal humidity,
-            boolean transmissionOk, String errorMessage) {
+            BigDecimal temperature2, boolean transmissionOk, String errorMessage) {
         ThresholdProfile profile = thresholdEvaluationService.resolveActiveProfile(freezer, recordedAt);
         if (profile == null) {
             LOGGER.debug("No threshold profile configured for freezer {}, using default NORMAL status",
@@ -55,7 +55,7 @@ public class ReadingIngestionServiceImpl implements ReadingIngestionService {
                 : null;
 
         FreezerReading savedReading = freezerReadingService.saveReading(freezer, recordedAt, temperature, humidity,
-                instantaneousStatus, transmissionOk, errorMessage);
+                temperature2, instantaneousStatus, transmissionOk, errorMessage);
 
         if (!transmissionOk) {
             if (hasReachedConsecutiveFailureThreshold(freezer.getId())) {

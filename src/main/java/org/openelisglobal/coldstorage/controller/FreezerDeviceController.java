@@ -209,6 +209,7 @@ public class FreezerDeviceController extends BaseRestController {
         private FreezerReading.Status status;
         private BigDecimal temperatureCelsius;
         private BigDecimal humidityPercentage;
+        private BigDecimal temperatureCelsius2;
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         private OffsetDateTime recordedAt;
 
@@ -228,6 +229,7 @@ public class FreezerDeviceController extends BaseRestController {
             response.setStatus(reading != null ? reading.getStatus() : null);
             response.setTemperatureCelsius(reading != null ? reading.getTemperatureCelsius() : null);
             response.setHumidityPercentage(reading != null ? reading.getHumidityPercentage() : null);
+            response.setTemperatureCelsius2(reading != null ? reading.getTemperatureCelsius2() : null);
             response.setRecordedAt(reading != null ? reading.getRecordedAt() : null);
             return response;
         }
@@ -258,6 +260,7 @@ public class FreezerDeviceController extends BaseRestController {
         private OffsetDateTime recordedAt;
         private BigDecimal temperatureCelsius;
         private BigDecimal humidityPercentage;
+        private BigDecimal temperatureCelsius2;
         private FreezerReading.Status status;
 
         public static SensorReadingResponse from(FreezerReading reading) {
@@ -265,6 +268,7 @@ public class FreezerDeviceController extends BaseRestController {
             response.setRecordedAt(reading.getRecordedAt());
             response.setTemperatureCelsius(reading.getTemperatureCelsius());
             response.setHumidityPercentage(reading.getHumidityPercentage());
+            response.setTemperatureCelsius2(reading.getTemperatureCelsius2());
             response.setStatus(reading.getStatus());
             return response;
         }

@@ -12,7 +12,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
@@ -29,7 +28,11 @@ import org.openelisglobal.storage.valueholder.StorageDevice;
 @Getter
 @Setter
 @Entity
-@Table(name = "freezer", indexes = { @Index(name = "idx_freezer_name", columnList = "name", unique = true) })
+// name uniqueness is enforced by a partial unique index scoped to deleted=false
+// (idx_freezer_name_active) rather than a plain column constraint, so a
+// soft-deleted freezer's name can be reused - JPA can't express a partial
+// index, so it isn't declared here; see migration 074.
+@Table(name = "freezer")
 public class Freezer extends BaseObject<Long> {
 
     public enum Protocol {
@@ -57,7 +60,7 @@ public class Freezer extends BaseObject<Long> {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "name", length = 128, nullable = false, unique = true)
+    @Column(name = "name", length = 128, nullable = false)
     private String name;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -99,6 +102,13 @@ public class Freezer extends BaseObject<Long> {
 
     @Column(name = "humidity_register")
     private Integer humidityRegister;
+
+    /**
+     * Second, independent temperature probe register (e.g. dual-probe sensors).
+     * Optional.
+     */
+    @Column(name = "temperature_register_2")
+    private Integer temperatureRegister2;
 
     /**
      * Number of consecutive 16-bit holding registers to read for a single value (1
@@ -170,6 +180,12 @@ public class Freezer extends BaseObject<Long> {
 
     @Column(name = "humidity_offset")
     private BigDecimal humidityOffset = BigDecimal.ZERO;
+
+    @Column(name = "temperature_scale_2")
+    private BigDecimal temperatureScale2 = BigDecimal.ONE;
+
+    @Column(name = "temperature_offset_2")
+    private BigDecimal temperatureOffset2 = BigDecimal.ZERO;
 
     @Column(name = "target_temperature")
     private BigDecimal targetTemperature;

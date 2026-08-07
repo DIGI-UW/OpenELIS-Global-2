@@ -122,6 +122,20 @@ const getColumns = (intl) => [
     }),
   },
   {
+    key: "currentHumidity",
+    header: intl.formatMessage({
+      id: "coldStorage.dashboard.column.humidity",
+      defaultMessage: "Humidity",
+    }),
+  },
+  {
+    key: "currentTemp2",
+    header: intl.formatMessage({
+      id: "coldStorage.dashboard.column.currentTemp2",
+      defaultMessage: "Probe 2 Temp",
+    }),
+  },
+  {
     key: "protocol",
     header: intl.formatMessage({
       id: "coldStorage.device.protocol",
@@ -242,6 +256,8 @@ const normalizeUnit = (unit) => ({
   targetTemp: toNumber(
     unit.targetTemperatureCelsius ?? unit.temperatureCelsius,
   ),
+  currentHumidity: toNumber(unit.humidityPercentage),
+  currentTemp2: toNumber(unit.temperatureCelsius2),
   protocol: unit.protocol ?? "Unknown",
   lastReading: unit.recordedAt,
 });
@@ -276,6 +292,9 @@ const normalizeAlert = (alert) => {
 
 const formatTemperatureDisplay = (value) =>
   value == null ? "—" : `${value.toFixed(1)}°C`;
+
+const formatHumidityDisplay = (value) =>
+  value == null ? "—" : `${value.toFixed(1)}%`;
 
 function FreezerMonitoringDashboard({ intl }) {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -911,6 +930,30 @@ function FreezerMonitoringDashboard({ intl }) {
                                                 <TableCell key={cell.id}>
                                                   {formatTemperatureDisplay(
                                                     unit.targetTemp,
+                                                  )}
+                                                </TableCell>
+                                              );
+                                            }
+                                            if (
+                                              cell.info.header ===
+                                              "currentHumidity"
+                                            ) {
+                                              return (
+                                                <TableCell key={cell.id}>
+                                                  {formatHumidityDisplay(
+                                                    unit.currentHumidity,
+                                                  )}
+                                                </TableCell>
+                                              );
+                                            }
+                                            if (
+                                              cell.info.header ===
+                                              "currentTemp2"
+                                            ) {
+                                              return (
+                                                <TableCell key={cell.id}>
+                                                  {formatTemperatureDisplay(
+                                                    unit.currentTemp2,
                                                   )}
                                                 </TableCell>
                                               );

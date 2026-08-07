@@ -196,4 +196,10 @@
   <!-- Cold storage monitoring audit: explicit DECIMAL precision/scale for temperature/humidity columns -->
   <include relativeToChangelogFile="true" file="073-freezer-decimal-precision.xml"/>
 
+  <!-- Cold storage monitoring audit: freezer.name unique index scoped to non-deleted rows (issue #3904) -->
+  <include relativeToChangelogFile="true" file="074-freezer-name-unique-partial-index.xml"/>
+
+  <!-- Cold storage monitoring audit: second temperature probe support (issue #3904) -->
+  <include relativeToChangelogFile="true" file="075-freezer-second-temperature-probe.xml"/>
+
 </databaseChangeLog>
