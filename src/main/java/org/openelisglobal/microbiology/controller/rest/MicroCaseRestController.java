@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseService caseService;
@@ -52,7 +53,6 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     @GetMapping("/{caseId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')")
     public ResponseEntity<MicroCaseDetailForm> getCaseDetail(@PathVariable String caseId, HttpServletRequest request) {
         if (!accessService.canAccessCase(caseId, authenticatedUserId(request),
                 userModuleService.isUserAdmin(request))) {
@@ -66,7 +66,6 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')")
     public ResponseEntity<List<MicroCaseLookupForm>> getCasesForSampleItem(@RequestParam String sampleItemId,
             HttpServletRequest request) {
         if (!accessService.canAccessSampleItem(sampleItemId, authenticatedUserId(request),
@@ -81,7 +80,6 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/{caseId}/activities")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> recordActivity(@PathVariable String caseId,
             @RequestBody MicroCaseActivityRequestForm request, HttpServletRequest httpRequest) {
         MicroCaseStage nextStage = requiredEnum(MicroCaseStage.class, request.nextStage, "nextStage");
@@ -95,7 +93,6 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PutMapping("/{caseId}/order-detail")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> saveOrderDetail(@PathVariable String caseId,
             @RequestBody MicroCaseOrderDetailRequestForm request, HttpServletRequest httpRequest) {
         orderDetailService.saveOrderDetail(caseId, request, authenticatedUserId(httpRequest));
@@ -103,7 +100,6 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PutMapping("/{caseId}/workflow")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> changeWorkflow(@PathVariable String caseId,
             @RequestBody MicroCaseWorkflowChangeRequestForm request, HttpServletRequest httpRequest) {
         MicroWorkflowType workflowType = request.workflowType == null ? null

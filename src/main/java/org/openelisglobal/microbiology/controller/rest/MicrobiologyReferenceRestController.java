@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/reference")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicrobiologyReferenceRestController extends BaseRestController {
 
     private final MicrobiologyReferenceService referenceService;
@@ -36,7 +37,6 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
     }
 
     @GetMapping("/ast-panels")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroReferenceOptionForm>> getAstPanels(@RequestParam String workflowType) {
         List<MicroReferenceOptionForm> forms = new ArrayList<>();
         for (MicroAstPanel panel : referenceService.getActiveAstPanels(MicroWorkflowType.valueOf(workflowType))) {
@@ -46,7 +46,6 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
     }
 
     @GetMapping("/antibiotics")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroReferenceOptionForm>> getAntibiotics() {
         List<MicroReferenceOptionForm> forms = new ArrayList<>();
         for (MicroAntibiotic antibiotic : referenceService.getActiveAntibiotics()) {
@@ -56,7 +55,6 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
     }
 
     @GetMapping("/organisms")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms() {
         List<MicroReferenceOptionForm> forms = new ArrayList<>();
         for (MicroOrganism organism : referenceService.getActiveOrganisms()) {
@@ -66,7 +64,6 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
     }
 
     @GetMapping("/breakpoint-standards")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroReferenceOptionForm>> getBreakpointStandards() {
         List<MicroReferenceOptionForm> forms = new ArrayList<>();
         for (MicroBreakpointStandard standard : breakpointService.getActiveStandards()) {
@@ -76,7 +73,6 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
     }
 
     @GetMapping("/culture-methods")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroReferenceOptionForm>> getCultureMethods(@RequestParam String workflowType) {
         List<MicroReferenceOptionForm> forms = new ArrayList<>();
         for (MicroCultureSetup setup : referenceService
@@ -91,7 +87,6 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
     }
 
     @GetMapping("/patient-origins")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroPatientOriginOptionsForm> getPatientOrigins(
             @RequestParam(required = false) String organizationId) {
         var origins = referenceService.getPatientOrigins(organizationId);

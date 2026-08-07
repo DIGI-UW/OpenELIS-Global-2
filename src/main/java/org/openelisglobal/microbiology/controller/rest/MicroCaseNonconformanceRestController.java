@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseNonconformanceRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseNonconformanceService nonconformanceService;
@@ -23,7 +24,6 @@ public class MicroCaseNonconformanceRestController extends MicrobiologyRestContr
     }
 
     @PostMapping("/{caseId}/nonconformances")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseNonconformanceResult> report(@PathVariable String caseId,
             @RequestBody MicroCaseNonconformanceRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(nonconformanceService.report(caseId, request, authenticatedUserId(httpRequest)));

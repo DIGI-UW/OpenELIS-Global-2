@@ -127,16 +127,10 @@ public class MicroAstRestControllerTest {
     }
 
     @Test
-    public void repeatAndSelectionRequireAuthentication() throws Exception {
-        PreAuthorize repeat = MicroAstRestController.class.getMethod("startRepeatRun", String.class,
-                MicroAstRunRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
-                .getAnnotation(PreAuthorize.class);
-        PreAuthorize selection = MicroAstRestController.class
-                .getMethod("selectReportableRun", String.class, jakarta.servlet.http.HttpServletRequest.class)
-                .getAnnotation(PreAuthorize.class);
+    public void astSurfaceRequiresBenchRoleBundle() {
+        PreAuthorize authorization = MicroAstRestController.class.getAnnotation(PreAuthorize.class);
 
-        assertEquals("isAuthenticated()", repeat.value());
-        assertEquals("isAuthenticated()", selection.value());
+        assertEquals("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')", authorization.value());
     }
 
     @Test

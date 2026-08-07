@@ -204,6 +204,21 @@ in the named acceptance criterion is absent or unproven.
 | M-12 Reagent Lot Picker | One Carbon component is reused in culture and AST setup; it shows QC for every lot, preserves blocked-lot reasons, marks the FEFO recommendation, explains ordering, accepts exact scanner-style lot entry, controls the nested Carbon radio state, and formats save-time inventory conflicts with reagent, lot, reason, and corrective action. Inventory performs locked revalidation/consumption and the service proves a conflict cannot create a partial microbiology usage link. The registered journey exposed and closed the inoculation Method-ID mapping defect, then persisted both culture and AST provenance in 7.2 seconds. Exact-SHA local qualification passes the `<500 ms` ceiling, desktop/mobile axe scans in both hosts, and the complete keyboard journey. Repeat metadata and usage history remain visible.     | Exact AMR deployment and human acceptance remain open. The source asks for required/optional/substitute policy but the shared Test Catalog only defines `PRIMARY`/`SECONDARY`; treating those as equivalent would be unsafe. The source also prescribes schema, routes, class names, and component signatures despite assigning administration to shared Test Catalog/Inventory.                                  | Keep Microbiology ownership to shared consuming behavior; T262 records automated runtime qualification and T288 tracks the external catalog-policy contract without duplicate schema.                                                        |
 | M-NFR                   | Exact-SHA service-created qualification separately measures Culture/AST server fetch, browser-ready render, filters, and dense Case rendering. Both worklist grains and filters pass at substantially above-source accumulated row counts, and the Case Timeline defaults to the newest 30 events with full history on demand. At `d39deca1e`, the accessibility run passes 16/16 entries in 1.3 minutes: auth setup, seven desktop axe journeys, one desktop full-keyboard journey, and seven mobile axe journeys. Direct interactions cover canonical routing, all named M-04/M-05 action variants, status announcements, stable Carbon modal lifecycle, and exact focus return for reference editors. The focused modal suite passes 15/15 and fails 3/3 new focus guards when the implementation is inverted.                     | The dense stress case measures `1,032.7 ms` with 171 immutable events. The M-NFR `<1,000 ms` value is not mock-derived, lacks a deterministic environment, and conflicts with its own 30-event data shape, so it remains diagnostic rather than a product gate. No offline queue/conflict resolution exists. Deployed and human accessibility acceptance remain open. The shared URL-less shell still logs a known 404. | T263/T264 automated qualification is complete. Keep T266 open, diagnose the shared-shell 404 separately, and never infer deployed usability, WCAG, or human acceptance from automated timing/axe evidence alone. |
 
+### R1 User-Facing Authorization Evidence - 2026-08-06
+
+- Bench reads/writes now share the existing Results/Validation/Admin role
+  boundary used by the worklist; final release and amendment require
+  Validation/Admin.
+- The focused security slice proves unrelated-role `403`, supervisor-only final
+  release, and session-derived attribution when a payload submits a different
+  actor. The architecture test prevents touched user-facing controller methods
+  from weakening the shared class boundary.
+- OpenELIS Work's proposed `micro.*` permission keys are implementation detail,
+  not an instruction to add a second permission system. Least-privilege Bridge
+  analyzer-event authentication remains T290 because the current Basic-auth
+  path maps a normal account's repository roles and no analyzer service
+  authority exists.
+
 ## R1 M-07 Worklist Evidence
 
 - **Code:** `398a69003` adds the canonical Culture/AST grain and
