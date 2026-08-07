@@ -3,8 +3,17 @@ import { createPatientValidationSchema } from "./CreatePatientValidationShema";
 
 export const createOrderEntryValidationSchema = (
   configurationProperties = {},
-) =>
-  Yup.object().shape({
+) => {
+  const requesterRequired =
+    configurationProperties.REQUESTER_REQUIRED === "true";
+  const providerFirstNameSchema = requesterRequired
+    ? Yup.string().required("Requester First Name is required")
+    : Yup.string();
+  const providerLastNameSchema = requesterRequired
+    ? Yup.string().required("Requester Last Name is required")
+    : Yup.string();
+
+  return Yup.object().shape({
     sampleXML: Yup.string().required("Sample is required"),
     patientProperties: createPatientValidationSchema(configurationProperties),
     sampleOrderItems: Yup.object()
@@ -12,12 +21,8 @@ export const createOrderEntryValidationSchema = (
         labNo: Yup.string().required("Sample Lab Number is required"),
         referringSiteName: Yup.string(),
         referringSiteId: Yup.string(),
-        providerLastName: Yup.string().required(
-          "Requester Last Name is required",
-        ),
-        providerFirstName: Yup.string().required(
-          "Requester First Name is required",
-        ),
+        providerLastName: providerLastNameSchema,
+        providerFirstName: providerFirstNameSchema,
         providerEmail: Yup.string().email("Invalid Email"),
       })
       .test(
@@ -29,3 +34,4 @@ export const createOrderEntryValidationSchema = (
         },
       ),
   });
+};

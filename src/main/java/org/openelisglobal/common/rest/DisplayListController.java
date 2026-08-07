@@ -343,6 +343,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL));
         configs.put(Property.RESULTS_ENTRY_UNIFIED_ROUTE.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.RESULTS_ENTRY_UNIFIED_ROUTE));
+        configs.put(Property.REQUESTER_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.REQUESTER_REQUIRED));
         return configs;
     }
 

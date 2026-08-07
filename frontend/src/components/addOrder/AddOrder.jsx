@@ -1023,7 +1023,9 @@ const AddOrder = (props) => {
                 label={
                   <>
                     <FormattedMessage id="order.search.requester.label" />{" "}
-                    <span className="requiredlabel">*</span>
+                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
+                      <span className="requiredlabel">*</span>
+                    )}
                   </>
                 }
                 style={{ width: "!important 100%" }}
@@ -1031,7 +1033,7 @@ const AddOrder = (props) => {
                   <FormattedMessage id="order.invalid.requester.name.label" />
                 }
                 suggestions={providers.length > 0 ? providers : []}
-                required
+                required={configurationProperties.REQUESTER_REQUIRED === "true"}
               />
             </Column>
             <Column lg={8} md={4} sm={4}>
@@ -1066,8 +1068,10 @@ const AddOrder = (props) => {
                 })}
                 labelText={
                   <>
-                    <FormattedMessage id="order.requester.firstName.label" />
-                    <span className="requiredlabel">*</span>
+                    <FormattedMessage id="order.requester.firstName.label" />{" "}
+                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
+                      <span className="requiredlabel">*</span>
+                    )}
                   </>
                 }
                 disabled={
@@ -1098,8 +1102,10 @@ const AddOrder = (props) => {
                 })}
                 labelText={
                   <>
-                    <FormattedMessage id="order.requester.lastName.label" />
-                    <span className="requiredlabel">*</span>
+                    <FormattedMessage id="order.requester.lastName.label" />{" "}
+                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
+                      <span className="requiredlabel">*</span>
+                    )}
                   </>
                 }
                 disabled={
