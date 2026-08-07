@@ -470,14 +470,6 @@ export const fetchUsers = async () => {
   return getFromOpenElisServerV2("/rest/coldstorage/users");
 };
 
-export const fetchSystemConfig = async () => {
-  return getFromOpenElisServerV2("/rest/coldstorage/system-config");
-};
-
-export const saveSystemConfig = async (configData) => {
-  return postColdStorageJson("/rest/coldstorage/system-config", configData);
-};
-
 export const fetchAlertConfig = async () => {
   return getFromOpenElisServerV2("/rest/alert-notification-config");
 };
