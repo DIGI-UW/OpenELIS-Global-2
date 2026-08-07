@@ -25,7 +25,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.reports.form.ReportForm;
 
 public interface IReportCreator {
-    String INCOMPLETE_PARAMS = "Incompleate parameters";
+    String INCOMPLETE_PARAMS = "Incomplete parameters";
     String INVALID_PARAMS = "Invalid parameters";
     String SUCCESS = IActionConstants.FWD_SUCCESS;
 
