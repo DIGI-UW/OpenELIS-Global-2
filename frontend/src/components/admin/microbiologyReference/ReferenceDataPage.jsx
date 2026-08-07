@@ -36,6 +36,7 @@ import {
 } from "./api";
 import { buildReferenceRequestQuery } from "./queryState";
 import ReferenceEditModal from "./ReferenceEditModal";
+import useModalFocusReturn from "./useModalFocusReturn";
 
 const ReferenceDataPage = ({ definition, query, setQuery }) => {
   const intl = useIntl();
@@ -46,6 +47,7 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
   const [detachedValue, setDetachedValue] = useState(null);
   const [optionLists, setOptionLists] = useState({});
   const readOnly = definition.readOnly === true;
+  const { rememberReturnFocus, restoreReturnFocus } = useModalFocusReturn();
 
   const deactivationId = query.edit?.startsWith("deactivate:")
     ? query.edit.slice("deactivate:".length)
@@ -157,7 +159,10 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
     ...(readOnly ? [] : [{ key: "actions", header: "" }]),
   ];
 
-  const closeEditor = () => setQuery({ edit: "" }, { replace: true });
+  const closeEditor = () => {
+    setQuery({ edit: "" }, { replace: true });
+    restoreReturnFocus();
+  };
 
   const save = async (value) => {
     await saveReference(definition.resource, value);
@@ -270,7 +275,10 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
                 {!readOnly && (
                   <Button
                     renderIcon={Add}
-                    onClick={() => setQuery({ edit: "new" })}
+                    onClick={(event) => {
+                      rememberReturnFocus(event.currentTarget);
+                      setQuery({ edit: "new" });
+                    }}
                   >
                     {intl.formatMessage({ id: definition.addLabel })}
                   </Button>
@@ -315,7 +323,15 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
                                   itemText={intl.formatMessage({
                                     id: "button.edit",
                                   })}
-                                  onClick={() => setQuery({ edit: source.id })}
+                                  onClick={(event) => {
+                                    const menuButton = event.currentTarget
+                                      .closest("td")
+                                      ?.querySelector(
+                                        ".cds--overflow-menu__trigger",
+                                      );
+                                    rememberReturnFocus(menuButton);
+                                    setQuery({ edit: source.id });
+                                  }}
                                 />
                                 {definition.canToggle !== false && (
                                   <OverflowMenuItem
@@ -325,13 +341,23 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
                                         ? "microbiology.admin.action.deactivate"
                                         : "microbiology.admin.action.reactivate",
                                     })}
-                                    onClick={() =>
-                                      source.active
-                                        ? setQuery({
-                                            edit: `deactivate:${source.id}`,
-                                          })
-                                        : toggleActive(source)
-                                    }
+                                    onClick={(event) => {
+                                      const menuButton = event.currentTarget
+                                        .closest("td")
+                                        ?.querySelector(
+                                          ".cds--overflow-menu__trigger",
+                                        );
+                                      rememberReturnFocus(menuButton);
+                                      if (source.active) {
+                                        setQuery({
+                                          edit: `deactivate:${source.id}`,
+                                        });
+                                      } else {
+                                        toggleActive(source).then(
+                                          restoreReturnFocus,
+                                        );
+                                      }
+                                    }}
                                   />
                                 )}
                               </OverflowMenu>
@@ -363,12 +389,13 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
           </TableContainer>
         )}
       </DataTable>
-      {!readOnly && !!query.edit && !!editedValue && (
+      {!readOnly && (
         <ReferenceEditModal
-          key={`${definition.resource}-${query.edit}`}
+          open={!!query.edit && !!editedValue}
+          editorKey={`${definition.resource}-${query.edit}`}
           titleId={definition.editTitle}
           fields={modalFields}
-          value={editedValue}
+          value={editedValue || {}}
           onClose={closeEditor}
           onSave={save}
         />

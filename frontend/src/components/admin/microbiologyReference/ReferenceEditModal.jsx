@@ -28,7 +28,7 @@ const emptyValue = (fields) =>
     {},
   );
 
-const ReferenceEditModal = ({ titleId, fields, value, onClose, onSave }) => {
+const ReferenceEditForm = ({ titleId, fields, value, onClose, onSave }) => {
   const intl = useIntl();
   const initialValue = useMemo(
     () => ({ ...emptyValue(fields), ...(value || {}) }),
@@ -67,7 +67,7 @@ const ReferenceEditModal = ({ titleId, fields, value, onClose, onSave }) => {
   };
 
   return (
-    <ComposedModal open onClose={onClose} size="sm">
+    <>
       <ModalHeader
         title={intl.formatMessage({ id: titleId })}
         closeModal={onClose}
@@ -194,8 +194,16 @@ const ReferenceEditModal = ({ titleId, fields, value, onClose, onSave }) => {
         onRequestClose={onClose}
         primaryButtonDisabled={saving}
       />
-    </ComposedModal>
+    </>
   );
 };
+
+const ReferenceEditModal = ({ open, editorKey, onClose, ...formProps }) => (
+  <ComposedModal open={open} onClose={onClose} size="sm">
+    {open ? (
+      <ReferenceEditForm key={editorKey} onClose={onClose} {...formProps} />
+    ) : null}
+  </ComposedModal>
+);
 
 export default ReferenceEditModal;

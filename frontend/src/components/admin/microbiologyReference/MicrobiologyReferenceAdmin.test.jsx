@@ -18,7 +18,8 @@ vi.mock("./api", () => ({
 }));
 
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter, Route } from "react-router-dom";
@@ -127,6 +128,50 @@ describe("microbiology reference administration", () => {
     expect(setQuery).toHaveBeenLastCalledWith({ edit: "new" });
   });
 
+  it("returns focus to the exact reference command when the editor closes", async () => {
+    const user = userEvent.setup();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState(query);
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return (
+        <ReferenceDataPage
+          definition={REFERENCE_DEFINITIONS.organisms}
+          query={currentQuery}
+          setQuery={setQuery}
+        />
+      );
+    };
+
+    renderPage(<Harness />);
+    const add = await screen.findByRole("button", {
+      name: messages["microbiology.admin.organisms.add"],
+    });
+    add.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull(),
+    );
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(add).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull(),
+    );
+    const activeDialog = document.activeElement.closest('[role="dialog"]');
+    await user.click(
+      within(activeDialog).getByRole("button", {
+        name: messages["button.save"],
+      }),
+    );
+    await waitFor(() => expect(saveReference).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(add).toHaveFocus());
+  });
+
   it("renders Patient Origins as a read-only Carbon reference list", async () => {
     const setQuery = vi.fn();
     getReferencePage.mockResolvedValue({
@@ -232,6 +277,60 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenCalledWith({ edit: "new" });
+  });
+
+  it("returns focus after the AST panel editor closes", async () => {
+    const user = userEvent.setup();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState(query);
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return <AstPanelPage query={currentQuery} setQuery={setQuery} />;
+    };
+
+    renderPage(<Harness />);
+    const add = await screen.findByRole("button", {
+      name: messages["microbiology.admin.astPanels.add"],
+    });
+    add.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull(),
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(add).toHaveFocus());
+  });
+
+  it("returns focus after the breakpoint import closes", async () => {
+    const user = userEvent.setup();
+    getBreakpointStandards.mockResolvedValue({ rows: [], total: 0 });
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState(query);
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return (
+        <BreakpointPage
+          basePath="/MasterListsPage"
+          query={currentQuery}
+          setQuery={setQuery}
+        />
+      );
+    };
+
+    renderPage(<Harness />);
+    const importCsv = await screen.findByRole("button", {
+      name: messages["microbiology.admin.breakpoints.import"],
+    });
+    importCsv.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull(),
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(importCsv).toHaveFocus());
   });
 
   it("saves structured culture timing through Carbon number inputs", async () => {
