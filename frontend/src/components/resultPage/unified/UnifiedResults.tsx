@@ -34,7 +34,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
@@ -65,7 +65,9 @@ import ExpandedPanel, {
   IdValue,
   NoteDraft,
   PanelRow,
+  RejectDraft,
 } from "./ExpandedPanel";
+import { ReferralDraft } from "./ReferralAction";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
 import "./unified-results.scss";
@@ -156,6 +158,24 @@ const UnifiedResults: React.FC = () => {
   const [sectionLayout, setSectionLayout] = useState<SectionLayout>(() =>
     loadSectionLayout(),
   );
+  // ---- R4 (OGC-1023) NCE / referral / rejection state ----
+  const { configurationProperties } = useContext(ConfigurationContext) as {
+    configurationProperties?: Record<string, string>;
+  };
+  const allowResultRejection =
+    configurationProperties?.allowResultRejection === "true";
+  const [nceOpenKey, setNceOpenKey] = useState<string | null>(null);
+  const [referralOrganizations, setReferralOrganizations] = useState<IdValue[]>(
+    [],
+  );
+  const [referralReasons, setReferralReasons] = useState<IdValue[]>([]);
+  const [rejectReasons, setRejectReasons] = useState<IdValue[]>([]);
+  const [referralDrafts, setReferralDrafts] = useState<
+    Record<string, ReferralDraft>
+  >({});
+  const [rejectDrafts, setRejectDrafts] = useState<Record<string, RejectDraft>>(
+    {},
+  );
 
   const domain: ResultsDomain = useMemo(() => {
     const unit = labUnits.find((u) => u.id === selectedLabUnit);
@@ -178,6 +198,19 @@ const UnifiedResults: React.FC = () => {
     getFromOpenElisServer(
       "/rest/displayList/ANALYZER_LIST",
       (list: IdValue[]) => setAnalyzers(list || []),
+    );
+    // R4 (FR-F2/E3): referral target + reason lists, rejection reasons
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      (list: IdValue[]) => setReferralOrganizations(list || []),
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_REASONS",
+      (list: IdValue[]) => setReferralReasons(list || []),
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/REJECTION_REASONS",
+      (list: IdValue[]) => setRejectReasons(list || []),
     );
   }, []);
 
@@ -207,6 +240,9 @@ const UnifiedResults: React.FC = () => {
       setLoadedAnalyzers(loadedByKey);
       setNoteDrafts({});
       setDilutionDrafts({});
+      setReferralDrafts({});
+      setRejectDrafts({});
+      setNceOpenKey(null);
       setExpandedRowKey(null);
       setStaleInfo({});
       setEditingAnalysisId(null);
@@ -387,6 +423,55 @@ const UnifiedResults: React.FC = () => {
     [],
   );
 
+  // R4: a referral or rejection is part of the analysis record — setting a
+  // draft dirties the row so it goes through the same Save (e-signature)
+  const markRowDirty = useCallback((target: WorklistRow) => {
+    const key = worklistRowKey(target);
+    setRowStates((current) => ({
+      ...current,
+      [key]: nextRowState(current[key] || "EMPTY", { type: "VALUE_CHANGED" }),
+    }));
+    setEditingAnalysisId(target.analysisId);
+  }, []);
+
+  const handleReferralDraftChange = useCallback(
+    (target: WorklistRow, draft: ReferralDraft | null) => {
+      const key = worklistRowKey(target);
+      setReferralDrafts((current) => {
+        const next = { ...current };
+        if (draft) {
+          next[key] = draft;
+        } else {
+          delete next[key];
+        }
+        return next;
+      });
+      if (draft) {
+        markRowDirty(target);
+      }
+    },
+    [markRowDirty],
+  );
+
+  const handleRejectDraftChange = useCallback(
+    (target: WorklistRow, draft: RejectDraft | null) => {
+      const key = worklistRowKey(target);
+      setRejectDrafts((current) => {
+        const next = { ...current };
+        if (draft) {
+          next[key] = draft;
+        } else {
+          delete next[key];
+        }
+        return next;
+      });
+      if (draft) {
+        markRowDirty(target);
+      }
+    },
+    [markRowDirty],
+  );
+
   const handleEdit = useCallback((target: WorklistRow) => {
     const key = worklistRowKey(target);
     setRowStates((current) => ({
@@ -504,6 +589,32 @@ const UnifiedResults: React.FC = () => {
         item.dilutionFactor = dilution.factor.trim();
         item.measuredValue = dilution.measuredValue.trim();
       }
+      // R4 (FR-F2/F3): the referral rides the row's save — legacy
+      // handleReferrals path; the referred test is this row's own test (no
+      // test-to-perform field per FRS)
+      const referral = referralDrafts[key];
+      if (
+        referral &&
+        referral.referredInstituteId &&
+        referral.referralReasonId
+      ) {
+        item.refer = true;
+        item.referredOut = true;
+        item.referralItem = {
+          referralReasonId: referral.referralReasonId,
+          referredInstituteId: referral.referredInstituteId,
+          referredSendDate: referral.referredSendDate,
+          referredTestId: row.testId,
+        };
+      }
+      // R4 (FR-E3): reject disposition — legacy shadowRejected mechanics
+      // (clears the value, writes the rejection-reason note, TechnicalRejected)
+      const reject = rejectDrafts[key];
+      if (reject && reject.rejectReasonId) {
+        item.rejected = true;
+        item.shadowRejected = true;
+        item.rejectReasonId = reject.rejectReasonId;
+      }
       postToOpenElisServerJsonResponse(
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify({ testResult: item }),
@@ -520,11 +631,28 @@ const UnifiedResults: React.FC = () => {
               delete next[key];
               return next;
             });
+            setReferralDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+            setRejectDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
           }
         },
       );
     },
-    [handleSaveResponse, noteDrafts, dilutionDrafts, rowStates],
+    [
+      handleSaveResponse,
+      noteDrafts,
+      dilutionDrafts,
+      referralDrafts,
+      rejectDrafts,
+      rowStates,
+    ],
   );
 
   const subjectCell = (row: WorklistRow): string => {
@@ -836,6 +964,22 @@ const UnifiedResults: React.FC = () => {
                                   ...current,
                                   [key]: draft,
                                 }))
+                              }
+                              allowResultRejection={allowResultRejection}
+                              nceOpen={nceOpenKey === key}
+                              onNceOpenChange={(open) =>
+                                setNceOpenKey(open ? key : null)
+                              }
+                              referralOrganizations={referralOrganizations}
+                              referralReasons={referralReasons}
+                              referralDraft={referralDrafts[key] || null}
+                              onReferralDraftChange={(draft) =>
+                                handleReferralDraftChange(row, draft)
+                              }
+                              rejectReasons={rejectReasons}
+                              rejectDraft={rejectDrafts[key] || null}
+                              onRejectDraftChange={(draft) =>
+                                handleRejectDraftChange(row, draft)
                               }
                               actions={
                                 <>

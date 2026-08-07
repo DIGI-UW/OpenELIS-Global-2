@@ -32,6 +32,8 @@ const EVENT_TAG_TYPE: Record<string, string> = {
   NOTE: "gray",
   RETEST: "magenta",
   REFLEX: "purple",
+  REFERRAL: "cyan",
+  NCE: "red",
 };
 
 interface HistorySectionProps {

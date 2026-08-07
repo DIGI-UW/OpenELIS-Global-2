@@ -438,6 +438,97 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * OGC-1023 (R4, FR-E3) — the reject disposition rides the legacy shadowRejected
+     * mechanics: the value is cleared, the rejection reason is written as a note,
+     * and the analysis moves to TechnicalRejected (VALIDATE_REJECTED_TESTS on) or
+     * Canceled (off).
+     */
+    @Test
+    public void save_withRejection_clearsValue_writesReasonNote_andCancels() throws Exception {
+        DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
+        when(displayList.getList(DisplayListService.ListType.REJECTION_REASONS))
+                .thenReturn(List.of(new IdValuePair("9501", "Specimen clotted")));
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                            "\"note\":\"\",\"rejected\":true,\"shadowRejected\":true,\"rejectReasonId\":\"9501\""))
+                    .session(session)).andExpect(status().isOk());
+        } finally {
+            reset(displayList);
+        }
+
+        Integer reasonNotes = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.note WHERE reference_id = 1" + " AND text = 'Specimen clotted'",
+                Integer.class);
+        assertEquals(Integer.valueOf(1), reasonNotes);
+        assertEquals("9104",
+                jdbc.queryForObject("SELECT status_id::text FROM clinlims.analysis WHERE id = 1", String.class));
+    }
+
+    /**
+     * OGC-1023 (R4, FR-F2/F3) — a save carrying refer + referralItem creates the
+     * Referral (with a non-null referral type — regression for the never-assigned
+     * REFERRAL_CONFORMATION_ID that NULLed referral_type_id and 500'd the save) and
+     * sets Analysis.referredOut. ResultsReferral is off in the default form field
+     * set, so it is flipped for the duration of the test.
+     */
+    @Test
+    public void save_withReferral_createsReferral_andSetsReferredOut() throws Exception {
+        jdbc.update("INSERT INTO clinlims.referral_type (id, name, description, lastupdated) SELECT 9601,"
+                + " 'Confirmation', 'Confirmation', NOW() WHERE NOT EXISTS"
+                + " (SELECT 1 FROM clinlims.referral_type WHERE name = 'Confirmation')");
+        jdbc.update("INSERT INTO clinlims.organization (id, name, is_active, lastupdated) VALUES (9801,"
+                + " 'National Reference Laboratory', 'Y', NOW()) ON CONFLICT (id) DO NOTHING");
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<org.openelisglobal.common.formfields.FormFields.Field, org.openelisglobal.common.formfields.FormField> formFields = (java.util.Map<org.openelisglobal.common.formfields.FormFields.Field, org.openelisglobal.common.formfields.FormField>) org.springframework.test.util.ReflectionTestUtils
+                .getField(org.openelisglobal.common.formfields.FormFields.getInstance(), "fields");
+        org.openelisglobal.common.formfields.FormField referralField = formFields
+                .get(org.openelisglobal.common.formfields.FormFields.Field.ResultsReferral);
+        Boolean before = referralField.getInUse();
+        referralField.setInUse(true);
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                            "\"note\":\"\",\"refer\":true,\"referredOut\":true,\"referralItem\":"
+                                    + "{\"referralReasonId\":\"1\",\"referredInstituteId\":\"9801\","
+                                    + "\"referredSendDate\":\"07/08/2026\",\"referredTestId\":\"1\"}"))
+                    .session(session)).andExpect(status().isOk());
+        } finally {
+            referralField.setInUse(before);
+        }
+
+        Integer referrals = jdbc.queryForObject("SELECT count(*) FROM clinlims.referral WHERE analysis_id = 1"
+                + " AND referral_type_id IS NOT NULL AND organization_id = 9801", Integer.class);
+        assertEquals(Integer.valueOf(1), referrals);
+        assertEquals(Boolean.TRUE,
+                jdbc.queryForObject("SELECT referred_out FROM clinlims.analysis WHERE id = 1", Boolean.class));
+    }
+
+    /**
+     * OGC-1023 (R4) — the analysis timeline surfaces the referral (TEST_REFERRED)
+     * and any non-conformity filed against this analysis (NCE_REPORTED).
+     */
+    @Test
+    public void analysisHistory_includesReferralAndNceEvents() throws Exception {
+        jdbc.update("INSERT INTO clinlims.referral_type (id, name, description, lastupdated) VALUES (9601,"
+                + " 'Confirmation', 'Confirmation', NOW()) ON CONFLICT (id) DO NOTHING");
+        jdbc.update("INSERT INTO clinlims.referral (id, analysis_id, organization_name, sent_date,"
+                + " referral_type_id, canceled, lastupdated) VALUES (9602, 1, 'National Reference Lab', NOW(),"
+                + " 9601, false, NOW())");
+        jdbc.update("INSERT INTO clinlims.nc_event (id, nce_number, name, name_of_reporter, last_updated)"
+                + " VALUES (9701, 'NCE-42', 'Broken tube', 'admin', NOW())");
+        jdbc.update("INSERT INTO clinlims.nce_specimen (id, nce_id, sample_item_id, analysis_id, last_updated)"
+                + " VALUES (9702, 9701, 601, 1, NOW())");
+
+        mockMvc.perform(get("/rest/results-entry/analysis/1/history").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.type == 'REFERRAL')].detail",
+                        org.hamcrest.CoreMatchers.hasItem("National Reference Lab")))
+                .andExpect(jsonPath("$.events[?(@.type == 'NCE')].detail",
+                        org.hamcrest.CoreMatchers.hasItem(org.hamcrest.CoreMatchers.containsString("NCE-42"))));
+    }
+
     @Test
     public void labUnitDomain_mapsFromTestSectionColumn() {
         // FR-M1 foundation: the OGC-1020 test_section.domain column round-trips

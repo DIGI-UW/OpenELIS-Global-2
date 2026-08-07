@@ -59,6 +59,7 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
+import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
@@ -100,6 +101,23 @@ public class ResultUtil {
 
     private static String RESULT_EDIT_ROLE_ID;
     private static String REFERRAL_CONFORMATION_ID;
+
+    /**
+     * The "Confirmation" referral type id, resolved on first use. The field was
+     * never assigned in this class, so every referral built here reached the insert
+     * with a null referral_type_id and died on its NOT NULL constraint (OGC-1023) —
+     * the legacy JSP controller only ever populated its own copy.
+     */
+    private static String confirmationReferralTypeId() {
+        if (REFERRAL_CONFORMATION_ID == null) {
+            org.openelisglobal.referral.valueholder.ReferralType referralType = SpringContext
+                    .getBean(ReferralTypeService.class).getReferralTypeByName("Confirmation");
+            if (referralType != null) {
+                REFERRAL_CONFORMATION_ID = referralType.getId();
+            }
+        }
+        return REFERRAL_CONFORMATION_ID;
+    }
 
     private static final String RESULT_SUBJECT = "Result Note";
 
@@ -399,7 +417,7 @@ public class ResultUtil {
         referral.setFhirUuid(UUID.randomUUID());
         referral.setStatus(ReferralStatus.SENT);
         referral.setSysUserId(actionDataSet.getCurrentUserId());
-        referral.setReferralTypeId(REFERRAL_CONFORMATION_ID);
+        referral.setReferralTypeId(confirmationReferralTypeId());
         referral.setRequesterName(testResultItem.getTechnician());
 
         referral.setRequestDate(new Timestamp(new Date().getTime()));

@@ -18,6 +18,15 @@ import PolymorphicResultCell, {
 import ReferenceSection from "./ReferenceSection";
 import CriticalBanner from "./CriticalBanner";
 import HistorySection from "./HistorySection";
+import AliquotsSection from "./AliquotsSection";
+import ReferralAction, {
+  ReferralDraft,
+  emptyReferralDraft,
+} from "./ReferralAction";
+// the shipped inline non-conformity form (FR-E1) — plain jsx, no types
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
 import { dilutionApplies, computeReportedValue } from "./dilution";
@@ -83,6 +92,18 @@ export interface DilutionDraft {
   factor: string;
 }
 
+export interface RejectDraft {
+  rejectReasonId: string;
+}
+
+/** dd/MM/yyyy — the app's date format; FR-F2's "defaults to now". */
+export const todayForReferral = (): string => {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${now.getFullYear()}`;
+};
+
 interface ExpandedPanelProps {
   row: PanelRow;
   domain: ResultsDomain;
@@ -104,6 +125,17 @@ interface ExpandedPanelProps {
   onNoteDraftChange: (draft: NoteDraft) => void;
   onDilutionDraftChange: (draft: DilutionDraft) => void;
   actions: React.ReactNode;
+  /** OGC-1023 (R4): gates "Report Non-Conformity" and result rejection. */
+  allowResultRejection: boolean;
+  nceOpen: boolean;
+  onNceOpenChange: (open: boolean) => void;
+  referralOrganizations: IdValue[];
+  referralReasons: IdValue[];
+  referralDraft: ReferralDraft | null;
+  onReferralDraftChange: (draft: ReferralDraft | null) => void;
+  rejectReasons: IdValue[];
+  rejectDraft: RejectDraft | null;
+  onRejectDraftChange: (draft: RejectDraft | null) => void;
 }
 
 const noteVisibilityTag = (noteType?: string) =>
@@ -145,6 +177,16 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   onNoteDraftChange,
   onDilutionDraftChange,
   actions,
+  allowResultRejection,
+  nceOpen,
+  onNceOpenChange,
+  referralOrganizations,
+  referralReasons,
+  referralDraft,
+  onReferralDraftChange,
+  rejectReasons,
+  rejectDraft,
+  onRejectDraftChange,
 }) => {
   const intl = useIntl();
   const rowKey = worklistRowKey(row);
@@ -423,11 +465,107 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
         <div className="unifiedWorkZoneActions">
           {actions}
+          {allowResultRejection && (
+            <Button
+              kind="ghost"
+              size="sm"
+              className="unifiedNceButton"
+              onClick={() => onNceOpenChange(!nceOpen)}
+              data-testid={`nce-toggle-${rowKey}`}
+            >
+              <FormattedMessage id="label.results.nce.report" />
+            </Button>
+          )}
+          {allowResultRejection && (
+            <Button
+              kind="ghost"
+              size="sm"
+              onClick={() =>
+                onRejectDraftChange(rejectDraft ? null : { rejectReasonId: "" })
+              }
+              data-testid={`reject-toggle-${rowKey}`}
+            >
+              <FormattedMessage id="label.results.reject.result" />
+            </Button>
+          )}
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() =>
+              onReferralDraftChange(
+                referralDraft ? null : emptyReferralDraft(todayForReferral()),
+              )
+            }
+            data-testid={`referral-toggle-${rowKey}`}
+          >
+            {row.referredOut || referralDraft ? (
+              <FormattedMessage id="label.results.referral.editing" />
+            ) : (
+              <FormattedMessage id="label.results.referral.refer" />
+            )}
+          </Button>
           <span className="unifiedFieldHint">
             <FormattedMessage id="label.results.saveHint" />
           </span>
         </div>
+
+        {allowResultRejection && rejectReasons.length > 0 && rejectDraft && (
+          <div className="unifiedRejectRow" data-testid={`reject-${rowKey}`}>
+            <Select
+              id={`reject-reason-${rowKey}`}
+              labelText={intl.formatMessage({
+                id: "label.results.reject.reason",
+              })}
+              value={rejectDraft.rejectReasonId}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                onRejectDraftChange({ rejectReasonId: e.target.value })
+              }
+            >
+              <SelectItem value="" text="" />
+              {rejectReasons.map((reason) => (
+                <SelectItem
+                  key={reason.id}
+                  value={reason.id}
+                  text={reason.value}
+                />
+              ))}
+            </Select>
+            <span className="unifiedFieldHint">
+              <FormattedMessage id="label.results.reject.hint" />
+            </span>
+            <Button
+              kind="ghost"
+              size="sm"
+              onClick={() => onRejectDraftChange(null)}
+            >
+              <FormattedMessage id="label.results.referral.cancel" />
+            </Button>
+          </div>
+        )}
+
+        {referralDraft && (
+          <ReferralAction
+            rowKey={rowKey}
+            organizations={referralOrganizations}
+            reasons={referralReasons}
+            draft={referralDraft}
+            onDraftChange={(draft) => onReferralDraftChange(draft)}
+            onCancel={() => onReferralDraftChange(null)}
+          />
+        )}
       </div>
+
+      {/* Inline NCE (FR-E1/E2) — the shipped form, embedded, auto-linked to
+          this sample + result; gated by allowResultRejection */}
+      {nceOpen && (
+        <div className="unifiedNceEmbed" data-testid={`nce-${rowKey}`}>
+          <InlineNceForm
+            resultRow={row}
+            onClose={() => onNceOpenChange(false)}
+            onSubmitSuccess={() => onNceOpenChange(false)}
+          />
+        </div>
+      )}
 
       {/* Critical banner (FR-C2) — the one full-width banner; ack never gates Save (FR-A4) */}
       {row.resultFlag === "CRITICAL" && (
@@ -508,6 +646,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           analysisId={row.analysisId as string | undefined}
           open={isSectionOpen(sectionLayout, "history", false)}
           onToggle={(open) => toggleSection("history", open)}
+        />
+
+        <AliquotsSection
+          accessionNumber={row.accessionNumber}
+          sampleItemId={row.sampleItemId as string | undefined}
+          open={isSectionOpen(sectionLayout, "aliquots", false)}
+          onToggle={(open) => toggleSection("aliquots", open)}
         />
       </div>
     </div>

@@ -14,6 +14,12 @@ import org.openelisglobal.common.services.historyservices.ResultHistoryService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.qaevent.service.NCEventService;
+import org.openelisglobal.qaevent.service.NceSpecimenService;
+import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -35,6 +41,12 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
     private NoteService noteService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private ReferralService referralService;
+    @Autowired
+    private NceSpecimenService nceSpecimenService;
+    @Autowired
+    private NCEventService ncEventService;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,8 +58,54 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
         addNoteEvents(analysis, events);
         addRetestEvents(analysis, events);
         addReflexEvents(analysis, events);
+        addReferralEvents(analysis, events);
+        addNceEvents(analysis, events);
         events.sort(Comparator.comparingLong(AnalysisTimelineEvent::getTimestamp).reversed());
         return events;
+    }
+
+    /** OGC-1023 (R4): the test-referred event, from the Referral record itself. */
+    private void addReferralEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        try {
+            Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+            if (referral == null || referral.isCanceled()) {
+                return;
+            }
+            Timestamp when = referral.getSentDate() != null ? referral.getSentDate() : referral.getLastupdated();
+            events.add(new AnalysisTimelineEvent("REFERRAL", when != null ? when.getTime() : 0,
+                    when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "",
+                    referral.getOrganizationName() != null ? referral.getOrganizationName() : "", ""));
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+    }
+
+    /** OGC-1023 (R4): non-conformities filed against this analysis. */
+    private void addNceEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        try {
+            if (analysis.getSampleItem() == null) {
+                return;
+            }
+            for (NceSpecimen specimen : nceSpecimenService
+                    .getSpecimenBySampleItemId(Integer.valueOf(analysis.getSampleItem().getId()))) {
+                if (specimen.getAnalysisId() != null
+                        && !String.valueOf(specimen.getAnalysisId()).equals(analysis.getId())) {
+                    continue;
+                }
+                NcEvent nce = ncEventService.get(specimen.getNceId());
+                if (nce == null) {
+                    continue;
+                }
+                Timestamp when = nce.getLastupdated();
+                events.add(new AnalysisTimelineEvent("NCE", when != null ? when.getTime() : 0,
+                        when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "",
+                        (nce.getNceNumber() != null ? nce.getNceNumber() : "")
+                                + (nce.getName() != null ? " — " + nce.getName() : ""),
+                        nce.getNameOfReporter() != null ? nce.getNameOfReporter() : ""));
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
     }
 
     private void addAnalysisAuditEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
