@@ -168,6 +168,93 @@ public class TestResultItem implements ResultItem, Serializable {
     @Pattern(regexp = "^[0-9]*$", groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisLastupdated;
 
+    /**
+     * OGC-1021 (R2, FR-B1/B2) — the specific instrument instance
+     * (Analysis.analyzerId), distinct from the method. Loaded for display and
+     * round-tripped on save; null means "not sent" (legacy pages), so an absent
+     * field never clears a stored analyzer.
+     */
+    private String analyzerId;
+
+    /**
+     * OGC-1021 (R2, FR-J1) — visibility axis of the note carried in {@code note}:
+     * "I" internal (default, legacy behavior) or "E" send-with-result.
+     */
+    private String noteVisibility;
+
+    /**
+     * OGC-1021 (R2, FR-J1) — context axis of the note carried in {@code note}:
+     * "ENTRY" (default) or "MODIFICATION"; auto-set by the client's edit-state
+     * machine, never user-chosen.
+     */
+    private String noteContext;
+
+    /**
+     * OGC-1021 (R2, FR-D5) — dilution factor applied to a quantitative result. The
+     * client stores the computed reported value (= measured × factor) in
+     * {@code resultValue}; factor and measured value are captured in an internal
+     * provenance note. Not persisted as a column (reuse-first: no new schema).
+     */
+    private String dilutionFactor;
+
+    /** OGC-1021 (R2, FR-D5) — the raw measured value before dilution. */
+    private String measuredValue;
+
+    /**
+     * OGC-1021 (R2, FR-J1) — this analysis's notes, structured so the panel can
+     * render each with its context/visibility tags (pastNotes remains the legacy
+     * flat string).
+     */
+    private List<AnalysisNote> analysisNotes;
+
+    public static class AnalysisNote {
+        private String text;
+        private String noteType;
+        private String subject;
+        private String author;
+        private String date;
+
+        public String getText() {
+            return text;
+        }
+
+        public void setText(String text) {
+            this.text = text;
+        }
+
+        public String getNoteType() {
+            return noteType;
+        }
+
+        public void setNoteType(String noteType) {
+            this.noteType = noteType;
+        }
+
+        public String getSubject() {
+            return subject;
+        }
+
+        public void setSubject(String subject) {
+            this.subject = subject;
+        }
+
+        public String getAuthor() {
+            return author;
+        }
+
+        public void setAuthor(String author) {
+            this.author = author;
+        }
+
+        public String getDate() {
+            return date;
+        }
+
+        public void setDate(String date) {
+            this.date = date;
+        }
+    }
+
     private String sampleItemExternalId;
 
     private String analysisStatusId;
@@ -1096,5 +1183,53 @@ public class TestResultItem implements ResultItem, Serializable {
             }
         }
 
+    }
+
+    public String getAnalyzerId() {
+        return analyzerId;
+    }
+
+    public void setAnalyzerId(String analyzerId) {
+        this.analyzerId = analyzerId;
+    }
+
+    public String getNoteVisibility() {
+        return noteVisibility;
+    }
+
+    public void setNoteVisibility(String noteVisibility) {
+        this.noteVisibility = noteVisibility;
+    }
+
+    public String getNoteContext() {
+        return noteContext;
+    }
+
+    public void setNoteContext(String noteContext) {
+        this.noteContext = noteContext;
+    }
+
+    public String getDilutionFactor() {
+        return dilutionFactor;
+    }
+
+    public void setDilutionFactor(String dilutionFactor) {
+        this.dilutionFactor = dilutionFactor;
+    }
+
+    public String getMeasuredValue() {
+        return measuredValue;
+    }
+
+    public void setMeasuredValue(String measuredValue) {
+        this.measuredValue = measuredValue;
+    }
+
+    public List<AnalysisNote> getAnalysisNotes() {
+        return analysisNotes;
+    }
+
+    public void setAnalysisNotes(List<AnalysisNote> analysisNotes) {
+        this.analysisNotes = analysisNotes;
     }
 }

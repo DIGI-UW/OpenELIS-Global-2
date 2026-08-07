@@ -1,0 +1,184 @@
+/* OGC-1021 (R2) — structural styles for the unified Results expanded panel.
+ * Layout only: colors and type stay with Carbon defaults so themes hold. */
+
+.unifiedExpandedPanel {
+  background: var(--cds-layer-01, #f4f4f4);
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+/* FR-C2 — one compact strip, not a stack of banners */
+.unifiedContextStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  font-size: 0.875rem;
+}
+
+.unifiedContextPrimary {
+  font-weight: 600;
+}
+
+/* FR-C1 — the work zone leads */
+.unifiedWorkZone {
+  padding: 1rem;
+  background: var(--cds-layer-02, #ffffff);
+  border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.unifiedWorkZoneGrid {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(16rem, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 42rem) {
+  .unifiedWorkZoneGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.unifiedWorkZoneValue {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.unifiedWorkZoneRange {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.unifiedDilution {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.unifiedDilutionComputed {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.unifiedFieldSpacer {
+  margin-top: 0.75rem;
+}
+
+.unifiedFieldHint {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #8d8d8d);
+}
+
+.unifiedProvenance {
+  margin-left: 0.5rem;
+}
+
+.unifiedNotes {
+  margin-top: 1rem;
+}
+
+.unifiedNoteItem {
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  font-size: 0.875rem;
+}
+
+.unifiedNoteMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.unifiedNoteComposer {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.unifiedWorkZoneActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* FR-C3/C4 — reference zone */
+.unifiedRefZone {
+  padding: 0.5rem 1rem 1rem;
+}
+
+.unifiedRefZoneHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.unifiedRefZoneLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.unifiedRefSection {
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+  background: var(--cds-layer-02, #ffffff);
+}
+
+.unifiedRefSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.unifiedRefSectionTitle {
+  font-weight: 600;
+}
+
+.unifiedRefSectionSummary {
+  color: var(--cds-text-secondary, #8d8d8d);
+  font-size: 0.75rem;
+}
+
+.unifiedRefSectionBody {
+  padding: 0.75rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.unifiedRefGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+}
+
+.unifiedRefGrid .cds--label {
+  display: block;
+  margin-bottom: 0.125rem;
+}
+
+.unifiedResultsSmallCell {
+  font-size: 0.75rem;
+}
+
+.unifiedExpandCell {
+  width: 2.5rem;
+}

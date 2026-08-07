@@ -55,6 +55,7 @@ import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory.ValueType;
@@ -873,6 +874,7 @@ public class ResultsLoadUtility {
         testItem.setResultDisplayType(resultDisplayType);
         testItem.setAnalysisMethod(analysisService.getAnalysisType(analysis));
         testItem.setTestMethod(analysisService.getMethodId(analysis));
+        testItem.setAnalyzerId(analysis.getAnalyzerId());
         testItem.setResult(result);
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
@@ -927,6 +929,7 @@ public class ResultsLoadUtility {
         testItem.setChildReflex(
                 analysisService.getTriggeredReflex(analysis) && analysisService.resultIsConclusion(result, analysis));
         testItem.setPastNotes(notes);
+        testItem.setAnalysisNotes(buildAnalysisNotes(analysis));
         testItem.setDisplayResultAsLog(hasLogValue(test));
         testItem.setResultFile(form);
         testItem.setNonconforming(
@@ -1272,5 +1275,40 @@ public class ResultsLoadUtility {
     public int getTotalCountAnalysisByAccessionAndStatus(String accessionNumber) {
         return analysisService.getCountAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
                 accessionNumber);
+    }
+
+    /**
+     * OGC-1021 (R2, FR-J1) — this analysis's notes as structured items so the
+     * unified panel can render each with its context (subject) and visibility
+     * (noteType) tags. pastNotes remains the legacy flat string.
+     */
+    private List<TestResultItem.AnalysisNote> buildAnalysisNotes(Analysis analysis) {
+        List<TestResultItem.AnalysisNote> items = new ArrayList<>();
+        NoteService noteService = SpringContext.getBean(NoteService.class);
+        for (Note note : noteService.getNotes(analysis)) {
+            TestResultItem.AnalysisNote item = new TestResultItem.AnalysisNote();
+            item.setText(note.getText());
+            item.setNoteType(note.getNoteType());
+            item.setSubject(note.getSubject());
+            item.setAuthor(getNoteAuthorDisplayName(note));
+            item.setDate(
+                    note.getLastupdated() != null ? DateUtil.convertTimestampToStringDateAndTime(note.getLastupdated())
+                            : "");
+            items.add(item);
+        }
+        return items;
+    }
+
+    /**
+     * The note's systemUser is a lazy proxy whose session is closed by the time
+     * results are assembled, so only its identifier is safe to read; the author is
+     * reloaded by id to get the display name.
+     */
+    private String getNoteAuthorDisplayName(Note note) {
+        if (note.getSystemUser() == null || GenericValidator.isBlankOrNull(note.getSystemUser().getId())) {
+            return "";
+        }
+        SystemUser author = SpringContext.getBean(SystemUserService.class).get(note.getSystemUser().getId());
+        return author != null ? author.getDisplayName() : "";
     }
 }

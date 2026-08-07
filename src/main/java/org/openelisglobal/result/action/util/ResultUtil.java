@@ -103,6 +103,25 @@ public class ResultUtil {
 
     private static final String RESULT_SUBJECT = "Result Note";
 
+    /** OGC-1021 (R2, FR-J1) — subject records the auto-set context axis. */
+    private static final String RESULT_MODIFICATION_SUBJECT = "Result Note (Modification)";
+
+    /**
+     * Visibility axis of the dual-axis note (FR-J1): "E" = send with result
+     * (external), anything else = internal — the legacy default.
+     */
+    private static NoteType noteTypeForVisibility(TestResultItem item) {
+        return "E".equals(item.getNoteVisibility()) ? NoteType.EXTERNAL : NoteType.INTERNAL;
+    }
+
+    /**
+     * Context axis of the dual-axis note (FR-J1): auto-set by the client's
+     * edit-state machine. Entry keeps the legacy subject byte-for-byte.
+     */
+    private static String noteSubjectForContext(TestResultItem item) {
+        return "MODIFICATION".equals(item.getNoteContext()) ? RESULT_MODIFICATION_SUBJECT : RESULT_SUBJECT;
+    }
+
     public static String getStringValueOfResult(Result result) {
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
             return dictionaryService.getDictionaryById(result.getValue()).getLocalizedName();
@@ -283,9 +302,30 @@ public class ResultUtil {
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
+            // OGC-1021 (R2, FR-B1/B2): the instrument instance is its own field.
+            // null = the client did not send it (legacy pages) — never clears;
+            // blank = an explicit "no instrument" chosen in the unified panel.
+            if (testResultItem.getAnalyzerId() != null) {
+                analysis.setAnalyzerId(GenericValidator.isBlankOrNull(testResultItem.getAnalyzerId()) ? null
+                        : testResultItem.getAnalyzerId());
+            }
 
-            actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
-                    testResultItem.getNote(), RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+            actionDataSet.addToNoteList(noteService.createSavableNote(analysis, noteTypeForVisibility(testResultItem),
+                    testResultItem.getNote(), noteSubjectForContext(testResultItem),
+                    ControllerUtills.getSysUserId(request)));
+
+            // OGC-1021 (R2, FR-D5): a dilution changes the reported value, so the
+            // factor and the raw measured value are preserved as an internal
+            // provenance note (reuse-first — no new schema).
+            if (!GenericValidator.isBlankOrNull(testResultItem.getDilutionFactor())) {
+                actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
+                        MessageUtil.getMessage("note.dilution.applied",
+                                new String[] { testResultItem.getDilutionFactor(),
+                                        GenericValidator.isBlankOrNull(testResultItem.getMeasuredValue()) ? "?"
+                                                : testResultItem.getMeasuredValue(),
+                                        testResultItem.getResultValue() }),
+                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+            }
 
             // OGC-745: persist unconditional-acceptance justification as a
             // distinct note type so supervisor audit review can filter on it.

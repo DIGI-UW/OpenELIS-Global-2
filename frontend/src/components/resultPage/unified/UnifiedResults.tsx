@@ -60,6 +60,14 @@ import {
   normalizeDomain,
 } from "./domainIntl";
 import { usePresence } from "./usePresence";
+import ExpandedPanel, {
+  DilutionDraft,
+  IdValue,
+  NoteDraft,
+  PanelRow,
+} from "./ExpandedPanel";
+import { SectionLayout, loadSectionLayout } from "./sectionLayout";
+import "./unified-results.scss";
 
 /**
  * OGC-1020 (R1 of OGC-811) — unified /Results worklist.
@@ -79,7 +87,7 @@ interface LabUnit {
   domain?: string;
 }
 
-interface WorklistRow extends ResultCellRow {
+interface WorklistRow extends ResultCellRow, PanelRow {
   accessionNumber?: string;
   sequenceNumber?: string;
   testName?: string;
@@ -90,6 +98,8 @@ interface WorklistRow extends ResultCellRow {
   analysisStatusId?: string;
   analysisLastupdated?: string;
   testResultComponentId?: string;
+  testMethod?: string;
+  analyzerId?: string;
   [key: string]: unknown;
 }
 
@@ -130,6 +140,21 @@ const UnifiedResults: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
   const [loading, setLoading] = useState<boolean>(false);
+  // ---- R2 (OGC-1021) panel state ----
+  const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
+  const [methods, setMethods] = useState<IdValue[]>([]);
+  const [analyzers, setAnalyzers] = useState<IdValue[]>([]);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, NoteDraft>>({});
+  const [dilutionDrafts, setDilutionDrafts] = useState<
+    Record<string, DilutionDraft>
+  >({});
+  // analyzerId as loaded — the provenance snapshot for FR-B2
+  const [loadedAnalyzers, setLoadedAnalyzers] = useState<
+    Record<string, string>
+  >({});
+  const [sectionLayout, setSectionLayout] = useState<SectionLayout>(() =>
+    loadSectionLayout(),
+  );
 
   const domain: ResultsDomain = useMemo(() => {
     const unit = labUnits.find((u) => u.id === selectedLabUnit);
@@ -144,6 +169,14 @@ const UnifiedResults: React.FC = () => {
       "/rest/analysis-status-types",
       (list: StatusOption[]) =>
         setStatusOptions((list || []).filter((s) => s.id !== "0")),
+    );
+    // R2 (FR-B1): Method and Analyzer are separate fields with their own lists
+    getFromOpenElisServer("/rest/displayList/METHODS", (list: IdValue[]) =>
+      setMethods(list || []),
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/ANALYZER_LIST",
+      (list: IdValue[]) => setAnalyzers(list || []),
     );
   }, []);
 
@@ -164,6 +197,16 @@ const UnifiedResults: React.FC = () => {
         );
       }
       setRowStates(states);
+      const loadedByKey: Record<string, string> = {};
+      for (const row of loaded) {
+        if (row.analyzerId) {
+          loadedByKey[worklistRowKey(row)] = row.analyzerId;
+        }
+      }
+      setLoadedAnalyzers(loadedByKey);
+      setNoteDrafts({});
+      setDilutionDrafts({});
+      setExpandedRowKey(null);
       setStaleInfo({});
       setEditingAnalysisId(null);
       setPage(1);
@@ -318,6 +361,31 @@ const UnifiedResults: React.FC = () => {
     [],
   );
 
+  // R2 (FR-B1): method/analyzer edits are part of the analysis record — they
+  // participate in the same edit-state machine as the value itself
+  const handleFieldChange = useCallback(
+    (
+      target: WorklistRow,
+      field: "testMethod" | "analyzerId",
+      value: string,
+    ) => {
+      const key = worklistRowKey(target);
+      setRows((current) =>
+        current.map((row) =>
+          worklistRowKey(row) === key ? { ...row, [field]: value } : row,
+        ),
+      );
+      setRowStates((current) => ({
+        ...current,
+        [key]: nextRowState(current[key] || "EMPTY", {
+          type: "VALUE_CHANGED",
+        }),
+      }));
+      setEditingAnalysisId(target.analysisId);
+    },
+    [],
+  );
+
   const handleEdit = useCallback((target: WorklistRow) => {
     const key = worklistRowKey(target);
     setRowStates((current) => ({
@@ -414,17 +482,48 @@ const UnifiedResults: React.FC = () => {
       // the page. Untouched rows cannot be re-submitted or defaulted.
       const item: Record<string, unknown> = { ...row, isModified: true };
       delete item.result;
+      delete item.analysisNotes;
       // TestResultItem serializes reportable as "Y"/"N" but deserializes it
       // as boolean — same normalization the legacy page applies before POST
       item.reportable = item.reportable !== "N";
+      const key = worklistRowKey(row);
+      // R2 (FR-J1/J2): the dual-axis note — visibility chosen, context auto-set
+      // from the edit-state machine (Modification when editing a saved result)
+      const noteDraft = noteDrafts[key];
+      if (noteDraft && noteDraft.text.trim()) {
+        item.note = noteDraft.text.trim();
+        item.noteVisibility = noteDraft.visibility;
+        item.noteContext =
+          rowStates[key] === "EDITING" ? "MODIFICATION" : "ENTRY";
+      }
+      // R2 (FR-D5): dilution provenance — the reported value is already in
+      // resultValue; factor + measured value ride along for the audit note
+      const dilution = dilutionDrafts[key];
+      if (dilution && dilution.factor.trim()) {
+        item.dilutionFactor = dilution.factor.trim();
+        item.measuredValue = dilution.measuredValue.trim();
+      }
       postToOpenElisServerJsonResponse(
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify({ testResult: item }),
-        (response: SaveResponse | undefined) =>
-          handleSaveResponse(row, response),
+        (response: SaveResponse | undefined) => {
+          handleSaveResponse(row, response);
+          if (response && (!response.status || response.status < 400)) {
+            setNoteDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+            setDilutionDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+          }
+        },
       );
     },
-    [handleSaveResponse],
+    [handleSaveResponse, noteDrafts, dilutionDrafts, rowStates],
   );
 
   const subjectCell = (row: WorklistRow): string => {
@@ -562,11 +661,18 @@ const UnifiedResults: React.FC = () => {
             <Table size="lg">
               <TableHead>
                 <TableRow>
+                  <TableHeader className="unifiedExpandHeader" />
                   <TableHeader>
                     {formatDomainMessage(intl, "label.results.subject", domain)}
                   </TableHeader>
                   <TableHeader>
                     <FormattedMessage id="label.results.test" />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage id="label.results.method" />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage id="label.results.analyzer" />
                   </TableHeader>
                   <TableHeader>
                     {formatDomainMessage(intl, "label.results.range", domain)}
@@ -588,9 +694,27 @@ const UnifiedResults: React.FC = () => {
                   const state = rowStates[key] || "EMPTY";
                   const stale = staleInfo[key];
                   const reviewer = presence[row.analysisId];
+                  const isExpanded = expandedRowKey === key;
                   return (
                     <React.Fragment key={key}>
                       <TableRow>
+                        <TableCell className="unifiedExpandCell">
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            aria-expanded={isExpanded}
+                            aria-label={intl.formatMessage({
+                              id: isExpanded
+                                ? "label.results.collapseRow"
+                                : "label.results.expandRow",
+                            })}
+                            onClick={() =>
+                              setExpandedRowKey(isExpanded ? null : key)
+                            }
+                          >
+                            {isExpanded ? "▾" : "▸"}
+                          </Button>
+                        </TableCell>
                         <TableCell>
                           {subjectCell(row)}
                           {reviewer && (
@@ -603,6 +727,27 @@ const UnifiedResults: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>{row.testName}</TableCell>
+                        <TableCell className="unifiedResultsSmallCell">
+                          {methods.find((m) => m.id === row.testMethod)
+                            ?.value ||
+                            row.testMethod ||
+                            "—"}
+                          {loadedAnalyzers[key] && (
+                            <Tag
+                              type="cool-gray"
+                              size="sm"
+                              className="unifiedProvenance"
+                            >
+                              <FormattedMessage id="label.results.fromAnalyzer" />
+                            </Tag>
+                          )}
+                        </TableCell>
+                        <TableCell className="unifiedResultsSmallCell">
+                          {analyzers.find((a) => a.id === row.analyzerId)
+                            ?.value ||
+                            row.analyzerId ||
+                            "—"}
+                        </TableCell>
                         <TableCell>
                           {row.normalRange}{" "}
                           {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
@@ -645,9 +790,83 @@ const UnifiedResults: React.FC = () => {
                           )}
                         </TableCell>
                       </TableRow>
+                      {isExpanded && (
+                        <TableRow className="unifiedExpandedRow">
+                          <TableCell colSpan={9}>
+                            <ExpandedPanel
+                              row={row}
+                              domain={domain}
+                              editable={isRowEditable(state)}
+                              editing={state === "EDITING"}
+                              loadedAnalyzerId={loadedAnalyzers[key]}
+                              methods={methods}
+                              analyzers={analyzers}
+                              noteDraft={
+                                noteDrafts[key] || {
+                                  text: "",
+                                  visibility: "I",
+                                }
+                              }
+                              dilutionDraft={
+                                dilutionDrafts[key] || {
+                                  measuredValue: "",
+                                  factor: "",
+                                }
+                              }
+                              sectionLayout={sectionLayout}
+                              onSectionLayoutChange={setSectionLayout}
+                              onFieldChange={(field, value) =>
+                                handleFieldChange(row, field, value)
+                              }
+                              onValueChange={(field, value) =>
+                                handleValueChange(row, field, value)
+                              }
+                              onNoteDraftChange={(draft) =>
+                                setNoteDrafts((current) => ({
+                                  ...current,
+                                  [key]: draft,
+                                }))
+                              }
+                              onDilutionDraftChange={(draft) =>
+                                setDilutionDrafts((current) => ({
+                                  ...current,
+                                  [key]: draft,
+                                }))
+                              }
+                              actions={
+                                <>
+                                  {showEdit(state) && (
+                                    <Button
+                                      kind="tertiary"
+                                      size="sm"
+                                      onClick={() => handleEdit(row)}
+                                    >
+                                      <FormattedMessage id="label.results.edit" />
+                                    </Button>
+                                  )}
+                                  {showSave(state) && (
+                                    <ESignatureButton
+                                      meaning={SignatureMeaning.AUTHORED}
+                                      context={`${intl.formatMessage({
+                                        id: "label.results.save",
+                                      })} ${row.accessionNumber} - ${row.testName}`}
+                                      recordType="RESULT"
+                                      recordId={row.analysisId}
+                                      onSign={() => handleSave(row)}
+                                      size="sm"
+                                    >
+                                      <FormattedMessage id="label.results.save" />
+                                    </ESignatureButton>
+                                  )}
+                                </>
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {stale && (
                         <TableRow>
-                          <TableCell colSpan={6}>
+                          <TableCell colSpan={9}>
                             <InlineNotification
                               kind="error"
                               hideCloseButton
