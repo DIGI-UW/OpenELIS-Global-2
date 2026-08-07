@@ -187,6 +187,26 @@ describe("AstEntryPanel", () => {
 
   it("shows immutable override history and requires a reason to revert", async () => {
     const user = userEvent.setup();
+    const revertedRun = {
+      ...runWithReading,
+      readings: [
+        {
+          ...runWithReading.readings[0],
+          overrideHistory: [
+            ...runWithOverride.readings[0].overrideHistory,
+            {
+              id: "revert-1",
+              action: "REVERT",
+              fromInterpretation: "RESISTANT",
+              toInterpretation: "SUSCEPTIBLE",
+              reason: "Repeat confirmed original",
+              performedByDisplay: "Olivia Mendez",
+            },
+          ],
+        },
+        runWithReading.readings[1],
+      ],
+    };
     const service = {
       getAstPanels: vi
         .fn()
@@ -209,7 +229,7 @@ describe("AstEntryPanel", () => {
       getAstRunsForIsolate: vi
         .fn()
         .mockResolvedValueOnce([runWithOverride])
-        .mockResolvedValueOnce([runWithReading]),
+        .mockResolvedValueOnce([revertedRun]),
       getCaseReadiness: vi.fn().mockResolvedValue({
         finalReleaseReady: false,
         blockers: ["AST_REVIEW_REQUIRED"],
@@ -219,9 +239,19 @@ describe("AstEntryPanel", () => {
 
     renderPanel(service);
 
-    await user.click(
-      await screen.findByRole("button", { name: "Show original" }),
+    const showOriginal = await screen.findByRole("button", {
+      name: "Show original",
+    });
+    showOriginal.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Reason for reverting override"),
+      ).toHaveFocus(),
     );
+    expect(
+      screen.getByTestId("microbiology-ast-expansion-status"),
+    ).toHaveTextContent("Override history options expanded.");
     expect(screen.getByText(/Susceptible to Resistant/)).toBeInTheDocument();
     expect(screen.getByText(/Olivia Mendez/)).toBeInTheDocument();
     expect(
@@ -231,14 +261,19 @@ describe("AstEntryPanel", () => {
       screen.getByLabelText("Reason for reverting override"),
       "Repeat confirmed original",
     );
-    await user.click(
-      screen.getByRole("button", { name: /Revert to original/ }),
-    );
+    const revert = screen.getByRole("button", { name: /Revert to original/ });
+    revert.focus();
+    await user.keyboard("{Enter}");
 
     await waitFor(() =>
       expect(service.revertAstOverride).toHaveBeenCalledWith("reading-1", {
         overrideReason: "Repeat confirmed original",
       }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Show original" }),
+      ).toHaveFocus(),
     );
   });
 
@@ -696,9 +731,17 @@ describe("AstEntryPanel", () => {
     };
 
     renderPanel(service);
-    await user.click(
-      await screen.findByRole("radio", { name: "Connected analyzer" }),
+    const manualMode = await screen.findByRole("radio", {
+      name: "Manual entry",
+    });
+    manualMode.focus();
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByLabelText("Analyzer")).toHaveFocus(),
     );
+    expect(
+      screen.getByTestId("microbiology-ast-expansion-status"),
+    ).toHaveTextContent("Connected analyzer options expanded.");
     await user.selectOptions(screen.getByLabelText("Analyzer"), "7");
     await user.type(screen.getByLabelText("Card or panel ID"), "card-42");
     await user.click(screen.getByRole("button", { name: "Start AST run" }));
@@ -879,16 +922,18 @@ describe("AstEntryPanel", () => {
 
     renderPanel(service);
     expect(await screen.findByText("Analyzer QC failed")).toBeInTheDocument();
-    await user.type(
-      screen.getByLabelText("Reason and corrective action"),
-      "Control out of range",
-    );
-    await user.type(screen.getByLabelText("New card or panel ID"), "card-43");
+    const reason = screen.getByLabelText("Reason and corrective action");
+    reason.focus();
+    await user.keyboard("Control out of range");
+    const card = screen.getByLabelText("New card or panel ID");
+    card.focus();
+    await user.keyboard("card-43");
     const invalidateButton = await screen.findByRole("button", {
       name: /Invalidate and start new run/,
     });
     await waitFor(() => expect(invalidateButton).toBeEnabled());
-    await user.click(invalidateButton);
+    invalidateButton.focus();
+    await user.keyboard("{Enter}");
 
     expect(service.invalidateAndRepeatAstRun).toHaveBeenCalledWith("run-1", {
       reason: "Control out of range",
@@ -1092,9 +1137,17 @@ describe("AstEntryPanel", () => {
 
     renderPanel(service);
 
-    await user.click(
-      await screen.findByRole("radio", { name: "Single antibiotic" }),
+    const wholePanel = await screen.findByRole("radio", {
+      name: "Whole panel",
+    });
+    wholePanel.focus();
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByLabelText("Antibiotic to repeat")).toHaveFocus(),
     );
+    expect(
+      screen.getByTestId("microbiology-ast-expansion-status"),
+    ).toHaveTextContent("Single antibiotic options expanded.");
     expect(
       screen.getByRole("button", { name: "Start repeat attempt" }),
     ).toBeDisabled();

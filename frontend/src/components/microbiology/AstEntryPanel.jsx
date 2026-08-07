@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Button,
   DataTable,
@@ -91,6 +97,11 @@ const AstEntryPanel = ({
   const [selectedLots, setSelectedLots] = useState({});
   const [analyzerResolutionReason, setAnalyzerResolutionReason] = useState("");
   const [replacementCardId, setReplacementCardId] = useState("");
+  const [expansionStatus, setExpansionStatus] = useState("");
+  const analyzerSelectRef = useRef(null);
+  const attemptAntibioticRef = useRef(null);
+  const revertReasonRef = useRef(null);
+  const overrideHistoryToggleRefs = useRef(new Map());
 
   const activeIsolateId = selectedIsolateId || isolates[0]?.id || "";
   const activeIsolate = isolates.find(
@@ -206,6 +217,43 @@ const AstEntryPanel = ({
     );
   }, [runs, selectedRunId]);
   const currentReadings = currentRun?.readings || [];
+  const announceExpanded = (sectionId) =>
+    setExpansionStatus(
+      intl.formatMessage(
+        { id: "microbiology.ast.optionsExpanded" },
+        { section: intl.formatMessage({ id: sectionId }) },
+      ),
+    );
+
+  useEffect(() => {
+    if (entryMode !== "ANALYZER" || currentRun) {
+      return undefined;
+    }
+    const frame = window.requestAnimationFrame(() =>
+      analyzerSelectRef.current?.focus(),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentRun, entryMode]);
+
+  useEffect(() => {
+    if (attemptScope !== "SINGLE_ANTIBIOTIC") {
+      return undefined;
+    }
+    const frame = window.requestAnimationFrame(() =>
+      attemptAntibioticRef.current?.focus(),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [attemptScope]);
+
+  useEffect(() => {
+    if (!expandedHistoryReadingId) {
+      return undefined;
+    }
+    const frame = window.requestAnimationFrame(() =>
+      revertReasonRef.current?.focus(),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [expandedHistoryReadingId]);
   const orderedAntibiotics = useMemo(() => {
     if (!currentRun) {
       return [];
@@ -542,6 +590,10 @@ const AstEntryPanel = ({
     ).then((reading) => {
       if (reading) {
         setRevertReason("");
+        setExpandedHistoryReadingId("");
+        window.requestAnimationFrame(() =>
+          overrideHistoryToggleRefs.current.get(readingId)?.focus(),
+        );
       }
     });
 
@@ -626,6 +678,14 @@ const AstEntryPanel = ({
             </Tag>
           </div>
         )}
+      </div>
+      <div
+        className="cds--visually-hidden"
+        role="status"
+        aria-live="polite"
+        data-testid="microbiology-ast-expansion-status"
+      >
+        {expansionStatus}
       </div>
       <div>
         {isolates.length === 0 ? (
@@ -962,7 +1022,12 @@ const AstEntryPanel = ({
                   id: "microbiology.ast.entryMode",
                 })}
                 valueSelected={entryMode}
-                onChange={setEntryMode}
+                onChange={(value) => {
+                  setEntryMode(value);
+                  if (value === "ANALYZER") {
+                    announceExpanded("microbiology.ast.entryMode.analyzer");
+                  }
+                }}
                 orientation="horizontal"
                 disabled={Boolean(currentRun)}
               >
@@ -986,6 +1051,7 @@ const AstEntryPanel = ({
               {entryMode === "ANALYZER" && !currentRun ? (
                 <>
                   <Select
+                    ref={analyzerSelectRef}
                     id="microbiology-ast-analyzer"
                     labelText={intl.formatMessage({
                       id: "microbiology.ast.analyzer",
@@ -1179,10 +1245,27 @@ const AstEntryPanel = ({
                                               <span>{cell.value}</span>
                                               {history.length > 0 ? (
                                                 <Button
+                                                  ref={(node) => {
+                                                    if (node) {
+                                                      overrideHistoryToggleRefs.current.set(
+                                                        reading.id,
+                                                        node,
+                                                      );
+                                                    } else {
+                                                      overrideHistoryToggleRefs.current.delete(
+                                                        reading.id,
+                                                      );
+                                                    }
+                                                  }}
                                                   kind="ghost"
                                                   size="sm"
                                                   type="button"
                                                   onClick={() => {
+                                                    if (!historyExpanded) {
+                                                      announceExpanded(
+                                                        "microbiology.ast.overrideHistory",
+                                                      );
+                                                    }
                                                     setExpandedHistoryReadingId(
                                                       historyExpanded
                                                         ? ""
@@ -1241,6 +1324,7 @@ const AstEntryPanel = ({
                                             {reading.overrideInterpretation ? (
                                               <div className="microbiology-form-grid">
                                                 <TextArea
+                                                  ref={revertReasonRef}
                                                   id={`microbiology-ast-revert-reason-${reading.id}`}
                                                   labelText={intl.formatMessage(
                                                     {
@@ -1427,6 +1511,9 @@ const AstEntryPanel = ({
                       onChange={(value) => {
                         setAttemptScope(value);
                         setAttemptAntibioticId("");
+                        if (value === "SINGLE_ANTIBIOTIC") {
+                          announceExpanded("microbiology.ast.singleAntibiotic");
+                        }
                       }}
                       orientation="horizontal"
                     >
@@ -1477,6 +1564,7 @@ const AstEntryPanel = ({
                       </Select>
                       {attemptScope === "SINGLE_ANTIBIOTIC" ? (
                         <Select
+                          ref={attemptAntibioticRef}
                           id={`microbiology-ast-attempt-antibiotic-${currentRun.id}`}
                           labelText={intl.formatMessage({
                             id: "microbiology.ast.antibioticToRepeat",
