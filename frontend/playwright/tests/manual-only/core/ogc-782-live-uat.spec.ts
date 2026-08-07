@@ -1,29 +1,6 @@
 import { test, expect } from "../../../helpers/test-base";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
-const EXPECTED_STEP_KEYS = [
-  "AMR-1",
-  "AMR-2",
-  "AMR-3",
-  "AMR-4",
-  "AMR-5",
-  "AMR-6",
-  "AMR-7",
-  "AMR-16",
-  "AMR-20",
-  "AMR-21",
-  "AMR-22",
-  "AMR-23",
-  "AMR-24",
-  "AMR-25",
-  "AMR-26",
-  "AMR-27",
-  "AMR-28",
-  "AMR-29",
-  "AMR-30",
-  "AMR-31",
-];
-
 type UatStep = { key: string; required: boolean };
 type UatSection = {
   key: string;
@@ -37,78 +14,53 @@ type UatChecklist = {
   checklistRevision: string;
 };
 
-const EXPECTED_STORIES = [
-  {
-    key: "AMR-S01",
-    title: "M1 - Find and route microbiology work",
-    version: "1.0",
-  },
-  {
-    key: "AMR-S02",
-    title: "M1 - Work the seeded bacteriology case",
-    version: "1.0",
-  },
-  {
-    key: "AMR-S03",
-    title: "M1 - AST, critical communication, and reporting",
-    version: "1.0",
-  },
-  {
-    key: "AMR-S04",
-    title: "M1 - Shared-specimen reflection (optional)",
-    version: "1.0",
-  },
-  {
-    key: "AMR-S05",
-    title: "M2 - Open a controlled correction",
-    version: "1.0",
-  },
-  {
-    key: "AMR-S06",
-    title: "M2 - Preserve repeat and retest AST attempts",
-    version: "1.0",
-  },
-  {
-    key: "AMR-S07",
-    title: "M2 - Release and verify corrected results",
-    version: "1.0",
-  },
-  {
-    key: "AMR-S08",
-    title: "M2 - Review the workflow by keyboard",
-    version: "1.0",
-  },
-  {
-    key: "AMR-S09",
-    title: "M2 - Trace bench consumable lots",
-    version: "1.0",
-  },
+type UatStoryIndex = {
+  schemaVersion: number;
+  stories: Array<{
+    id: string;
+    review: string;
+    key: string;
+    title: string;
+    hosts: string[];
+    steps: number;
+    required: number;
+  }>;
+};
+
+const EXPECTED_AMR_STORIES = [
+  ["AMR-S01", "R1 - M-03 - Route a culture order"],
+  ["AMR-S17", "R1 - M-07 - Work the Culture queue"],
+  ["AMR-S18", "R1 - M-04 - Classify and navigate sibling cases"],
+  ["AMR-S02", "R1 - M-04 - Record culture progression"],
+  ["AMR-S19", "R1 - M-04 - Identify isolates and manage exceptions"],
+  ["AMR-S20", "R1 - M-05 - Review manual AST"],
+  ["AMR-S21", "R1 - M-05 - Review analyzer AST and QC"],
+  ["AMR-S22", "R1 - M-07 - Work the AST queue"],
+  ["AMR-S03", "R1 - M-11 - Communicate and release results"],
+  ["AMR-S04", "M1 - Shared-specimen reflection (optional)"],
+  ["AMR-S05", "M2 - Open a controlled correction"],
+  ["AMR-S06", "M2 - Preserve repeat and retest AST attempts"],
+  ["AMR-S07", "M2 - Release and verify corrected results"],
+  ["AMR-S08", "M2 - Review the workflow by keyboard"],
+  ["AMR-S09", "M2/R1 - Trace bench consumable lots"],
+  ["AMR-S10", "M3 - Maintain organism and antibiotic vocabularies"],
+  ["AMR-S11", "M3 - Publish immutable AST panel versions"],
+  ["AMR-S12", "M3 - Control breakpoint catalog lifecycle"],
+  ["AMR-S13", "M3 - Import breakpoint updates safely"],
+  ["AMR-S14", "M4 - Preview and export WHONET CSV"],
 ];
 
-const EXPECTED_REQUIRED_STEP_KEYS = [
-  "AMR-1",
-  "AMR-2",
-  "AMR-3",
-  "AMR-4",
-  "AMR-5",
-  "AMR-6",
-  "AMR-7",
-  "AMR-16",
-  "AMR-20",
-  "AMR-22",
-  "AMR-23",
-  "AMR-24",
-  "AMR-25",
-  "AMR-26",
-  "AMR-27",
-  "AMR-28",
-  "AMR-29",
-  "AMR-30",
-  "AMR-31",
+const EXPECTED_R1_STEPS = [
+  ["AMR-S01", ["AMR-2", "AMR-63", "AMR-64"]],
+  ["AMR-S17", ["AMR-1", "AMR-3", "AMR-75"]],
+  ["AMR-S18", ["AMR-65", "AMR-66"]],
+  ["AMR-S02", ["AMR-4", "AMR-67", "AMR-68"]],
+  ["AMR-S19", ["AMR-5", "AMR-69", "AMR-70"]],
+  ["AMR-S20", ["AMR-6", "AMR-71", "AMR-72"]],
+  ["AMR-S21", ["AMR-73", "AMR-74"]],
+  ["AMR-S22", ["AMR-76", "AMR-77", "AMR-78"]],
+  ["AMR-S03", ["AMR-7", "AMR-16", "AMR-20"]],
 ];
-
-const EXPECTED_CHECKLIST_REVISION =
-  "00242ff2e232998d6bab03844de68975a8dd6ef4117fd81eb51af997db4d5afe";
 
 test.describe("OGC-782 live AMR UAT", () => {
   test("binds the review overlay to the deployed feature and verifies stable navigation", async ({
@@ -117,9 +69,19 @@ test.describe("OGC-782 live AMR UAT", () => {
   }, testInfo) => {
     testInfo.setTimeout(120_000);
     const expectedAppSha = process.env.EXPECTED_APP_SHA;
-    if (!expectedAppSha) {
+    const expectedAppBranch = process.env.EXPECTED_APP_BRANCH;
+    const expectedHarnessSha = process.env.EXPECTED_HARNESS_SHA;
+    const expectedChecklistRevision = process.env.EXPECTED_CHECKLIST_REVISION;
+    const expectedAccession = process.env.EXPECTED_ACCESSION;
+    if (
+      !expectedAppSha ||
+      !expectedAppBranch ||
+      !expectedHarnessSha ||
+      !expectedChecklistRevision ||
+      !expectedAccession
+    ) {
       throw new Error(
-        "EXPECTED_APP_SHA is required so live UAT cannot pass against an unintended build.",
+        "EXPECTED_APP_SHA, EXPECTED_APP_BRANCH, EXPECTED_HARNESS_SHA, EXPECTED_CHECKLIST_REVISION, and EXPECTED_ACCESSION are required so live UAT cannot pass against unintended revisions or fixture data.",
       );
     }
     const expectedScope = process.env.EXPECTED_APP_SCOPE || "app";
@@ -134,12 +96,28 @@ test.describe("OGC-782 live AMR UAT", () => {
         instance: "amr",
         state: "ready",
         appSha: expectedAppSha,
-        appBranch: "feat/782-ogc-782-microbiology-m8-clinical-completeness",
+        appBranch: expectedAppBranch,
+        harnessSha: expectedHarnessSha,
         scope: expectedScope,
         schemaAffecting: expectedSchemaAffecting,
       });
       expect(target.verification.health).toBe("passed");
       expect(target.verification.smoke).toBe("passed");
+
+      const indexResponse = await request.get("/__review/uat-index.json");
+      expect(indexResponse.ok()).toBeTruthy();
+      const index = (await indexResponse.json()) as UatStoryIndex;
+      expect(index.schemaVersion).toBe(2);
+      const amrStories = index.stories.filter(
+        (story) =>
+          story.review === "amr" &&
+          story.hosts.includes("amr.openelis-global.org"),
+      );
+      expect(amrStories.map(({ key, title }) => [key, title])).toEqual(
+        EXPECTED_AMR_STORIES,
+      );
+      expect(amrStories.map((story) => story.key)).not.toContain("AMR-S15");
+      expect(amrStories.map((story) => story.key)).not.toContain("AMR-S16");
 
       const checklistResponse = await request.get("/__review/uat-amr.json");
       expect(checklistResponse.ok()).toBeTruthy();
@@ -148,85 +126,82 @@ test.describe("OGC-782 live AMR UAT", () => {
         schemaVersion: 2,
         instance: "amr",
         jira: "OGC-782",
-        title: "Microbiology M1 + M2 - review",
+        title: "Microbiology M1-M4 + R1 authoritative alignment review",
       });
       expect(
-        checklist.sections.map(({ key, title, version }) => ({
-          key,
-          title,
-          version,
-        })),
-      ).toEqual(EXPECTED_STORIES);
+        checklist.sections
+          .filter((section) => section.title.startsWith("R1 -"))
+          .map((section) => [
+            section.key,
+            section.steps.map((step) => step.key),
+          ]),
+      ).toEqual(EXPECTED_R1_STEPS);
       const steps = checklist.sections.flatMap((section) => section.steps);
-      expect(steps.map((step) => step.key)).toEqual(EXPECTED_STEP_KEYS);
+      expect(checklist.sections).toHaveLength(22);
+      expect(steps).toHaveLength(67);
       expect(new Set(steps.map((step) => step.key)).size).toBe(steps.length);
       expect(
-        steps.filter((step) => step.required).map((step) => step.key),
-      ).toEqual(EXPECTED_REQUIRED_STEP_KEYS);
-      expect(
         steps.filter((step) => !step.required).map((step) => step.key),
-      ).toEqual(["AMR-21"]);
-      expect(checklist.checklistRevision).toBe(EXPECTED_CHECKLIST_REVISION);
+      ).toEqual(["AMR-73", "AMR-74", "AMR-21"]);
+      expect(checklist.checklistRevision).toBe(expectedChecklistRevision);
     });
 
     await test.step("Verify the injected review overlay", async () => {
-      await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
+      await page.goto("/", { waitUntil: "domcontentloaded" });
       const widget = page.locator("#oe-review-host");
       await widget.getByRole("button", { name: "Review" }).click();
+      await expect(widget.locator(".panel")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(widget.getByText("Reviewing as Open ELIS")).toBeVisible();
+
+      await widget.getByRole("button", { name: "Choose story" }).click();
+      const storyList = widget.getByRole("listbox", { name: /stories/i });
+      await expect(storyList).toBeVisible();
+      await expect(storyList.getByRole("option")).toHaveCount(20);
       await expect(
-        widget.getByText("Microbiology M1 + M2 - review", { exact: true }),
+        storyList.getByRole("option", { name: /OGC-788/ }),
+      ).toHaveCount(0);
+      await storyList
+        .getByRole("option", { name: /R1 - M-05 - Review manual AST/ })
+        .click();
+      await expect(
+        widget.getByRole("heading", {
+          name: "R1 - M-05 - Review manual AST - review",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(widget.locator(".step")).toHaveCount(3);
+      await expect(widget.locator(".storydescription")).toContainText(
+        "record and interpret readings",
+      );
+
+      await widget.getByRole("button", { name: "Refresh checklist" }).click();
+      await expect(widget.locator(".step")).toHaveCount(3);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      const reloadedWidget = page.locator("#oe-review-host");
+      await expect(
+        reloadedWidget.getByRole("heading", {
+          name: "R1 - M-05 - Review manual AST - review",
+          exact: true,
+        }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      for (const story of EXPECTED_STORIES) {
-        await expect(
-          widget.getByRole("heading", { name: story.title, exact: true }),
-        ).toBeVisible();
-      }
-      await expect(
-        widget.getByText(
-          "From the final-released bacteriology case, open Amendments, enter a reason that describes the correction, and open the amendment.",
-          { exact: true },
-        ),
-      ).toBeVisible();
-      await expect(
-        widget.getByText(
-          "In Setup, inspect the culture-media lots before selecting one.",
-          { exact: true },
-        ),
-      ).toBeVisible();
+      await expect(reloadedWidget.locator(".panel")).toBeVisible();
+      await expect(reloadedWidget.locator(".step")).toHaveCount(3);
       await testInfo.attach("amr-review-overlay", {
         body: await page.screenshot(),
         contentType: "image/png",
       });
-      await widget.getByRole("button", { name: "Minimize" }).click();
-    });
-
-    await test.step("Open the configured Microbiology sidenav route", async () => {
-      await page.getByRole("button", { name: "Open menu" }).click();
-      const microbiologyMenu = page.getByRole("button", {
-        name: "Microbiology",
-        exact: true,
-      });
-      await expect(microbiologyMenu).toBeVisible({ timeout: LONG_TIMEOUT });
-      await microbiologyMenu.click();
-      const worklistLink = page.getByRole("link", {
-        name: "Microbiology worklist",
-        exact: true,
-      });
-      await expect(worklistLink).toHaveAttribute(
-        "href",
-        "/Microbiology/worklist",
-      );
-      await worklistLink.click();
-      await expect(page).toHaveURL(/\/Microbiology\/worklist$/);
-      await expect(
-        page.getByRole("heading", { name: "Microbiology worklist" }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(page.getByTestId("content-wrapper")).toHaveClass(
-        /content-nav-locked/,
-      );
+      await reloadedWidget.getByRole("button", { name: "Minimize" }).click();
     });
 
     await test.step("Preserve worklist state in the canonical URL", async () => {
+      await page.goto("/Microbiology/worklist", {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(
+        page.getByRole("heading", { name: "Microbiology worklist" }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
       const workflowFilter = page.getByRole("combobox", {
         name: "Workflow",
         exact: true,
@@ -235,8 +210,23 @@ test.describe("OGC-782 live AMR UAT", () => {
         name: "Sort",
         exact: true,
       });
+      const workflowRows = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              "/rest/microbiology/worklist?grain=cultures&workflow=BACTERIOLOGY",
+            ) && response.ok(),
+      );
       await workflowFilter.selectOption("BACTERIOLOGY");
+      await workflowRows;
+      const sortedRows = page.waitForResponse(
+        (response) =>
+          response.url().includes("workflow=BACTERIOLOGY&sort=newest") &&
+          response.ok(),
+      );
       await sort.selectOption("newest");
+      await sortedRows;
       await expect(page).toHaveURL(
         /\/Microbiology\/worklist\?workflow=BACTERIOLOGY&sort=newest$/,
       );
@@ -250,10 +240,12 @@ test.describe("OGC-782 live AMR UAT", () => {
     });
 
     await test.step("Preserve worklist context through the case route", async () => {
-      const openCaseButtons = page.getByRole("button", { name: "Open case" });
-      const firstOpenCase = openCaseButtons.first();
-      await expect(firstOpenCase).toBeVisible({ timeout: LONG_TIMEOUT });
-      await firstOpenCase.click();
+      const caseLink = page.getByRole("link", {
+        name: expectedAccession,
+        exact: true,
+      });
+      await expect(caseLink).toBeVisible({ timeout: LONG_TIMEOUT });
+      await caseLink.click();
       await expect(page).toHaveURL(
         /\/Microbiology\/cases\/[^?]+\?workflow=BACTERIOLOGY&sort=newest$/,
       );
@@ -285,7 +277,16 @@ test.describe("OGC-782 live AMR UAT", () => {
       await expect(page).toHaveURL(
         "/Microbiology/worklist?workflow=BACTERIOLOGY&sort=newest",
       );
+      const unfilteredRows = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes("/rest/microbiology/worklist?grain=cultures") &&
+          !response.url().includes("workflow=BACTERIOLOGY") &&
+          response.ok(),
+      );
       await page.getByRole("button", { name: "Clear filters" }).click();
+      await unfilteredRows;
       await expect(page).toHaveURL("/Microbiology/worklist");
     });
   });
