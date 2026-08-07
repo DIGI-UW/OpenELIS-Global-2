@@ -8335,6 +8335,7 @@
   "microbiology.ast.antibioticToRepeat": "Antibiotic to repeat",
   "microbiology.ast.override": "Override interpretation",
   "microbiology.ast.overrideHistory": "Override history",
+  "microbiology.ast.optionsExpanded": "{section} options expanded.",
   "microbiology.ast.overrideReason": "Override reason",
   "microbiology.ast.orderedPanel": "Ordered AST panel",
   "microbiology.ast.organismMismatch": "Analyzer organism differs from the case isolate",
