@@ -347,6 +347,13 @@ in the named acceptance criterion is absent or unproven.
   `section` query parameter, and announces the expanded section in a polite
   status region. The full keyboard test now proceeds through isolate creation,
   AST entry/review, preliminary release, finalization, and amendment release.
+- **Inline action closure:** `833a2ac01` moves focus into primary inoculation,
+  subculture, and Timeline note forms, announces each expansion, and restores
+  focus to the exact opener after Escape, cancel, or a successful save. The
+  recent/full Timeline toggle retains focus, and the culture media table is
+  keyboard-scrollable. Twenty-two focused Carbon tests pass; the expanded
+  registered keyboard journey passes 2/2 entries including auth in 16.1
+  seconds against the local PostgreSQL/OpenELIS stack without arbitrary waits.
 - **Order and reference closure:** `62b31281a` reuses one service-created M-03
   setup helper and selects its patient by exact external ID, eliminating
   accumulated-name ambiguity. The shared Generate Lab Number command is a
@@ -369,9 +376,9 @@ in the named acceptance criterion is absent or unproven.
   implementation fixes those causes rather than suppressing rules or adding
   test-only timing.
 - **Still open:** T264 remains open for direct interaction coverage of M-04
-  NCE, lost-specimen, mark-positive, no-growth, subculture, note, and Timeline
-  Show-all actions; M-05 analyzer/QC, override/revert, repeat scope, and report
-  readiness; and reference edit-modal focus return. Exact AMR deployment and
+  NCE, lost-specimen, mark-positive, and no-growth actions; M-05 analyzer/QC,
+  override/revert, repeat scope, and report readiness; and reference edit-modal
+  focus return. Exact AMR deployment and
   human review remain T272-T273. The shared URL-less shell still produces a
   known 404 console message and is not recorded as clean-console evidence.
 
