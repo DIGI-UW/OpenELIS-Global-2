@@ -80,9 +80,9 @@ semantic locators and response/readiness assertions only; no fixed waits or
 forced interactions are present.
 
 Command result against the runtime deployment: authentication setup plus the
-single `core-live-uat` test passed (`2 passed`, 7.4 seconds) with zero retries.
+single `core-live-uat` test passed (`2 passed`, 6.6 seconds) with zero retries.
 Filter changes wait on their successful worklist responses, so the final run
-contains no navigation-induced aborted worklist request.
+contains no navigation-induced aborted worklist or checklist request.
 
 ## Issues And Boundaries
 
