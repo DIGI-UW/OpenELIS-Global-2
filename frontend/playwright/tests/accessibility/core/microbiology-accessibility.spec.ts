@@ -1,5 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
-import type { Locator } from "@playwright/test";
+import type { Locator, Page, TestInfo } from "@playwright/test";
 import {
   seedFinalizedMicrobiologyCase,
   seedMicrobiologyMvpCase,
@@ -21,17 +21,49 @@ import {
 } from "../../../helpers/microbiology-order-entry";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
+async function attachViewportEvidence(
+  page: Page,
+  testInfo: TestInfo,
+  surfaceName: string,
+  focus: Locator,
+) {
+  if (!testInfo.project.name.endsWith("-mobile")) {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+  }
+  await focus.scrollIntoViewIfNeeded();
+  await expect(focus).toBeVisible({ timeout: LONG_TIMEOUT });
+  const screenshotPath = testInfo.outputPath(`viewport-${surfaceName}.png`);
+  await page.screenshot({
+    path: screenshotPath,
+    animations: "disabled",
+  });
+  await testInfo.attach(`viewport-${surfaceName}`, {
+    path: screenshotPath,
+    contentType: "image/png",
+  });
+}
+
 test.describe("Microbiology WCAG 2.1 AA qualification", () => {
   test("worklist and case overview", async ({ page }, testInfo) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
+    const accessionQuery = encodeURIComponent(seeded.accessionNumber);
 
     await page.goto(
-      "/Microbiology/worklist?workflow=BACTERIOLOGY&stage=ALL&urgency=ALL&due=ALL&q=&sort=accessionNumber%2Casc&page=1&pageSize=10",
+      `/Microbiology/worklist?workflow=BACTERIOLOGY&stage=ALL&urgency=ALL&due=ALL&q=${accessionQuery}&sort=accessionNumber%2Casc&page=1&pageSize=10`,
       { waitUntil: "domcontentloaded" },
     );
     await expect(
       page.getByRole("heading", { name: "Microbiology worklist" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(
+      page.getByTestId(`microbiology-worklist-row-${seeded.caseId}`),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await attachViewportEvidence(
+      page,
+      testInfo,
+      "microbiology-worklist",
+      page.getByRole("heading", { name: "Microbiology worklist" }),
+    );
     await expectNoWcag21AaViolations(page, testInfo, "microbiology-worklist");
 
     await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
@@ -40,6 +72,12 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await attachViewportEvidence(
+      page,
+      testInfo,
+      "microbiology-case-overview",
+      page.getByRole("heading", { name: "Microbiology case" }),
+    );
     await expectNoWcag21AaViolations(
       page,
       testInfo,
@@ -71,6 +109,12 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
         await expect(page.getByRole("heading", { name: heading })).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
+        await attachViewportEvidence(
+          page,
+          testInfo,
+          evidenceName,
+          page.getByRole("heading", { name: heading }),
+        );
         await expectNoWcag21AaViolations(page, testInfo, evidenceName);
       });
     }
@@ -136,6 +180,12 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     await expect(
       page.getByRole("combobox", { name: "Culture Method" }),
     ).not.toHaveValue("");
+    await attachViewportEvidence(
+      page,
+      testInfo,
+      "microbiology-order-entry-details",
+      details,
+    );
     if (testInfo.project.name.endsWith("-mobile")) {
       const box = await details.boundingBox();
       const viewport = page.viewportSize();
