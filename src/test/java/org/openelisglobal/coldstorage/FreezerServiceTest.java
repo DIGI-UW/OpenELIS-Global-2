@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -188,17 +189,35 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void deleteFreezer_shouldSoftDeleteFreezer() {
+    public void deleteFreezer_shouldMarkDeletedAndExcludeFromListings() {
         Long freezerId = 100L;
         Freezer freezer = freezerService.findById(freezerId).orElse(null);
         assertNotNull("Freezer should exist before deletion", freezer);
-        assertTrue("Freezer should be active before deletion", freezer.getActive());
+        assertFalse("Freezer should not be deleted initially", Boolean.TRUE.equals(freezer.getDeleted()));
 
         freezerService.deleteFreezer(freezerId);
 
         Freezer deletedFreezer = freezerService.findById(freezerId).orElse(null);
-        assertNotNull("Freezer should still exist (soft delete)", deletedFreezer);
-        assertFalse("Freezer should be inactive after deletion", deletedFreezer.getActive());
+        assertNotNull("Freezer row should still exist after soft delete", deletedFreezer);
+        assertTrue("Freezer should be flagged deleted", deletedFreezer.getDeleted());
+
+        assertTrue("Deleted freezer should not appear in getAllFreezers",
+                freezerService.getAllFreezers("").stream().noneMatch(f -> freezerId.equals(f.getId())));
+        assertTrue("Deleted freezer should not appear in active list",
+                freezerService.getActiveFreezers().stream().noneMatch(f -> freezerId.equals(f.getId())));
+    }
+
+    @Test
+    public void setDeviceStatus_shouldRejectReactivatingDeletedFreezer() {
+        Long freezerId = 100L;
+        freezerService.deleteFreezer(freezerId);
+
+        try {
+            freezerService.setDeviceStatus(freezerId, true);
+            fail("Toggling status on a deleted freezer should throw");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
     }
 
     @Test

@@ -116,6 +116,9 @@ public class Freezer extends BaseObject<Long> {
     @Column(name = "active")
     private Boolean active = Boolean.TRUE;
 
+    @Column(name = "deleted", nullable = false)
+    private Boolean deleted = Boolean.FALSE;
+
     @OneToMany(mappedBy = "freezer", cascade = CascadeType.ALL, orphanRemoval = false)
     @JsonIgnore
     private List<FreezerReading> readings = new ArrayList<>();
