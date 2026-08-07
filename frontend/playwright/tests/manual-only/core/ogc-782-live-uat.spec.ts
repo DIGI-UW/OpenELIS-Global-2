@@ -176,7 +176,12 @@ test.describe("OGC-782 live AMR UAT", () => {
         "record and interpret readings",
       );
 
+      const refreshedChecklist = page.waitForResponse(
+        (response) =>
+          response.url().endsWith("/__review/uat-amr.json") && response.ok(),
+      );
       await widget.getByRole("button", { name: "Refresh checklist" }).click();
+      await refreshedChecklist;
       await expect(widget.locator(".step")).toHaveCount(3);
       await page.reload({ waitUntil: "domcontentloaded" });
       const reloadedWidget = page.locator("#oe-review-host");
