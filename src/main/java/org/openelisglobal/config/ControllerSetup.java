@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -44,6 +45,19 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         binder.registerCustomEditor(AuthType.class, new CaseInsensitiveEnumPropertyEditor<>(AuthType.class));
         binder.registerCustomEditor(ProgrammedConnection.class,
                 new CaseInsensitiveEnumPropertyEditor<>(ProgrammedConnection.class));
+    }
+
+    /**
+     * {@code AccessDeniedException} is a RuntimeException, so the catch-all below
+     * reported every {@code @PreAuthorize} denial the interceptor does not cover
+     * (any endpoint carrying a path variable) as 500. 401 matches the status the
+     * interceptor already returns for a denied REST call.
+     */
+    @ExceptionHandler(value = { AccessDeniedException.class })
+    protected ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
+        LogEvent.logInfo(this.getClass().getSimpleName(), "handleAccessDeniedException", ex.getMessage());
+        return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.UNAUTHORIZED), new HttpHeaders(),
+                HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(value = { RuntimeException.class })
