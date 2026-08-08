@@ -204,5 +204,7 @@
 
   <!-- Cold storage monitoring audit: move enabled/timeout to SiteInformation (issue #3904) -->
   <include relativeToChangelogFile="true" file="076-freezer-monitoring-config-site-information.xml"/>
+  <!-- Sample Entry Config: requesterRequired toggle for Search Requester + First/Last Name -->
+  <include relativeToChangelogFile="true" file="069-requester-required-config.xml"/>
 
 </databaseChangeLog>

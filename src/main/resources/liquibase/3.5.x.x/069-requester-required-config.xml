@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="herbert" id="REQUESTER-REQUIRED-001">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'requesterRequired';</sqlCheck>
+        </preConditions>
+        <comment>Add requesterRequired configuration to site_information (Sample Entry Config). When true, Search Requester and Requester First/Last Name are required on Order Entry; when false (default), all three are optional.</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="requesterRequired" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, Search Requester and Requester First/Last Name are required on Order Entry. Default false makes them optional." />
+            <column name="value" value="false" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.order.entry.requester" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
