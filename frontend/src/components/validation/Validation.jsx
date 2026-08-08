@@ -82,7 +82,7 @@ const Validation = (props) => {
     },
     {
       id: "save",
-      name: intl.formatMessage({ id: "column.name.save" }),
+      name: intl.formatMessage({ id: "label.button.validate" }),
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
