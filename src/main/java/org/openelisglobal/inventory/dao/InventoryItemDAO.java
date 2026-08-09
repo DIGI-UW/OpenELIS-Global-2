@@ -29,6 +29,11 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
     List<InventoryItem> searchByName(String name) throws LIMSRuntimeException;
 
     /**
+     * Get inventory item by its human-readable code
+     */
+    InventoryItem getByCode(String code) throws LIMSRuntimeException;
+
+    /**
      * Get inventory item by FHIR UUID
      */
     InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
