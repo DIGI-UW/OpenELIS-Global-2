@@ -15,13 +15,18 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
- * SampleStorageAssignment entity - Current storage location for a SampleItem
- * Represents one-to-one relationship: one SampleItem, one current location
+ * SampleStorageAssignment entity - Current storage location for either a
+ * SampleItem or an InventoryLot occupant. One row per occupant: occupantType
+ * discriminates which of sampleItemId/inventoryLotId is populated (enforced by
+ * chk_assignment_occupant_exclusive).
  */
 @Entity
 @Table(name = "SAMPLE_STORAGE_ASSIGNMENT")
 @DynamicUpdate
 public class SampleStorageAssignment extends BaseObject<Integer> {
+
+    public static final String OCCUPANT_SAMPLE_ITEM = "SAMPLE_ITEM";
+    public static final String OCCUPANT_INVENTORY_LOT = "INVENTORY_LOT";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sample_storage_assignment_seq")
@@ -29,16 +34,24 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
     @Column(name = "ID")
     private Integer id;
 
+    @Column(name = "OCCUPANT_TYPE", length = 20, nullable = false)
+    private String occupantType = OCCUPANT_SAMPLE_ITEM;
+
     // Store sampleItemId directly instead of @ManyToOne to avoid cross-mapping
     // issues between JPA annotations and HBM XML mapping (SampleItem uses
     // LIMSStringNumberUserType which maps String in Java to numeric in DB)
     // Database column is numeric, so store as Integer here
-    @Column(name = "SAMPLE_ITEM_ID", nullable = false, unique = true)
+    // Nullable: null when occupantType is INVENTORY_LOT
+    @Column(name = "SAMPLE_ITEM_ID")
     private Integer sampleItemId;
 
     // Transient field for convenience - must be populated manually after loading
     @Transient
     private SampleItem sampleItem;
+
+    // Null when occupantType is SAMPLE_ITEM
+    @Column(name = "INVENTORY_LOT_ID")
+    private Long inventoryLotId;
 
     // Simplified polymorphic location relationship
     // Nullable to support disposal (location cleared but assignment preserved for
@@ -69,6 +82,22 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
     @Override
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public String getOccupantType() {
+        return occupantType;
+    }
+
+    public void setOccupantType(String occupantType) {
+        this.occupantType = occupantType;
+    }
+
+    public Long getInventoryLotId() {
+        return inventoryLotId;
+    }
+
+    public void setInventoryLotId(Long inventoryLotId) {
+        this.inventoryLotId = inventoryLotId;
     }
 
     public Integer getSampleItemId() {

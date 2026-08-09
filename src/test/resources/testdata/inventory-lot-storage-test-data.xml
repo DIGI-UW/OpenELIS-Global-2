@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- OGC-657: storage hierarchy + inventory item/lots for InventoryLot storage-assignment
+        integration tests (SampleStorageServiceInventoryLotIT, InventoryLotRestControllerIT).
+        Occupant-side rows only — sample_storage_assignment/ movement are populated
+        by the tests themselves via the service under test, and cleaned up in @After
+        (see loading-patterns.md: not part of this fixture, so not auto-truncated
+        between test methods). -->
+
+    <storage_room id="7000" name="OGC657 Test Room"
+        code="657ROOM1" active="true" sys_user_id="1"
+        last_updated="2026-01-01 00:00:00"
+        fhir_uuid="7f000000-0000-0000-0000-000000000001" />
+
+    <storage_room id="7001" name="OGC657 Inactive Room"
+        code="657ROOM2" active="false" sys_user_id="1"
+        last_updated="2026-01-01 00:00:00"
+        fhir_uuid="7f000000-0000-0000-0000-000000000006" />
+
+    <storage_device id="7000" name="OGC657 Test Freezer"
+        code="657DEV01" type="freezer" parent_room_id="7000" active="true"
+        sys_user_id="1" last_updated="2026-01-01 00:00:00"
+        fhir_uuid="7f000000-0000-0000-0000-000000000002" />
+
+    <!-- Active device whose parent room is inactive — tests that the whole
+        chain (not just the target level) must be active to assign. -->
+    <storage_device id="7001"
+        name="OGC657 Orphaned-Chain Freezer" code="657DEV02" type="freezer"
+        parent_room_id="7001" active="true" sys_user_id="1"
+        last_updated="2026-01-01 00:00:00"
+        fhir_uuid="7f000000-0000-0000-0000-000000000007" />
+
+    <storage_shelf id="7000" label="OGC657 Test Shelf"
+        code="657SHF01" parent_device_id="7000" active="true" sys_user_id="1"
+        last_updated="2026-01-01 00:00:00"
+        fhir_uuid="7f000000-0000-0000-0000-000000000003" />
+
+    <storage_rack id="7000" label="OGC657 Test Rack"
+        code="657RCK01" parent_shelf_id="7000" active="true" sys_user_id="1"
+        last_updated="2026-01-01 00:00:00"
+        fhir_uuid="7f000000-0000-0000-0000-000000000004" />
+
+    <storage_box id="7000" label="OGC657 Test Box"
+        code="657BOX01" type="plate" rows="8" columns="12"
+        parent_rack_id="7000" active="true" sys_user_id="1"
+        last_updated="2026-01-01 00:00:00"
+        fhir_uuid="7f000000-0000-0000-0000-000000000005" />
+
+    <inventory_item id="7000" code="OGC657_TEST_REAGENT"
+        fhir_uuid="7f000000-0000-0000-0000-000000000010"
+        name="OGC657 Test Reagent" item_type="REAGENT" units="mL"
+        is_active="Y" last_updated="2026-01-01 00:00:00" />
+
+    <inventory_lot id="7000"
+        fhir_uuid="7f000000-0000-0000-0000-000000000011"
+        inventory_item_id="7000" lot_number="OGC657-LOT-001"
+        expiration_date="2026-12-31 00:00:00"
+        receipt_date="2026-01-01 00:00:00" initial_quantity="10.00"
+        current_quantity="10.00" qc_status="PASSED" status="ACTIVE"
+        version="0" last_updated="2026-01-01 00:00:00" />
+
+    <inventory_lot id="7001"
+        fhir_uuid="7f000000-0000-0000-0000-000000000012"
+        inventory_item_id="7000" lot_number="OGC657-LOT-002"
+        expiration_date="2026-12-31 00:00:00"
+        receipt_date="2026-01-01 00:00:00" initial_quantity="5.00"
+        current_quantity="5.00" qc_status="PASSED" status="ACTIVE" version="0"
+        last_updated="2026-01-01 00:00:00" />
+</dataset>
