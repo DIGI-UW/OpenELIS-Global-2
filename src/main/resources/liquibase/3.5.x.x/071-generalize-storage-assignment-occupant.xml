@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/generalize-storage-assignment-occupant.xml">
+
+    <!--
+    OGC-657: generalize sample_storage_assignment/sample_storage_movement so a row can
+    describe either a sample item or an inventory lot. Adds an occupant_type discriminator
+    and a nullable inventory_lot_id FK alongside the existing sample_item_id, backfills
+    existing rows to occupant_type='SAMPLE_ITEM', and enforces exactly one occupant id set
+    per row. The tables keep their sample_storage_* names to avoid touching the already
+    shipped sample-storage feature (FK/index names, existing data, service code).
+    -->
+    <changeSet id="OGC-657-add-occupant-columns-to-storage-assignment" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample_storage_assignment" columnName="occupant_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="sample_storage_assignment" schemaName="clinlims">
+            <column name="occupant_type" type="VARCHAR(20)" defaultValue="SAMPLE_ITEM">
+                <constraints nullable="false"/>
+            </column>
+            <column name="inventory_lot_id" type="BIGINT">
+                <constraints nullable="true"
+                    foreignKeyName="fk_assignment_inventory_lot"
+                    references="clinlims.inventory_lot(id)"
+                    deleteCascade="true"/>
+            </column>
+        </addColumn>
+
+        <dropNotNullConstraint tableName="sample_storage_assignment"
+            columnName="sample_item_id" columnDataType="numeric(10,0)"/>
+
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            DROP CONSTRAINT IF EXISTS sample_storage_assignment_sample_item_id_key;
+        </sql>
+        <sql>
+            CREATE UNIQUE INDEX idx_assignment_sample_item_unique
+            ON clinlims.sample_storage_assignment(sample_item_id)
+            WHERE sample_item_id IS NOT NULL;
+        </sql>
+        <sql>
+            CREATE UNIQUE INDEX idx_assignment_inventory_lot_unique
+            ON clinlims.sample_storage_assignment(inventory_lot_id)
+            WHERE inventory_lot_id IS NOT NULL;
+        </sql>
+        <createIndex indexName="idx_assignment_inventory_lot" tableName="sample_storage_assignment" schemaName="clinlims">
+            <column name="inventory_lot_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_assignment_occupant_type_valid
+            CHECK (occupant_type IN ('SAMPLE_ITEM', 'INVENTORY_LOT'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_assignment_occupant_exclusive
+            CHECK (
+                (occupant_type = 'SAMPLE_ITEM' AND sample_item_id IS NOT NULL AND inventory_lot_id IS NULL) OR
+                (occupant_type = 'INVENTORY_LOT' AND inventory_lot_id IS NOT NULL AND sample_item_id IS NULL)
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                DROP CONSTRAINT IF EXISTS chk_assignment_occupant_exclusive;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                DROP CONSTRAINT IF EXISTS chk_assignment_occupant_type_valid;
+            </sql>
+            <dropIndex tableName="sample_storage_assignment" indexName="idx_assignment_inventory_lot"/>
+            <sql>DROP INDEX IF EXISTS clinlims.idx_assignment_inventory_lot_unique;</sql>
+            <sql>DROP INDEX IF EXISTS clinlims.idx_assignment_sample_item_unique;</sql>
+            <addUniqueConstraint tableName="sample_storage_assignment" columnNames="sample_item_id"
+                constraintName="sample_storage_assignment_sample_item_id_key"/>
+            <addNotNullConstraint tableName="sample_storage_assignment"
+                columnName="sample_item_id" columnDataType="numeric(10,0)"/>
+            <dropColumn tableName="sample_storage_assignment" columnName="inventory_lot_id"/>
+            <dropColumn tableName="sample_storage_assignment" columnName="occupant_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-657-add-occupant-columns-to-storage-movement" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample_storage_movement" columnName="occupant_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="sample_storage_movement" schemaName="clinlims">
+            <column name="occupant_type" type="VARCHAR(20)" defaultValue="SAMPLE_ITEM">
+                <constraints nullable="false"/>
+            </column>
+            <column name="inventory_lot_id" type="BIGINT">
+                <constraints nullable="true"
+                    foreignKeyName="fk_movement_inventory_lot"
+                    references="clinlims.inventory_lot(id)"
+                    deleteCascade="true"/>
+            </column>
+        </addColumn>
+
+        <dropNotNullConstraint tableName="sample_storage_movement"
+            columnName="sample_item_id" columnDataType="numeric(10,0)"/>
+
+        <createIndex indexName="idx_movement_inventory_lot" tableName="sample_storage_movement" schemaName="clinlims">
+            <column name="inventory_lot_id"/>
+        </createIndex>
+
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_movement_occupant_type_valid
+            CHECK (occupant_type IN ('SAMPLE_ITEM', 'INVENTORY_LOT'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_movement_occupant_exclusive
+            CHECK (
+                (occupant_type = 'SAMPLE_ITEM' AND sample_item_id IS NOT NULL AND inventory_lot_id IS NULL) OR
+                (occupant_type = 'INVENTORY_LOT' AND inventory_lot_id IS NOT NULL AND sample_item_id IS NULL)
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_movement_occupant_exclusive;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_movement_occupant_type_valid;
+            </sql>
+            <dropIndex tableName="sample_storage_movement" indexName="idx_movement_inventory_lot"/>
+            <addNotNullConstraint tableName="sample_storage_movement"
+                columnName="sample_item_id" columnDataType="numeric(10,0)"/>
+            <dropColumn tableName="sample_storage_movement" columnName="inventory_lot_id"/>
+            <dropColumn tableName="sample_storage_movement" columnName="occupant_type"/>
+        </rollback>
+    </changeSet>
+
+    <!--
+    OGC-657: delete the non-functional inventory storage skeleton (inventory_storage_location
+    and inventory_lot.storage_location_id). A lot's location is now tracked via
+    sample_storage_assignment (occupant_type='INVENTORY_LOT'), the same mechanism samples
+    use, not a direct FK on the lot row. Inventory had no users at the time of removal, so
+    no data migration is performed (see OGC-657 ticket: breaking change, clean break).
+    -->
+    <changeSet id="OGC-657-drop-inventory-lot-storage-location-column" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="inventory_lot" columnName="storage_location_id" schemaName="clinlims"/>
+        </preConditions>
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="inventory_lot"
+            constraintName="fk_lot_storage_location"/>
+        <dropColumn tableName="inventory_lot" columnName="storage_location_id" schemaName="clinlims"/>
+        <rollback>
+            <addColumn tableName="inventory_lot" schemaName="clinlims">
+                <column name="storage_location_id" type="BIGINT"/>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-657-drop-inventory-storage-location-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_storage_location" schemaName="clinlims"/>
+        </preConditions>
+        <dropTable tableName="inventory_storage_location" schemaName="clinlims"/>
+        <dropSequence sequenceName="inventory_storage_location_seq" schemaName="clinlims"/>
+        <rollback>
+            <!-- Intentionally no rollback: this skeleton table carried no real user data
+                 (Inventory had no users at the time of removal); recreating it here would
+                 resurrect dead schema rather than restore anything meaningful. -->
+        </rollback>
+    </changeSet>
+
+    <!--
+    OGC-657: chk_location_type_valid / chk_previous_location_type_valid /
+    chk_new_location_type_valid never included 'room', even though application code
+    (SampleStorageServiceImpl) has always accepted room-level assignment for samples
+    and now does for inventory lots too. This was a pre-existing gap in the
+    sample-storage feature (samples just never happened to be assigned at the room
+    level in practice) that the integration test for OGC-657's room-level lot
+    assignment surfaced. Fixing it here since both occupant types share these
+    constraints.
+    -->
+    <changeSet id="OGC-657-allow-room-in-location-type-checks" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM pg_constraint
+                WHERE conname = 'chk_location_type_valid'
+                  AND conrelid = 'clinlims.sample_storage_assignment'::regclass
+                  AND pg_get_constraintdef(oid) ILIKE '%room%';
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_location_type_valid
+            CHECK (location_type IS NULL OR location_type IN ('room', 'device', 'shelf', 'rack', 'box'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            DROP CONSTRAINT IF EXISTS chk_previous_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_previous_location_type_valid
+            CHECK (previous_location_type IS NULL OR previous_location_type IN ('room', 'device', 'shelf', 'rack', 'box'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            DROP CONSTRAINT IF EXISTS chk_new_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_new_location_type_valid
+            CHECK (new_location_type IS NULL OR new_location_type IN ('room', 'device', 'shelf', 'rack', 'box'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                ADD CONSTRAINT chk_location_type_valid
+                CHECK (location_type IS NULL OR location_type IN ('device', 'shelf', 'rack', 'box'));
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_previous_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                ADD CONSTRAINT chk_previous_location_type_valid
+                CHECK (previous_location_type IS NULL OR previous_location_type IN ('device', 'shelf', 'rack', 'box'));
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_new_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                ADD CONSTRAINT chk_new_location_type_valid
+                CHECK (new_location_type IS NULL OR new_location_type IN ('device', 'shelf', 'rack', 'box'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -205,14 +205,19 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                   </StructuredListWrapper>
                 </div>
 
-                {lot.storageLocation && (
-                  <div className="panel-section">
-                    <h4>
-                      <FormattedMessage id="lot.details.section.storage" />
-                    </h4>
-                    <p>{lot.storageLocation.name || lot.storageLocation}</p>
-                  </div>
-                )}
+                <div className="panel-section">
+                  <h4>
+                    <FormattedMessage id="lot.details.section.storage" />
+                  </h4>
+                  <Tag type={lot.location?.hierarchicalPath ? "blue" : "gray"}>
+                    {lot.location?.hierarchicalPath || (
+                      <FormattedMessage
+                        id="storage.location.notAssigned"
+                        defaultMessage="Not assigned"
+                      />
+                    )}
+                  </Tag>
+                </div>
               </TabPanel>
 
               <TabPanel>
