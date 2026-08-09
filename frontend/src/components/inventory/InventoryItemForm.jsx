@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Modal,
   TextInput,
@@ -54,6 +60,14 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
 
   const [saving, setSaving] = useState(false);
   const normalizedCode = toCode(formData.code);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const [error, setError] = useState(null);
   const [itemTypes, setItemTypes] = useState([]);
 
@@ -62,6 +76,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     const loadItemTypes = async () => {
       try {
         const types = await InventoryItemAPI.getItemTypes();
+        if (!isMountedRef.current) return;
         const formattedTypes = types.map((type) => ({
           id: type,
           text: getItemTypeLabel(type),
@@ -222,6 +237,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         sanitizedData.code = toCode(formData.code) || null;
         await InventoryItemAPI.create(sanitizedData);
       }
+      if (!isMountedRef.current) return;
       setSaving(false);
       onSave();
     } catch (err) {
@@ -231,6 +247,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         ? intl.formatMessage({ id: err.errorCode }, err.params)
         : err.message ||
           intl.formatMessage({ id: "catalog.item.error.saveGeneric" });
+      if (!isMountedRef.current) return;
       setError(errorMessage);
       setSaving(false);
       notify({
@@ -315,7 +332,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           label="Select item type"
           items={itemTypes}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={itemTypes.find((t) => t.id === formData.itemType)}
+          selectedItem={
+            itemTypes.find((t) => t.id === formData.itemType) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("itemType", selectedItem.id)
           }
