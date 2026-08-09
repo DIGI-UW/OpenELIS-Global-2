@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -43,6 +49,13 @@ import {
 } from "../storage/LocationPicker/locationSelectionMapper";
 import "./InventoryList.css";
 
+const QC_TAG_KIND = {
+  PASSED: "green",
+  FAILED: "red",
+  PENDING: "gray",
+  QUARANTINED: "magenta",
+};
+
 const InventoryDashboard = () => {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -63,7 +76,16 @@ const InventoryDashboard = () => {
 
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
+  const [lowStockItemIds, setLowStockItemIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
+
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [metrics, setMetrics] = useState({
     totalLots: 0,
@@ -132,6 +154,10 @@ const InventoryDashboard = () => {
       header: intl.formatMessage({ id: "lot.status" }),
     },
     {
+      key: "qcStatus",
+      header: intl.formatMessage({ id: "lot.qcStatus" }),
+    },
+    {
       key: "stockStatus",
       header: intl.formatMessage({ id: "stock.status" }),
     },
@@ -180,86 +206,83 @@ const InventoryDashboard = () => {
   const fetchLots = async () => {
     setLoading(true);
     try {
-      const lotsResponse = await InventoryLotAPI.getAll({
-        status: statusFilter !== "ALL" ? statusFilter : undefined,
-      });
+      // Low stock is the backend's call: it sums usable quantity across an
+      // item's lots, which a per-lot check here cannot reproduce.
+      const [lotsResponse, itemsResponse, lowStockResponse] = await Promise.all(
+        [
+          InventoryLotAPI.getAll({
+            status: statusFilter !== "ALL" ? statusFilter : undefined,
+          }),
+          InventoryItemAPI.getAll(),
+          InventoryItemAPI.getLowStock(),
+        ],
+      );
+      if (!isMountedRef.current) return;
 
       const validLots = Array.isArray(lotsResponse) ? lotsResponse : [];
       setLots(validLots);
 
-      const uniqueItemIds = [
-        ...new Set(
-          validLots.map((lot) => lot.inventoryItem?.id).filter(Boolean),
-        ),
-      ];
-
-      const itemsMap = {};
-      await Promise.all(
-        uniqueItemIds.map(async (itemId) => {
-          try {
-            const item = await InventoryItemAPI.getById(itemId);
-            itemsMap[itemId] = item;
-          } catch (error) {
-            console.error(`Error fetching item ${itemId}:`, error);
-          }
-        }),
+      const itemsMap = Object.fromEntries(
+        (Array.isArray(itemsResponse) ? itemsResponse : []).map((item) => [
+          item.id,
+          item,
+        ]),
       );
-
       setItems(itemsMap);
 
-      calculateMetrics(validLots, itemsMap);
+      const lowStockIds = new Set(
+        (Array.isArray(lowStockResponse) ? lowStockResponse : []).map(
+          (item) => item.id,
+        ),
+      );
+      setLowStockItemIds(lowStockIds);
+
+      calculateMetrics(validLots, itemsMap, lowStockIds);
     } catch (error) {
       console.error("Error fetching inventory:", error);
+      if (!isMountedRef.current) return;
       setLots([]);
       setItems({});
+      setLowStockItemIds(new Set());
       addNotification({
         kind: "error",
         title: intl.formatMessage({ id: "notification.error" }),
         message: "Error loading inventory data",
       });
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
-  const calculateMetrics = (lotsData, itemsData) => {
-    let lowStockCount = 0;
+  const calculateMetrics = (lotsData, itemsData, lowStockIds) => {
     let expiringSoonCount = 0;
     let expiredCount = 0;
 
     lotsData.forEach((lot) => {
       const item = itemsData[lot.inventoryItem?.id];
-      if (!item) return;
+      if (!item || !lot.expirationDate) return;
 
-      const currentQty = lot.currentQuantity || 0;
-      const minStock = item.minimumStockLevel || 0;
+      const expiryDate = new Date(lot.expirationDate);
+      const today = new Date();
+      const daysUntilExpiry = Math.floor(
+        (expiryDate - today) / (1000 * 60 * 60 * 24),
+      );
 
-      if (lot.expirationDate) {
-        const expiryDate = new Date(lot.expirationDate);
-        const today = new Date();
-        const daysUntilExpiry = Math.floor(
-          (expiryDate - today) / (1000 * 60 * 60 * 24),
-        );
-
-        if (daysUntilExpiry < 0) {
-          expiredCount++;
-          return;
-        }
-
-        const alertDays = item.expirationAlertDays || 30;
-        if (daysUntilExpiry <= alertDays) {
-          expiringSoonCount++;
-        }
+      if (daysUntilExpiry < 0) {
+        expiredCount++;
+        return;
       }
 
-      if (currentQty > 0 && currentQty <= minStock) {
-        lowStockCount++;
+      const alertDays = item.expirationAlertDays || 30;
+      if (daysUntilExpiry <= alertDays) {
+        expiringSoonCount++;
       }
     });
 
     setMetrics({
       totalLots: lotsData.length,
-      lowStock: lowStockCount,
+      // Items below threshold, not lots.
+      lowStock: lowStockIds.size,
       expiringSoon: expiringSoonCount,
       expired: expiredCount,
     });
@@ -272,7 +295,6 @@ const InventoryDashboard = () => {
     if (!item) return null;
 
     const currentQty = lot.currentQuantity || 0;
-    const minStock = item.minimumStockLevel || 0;
 
     if (lot.expirationDate) {
       const expiryDate = new Date(lot.expirationDate);
@@ -299,8 +321,18 @@ const InventoryDashboard = () => {
       return { type: "outOfStock", label: "Out of Stock", kind: "red" };
     }
 
-    if (currentQty < minStock) {
+    if (lowStockItemIds.has(lot.inventoryItem.id)) {
       return { type: "lowStock", label: "Low Stock", kind: "warm-gray" };
+    }
+
+    // Stock that exists but cannot be consumed yet: FEFO only picks QC-passed
+    // lots, so surface the gate instead of a reassuring "In Stock".
+    if (lot.qcStatus && lot.qcStatus !== "PASSED") {
+      return {
+        type: "pendingQc",
+        label: intl.formatMessage({ id: "stock.status.pendingQc" }),
+        kind: "cyan",
+      };
     }
 
     return { type: "inStock", label: "In Stock", kind: "green" };
@@ -357,6 +389,7 @@ const InventoryDashboard = () => {
         ? new Date(lot.expirationDate).toLocaleDateString()
         : "N/A",
       status: lot.status,
+      qcStatus: lot.qcStatus || "PENDING",
       stockStatus: stockStatus,
     };
   });
@@ -556,7 +589,9 @@ const InventoryDashboard = () => {
                   })}
                   items={itemTypes}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
+                  selectedItem={
+                    itemTypes.find((t) => t.id === typeFilter) ?? null
+                  }
                   onChange={({ selectedItem }) =>
                     setTypeFilter(selectedItem.id)
                   }
@@ -571,9 +606,9 @@ const InventoryDashboard = () => {
                   })}
                   items={statusOptions}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
+                  selectedItem={
+                    statusOptions.find((s) => s.id === statusFilter) ?? null
+                  }
                   onChange={({ selectedItem }) =>
                     setStatusFilter(selectedItem.id)
                   }
@@ -629,6 +664,19 @@ const InventoryDashboard = () => {
                                 {status && (
                                   <Tag type={status.kind}>{status.label}</Tag>
                                 )}
+                              </TableCell>
+                            );
+                          }
+
+                          if (cell.info.header === "qcStatus") {
+                            return (
+                              <TableCell key={cell.id}>
+                                <Tag type={QC_TAG_KIND[cell.value] || "gray"}>
+                                  {intl.formatMessage({
+                                    id: `lot.qcStatus.${cell.value}`,
+                                    defaultMessage: cell.value,
+                                  })}
+                                </Tag>
                               </TableCell>
                             );
                           }

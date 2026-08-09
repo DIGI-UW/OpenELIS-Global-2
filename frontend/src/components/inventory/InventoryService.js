@@ -134,26 +134,13 @@ export const InventoryItemAPI = {
     return get(`/items/all${query ? `?${query}` : ""}`);
   },
 
-  // Get only active items
-  getAllActive: () => get("/items"),
-
   // Get item by ID
   getById: (id) => get(`/items/${id}`),
 
   // Get all item types
   getItemTypes: () => get("/items/types"),
 
-  // Get items by type
-  getByType: (itemType) => get(`/items/type/${itemType}`),
-
-  // Search items by name
-  search: (query) => get(`/items/search?query=${encodeURIComponent(query)}`),
-
-  // Get low stock items
   getLowStock: () => get("/items/low-stock"),
-
-  // Get stock level for an item
-  getStockLevel: (itemId) => get(`/items/${itemId}/stock`),
 
   // Create new item
   create: (item) => post("/items", item),
@@ -181,33 +168,8 @@ export const InventoryLotAPI = {
     return get(`/lots${query ? `?${query}` : ""}`);
   },
 
-  // Get lot by ID
-  getById: (id) => get(`/lots/${id}`),
-
-  // Get available lots for an item (FEFO sorted)
-  getAvailableByItem: (itemId) => get(`/lots/item/${itemId}/available`),
-
-  // Get all lots for an item
-  getByItem: (itemId) => get(`/lots/item/${itemId}`),
-
-  // Get lots by storage location
-  getByLocation: (locationId) => get(`/lots/location/${locationId}`),
-
-  // Get expiring lots
-  getExpiring: (days = 30) => get(`/lots/expiring?days=${days}`),
-
-  // Get expired lots
-  getExpired: () => get("/lots/expired"),
-
-  // Create new lot
-  create: (lot) => post("/lots", lot),
-
   // Update lot
   update: (id, lot) => put(`/lots/${id}`, lot),
-
-  // Open lot (for reagents with stability tracking)
-  open: (id, openedDate) =>
-    post(`/lots/${id}/open`, { openedDate: openedDate || new Date() }),
 
   // Update QC status
   updateQCStatus: (id, qcStatus, notes) =>
@@ -220,9 +182,6 @@ export const InventoryLotAPI = {
   // Dispose lot
   dispose: (id, reason, notes) =>
     post(`/lots/${id}/dispose`, { reason, notes }),
-
-  // Process expired lots (batch operation)
-  processExpired: () => post("/lots/process-expired", {}),
 };
 
 /**
@@ -234,14 +193,6 @@ export const InventoryManagementAPI = {
 
   // Receive new inventory
   receive: (receiveData) => post("/management/receive", receiveData),
-
-  // Check availability
-  checkAvailability: (itemId, quantity) =>
-    get(`/management/check-availability?itemId=${itemId}&quantity=${quantity}`),
-
-  // Get inventory alerts (low stock, expiring, expired)
-  getAlerts: (expirationWarningDays = 30) =>
-    get(`/management/alerts?expirationWarningDays=${expirationWarningDays}`),
 };
 
 /**
@@ -256,10 +207,6 @@ export const InventoryLotStorageAPI = {
   // Get current location for a lot (empty object if unassigned)
   getLocation: (lotId) =>
     promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}`),
-
-  // List movement-audit rows for a lot
-  getMovements: (lotId) =>
-    promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}/movements`),
 
   // Assign a lot to a location for the first time
   assignLocation: (payload) =>
@@ -312,41 +259,16 @@ export const InventoryLotStorageAPI = {
  * Transaction API
  */
 export const TransactionAPI = {
-  // Get transaction by ID
-  getById: (id) => get(`/transactions/${id}`),
-
   // Get transactions for a lot
   getByLot: (lotId) => get(`/transactions/lot/${lotId}`),
-
-  // Get transactions by type
-  getByType: (transactionType) => get(`/transactions/type/${transactionType}`),
-
-  // Get transactions by date range
-  getByDateRange: (startDate, endDate) =>
-    get(`/transactions/date-range?startDate=${startDate}&endDate=${endDate}`),
-
-  // Get transactions by reference (test result, etc.)
-  getByReference: (referenceId, referenceType) =>
-    get(
-      `/transactions/reference?referenceId=${referenceId}&referenceType=${referenceType}`,
-    ),
 };
 
 /**
  * Usage API (test result linkage)
  */
 export const UsageAPI = {
-  // Get usage by test result ID
-  getByTestResult: (testResultId) => get(`/usage/test-result/${testResultId}`),
-
   // Get usage by lot ID
   getByLot: (lotId) => get(`/usage/lot/${lotId}`),
-
-  // Get usage by item ID
-  getByItem: (itemId) => get(`/usage/item/${itemId}`),
-
-  // Get usage by analysis ID
-  getByAnalysis: (analysisId) => get(`/usage/analysis/${analysisId}`),
 };
 
 /**
