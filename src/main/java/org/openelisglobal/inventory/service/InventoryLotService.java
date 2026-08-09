@@ -22,11 +22,6 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     List<InventoryLot> getByInventoryItemId(Long itemId);
 
     /**
-     * Get lots by storage location ID
-     */
-    List<InventoryLot> getByStorageLocationId(Long locationId);
-
-    /**
      * Get lots expiring within specified days
      */
     List<InventoryLot> getExpiringLots(int daysFromNow);

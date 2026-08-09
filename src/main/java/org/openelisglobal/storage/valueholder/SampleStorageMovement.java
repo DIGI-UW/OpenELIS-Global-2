@@ -15,9 +15,10 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
- * SampleStorageMovement entity - Immutable audit log of SampleItem movements
- * Insert-only, no updates/deletes allowed Uses flexible assignment model:
- * locationId + locationType (no StoragePosition references)
+ * SampleStorageMovement entity - Immutable audit log of SampleItem/InventoryLot
+ * movements Insert-only, no updates/deletes allowed. Uses flexible assignment
+ * model: locationId + locationType (no StoragePosition references).
+ * occupantType discriminates which of sampleItemId/inventoryLotId is populated.
  */
 @Entity
 @Table(name = "SAMPLE_STORAGE_MOVEMENT")
@@ -30,16 +31,24 @@ public class SampleStorageMovement extends BaseObject<Integer> {
     @Column(name = "ID")
     private Integer id;
 
+    @Column(name = "OCCUPANT_TYPE", length = 20, nullable = false)
+    private String occupantType = SampleStorageAssignment.OCCUPANT_SAMPLE_ITEM;
+
     // Store sampleItemId directly instead of @ManyToOne to avoid cross-mapping
     // issues between JPA annotations and HBM XML mapping (SampleItem uses
     // LIMSStringNumberUserType which maps String in Java to numeric in DB)
     // Database column is numeric, so store as Integer here
-    @Column(name = "SAMPLE_ITEM_ID", nullable = false)
+    // Nullable: null when occupantType is INVENTORY_LOT
+    @Column(name = "SAMPLE_ITEM_ID")
     private Integer sampleItemId;
 
     // Transient field for convenience - must be populated manually after loading
     @Transient
     private SampleItem sampleItem;
+
+    // Null when occupantType is SAMPLE_ITEM
+    @Column(name = "INVENTORY_LOT_ID")
+    private Long inventoryLotId;
 
     // Previous location (flexible assignment model)
     @Column(name = "PREVIOUS_LOCATION_ID")
@@ -78,6 +87,22 @@ public class SampleStorageMovement extends BaseObject<Integer> {
     @Override
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public String getOccupantType() {
+        return occupantType;
+    }
+
+    public void setOccupantType(String occupantType) {
+        this.occupantType = occupantType;
+    }
+
+    public Long getInventoryLotId() {
+        return inventoryLotId;
+    }
+
+    public void setInventoryLotId(Long inventoryLotId) {
+        this.inventoryLotId = inventoryLotId;
     }
 
     public Integer getSampleItemId() {

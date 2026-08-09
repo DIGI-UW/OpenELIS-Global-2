@@ -41,11 +41,6 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
     InventoryLot getByBarcode(String barcode) throws LIMSRuntimeException;
 
     /**
-     * Get lots by storage location
-     */
-    List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException;
-
-    /**
      * Get lots by QC status
      */
     List<InventoryLot> getByQCStatus(QCStatus qcStatus) throws LIMSRuntimeException;
