@@ -75,6 +75,16 @@ public class InventoryItemServiceCodeGenerationTest {
     }
 
     @Test
+    public void insert_leavesSurrogateIdToTheSequence() {
+        InventoryItem item = newItem("Blood Culture Bottle");
+
+        inventoryItemService.insert(item);
+
+        assertEquals(Long.valueOf(1L), item.getId());
+        assertEquals("BLOOD_CULTURE_BOTTLE", item.getCode());
+    }
+
+    @Test
     public void insert_generatesCollisionSuffixedCode_whenBaseCodeTaken() {
         existingCodes.add("REAGENT_X");
         existingCodes.add("REAGENT_X_2");
@@ -94,6 +104,7 @@ public class InventoryItemServiceCodeGenerationTest {
 
         assertEquals("MY_CODE", item.getCode());
     }
+
 
     @Test
     public void insert_rejectsExplicitCode_thatNormalizesToNothing() {
