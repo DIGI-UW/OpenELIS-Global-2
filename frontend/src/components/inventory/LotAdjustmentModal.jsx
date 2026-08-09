@@ -159,7 +159,9 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "adjustment.reason.select" })}
           items={adjustmentReasons}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={adjustmentReasons.find((r) => r.id === formData.reason)}
+          selectedItem={
+            adjustmentReasons.find((r) => r.id === formData.reason) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("reason", selectedItem.id)
           }

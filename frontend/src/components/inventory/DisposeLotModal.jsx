@@ -143,7 +143,9 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "disposal.reason.select" })}
           items={disposalReasons}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={disposalReasons.find((r) => r.id === formData.reason)}
+          selectedItem={
+            disposalReasons.find((r) => r.id === formData.reason) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("reason", selectedItem.id)
           }
