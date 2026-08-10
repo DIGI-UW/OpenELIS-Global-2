@@ -607,3 +607,15 @@
   color: #0e6027;
   font-size: 0.75rem;
 }
+
+.unifiedAvatar--photo {
+  padding: 0;
+  overflow: hidden;
+}
+
+.unifiedAvatar--photo img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
