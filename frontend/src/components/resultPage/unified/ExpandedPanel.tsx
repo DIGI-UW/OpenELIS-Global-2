@@ -15,7 +15,13 @@ import PolymorphicResultCell, {
   ResultCellRow,
   worklistRowKey,
 } from "./PolymorphicResultCell";
-import ReferenceSection from "./ReferenceSection";
+import {
+  AttachmentsSection,
+  OrderInfoSection,
+  ProgrammeSection,
+  StorageSection,
+  useOrderContext,
+} from "./orderContextSections";
 import CriticalBanner from "./CriticalBanner";
 import HistorySection from "./HistorySection";
 import AliquotsSection from "./AliquotsSection";
@@ -211,9 +217,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
     }
   };
 
-  const orderInfoAvailable = Boolean(
-    row.testDate || row.receivedDate || row.sampleType || row.technician,
-  );
+  // one order-record fetch per accession feeds Order info + Programme
+  const orderContext = useOrderContext(row.accessionNumber);
   const notes = row.analysisNotes || [];
 
   const toggleSection = (sectionId: string, open: boolean) =>
@@ -595,57 +600,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           </Button>
         </div>
 
-        {orderInfoAvailable && (
-          <ReferenceSection
-            sectionId="orderInfo"
-            title={<FormattedMessage id="label.results.section.orderInfo" />}
-            summary={[row.sampleType, row.receivedDate]
-              .filter(Boolean)
-              .join(" · ")}
-            open={isSectionOpen(sectionLayout, "orderInfo", false)}
-            onToggle={(open) => toggleSection("orderInfo", open)}
-          >
-            <div className="unifiedRefGrid">
-              {row.sampleType && (
-                <div>
-                  <span className="cds--label">
-                    <FormattedMessage id="label.results.sampleType" />
-                  </span>
-                  <span>{row.sampleType}</span>
-                </div>
-              )}
-              {row.testDate && (
-                <div>
-                  <span className="cds--label">
-                    <FormattedMessage id="label.results.testDate" />
-                  </span>
-                  <span>{row.testDate}</span>
-                </div>
-              )}
-              {row.receivedDate && (
-                <div>
-                  <span className="cds--label">
-                    <FormattedMessage id="label.results.receivedDate" />
-                  </span>
-                  <span>{row.receivedDate}</span>
-                </div>
-              )}
-              {row.technician && (
-                <div>
-                  <span className="cds--label">
-                    <FormattedMessage id="label.results.technician" />
-                  </span>
-                  <span>{row.technician}</span>
-                </div>
-              )}
-            </div>
-          </ReferenceSection>
-        )}
-
-        <HistorySection
-          analysisId={row.analysisId as string | undefined}
-          open={isSectionOpen(sectionLayout, "history", false)}
-          onToggle={(open) => toggleSection("history", open)}
+        <OrderInfoSection
+          open={isSectionOpen(sectionLayout, "orderInfo", false)}
+          onToggle={(open) => toggleSection("orderInfo", open)}
+          order={orderContext}
+          sampleType={row.sampleType}
+          receivedDate={row.receivedDate}
+          technician={row.technician}
         />
 
         <AliquotsSection
@@ -653,6 +614,32 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           sampleItemId={row.sampleItemId as string | undefined}
           open={isSectionOpen(sectionLayout, "aliquots", false)}
           onToggle={(open) => toggleSection("aliquots", open)}
+        />
+
+        <ProgrammeSection
+          open={isSectionOpen(sectionLayout, "program", false)}
+          onToggle={(open) => toggleSection("program", open)}
+          order={orderContext}
+          eqaSample={Boolean(row.eqaSample)}
+          eqaPriority={row.eqaPriority as string | undefined}
+        />
+
+        <StorageSection
+          open={isSectionOpen(sectionLayout, "storage", false)}
+          onToggle={(open) => toggleSection("storage", open)}
+          sampleItemId={row.sampleItemId as string | undefined}
+        />
+
+        <AttachmentsSection
+          open={isSectionOpen(sectionLayout, "attachments", false)}
+          onToggle={(open) => toggleSection("attachments", open)}
+          accessionNumber={row.accessionNumber}
+        />
+
+        <HistorySection
+          analysisId={row.analysisId as string | undefined}
+          open={isSectionOpen(sectionLayout, "history", false)}
+          onToggle={(open) => toggleSection("history", open)}
         />
       </div>
     </div>
