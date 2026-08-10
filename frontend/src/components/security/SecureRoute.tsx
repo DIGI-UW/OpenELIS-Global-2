@@ -9,12 +9,28 @@ import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
 import { Roles } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
+import type { RouteProps } from "react-router-dom";
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
 const idleWarningTimeout = 1000 * 60; // milliseconds until logout is automatically processed from idle warning
 const idleLogoutTimeout = idleTimeout + idleWarningTimeout;
 
-function SecureRoute(props) {
+type RoleProp = string | string[];
+type LabUnitRoles = Record<string, string[]>;
+
+interface UserSessionDetails {
+  authenticated?: boolean;
+  loginLabUnit?: unknown;
+  roles?: string[];
+  userLabRolesMap?: Record<string, string[]>;
+}
+
+interface SecureRouteProps extends RouteProps {
+  role?: RoleProp;
+  labUnitRole?: LabUnitRoles;
+}
+
+function SecureRoute(props: SecureRouteProps) {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stillThereOpen, setStillThereOpen] = useState(false);
@@ -77,10 +93,12 @@ function SecureRoute(props) {
     }
   }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
-  const hasPermission = (userDetails = userSessionDetails) => {
+  const hasPermission = (
+    userDetails: UserSessionDetails = userSessionDetails,
+  ) => {
     var hasRole =
       !props.role ||
-      []
+      ([] as string[])
         .concat(props.role)
         .some((role) => userDetails.roles && userDetails.roles.includes(role));
     var containsLabUnitRole = false;

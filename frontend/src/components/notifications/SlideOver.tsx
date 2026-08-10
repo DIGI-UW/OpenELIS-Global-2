@@ -3,6 +3,21 @@ import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import classNames from "classnames";
 
+type SlideDirection = "left" | "right" | "top" | "bottom";
+
+interface SlideOverProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  children: React.ReactNode;
+  slideFrom?: SlideDirection;
+  dialogClass?: string;
+  title?: React.ReactNode;
+  onlyChild?: boolean;
+  backdropBlur?: boolean;
+  closeOnBackdropClick?: boolean;
+  onCloseClick?: () => void;
+}
+
 const SlideOver = ({
   open,
   setOpen,
@@ -14,7 +29,7 @@ const SlideOver = ({
   backdropBlur = true,
   closeOnBackdropClick = true,
   onCloseClick,
-}) => {
+}: SlideOverProps) => {
   const directionClasses = {
     left: {
       stick: "left-0 top-0 h-full",
