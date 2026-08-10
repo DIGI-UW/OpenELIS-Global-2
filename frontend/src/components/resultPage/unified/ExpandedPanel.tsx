@@ -35,6 +35,7 @@ import ReferralAction, {
 // @ts-ignore
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
+import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
 import { dilutionApplies, computeReportedValue } from "./dilution";
 import {
@@ -145,6 +146,14 @@ interface ExpandedPanelProps {
   onRejectDraftChange: (draft: RejectDraft | null) => void;
   interpretationDraft: string | null;
   onInterpretationDraftChange: (draft: string | null) => void;
+  nceDisposition: NceDisposition;
+  onNceDispositionChange: (disposition: NceDisposition) => void;
+  nceRejectReasonId: string;
+  onNceRejectReasonChange: (reasonId: string) => void;
+  onNceApplyDisposition: (
+    disposition: NceDisposition,
+    rejectReasonId: string,
+  ) => void;
 }
 
 const noteVisibilityTag = (noteType?: string) =>
@@ -198,6 +207,11 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   onRejectDraftChange,
   interpretationDraft,
   onInterpretationDraftChange,
+  nceDisposition,
+  onNceDispositionChange,
+  nceRejectReasonId,
+  onNceRejectReasonChange,
+  onNceApplyDisposition,
 }) => {
   const intl = useIntl();
   const rowKey = worklistRowKey(row);
@@ -480,7 +494,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           {actions}
           {allowResultRejection && (
             <Button
-              kind="ghost"
+              kind="tertiary"
               size="sm"
               className="unifiedNceButton"
               onClick={() => onNceOpenChange(!nceOpen)}
@@ -575,8 +589,74 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           <InlineNceForm
             resultRow={row}
             onClose={() => onNceOpenChange(false)}
-            onSubmitSuccess={() => onNceOpenChange(false)}
+            onSubmitSuccess={() => {
+              onNceApplyDisposition(nceDisposition, nceRejectReasonId);
+              onNceOpenChange(false);
+            }}
           />
+          {/* FR-E3 — result disposition applied when the NCE is submitted;
+              refer-out is a separate row action, never a disposition */}
+          <div
+            className="unifiedDisposition"
+            data-testid={`disposition-${rowKey}`}
+          >
+            <span className="cds--label">
+              <FormattedMessage id="label.results.nce.disposition" />
+            </span>
+            <div className="unifiedDispositionTiles">
+              {(
+                [
+                  ["NONE", "label.results.nce.disposition.none"],
+                  ["CANCEL", "label.results.nce.disposition.cancel"],
+                  ["REJECT", "label.results.nce.disposition.reject"],
+                  ["RETEST", "label.results.nce.disposition.retest"],
+                ] as [NceDisposition, string][]
+              ).map(([value, labelKey]) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={`unifiedDispositionTile${
+                    nceDisposition === value
+                      ? " unifiedDispositionTile--selected"
+                      : ""
+                  }`}
+                  onClick={() => onNceDispositionChange(value)}
+                  data-testid={`disposition-${value}`}
+                >
+                  <strong>
+                    <FormattedMessage id={labelKey} />
+                  </strong>
+                  <span className="unifiedBucketText">
+                    <FormattedMessage id={`${labelKey}.detail`} />
+                  </span>
+                </button>
+              ))}
+            </div>
+            {nceDisposition === "REJECT" && (
+              <Select
+                id={`nce-reject-reason-${rowKey}`}
+                labelText={intl.formatMessage({
+                  id: "label.results.reject.reason",
+                })}
+                value={nceRejectReasonId}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  onNceRejectReasonChange(e.target.value)
+                }
+              >
+                <SelectItem value="" text="" />
+                {rejectReasons.map((reason) => (
+                  <SelectItem
+                    key={reason.id}
+                    value={reason.id}
+                    text={reason.value}
+                  />
+                ))}
+              </Select>
+            )}
+            <span className="unifiedFieldHint">
+              <FormattedMessage id="label.results.nce.disposition.hint" />
+            </span>
+          </div>
         </div>
       )}
 

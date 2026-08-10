@@ -68,6 +68,7 @@ import ExpandedPanel, {
   RejectDraft,
 } from "./ExpandedPanel";
 import { ReferralDraft } from "./ReferralAction";
+import { NceDisposition, dispositionRequests } from "./nceDisposition";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
 import Avatar from "./Avatar";
@@ -180,6 +181,8 @@ const UnifiedResults: React.FC = () => {
   const [interpretationDrafts, setInterpretationDrafts] = useState<
     Record<string, string>
   >({});
+  const [nceDisposition, setNceDisposition] = useState<NceDisposition>("NONE");
+  const [nceRejectReasonId, setNceRejectReasonId] = useState<string>("");
 
   const domain: ResultsDomain = useMemo(() => {
     const unit = labUnits.find((u) => u.id === selectedLabUnit);
@@ -494,6 +497,62 @@ const UnifiedResults: React.FC = () => {
       }
     },
     [markRowDirty],
+  );
+
+  // FR-E3: the disposition chosen alongside an NCE applies once the NCE is
+  // filed. Cancel/Retest call their shipped endpoints; Reject arms the legacy
+  // rejection on the row so the e-signature Save applies it (FR-A4).
+  const handleNceApplyDisposition = useCallback(
+    (target: WorklistRow, disposition: NceDisposition, reasonId: string) => {
+      if (disposition === "REJECT") {
+        if (reasonId) {
+          handleRejectDraftChange(target, { rejectReasonId: reasonId });
+          addNotification({
+            kind: NotificationKinds.info,
+            title: intl.formatMessage({ id: "label.results.nce.report" }),
+            message: intl.formatMessage({
+              id: "label.results.nce.disposition.rejectArmed",
+            }),
+          });
+          setNotificationVisible(true);
+        }
+        return;
+      }
+      const requests = dispositionRequests(disposition, target);
+      if (requests.length === 0) {
+        return;
+      }
+      const runNext = (index: number) => {
+        if (index >= requests.length) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "label.results.nce.report" }),
+            message: intl.formatMessage({
+              id:
+                disposition === "CANCEL"
+                  ? "label.results.nce.disposition.cancelled"
+                  : "label.results.nce.disposition.retested",
+            }),
+          });
+          setNotificationVisible(true);
+          loadWorklist();
+          return;
+        }
+        postToOpenElisServerJsonResponse(
+          requests[index].url,
+          JSON.stringify(requests[index].body),
+          () => runNext(index + 1),
+        );
+      };
+      runNext(0);
+    },
+    [
+      handleRejectDraftChange,
+      addNotification,
+      setNotificationVisible,
+      intl,
+      loadWorklist,
+    ],
   );
 
   const handleEdit = useCallback((target: WorklistRow) => {
@@ -1047,9 +1106,11 @@ const UnifiedResults: React.FC = () => {
                               }
                               allowResultRejection={allowResultRejection}
                               nceOpen={nceOpenKey === key}
-                              onNceOpenChange={(open) =>
-                                setNceOpenKey(open ? key : null)
-                              }
+                              onNceOpenChange={(open) => {
+                                setNceOpenKey(open ? key : null);
+                                setNceDisposition("NONE");
+                                setNceRejectReasonId("");
+                              }}
                               referralOrganizations={referralOrganizations}
                               referralReasons={referralReasons}
                               referralDraft={referralDrafts[key] || null}
@@ -1066,6 +1127,17 @@ const UnifiedResults: React.FC = () => {
                               }
                               onInterpretationDraftChange={(draft) =>
                                 handleInterpretationDraftChange(row, draft)
+                              }
+                              nceDisposition={nceDisposition}
+                              onNceDispositionChange={setNceDisposition}
+                              nceRejectReasonId={nceRejectReasonId}
+                              onNceRejectReasonChange={setNceRejectReasonId}
+                              onNceApplyDisposition={(disposition, reasonId) =>
+                                handleNceApplyDisposition(
+                                  row,
+                                  disposition,
+                                  reasonId,
+                                )
                               }
                               actions={
                                 <>

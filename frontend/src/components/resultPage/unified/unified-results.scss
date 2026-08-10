@@ -485,3 +485,48 @@
   flex: 1;
   min-width: 17.5rem;
 }
+
+/* R4/FR-E3 — NCE action + disposition tiles (gallery parity) */
+.unifiedNceButton.cds--btn--tertiary {
+  border-color: #da1e28;
+  color: #a2191f;
+}
+
+.unifiedNceButton.cds--btn--tertiary:hover {
+  background: #fff1f1;
+  color: #750e13;
+}
+
+.unifiedReferral {
+  border-left-color: #8a3ffc;
+}
+
+.unifiedDisposition {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.unifiedDispositionTiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.5rem;
+}
+
+.unifiedDispositionTile {
+  text-align: left;
+  padding: 0.5rem;
+  border: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+  background: var(--cds-layer-02, #ffffff);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.unifiedDispositionTile--selected {
+  border: 2px solid #0f62fe;
+  background: #edf5ff;
+}
