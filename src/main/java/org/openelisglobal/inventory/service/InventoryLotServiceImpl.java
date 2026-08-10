@@ -71,6 +71,15 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
+    public InventoryLot getByBarcode(String barcode) {
+        if (barcode == null || barcode.trim().isEmpty()) {
+            return null;
+        }
+        return inventoryLotDAO.getByBarcode(barcode.trim());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InventoryLot getByFhirUuid(String fhirUuid) {
         return inventoryLotDAO.getByFhirUuid(fhirUuid);
     }
