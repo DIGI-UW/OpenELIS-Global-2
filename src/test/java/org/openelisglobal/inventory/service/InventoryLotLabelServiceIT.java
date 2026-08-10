@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.barcode.LabelField;
+import org.openelisglobal.barcode.labeltype.InventoryLotLabel;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.Rollback;
@@ -36,6 +38,23 @@ public class InventoryLotLabelServiceIT extends BaseWebContextSensitiveTest {
         assertTrue("Label stream should carry content", pdf.size() > 0);
         String header = new String(pdf.toByteArray(), 0, 4, StandardCharsets.ISO_8859_1);
         assertEquals("Stream should be a PDF", "%PDF", header);
+    }
+
+    @Test
+    public void label_shouldResolveEveryFieldNameToRealText() {
+        // MessageUtil.getMessage falls back to the key itself, so a key that is
+        // missing from message_en.properties prints "barcode.label.info.itemName"
+        // on the label instead of "Item".
+        InventoryLotLabel label = new InventoryLotLabel("Test Reagent A", "LOT-2025-001", "2099-12-31", "LOT-BC-1000");
+
+        for (LabelField field : label.getAboveFields()) {
+            assertFalse("Unresolved message key on label: " + field.getName(),
+                    field.getName().startsWith("barcode.label."));
+        }
+        for (LabelField field : label.getBelowFields()) {
+            assertFalse("Unresolved message key on label: " + field.getName(),
+                    field.getName().startsWith("barcode.label."));
+        }
     }
 
     @Test(expected = IllegalArgumentException.class)

@@ -31,18 +31,21 @@ public class InventoryLotLabel extends Label {
         aboveFields = new ArrayList<>();
         belowFields = new ArrayList<>();
 
-        LabelField nameField = new LabelField(MessageUtil.getMessage("barcode.label.info.itemname", "Item"),
+        // Single-arg getMessage: the (key, String) overload treats its second
+        // argument as a substitution parameter, not a default, so a missing key
+        // silently prints the key itself on the label.
+        LabelField nameField = new LabelField(MessageUtil.getMessage("barcode.label.info.itemName"),
                 itemName != null ? itemName : "", 12);
         nameField.setDisplayFieldName(true);
         nameField.setUnderline(true);
         aboveFields.add(nameField);
 
-        LabelField lotField = new LabelField(MessageUtil.getMessage("barcode.label.info.lotnumber", "Lot"),
+        LabelField lotField = new LabelField(MessageUtil.getMessage("barcode.label.info.lotNumber"),
                 lotNumber != null ? lotNumber : "", 8);
         lotField.setDisplayFieldName(true);
         aboveFields.add(lotField);
 
-        LabelField expiryField = new LabelField(MessageUtil.getMessage("barcode.label.info.expirydate", "Exp"),
+        LabelField expiryField = new LabelField(MessageUtil.getMessage("barcode.label.info.expiryDate"),
                 expiryDate != null ? expiryDate : "", 8);
         expiryField.setDisplayFieldName(true);
         belowFields.add(expiryField);
