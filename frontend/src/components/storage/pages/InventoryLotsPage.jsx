@@ -24,7 +24,7 @@ import useStorageTableData from "../hooks/useStorageTableData";
  * even though both share sample_storage_assignment and both count toward
  * occupancy.
  */
-export default function InventoryLotsPage() {
+export default function InventoryLotsPage({ embedded = false }) {
   const intl = useIntl();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -145,14 +145,24 @@ export default function InventoryLotsPage() {
   );
 
   return (
-    <div className="storage-inventory-lots-page pageContent">
-      <BreadcrumbNav crumbs={crumbs} />
-      <h1>
-        <FormattedMessage
-          id="storage.tab.inventoryLots"
-          defaultMessage="Inventory Lots"
-        />
-      </h1>
+    <div
+      className={
+        embedded
+          ? "storage-inventory-lots-page"
+          : "storage-inventory-lots-page pageContent"
+      }
+    >
+      {!embedded && (
+        <>
+          <BreadcrumbNav crumbs={crumbs} />
+          <h1>
+            <FormattedMessage
+              id="storage.tab.inventoryLots"
+              defaultMessage="Inventory Lots"
+            />
+          </h1>
+        </>
+      )}
 
       <div
         className="storage-inventory-lots-page-toolbar"

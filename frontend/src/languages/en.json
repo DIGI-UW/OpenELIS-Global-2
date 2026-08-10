@@ -6322,6 +6322,8 @@
   "storage.tab.racks": "Racks",
   "storage.tab.rooms": "Rooms",
   "storage.tab.inventoryLots": "Inventory Lots",
+  "storage.tab.locations": "Locations",
+  "storage.tab.overview": "Overview",
   "storage.tab.samples": "Sample Items",
   "storage.tab.shelves": "Shelves",
   "storage.target.location": "Target Location",
