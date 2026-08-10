@@ -755,6 +755,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           open={isSectionOpen(sectionLayout, "attachments", false)}
           onToggle={(open) => toggleSection("attachments", open)}
           accessionNumber={row.accessionNumber}
+          editable={editable}
+          legacyResultFile={
+            row.resultFile as
+              | import("./orderContextSections").LegacyResultFile
+              | undefined
+          }
         />
 
         <HistorySection

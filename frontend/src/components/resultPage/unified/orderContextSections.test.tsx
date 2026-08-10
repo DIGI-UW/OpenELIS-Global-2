@@ -1,15 +1,20 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerFormData: vi.fn(),
 }));
 // eslint-disable-next-line import/first
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFormData,
+} from "../../utils/Utils";
 const getMock = getFromOpenElisServer as ReturnType<typeof vi.fn>;
+const postFormMock = postToOpenElisServerFormData as ReturnType<typeof vi.fn>;
 
 import {
   AttachmentsSection,
@@ -30,7 +35,10 @@ const wrap = (node: React.ReactElement) =>
   );
 
 describe("orderContextSections (FR-C3/C5)", () => {
-  beforeEach(() => getMock.mockReset());
+  beforeEach(() => {
+    getMock.mockReset();
+    postFormMock.mockReset();
+  });
 
   it("Order info summarizes clinician · priority · site when closed", () => {
     wrap(
@@ -108,19 +116,134 @@ describe("orderContextSections (FR-C3/C5)", () => {
     expect(screen.getByText("Download")).toBeInTheDocument();
   });
 
-  it("Attachments section is not mounted when the order has no files (FR-C5)", () => {
+  it("Attachments section stays mounted with an empty state when the order has no files", () => {
     getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
       if (typeof cb === "function") {
         cb([]);
       }
     });
-    const { container } = wrap(
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+      />,
+    );
+    expect(
+      screen.getByText("No attachments on this order yet."),
+    ).toBeInTheDocument();
+  });
+
+  it("collapsed empty Attachments section summarizes as none", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof cb === "function") {
+        cb([]);
+      }
+    });
+    wrap(
       <AttachmentsSection
         open={false}
         onToggle={() => {}}
         accessionNumber="DEV1"
       />,
     );
-    expect(container.querySelector(".unifiedRefSection")).toBeNull();
+    expect(screen.getByText("none")).toBeInTheDocument();
+  });
+
+  it("editable rows can add an attachment — multipart POST then list refresh", () => {
+    let listCalls = 0;
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof url !== "string" || typeof cb !== "function") {
+        return;
+      }
+      if (url.includes("/attachments")) {
+        listCalls += 1;
+        cb(
+          listCalls > 1
+            ? [{ id: 9, fileName: "lab-report.pdf", fileSizeBytes: 2048 }]
+            : [],
+        );
+      }
+    });
+    postFormMock.mockImplementation(
+      (_url: string, _form: FormData, cb: (status: number) => void) => {
+        if (typeof cb === "function") {
+          cb(200);
+        }
+      },
+    );
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+        editable
+      />,
+    );
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    expect(input).not.toBeNull();
+    const file = new File(["%PDF-1.4"], "lab-report.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(postFormMock).toHaveBeenCalledWith(
+      "/rest/order/DEV1/attachments",
+      expect.any(FormData),
+      expect.any(Function),
+    );
+    const sentForm = postFormMock.mock.calls[0][1] as FormData;
+    expect((sentForm.get("files") as File).name).toBe("lab-report.pdf");
+    expect(screen.getByText("lab-report.pdf")).toBeInTheDocument();
+  });
+
+  it("oversized files are rejected client-side without posting", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof cb === "function") {
+        cb([]);
+      }
+    });
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+        editable
+      />,
+    );
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const big = new File(["x"], "big.pdf", { type: "application/pdf" });
+    Object.defineProperty(big, "size", { value: 11 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect(postFormMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("File exceeds the 10 MB limit."),
+    ).toBeInTheDocument();
+  });
+
+  it("the legacy per-result file (old Results page upload) is listed and viewable", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof cb === "function") {
+        cb([]);
+      }
+    });
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+        legacyResultFile={{
+          fileName: "scan.png",
+          fileType: "image/png",
+          content: "AAAA",
+        }}
+      />,
+    );
+    expect(screen.getByTestId("legacy-result-file")).toBeInTheDocument();
+    expect(screen.getByText("scan.png")).toBeInTheDocument();
+    expect(screen.getByText("Result")).toBeInTheDocument();
   });
 });

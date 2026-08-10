@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Button, Tag } from "@carbon/react";
+import { Button, FileUploaderButton, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
 import SampleStatusBlock, { QuantitySnapshot } from "./SampleStatusBlock";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFormData,
+} from "../../utils/Utils";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import config from "../../../config.json";
@@ -235,12 +238,50 @@ interface AttachmentDto {
   uploadedAt?: string;
 }
 
+/** legacy per-analysis file (result_file) carried inline on the row */
+export interface LegacyResultFile {
+  fileName?: string;
+  fileType?: string;
+  content?: string;
+  base64Content?: string;
+  uploadedAt?: string;
+}
+
+const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
+const ATTACHMENT_ACCEPT = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/tiff",
+];
+
+/** the old Results page's viewer for the inline legacy file */
+export const openLegacyResultFile = (file: LegacyResultFile): void => {
+  const content = file.base64Content || file.content || "";
+  const rawType = file.fileType || "application/pdf";
+  const type = rawType.startsWith("data:") ? rawType : `data:${rawType}`;
+  const win = window.open();
+  if (win) {
+    win.document.write(
+      `<iframe src="${type};base64,${content}" frameborder="0"` +
+        ` style="border:0; top:0px; left:0px; bottom:0px; right:0px;` +
+        ` width:100%; height:100%;" allowfullscreen></iframe>`,
+    );
+  }
+};
+
 export const AttachmentsSection: React.FC<
-  SectionProps & { accessionNumber?: string }
-> = ({ open, onToggle, accessionNumber }) => {
+  SectionProps & {
+    accessionNumber?: string;
+    editable?: boolean;
+    legacyResultFile?: LegacyResultFile;
+  }
+> = ({ open, onToggle, accessionNumber, editable, legacyResultFile }) => {
   const intl = useIntl();
   const [files, setFiles] = useState<AttachmentDto[] | null>(null);
-  useEffect(() => {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const loadFiles = React.useCallback(() => {
     if (!accessionNumber) {
       return;
     }
@@ -249,23 +290,69 @@ export const AttachmentsSection: React.FC<
       (body: AttachmentDto[]) => setFiles(Array.isArray(body) ? body : []),
     );
   }, [accessionNumber]);
-  if (!files || files.length === 0) {
+  useEffect(loadFiles, [loadFiles]);
+  if (!accessionNumber) {
     return null;
   }
+  const legacy =
+    legacyResultFile &&
+    legacyResultFile.fileName &&
+    (legacyResultFile.base64Content || legacyResultFile.content)
+      ? legacyResultFile
+      : null;
+  const count = (files?.length || 0) + (legacy ? 1 : 0);
   const sizeLabel = (bytes?: number) =>
     bytes ? `${Math.max(1, Math.round(bytes / 1024))} KB` : "";
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (file.size > ATTACHMENT_MAX_SIZE) {
+      setError(
+        intl.formatMessage({ id: "label.results.attachments.tooLarge" }),
+      );
+      return;
+    }
+    setError("");
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("files", file, file.name);
+    postToOpenElisServerFormData(
+      `/rest/order/${accessionNumber}/attachments`,
+      formData,
+      (status: number) => {
+        setUploading(false);
+        if (status >= 200 && status < 300) {
+          loadFiles();
+        } else {
+          setError(
+            intl.formatMessage({
+              id: "label.results.attachments.uploadFailed",
+            }),
+          );
+        }
+      },
+    );
+  };
+
   return (
     <ReferenceSection
       sectionId="attachments"
       title={<FormattedMessage id="label.results.section.attachments" />}
-      summary={intl.formatMessage(
-        { id: "label.results.attachments.summary" },
-        { 0: files.length },
-      )}
+      summary={
+        count > 0
+          ? intl.formatMessage(
+              { id: "label.results.attachments.summary" },
+              { 0: count },
+            )
+          : intl.formatMessage({ id: "label.results.attachments.none" })
+      }
       open={open}
       onToggle={onToggle}
     >
-      {files.map((file) => (
+      {(files || []).map((file) => (
         <div className="unifiedHistoryRow" key={file.id}>
           <span className="unifiedHistoryDetail">
             {file.fileName}
@@ -301,6 +388,48 @@ export const AttachmentsSection: React.FC<
           </Button>
         </div>
       ))}
+      {legacy && (
+        <div className="unifiedHistoryRow" data-testid="legacy-result-file">
+          <span className="unifiedHistoryDetail">
+            {legacy.fileName}
+            <span className="unifiedHistoryFootnote">
+              {legacy.uploadedAt ? ` ${legacy.uploadedAt}` : ""}
+            </span>
+          </span>
+          <Tag size="sm" type="warm-gray">
+            <FormattedMessage id="label.results.attachments.resultScope" />
+          </Tag>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => openLegacyResultFile(legacy)}
+          >
+            <FormattedMessage id="label.results.attachments.view" />
+          </Button>
+        </div>
+      )}
+      {count === 0 && (
+        <div className="unifiedHistoryFootnote">
+          <FormattedMessage id="label.results.attachments.empty" />
+        </div>
+      )}
+      {editable && (
+        <div className="unifiedFieldSpacer">
+          <FileUploaderButton
+            labelText={intl.formatMessage({
+              id: "label.results.attachments.add",
+            })}
+            accept={ATTACHMENT_ACCEPT}
+            multiple={false}
+            disabled={uploading}
+            onChange={handleUpload}
+            disableLabelChanges
+            size="sm"
+            data-testid="attachment-upload"
+          />
+        </div>
+      )}
+      {error && <div className="unifiedSampleStatusError">{error}</div>}
     </ReferenceSection>
   );
 };
