@@ -529,6 +529,24 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                         org.hamcrest.CoreMatchers.hasItem(org.hamcrest.CoreMatchers.containsString("NCE-42"))));
     }
 
+    /**
+     * OGC-1026 (R7, FR-G1) — an interpretation entered on the unified page rides
+     * the save as an EXTERNAL note under the "Interpretation" subject, so it
+     * reaches the patient report and the analysis timeline without new schema.
+     */
+    @Test
+    public void save_withInterpretation_writesReportVisibleNote() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"\",\"interpretation\":\"Fasting glucose within the reference range.\""))
+                .session(session)).andExpect(status().isOk());
+
+        Integer notes = jdbc.queryForObject("SELECT count(*) FROM clinlims.note WHERE reference_id = 1"
+                + " AND note_type = 'E' AND subject = 'Interpretation'"
+                + " AND text = 'Fasting glucose within the reference range.'", Integer.class);
+        assertEquals(Integer.valueOf(1), notes);
+    }
+
     @Test
     public void labUnitDomain_mapsFromTestSectionColumn() {
         // FR-M1 foundation: the OGC-1020 test_section.domain column round-trips

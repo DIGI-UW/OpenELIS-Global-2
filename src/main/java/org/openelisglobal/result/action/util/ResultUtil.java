@@ -124,6 +124,9 @@ public class ResultUtil {
     /** OGC-1021 (R2, FR-J1) — subject records the auto-set context axis. */
     private static final String RESULT_MODIFICATION_SUBJECT = "Result Note (Modification)";
 
+    /** OGC-1026 (R7, FR-G1) — interpretation notes are filterable by subject. */
+    private static final String INTERPRETATION_SUBJECT = "Interpretation";
+
     /**
      * Visibility axis of the dual-axis note (FR-J1): "E" = send with result
      * (external), anything else = internal — the legacy default.
@@ -352,6 +355,14 @@ public class ResultUtil {
                 actionDataSet.addToNoteList(noteService.createSavableNote(analysis,
                         NoteType.UNCONDITIONAL_ACCEPTANCE_REASON, testResultItem.getForceTechApprovalNote(),
                         RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+            }
+
+            // OGC-1026 (R7, FR-G1): the clinical interpretation goes with the
+            // result to the report — an EXTERNAL note under its own subject
+            if (!GenericValidator.isBlankOrNull(testResultItem.getInterpretation())) {
+                actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
+                        testResultItem.getInterpretation().trim(), INTERPRETATION_SUBJECT,
+                        ControllerUtills.getSysUserId(request)));
             }
 
             if (testResultItem.isShadowRejected()) {

@@ -431,3 +431,57 @@
   gap: 0.75rem;
   margin-top: 0.75rem;
 }
+
+/* R7/FR-G1 — interpretation buckets + editor */
+.unifiedRuleBanner {
+  padding: 0.625rem;
+  background: #edf5ff;
+  border-left: 4px solid #0f62fe;
+  font-size: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: #0043ce;
+}
+
+.unifiedInterpretationLayout {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.unifiedBucketList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 14rem;
+}
+
+.unifiedBucket {
+  text-align: left;
+  padding: 0.5rem;
+  border: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+  background: var(--cds-layer-02, #ffffff);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.unifiedBucket:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.unifiedBucket--applied {
+  border: 2px solid #0f62fe;
+  background: #edf5ff;
+}
+
+.unifiedBucketText {
+  margin-top: 0.25rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.unifiedInterpretationText {
+  flex: 1;
+  min-width: 17.5rem;
+}

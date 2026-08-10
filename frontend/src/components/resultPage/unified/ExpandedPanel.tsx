@@ -24,6 +24,7 @@ import {
 } from "./orderContextSections";
 import CriticalBanner from "./CriticalBanner";
 import HistorySection from "./HistorySection";
+import InterpretationSection from "./InterpretationSection";
 import AliquotsSection from "./AliquotsSection";
 import ReferralAction, {
   ReferralDraft,
@@ -142,6 +143,8 @@ interface ExpandedPanelProps {
   rejectReasons: IdValue[];
   rejectDraft: RejectDraft | null;
   onRejectDraftChange: (draft: RejectDraft | null) => void;
+  interpretationDraft: string | null;
+  onInterpretationDraftChange: (draft: string | null) => void;
 }
 
 const noteVisibilityTag = (noteType?: string) =>
@@ -193,6 +196,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   rejectReasons,
   rejectDraft,
   onRejectDraftChange,
+  interpretationDraft,
+  onInterpretationDraftChange,
 }) => {
   const intl = useIntl();
   const rowKey = worklistRowKey(row);
@@ -220,6 +225,9 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   // one order-record fetch per accession feeds Order info + Programme
   const orderContext = useOrderContext(row.accessionNumber);
   const notes = row.analysisNotes || [];
+  const latestInterpretation = [...notes]
+    .reverse()
+    .find((note) => note.subject === "Interpretation")?.text;
 
   const toggleSection = (sectionId: string, open: boolean) =>
     onSectionLayoutChange(rememberSectionChoice(sectionId, open));
@@ -615,6 +623,20 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           open={isSectionOpen(sectionLayout, "aliquots", false)}
           onToggle={(open) => toggleSection("aliquots", open)}
         />
+
+        {domain === "CLINICAL" && (
+          <InterpretationSection
+            testId={row.testId as string | undefined}
+            componentId={row.testResultComponentId as string | undefined}
+            resultValue={row.resultValue as string | undefined}
+            latestInterpretation={latestInterpretation}
+            draft={interpretationDraft}
+            onDraftChange={onInterpretationDraftChange}
+            editable={editable}
+            openOverride={sectionLayout["interpretation"]}
+            onToggle={(open) => toggleSection("interpretation", open)}
+          />
+        )}
 
         <ProgrammeSection
           open={isSectionOpen(sectionLayout, "program", false)}

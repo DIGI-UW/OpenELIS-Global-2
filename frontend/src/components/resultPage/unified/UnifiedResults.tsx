@@ -177,6 +177,9 @@ const UnifiedResults: React.FC = () => {
   const [rejectDrafts, setRejectDrafts] = useState<Record<string, RejectDraft>>(
     {},
   );
+  const [interpretationDrafts, setInterpretationDrafts] = useState<
+    Record<string, string>
+  >({});
 
   const domain: ResultsDomain = useMemo(() => {
     const unit = labUnits.find((u) => u.id === selectedLabUnit);
@@ -243,6 +246,7 @@ const UnifiedResults: React.FC = () => {
       setDilutionDrafts({});
       setReferralDrafts({});
       setRejectDrafts({});
+      setInterpretationDrafts({});
       setNceOpenKey(null);
       setExpandedRowKey(null);
       setStaleInfo({});
@@ -473,6 +477,25 @@ const UnifiedResults: React.FC = () => {
     [markRowDirty],
   );
 
+  const handleInterpretationDraftChange = useCallback(
+    (target: WorklistRow, draft: string | null) => {
+      const key = worklistRowKey(target);
+      setInterpretationDrafts((current) => {
+        const next = { ...current };
+        if (draft !== null) {
+          next[key] = draft;
+        } else {
+          delete next[key];
+        }
+        return next;
+      });
+      if (draft !== null) {
+        markRowDirty(target);
+      }
+    },
+    [markRowDirty],
+  );
+
   const handleEdit = useCallback((target: WorklistRow) => {
     const key = worklistRowKey(target);
     setRowStates((current) => ({
@@ -616,6 +639,11 @@ const UnifiedResults: React.FC = () => {
         item.shadowRejected = true;
         item.rejectReasonId = reject.rejectReasonId;
       }
+      // R7 (FR-G1): interpretation rides the save as a report-visible note
+      const interpretation = interpretationDrafts[key];
+      if (interpretation && interpretation.trim()) {
+        item.interpretation = interpretation.trim();
+      }
       postToOpenElisServerJsonResponse(
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify({ testResult: item }),
@@ -642,6 +670,11 @@ const UnifiedResults: React.FC = () => {
               delete next[key];
               return next;
             });
+            setInterpretationDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
           }
         },
       );
@@ -652,6 +685,7 @@ const UnifiedResults: React.FC = () => {
       dilutionDrafts,
       referralDrafts,
       rejectDrafts,
+      interpretationDrafts,
       rowStates,
     ],
   );
@@ -1026,6 +1060,12 @@ const UnifiedResults: React.FC = () => {
                               rejectDraft={rejectDrafts[key] || null}
                               onRejectDraftChange={(draft) =>
                                 handleRejectDraftChange(row, draft)
+                              }
+                              interpretationDraft={
+                                interpretationDrafts[key] ?? null
+                              }
+                              onInterpretationDraftChange={(draft) =>
+                                handleInterpretationDraftChange(row, draft)
                               }
                               actions={
                                 <>

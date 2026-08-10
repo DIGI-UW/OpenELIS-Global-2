@@ -203,6 +203,14 @@ public class TestResultItem implements ResultItem, Serializable {
     private String noteContext;
 
     /**
+     * OGC-1026 (R7, FR-G1) / OGC-1021 (R2 FR-G) — clinical interpretation text
+     * entered on the unified Results page. Persisted as an EXTERNAL note with
+     * subject "Interpretation" so it reaches the patient report and the analysis
+     * timeline without new schema.
+     */
+    private String interpretation;
+
+    /**
      * OGC-1021 (R2, FR-D5) — dilution factor applied to a quantitative result. The
      * client stores the computed reported value (= measured × factor) in
      * {@code resultValue}; factor and measured value are captured in an internal
@@ -1236,6 +1244,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setNoteContext(String noteContext) {
         this.noteContext = noteContext;
+    }
+
+    public String getInterpretation() {
+        return interpretation;
+    }
+
+    public void setInterpretation(String interpretation) {
+        this.interpretation = interpretation;
     }
 
     public String getDilutionFactor() {
