@@ -10,6 +10,7 @@ import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import SampleItemsPage from "./components/storage/pages/SampleItemsPage";
+import InventoryLotsPage from "./components/storage/pages/InventoryLotsPage";
 import ManageLocationPage from "./components/storage/pages/ManageLocationPage";
 import RoomsPage from "./components/storage/pages/RoomsPage";
 import DevicesPage from "./components/storage/pages/DevicesPage";
@@ -767,6 +768,16 @@ export default function App() {
                   component={() => (
                     <RouteErrorBoundary {...routeErrorStorage}>
                       <SampleItemsPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/inventory-lots"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <InventoryLotsPage />
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
