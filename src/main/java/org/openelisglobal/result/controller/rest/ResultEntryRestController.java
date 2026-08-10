@@ -47,6 +47,8 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testalertrule.service.TestAlertEvaluationService;
+import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
+import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
@@ -118,6 +120,10 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     private TestResultComponentService testResultComponentService;
     @Autowired
     private TestResultInterpretationService interpretationService;
+    @Autowired
+    private TestReagentLinkService testReagentLinkService;
+    @Autowired
+    private org.openelisglobal.inventory.service.InventoryItemService inventoryItemService;
 
     /**
      * Lab Units the user may enter results for, each carrying its domain so the
@@ -207,6 +213,35 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             }
         }
         return ResponseEntity.ok(buckets);
+    }
+
+    /**
+     * OGC-1024 (R5) — the reagents linked to a test (Test Catalog Editor), readable
+     * by the Results role so the bench Reagents &amp; QC section can surface lots
+     * and record consumption. The catalog's own endpoint is ADMIN-only.
+     */
+    @GetMapping(value = "test/{testId}/reagents", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @PreAuthorize("hasRole('RESULTS')")
+    public ResponseEntity<List<Map<String, Object>>> getTestReagentLinks(@PathVariable String testId) {
+        List<Map<String, Object>> reagents = new ArrayList<>();
+        for (TestReagentLink link : testReagentLinkService.getByTestId(testId)) {
+            Map<String, Object> reagent = new HashMap<>();
+            reagent.put("reagentId", link.getReagentId());
+            reagent.put("usageType", link.getUsageType());
+            reagent.put("quantityPerTest", link.getQuantityPerTest());
+            reagent.put("quantityUnit", link.getQuantityUnit());
+            if (link.getReagentId() != null) {
+                org.openelisglobal.inventory.valueholder.InventoryItem item = inventoryItemService
+                        .get(link.getReagentId());
+                if (item != null) {
+                    reagent.put("name", item.getName());
+                    reagent.put("units", item.getUnits());
+                }
+            }
+            reagents.add(reagent);
+        }
+        return ResponseEntity.ok(reagents);
     }
 
     /**

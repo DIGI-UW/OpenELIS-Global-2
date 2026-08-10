@@ -25,6 +25,7 @@ import {
 import CriticalBanner from "./CriticalBanner";
 import HistorySection from "./HistorySection";
 import InterpretationSection from "./InterpretationSection";
+import ReagentsQcSection from "./ReagentsQcSection";
 import AliquotsSection from "./AliquotsSection";
 import ReferralAction, {
   ReferralDraft,
@@ -298,43 +299,6 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                     {" "}
                     <FormattedMessage id="label.results.critical.range" />:{" "}
                     {row.criticalRange}
-                  </span>
-                )}
-              </div>
-            )}
-            {editable && dilutionApplies(row.resultType) && (
-              <div className="unifiedDilution">
-                <TextInput
-                  id={`dilution-measured-${rowKey}`}
-                  labelText={intl.formatMessage({
-                    id: "label.results.dilution.measured",
-                  })}
-                  type="number"
-                  value={dilutionDraft.measuredValue}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    applyDilution({
-                      ...dilutionDraft,
-                      measuredValue: e.target.value,
-                    })
-                  }
-                />
-                <TextInput
-                  id={`dilution-factor-${rowKey}`}
-                  labelText={intl.formatMessage({
-                    id: "label.results.dilution.factor",
-                  })}
-                  type="number"
-                  value={dilutionDraft.factor}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    applyDilution({ ...dilutionDraft, factor: e.target.value })
-                  }
-                />
-                {reported !== null && (
-                  <span className="unifiedDilutionComputed">
-                    <FormattedMessage
-                      id="label.results.dilution.reported"
-                      values={{ 0: reported }}
-                    />
                   </span>
                 )}
               </div>
@@ -667,6 +631,60 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           criticalRange={row.criticalRange}
         />
       )}
+
+      {/* CONSUMABLES & QUALITY (R5/R6 — OGC-1024/OGC-1025) */}
+      <ReagentsQcSection
+        testId={row.testId as string | undefined}
+        analysisId={row.analysisId as string | undefined}
+        editable={editable}
+        fromAnalyzerId={loadedAnalyzerId}
+        analyzerName={
+          analyzers.find((a) => a.id === loadedAnalyzerId)?.value as
+            | string
+            | undefined
+        }
+        open={isSectionOpen(sectionLayout, "combo", true)}
+        onToggle={(open) => toggleSection("combo", open)}
+        dilution={
+          editable && dilutionApplies(row.resultType) ? (
+            <div className="unifiedDilution">
+              <TextInput
+                id={`dilution-measured-${rowKey}`}
+                labelText={intl.formatMessage({
+                  id: "label.results.dilution.measured",
+                })}
+                type="number"
+                value={dilutionDraft.measuredValue}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  applyDilution({
+                    ...dilutionDraft,
+                    measuredValue: e.target.value,
+                  })
+                }
+              />
+              <TextInput
+                id={`dilution-factor-${rowKey}`}
+                labelText={intl.formatMessage({
+                  id: "label.results.dilution.factor",
+                })}
+                type="number"
+                value={dilutionDraft.factor}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  applyDilution({ ...dilutionDraft, factor: e.target.value })
+                }
+              />
+              {reported !== null && (
+                <span className="unifiedDilutionComputed">
+                  <FormattedMessage
+                    id="label.results.dilution.reported"
+                    values={{ 0: reported }}
+                  />
+                </span>
+              )}
+            </div>
+          ) : undefined
+        }
+      />
 
       {/* REFERENCE ZONE (FR-C3/C4/C5) */}
       <div className="unifiedRefZone">
