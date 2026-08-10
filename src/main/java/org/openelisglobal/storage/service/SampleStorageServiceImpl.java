@@ -478,13 +478,18 @@ public class SampleStorageServiceImpl implements SampleStorageService {
      * OGC-1026: quantity snapshot for the Results page sample-status block —
      * remaining falls back to the initial quantity for legacy samples that predate
      * remaining-quantity tracking. No-op when the sample can't be resolved so the
-     * legacy empty-location contract is preserved.
+     * legacy empty-location contract is preserved. Looks up via the DAO's Optional
+     * get, NOT resolveSampleItem — its nested {@code sampleItemService.get} throws
+     * on unknown ids and marks the surrounding read-only transaction rollback-only
+     * even when caught, turning the legacy 200-for-unknown-id contract into a 500
+     * at commit.
      */
     private void putQuantitySnapshot(Map<String, Object> target, String sampleItemId) {
-        SampleItem sampleItem;
-        try {
-            sampleItem = resolveSampleItem(sampleItemId);
-        } catch (RuntimeException e) {
+        if (sampleItemId == null || !sampleItemId.trim().matches("\\d+")) {
+            return;
+        }
+        SampleItem sampleItem = sampleItemDAO.get(sampleItemId.trim()).orElse(null);
+        if (sampleItem == null) {
             return;
         }
         target.put("quantity", sampleItem.getQuantity());
