@@ -110,10 +110,6 @@ describe("LocationPickerPage", () => {
         onCancel={vi.fn()}
       />,
     );
-    // Pick a room via create-mode cascade
-    fireEvent.click(
-      screen.getByRole("button", { name: /create new location/i }),
-    );
     const roomTrigger = document
       .querySelector("#location-picker-room")
       .querySelector("button.cds--list-box__field");

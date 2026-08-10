@@ -6238,6 +6238,7 @@
   "storage.picker.heading.assignLocation": "Assign Storage Location",
   "storage.picker.newLocation": "New location",
   "storage.picker.notes": "Notes",
+  "storage.picker.orBrowse": "Or pick level by level",
   "storage.picker.position.optional": "Position (optional)",
   "storage.picker.select": "Select {level}",
   "storage.picker.addNewLevel": "Add new {level}",
