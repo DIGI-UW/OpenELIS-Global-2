@@ -9,6 +9,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
@@ -1957,5 +1958,88 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         default:
             return null;
         }
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> updateInventoryLotAssignmentMetadata(String inventoryLotId, String positionCoordinate,
+            String notes) {
+        if (inventoryLotId == null || inventoryLotId.trim().isEmpty()) {
+            throw new LIMSRuntimeException("InventoryLot ID is required");
+        }
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO
+                .findByInventoryLotId(Long.valueOf(inventoryLotId));
+        if (assignment == null) {
+            throw new LIMSRuntimeException("No storage assignment found for InventoryLot: " + inventoryLotId);
+        }
+
+        // A blank value clears the field; null leaves it untouched, so a caller can
+        // patch one field without resending the other.
+        if (positionCoordinate != null) {
+            assignment.setPositionCoordinate(positionCoordinate.trim().isEmpty() ? null : positionCoordinate.trim());
+        }
+        if (notes != null) {
+            assignment.setNotes(notes.trim().isEmpty() ? null : notes.trim());
+        }
+        sampleStorageAssignmentDAO.update(assignment);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("assignmentId", assignment.getId());
+        response.put("inventoryLotId", inventoryLotId);
+        response.put("positionCoordinate", assignment.getPositionCoordinate());
+        response.put("notes", assignment.getNotes());
+        response.put("updatedDate", new Timestamp(System.currentTimeMillis()).toString());
+        response.put("hierarchicalPath", buildHierarchicalPathForAssignment(assignment));
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllInventoryLotsWithAssignments() {
+        List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.getAll();
+        List<Map<String, Object>> response = new java.util.ArrayList<>();
+
+        for (SampleStorageAssignment assignment : assignments) {
+            if (!SampleStorageAssignment.OCCUPANT_INVENTORY_LOT.equals(assignment.getOccupantType())
+                    || assignment.getInventoryLotId() == null) {
+                continue;
+            }
+            InventoryLot lot = inventoryLotService.get(assignment.getInventoryLotId());
+            if (lot == null) {
+                continue;
+            }
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", lot.getId());
+            map.put("inventoryLotId", lot.getId());
+            map.put("lotNumber", lot.getLotNumber() != null ? lot.getLotNumber() : "");
+            map.put("barcode", lot.getBarcode() != null ? lot.getBarcode() : "");
+            map.put("itemName",
+                    lot.getInventoryItem() != null && lot.getInventoryItem().getName() != null
+                            ? lot.getInventoryItem().getName()
+                            : "");
+            map.put("type",
+                    lot.getInventoryItem() != null && lot.getInventoryItem().getItemType() != null
+                            ? lot.getInventoryItem().getItemType().toString()
+                            : "");
+            map.put("quantity", lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0);
+            map.put("status", lot.getStatus() != null ? lot.getStatus().toString() : "");
+            map.put("qcStatus", lot.getQcStatus() != null ? lot.getQcStatus().toString() : "");
+            map.put("expirationDate", lot.getExpirationDate() != null ? lot.getExpirationDate().toString() : "");
+
+            // Location is null once the lot has been disposed or otherwise released;
+            // the assignment row survives for audit, so report it as unassigned.
+            String hierarchicalPath = assignment.getLocationId() != null
+                    ? buildHierarchicalPathForAssignment(assignment)
+                    : null;
+            map.put("location", hierarchicalPath != null ? hierarchicalPath : "");
+            map.put("positionCoordinate",
+                    assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
+            map.put("assignedBy", assignment.getAssignedByUserId() != null ? assignment.getAssignedByUserId() : "");
+            map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+
+            response.add(map);
+        }
+        return response;
     }
 }

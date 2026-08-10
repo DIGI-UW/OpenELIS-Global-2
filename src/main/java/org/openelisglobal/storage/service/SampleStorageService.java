@@ -192,4 +192,28 @@ public interface SampleStorageService {
      *         nothing to release
      */
     java.util.Map<String, Object> releaseInventoryLotLocation(String inventoryLotId, String reason, String sysUserId);
+
+    /**
+     * Update an InventoryLot assignment's position and notes in place, the lot
+     * equivalent of {@link #updateAssignmentMetadata}. Use this rather than a move
+     * when the lot has not changed container.
+     *
+     * @param inventoryLotId     InventoryLot ID
+     * @param positionCoordinate New coordinate; blank clears it, null leaves it
+     * @param notes              New notes; blank clears them, null leaves them
+     * @return Map with assignmentId, positionCoordinate, notes and hierarchicalPath
+     */
+    java.util.Map<String, Object> updateInventoryLotAssignmentMetadata(String inventoryLotId, String positionCoordinate,
+            String notes);
+
+    /**
+     * List every InventoryLot that has ever been assigned storage, with its current
+     * location resolved — the lot equivalent of
+     * {@link #getAllSamplesWithAssignments}, backing the Storage Management lots
+     * view.
+     *
+     * @return List of maps with id, lotNumber, barcode, itemName, quantity, status,
+     *         location, assignedBy and date
+     */
+    java.util.List<java.util.Map<String, Object>> getAllInventoryLotsWithAssignments();
 }
