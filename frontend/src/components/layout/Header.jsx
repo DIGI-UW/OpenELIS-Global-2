@@ -344,8 +344,9 @@ function OEHeader({
 
     const result = item.childMenus?.some(
       (child) =>
-        isPathActive(child.menu.actionURL) ||
-        hasActiveDescendant(child, currentPath),
+        child.menu?.isActive &&
+        (isPathActive(child.menu.actionURL) ||
+          hasActiveDescendant(child, currentPath)),
     );
     return result;
   };
@@ -435,7 +436,13 @@ function OEHeader({
       actionPath &&
       actionPath.length > 1 &&
       currentPath.startsWith(actionPath + "/");
-    const hasChildren = menuItem.childMenus.length > 0;
+    // Count only active children: inactive rows render as empty fragments, so
+    // a parent whose children are all deactivated would otherwise become an
+    // expandable that opens onto nothing, and its own actionURL would be
+    // ignored because parents never navigate.
+    const hasChildren = menuItem.childMenus.some(
+      (child) => child.menu?.isActive,
+    );
 
     // Check if this menu item has siblings with paths that start with its own path.
     // If so, only use exact matching to avoid conflicts (e.g., /analyzers vs /analyzers/errors).
