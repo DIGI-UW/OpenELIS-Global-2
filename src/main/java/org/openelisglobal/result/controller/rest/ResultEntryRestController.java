@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -34,6 +35,7 @@ import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.controller.LogbookResultsBaseController;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.form.SingleResultEntryForm;
+import org.openelisglobal.result.service.AnalysisTimelineService;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultEntryPresenceService;
 import org.openelisglobal.role.service.RoleService;
@@ -58,6 +60,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
@@ -105,6 +108,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     private HistoryDAO historyDAO;
     @Autowired(required = false)
     private TestAlertEvaluationService testAlertEvaluationService;
+    @Autowired
+    private AnalysisTimelineService analysisTimelineService;
 
     /**
      * Lab Units the user may enter results for, each carrying its domain so the
@@ -131,6 +136,41 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             labUnits.add(unit);
         }
         return labUnits;
+    }
+
+    /**
+     * OGC-1022 (R3, FR-H1/H2) — this analysis's own event timeline, newest first,
+     * paginated 25/50/100. Creation, status transitions, result value changes,
+     * bound notes, retest revisions and reflex children — never patient trends or
+     * Westgard statistics (D7).
+     */
+    @GetMapping(value = "analysis/{analysisId}/history", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @PreAuthorize("hasRole('RESULTS')")
+    public ResponseEntity<Map<String, Object>> getAnalysisHistory(@PathVariable String analysisId,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize) {
+        Analysis analysis;
+        try {
+            analysis = analysisService.get(analysisId);
+        } catch (RuntimeException e) {
+            analysis = null;
+        }
+        if (analysis == null) {
+            return ResponseEntity.notFound().build();
+        }
+        int boundedPageSize = pageSize == 50 || pageSize == 100 ? pageSize : 25;
+        int boundedPage = Math.max(1, page);
+
+        List<AnalysisTimelineService.AnalysisTimelineEvent> all = analysisTimelineService.getTimeline(analysis);
+        int from = Math.min(all.size(), (boundedPage - 1) * boundedPageSize);
+        int to = Math.min(all.size(), from + boundedPageSize);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("events", all.subList(from, to));
+        body.put("total", all.size());
+        body.put("page", boundedPage);
+        body.put("pageSize", boundedPageSize);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -203,7 +243,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             }
             if (testAlertEvaluationService != null) {
                 String currentUser = getSysUserId(request);
-                dataSet.getNewResults().forEach(rs -> {
+                // corrections matter as much as first entries — a modified value
+                // can cross a critical bound (OGC-1022 R3)
+                Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).forEach(rs -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
                     } catch (RuntimeException ex) {

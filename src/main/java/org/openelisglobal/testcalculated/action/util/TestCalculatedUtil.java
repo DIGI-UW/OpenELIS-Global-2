@@ -150,6 +150,15 @@ public class TestCalculatedUtil {
                             isMissingParams = true;
                             break;
                         }
+                        // a parameter whose result was blanked (e.g. rejected,
+                        // OGC-1023) is as missing as one never entered — its empty
+                        // value would otherwise reach the math expression and blow
+                        // up the whole save with a NumberFormatException
+                        Result paramResult = resultService.get(entry.getValue().toString());
+                        if (paramResult == null || StringUtils.isBlank(paramResult.getValue())) {
+                            isMissingParams = true;
+                            break;
+                        }
                     }
                     Calculation calculation = resultCalculation.getCalculation();
                     if (!isMissingParams) {

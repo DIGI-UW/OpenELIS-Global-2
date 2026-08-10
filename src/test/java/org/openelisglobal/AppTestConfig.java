@@ -369,6 +369,17 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Bean
+    public org.openelisglobal.result.controller.rest.LogbookResultsRestController logbookResultsRestController(
+            org.openelisglobal.referral.service.ReferralTypeService referralTypeService) {
+        return new org.openelisglobal.result.controller.rest.LogbookResultsRestController(referralTypeService);
+    }
+
+    @Bean
+    public org.openelisglobal.eqa.controller.rest.EQAAlertRestController eqaAlertRestController() {
+        return new org.openelisglobal.eqa.controller.rest.EQAAlertRestController();
+    }
+
+    @Bean
     public org.openelisglobal.login.controller.ChangePasswordLoginController changePasswordLoginController() {
         return new org.openelisglobal.login.controller.ChangePasswordLoginController();
     }

@@ -138,16 +138,24 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         if (referralSet.getReferral().getId() != null) {
             referralService.update(referralSet.getReferral());
+            referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
+                    new ArrayList<>(), sysUserId);
         } else {
+            // a brand-new referral (results-entry refer-out) is fully persisted
+            // right here; running updateReferralSets on it as well re-saved the
+            // referenced Result through a merge-detached copy whose version was
+            // already stale from this request's own result save — an
+            // OptimisticLockException that failed the whole save (OGC-1023). The
+            // update pass belongs to the referred-out page's edit flow only.
             referralService.insert(referralSet.getReferral());
             ReferralResult referralResult = referralSet.getNextReferralResult();
             referralResult.setReferralId(referralSet.getReferral().getId());
             referralResult.setSysUserId(sysUserId);
             referralResultService.insert(referralResult);
+            if (referralSet.getNote() != null) {
+                noteService.insert(referralSet.getNote());
+            }
         }
-
-        referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
-                new ArrayList<>(), sysUserId);
     }
 
     protected List<Analysis> setTestReflexes(ResultsUpdateDataSet actionDataSet, String sysUserId) {

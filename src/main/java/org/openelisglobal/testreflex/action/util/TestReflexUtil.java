@@ -451,6 +451,12 @@ public class TestReflexUtil {
         if (reflexTest.getRelation() == null) {
             return false;
         }
+        // a blanked value (e.g. a rejected result, OGC-1023) can trigger nothing —
+        // parsing it would throw and fail the whole save
+        if (GenericValidator.isBlankOrNull(result.getValue())
+                || GenericValidator.isBlankOrNull(reflexTest.getNonDictionaryValue())) {
+            return false;
+        }
         switch (reflexTest.getRelation()) {
         case EQUALS:
             return Double.valueOf(reflexTest.getNonDictionaryValue()).equals(Double.valueOf(result.getValue()));
