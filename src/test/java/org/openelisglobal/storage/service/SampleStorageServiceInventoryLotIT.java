@@ -349,4 +349,41 @@ public class SampleStorageServiceInventoryLotIT extends BaseWebContextSensitiveT
                     e.getMessage().contains("chk_assignment_occupant_exclusive"));
         }
     }
+
+    @Test
+    public void releaseInventoryLotLocation_freesTheSlotAndKeepsTheAssignmentForAudit() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+        assertEquals("Box should read as occupied before release", 1,
+                sampleStorageAssignmentDAO.countByLocationTypeAndId("box", Integer.valueOf(BOX)));
+
+        Map<String, Object> result = sampleStorageService.releaseInventoryLotLocation(LOT_1, "Disposal: expired", "1");
+
+        // The slot is free again: occupancy filters on locationType/locationId.
+        assertEquals("Box should be empty after release", 0,
+                sampleStorageAssignmentDAO.countByLocationTypeAndId("box", Integer.valueOf(BOX)));
+
+        // The row survives for the audit trail, with its location cleared.
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(7000L);
+        assertNotNull("Assignment row should be kept for audit", assignment);
+        assertNull(assignment.getLocationId());
+        assertNull(assignment.getLocationType());
+        assertNull(assignment.getPositionCoordinate());
+
+        assertNotNull("Should report where the lot used to be", result.get("previousLocation"));
+
+        SampleStorageMovement release = sampleStorageMovementDAO.findByInventoryLotId(7000L).stream()
+                .filter(m -> m.getNewLocationType() == null).findFirst()
+                .orElseThrow(() -> new AssertionError("Expected a release movement"));
+        assertEquals(SampleStorageAssignment.OCCUPANT_INVENTORY_LOT, release.getOccupantType());
+        assertEquals("box", release.getPreviousLocationType());
+        assertEquals("Disposal: expired", release.getReason());
+    }
+
+    @Test
+    public void releaseInventoryLotLocation_isANoOpForAnUnassignedLot() {
+        Map<String, Object> result = sampleStorageService.releaseInventoryLotLocation(LOT_2, "Disposal", "1");
+
+        assertTrue("Nothing to release should return an empty result", result.isEmpty());
+        assertTrue("No movement should be written", sampleStorageMovementDAO.findByInventoryLotId(7001L).isEmpty());
+    }
 }
