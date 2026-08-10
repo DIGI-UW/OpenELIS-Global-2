@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -67,15 +68,30 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     /**
      * Item code plus lot number, so a human can still identify the lot when the
-     * printed barcode is damaged. Falls back to the lot number alone when the lot
-     * has no item code to draw on.
+     * printed barcode is damaged. Falls back to whichever half is available when
+     * the other is missing.
      */
     private String barcodeSeed(InventoryLot lot) {
         String itemCode = lot.getInventoryItem() != null ? lot.getInventoryItem().getCode() : null;
+        String lotNumber = lot.getLotNumber();
         if (itemCode == null || itemCode.trim().isEmpty()) {
-            return lot.getLotNumber();
+            return lotNumber;
         }
-        return itemCode + "_" + lot.getLotNumber();
+        if (lotNumber == null || lotNumber.trim().isEmpty()) {
+            return itemCode;
+        }
+        // An auto-generated lot number is already "{itemCode}-{yyyyMMdd}" (see
+        // InventoryManagementServiceImpl.generateLotNumber), so prefixing the item
+        // code again repeats it: FOR_TESTING_FOR_TESTING_20260810.
+        if (toComparable(lotNumber).startsWith(toComparable(itemCode))) {
+            return lotNumber;
+        }
+        return itemCode + "_" + lotNumber;
+    }
+
+    /** Same shape CodeGenerator applies, so the prefix check sees final form. */
+    private static String toComparable(String value) {
+        return value.trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "_").replaceAll("^_+|_+$", "");
     }
 
     private boolean barcodeExists(String barcode) {
