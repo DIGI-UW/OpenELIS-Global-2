@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
+import SampleStatusBlock, { QuantitySnapshot } from "./SampleStatusBlock";
 import { getFromOpenElisServer } from "../../utils/Utils";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -152,17 +153,22 @@ export const ProgrammeSection: React.FC<
   );
 };
 
-interface StorageLocation {
+interface StorageLocation extends QuantitySnapshot {
   hierarchicalPath?: string;
   positionCoordinate?: string;
   notes?: string;
 }
 
 export const StorageSection: React.FC<
-  SectionProps & { sampleItemId?: string; actions?: React.ReactNode }
-> = ({ open, onToggle, sampleItemId, actions }) => {
+  SectionProps & {
+    sampleItemId?: string;
+    editable?: boolean;
+    actions?: React.ReactNode;
+  }
+> = ({ open, onToggle, sampleItemId, editable, actions }) => {
   const intl = useIntl();
   const [location, setLocation] = useState<StorageLocation | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     if (!sampleItemId) {
       return;
@@ -171,7 +177,7 @@ export const StorageSection: React.FC<
       `/rest/storage/sample-items/${sampleItemId}`,
       (body: StorageLocation) => setLocation(body || {}),
     );
-  }, [sampleItemId]);
+  }, [sampleItemId, refreshKey]);
   if (!sampleItemId) {
     return null;
   }
@@ -208,6 +214,14 @@ export const StorageSection: React.FC<
       >
         <FormattedMessage id="label.results.storage.move" />
       </Button>
+      {location && (
+        <SampleStatusBlock
+          sampleItemId={sampleItemId}
+          snapshot={location}
+          editable={Boolean(editable)}
+          onChanged={() => setRefreshKey((k) => k + 1)}
+        />
+      )}
       {actions}
     </ReferenceSection>
   );

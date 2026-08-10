@@ -730,6 +730,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           open={isSectionOpen(sectionLayout, "storage", false)}
           onToggle={(open) => toggleSection("storage", open)}
           sampleItemId={row.sampleItemId as string | undefined}
+          editable={editable}
         />
 
         <AttachmentsSection
