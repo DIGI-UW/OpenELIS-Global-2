@@ -3233,6 +3233,8 @@
   "login.title": "Login",
   "lot.barcode": "Barcode",
   "lot.barcode.hint": "Leave blank to generate one from the item code and lot number.",
+  "lot.label.print": "Print label",
+  "lot.label.print.failed": "Could not generate the label. Please try again.",
   "lot.barcode.locked": "Barcode is locked once saved so printed labels keep working.",
   "lot.barcode.placeholder": "Leave blank to auto-generate",
   "lot.calculatedExpiry": "Calculated Expiry",

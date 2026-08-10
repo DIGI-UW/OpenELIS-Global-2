@@ -21,6 +21,7 @@ vi.mock("./InventoryService", () => ({
   },
   InventoryLotAPI: {
     getAll: vi.fn(),
+    printLabel: vi.fn(),
   },
   InventoryLotStorageAPI: {
     getLocation: vi.fn(),
@@ -381,5 +382,65 @@ describe("InventoryDashboard row-to-lot mapping", () => {
     expect(
       screen.queryByText(/move storage location/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryDashboard print label", () => {
+  const barcodedLot = { ...lotWithLocation, barcode: "TEST_REAGENT_A_LOT_100" };
+
+  const openRowMenu = async () => {
+    await screen.findByText("LOT-100");
+    fireEvent.click(document.querySelector("button.cds--overflow-menu"));
+  };
+
+  it("downloads the generated PDF when Print label is chosen", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([barcodedLot]);
+    InventoryLotAPI.printLabel.mockResolvedValue({
+      data: new Blob(["%PDF-1.4"], { type: "application/pdf" }),
+      contentType: "application/pdf",
+      filename: "lot-TEST_REAGENT_A_LOT_100.pdf",
+    });
+    const createObjectURL = vi.fn(() => "blob:mock");
+    const revokeObjectURL = vi.fn();
+    window.URL.createObjectURL = createObjectURL;
+    window.URL.revokeObjectURL = revokeObjectURL;
+
+    renderDashboard();
+    await openRowMenu();
+    fireEvent.click(await screen.findByText(/print label/i));
+
+    await waitFor(() =>
+      expect(InventoryLotAPI.printLabel).toHaveBeenCalledWith(1),
+    );
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(revokeObjectURL).toHaveBeenCalled();
+  });
+
+  it("disables Print label for a lot that has no barcode", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, barcode: null },
+    ]);
+    renderDashboard();
+    await openRowMenu();
+
+    const item = (await screen.findByText(/print label/i)).closest("button");
+    expect(item).toBeDisabled();
+  });
+
+  it("notifies rather than failing silently when label generation fails", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([barcodedLot]);
+    InventoryLotAPI.printLabel.mockRejectedValue(new Error("boom"));
+
+    renderDashboard();
+    await openRowMenu();
+    fireEvent.click(await screen.findByText(/print label/i));
+
+    await waitFor(() =>
+      expect(mockNotificationContext.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Could not generate the label. Please try again.",
+        }),
+      ),
+    );
   });
 });

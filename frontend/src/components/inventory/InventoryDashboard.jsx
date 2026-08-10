@@ -465,6 +465,27 @@ const InventoryDashboard = () => {
     setLocationPickerOpen(true);
   };
 
+  const handlePrintLabel = async (lot) => {
+    try {
+      const response = await InventoryLotAPI.printLabel(lot.id);
+      const blob = new Blob([response.data], { type: response.contentType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = response.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "lot.label.print.failed" }),
+      });
+    }
+  };
+
   const movingLotCurrentLocation = movingLot?.location?.hierarchicalPath
     ? {
         selection: {},
@@ -763,6 +784,13 @@ const InventoryDashboard = () => {
                                         : "Assign storage location",
                                     })}
                                     onClick={() => handleMoveLocation(lot)}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "lot.label.print",
+                                    })}
+                                    disabled={!lot.barcode}
+                                    onClick={() => handlePrintLabel(lot)}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
