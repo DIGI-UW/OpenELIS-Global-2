@@ -452,12 +452,21 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <TextInput
             id="barcode"
             labelText={<FormattedMessage id="lot.barcode" />}
-            helperText={intl.formatMessage({ id: "lot.barcode.hint" })}
             value={formData.barcode}
+            disabled={isEdit}
             onChange={(e) => handleChange("barcode", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "lot.barcode.placeholder",
-            })}
+            placeholder={
+              isEdit
+                ? ""
+                : intl.formatMessage({
+                    id: "lot.barcode.placeholder",
+                  })
+            }
+            helperText={
+              isEdit
+                ? intl.formatMessage({ id: "lot.barcode.locked" })
+                : intl.formatMessage({ id: "lot.barcode.hint" })
+            }
           />
         </Stack>
       </Modal>

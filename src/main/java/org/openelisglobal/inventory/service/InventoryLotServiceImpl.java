@@ -3,7 +3,10 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
@@ -18,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<InventoryLot, Long>
         implements InventoryLotService {
 
+    // Matches the inventory_lot.barcode column length.
+    private static final int BARCODE_MAX_LENGTH = 100;
+
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
 
@@ -31,6 +37,49 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Override
     protected InventoryLotDAO getBaseObjectDAO() {
         return inventoryLotDAO;
+    }
+
+    @Override
+    @Transactional
+    public Long insert(InventoryLot lot) {
+        lot.setBarcode(resolveBarcode(lot));
+        return super.insert(lot);
+    }
+
+    /**
+     * The lot barcode is the lab's own scannable label, so the system mints one
+     * when the user does not supply it. Mirrors InventoryItemServiceImpl's code
+     * handling: generate from a readable seed when blank, normalize an explicit
+     * value otherwise, and reject a duplicate rather than letting the UNIQUE index
+     * surface a raw constraint error.
+     */
+    private String resolveBarcode(InventoryLot lot) {
+        String supplied = lot.getBarcode();
+        String barcode = (supplied == null || supplied.trim().isEmpty())
+                ? CodeGenerator.generateFromName(barcodeSeed(lot), BARCODE_MAX_LENGTH, "LOT", this::barcodeExists)
+                : CodeGenerator.normalize(supplied, BARCODE_MAX_LENGTH);
+        if (barcodeExists(barcode)) {
+            throw new LocalizedValidationException("inventory.lot.error.duplicateBarcode",
+                    "Inventory lot barcode already exists: " + barcode, Map.of("barcode", barcode));
+        }
+        return barcode;
+    }
+
+    /**
+     * Item code plus lot number, so a human can still identify the lot when the
+     * printed barcode is damaged. Falls back to the lot number alone when the lot
+     * has no item code to draw on.
+     */
+    private String barcodeSeed(InventoryLot lot) {
+        String itemCode = lot.getInventoryItem() != null ? lot.getInventoryItem().getCode() : null;
+        if (itemCode == null || itemCode.trim().isEmpty()) {
+            return lot.getLotNumber();
+        }
+        return itemCode + "_" + lot.getLotNumber();
+    }
+
+    private boolean barcodeExists(String barcode) {
+        return inventoryLotDAO.getByBarcode(barcode) != null;
     }
 
     @Override

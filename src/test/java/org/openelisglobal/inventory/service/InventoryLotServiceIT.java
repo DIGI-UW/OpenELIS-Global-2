@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
@@ -18,6 +19,9 @@ public class InventoryLotServiceIT extends BaseWebContextSensitiveTest {
 
     @Autowired
     InventoryLotService inventoryLotService;
+
+    @Autowired
+    InventoryItemService inventoryItemService;
 
     @Before
     public void setup() throws Exception {
@@ -73,6 +77,61 @@ public class InventoryLotServiceIT extends BaseWebContextSensitiveTest {
         assertNull("Null barcode should not match", inventoryLotService.getByBarcode(null));
         assertNull("Empty barcode should not match", inventoryLotService.getByBarcode(""));
         assertNull("Whitespace barcode should not match", inventoryLotService.getByBarcode("   "));
+    }
+
+    private InventoryLot newLot(String lotNumber, String barcode) {
+        InventoryLot lot = new InventoryLot();
+        // The REST controller mints the FHIR UUID before handing the lot to the
+        // service, so a direct service-level insert has to supply one.
+        lot.setFhirUuid(java.util.UUID.randomUUID());
+        lot.setInventoryItem(inventoryItemService.get(1000L));
+        lot.setLotNumber(lotNumber);
+        lot.setBarcode(barcode);
+        lot.setExpirationDate(Timestamp.valueOf("2099-01-01 00:00:00"));
+        lot.setReceiptDate(Timestamp.valueOf("2025-01-01 00:00:00"));
+        lot.setInitialQuantity(10.0);
+        lot.setCurrentQuantity(10.0);
+        lot.setQcStatus(QCStatus.PENDING);
+        lot.setStatus(LotStatus.ACTIVE);
+        lot.setSysUserId("1");
+        return lot;
+    }
+
+    @Test
+    public void insert_shouldGenerateBarcodeFromItemCodeAndLotNumberWhenBlank() {
+        InventoryLot saved = inventoryLotService.get(inventoryLotService.insert(newLot("LOT-2025-900", null)));
+
+        // Item 1000's code is TEST_REAGENT_A.
+        assertEquals("TEST_REAGENT_A_LOT_2025_900", saved.getBarcode());
+    }
+
+    @Test
+    public void insert_shouldGenerateBarcodeWhenSuppliedValueIsBlank() {
+        InventoryLot saved = inventoryLotService.get(inventoryLotService.insert(newLot("LOT-2025-901", "   ")));
+
+        assertEquals("TEST_REAGENT_A_LOT_2025_901", saved.getBarcode());
+    }
+
+    @Test
+    public void insert_shouldNormalizeAnExplicitlySuppliedBarcode() {
+        InventoryLot saved = inventoryLotService.get(inventoryLotService.insert(newLot("LOT-2025-902", "my-own bc/1")));
+
+        assertEquals("MY_OWN_BC_1", saved.getBarcode());
+    }
+
+    @Test
+    public void insert_shouldSuffixAGeneratedBarcodeRatherThanCollide() {
+        inventoryLotService.insert(newLot("LOT-2025-903", null));
+        InventoryLot second = inventoryLotService.get(inventoryLotService.insert(newLot("LOT-2025-903", null)));
+
+        assertEquals("TEST_REAGENT_A_LOT_2025_903_2", second.getBarcode());
+    }
+
+    @Test(expected = LocalizedValidationException.class)
+    public void insert_shouldRejectAnExplicitBarcodeThatAlreadyExists() {
+        // LOT-BC-1000 normalizes to LOT_BC_1000, so use the stored form directly.
+        inventoryLotService.insert(newLot("LOT-2025-904", "LOT_BC_9999"));
+        inventoryLotService.insert(newLot("LOT-2025-905", "LOT_BC_9999"));
     }
 
     @Test
