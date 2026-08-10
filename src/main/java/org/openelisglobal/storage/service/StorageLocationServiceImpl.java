@@ -1124,6 +1124,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         List<Map<String, Object>> devices = storageSearchService.searchDevices(searchTerm);
         List<Map<String, Object>> shelves = storageSearchService.searchShelves(searchTerm);
         List<Map<String, Object>> racks = storageSearchService.searchRacks(searchTerm);
+        List<Map<String, Object>> boxes = storageSearchService.searchBoxes(searchTerm);
 
         // --- Rooms matched directly: add room + entire subtree ---
         for (Map<String, Object> room : rooms) {
@@ -1214,6 +1215,49 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (rackId instanceof Integer) {
                 expandRackSubtree((Integer) rackId, sb.toString(), seen);
             }
+        }
+
+        // --- Boxes matched directly ---
+        for (Map<String, Object> box : boxes) {
+            Object boxId = box.get("id");
+            Map<String, Object> result = new HashMap<>(box);
+            // getBoxesForAPI puts the physical format ("96-well") in "type" and the
+            // hierarchy level in "locationType" — the inverse of every other level.
+            // Normalise here so the picker's level check accepts the result, keeping
+            // the format under "boxType" the way devices keep "deviceType".
+            Object physicalType = box.get("type");
+            if (physicalType != null) {
+                result.put("boxType", physicalType);
+            }
+            result.put("type", "box");
+
+            // getBoxesForAPI already composes the full Room > Device > Shelf > Rack >
+            // Box path; only rebuild if it is missing.
+            Object existingPath = box.get("hierarchicalPath");
+            if (existingPath == null || ((String) existingPath).isEmpty()) {
+                String roomName = (String) box.get("roomName");
+                String deviceName = (String) box.get("deviceName");
+                String shelfLabel = (String) box.get("shelfLabel");
+                String rackLabel = (String) box.get("rackLabel");
+                String boxLabel = (String) box.get("label");
+                StringBuilder pathBuilder = new StringBuilder();
+                if (roomName != null) {
+                    pathBuilder.append(roomName).append(" > ");
+                }
+                if (deviceName != null) {
+                    pathBuilder.append(deviceName).append(" > ");
+                }
+                if (shelfLabel != null) {
+                    pathBuilder.append(shelfLabel).append(" > ");
+                }
+                if (rackLabel != null) {
+                    pathBuilder.append(rackLabel).append(" > ");
+                }
+                pathBuilder.append(boxLabel);
+                result.put("hierarchicalPath", pathBuilder.toString());
+            }
+
+            seen.putIfAbsent("box:" + boxId, result);
         }
 
         // Sort by hierarchicalPath so siblings appear grouped
