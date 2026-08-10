@@ -4,7 +4,7 @@
  * Lists all QC control lots with status filtering and navigation to create/edit.
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   DataTable,
   TableContainer,
@@ -23,6 +23,7 @@ import {
   Button,
   Loading,
   InlineNotification,
+  Modal,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
@@ -30,6 +31,7 @@ import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import LeveyJenningsChart from "../charts/LeveyJenningsChart";
 
 const STATUS_TAG = {
   ESTABLISHMENT: "gray",
@@ -56,6 +58,64 @@ const ControlLotList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState("");
+  // GAP-3: lot-level Levey-Jennings chart. The lot-scoped endpoints existed
+  // before this — the list just never linked to them.
+  const [chartLot, setChartLot] = useState(null);
+  const [chartData, setChartData] = useState([]);
+  const [chartStatistics, setChartStatistics] = useState(null);
+  const [chartLoading, setChartLoading] = useState(false);
+
+  // Guards against a stale response: reopening the modal for another lot bumps
+  // the sequence, and any response from a superseded request is dropped —
+  // otherwise lot A's slow chart data could render under lot B's heading.
+  const chartRequestSeq = useRef(0);
+
+  const openChart = (lot) => {
+    const seq = ++chartRequestSeq.current;
+    setChartLot(lot);
+    setChartData([]);
+    setChartStatistics(null);
+    setChartLoading(true);
+
+    let completedCalls = 0;
+    const checkDone = () => {
+      completedCalls++;
+      if (completedCalls >= 2) {
+        setChartLoading(false);
+      }
+    };
+
+    getFromOpenElisServer(`/rest/qc/charts/${lot.id}`, (response) => {
+      if (seq !== chartRequestSeq.current) return;
+      const dataPoints =
+        response?.dataPoints || response?.data?.dataPoints || [];
+      setChartData(
+        dataPoints
+          .filter((pt) => (pt.zscore ?? pt.zScore) != null)
+          .map((pt) => ({
+            id: pt.resultId,
+            runDateTime: pt.timestamp,
+            resultValue: pt.value,
+            value: pt.value,
+            zScore: pt.zscore ?? pt.zScore,
+            violated: pt.hasViolation,
+            violations: (pt.violatedRules || []).map((rule) => ({
+              code: rule,
+            })),
+          })),
+      );
+      checkDone();
+    });
+
+    getFromOpenElisServer(
+      `/rest/qc/charts/${lot.id}/statistics`,
+      (response) => {
+        if (seq !== chartRequestSeq.current) return;
+        setChartStatistics(response && response.mean != null ? response : null);
+        checkDone();
+      },
+    );
+  };
 
   const statusOptions = [
     {
@@ -272,6 +332,18 @@ const ControlLotList = () => {
                                     )
                                   }
                                 />
+                                <OverflowMenuItem
+                                  itemText={intl.formatMessage({
+                                    id: "qc.controlLot.viewChart",
+                                  })}
+                                  onClick={() =>
+                                    openChart(
+                                      filteredLots.find(
+                                        (lot) => lot.id === cell.value,
+                                      ),
+                                    )
+                                  }
+                                />
                               </OverflowMenu>
                             </TableCell>
                           );
@@ -288,6 +360,40 @@ const ControlLotList = () => {
           </TableContainer>
         )}
       </DataTable>
+
+      {chartLot && (
+        <Modal
+          open
+          passiveModal
+          size="lg"
+          modalHeading={`${chartLot.lotNumber || ""} — ${intl.formatMessage({
+            id: "qc.controlLot.viewChart",
+          })}`}
+          onRequestClose={() => setChartLot(null)}
+          data-testid="control-lot-chart-modal"
+        >
+          {chartLoading ? (
+            <Loading
+              withOverlay={false}
+              small
+              description={intl.formatMessage({
+                id: "qc.instrumentDetail.chart.loading",
+              })}
+            />
+          ) : chartData.length === 0 ? (
+            <p data-testid="control-lot-chart-empty">
+              {intl.formatMessage({ id: "qc.instrumentDetail.chart.noData" })}
+            </p>
+          ) : (
+            <LeveyJenningsChart
+              data={chartData}
+              statistics={chartStatistics}
+              height="350px"
+              showLegend={true}
+            />
+          )}
+        </Modal>
+      )}
     </div>
   );
 };

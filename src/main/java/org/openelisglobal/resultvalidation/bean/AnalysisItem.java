@@ -177,6 +177,14 @@ public class AnalysisItem implements Serializable {
 
     private boolean nonconforming = false;
 
+    /**
+     * The QC-fail signal (OGC-1147 FR-C1): a control covering this analysis failed
+     * and the resulting non-conformity is still open. Distinct from
+     * {@link #nonconforming}, which is a sample-level QA event — this one is about
+     * the run's quality control.
+     */
+    private boolean qcHold = false;
+
     private String pastNotes;
 
     private String qualifiedDictionaryId;
@@ -701,6 +709,14 @@ public class AnalysisItem implements Serializable {
 
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
+    }
+
+    public boolean isQcHold() {
+        return qcHold;
+    }
+
+    public void setQcHold(boolean qcHold) {
+        this.qcHold = qcHold;
     }
 
     public String getInnoliaResult() {

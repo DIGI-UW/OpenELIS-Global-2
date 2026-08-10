@@ -70,6 +70,20 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
     }
 
     @Override
+    public List<QCControlLot> getActiveBenchByTest(String testId) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<QCControlLot> cq = cb.createQuery(QCControlLot.class);
+            Root<QCControlLot> root = cq.from(QCControlLot.class);
+            cq.where(cb.equal(root.get("testId"), testId), cb.isNull(root.get("instrumentId")),
+                    activeAndUnexpired(cb, root));
+            return entityManager.createQuery(cq).getResultList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving active bench control lots by test", e);
+        }
+    }
+
+    @Override
     public List<QCControlLot> getActiveByInstrument(String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -79,6 +93,26 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error retrieving active control lots by instrument", e);
+        }
+    }
+
+    @Override
+    public List<QCControlLot> getNonExpiredByLotTestAndLevel(String lotNumber, String testId, String controlLevel)
+            throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<QCControlLot> cq = cb.createQuery(QCControlLot.class);
+            Root<QCControlLot> root = cq.from(QCControlLot.class);
+            // NULL and '' are the same "no level" — matching the COALESCE in the
+            // uq_qc_control_lot_active index, so the friendly 400 fires for every
+            // combination the index would reject with a raw constraint violation.
+            Predicate levelMatch = cb.equal(cb.coalesce(root.get("controlLevel"), ""),
+                    controlLevel == null ? "" : controlLevel);
+            cq.where(cb.equal(root.get("lotNumber"), lotNumber), cb.equal(root.get("testId"), testId),
+                    cb.notEqual(root.get("status"), "EXPIRED"), levelMatch);
+            return entityManager.createQuery(cq).getResultList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving duplicate control lots", e);
         }
     }
 

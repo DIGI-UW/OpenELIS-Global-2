@@ -30,6 +30,8 @@
   <include file="liquibase/qc/007-add-qc-menu-items.xml" />
   <include file="liquibase/qc/008-add-instrument-fk-constraints.xml" />
   <include file="liquibase/qc/009-nullable-unit-of-measure.xml" />
+  <!-- OGC-1147 Manual & RDT QC persistence -->
+  <include file="liquibase/qc/010-manual-rdt-qc.xml" />
 
   <!-- QA Menu v0.5 (IA Rehome) -->
   <include file="liquibase/qa/001-add-qa-menu-items.xml" />

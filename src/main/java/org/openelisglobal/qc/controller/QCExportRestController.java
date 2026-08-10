@@ -37,7 +37,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
@@ -54,10 +56,20 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.qc.service.QCChartDataService;
 import org.openelisglobal.qc.service.QCChartDataService.LotSection;
 import org.openelisglobal.qc.service.QCChartDataService.QCExportModel;
+import org.openelisglobal.qc.service.QCControlLotService;
+import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.service.SigmaMetrics;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
+import org.openelisglobal.qc.valueholder.QCSource;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -95,6 +107,21 @@ public class QCExportRestController {
 
     @Autowired
     private QCChartDataService chartDataService;
+
+    @Autowired
+    private QCResultService qcResultService;
+
+    @Autowired
+    private QCControlLotService controlLotService;
+
+    @Autowired
+    private TestService testService;
+
+    @Autowired
+    private TestSectionService testSectionService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     // Injected rather than ConfigurationProperties.getInstance() so test slices
     // don't have to register the static SpringContext holder (mirrors esig).
@@ -159,6 +186,144 @@ public class QCExportRestController {
             writer.printf("%s%n", StringUtil.csvEscape(m("qc.export.truncated") + " (" + MAX_EXPORT_ROWS + ")"));
         }
         writer.flush();
+    }
+
+    /**
+     * The bench QC register: one row per manual or RDT control run in the window
+     * (OGC-1147 FR-D5).
+     * /rest/qc/export/bench/csv?startDate=&amp;endDate=[&amp;source=]
+     *
+     * <p>
+     * A separate flat export rather than a source option on {@link #exportCsv}:
+     * that document is a Westgard review, sectioned per control lot and carrying
+     * statistics and sigma per section. An RDT control has no lot and no
+     * statistics, so it has no section to occupy — the mismatch is the structure,
+     * not just the instrument label. What an assessor wants from bench QC is a
+     * register anyway: who ran which control, when, and what it read.
+     */
+    @GetMapping("/bench/csv")
+    @PreAuthorize("hasAuthority('qa.view.qc') or hasRole('GLOBAL_ADMIN')")
+    public void exportBenchCsv(@RequestParam String startDate, @RequestParam String endDate,
+            @RequestParam(required = false) String source, HttpServletResponse response) throws IOException {
+
+        ExportWindow window;
+        QCSource parsedSource = null;
+        try {
+            window = parseWindow(startDate, endDate);
+            if (StringUtils.isNotBlank(source) && !"ALL".equalsIgnoreCase(source)) {
+                parsedSource = QCSource.valueOf(source.toUpperCase());
+                if (!parsedSource.isBenchEntered()) {
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST,
+                            "Analyzer QC belongs to the instrument export");
+                    return;
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+            return;
+        }
+
+        // One row over the cap tells us the cap bit, without a second count query.
+        List<QCResult> results = qcResultService.findBenchResults(window.start(), window.end(), parsedSource,
+                MAX_EXPORT_ROWS + 1);
+        boolean truncated = results.size() > MAX_EXPORT_ROWS;
+        if (truncated) {
+            results = results.subList(0, MAX_EXPORT_ROWS);
+        }
+
+        response.setContentType("text/csv");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"" + exportFilename("bench-qc", startDate, endDate, "csv") + "\"");
+
+        SimpleDateFormat sdf = new SimpleDateFormat(DATE_TIME_PATTERN);
+        PrintWriter writer = response.getWriter();
+        writer.write('﻿');
+        writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n", m("qc.export.header.runDateTime"),
+                m("qc.export.header.source"), m("qc.export.header.labUnit"), m("qc.export.header.test"),
+                m("qc.export.header.control"), m("qc.export.header.expected"), m("qc.export.header.uncertainty"),
+                m("qc.export.header.value"), m("qc.export.header.outcome"), m("qc.export.header.technician"));
+
+        for (QCResult result : results) {
+            writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n",
+                    StringUtil.csvEscape(result.getRunDateTime() != null ? sdf.format(result.getRunDateTime()) : ""),
+                    StringUtil.csvEscape(String.valueOf(result.getSource())),
+                    StringUtil.csvEscape(benchLabUnitName(result)), StringUtil.csvEscape(benchTestName(result)),
+                    StringUtil.csvEscape(benchControlLabel(result)),
+                    // Numeric columns raw, for the same reason as the chart export: the
+                    // formula guard would type a negative as text in Excel.
+                    result.getExpectedValue() != null ? result.getExpectedValue().toPlainString() : "",
+                    result.getUncertainty() != null ? result.getUncertainty().toPlainString() : "",
+                    result.getResultValue() != null ? result.getResultValue().toPlainString() : "",
+                    StringUtil.csvEscape(String.valueOf(result.getQualitativeOutcome())),
+                    StringUtil.csvEscape(benchTechnicianName(result)));
+        }
+        if (truncated) {
+            // Never drop rows silently in a compliance export (OGC-706 §01 #4).
+            writer.printf("%s%n", StringUtil.csvEscape(m("qc.export.truncated") + " (" + MAX_EXPORT_ROWS + ")"));
+        }
+        writer.flush();
+    }
+
+    /**
+     * Names are context on a compliance export, never a reason to fail one. Each
+     * lookup is a separate service, so they share this guard rather than four
+     * copies of it.
+     */
+    private String resolveOrBlank(Supplier<String> lookup) {
+        try {
+            String value = lookup.get();
+            return value == null ? "" : value;
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
+
+    private String benchLabUnitName(QCResult result) {
+        if (result.getTestSectionId() == null) {
+            return "";
+        }
+        return resolveOrBlank(() -> {
+            TestSection section = testSectionService.get(result.getTestSectionId());
+            return section == null ? null : section.getLocalizedName();
+        });
+    }
+
+    private String benchTestName(QCResult result) {
+        if (result.getTestId() == null) {
+            return "";
+        }
+        return resolveOrBlank(() -> {
+            Test test = testService.get(result.getTestId());
+            return test == null ? null : test.getName();
+        });
+    }
+
+    /** The kit label for an RDT, or the lot number for a levelled control. */
+    private String benchControlLabel(QCResult result) {
+        if (StringUtils.isNotBlank(result.getControlLabel())) {
+            return result.getControlLabel();
+        }
+        if (result.getControlLotId() == null) {
+            return "";
+        }
+        return resolveOrBlank(() -> {
+            QCControlLot lot = controlLotService.get(result.getControlLotId());
+            return lot == null ? null : lot.getLotNumber() + " (" + lot.getControlLevel() + ")";
+        });
+    }
+
+    /**
+     * Who ran the control — the point of recording the acting user, not automation.
+     */
+    private String benchTechnicianName(QCResult result) {
+        if (result.getTechnicianId() == null) {
+            return "";
+        }
+        return resolveOrBlank(() -> {
+            SystemUser user = systemUserService.get(String.valueOf(result.getTechnicianId()));
+            return user == null ? null : user.getDisplayName();
+        });
     }
 
     @GetMapping("/pdf")

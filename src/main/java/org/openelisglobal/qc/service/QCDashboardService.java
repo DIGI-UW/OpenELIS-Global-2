@@ -2,8 +2,10 @@ package org.openelisglobal.qc.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
+import org.openelisglobal.qc.valueholder.QCSource;
 
 /**
  * Service interface for QC Dashboard (T120).
@@ -41,4 +43,10 @@ public interface QCDashboardService {
      * Get dashboard summary within a date range.
      */
     QCDashboardSummary getDashboardSummary(Timestamp startDate, Timestamp endDate);
+
+    /**
+     * Bench QC activity for the window, grouped by lab unit and test (OGC-1147
+     * FR-D1). A null {@code source} covers MANUAL and RDT together.
+     */
+    List<BenchQcSummaryRow> getBenchQcSummary(Timestamp startDate, Timestamp endDate, QCSource source);
 }

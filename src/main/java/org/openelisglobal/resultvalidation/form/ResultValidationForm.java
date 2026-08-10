@@ -58,6 +58,10 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
     @NotNull(groups = { ResultValidation.class })
     private Boolean displayTestSections = true;
 
+    // Response-only (DEF-2): accessions whose release the save withheld because an
+    // open QC failure covers them. Never bound from the request.
+    private List<String> withheldAccessions;
+
     public ResultValidationForm() {
         setFormName("ResultValidationForm");
     }
@@ -155,5 +159,13 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
 
     public void setTestDate(String testDate) {
         this.testDate = testDate;
+    }
+
+    public List<String> getWithheldAccessions() {
+        return withheldAccessions;
+    }
+
+    public void setWithheldAccessions(List<String> withheldAccessions) {
+        this.withheldAccessions = withheldAccessions;
     }
 }

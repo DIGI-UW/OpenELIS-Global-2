@@ -29,8 +29,10 @@ public class RollingCalculator implements StatisticsCalculator {
         int windowSize = controlLot.getInitialRunsCount() != null ? controlLot.getInitialRunsCount()
                 : DEFAULT_WINDOW_SIZE;
 
-        // Check if we have enough results
-        if (results == null || results.size() < windowSize) {
+        // Check if we have enough results. Sample SD divides by N−1, so the
+        // effective window (capped at windowSize below) needs at least 2 values —
+        // a window of 1 must not divide by 0.
+        if (results == null || results.size() < windowSize || windowSize < 2) {
             return null; // Insufficient data
         }
 
@@ -44,13 +46,16 @@ public class RollingCalculator implements StatisticsCalculator {
         }
         BigDecimal mean = sum.divide(BigDecimal.valueOf(recentResults.size()), 4, RoundingMode.HALF_UP);
 
-        // Calculate standard deviation
+        // Calculate standard deviation — sample SD, ÷(N−1). Control limits are
+        // established from a sample of runs, not the population (CLSI C24); ÷N
+        // understated the SD ~2.6% at N=20 and inflated every z-score (GAP-6).
         BigDecimal varianceSum = BigDecimal.ZERO;
         for (QCResult result : recentResults) {
             BigDecimal diff = result.getResultValue().subtract(mean);
             varianceSum = varianceSum.add(diff.multiply(diff));
         }
-        BigDecimal variance = varianceSum.divide(BigDecimal.valueOf(recentResults.size()), 4, RoundingMode.HALF_UP);
+        BigDecimal variance = varianceSum.divide(BigDecimal.valueOf(recentResults.size() - 1), 4,
+                RoundingMode.HALF_UP);
         BigDecimal stdDev = BigDecimal.valueOf(Math.sqrt(variance.doubleValue())).setScale(4, RoundingMode.HALF_UP);
 
         // Create statistics entity

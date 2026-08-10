@@ -33,6 +33,7 @@ import ActiveViolationsBanner from "./ActiveViolationsBanner";
 import QCSummaryTiles from "./QCSummaryTiles";
 import InstrumentsTab from "./InstrumentsTab";
 import AlertsTab from "./AlertsTab";
+import BenchQcTab from "./BenchQcTab";
 import QCExportModal from "./QCExportModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -230,6 +231,9 @@ const QCDashboard = ({ initialTab = 0 }) => {
           <Tab data-testid="qc-tab-alerts">
             {intl.formatMessage({ id: "qc.dashboard.tab.alerts" })}
           </Tab>
+          <Tab data-testid="qc-tab-bench">
+            {intl.formatMessage({ id: "qc.dashboard.tab.bench" })}
+          </Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
@@ -237,6 +241,9 @@ const QCDashboard = ({ initialTab = 0 }) => {
           </TabPanel>
           <TabPanel>
             <AlertsTab />
+          </TabPanel>
+          <TabPanel>
+            <BenchQcTab />
           </TabPanel>
         </TabPanels>
       </Tabs>

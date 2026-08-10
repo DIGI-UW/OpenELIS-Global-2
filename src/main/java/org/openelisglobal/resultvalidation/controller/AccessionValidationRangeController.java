@@ -17,6 +17,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.qc.service.QcHoldService;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IResultSaveService;
@@ -369,6 +370,12 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
+        // FR-C3/C4: this legacy endpoint finalizes analyses exactly like the REST
+        // save, so it must honour the same QC hold — otherwise it is a sidestep
+        // around the block the lab opted into.
+        Set<String> blocked = SpringContext.getBean(QcHoldService.class).analysisIdsBlockedFromRelease(
+                analysisItems.stream().map(AnalysisItem::getAnalysisId).filter(java.util.Objects::nonNull).toList());
+
         List<String> analysisIdList = new ArrayList<>();
 
         for (AnalysisItem analysisItem : analysisItems) {
@@ -379,7 +386,10 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
 
                 if (!analysisIdList.contains(analysis.getId())) {
 
-                    if (analysisItem.getIsAccepted()) {
+                    if (analysisItem.getIsAccepted() && blocked.contains(analysis.getId())) {
+                        LogEvent.logWarn(this.getClass().getName(), "createUpdateList",
+                                "Release of analysis " + analysis.getId() + " withheld: open QC failure");
+                    } else if (analysisItem.getIsAccepted()) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
                         analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));

@@ -4,9 +4,12 @@ import {
   Button,
   Checkbox,
   Column,
+  DefinitionTooltip,
   Form,
   Grid,
+  InlineNotification,
   Pagination,
+  Tag,
   TextArea,
 } from "@carbon/react";
 import { Copy, Launch } from "@carbon/icons-react";
@@ -14,7 +17,7 @@ import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServer } from "../utils/Utils";
+import { postToOpenElisServerFullResponse } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
@@ -23,6 +26,8 @@ import config from "../../config.json";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
+
+const WITHHELD_STORAGE_KEY = "validation.qcHold.withheldAccessions";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -36,9 +41,26 @@ const Validation = (props) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // DEF-2: accessions the last save refused to release (open QC failure).
+  // Stashed in sessionStorage across the post-save reload, then rendered as a
+  // persistent inline warning — a toast dies with the redirect, which is
+  // exactly how the blocked release ended up silent.
+  const [withheldAccessions, setWithheldAccessions] = useState([]);
 
   useEffect(() => {
     componentMounted.current = true;
+    try {
+      const stashed = sessionStorage.getItem(WITHHELD_STORAGE_KEY);
+      if (stashed) {
+        sessionStorage.removeItem(WITHHELD_STORAGE_KEY);
+        const accessions = JSON.parse(stashed);
+        if (Array.isArray(accessions) && accessions.length > 0) {
+          setWithheldAccessions(accessions);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
     return () => {
       componentMounted.current = false;
     };
@@ -157,19 +179,32 @@ const Validation = (props) => {
       return;
     }
     setIsSubmitting(true);
-    postToOpenElisServer(
+    postToOpenElisServerFullResponse(
       "/rest/AccessionValidation",
       JSON.stringify(props.results),
       handleResponse,
     );
   };
-  const handleResponse = (status) => {
+  const handleResponse = async (response) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
     setIsSubmitting(false);
-    if (status == 200) {
+    if (response && response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
+      // DEF-2: the save response lists accessions the backend withheld
+      // (open QC failure). Stash them so the warning survives the reload.
+      try {
+        const body = await response.json();
+        if (body?.withheldAccessions?.length > 0) {
+          sessionStorage.setItem(
+            WITHHELD_STORAGE_KEY,
+            JSON.stringify(body.withheldAccessions),
+          );
+        }
+      } catch (e) {
+        console.error(e);
+      }
       window.location.href = "/validation" + props.params;
     }
     addNotification({
@@ -290,6 +325,24 @@ const Validation = (props) => {
                   height="15"
                 />
               </picture>
+            )}
+            {/* OGC-1147 FR-C1: a control covering this result failed. A tag rather
+                than another icon — the reason has to be readable, or a tech clears
+                the hold out of confusion and the safety argument evaporates.
+                DefinitionTooltip, not a title prop: Carbon's Tag swallows title
+                and renders its own wrapper, so the reason never showed (DEF-1). */}
+            {row.qcHold && (
+              <DefinitionTooltip
+                definition={intl.formatMessage({
+                  id: "validation.qcHold.tooltip",
+                })}
+                align="bottom"
+                openOnHover
+              >
+                <Tag type="red" size="sm">
+                  <FormattedMessage id="validation.label.qcHold" />
+                </Tag>
+              </DefinitionTooltip>
             )}
           </>
         );
@@ -423,6 +476,28 @@ const Validation = (props) => {
 
   return (
     <>
+      {withheldAccessions.length > 0 && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          style={{ marginTop: "20px", maxWidth: "100%" }}
+          title={intl.formatMessage({ id: "notification.title" })}
+          subtitle={intl.formatMessage(
+            { id: "validation.qcHold.withheld" },
+            {
+              count: withheldAccessions.length,
+              accessions: withheldAccessions
+                .map((accession) =>
+                  configurationProperties.AccessionFormat === "ALPHANUM"
+                    ? convertAlphaNumLabNumForDisplay(accession)
+                    : accession,
+                )
+                .join(", "),
+            },
+          )}
+          onCloseButtonClick={() => setWithheldAccessions([])}
+        />
+      )}
       {props.results?.resultList?.length > 0 && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
@@ -437,6 +512,13 @@ const Validation = (props) => {
             <b>
               {" "}
               <FormattedMessage id="validation.label.nonconform" />
+            </b>
+            <Tag type="red" size="sm" style={{ marginLeft: "1rem" }}>
+              <FormattedMessage id="validation.label.qcHold" />
+            </Tag>
+            <b>
+              {" "}
+              <FormattedMessage id="validation.legend.qcHold" />
             </b>
           </Column>
           <Column lg={3} md={2} sm={4}>
