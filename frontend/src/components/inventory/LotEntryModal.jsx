@@ -452,9 +452,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <TextInput
             id="barcode"
             labelText={<FormattedMessage id="lot.barcode" />}
+            helperText={intl.formatMessage({ id: "lot.barcode.hint" })}
             value={formData.barcode}
             onChange={(e) => handleChange("barcode", e.target.value)}
-            placeholder="Optional"
+            placeholder={intl.formatMessage({
+              id: "lot.barcode.placeholder",
+            })}
           />
         </Stack>
       </Modal>

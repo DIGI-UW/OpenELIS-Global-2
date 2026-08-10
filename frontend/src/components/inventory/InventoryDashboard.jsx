@@ -347,6 +347,7 @@ const InventoryDashboard = () => {
         const item = items[lot.inventoryItem?.id];
         return (
           lot.lotNumber?.toLowerCase().includes(searchLower) ||
+          lot.barcode?.toLowerCase().includes(searchLower) ||
           item?.name?.toLowerCase().includes(searchLower)
         );
       });
@@ -652,8 +653,13 @@ const InventoryDashboard = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((row, rowIndex) => {
-                    const lot = paginatedLots[rowIndex];
+                  rows.map((row) => {
+                    // Match by id, not by index: the table is sortable, so
+                    // Carbon's row order need not track paginatedLots.
+                    const lot = paginatedLots.find(
+                      (candidate) => String(candidate.id) === row.id,
+                    );
+                    if (!lot) return null;
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {

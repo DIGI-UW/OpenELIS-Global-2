@@ -150,6 +150,20 @@ public class InventoryLotRestController extends BaseRestController {
         }
     }
 
+    @GetMapping(value = "/barcode/{barcode}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<InventoryLot> getByBarcode(@PathVariable String barcode) {
+        try {
+            InventoryLot lot = inventoryLotService.getByBarcode(barcode);
+            if (lot == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(lot);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping(value = "/item/{itemId}/total-quantity", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<QuantityResponse> getTotalQuantity(@PathVariable String itemId) {
         try {

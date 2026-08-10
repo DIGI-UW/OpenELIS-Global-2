@@ -37,6 +37,12 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     InventoryLot getByLotNumber(String lotNumber);
 
     /**
+     * Get lot by its internal barcode. Blank barcodes are stored as NULL, so a
+     * blank query never matches a lot.
+     */
+    InventoryLot getByBarcode(String barcode);
+
+    /**
      * Get lot by FHIR UUID
      */
     InventoryLot getByFhirUuid(String fhirUuid);

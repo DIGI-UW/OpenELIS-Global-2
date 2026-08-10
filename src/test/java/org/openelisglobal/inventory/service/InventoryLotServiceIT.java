@@ -45,6 +45,37 @@ public class InventoryLotServiceIT extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void getByBarcode_shouldFindLotByBarcode() {
+        InventoryLot lot = inventoryLotService.getByBarcode("LOT-BC-1001");
+
+        assertNotNull("Should find lot by barcode", lot);
+        assertEquals(Long.valueOf(1001L), lot.getId());
+        assertEquals("LOT-2025-002", lot.getLotNumber());
+    }
+
+    @Test
+    public void getByBarcode_shouldTrimSurroundingWhitespace() {
+        // Handheld scanners commonly append a carriage return or trailing space.
+        InventoryLot lot = inventoryLotService.getByBarcode("  LOT-BC-1000  ");
+
+        assertNotNull("Should find lot despite surrounding whitespace", lot);
+        assertEquals(Long.valueOf(1000L), lot.getId());
+    }
+
+    @Test
+    public void getByBarcode_shouldReturnNullWhenNoLotMatches() {
+        assertNull("Unknown barcode should not match a lot", inventoryLotService.getByBarcode("NO-SUCH-BARCODE"));
+    }
+
+    @Test
+    public void getByBarcode_shouldReturnNullForBlankInputRatherThanMatchingABarcodelessLot() {
+        // Lot 1002 has a NULL barcode. A blank scan must not resolve to it.
+        assertNull("Null barcode should not match", inventoryLotService.getByBarcode(null));
+        assertNull("Empty barcode should not match", inventoryLotService.getByBarcode(""));
+        assertNull("Whitespace barcode should not match", inventoryLotService.getByBarcode("   "));
+    }
+
+    @Test
     public void getAvailableLotsByItemFEFO_shouldReturnLotsInFEFOOrder() {
         // lot 1001 (LOT-2025-002) expires 2099-06-30 (earlier)
         // lot 1000 (LOT-2025-001) expires 2099-12-31 (later)
