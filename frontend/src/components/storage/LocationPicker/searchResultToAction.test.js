@@ -138,6 +138,32 @@ describe("searchResultToReplaceAction", () => {
       expect(action.selection).toEqual({ rack: { id: 12, name: "Rack 3" } });
     });
 
+    it("fills in the full four-level chain when a box is picked", () => {
+      const action = searchResultToReplaceAction({
+        id: 40,
+        type: "box",
+        label: "Box Alpha",
+        code: "BX-001",
+        boxType: "96-well",
+        locationType: "box",
+        parentRackId: 30,
+        rackLabel: "Rack R1",
+        parentShelfId: 20,
+        shelfLabel: "Shelf-A",
+        parentDeviceId: 10,
+        deviceName: "Main Freezer",
+        parentRoomId: 1,
+        roomName: "Main Laboratory",
+      });
+      expect(action.selection).toEqual({
+        room: { id: 1, name: "Main Laboratory" },
+        device: { id: 10, name: "Main Freezer" },
+        shelf: { id: 20, name: "Shelf-A" },
+        rack: { id: 30, name: "Rack R1" },
+        box: { id: 40, name: "Box Alpha" },
+      });
+    });
+
     it("leaves a room result with no ancestors", () => {
       const action = searchResultToReplaceAction({
         id: 1,
