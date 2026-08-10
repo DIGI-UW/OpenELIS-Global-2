@@ -143,6 +143,9 @@
        every barcode-less lot as a duplicate of the others. -->
   <include relativeToChangelogFile="true" file="072-null-blank-lot-barcodes.xml"/>
 
+  <!-- OGC-657: sidenav entry for the Storage Management inventory-lots page -->
+  <include relativeToChangelogFile="true" file="073-storage-inventory-lots-menu.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 

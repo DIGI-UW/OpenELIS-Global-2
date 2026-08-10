@@ -6267,6 +6267,8 @@
   "storage.nav.dashboard": "Storage Dashboard",
   "storage.nav.devices": "Devices",
   "storage.nav.devices.tooltip": "Manage storage devices",
+  "storage.nav.inventoryLots": "Inventory Lots",
+  "storage.nav.inventoryLots.tooltip": "View inventory lots and where they are stored",
   "storage.nav.locations": "Locations",
   "storage.nav.locations.tooltip": "Manage storage locations",
   "storage.nav.racks": "Racks",
