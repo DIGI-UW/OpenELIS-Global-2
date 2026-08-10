@@ -2670,8 +2670,6 @@
   "instructions.test.activation.sort": "Display Order: Lists of sample types which have newly activated tests. Sort the tests to indicate how they will be displayed in the order entry screen. Sorting can be done by dragging items to the desired position.",
   "instructions.test.order": "Test with checks are orderable, those without checks are not orderable.  Change checks to change status.  For a test to be able to be ordered on intake it must be both active and orderable.  Tests which are active but not orderable may be requested as part of a test reflex.",
   "invalid.json": "JSON is invalid",
-  "inventory.item.error.duplicateCode": "An inventory item with code \"{code}\" already exists.",
-  "common.codeGenerator.error.invalidCode": "Code must contain at least one letter or number",
   "inventory.add.button": "Add New Lot",
   "inventory.addItem.button": "Add Catalog Item",
   "inventory.dashboard.title": "Inventory Dashboard",
