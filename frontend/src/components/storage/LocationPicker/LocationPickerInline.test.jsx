@@ -30,37 +30,16 @@ beforeEach(() => {
 });
 
 describe("LocationPickerInline", () => {
-  it("renders in search mode by default", () => {
+  it("renders the search field and the level cascade together", () => {
     renderWithIntl(<LocationPickerInline onChange={vi.fn()} />);
-    // Search mode renders the SearchField (a textbox)
     expect(
       screen.getByLabelText(/search for a storage location/i),
     ).toBeInTheDocument();
-    // No CreateForm dropdowns visible
-    expect(document.querySelector("#location-picker-room")).toBeNull();
-  });
-
-  it("toggles to create mode when 'Create new location' is clicked", () => {
-    renderWithIntl(<LocationPickerInline onChange={vi.fn()} />);
-    // Toggle button labeled with create-related text
-    fireEvent.click(
-      screen.getByRole("button", { name: /create new location/i }),
-    );
-    // CreateForm appears (room dropdown id is stable)
-    expect(document.querySelector("#location-picker-room")).toBeInTheDocument();
-  });
-
-  it("toggles back to search mode from create mode", () => {
-    renderWithIntl(<LocationPickerInline onChange={vi.fn()} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /create new location/i }),
-    );
-    expect(document.querySelector("#location-picker-room")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /back to search/i }));
-    expect(document.querySelector("#location-picker-room")).toBeNull();
-    expect(
-      screen.getByLabelText(/search for a storage location/i),
-    ).toBeInTheDocument();
+    ["room", "device", "shelf", "rack", "box"].forEach((level) => {
+      expect(
+        document.querySelector(`#location-picker-${level}`),
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows the selected hierarchical path when a selection is set", () => {
@@ -109,9 +88,6 @@ describe("LocationPickerInline", () => {
       else cb([]);
     });
     renderWithIntl(<LocationPickerInline onChange={onChange} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /create new location/i }),
-    );
     // Pick the room from the cascading dropdown
     const roomTrigger = document
       .querySelector("#location-picker-room")

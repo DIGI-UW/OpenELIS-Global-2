@@ -51,4 +51,100 @@ describe("searchResultToReplaceAction", () => {
     expect(searchResultToReplaceAction(undefined)).toBeNull();
     expect(searchResultToReplaceAction("string")).toBeNull();
   });
+
+  it("falls back to `label` when the result has no `name`", () => {
+    const action = searchResultToReplaceAction({
+      id: 9,
+      type: "shelf",
+      label: "Shelf A",
+    });
+    expect(action.selection.shelf).toEqual({ id: 9, name: "Shelf A" });
+  });
+
+  describe("ancestor chain", () => {
+    it("fills in the room when a device is picked", () => {
+      const action = searchResultToReplaceAction({
+        id: 5,
+        type: "device",
+        name: "Freezer 1",
+        parentRoomId: 1,
+        parentRoomName: "Main Lab",
+      });
+      expect(action.selection).toEqual({
+        room: { id: 1, name: "Main Lab" },
+        device: { id: 5, name: "Freezer 1" },
+      });
+    });
+
+    it("fills in room and device when a shelf is picked", () => {
+      const action = searchResultToReplaceAction({
+        id: 9,
+        type: "shelf",
+        label: "Shelf A",
+        parentDeviceId: 5,
+        parentDeviceName: "Freezer 1",
+        parentRoomId: 1,
+        parentRoomName: "Main Lab",
+      });
+      expect(action.selection).toEqual({
+        room: { id: 1, name: "Main Lab" },
+        device: { id: 5, name: "Freezer 1" },
+        shelf: { id: 9, name: "Shelf A" },
+      });
+    });
+
+    it("fills in the full chain when a rack is picked", () => {
+      const action = searchResultToReplaceAction({
+        id: 12,
+        type: "rack",
+        label: "Rack 3",
+        parentShelfId: 9,
+        parentShelfLabel: "Shelf A",
+        parentDeviceId: 5,
+        parentDeviceName: "Freezer 1",
+        parentRoomId: 1,
+        parentRoomName: "Main Lab",
+      });
+      expect(action.selection).toEqual({
+        room: { id: 1, name: "Main Lab" },
+        device: { id: 5, name: "Freezer 1" },
+        shelf: { id: 9, name: "Shelf A" },
+        rack: { id: 12, name: "Rack 3" },
+      });
+    });
+
+    it("accepts the bare `roomName` / `deviceName` spelling too", () => {
+      const action = searchResultToReplaceAction({
+        id: 9,
+        type: "shelf",
+        label: "Shelf A",
+        parentDeviceId: 5,
+        deviceName: "Freezer 1",
+        parentRoomId: 1,
+        roomName: "Main Lab",
+      });
+      expect(action.selection.device).toEqual({ id: 5, name: "Freezer 1" });
+      expect(action.selection.room).toEqual({ id: 1, name: "Main Lab" });
+    });
+
+    it("stops at the first missing ancestor so the chain stays contiguous", () => {
+      const action = searchResultToReplaceAction({
+        id: 12,
+        type: "rack",
+        label: "Rack 3",
+        parentRoomId: 1,
+        parentRoomName: "Main Lab",
+      });
+      expect(action.selection).toEqual({ rack: { id: 12, name: "Rack 3" } });
+    });
+
+    it("leaves a room result with no ancestors", () => {
+      const action = searchResultToReplaceAction({
+        id: 1,
+        type: "room",
+        name: "Main Lab",
+      });
+      expect(action.selection).toEqual({ room: { id: 1, name: "Main Lab" } });
+    });
+  });
 });
