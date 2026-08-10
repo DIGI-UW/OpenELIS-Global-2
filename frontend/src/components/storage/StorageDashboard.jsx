@@ -21,6 +21,11 @@ const RESOURCES = [
     labelId: "storage.tab.samples",
     defaultLabel: "Sample Items",
   },
+  {
+    key: "inventory-lots",
+    labelId: "storage.tab.inventoryLots",
+    defaultLabel: "Inventory Lots",
+  },
   { key: "rooms", labelId: "storage.nav.rooms", defaultLabel: "Rooms" },
   { key: "devices", labelId: "storage.nav.devices", defaultLabel: "Devices" },
   { key: "shelves", labelId: "storage.nav.shelves", defaultLabel: "Shelves" },
