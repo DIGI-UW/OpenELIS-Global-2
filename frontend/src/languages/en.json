@@ -2884,6 +2884,8 @@
   "label.results.flag.abnormal": "Abnormal",
   "label.results.flag.critical": "Critical",
   "label.results.flag.invalid": "Invalid",
+  "label.results.sample": "Sample",
+  "label.results.flag": "Flag",
   "label.results.critical.range": "Critical",
   "label.results.critical.banner.title": "Critical value — physician notification required",
   "label.results.critical.banner.body": "The responsible clinician must be notified. Acknowledgment is recorded on the Alerts dashboard and never blocks Save.",

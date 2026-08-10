@@ -183,6 +183,48 @@
   width: 2.5rem;
 }
 
+/* Gallery parity — expand control matches the mockup's icon button */
+.unifiedExpandButton.cds--btn {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* Gallery parity — subject cell: avatar + mono accession + identity sub-line */
+.unifiedSubjectCell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.unifiedAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  flex-shrink: 0;
+}
+
+.unifiedAccession {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--cds-text-primary, #393939);
+}
+
+.unifiedSubjectSub {
+  font-size: 0.6875rem;
+  color: var(--cds-text-secondary, #6f6f6f);
+  margin-top: 0.125rem;
+}
+
+.unifiedTestCell {
+  font-weight: 600;
+}
+
 /* FR-L1 — flags: icon + tag + bold at WCAG 2.2 AA, plus a left accent bar on
  * the value cell. Fixed AA color pairs (Carbon has no yellow tag type). */
 .unifiedValueAccent {

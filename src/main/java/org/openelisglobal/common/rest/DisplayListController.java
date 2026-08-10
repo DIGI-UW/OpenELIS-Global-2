@@ -478,6 +478,10 @@ public class DisplayListController extends BaseRestController {
         list.add(new IdValuePair(
                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected),
                 SpringContext.getBean(IStatusService.class).getStatusName(AnalysisStatus.BiologistRejected)));
+        // OGC-811 gallery parity: Finalized was missing, so finalized analyses
+        // rendered as a bare status id on the unified worklist
+        list.add(new IdValuePair(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized),
+                SpringContext.getBean(IStatusService.class).getStatusName(AnalysisStatus.Finalized)));
 
         return list;
     }

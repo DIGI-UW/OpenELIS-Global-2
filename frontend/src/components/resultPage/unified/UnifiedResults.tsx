@@ -70,6 +70,7 @@ import ExpandedPanel, {
 import { ReferralDraft } from "./ReferralAction";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
+import Avatar from "./Avatar";
 import "./unified-results.scss";
 
 /**
@@ -655,18 +656,40 @@ const UnifiedResults: React.FC = () => {
     ],
   );
 
-  const subjectCell = (row: WorklistRow): string => {
+  // Gallery parity: accession leads (mono accent), identity as a sub-line, a
+  // patient initials avatar on clinical rows (FR-M2/M3: no patient identity
+  // outside CLINICAL — sample context replaces it)
+  const subjectCell = (row: WorklistRow): React.ReactNode => {
     const accession = row.accessionNumber || "";
-    if (domain === "CLINICAL") {
-      const patient = row.patientInfo || row.patientName || "";
-      return patient ? `${accession} · ${patient}` : accession;
-    }
-    // FR-M2/M3: no patient identity outside CLINICAL; sample context instead
-    return row.sampleType ? `${accession} · ${row.sampleType}` : accession;
+    const subline =
+      domain === "CLINICAL"
+        ? [row.patientName, row.patientInfo].filter(Boolean).join(" · ")
+        : row.sampleType || "";
+    return (
+      <div className="unifiedSubjectCell">
+        {domain === "CLINICAL" && (
+          <Avatar name={row.patientName} id={row.patientId as string} />
+        )}
+        <div>
+          <div className="unifiedAccession">{accession}</div>
+          {subline && <div className="unifiedSubjectSub">{subline}</div>}
+        </div>
+      </div>
+    );
   };
 
   const statusName = (statusId?: string): string =>
     statusOptions.find((s) => s.id === statusId)?.value || statusId || "";
+
+  /** Carbon tag color per status name — never conveys status by color alone. */
+  const statusTagType = (statusId?: string): string => {
+    const name = statusName(statusId).toLowerCase();
+    if (name.includes("final")) return "green";
+    if (name.includes("reject") || name.includes("cancel")) return "red";
+    if (name.includes("acceptance")) return "teal";
+    if (name.includes("not tested") || name.includes("pending")) return "gray";
+    return "cool-gray";
+  };
 
   return (
     <>
@@ -804,6 +827,9 @@ const UnifiedResults: React.FC = () => {
                     <FormattedMessage id="label.results.analyzer" />
                   </TableHeader>
                   <TableHeader>
+                    <FormattedMessage id="label.results.sample" />
+                  </TableHeader>
+                  <TableHeader>
                     {formatDomainMessage(intl, "label.results.range", domain)}
                   </TableHeader>
                   <TableHeader>
@@ -811,6 +837,9 @@ const UnifiedResults: React.FC = () => {
                   </TableHeader>
                   <TableHeader>
                     <FormattedMessage id="label.results.status" />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage id="label.results.flag" />
                   </TableHeader>
                   <TableHeader>
                     <FormattedMessage id="label.results.actions" />
@@ -837,11 +866,12 @@ const UnifiedResults: React.FC = () => {
                                 ? "label.results.collapseRow"
                                 : "label.results.expandRow",
                             })}
+                            className="unifiedExpandButton"
                             onClick={() =>
                               setExpandedRowKey(isExpanded ? null : key)
                             }
                           >
-                            {isExpanded ? "▾" : "▸"}
+                            {isExpanded ? "▼" : "▶"}
                           </Button>
                         </TableCell>
                         <TableCell>
@@ -855,7 +885,9 @@ const UnifiedResults: React.FC = () => {
                             </Tag>
                           )}
                         </TableCell>
-                        <TableCell>{row.testName}</TableCell>
+                        <TableCell className="unifiedTestCell">
+                          {row.testName}
+                        </TableCell>
                         <TableCell className="unifiedResultsSmallCell">
                           {methods.find((m) => m.id === row.testMethod)
                             ?.value ||
@@ -877,6 +909,9 @@ const UnifiedResults: React.FC = () => {
                             row.analyzerId ||
                             "—"}
                         </TableCell>
+                        <TableCell className="unifiedResultsSmallCell">
+                          {row.sampleType || "—"}
+                        </TableCell>
                         <TableCell>
                           {row.normalRange}{" "}
                           {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
@@ -890,11 +925,22 @@ const UnifiedResults: React.FC = () => {
                                 handleValueChange(row, field, value)
                               }
                             />
-                            <FlagChip flag={row.resultFlag} />
                           </span>
                         </TableCell>
                         <TableCell>
-                          {statusName(row.analysisStatusId)}
+                          {statusName(row.analysisStatusId) ? (
+                            <Tag
+                              size="sm"
+                              type={statusTagType(row.analysisStatusId)}
+                            >
+                              {statusName(row.analysisStatusId)}
+                            </Tag>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <FlagChip flag={row.resultFlag} />
                         </TableCell>
                         <TableCell>
                           {showEdit(state) && (
@@ -924,7 +970,7 @@ const UnifiedResults: React.FC = () => {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="unifiedExpandedRow">
-                          <TableCell colSpan={9}>
+                          <TableCell colSpan={11}>
                             <ExpandedPanel
                               row={row}
                               domain={domain}
@@ -1014,7 +1060,7 @@ const UnifiedResults: React.FC = () => {
                       )}
                       {stale && (
                         <TableRow>
-                          <TableCell colSpan={9}>
+                          <TableCell colSpan={11}>
                             <InlineNotification
                               kind="error"
                               hideCloseButton
