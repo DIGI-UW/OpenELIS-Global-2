@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    logicalFilePath="storage/inventory-lots-menu.xml"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Storage Management is an expandable parent with no action_url of its own
+    (see 3.3.x.x/029-add-storage-subnav-items.xml), so /Storage is only ever
+    reached by typing the URL. Its children are the way in, and Inventory Lots
+    needs one or the new page is unreachable from the sidenav.
+    -->
+    <changeSet id="OGC-657-add-storage-inventory-lots-menu" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_inventory_lots'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add an Inventory Lots item under Storage Management</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id"
+                valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage_management')" />
+            <!-- Directly after Sample Items, the other occupant listing -->
+            <column name="presentation_order" value="2" />
+            <column name="element_id" value="menu_storage_inventory_lots" />
+            <column name="action_url" value="/Storage/inventory-lots" />
+            <column name="display_key" value="storage.nav.inventoryLots" />
+            <column name="tool_tip_key" value="storage.nav.inventoryLots.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_storage_inventory_lots'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
