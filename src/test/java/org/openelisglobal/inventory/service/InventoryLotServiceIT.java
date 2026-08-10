@@ -113,6 +113,16 @@ public class InventoryLotServiceIT extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void insert_shouldNotRepeatTheItemCodeWhenTheLotNumberAlreadyCarriesIt() {
+        // Auto-generated lot numbers are "{itemCode}-{yyyyMMdd}", so a naive
+        // itemCode + lotNumber seed produced TEST_REAGENT_A_TEST_REAGENT_A_20260810.
+        InventoryLot saved = inventoryLotService
+                .get(inventoryLotService.insert(newLot("TEST_REAGENT_A-20260810", null)));
+
+        assertEquals("TEST_REAGENT_A_20260810", saved.getBarcode());
+    }
+
+    @Test
     public void insert_shouldNormalizeAnExplicitlySuppliedBarcode() {
         InventoryLot saved = inventoryLotService.get(inventoryLotService.insert(newLot("LOT-2025-902", "my-own bc/1")));
 
