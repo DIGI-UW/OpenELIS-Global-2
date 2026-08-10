@@ -11,15 +11,19 @@ import {
 import { useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
+  postToOpenElisServerFullResponse,
   toLocalIsoDate,
 } from "../../utils/Utils";
 
 /**
  * Enroll tests under an accrediting body (OGC-686, D.2). The API enrolls one test
- * per call, so a multi-select fans out to N POSTs and reports how many landed —
- * a duplicate (test already enrolled under this body) comes back as a 400 and is
- * counted as a failure rather than aborting the batch.
+ * per call, so a multi-select fans out to N POSTs; one rejection fails that test
+ * and leaves the rest of the batch alone.
+ *
+ * Each rejection carries its reason in {"error": ...} — "This test is already
+ * accredited by that body" (FRS AC-8), an unknown test, an unknown body. Report
+ * that reason against the test it belongs to: a bare failure count tells the QA
+ * lead nothing they can act on, and cannot tell a duplicate from a 500.
  */
 const EnrollTestsModal = ({ open, onClose, bodies, onSaved }) => {
   const intl = useIntl();
@@ -58,36 +62,56 @@ const EnrollTestsModal = ({ open, onClose, bodies, onSaved }) => {
     setSaving(true);
     setError(null);
     const total = selectedTests.length;
+    const generic = intl.formatMessage({
+      id: "qa.qms.accreditation.enroll.failed",
+    });
+    const failures = [];
     let done = 0;
-    let failed = 0;
+
+    const settle = (test, reason) => {
+      if (reason) {
+        failures.push({ test: test.text, reason });
+      }
+      done += 1;
+      if (done < total) {
+        return;
+      }
+      setSaving(false);
+      onSaved();
+      if (failures.length === 0) {
+        onClose();
+        return;
+      }
+      // One test selected: the reason is the whole story. Several: name each
+      // failing test, or the QA lead has to guess which of them bounced.
+      setError(
+        total === 1
+          ? failures[0].reason
+          : failures.map((f) => `${f.test}: ${f.reason}`).join("; "),
+      );
+    };
+
     selectedTests.forEach((test) => {
-      postToOpenElisServer(
+      postToOpenElisServerFullResponse(
         "/rest/accreditation/enrollments",
         JSON.stringify({
           testId: test.id,
           accreditingBodyId: selectedBody.id,
           effectiveFrom: effectiveFrom || null,
         }),
-        (status) => {
-          done += 1;
-          if (!(status >= 200 && status < 300)) {
-            failed += 1;
-          }
-          if (done < total) {
+        (response) => {
+          if (response && response.ok) {
+            settle(test, null);
             return;
           }
-          setSaving(false);
-          onSaved();
-          if (failed === 0) {
-            onClose();
-          } else {
-            setError(
-              intl.formatMessage(
-                { id: "qa.qms.accreditation.enroll.partialError" },
-                { failed, total },
-              ),
-            );
+          if (!response) {
+            settle(test, generic);
+            return;
           }
+          response
+            .json()
+            .then((data) => settle(test, data?.error || generic))
+            .catch(() => settle(test, generic));
         },
       );
     });

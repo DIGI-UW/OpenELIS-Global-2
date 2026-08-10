@@ -22,6 +22,7 @@ export const V1_SECTIONS = [
   "reagents",
   "analyzers",
   "alerts",
+  "accreditation",
   "reflex-calc",
   "localization",
   "display-order",

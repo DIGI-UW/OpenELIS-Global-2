@@ -10,6 +10,7 @@ import java.util.Map;
 import javax.imageio.ImageIO;
 import org.openelisglobal.accreditation.dto.AccreditationSummary;
 import org.openelisglobal.accreditation.dto.AccreditingBodyView;
+import org.openelisglobal.accreditation.dto.EqaCoverageView;
 import org.openelisglobal.accreditation.dto.TestAccreditationView;
 import org.openelisglobal.accreditation.service.AccreditingBodyService;
 import org.openelisglobal.accreditation.service.TestAccreditationService;
@@ -101,6 +102,17 @@ public class AccreditationRestController extends BaseRestController {
     public List<TestAccreditationView> listEnrollments(@RequestParam(value = "bodyId", required = false) Long bodyId,
             @RequestParam(value = "testId", required = false) String testId) {
         return testAccreditationService.getEnrollmentViews(bodyId, testId);
+    }
+
+    /**
+     * OGC-686 (QA-D.5): accredited scope vs. live EQA cover, per body. Read-only
+     * and derived — the inspector's ISO 15189 §7.7 question answered from data the
+     * lab already keeps.
+     */
+    @GetMapping(value = "/eqa-coverage", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    public List<EqaCoverageView> eqaCoverage() {
+        return testAccreditationService.getEqaCoverage();
     }
 
     /**

@@ -91,10 +91,28 @@ const SUMMARY = {
   worstStatus: "EXPIRING",
 };
 
-const mockEndpoints = ({ bodies = BODIES, enrollments = ENROLLMENTS } = {}) => {
+const EQA_COVERAGE = [
+  {
+    accreditingBodyId: 1,
+    bodyCode: "ISO15189",
+    bodyName: "ISO 15189",
+    status: "ACTIVE",
+    enrolledTestCount: 3,
+    coveredTestCount: 2,
+    gaps: [{ testId: "43", testName: "Hemoglobin (Blood)" }],
+  },
+];
+
+const mockEndpoints = ({
+  bodies = BODIES,
+  enrollments = ENROLLMENTS,
+  eqaCoverage = EQA_COVERAGE,
+} = {}) => {
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url.includes("/rest/accreditation/summary")) {
       callback(SUMMARY);
+    } else if (url.includes("/rest/accreditation/eqa-coverage")) {
+      callback(eqaCoverage);
     } else if (url.includes("/rest/accreditation/bodies")) {
       callback(bodies);
     } else if (url.includes("/rest/accreditation/enrollments")) {
@@ -191,6 +209,12 @@ describe("Accreditation page", () => {
     renderPage();
 
     expect(screen.getByTestId("delete-body-1")).toBeDisabled();
+    // The count is what makes the block actionable — 2 enrollments on body 1.
+    expect(
+      screen.getByText(
+        "Cannot delete — 2 test accreditations reference this body. Remove them first.",
+      ),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("delete-body-2"));
     const confirm = openModal();
@@ -298,7 +322,7 @@ describe("Accreditation page", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("enroll modal posts one call per selected test and reports partial failures", async () => {
+  test("enroll modal posts one call per selected test and names each failure", async () => {
     mockEndpoints();
     renderPage();
     // downshift's multi-select only reacts to real pointer events, not fireEvent
@@ -315,18 +339,102 @@ describe("Accreditation page", () => {
     await user.click(modal.getByRole("option", { name: "Glucose (Serum)" }));
     fireEvent.click(modal.getByRole("button", { name: "Save" }));
 
-    expect(postToOpenElisServer).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(postToOpenElisServer.mock.calls[0][1])).toMatchObject({
+    expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.parse(postToOpenElisServerFullResponse.mock.calls[0][1]),
+    ).toMatchObject({
       accreditingBodyId: 1,
       effectiveFrom: null,
     });
 
     const before = fetchCount("/rest/accreditation/enrollments");
-    postToOpenElisServer.mock.calls[0][2](201);
-    postToOpenElisServer.mock.calls[1][2](400);
-    expect(screen.getByText(/1 of 2 enrollments failed/)).toBeInTheDocument();
+    postToOpenElisServerFullResponse.mock.calls[0][2]({ ok: true });
+    postToOpenElisServerFullResponse.mock.calls[1][2]({
+      ok: false,
+      json: () =>
+        Promise.resolve({
+          error: "This test is already accredited by that body",
+        }),
+    });
+
+    // The reason the backend gave, against the test it belongs to — a bare
+    // failure count cannot tell a duplicate from a 500.
+    expect(
+      await screen.findByText(
+        /Glucose \(Serum\): This test is already accredited by that body/,
+      ),
+    ).toBeInTheDocument();
     // the one that landed is still refetched
     expect(fetchCount("/rest/accreditation/enrollments")).toBe(before + 1);
+  });
+
+  test("a rejected logo file leaves no filename attached to the form", () => {
+    mockEndpoints();
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("add-body-button"));
+    const modal = openModal();
+    const tooBig = new File(["x".repeat(600 * 1024)], "huge.png", {
+      type: "image/png",
+    });
+    fireEvent.change(modal.querySelector('input[type="file"]'), {
+      target: { files: [tooBig] },
+    });
+
+    expect(screen.getByText(/no more than 500 KB/)).toBeInTheDocument();
+    // Carbon renders the accepted filename in .cds--file-filename; leaving
+    // "huge.png" there reads as attached, and Save would then persist no logo.
+    expect(modal.querySelector(".cds--file-filename")).toBeNull();
+  });
+
+  test("a single failing enrollment shows the server's reason on its own", async () => {
+    mockEndpoints();
+    renderPage();
+    const user = userEvent.setup();
+
+    fireEvent.click(screen.getByTestId("enroll-tests-button"));
+    const modal = within(openModal());
+    fireEvent.click(openModal().querySelector(".cds--list-box__field"));
+    fireEvent.click(modal.getByText("ISO15189 — ISO 15189"));
+    fireEvent.click(modal.getByPlaceholderText("Tests"));
+    await user.click(
+      modal.getByRole("option", { name: "Malaria RDT (Blood)" }),
+    );
+    fireEvent.click(modal.getByRole("button", { name: "Save" }));
+
+    postToOpenElisServerFullResponse.mock.calls[0][2]({
+      ok: false,
+      json: () =>
+        Promise.resolve({
+          error: "This test is already accredited by that body",
+        }),
+    });
+
+    expect(
+      await screen.findByText("This test is already accredited by that body"),
+    ).toBeInTheDocument();
+  });
+
+  test("an unreadable rejection falls back to a generic message", async () => {
+    mockEndpoints();
+    renderPage();
+    const user = userEvent.setup();
+
+    fireEvent.click(screen.getByTestId("enroll-tests-button"));
+    const modal = within(openModal());
+    fireEvent.click(openModal().querySelector(".cds--list-box__field"));
+    fireEvent.click(modal.getByText("ISO15189 — ISO 15189"));
+    fireEvent.click(modal.getByPlaceholderText("Tests"));
+    await user.click(
+      modal.getByRole("option", { name: "Malaria RDT (Blood)" }),
+    );
+    fireEvent.click(modal.getByRole("button", { name: "Save" }));
+
+    postToOpenElisServerFullResponse.mock.calls[0][2](undefined);
+
+    expect(
+      await screen.findByText("The enrollment was rejected."),
+    ).toBeInTheDocument();
   });
 
   test("?testId= preselects the enrollment filter and the chip clears it", () => {
@@ -408,5 +516,51 @@ describe("Accreditation page", () => {
     expect(
       screen.queryByText("No enrollments match these filters"),
     ).not.toBeInTheDocument();
+  });
+
+  test("EQA coverage names the uncovered tests", () => {
+    mockEndpoints();
+    renderPage();
+
+    const row = screen.getByTestId("eqa-coverage-1");
+    expect(row).toHaveTextContent("ISO15189");
+    expect(row).toHaveTextContent("Hemoglobin (Blood)");
+    // The gap count is what an inspector reads first, so it must be the number of
+    // uncovered tests — not the scope size and not the covered count.
+    expect(within(row).getByText("1")).toBeInTheDocument();
+    expect(within(row).queryByText("Full coverage")).not.toBeInTheDocument();
+  });
+
+  test("EQA coverage with no gaps reads as full coverage", () => {
+    mockEndpoints({
+      eqaCoverage: [
+        {
+          accreditingBodyId: 1,
+          bodyCode: "ISO15189",
+          bodyName: "ISO 15189",
+          status: "ACTIVE",
+          enrolledTestCount: 2,
+          coveredTestCount: 2,
+          gaps: [],
+        },
+      ],
+    });
+    renderPage();
+
+    expect(
+      within(screen.getByTestId("eqa-coverage-1")).getByText("Full coverage"),
+    ).toBeInTheDocument();
+  });
+
+  test("a failed EQA coverage fetch does not hide the rest of the page", () => {
+    mockEndpoints({ eqaCoverage: null });
+    renderPage();
+
+    expect(
+      screen.getByText("EQA coverage could not be loaded."),
+    ).toBeInTheDocument();
+    // The bodies and enrollments tables are independent of it and must survive.
+    expect(screen.getByTestId("body-1")).toBeInTheDocument();
+    expect(screen.getByTestId("enrollment-10")).toBeInTheDocument();
   });
 });
