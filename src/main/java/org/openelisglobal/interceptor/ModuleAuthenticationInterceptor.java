@@ -13,6 +13,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.security.SecurityResponseUtils;
 import org.openelisglobal.systemmodule.service.SystemModuleUrlService;
 import org.openelisglobal.systemmodule.valueholder.SystemModuleParam;
 import org.openelisglobal.systemmodule.valueholder.SystemModuleUrl;
@@ -57,15 +58,15 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             LogEvent.logInfo("ModuleAuthenticationInterceptor", "preHandle()",
                     "======> NOT ALLOWED ACCESS TO THIS MODULE");
             LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission"); //
-            if (isRestFullPath(path)) {
+            if (SecurityResponseUtils.isHtmlRequest(request)) {
+                redirectStrategy.sendRedirect(request, response, "/Home?access=denied");
+            } else {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
                 String jsonResponse = "{ \"status\": 401, \"message\": \"Not Authorized\" }";
                 response.getWriter().write(jsonResponse);
                 response.getWriter().flush();
-            } else {
-                redirectStrategy.sendRedirect(request, response, "/Home?access=denied");
             }
             return false;
         }

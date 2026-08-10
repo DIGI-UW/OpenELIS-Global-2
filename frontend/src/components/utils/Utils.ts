@@ -111,6 +111,7 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
       method: "GET",
       signal: signal,
       headers: {
+        Accept: "application/json",
         "Accept-Language": getAcceptLanguageHeader(),
       },
     },
@@ -153,6 +154,7 @@ export const postToOpenElisServer = <TExtra = unknown>(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
         "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
@@ -185,6 +187,7 @@ export const postToOpenElisServerFullResponse = <TExtra = unknown>(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
         "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
@@ -212,6 +215,7 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
       credentials: "include",
       method: "POST",
       headers: {
+        Accept: "application/json",
         "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
@@ -247,6 +251,7 @@ export const postToOpenElisServerJsonResponse = <
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
         "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
@@ -376,6 +381,7 @@ export const putToOpenElisServer = (
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
@@ -410,6 +416,7 @@ export const putToOpenElisServerFullResponse = <TExtra = unknown>(
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
@@ -433,6 +440,7 @@ export const deleteFromOpenElisServer = (
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
@@ -459,6 +467,7 @@ export const deleteFromOpenElisServerFullResponse = <TExtra = unknown>(
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
@@ -517,6 +526,7 @@ export const patchToOpenElisServerJsonResponse = <
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
         "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },

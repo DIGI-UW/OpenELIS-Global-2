@@ -436,8 +436,9 @@ public class SecurityConfig {
                         .sessionFixation().migrateSession())
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin"))
                 .exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) -> {
-                    String path = request.getRequestURI().substring(request.getContextPath().length());
-                    if (path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")) {
+                    if (SecurityResponseUtils.isHtmlRequest(request)) {
+                        response.sendRedirect(request.getContextPath() + "/Home?access=denied");
+                    } else {
                         response.setStatus(403);
                         response.setContentType("application/json");
                         response.setCharacterEncoding("UTF-8");
@@ -445,8 +446,6 @@ public class SecurityConfig {
                                 ? "CSRF token missing or invalid"
                                 : "Access denied";
                         response.getWriter().write("{ \"status\": 403, \"message\": \"" + message + "\" }");
-                    } else {
-                        response.sendRedirect(request.getContextPath() + "/Home?access=denied");
                     }
                 }))
                 // add security headers
