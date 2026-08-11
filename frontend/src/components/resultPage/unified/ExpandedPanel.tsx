@@ -757,7 +757,6 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           accessionNumber={row.accessionNumber}
           analysisId={row.analysisId as string | undefined}
           componentId={row.testResultComponentId as string | undefined}
-          editable={editable}
         />
 
         <HistorySection

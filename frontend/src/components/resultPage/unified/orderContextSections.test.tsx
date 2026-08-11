@@ -135,6 +135,25 @@ describe("orderContextSections (FR-C3/C5)", () => {
     ).toBeInTheDocument();
   });
 
+  it("the Add attachment button shows on read-only rows too (old-page behavior)", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof cb === "function") {
+        cb([]);
+      }
+    });
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+        analysisId="25"
+        componentId="comp-A"
+      />,
+    );
+    expect(screen.getAllByText("Add attachment").length).toBeGreaterThan(0);
+    expect(document.querySelector('input[type="file"]')).not.toBeNull();
+  });
+
   it("collapsed empty Attachments section summarizes as none", () => {
     getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
       if (typeof cb === "function") {
@@ -178,7 +197,6 @@ describe("orderContextSections (FR-C3/C5)", () => {
         open={true}
         onToggle={() => {}}
         accessionNumber="DEV1"
-        editable
       />,
     );
     const input = document.querySelector(
@@ -210,7 +228,6 @@ describe("orderContextSections (FR-C3/C5)", () => {
         open={true}
         onToggle={() => {}}
         accessionNumber="DEV1"
-        editable
       />,
     );
     const input = document.querySelector(
@@ -305,7 +322,6 @@ describe("orderContextSections (FR-C3/C5)", () => {
         accessionNumber="DEV1"
         analysisId="28"
         componentId="comp-A"
-        editable
       />,
     );
     const input = document.querySelector(
