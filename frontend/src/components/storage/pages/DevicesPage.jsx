@@ -5,7 +5,7 @@ import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
 
 /** DevicesPage — /Storage/devices. List of devices with per-row Edit. */
-export default function DevicesPage({ embedded = false }) {
+export default function DevicesPage() {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
@@ -27,7 +27,6 @@ export default function DevicesPage({ embedded = false }) {
   return (
     <>
       <StorageResourcePage
-        embedded={embedded}
         crumbs={[
           {
             label: intl.formatMessage({
