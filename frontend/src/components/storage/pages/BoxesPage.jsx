@@ -56,6 +56,8 @@ export default function BoxesPage({ embedded = false }) {
           defaultMessage: "Boxes",
         })}
         listUrl="/rest/storage/boxes"
+        searchUrl="/rest/storage/boxes/search"
+        searchPlaceholderId="storage.search.boxes.placeholder"
         headers={[
           {
             key: "label",

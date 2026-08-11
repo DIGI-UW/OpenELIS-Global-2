@@ -51,6 +51,8 @@ export default function RacksPage({ embedded = false }) {
           defaultMessage: "Racks",
         })}
         listUrl="/rest/storage/racks"
+        searchUrl="/rest/storage/racks/search"
+        searchPlaceholderId="storage.search.racks.placeholder"
         headers={[
           {
             key: "label",

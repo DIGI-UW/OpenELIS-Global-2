@@ -50,6 +50,8 @@ export default function RoomsPage({ embedded = false }) {
           defaultMessage: "Rooms",
         })}
         listUrl="/rest/storage/rooms"
+        searchUrl="/rest/storage/rooms/search"
+        searchPlaceholderId="storage.search.rooms.placeholder"
         headers={[
           {
             key: "name",

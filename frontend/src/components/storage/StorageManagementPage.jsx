@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import {
   Tabs,
   TabList,
@@ -79,7 +79,12 @@ const TABS = ["dashboard", "sample-items", "inventory-lots"];
 
 function LocationTiles({ activeLevel, onSelect }) {
   const intl = useIntl();
+  const location = useLocation();
   const [counts, setCounts] = useState({});
+
+  // Creating or deleting a location stamps ?t= on the URL to refresh the table
+  // below; the tiles have to follow, or a new device leaves its count stale.
+  const refreshKey = new URLSearchParams(location.search).get("t") || "initial";
 
   useEffect(() => {
     let mounted = true;
@@ -89,7 +94,7 @@ function LocationTiles({ activeLevel, onSelect }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [refreshKey]);
 
   return (
     <Grid className="storage-metrics-grid" fullWidth={false}>
