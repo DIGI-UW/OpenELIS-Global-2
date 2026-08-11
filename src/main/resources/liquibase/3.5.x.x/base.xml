@@ -196,4 +196,7 @@
   <!-- OGC-811: notes authored on a component row are scoped to that component -->
   <include relativeToChangelogFile="true" file="073-note-component-scope.xml"/>
 
+  <!-- OGC-1142 v2.2: Add domain to panel table -->
+  <include relativeToChangelogFile="true" file="074-panel-domain.xml"/>
+
 </databaseChangeLog>

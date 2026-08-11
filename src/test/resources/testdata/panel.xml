@@ -23,22 +23,22 @@
         sort_order="2" />
     <panel id="1" name="Test Panel"
         description="This is a test panel." is_active="Y"
-        name_localization_id="1" loinc="12345" />
+        name_localization_id="1" loinc="12345" domain="Clinical" />
     <panel id="2" name="Duplicate Panel"
         description="Duplicate description" is_active="N"
-        name_localization_id="1" loinc="67890" />
+        name_localization_id="1" loinc="67890" domain="Clinical" />
     <panel id="3" name="New Panel Name"
         description="A test panel from dataset." is_active="Y"
-        name_localization_id="1" loinc="11111" />
+        name_localization_id="1" loinc="11111" domain="Clinical" />
     <panel id="4" name="Unique Panel"
         description="This panel has a unique name." is_active="Y"
-        name_localization_id="1" loinc="54321" />
+        name_localization_id="1" loinc="54321" domain="Clinical" />
     <!-- Dataset Panel 1 -->
     <panel id="5" name="Dataset Panel 1"
         description="This is the first dataset panel." is_active="Y"
-        name_localization_id="1" loinc="98765" />
+        name_localization_id="1" loinc="98765" domain="Clinical" />
     <!-- Add the Duplicate Panel 1 -->
     <panel id="6" name="Duplicate Panel 1"
         description="This is a duplicate panel." is_active="Y"
-        name_localization_id="1" loinc="11223" />
+        name_localization_id="1" loinc="11223" domain="Clinical" />
 </dataset>

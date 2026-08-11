@@ -104,9 +104,11 @@
     <sampletype_test id="1" sample_type_id="100"
         test_id="1" is_panel="false" />
 
+    <!-- domain="CLINICAL" required: panel.domain is NOT NULL since 068-panel-domain
+        migration -->
     <panel id="1" name="CBC Panel"
         description="Complete blood count panel" is_active="Y"
-        name_localization_id="7" loinc="11001" />
+        name_localization_id="7" loinc="11001" domain="CLINICAL" />
 
     <panel_item id="1" panel_id="1" test_id="1" sort_order="1"
         test_local_abbrev="CBC" method_name="manual"

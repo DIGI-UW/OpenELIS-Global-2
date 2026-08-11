@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="068-add-domain-to-panel" author="Agaba-derrick">
+        <comment>Add required domain column to panel table (OGC-1142 v2.2)</comment>
+        <addColumn tableName="panel" schemaName="clinlims">
+            <column name="domain" type="varchar(20)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-backfill-panel-domain-clinical" author="Agaba-derrick">
+        <comment>Backfill existing panels to Clinical domain per v2.2 FRS</comment>
+        <update tableName="panel" schemaName="clinlims">
+            <column name="domain" value="CLINICAL"/>
+            <where>domain IS NULL</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="068-domain-not-null" author="Agaba-derrick">
+        <comment>Enforce domain as required now that backfill is complete</comment>
+        <addNotNullConstraint tableName="panel" schemaName="clinlims"
+            columnName="domain" columnDataType="varchar(20)"/>
+    </changeSet>
+
+</databaseChangeLog>

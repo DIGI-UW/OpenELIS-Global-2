@@ -50,6 +50,7 @@ public class PanelCreateServiceTest extends BaseWebContextSensitiveTest {
         panel.setPanelName("Test panel");
         panel.setDescription("Urinalysis panel test");
         panel.setIsActive("Y");
+        panel.setDomain("Clinical");
 
         SystemModule workPlanModule = new SystemModule();
         workPlanModule.setSystemModuleName("panel workPlan");

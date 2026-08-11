@@ -120,10 +120,10 @@
         name_localization_id="2" antimicrobial_resistance="false" />
 
     <panel id="1" name="TB" description="Test panel 1" is_active="Y"
-        name_localization_id="1" loinc="12345" />
+        name_localization_id="1" loinc="12345" domain="Clinical" />
     <panel id="2" name="TestPanel2"
         description="Duplicate description" is_active="N"
-        name_localization_id="1" loinc="67890" />
+        name_localization_id="1" loinc="67890" domain="Clinical" />
 
     <panel_item id="1" panel_id="1" sort_order="1"
         test_local_abbrev="TLA1" method_name="therapy"

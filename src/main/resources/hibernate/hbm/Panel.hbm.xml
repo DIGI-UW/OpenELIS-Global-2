@@ -24,6 +24,9 @@
         <property name="loinc" type="java.lang.String">
             <column name="LOINC" length="10" />
         </property>
+        <property name="domain" type="java.lang.String">
+            <column name="domain" length="20" not-null="true" />
+        </property>
         <many-to-one name="localization"
             class="org.openelisglobal.localization.valueholder.Localization"
             fetch="select" lazy="false">

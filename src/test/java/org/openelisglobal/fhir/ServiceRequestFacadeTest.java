@@ -358,6 +358,7 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
         newPanel.setPanelName("New Panel Name");
         newPanel.setDescription("A test panel from dataset.");
         newPanel.setLocalization(savedLocalization);
+        newPanel.setDomain("Clinical");
         Panel panel = panelService.save(newPanel);
         analysis.setPanel(panel);
         analysisService.save(analysis);
