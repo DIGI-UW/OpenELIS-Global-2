@@ -477,6 +477,14 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     + " (3, 'T', 'Titer', now(), 'TX'), (4, 'N', 'Numeric', now(), 'NM'),"
                     + " (5, 'A', 'Alpha,no range check', now(), 'TX'), (6, 'M', 'Multiselect', now(), 'TX'),"
                     + " (7, 'C', 'Cascading Multiselect', now(), 'TX')" + " ON CONFLICT (id) DO NOTHING");
+            // The record-status pair every sample/patient status write FKs to.
+            // ObservationHistoryService caches the name->id mapping at first use, so
+            // after a fixture guts this table the cached ids (15/16) FK-fail on
+            // insert — restoring by exact id is the only repair that honours the
+            // cache. Fixtures only ever declare ids 1-5, so no conflict.
+            st.execute("INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)"
+                    + " VALUES (15, 'SampleRecordStatus', 'Sample Record Status', now()),"
+                    + " (16, 'PatientRecordStatus', 'Patient Record Status', now())" + " ON CONFLICT (id) DO NOTHING");
             for (String requesterType : new String[] { "organization", "provider" }) {
                 st.execute("INSERT INTO clinlims.requester_type (id, requester_type)"
                         + " SELECT (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.requester_type), '" + requesterType
