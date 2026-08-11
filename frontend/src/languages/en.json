@@ -2903,6 +2903,7 @@
   "label.results.storage.unassigned": "No storage assignment",
   "label.results.storage.assignLocation": "Assign Location",
   "label.results.storage.moveLocation": "Move to Location",
+  "label.results.program.capturedData": "Programme data",
   "label.results.sampleStatus.title": "Sample status",
   "label.results.sampleStatus.volume": "Volume: {0} remaining of {1} · status {2}.",
   "label.results.sampleStatus.noVolume": "Status {0}.",

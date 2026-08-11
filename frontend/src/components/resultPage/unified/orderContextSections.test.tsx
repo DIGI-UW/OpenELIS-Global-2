@@ -98,6 +98,53 @@ describe("orderContextSections (FR-C3/C5)", () => {
     expect(screen.getByText("EQA · STANDARD")).toBeInTheDocument();
   });
 
+  it("Programme section renders the captured programme data (programView parity)", () => {
+    wrap(
+      <ProgrammeSection
+        open={true}
+        onToggle={() => {}}
+        order={{
+          loaded: true,
+          sampleOrderItems: {
+            program: "Histopathology",
+            additionalQuestions: {
+              item: [
+                {
+                  text: "Specimen site",
+                  answer: [{ valueString: "Left breast" }],
+                },
+                {
+                  text: "Grossing performed",
+                  answer: [{ valueBoolean: true }],
+                },
+              ],
+            },
+          },
+        }}
+      />,
+    );
+    expect(screen.getByTestId("program-captured-data")).toBeInTheDocument();
+    expect(screen.getByText("Specimen site")).toBeInTheDocument();
+    expect(screen.getByText("Left breast")).toBeInTheDocument();
+    expect(screen.getByText("Grossing performed")).toBeInTheDocument();
+    expect(screen.getByText("True")).toBeInTheDocument();
+  });
+
+  it("Programme section omits the captured-data block when no responses exist", () => {
+    wrap(
+      <ProgrammeSection
+        open={true}
+        onToggle={() => {}}
+        order={{
+          loaded: true,
+          sampleOrderItems: { program: "Histopathology" },
+        }}
+      />,
+    );
+    expect(screen.getByText("Histopathology")).toBeInTheDocument();
+    expect(screen.queryByTestId("program-captured-data")).toBeNull();
+  });
+
   it("Storage section offers Assign Location when nothing is assigned", async () => {
     getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
       if (typeof url === "string" && url.includes("/rest/storage/")) {

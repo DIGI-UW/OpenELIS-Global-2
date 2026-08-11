@@ -13,6 +13,10 @@ import {
   postToOpenElisServerFormData,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+// the shipped programme-response renderer (programView/:id) — plain jsx
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import QuestionnaireResponse from "../../common/QuestionnaireResponse";
 // the shipped storage-location picker the old Results page opens inline —
 // workflow-agnostic modal; the caller translates its confirm into the
 // assign/move REST calls. Plain jsx/js, hence the ts-ignores.
@@ -40,6 +44,11 @@ import config from "../../../config.json";
  * mounted (FR-C5).
  */
 
+/** FHIR QuestionnaireResponse — the programme's captured answers. */
+interface ProgramQuestionnaireResponse {
+  item?: unknown[];
+}
+
 interface SampleOrderItems {
   providerFirstName?: string;
   providerLastName?: string;
@@ -50,6 +59,7 @@ interface SampleOrderItems {
   collectionDate?: string;
   receivedDateForDisplay?: string;
   program?: string;
+  additionalQuestions?: ProgramQuestionnaireResponse;
 }
 
 export interface OrderContext {
@@ -146,6 +156,7 @@ export const ProgrammeSection: React.FC<
   }
 > = ({ open, onToggle, order, eqaSample, eqaPriority }) => {
   const program = order.sampleOrderItems?.program;
+  const capturedAnswers = order.sampleOrderItems?.additionalQuestions;
   if (!order.loaded || (!program && !eqaSample)) {
     return null;
   }
@@ -170,6 +181,19 @@ export const ProgrammeSection: React.FC<
           </div>
         )}
       </div>
+      {/* the programme's captured answers, rendered exactly as programView/:id
+          renders them (shared QuestionnaireResponse component) */}
+      {capturedAnswers?.item && capturedAnswers.item.length > 0 && (
+        <div
+          className="unifiedProgramAnswers"
+          data-testid="program-captured-data"
+        >
+          <span className="cds--label">
+            <FormattedMessage id="label.results.program.capturedData" />
+          </span>
+          <QuestionnaireResponse questionnaireResponse={capturedAnswers} />
+        </div>
+      )}
       <div className="unifiedHistoryFootnote">
         <FormattedMessage id="label.results.program.readonly" />
       </div>
