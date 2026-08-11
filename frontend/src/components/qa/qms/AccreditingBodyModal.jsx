@@ -78,6 +78,10 @@ const AccreditingBodyModal = ({ open, onClose, body, onSaved }) => {
         intl.formatMessage({ id: "qa.qms.accreditation.body.logoError" }),
       );
       setPendingFile(null);
+      // Remount the uploader too: leaving the rejected filename on screen reads
+      // as "this file is attached", and saving after dismissing the error would
+      // then quietly persist the body with no logo at all.
+      setUploaderKey((k) => k + 1);
       return;
     }
     setError(null);

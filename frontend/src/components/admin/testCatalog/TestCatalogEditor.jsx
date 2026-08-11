@@ -28,6 +28,7 @@ import PanelsSection from "./sections/PanelsSection";
 import ReagentsSection from "./sections/ReagentsSection";
 import LabelsSection from "./sections/LabelsSection";
 import AlertsSection from "./sections/AlertsSection";
+import AccreditationSection from "./sections/AccreditationSection";
 import ReflexCalcSection from "./sections/ReflexCalcSection";
 import LocalizationSection from "./sections/LocalizationSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
@@ -299,6 +300,8 @@ const TestCatalogEditor = () => {
                 <LabelsSection testId={testId} />
               ) : activeSection === "alerts" ? (
                 <AlertsSection testId={testId} />
+              ) : activeSection === "accreditation" ? (
+                <AccreditationSection testId={testId} />
               ) : activeSection === "reflex-calc" ? (
                 <ReflexCalcSection testId={testId} />
               ) : activeSection === "localization" ? (

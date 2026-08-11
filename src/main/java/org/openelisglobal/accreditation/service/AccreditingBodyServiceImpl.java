@@ -15,6 +15,7 @@ import org.openelisglobal.accreditation.valueholder.AccreditationStatus;
 import org.openelisglobal.accreditation.valueholder.AccreditingBody;
 import org.openelisglobal.accreditation.valueholder.LogoVisibilityMode;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.image.service.ImageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,9 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     @Autowired
     private TestAccreditationDAO testAccreditationDAO;
+
+    @Autowired
+    private ImageService imageService;
 
     public AccreditingBodyServiceImpl() {
         super(AccreditingBody.class);
@@ -165,18 +169,39 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
             throw new IllegalArgumentException(
                     "Cannot delete — " + enrolled + " test accreditations reference this body. Remove them first.");
         }
+        String orphanedLogo = existing.getLogoImageId();
         existing.setSysUserId(sysUserId);
         delete(existing);
+        deleteLogoImage(orphanedLogo, sysUserId);
     }
 
     @Override
     @Transactional
     public AccreditingBody setLogo(Long id, String logoImageId, String sysUserId) {
         AccreditingBody row = detachedCopy(require(id));
+        String previousLogo = row.getLogoImageId();
         row.setLogoImageId(logoImageId);
         row.setSysUserId(sysUserId);
         update(row);
+        // Replacing or clearing the logo leaves the old image unreferenced. Each
+        // body owns its logo 1:1 (uploadLogo creates a fresh image per body), so
+        // once the body no longer points at it, nothing does — delete it to avoid
+        // the storage leak.
+        if (previousLogo != null && !previousLogo.equals(logoImageId)) {
+            deleteLogoImage(previousLogo, sysUserId);
+        }
         return row;
+    }
+
+    /**
+     * Removes an orphaned logo image. The {@code image} table is not
+     * history-tracked, so this is a plain delete; the FK from
+     * {@code accrediting_body} has already been cleared or dropped by the caller.
+     */
+    private void deleteLogoImage(String logoImageId, String sysUserId) {
+        if (logoImageId != null) {
+            imageService.delete(logoImageId, sysUserId);
+        }
     }
 
     /**
