@@ -72,6 +72,9 @@ import { NceDisposition, dispositionRequests } from "./nceDisposition";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
 import Avatar from "./Avatar";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import config from "../../../config.json";
 import "./unified-results.scss";
 
 /**
@@ -105,6 +108,8 @@ interface WorklistRow extends ResultCellRow, PanelRow {
   testResultComponentId?: string;
   testMethod?: string;
   analyzerId?: string;
+  /** analysis-level non-conformity flag, computed server-side (QAService). */
+  nonconforming?: boolean;
   [key: string]: unknown;
 }
 
@@ -506,6 +511,16 @@ const UnifiedResults: React.FC = () => {
   // rejection on the row so the e-signature Save applies it (FR-A4).
   const handleNceApplyDisposition = useCallback(
     (target: WorklistRow, disposition: NceDisposition, reasonId: string) => {
+      // the NCE itself is filed by this point (this runs on submit success);
+      // surface the analysis-level flag immediately — a full reload recomputes
+      // it server-side (QAService)
+      setRows((current) =>
+        current.map((row) =>
+          row.analysisId === target.analysisId
+            ? { ...row, nonconforming: true }
+            : row,
+        ),
+      );
       if (disposition === "REJECT") {
         if (reasonId) {
           handleRejectDraftChange(target, { rejectReasonId: reasonId });
@@ -786,6 +801,20 @@ const UnifiedResults: React.FC = () => {
         <div>
           <div className="unifiedAccession">{accession}</div>
           {subline && <div className="unifiedSubjectSub">{subline}</div>}
+          {/* the old Results page's non-conformity indicator, reproduced
+              under the sample/patient identity — analysis-level, shared by
+              every component row */}
+          {row.nonconforming && (
+            <picture>
+              <img
+                src={config.serverBaseUrl + "/images/nonconforming.gif"}
+                alt="nonconforming"
+                width="20"
+                height="15"
+                data-testid={`nonconforming-${worklistRowKey(row)}`}
+              />
+            </picture>
+          )}
         </div>
       </div>
     );
