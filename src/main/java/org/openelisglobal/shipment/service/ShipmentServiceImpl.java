@@ -100,7 +100,8 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Override
     public Shipment updateShipment(Shipment shipment) {
         try {
-            // Hibernate @Version handles lastupdated automatically; capture updated instance
+            // Hibernate @Version handles lastupdated automatically; capture updated
+            // instance
             Shipment updated = shipmentDAO.update(shipment);
             logger.info("Updated shipment with ID: {}", updated.getId());
             return updated;
@@ -108,7 +109,7 @@ public class ShipmentServiceImpl implements ShipmentService {
             logger.error("Error updating shipment", e);
             throw new LIMSRuntimeException("Error updating shipment", e);
         }
-    } 
+    }
 
     @Override
     public Shipment updateShipmentStatus(Integer id, ShipmentStatus newStatus) {
