@@ -103,14 +103,16 @@
         street_address="123 Health St" state="NY"
         fhir_uuid="68438220-5cef-44c4-9e6f-9f88e6b93287"
         internet_address="www.globalhealth.org" clia_num="CLIA12345"
-        pws_id="PWS123" local_abbrev="1" code="GHG001" />
+        pws_id="PWS123" local_abbrev="1" code="GHG001" is_active="Y"
+        mls_lab_flag="N" mls_sentinel_lab_flag="N" />
     <organization id="4" lastupdated="2024-06-04 12:00:00.0"
         name="Health Services Ltd" city="Los Angeles" zip_code="90001"
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         fhir_uuid="68438220-5cef-44c4-9e6f-9f88e6b93288"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_id="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" is_active="Y"
+        mls_lab_flag="N" mls_sentinel_lab_flag="N" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"

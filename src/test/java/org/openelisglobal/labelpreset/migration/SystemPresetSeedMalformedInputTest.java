@@ -78,6 +78,7 @@ public class SystemPresetSeedMalformedInputTest extends BaseWebContextSensitiveT
         SystemPresetSeedTest.clearBarcodeSiteInformation(dataSource);
         SystemPresetSeedTest.executeSeedSql(dataSource, SEED_CHANGESET);
         SystemPresetSeedTest.executeSeedSql(dataSource, SystemPresetSeedTest.FIELD_SEED_CHANGESET);
+        SystemPresetSeedTest.restoreUniversalSpecimenLabel(dataSource);
     }
 
     @Test

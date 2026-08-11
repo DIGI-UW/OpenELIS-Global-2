@@ -47,6 +47,10 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement(DATASET_XML);
+        resyncSequence("clinlims.analysis_seq", "clinlims.analysis");
+        resyncSequence("clinlims.sample_seq", "clinlims.sample");
+        resyncSequence("clinlims.sample_item_seq", "clinlims.sample_item");
+        resyncSequence("clinlims.result_seq", "clinlims.result");
     }
 
     private SampleEditForm createBaseForm() {

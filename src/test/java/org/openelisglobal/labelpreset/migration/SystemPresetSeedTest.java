@@ -116,6 +116,7 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         clearBarcodeSiteInformation();
         runRealSeedChangesetSql();
         executeSeedSql(dataSource, FIELD_SEED_CHANGESET);
+        restoreUniversalSpecimenLabel(dataSource);
     }
 
     @Test
@@ -285,6 +286,13 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
             // FK label_preset_field -> label_preset is ON DELETE CASCADE, so seeded field
             // rows go too.
             stmt.execute("DELETE FROM clinlims.label_preset WHERE is_system = true");
+        }
+    }
+
+    static void restoreUniversalSpecimenLabel(DataSource dataSource) throws Exception {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.execute(
+                    "UPDATE clinlims.label_preset SET is_universal = true, last_updated = CURRENT_TIMESTAMP WHERE is_system = true AND name = 'Specimen Label'");
         }
     }
 

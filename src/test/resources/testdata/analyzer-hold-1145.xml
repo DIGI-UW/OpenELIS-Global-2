@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Fixture for AnalyzerResultsAcceptHoldIntegrationTest (OGC-1145 FR-8).
+    Scoped to IDs in the 97xxx range to avoid colliding with ids used by analyzer-results.xml
+    (1001-2002, 4001-4002, 7001-7002) or result-facade.xml (1-8 for status_of_sample,
+    1-3 for type_of_sample, etc.). Tables declared here will be TRUNCATED and
+    re-seeded by executeDataSetWithStateManagement before each test method. The
+    StatusService cache is refreshed automatically by the base class after the
+    load, so the accept-service can resolve OrderStatus.Started, SampleStatus.Entered,
+    and AnalysisStatus.TechnicalAcceptance without a separate ensureCanonicalStatuses
+    hack. The UNKNOWN_patient rows (person/provider/patient) are intentionally
+    NOT seeded here; PatientUtil.initializeUnknowns() creates them through the
+    service layer using auto-sequences when they are absent, which is the production
+    code path we want to exercise. -->
+<dataset>
+    <!-- system_user: needed by audit-emitting services (sysUserId = "1") -->
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <!-- status_of_sample rows consumed by StatusService. Only the statuses
+        actually needed by AnalyzerResultsAcceptServiceImpl for the "no entry done"
+        accept path are included. -->
+    <status_of_sample id="9701"
+        description="Testing Started" code="1" status_type="ORDER"
+        lastupdated="2026-01-01" name="Testing Started" is_active="Y" />
+    <status_of_sample id="9702" description="Test Entered"
+        code="1" status_type="ORDER" lastupdated="2026-01-01"
+        name="Test Entered" is_active="Y" />
+    <status_of_sample id="9703"
+        description="SampleEntered" code="1" status_type="SAMPLE"
+        lastupdated="2026-01-01" name="SampleEntered" is_active="Y" />
+    <status_of_sample id="9704"
+        description="Technical Acceptance" code="1" status_type="ANALYSIS"
+        lastupdated="2026-01-01" name="Technical Acceptance" is_active="Y" />
+    <status_of_sample id="9705"
+        description="Technical Rejected" code="1" status_type="ANALYSIS"
+        lastupdated="2026-01-01" name="Technical Rejected" is_active="Y" />
+
+    <!-- localization rows backing the two type_of_sample descriptions. IDs
+        97101 / 97102 are reused as both localization id and type_of_sample id for
+        simplicity (same as the original test constants). -->
+    <localization id="97101" description="Hold A 1145"
+        lastupdated="2026-01-01 00:00:00" />
+    <localization id="97102" description="Hold B 1145"
+        lastupdated="2026-01-01 00:00:00" />
+
+    <!-- Two sample types, both linked to the multi-type test below. is_active
+        must be a text flag recognised by DBUnit/Postgres bool cast. -->
+    <type_of_sample id="97101" description="Hold A 1145"
+        domain="H" local_abbrev="HA1" is_active="true" sort_order="97101"
+        name_localization_id="97101" lastupdated="2026-01-01 00:00:00" />
+    <type_of_sample id="97102" description="Hold B 1145"
+        domain="H" local_abbrev="HB2" is_active="true" sort_order="97102"
+        name_localization_id="97102" lastupdated="2026-01-01 00:00:00" />
+
+    <!-- The test that is specimen-ambiguous (runs on both 97101 and 97102).
+        Minimal columns required by the test entity. -->
+    <test id="97001" description="HoldIT 1145" is_active="Y"
+        guid="hold-1145-test-guid-001" domain="CLINICAL" orderable="true"
+        sort_order="2147483646" name="HoldIT 1145"
+        lastupdated="2026-01-01 00:00:00" />
+
+    <!-- sampletype_test junction: test 97001 → types 97101 and 97102 -->
+    <sampletype_test id="97011" sample_type_id="97101"
+        test_id="97001" is_panel="false" />
+    <sampletype_test id="97012" sample_type_id="97102"
+        test_id="97001" is_panel="false" />
+
+    <!-- analyzer seeded for the staging row -->
+    <analyzer id="97201" name="HoldAnalyzer1145" is_active="true"
+        last_updated="2026-01-01 00:00:00" />
+
+    <!-- The staging row in analyzer_results. accession_number "HOLD1145X01"
+        is the value the test submits to the accept service. The id is a fixed numeric
+        value so the test can reference it without a sequence query. -->
+    <analyzer_results id="97301" analyzer_id="97201"
+        accession_number="HOLD1145X01" test_name="HoldIT 1145" result="42"
+        iscontrol="false" test_id="97001" last_updated="2026-01-01 00:00:00" />
+</dataset>
