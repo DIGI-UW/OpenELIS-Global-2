@@ -371,6 +371,12 @@ public class SampleTypeManagementRestController extends BaseRestController {
             SampleTypeManagementDTO responseDTO = new SampleTypeManagementDTO(existingTypeOfSample);
             return ResponseEntity.ok(new ApiResponse<>(true, "Sample type updated successfully", responseDTO));
 
+        } catch (org.openelisglobal.common.exception.LIMSDuplicateRecordException e) {
+            // duplicate name/description is a client-correctable conflict, not
+            // a server fault — it used to surface as a blank 500
+            LogEvent.logError("SampleTypeManagementRestController", "updateSampleType", e.getMessage());
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(false, "A sample type with this name/description already exists", null));
         } catch (Exception e) {
             LogEvent.logError("SampleTypeManagementRestController", "updateSampleType", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

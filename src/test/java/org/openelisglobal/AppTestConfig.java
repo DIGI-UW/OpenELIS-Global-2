@@ -384,6 +384,12 @@ public class AppTestConfig implements WebMvcConfigurer {
      * Jackson, which is how the un-PUT-able alert-rule GET representation shipped
      * unnoticed.
      */
+    /** See testCatalogEditorRestController — same MockMvc rationale. */
+    @Bean
+    public org.openelisglobal.common.management.controller.rest.SampleTypeManagementRestController sampleTypeManagementRestController() {
+        return new org.openelisglobal.common.management.controller.rest.SampleTypeManagementRestController();
+    }
+
     @Bean
     public org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController testCatalogEditorRestController(
             org.openelisglobal.test.service.TestService testService,
