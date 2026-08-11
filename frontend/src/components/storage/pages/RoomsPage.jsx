@@ -3,6 +3,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
+import AddLocationModal from "../components/AddLocationModal";
 
 /** RoomsPage — /Storage/rooms. List of rooms with per-row Edit. */
 export default function RoomsPage({ embedded = false }) {
@@ -12,6 +13,7 @@ export default function RoomsPage({ embedded = false }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const mapRow = useCallback(
     (r) => ({
@@ -77,8 +79,20 @@ export default function RoomsPage({ embedded = false }) {
         pageSize={pageSize}
         setPageSize={setPageSize}
         editHref={(room) => `/Storage/rooms/${room.id}/edit`}
-        addHref="/Storage/rooms/new"
+        onAddRequested={() => setAddOpen(true)}
         onDeleteRequested={setDeleteTarget}
+      />
+      <AddLocationModal
+        level="room"
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => {
+          setAddOpen(false);
+          history.replace({
+            pathname: location.pathname,
+            search: `?t=${Date.now()}`,
+          });
+        }}
       />
       <DeleteLocationConfirmModal
         isOpen={Boolean(deleteTarget)}
