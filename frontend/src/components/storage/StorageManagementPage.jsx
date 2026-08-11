@@ -15,6 +15,11 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../utils/Utils";
 import SampleItemsPage from "./pages/SampleItemsPage";
 import InventoryLotsPage from "./pages/InventoryLotsPage";
+import RoomsPage from "./pages/RoomsPage";
+import DevicesPage from "./pages/DevicesPage";
+import ShelvesPage from "./pages/ShelvesPage";
+import RacksPage from "./pages/RacksPage";
+import BoxesPage from "./pages/BoxesPage";
 import "./StorageDashboard.css";
 
 const breadcrumbs = [
@@ -29,27 +34,51 @@ const breadcrumbs = [
 /**
  * StorageManagementPage — /Storage.
  *
- * Storage used to spend six sidenav rows on one module, five of them
- * (Rooms/Devices/Shelves/Racks/Boxes) levels of a single hierarchy shown as
- * peers. They are now tiles on the Dashboard tab, counted and clickable, with
- * the occupant listings as tabs beside it — the same shape as Inventory
- * Management.
+ * Storage used to spend six sidenav rows on one module and five near-identical
+ * listing pages on Rooms/Devices/Shelves/Racks/Boxes — levels of a single
+ * hierarchy presented as peers. The Dashboard tab now carries counted tiles
+ * over one table, and picking a tile swaps which level that table shows, the
+ * same shape as Inventory Management's metrics-over-lots dashboard.
  */
 
 // Hierarchy order, not alphabetical.
 const LEVELS = [
-  { key: "rooms", labelId: "storage.nav.rooms", label: "Rooms" },
-  { key: "devices", labelId: "storage.nav.devices", label: "Devices" },
-  { key: "shelves", labelId: "storage.nav.shelves", label: "Shelves" },
-  { key: "racks", labelId: "storage.nav.racks", label: "Racks" },
-  { key: "boxes", labelId: "storage.nav.boxes", label: "Boxes" },
+  {
+    key: "rooms",
+    labelId: "storage.nav.rooms",
+    label: "Rooms",
+    Page: RoomsPage,
+  },
+  {
+    key: "devices",
+    labelId: "storage.nav.devices",
+    label: "Devices",
+    Page: DevicesPage,
+  },
+  {
+    key: "shelves",
+    labelId: "storage.nav.shelves",
+    label: "Shelves",
+    Page: ShelvesPage,
+  },
+  {
+    key: "racks",
+    labelId: "storage.nav.racks",
+    label: "Racks",
+    Page: RacksPage,
+  },
+  {
+    key: "boxes",
+    labelId: "storage.nav.boxes",
+    label: "Boxes",
+    Page: BoxesPage,
+  },
 ];
 
 const TABS = ["dashboard", "sample-items", "inventory-lots"];
 
-function LocationTiles() {
+function LocationTiles({ activeLevel, onSelect }) {
   const intl = useIntl();
-  const history = useHistory();
   const [counts, setCounts] = useState({});
 
   useEffect(() => {
@@ -73,8 +102,13 @@ function LocationTiles() {
           className="storage-metric-column"
         >
           <ClickableTile
-            className="storage-metric-tile"
-            onClick={() => history.push(`/Storage/${level.key}`)}
+            className={
+              level.key === activeLevel
+                ? "storage-metric-tile storage-metric-tile--selected"
+                : "storage-metric-tile"
+            }
+            aria-pressed={level.key === activeLevel}
+            onClick={() => onSelect(level.key)}
           >
             <div className="metric-value">{counts[level.key] ?? 0}</div>
             <div className="metric-label">
@@ -96,10 +130,20 @@ export default function StorageManagementPage() {
   // click land on the same place and the tab is shareable.
   const { resource } = useParams();
 
+  const levelIndex = useMemo(
+    () => LEVELS.findIndex((l) => l.key === resource),
+    [resource],
+  );
+  // A level in the URL means the Dashboard tab with that level's table.
+  const activeLevel = levelIndex >= 0 ? LEVELS[levelIndex] : LEVELS[0];
+
   const tabIndex = useMemo(() => {
+    if (levelIndex >= 0) return 0;
     const direct = TABS.indexOf(resource);
     return direct > 0 ? direct : 0;
-  }, [resource]);
+  }, [resource, levelIndex]);
+
+  const LevelTable = activeLevel.Page;
 
   return (
     <>
@@ -146,7 +190,11 @@ export default function StorageManagementPage() {
 
               <TabPanels>
                 <TabPanel>
-                  <LocationTiles />
+                  <LocationTiles
+                    activeLevel={activeLevel.key}
+                    onSelect={(key) => history.push(`/Storage/${key}`)}
+                  />
+                  <LevelTable embedded />
                 </TabPanel>
 
                 <TabPanel>

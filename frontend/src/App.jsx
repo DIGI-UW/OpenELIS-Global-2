@@ -9,11 +9,6 @@ import ChangePassword from "./components/ChangePassword";
 import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageManagementPage from "./components/storage/StorageManagementPage";
-import RoomsPage from "./components/storage/pages/RoomsPage";
-import DevicesPage from "./components/storage/pages/DevicesPage";
-import ShelvesPage from "./components/storage/pages/ShelvesPage";
-import RacksPage from "./components/storage/pages/RacksPage";
-import BoxesPage from "./components/storage/pages/BoxesPage";
 import ManageLocationPage from "./components/storage/pages/ManageLocationPage";
 import EditLocationPage from "./components/storage/pages/EditLocationPage";
 import EditBoxPage from "./components/storage/pages/EditBoxPage";
@@ -764,61 +759,11 @@ export default function App() {
                     existing bookmarks and menu rows keep working. The slug union
                     keeps /new and /:id/edit matching their own routes. */}
                 <SecureRoute
-                  path="/Storage/:resource(sample-items|inventory-lots)"
+                  path="/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)"
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorStorage}>
                       <StorageManagementPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/rooms"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <RoomsPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/devices"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <DevicesPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/shelves"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <ShelvesPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/racks"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <RacksPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/boxes"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <BoxesPage />
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
