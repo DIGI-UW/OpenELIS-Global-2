@@ -86,7 +86,23 @@ const AlertsSection = ({ testId }) => {
   const toggleEnabled = (rule, checked) => {
     putToOpenElisServer(
       `/rest/test-catalog/${testId}/alerts/${rule.id}`,
-      JSON.stringify({ ...rule, enabled: checked }),
+      // explicit whitelist — rule comes from GET and carries server-managed
+      // fields; only the editable contract fields ride the PUT
+      JSON.stringify({
+        name: rule.name,
+        triggerType: rule.triggerType,
+        triggerValue: rule.triggerValue,
+        notifySms: rule.notifySms,
+        notifyEmail: rule.notifyEmail,
+        notifyOrderingPhysician: rule.notifyOrderingPhysician,
+        notifyPatient: rule.notifyPatient,
+        notifyReferringFacility: rule.notifyReferringFacility,
+        notifyCustomPhone: rule.notifyCustomPhone,
+        notifyCustomEmail: rule.notifyCustomEmail,
+        notifyRoleId: rule.notifyRoleId,
+        acknowledgmentRequired: rule.acknowledgmentRequired,
+        enabled: checked,
+      }),
       (status) => {
         if (status >= 200 && status < 300) {
           setRules((prev) =>

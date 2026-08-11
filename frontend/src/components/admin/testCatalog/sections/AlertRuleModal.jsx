@@ -101,7 +101,23 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
         );
       }
     };
-    const payload = JSON.stringify(form);
+    // explicit whitelist — the form state may carry server-managed fields
+    // (id, testId, lastupdated) from the GET representation on edit
+    const payload = JSON.stringify({
+      name: form.name,
+      triggerType: form.triggerType,
+      triggerValue: form.triggerValue,
+      notifySms: form.notifySms,
+      notifyEmail: form.notifyEmail,
+      notifyOrderingPhysician: form.notifyOrderingPhysician,
+      notifyPatient: form.notifyPatient,
+      notifyReferringFacility: form.notifyReferringFacility,
+      notifyCustomPhone: form.notifyCustomPhone,
+      notifyCustomEmail: form.notifyCustomEmail,
+      notifyRoleId: form.notifyRoleId,
+      acknowledgmentRequired: form.acknowledgmentRequired,
+      enabled: form.enabled,
+    });
     if (isEdit) {
       putToOpenElisServer(
         `/rest/test-catalog/${testId}/alerts/${rule.id}`,

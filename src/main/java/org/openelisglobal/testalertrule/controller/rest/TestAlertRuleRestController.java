@@ -58,8 +58,20 @@ public class TestAlertRuleRestController extends BaseRestController {
         this.roleService = roleService;
     }
 
-    /** Create/update payload for an alert rule. */
+    /**
+     * Create/update payload for an alert rule.
+     *
+     * <p>
+     * {@code id}, {@code testId} and {@code lastupdated} are server-managed but
+     * deliberately declared so a client may round-trip the representation GET
+     * returns (the REST norm for PUT). Their values are ignored on write — identity
+     * comes from the path and the version from the database. Truly unknown fields
+     * still fail deserialization: the contract stays explicit.
+     */
     public static class AlertRuleRequest {
+        public String id;
+        public String testId;
+        public java.sql.Timestamp lastupdated;
         public String name;
         public Boolean enabled;
         public String triggerType;
@@ -75,10 +87,53 @@ public class TestAlertRuleRestController extends BaseRestController {
         public Boolean acknowledgmentRequired;
     }
 
+    /**
+     * Response shape for an alert rule — a plain DTO like every other catalog
+     * section, never the Hibernate entity (which leaks {@code lastupdated} /
+     * {@code sysUserId} and made the GET representation un-PUT-able).
+     */
+    public static class AlertRuleDto {
+        public String id;
+        public String testId;
+        public String name;
+        public Boolean enabled;
+        public String triggerType;
+        public String triggerValue;
+        public Boolean notifySms;
+        public Boolean notifyEmail;
+        public Boolean notifyOrderingPhysician;
+        public Boolean notifyPatient;
+        public Boolean notifyReferringFacility;
+        public String notifyCustomPhone;
+        public String notifyCustomEmail;
+        public String notifyRoleId;
+        public Boolean acknowledgmentRequired;
+
+        static AlertRuleDto of(TestAlertRule rule) {
+            AlertRuleDto dto = new AlertRuleDto();
+            dto.id = rule.getId();
+            dto.testId = rule.getTestId();
+            dto.name = rule.getName();
+            dto.enabled = rule.getEnabled();
+            dto.triggerType = rule.getTriggerType();
+            dto.triggerValue = rule.getTriggerValue();
+            dto.notifySms = rule.getNotifySms();
+            dto.notifyEmail = rule.getNotifyEmail();
+            dto.notifyOrderingPhysician = rule.getNotifyOrderingPhysician();
+            dto.notifyPatient = rule.getNotifyPatient();
+            dto.notifyReferringFacility = rule.getNotifyReferringFacility();
+            dto.notifyCustomPhone = rule.getNotifyCustomPhone();
+            dto.notifyCustomEmail = rule.getNotifyCustomEmail();
+            dto.notifyRoleId = rule.getNotifyRoleId();
+            dto.acknowledgmentRequired = rule.getAcknowledgmentRequired();
+            return dto;
+        }
+    }
+
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<TestAlertRule> list(@PathVariable String testId) {
+    public List<AlertRuleDto> list(@PathVariable String testId) {
         requireTest(testId);
-        return alertRuleService.getByTestId(testId);
+        return alertRuleService.getByTestId(testId).stream().map(AlertRuleDto::of).collect(Collectors.toList());
     }
 
     /**
@@ -92,7 +147,7 @@ public class TestAlertRuleRestController extends BaseRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<TestAlertRule> create(@PathVariable String testId, @RequestBody AlertRuleRequest body,
+    public ResponseEntity<AlertRuleDto> create(@PathVariable String testId, @RequestBody AlertRuleRequest body,
             HttpServletRequest request) {
         requireTest(testId);
         validate(body);
@@ -102,18 +157,18 @@ public class TestAlertRuleRestController extends BaseRestController {
         apply(rule, body);
         rule.setSysUserId(ControllerUtills.getSysUserId(request));
         alertRuleService.insert(rule);
-        return ResponseEntity.status(HttpStatus.CREATED).body(rule);
+        return ResponseEntity.status(HttpStatus.CREATED).body(AlertRuleDto.of(rule));
     }
 
     @PutMapping(value = "/{ruleId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public TestAlertRule update(@PathVariable String testId, @PathVariable String ruleId,
+    public AlertRuleDto update(@PathVariable String testId, @PathVariable String ruleId,
             @RequestBody AlertRuleRequest body, HttpServletRequest request) {
         TestAlertRule rule = requireRule(testId, ruleId);
         validate(body);
         apply(rule, body);
         rule.setSysUserId(ControllerUtills.getSysUserId(request));
         alertRuleService.update(rule);
-        return rule;
+        return AlertRuleDto.of(rule);
     }
 
     @DeleteMapping(value = "/{ruleId}")
