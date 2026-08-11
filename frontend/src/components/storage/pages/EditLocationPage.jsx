@@ -10,6 +10,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
+import { storageLevel } from "../storageLevels";
 import {
   getFromOpenElisServer,
   putToOpenElisServerFullResponse,
@@ -27,45 +28,11 @@ import {
  *   Rack:   { label, code, parentShelfId, active }
  */
 
-const TYPE_META = {
-  room: {
-    nameField: "name",
-    endpoint: "rooms",
-    parentField: null,
-    parentEndpoint: null,
-    parentLabel: null,
-  },
-  device: {
-    nameField: "name",
-    endpoint: "devices",
-    parentField: "parentRoomId",
-    parentEndpoint: "rooms",
-    parentLabel: "Room",
-    parentLabelId: "storage.nav.room",
-  },
-  shelf: {
-    nameField: "label",
-    endpoint: "shelves",
-    parentField: "parentDeviceId",
-    parentEndpoint: "devices",
-    parentLabel: "Device",
-    parentLabelId: "storage.nav.device",
-  },
-  rack: {
-    nameField: "label",
-    endpoint: "racks",
-    parentField: "parentShelfId",
-    parentEndpoint: "shelves",
-    parentLabel: "Shelf",
-    parentLabelId: "storage.nav.shelf",
-  },
-};
-
 export default function EditLocationPage({ type }) {
   const { id } = useParams();
   const history = useHistory();
   const intl = useIntl();
-  const meta = TYPE_META[type];
+  const meta = storageLevel(type);
 
   const [formData, setFormData] = useState(null);
   const [parentOptions, setParentOptions] = useState([]);
