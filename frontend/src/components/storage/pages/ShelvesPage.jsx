@@ -51,6 +51,8 @@ export default function ShelvesPage({ embedded = false }) {
           defaultMessage: "Shelves",
         })}
         listUrl="/rest/storage/shelves"
+        searchUrl="/rest/storage/shelves/search"
+        searchPlaceholderId="storage.search.shelves.placeholder"
         headers={[
           {
             key: "label",

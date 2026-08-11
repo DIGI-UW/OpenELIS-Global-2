@@ -51,6 +51,8 @@ export default function DevicesPage({ embedded = false }) {
           defaultMessage: "Devices",
         })}
         listUrl="/rest/storage/devices"
+        searchUrl="/rest/storage/devices/search"
+        searchPlaceholderId="storage.search.devices.placeholder"
         headers={[
           {
             key: "name",
