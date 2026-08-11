@@ -377,6 +377,35 @@ public class AppTestConfig implements WebMvcConfigurer {
         return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
     }
 
+    /**
+     * Explicit bean (the testcatalog.controller package is not scanned — a sibling
+     * controller's class init breaks the test context) so MockMvc can exercise the
+     * editor endpoints' real JSON binding: direct controller invocation bypasses
+     * Jackson, which is how the un-PUT-able alert-rule GET representation shipped
+     * unnoticed.
+     */
+    @Bean
+    public org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController testCatalogEditorRestController(
+            org.openelisglobal.test.service.TestService testService,
+            org.openelisglobal.testresultcomponent.service.TestResultComponentService componentService,
+            org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService interpretationService,
+            org.openelisglobal.testresult.service.TestResultService testResultService,
+            org.openelisglobal.resultlimit.service.ResultLimitService resultLimitService,
+            org.openelisglobal.testcatalog.service.RangeCoverageValidationService coverageService,
+            org.openelisglobal.testsamplehandling.service.TestSampleHandlingService handlingService,
+            org.openelisglobal.analyzer.service.AnalyzerService analyzerService,
+            org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService,
+            org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService,
+            org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService,
+            org.openelisglobal.testterminology.service.TestTerminologyMappingService terminologyService,
+            org.openelisglobal.panel.service.PanelService panelService,
+            org.openelisglobal.panelitem.service.PanelItemService panelItemService) {
+        return new org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController(testService,
+                componentService, interpretationService, testResultService, resultLimitService, coverageService,
+                handlingService, analyzerService, analyzerTestMappingService, typeOfSampleService,
+                typeOfSampleTestService, terminologyService, panelService, panelItemService);
+    }
+
     @Bean
     public org.openelisglobal.result.controller.rest.LogbookResultsRestController logbookResultsRestController(
             org.openelisglobal.referral.service.ReferralTypeService referralTypeService) {
