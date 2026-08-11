@@ -377,6 +377,14 @@ public class ResultUtil {
                         ControllerUtills.getSysUserId(request)), testResultItem));
             }
 
+            // OGC-1026 (R7, FR-G1): the clinical interpretation goes with the
+            // result to the report — an EXTERNAL note under its own subject
+            if (!GenericValidator.isBlankOrNull(testResultItem.getInterpretation())) {
+                actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
+                        testResultItem.getInterpretation().trim(), INTERPRETATION_SUBJECT,
+                        ControllerUtills.getSysUserId(request)));
+            }
+
             if (testResultItem.isShadowRejected()) {
                 testResultItem.setResultValue("");
                 testResultItem.setShadowResultValue("");
