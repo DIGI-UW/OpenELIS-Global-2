@@ -6257,7 +6257,6 @@
   "storage.picker.storageLocation": "Storage location",
   "storage.metrics.active": "Active",
   "storage.metrics.disposed": "Disposed",
-  "storage.metrics.storage.locations": "Storage Locations",
   "storage.metrics.total.samples": "Total Sample Items",
   "storage.mode.autocomplete": "Type-Ahead Search",
   "storage.mode.barcode": "Barcode Scan",
