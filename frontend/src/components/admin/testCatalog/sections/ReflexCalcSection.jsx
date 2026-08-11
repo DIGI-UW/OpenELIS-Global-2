@@ -148,7 +148,13 @@ const ReflexCalcSection = ({ testId }) => {
                   <TableRow key={r.id} data-testid={`reflex-row-${r.id}`}>
                     <TableCell>
                       <Link
-                        href={REFLEX_RULES_URL}
+                        // A legacy reflex row belongs to no rule record, so there
+                        // is nothing to open on its own — fall back to the list.
+                        href={
+                          r.ruleId
+                            ? `${REFLEX_RULES_URL}?id=${encodeURIComponent(r.ruleId)}`
+                            : REFLEX_RULES_URL
+                        }
                         target="_blank"
                         renderIcon={Launch}
                       >
@@ -215,7 +221,15 @@ const ReflexCalcSection = ({ testId }) => {
               <TableBody>
                 {data.feedsInto.map((c) => (
                   <TableRow key={c.id} data-testid={`feeds-row-${c.id}`}>
-                    <TableCell>{c.name}</TableCell>
+                    <TableCell>
+                      <Link
+                        href={`${CALC_URL}?id=${encodeURIComponent(c.id)}`}
+                        target="_blank"
+                        renderIcon={Launch}
+                      >
+                        {c.name || "—"}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <code>{c.formula}</code>
                     </TableCell>
@@ -255,7 +269,15 @@ const ReflexCalcSection = ({ testId }) => {
               <TableBody>
                 {data.calculatedBy.map((c) => (
                   <TableRow key={c.id} data-testid={`calcby-row-${c.id}`}>
-                    <TableCell>{c.name}</TableCell>
+                    <TableCell>
+                      <Link
+                        href={`${CALC_URL}?id=${encodeURIComponent(c.id)}`}
+                        target="_blank"
+                        renderIcon={Launch}
+                      >
+                        {c.name || "—"}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <code>{c.formula}</code>
                     </TableCell>

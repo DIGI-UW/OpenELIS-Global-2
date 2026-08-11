@@ -301,7 +301,8 @@ public abstract class ConfigurationProperties {
                                                                      // "Environmental", or "Both"
         ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
         ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"), // signing session inactivity timeout
-        RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"); // OGC-1020 R1: unified /Results worklist
+        RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"), // OGC-1020 R1: unified /Results worklist
+        REQUESTER_REQUIRED("requesterRequired", "text");
 
         // visible on
         // the ui

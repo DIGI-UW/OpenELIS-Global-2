@@ -102,7 +102,17 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   useEffect(() => {
     getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", fetchSamples);
-    getFromOpenElisServer("/rest/test-calculations", loadCalculationList);
+    // A link from the Test Editor names one calculation, so fetch just that one
+    // instead of the whole collection.
+    const selectedCalculationId = new URLSearchParams(
+      window.location.search,
+    ).get("id");
+    getFromOpenElisServer(
+      selectedCalculationId
+        ? `/rest/test-calculations?id=${encodeURIComponent(selectedCalculationId)}`
+        : "/rest/test-calculations",
+      loadCalculationList,
+    );
     getFromOpenElisServer("/rest/math-functions", loadMathFunctions);
 
     return () => {
