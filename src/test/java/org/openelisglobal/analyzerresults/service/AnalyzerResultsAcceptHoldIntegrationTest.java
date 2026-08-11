@@ -89,6 +89,13 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
                     + " = ? AND name = ?)", status[1], status[0], status[1], status[0], status[1]);
         }
         statusService.refreshCache();
+        // The accept path also writes observation_history through its sequence;
+        // fixture datasets (observation-history.xml, result-facade.xml, ...) seed
+        // explicit low ids without advancing it, so under full-suite ordering the
+        // next sequence value can collide with a seeded PK — same drift the
+        // person/provider/patient singletons below guard against.
+        jdbc.queryForObject("SELECT setval('clinlims.observation_history_seq', CAST((SELECT COALESCE(MAX(id), 0) + 1"
+                + " FROM clinlims.observation_history) AS BIGINT), false)", Long.class);
     }
 
     /**
