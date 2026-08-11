@@ -5,6 +5,7 @@ import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
+import { storageLevel } from "../storageLevels";
 import AddLocationModal from "../components/AddLocationModal";
 
 /** ShelvesPage — /Storage/shelves. List of shelves with per-row Edit. */
@@ -19,6 +20,9 @@ export default function ShelvesPage({ embedded = false }) {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
+  // Name the level being acted on — "Rack created", not a generic
+  // "Storage location created" that reads identically for all five.
+  const level = storageLevel("shelf");
   const notify = (kind, messageId, defaultMessage) => {
     setNotificationVisible(true);
     addNotification({
@@ -29,7 +33,15 @@ export default function ShelvesPage({ embedded = false }) {
             ? "notification.title"
             : "notification.error",
       }),
-      message: intl.formatMessage({ id: messageId, defaultMessage }),
+      message: intl.formatMessage(
+        { id: messageId, defaultMessage },
+        {
+          level: intl.formatMessage({
+            id: level.labelId,
+            defaultMessage: level.label,
+          }),
+        },
+      ),
     });
   };
 
@@ -119,7 +131,7 @@ export default function ShelvesPage({ embedded = false }) {
           notify(
             NotificationKinds.success,
             "storage.location.created",
-            "Storage location created",
+            "{level} created",
           );
           history.replace({
             pathname: location.pathname,
@@ -137,7 +149,7 @@ export default function ShelvesPage({ embedded = false }) {
           notify(
             NotificationKinds.success,
             "storage.location.deleted",
-            "Storage location deleted",
+            "{level} deleted",
           );
           history.replace({
             pathname: location.pathname,
