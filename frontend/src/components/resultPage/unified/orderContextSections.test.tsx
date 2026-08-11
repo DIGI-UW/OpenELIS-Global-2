@@ -7,20 +7,27 @@ import messages from "../../../languages/en.json";
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerFormData: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
 }));
 // eslint-disable-next-line import/first
 import {
   getFromOpenElisServer,
   postToOpenElisServerFormData,
+  postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 const getMock = getFromOpenElisServer as ReturnType<typeof vi.fn>;
 const postFormMock = postToOpenElisServerFormData as ReturnType<typeof vi.fn>;
+const postJsonMock = postToOpenElisServerJsonResponse as ReturnType<
+  typeof vi.fn
+>;
 
 import {
   AttachmentsSection,
   OrderInfoSection,
   ProgrammeSection,
+  StorageSection,
   attachmentVisibleOnRow,
+  storageAssignmentRequest,
 } from "./orderContextSections";
 
 /**
@@ -39,6 +46,7 @@ describe("orderContextSections (FR-C3/C5)", () => {
   beforeEach(() => {
     getMock.mockReset();
     postFormMock.mockReset();
+    postJsonMock.mockReset();
   });
 
   it("Order info summarizes clinician · priority · site when closed", () => {
@@ -88,6 +96,104 @@ describe("orderContextSections (FR-C3/C5)", () => {
     );
     expect(screen.getByText("PMI Vector Sentinel")).toBeInTheDocument();
     expect(screen.getByText("EQA · STANDARD")).toBeInTheDocument();
+  });
+
+  it("Storage section offers Assign Location when nothing is assigned", async () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof url === "string" && url.includes("/rest/storage/")) {
+        cb({});
+      }
+    });
+    wrap(
+      <StorageSection
+        open={true}
+        onToggle={() => {}}
+        sampleItemId="41"
+        accessionNumber="DEV1"
+        sampleType="Serum"
+      />,
+    );
+    expect(
+      await screen.findByTestId("storage-location-button"),
+    ).toHaveTextContent("Assign Location");
+  });
+
+  it("Storage section offers Move to Location once a location exists", async () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof url === "string" && url.includes("/rest/storage/")) {
+        cb({ hierarchicalPath: "Main Lab > Freezer 2 > Shelf 1" });
+      }
+    });
+    wrap(
+      <StorageSection
+        open={true}
+        onToggle={() => {}}
+        sampleItemId="41"
+        accessionNumber="DEV1"
+        sampleType="Serum"
+      />,
+    );
+    expect(
+      await screen.findByTestId("storage-location-button"),
+    ).toHaveTextContent("Move to Location");
+  });
+
+  it("the storage button opens the shipped LocationPickerModal inline (no navigation)", async () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof url === "string" && url.includes("/rest/storage/")) {
+        cb({});
+      }
+    });
+    wrap(
+      <StorageSection
+        open={true}
+        onToggle={() => {}}
+        sampleItemId="41"
+        accessionNumber="DEV1"
+        sampleType="Serum"
+      />,
+    );
+    fireEvent.click(await screen.findByTestId("storage-location-button"));
+    expect(
+      await screen.findByText("Assign Storage Location"),
+    ).toBeInTheDocument();
+  });
+
+  it("confirm translates to the same assign/move REST calls the old page makes", () => {
+    const selection = {
+      room: { id: 3, name: "Main Lab" },
+      device: { id: 7, name: "Freezer 2" },
+      shelf: { id: 12, name: "Shelf 1" },
+    };
+    const assign = storageAssignmentRequest("41", false, {
+      selection,
+      position: { mode: "text", value: "A1" },
+      notes: "keep frozen",
+    });
+    expect(assign).toEqual({
+      url: "/rest/storage/sample-items/assign",
+      body: {
+        sampleItemId: "41",
+        locationId: "12",
+        locationType: "shelf",
+        positionCoordinate: "A1",
+        notes: "keep frozen",
+      },
+    });
+
+    const move = storageAssignmentRequest("41", true, {
+      selection,
+      position: null,
+      reason: "",
+      notes: "",
+    });
+    expect(move?.url).toBe("/rest/storage/sample-items/move");
+    expect(move?.body.reason).toBe("Reassignment from result entry workflow");
+
+    // nothing assignable selected → no request
+    expect(
+      storageAssignmentRequest("41", false, { selection: {}, position: null }),
+    ).toBeNull();
   });
 
   it("Attachments section lists files from the order-attachments endpoint", async () => {
