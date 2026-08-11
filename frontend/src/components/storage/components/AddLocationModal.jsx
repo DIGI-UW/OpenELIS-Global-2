@@ -11,54 +11,7 @@ import {
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import useCreateLocation from "../pages/hooks/useCreateLocation";
-
-const LEVEL_META = {
-  room: {
-    endpoint: "rooms",
-    nameField: "name",
-    parentEndpoint: null,
-    parentField: null,
-    parentLabelId: null,
-    titleId: "storage.add.room",
-    titleDefault: "Add Room",
-  },
-  device: {
-    endpoint: "devices",
-    nameField: "name",
-    parentEndpoint: "rooms",
-    parentField: "parentRoomId",
-    parentLabelId: "storage.nav.room",
-    titleId: "storage.add.device",
-    titleDefault: "Add Device",
-  },
-  shelf: {
-    endpoint: "shelves",
-    nameField: "label",
-    parentEndpoint: "devices",
-    parentField: "parentDeviceId",
-    parentLabelId: "storage.nav.device",
-    titleId: "storage.add.shelf",
-    titleDefault: "Add Shelf",
-  },
-  rack: {
-    endpoint: "racks",
-    nameField: "label",
-    parentEndpoint: "shelves",
-    parentField: "parentShelfId",
-    parentLabelId: "storage.nav.shelf",
-    titleId: "storage.add.rack",
-    titleDefault: "Add Rack",
-  },
-  box: {
-    endpoint: "boxes",
-    nameField: "label",
-    parentEndpoint: "racks",
-    parentField: "parentRackId",
-    parentLabelId: "storage.nav.rack",
-    titleId: "storage.add.box",
-    titleDefault: "Add Box",
-  },
-};
+import { storageLevel } from "../storageLevels";
 
 // Same presets AddBoxPage offered; "custom" leaves rows/columns editable.
 const GRID_PRESETS = [
@@ -86,7 +39,7 @@ const emptyForm = (level) => ({
 export default function AddLocationModal({ level, open, onClose, onCreated }) {
   const intl = useIntl();
   const createLocation = useCreateLocation();
-  const meta = LEVEL_META[level];
+  const meta = storageLevel(level);
 
   const [form, setForm] = useState(() => emptyForm(level));
   const [parents, setParents] = useState([]);
@@ -184,8 +137,8 @@ export default function AddLocationModal({ level, open, onClose, onCreated }) {
     <Modal
       open={open}
       modalHeading={intl.formatMessage({
-        id: meta.titleId,
-        defaultMessage: meta.titleDefault,
+        id: meta.addTitleId,
+        defaultMessage: meta.addTitleDefault,
       })}
       primaryButtonText={intl.formatMessage({
         id: "label.button.create",
