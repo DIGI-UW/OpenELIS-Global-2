@@ -1806,7 +1806,7 @@ public class StorageLocationRestController extends BaseRestController {
      * Shelf, and Rack levels (Position excluded). Only counts active
      * (non-decommissioned) locations.
      * 
-     * @return JSON map with keys: "rooms", "devices", "shelves", "racks" and
+     * @return JSON map with keys: "rooms", "devices", "shelves", "racks", "boxes"
      *         integer count values
      */
     @GetMapping("/dashboard/location-counts")
@@ -1822,6 +1822,7 @@ public class StorageLocationRestController extends BaseRestController {
             emptyCounts.put("devices", 0);
             emptyCounts.put("shelves", 0);
             emptyCounts.put("racks", 0);
+            emptyCounts.put("boxes", 0);
             return ResponseEntity.ok(emptyCounts);
         }
     }

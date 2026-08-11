@@ -9,7 +9,7 @@ import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal
  * Edit uses a dedicated EditBoxPage (boxes have grid-layout fields
  * that don't fit the generic EditLocationPage shell).
  */
-export default function BoxesPage({ embedded = false }) {
+export default function BoxesPage() {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
@@ -32,7 +32,6 @@ export default function BoxesPage({ embedded = false }) {
   return (
     <>
       <StorageResourcePage
-        embedded={embedded}
         crumbs={[
           {
             label: intl.formatMessage({
