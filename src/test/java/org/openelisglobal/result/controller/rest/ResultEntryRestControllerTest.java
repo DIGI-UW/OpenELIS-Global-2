@@ -600,4 +600,56 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(get("/rest/results-entry/test/2/reagents").session(session)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
+
+    /**
+     * Duplicate-component regression (unified page): a row saved from the blank
+     * placeholder state posts resultId = "" — the legacy save service INSERTS on a
+     * blank id, so a stale client duplicated the component's result on every save.
+     * The endpoint now binds a blank-id item to the analysis's existing result for
+     * that component (update, not insert), and returns the persisted resultId so
+     * the client can adopt it.
+     */
+    @Test
+    public void save_blankResultId_updatesExistingResultInsteadOfDuplicating() throws Exception {
+        Integer before = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "", "1", "91.0", currentToken("1"))).session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultId").exists());
+
+        Integer afterFirst = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+        assertEquals("blank-id save must UPDATE the existing result, not insert", before, afterFirst);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "", "1", "92.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        Integer afterSecond = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+        assertEquals("repeat blank-id saves must stay idempotent", before, afterSecond);
+        assertEquals("the latest value won", "92.0", resultService.get("3").getValue());
+    }
+
+    /**
+     * The loader buckets legacy null-component results onto the PRIMARY component's
+     * row — a blank-id save from that row must find them too.
+     */
+    @Test
+    public void save_blankResultId_primaryComponentRow_matchesLegacyNullComponentResult() throws Exception {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES ('c-dup-1', 1, 'PRIMARY', 'Primary', true, 'Y', NOW())");
+        Integer before = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "", "1", "93.0", currentToken("1"),
+                        "\"note\":\"\",\"testResultComponentId\":\"c-dup-1\""))
+                .session(session)).andExpect(status().isOk());
+
+        Integer after = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+        assertEquals("primary-row save must bind to the legacy null-component result", before, after);
+        assertEquals("93.0", resultService.get("3").getValue());
+    }
 }

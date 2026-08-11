@@ -619,3 +619,48 @@
   border-radius: 50%;
   object-fit: cover;
 }
+
+/* The main row is the PRIMARY result-entry surface — the controls must be
+ * comfortably usable without expanding the row. The accent wrapper is
+ * inline-flex, which otherwise collapses Carbon inputs to their content
+ * minimum; size by result type instead of an arbitrary fixed width. The
+ * table sits in a horizontally scrollable container, so min-widths stay
+ * responsive-safe. */
+.unifiedResultsValueCell {
+  min-width: 13rem;
+}
+
+.unifiedResultsValueCell .unifiedValueAccent {
+  width: 100%;
+}
+
+.unifiedResultsValueCell .unifiedValueAccent > .cds--form-item {
+  flex: 1 1 auto;
+}
+
+/* numeric — enough digits + spin controls to review a value comfortably */
+.unifiedResultsValueCell input[type="number"] {
+  min-width: 7.5rem;
+}
+
+/* dictionary select — option labels must be readable, not elided at 3 chars */
+.unifiedResultsValueCell .cds--select,
+.unifiedResultsValueCell .cds--select-input {
+  min-width: 11rem;
+}
+
+/* free-text / remark / alphanumeric — room for normal result strings */
+.unifiedResultsValueCell textarea,
+.unifiedResultsValueCell .cds--text-input:not([type="number"]) {
+  min-width: 12rem;
+}
+
+/* multiselect groups grow with their options; keep them from collapsing */
+.unifiedResultsValueCell .cds--checkbox-wrapper {
+  min-width: 10rem;
+}
+
+.unifiedResultsValueCell .unifiedResultsReadOnlyValue {
+  white-space: normal;
+  word-break: break-word;
+}

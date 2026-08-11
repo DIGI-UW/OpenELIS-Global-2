@@ -123,6 +123,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     @Autowired
     private TestReagentLinkService testReagentLinkService;
     @Autowired
+    private org.openelisglobal.result.service.ResultService resultService;
+    @Autowired
     private org.openelisglobal.inventory.service.InventoryItemService inventoryItemService;
 
     /**
@@ -276,6 +278,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         }
 
         item.setModified(true);
+        reuseExistingResultForComponent(item, analysis);
 
         boolean useTechnicianName = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.resultTechnicianName, "true");
@@ -345,7 +348,56 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (persisted != null && persisted.getLastupdated() != null) {
             body.put("analysisLastupdated", String.valueOf(persisted.getLastupdated().getTime()));
         }
+        // The persisted result's id — the client's row must adopt it, or a row
+        // saved from the blank placeholder state keeps a null resultId and every
+        // subsequent save INSERTS another result (duplicate component rows).
+        Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
+                .filter(r -> r != null && r.getId() != null).findFirst()
+                .ifPresent(r -> body.put("resultId", r.getId()));
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Idempotency guard for the per-analysis save: a payload with a BLANK resultId
+     * means "new result" to the legacy save service — but if this analysis already
+     * has a persisted result for the row's component (the client's row state was
+     * stale, e.g. saved from a placeholder row that never learned its persisted
+     * id), inserting again duplicates the component. Bind the item to the existing
+     * result so the save UPDATES it. Multiselect rows legitimately hold several
+     * results per component and manage their own lifecycle — they are left alone.
+     */
+    private void reuseExistingResultForComponent(TestResultItem item, Analysis analysis) {
+        if (!GenericValidator.isBlankOrNull(item.getResultId())
+                || org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType
+                        .isMultiSelectVariant(item.getResultType())) {
+            return;
+        }
+        String itemComponentId = item.getTestResultComponentId();
+        String primaryComponentId = null;
+        if (itemComponentId != null && analysis.getTest() != null) {
+            // ensureSinglePrimary guarantees exactly one active component
+            // carries the flag (TestResultComponentServiceImpl)
+            primaryComponentId = testResultComponentService.getActiveComponentsByTestId(analysis.getTest().getId())
+                    .stream().filter(c -> Boolean.TRUE.equals(c.getIsPrimary())).map(TestResultComponent::getId)
+                    .findFirst().orElse(null);
+        }
+        org.openelisglobal.result.valueholder.Result latestMatch = null;
+        for (org.openelisglobal.result.valueholder.Result existing : resultService.getResultsByAnalysis(analysis)) {
+            String existingComponentId = existing.getTestResult() != null ? existing.getTestResult().getComponentId()
+                    : null;
+            boolean matches = java.util.Objects.equals(existingComponentId, itemComponentId)
+                    // legacy results carry no component id; the loader buckets
+                    // them onto the PRIMARY component's row
+                    || (existingComponentId == null && itemComponentId != null
+                            && itemComponentId.equals(primaryComponentId));
+            if (matches && (latestMatch == null
+                    || Long.parseLong(existing.getId()) > Long.parseLong(latestMatch.getId()))) {
+                latestMatch = existing;
+            }
+        }
+        if (latestMatch != null) {
+            item.setResultId(latestMatch.getId());
+        }
     }
 
     /**

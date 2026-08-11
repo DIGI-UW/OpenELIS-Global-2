@@ -119,6 +119,8 @@ interface SaveResponse {
   modifiedBy?: string;
   modifiedAt?: string;
   analysisLastupdated?: string;
+  /** persisted result id — the saved row adopts it so re-saves UPDATE */
+  resultId?: string;
   reflex?: string[];
   calculated?: string[];
 }
@@ -605,15 +607,30 @@ const UnifiedResults: React.FC = () => {
           type: "SAVE_SUCCEEDED",
         }),
       }));
-      if (response.analysisLastupdated) {
+      if (response.analysisLastupdated || response.resultId) {
         // the version token is per ANALYSIS — refresh it on every component
-        // row of this analysis so a sibling save isn't falsely rejected
+        // row of this analysis so a sibling save isn't falsely rejected.
+        // The SAVED row must also adopt the persisted resultId: a row saved
+        // from the blank placeholder state would otherwise keep resultId null
+        // and every later save would INSERT a duplicate result for the
+        // component instead of updating it.
         setRows((current) =>
-          current.map((row) =>
-            row.analysisId === target.analysisId
+          current.map((row) => {
+            if (row.analysisId !== target.analysisId) {
+              return row;
+            }
+            const updated = response.analysisLastupdated
               ? { ...row, analysisLastupdated: response.analysisLastupdated }
-              : row,
-          ),
+              : { ...row };
+            if (
+              response.resultId &&
+              worklistRowKey(row) === key &&
+              !updated.resultId
+            ) {
+              updated.resultId = response.resultId;
+            }
+            return updated;
+          }),
         );
       }
       setStaleInfo((current) => {
@@ -1012,7 +1029,7 @@ const UnifiedResults: React.FC = () => {
                           {row.normalRange}{" "}
                           {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="unifiedResultsValueCell">
                           <span className={accentClass(row.resultFlag)}>
                             <PolymorphicResultCell
                               row={row}
