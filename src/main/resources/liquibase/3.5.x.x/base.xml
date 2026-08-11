@@ -187,4 +187,7 @@
   <!-- OGC-1022 (R3): CRITICAL_RESULT alert type for critical-value acknowledgment -->
   <include relativeToChangelogFile="true" file="070-critical-result-alert-type.xml"/>
 
+  <!-- OGC-811 (Results Entry v3): order attachments scoped to analysis / result component -->
+  <include relativeToChangelogFile="true" file="071-order-attachment-result-scope.xml"/>
+
 </databaseChangeLog>
