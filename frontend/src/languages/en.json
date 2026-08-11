@@ -5128,6 +5128,8 @@
   "storage.location.assign": "Assign storage location",
   "storage.location.assigned.error": "Error updating storage location",
   "storage.location.assigned.success": "Storage location updated successfully",
+  "storage.location.created": "Storage location created",
+  "storage.location.deleted": "Storage location deleted",
   "storage.location.move": "Move storage location",
   "storage.location.notAssigned": "Not assigned",
   "storage.picker.heading.move": "Move Item",

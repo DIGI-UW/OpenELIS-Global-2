@@ -1,8 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useContext } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import AddLocationModal from "../components/AddLocationModal";
 
 /** ShelvesPage — /Storage/shelves. List of shelves with per-row Edit. */
@@ -14,6 +16,22 @@ export default function ShelvesPage({ embedded = false }) {
   const [pageSize, setPageSize] = useState(25);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
+  const notify = (kind, messageId, defaultMessage) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind,
+      title: intl.formatMessage({
+        id:
+          kind === NotificationKinds.success
+            ? "notification.title"
+            : "notification.error",
+      }),
+      message: intl.formatMessage({ id: messageId, defaultMessage }),
+    });
+  };
 
   const mapRow = useCallback(
     (s) => ({
@@ -98,6 +116,11 @@ export default function ShelvesPage({ embedded = false }) {
         onClose={() => setAddOpen(false)}
         onCreated={() => {
           setAddOpen(false);
+          notify(
+            NotificationKinds.success,
+            "storage.location.created",
+            "Storage location created",
+          );
           history.replace({
             pathname: location.pathname,
             search: `?t=${Date.now()}`,
@@ -111,6 +134,11 @@ export default function ShelvesPage({ embedded = false }) {
         onClose={() => setDeleteTarget(null)}
         onDeleted={() => {
           setDeleteTarget(null);
+          notify(
+            NotificationKinds.success,
+            "storage.location.deleted",
+            "Storage location deleted",
+          );
           history.replace({
             pathname: location.pathname,
             search: `?t=${Date.now()}`,

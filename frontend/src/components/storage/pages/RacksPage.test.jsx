@@ -6,6 +6,7 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import RacksPage from "./RacksPage";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { NotificationContext } from "../../layout/Layout";
 import * as Utils from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
@@ -18,24 +19,35 @@ vi.mock("../../utils/Utils", async () => {
   };
 });
 
+const notifyCtx = {
+  notificationVisible: false,
+  setNotificationVisible: vi.fn(),
+  addNotification: vi.fn(),
+};
+
 const renderPage = () =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <UserSessionDetailsContext.Provider
-        value={{
-          userSessionDetails: { roles: ["Global Administrator"] },
-          logout: vi.fn(),
-        }}
-      >
-        <MemoryRouter initialEntries={["/Storage/racks"]}>
-          <RacksPage />
-        </MemoryRouter>
-      </UserSessionDetailsContext.Provider>
+      <NotificationContext.Provider value={notifyCtx}>
+        <UserSessionDetailsContext.Provider
+          value={{
+            userSessionDetails: { roles: ["Global Administrator"] },
+            logout: vi.fn(),
+          }}
+        >
+          <MemoryRouter initialEntries={["/Storage/racks"]}>
+            <RacksPage />
+          </MemoryRouter>
+        </UserSessionDetailsContext.Provider>
+      </NotificationContext.Provider>
     </IntlProvider>,
   );
 
 beforeEach(() => {
   Utils.getFromOpenElisServer.mockReset();
+  Utils.postToOpenElisServerJsonResponse.mockReset();
+  notifyCtx.setNotificationVisible.mockReset();
+  notifyCtx.addNotification.mockReset();
 });
 
 describe("RacksPage — table search", () => {
@@ -89,5 +101,30 @@ describe("RacksPage — table search", () => {
 
     fireEvent.change(box, { target: { value: "" } });
     expect(await screen.findByText("Rack R1")).toBeInTheDocument();
+  });
+});
+
+describe("RacksPage — feedback", () => {
+  it("raises a notification once a rack is created", async () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/shelves")) cb([{ id: 1, label: "Shelf A" }]);
+      else cb([]);
+    });
+    Utils.postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({ id: 42 }),
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByText("Add"));
+    fireEvent.change(await screen.findByLabelText(/^label$/i), {
+      target: { value: "Rack R9" },
+    });
+    fireEvent.click(screen.getByText("Create").closest("button"));
+
+    await waitFor(() => expect(notifyCtx.addNotification).toHaveBeenCalled());
+    expect(notifyCtx.setNotificationVisible).toHaveBeenCalledWith(true);
+    expect(notifyCtx.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Storage location created" }),
+    );
   });
 });

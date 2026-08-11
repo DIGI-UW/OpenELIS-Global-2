@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useHistory, useLocation, useParams } from "react-router-dom";
 import {
   Tabs,
@@ -12,6 +12,8 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { NotificationContext } from "../layout/Layout";
+import { AlertDialog } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
 import SampleItemsPage from "./pages/SampleItemsPage";
 import InventoryLotsPage from "./pages/InventoryLotsPage";
@@ -131,6 +133,7 @@ function LocationTiles({ activeLevel, onSelect }) {
 
 export default function StorageManagementPage() {
   const history = useHistory();
+  const { notificationVisible } = useContext(NotificationContext);
   // The URL is the source of truth for the active tab, so a deep link and a
   // click land on the same place and the tab is shareable.
   const { resource } = useParams();
@@ -152,6 +155,7 @@ export default function StorageManagementPage() {
 
   return (
     <>
+      {notificationVisible === true ? <AlertDialog /> : ""}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
