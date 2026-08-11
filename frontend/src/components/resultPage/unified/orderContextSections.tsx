@@ -239,15 +239,6 @@ type AttachmentDto = ScopedAttachment;
 
 export { attachmentVisibleOnRow } from "../attachmentScope";
 
-/** legacy per-analysis file (result_file) carried inline on the row */
-export interface LegacyResultFile {
-  fileName?: string;
-  fileType?: string;
-  content?: string;
-  base64Content?: string;
-  uploadedAt?: string;
-}
-
 const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
 const ATTACHMENT_ACCEPT = [
   "application/pdf",
@@ -256,28 +247,12 @@ const ATTACHMENT_ACCEPT = [
   "image/tiff",
 ];
 
-/** the old Results page's viewer for the inline legacy file */
-export const openLegacyResultFile = (file: LegacyResultFile): void => {
-  const content = file.base64Content || file.content || "";
-  const rawType = file.fileType || "application/pdf";
-  const type = rawType.startsWith("data:") ? rawType : `data:${rawType}`;
-  const win = window.open();
-  if (win) {
-    win.document.write(
-      `<iframe src="${type};base64,${content}" frameborder="0"` +
-        ` style="border:0; top:0px; left:0px; bottom:0px; right:0px;` +
-        ` width:100%; height:100%;" allowfullscreen></iframe>`,
-    );
-  }
-};
-
 export const AttachmentsSection: React.FC<
   SectionProps & {
     accessionNumber?: string;
     analysisId?: string;
     componentId?: string;
     editable?: boolean;
-    legacyResultFile?: LegacyResultFile;
   }
 > = ({
   open,
@@ -286,7 +261,6 @@ export const AttachmentsSection: React.FC<
   analysisId,
   componentId,
   editable,
-  legacyResultFile,
 }) => {
   const intl = useIntl();
   const [files, setFiles] = useState<AttachmentDto[] | null>(null);
@@ -305,16 +279,10 @@ export const AttachmentsSection: React.FC<
   if (!accessionNumber) {
     return null;
   }
-  const legacy =
-    legacyResultFile &&
-    legacyResultFile.fileName &&
-    (legacyResultFile.base64Content || legacyResultFile.content)
-      ? legacyResultFile
-      : null;
   const visibleFiles = (files || []).filter((file) =>
     scopeVisible(file, analysisId, componentId),
   );
-  const count = visibleFiles.length + (legacy ? 1 : 0);
+  const count = visibleFiles.length;
   const sizeLabel = (bytes?: number) =>
     bytes ? `${Math.max(1, Math.round(bytes / 1024))} KB` : "";
 
@@ -411,26 +379,6 @@ export const AttachmentsSection: React.FC<
           </Button>
         </div>
       ))}
-      {legacy && (
-        <div className="unifiedHistoryRow" data-testid="legacy-result-file">
-          <span className="unifiedHistoryDetail">
-            {legacy.fileName}
-            <span className="unifiedHistoryFootnote">
-              {legacy.uploadedAt ? ` ${legacy.uploadedAt}` : ""}
-            </span>
-          </span>
-          <Tag size="sm" type="warm-gray">
-            <FormattedMessage id="label.results.attachments.resultScope" />
-          </Tag>
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() => openLegacyResultFile(legacy)}
-          >
-            <FormattedMessage id="label.results.attachments.view" />
-          </Button>
-        </div>
-      )}
       {count === 0 && (
         <div className="unifiedHistoryFootnote">
           <FormattedMessage id="label.results.attachments.empty" />

@@ -758,11 +758,6 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           analysisId={row.analysisId as string | undefined}
           componentId={row.testResultComponentId as string | undefined}
           editable={editable}
-          legacyResultFile={
-            row.resultFile as
-              | import("./orderContextSections").LegacyResultFile
-              | undefined
-          }
         />
 
         <HistorySection

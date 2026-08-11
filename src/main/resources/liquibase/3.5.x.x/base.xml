@@ -190,4 +190,7 @@
   <!-- OGC-811 (Results Entry v3): order attachments scoped to analysis / result component -->
   <include relativeToChangelogFile="true" file="071-order-attachment-result-scope.xml"/>
 
+  <!-- OGC-811: legacy analysis result files become component-scoped order attachments -->
+  <include relativeToChangelogFile="true" file="072-migrate-result-files-to-order-attachments.xml"/>
+
 </databaseChangeLog>

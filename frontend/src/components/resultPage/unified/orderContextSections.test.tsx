@@ -225,29 +225,6 @@ describe("orderContextSections (FR-C3/C5)", () => {
     ).toBeInTheDocument();
   });
 
-  it("the legacy per-result file (old Results page upload) is listed and viewable", () => {
-    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
-      if (typeof cb === "function") {
-        cb([]);
-      }
-    });
-    wrap(
-      <AttachmentsSection
-        open={true}
-        onToggle={() => {}}
-        accessionNumber="DEV1"
-        legacyResultFile={{
-          fileName: "scan.png",
-          fileType: "image/png",
-          content: "AAAA",
-        }}
-      />,
-    );
-    expect(screen.getByTestId("legacy-result-file")).toBeInTheDocument();
-    expect(screen.getByText("scan.png")).toBeInTheDocument();
-    expect(screen.getByText("Result")).toBeInTheDocument();
-  });
-
   it("attachment visibility follows the persisted scope (component isolation)", () => {
     const orderLevel = { id: 1, analysisId: "", testResultComponentId: "" };
     const analysisWide = { id: 2, analysisId: "28", testResultComponentId: "" };

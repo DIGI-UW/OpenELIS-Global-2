@@ -120,4 +120,61 @@ public class OrderAttachmentRestControllerTest extends BaseWebContextSensitiveTe
         mockMvc.perform(multipart("/rest/order/NOPE/attachments").file(PDF).session(session))
                 .andExpect(status().isNotFound());
     }
+
+    /**
+     * Keep in sync with liquibase
+     * 3.5.x.x/072-migrate-result-files-to-order-attachments.xml — the same
+     * statement, exercised against seeded data.
+     */
+    private static final String MIGRATION_SQL = "INSERT INTO clinlims.order_attachment (id, sample_id, analysis_id,"
+            + " test_result_component_id, original_file_name, file_type, file_size_bytes, file_content, uploaded_by,"
+            + " uploaded_at, is_deleted) SELECT nextval('clinlims.order_attachment_seq'), si.samp_id, a.id, (SELECT"
+            + " trc.id FROM clinlims.test_result_component trc WHERE trc.test_id = a.test_id AND trc.is_active = 'Y'"
+            + " ORDER BY trc.is_primary DESC, (trc.code = 'PRIMARY') DESC, COALESCE(trc.display_order, 2147483647)"
+            + " ASC, trc.id ASC LIMIT 1), rf.file_name, CASE WHEN rf.file_type LIKE 'data:%' THEN"
+            + " substring(rf.file_type from 6) ELSE rf.file_type END, octet_length(rf.file_content), rf.file_content,"
+            + " NULL, rf.uploaded_at, false FROM clinlims.result_file rf JOIN clinlims.analysis a ON"
+            + " a.result_file_id = rf.id JOIN clinlims.sample_item si ON si.id = a.sampitem_id WHERE NOT EXISTS"
+            + " (SELECT 1 FROM clinlims.order_attachment oa WHERE oa.analysis_id = a.id AND oa.original_file_name ="
+            + " rf.file_name AND oa.file_size_bytes = octet_length(rf.file_content))";
+
+    /**
+     * OGC-811 backward compatibility — legacy result_file records (1:1 with the
+     * analysis) are migrated to component-level attachments on the analysis's
+     * PRIMARY component per the domain rule (is_primary flag over display order),
+     * with metadata preserved and the legacy "data:" file-type prefix stripped.
+     * Orphaned result_file rows (no analysis reference) are not migrated, the
+     * result_file table itself is untouched, and the migration is idempotent.
+     */
+    @Test
+    public void legacyResultFiles_migrateToPrimaryComponentAttachments() throws Exception {
+        // a decoy non-primary component with the LOWEST display order — the
+        // is_primary flag must win over ordering (pickPrimary rule)
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_primary,"
+                + " is_active, lastupdated) VALUES ('c-att-0', 1, 'DECOY', 'Decoy', 0, false, 'Y', NOW())");
+        jdbc.update("UPDATE clinlims.test_result_component SET display_order = 5 WHERE id = 'c-att-1'");
+        jdbc.update("INSERT INTO clinlims.result_file (id, file_name, file_type, file_content, uploaded_at,"
+                + " last_updated) VALUES (9601, 'legacy.jpg', 'data:image/jpeg', '\\x01020304'::bytea, NOW(), NOW())");
+        jdbc.update("INSERT INTO clinlims.result_file (id, file_name, file_type, file_content, uploaded_at,"
+                + " last_updated) VALUES (9602, 'orphan.jpg', 'image/jpeg', '\\x05'::bytea, NOW(), NOW())");
+        jdbc.update("UPDATE clinlims.analysis SET result_file_id = 9601 WHERE id = 1");
+
+        jdbc.execute(MIGRATION_SQL);
+
+        mockMvc.perform(get("/rest/order/12345/attachments").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].fileName").value("legacy.jpg"))
+                .andExpect(jsonPath("$[0].analysisId").value("1"))
+                .andExpect(jsonPath("$[0].testResultComponentId").value("c-att-1"))
+                .andExpect(jsonPath("$[0].fileType").value("image/jpeg"))
+                .andExpect(jsonPath("$[0].fileSizeBytes").value(4));
+
+        // idempotent — re-running migrates nothing new; orphan excluded;
+        // result_file untouched
+        jdbc.execute(MIGRATION_SQL);
+        Integer migrated = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.order_attachment WHERE is_deleted = false", Integer.class);
+        org.junit.Assert.assertEquals(Integer.valueOf(1), migrated);
+        Integer legacyRows = jdbc.queryForObject("SELECT count(*) FROM clinlims.result_file", Integer.class);
+        org.junit.Assert.assertEquals(Integer.valueOf(2), legacyRows);
+    }
 }
