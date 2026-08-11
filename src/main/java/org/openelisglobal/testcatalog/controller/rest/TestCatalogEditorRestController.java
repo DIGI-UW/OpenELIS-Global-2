@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -139,6 +140,11 @@ public class TestCatalogEditorRestController {
     // Field-injected (optional) for the FR-43 panel-create name localization.
     @Autowired(required = false)
     private LocalizationService localizationService;
+
+    // Field-injected (optional) for the OGC-224 SAMPLETYPE_PANEL sync on
+    // membership writes (order entry reads that junction).
+    @Autowired(required = false)
+    private org.openelisglobal.typeofsample.service.TypeOfSamplePanelService typeOfSamplePanelService;
 
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
@@ -1742,6 +1748,7 @@ public class TestCatalogEditorRestController {
     public static class PanelTestRow {
         public String testId;
         public String testName;
+        public String code;
         public Integer position;
     }
 
@@ -1990,6 +1997,7 @@ public class TestCatalogEditorRestController {
             PanelTestRow row = new PanelTestRow();
             row.testId = pi.getTest() != null ? pi.getTest().getId() : null;
             row.testName = pi.getTest() != null ? pi.getTest().getName() : null;
+            row.code = pi.getTest() != null ? pi.getTest().getLocalCode() : null;
             row.position = parseIntOrNull(pi.getSortOrder());
             resp.tests.add(row);
         }
@@ -2013,13 +2021,27 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
+        // OGC-224: SAMPLETYPE_PANEL must follow every membership write — panels
+        // this test leaves need a sync just as much as panels it joins.
+        Set<String> affectedPanelIds = new LinkedHashSet<>();
+        for (PanelItem pi : panelItemService.getPanelItemByTestId(testId)) {
+            if (pi.getPanel() != null) {
+                affectedPanelIds.add(pi.getPanel().getId());
+            }
+        }
         Map<String, Integer> positionByPanelId = new HashMap<>();
         int fallback = 1;
         for (MembershipItem item : body.memberships) {
             if (!isBlank(item.panelId)) {
                 // Reject an unknown panel up front rather than letting the service
                 // silently drop the membership (mirrors the terminology 422 above).
-                if (panelService.getPanelById(item.panelId) == null) {
+                Panel panel = findPanel(item.panelId);
+                if (panel == null) {
+                    return ResponseEntity.unprocessableEntity().build();
+                }
+                // OGC-224 domain guard — a panel never mixes domains, from
+                // either side of the one model.
+                if (!Domain.normalize(panel.getDomain()).equals(Domain.normalize(test.getDomain()))) {
                     return ResponseEntity.unprocessableEntity().build();
                 }
                 positionByPanelId.put(item.panelId, item.position != null ? item.position : fallback);
@@ -2027,7 +2049,88 @@ public class TestCatalogEditorRestController {
             fallback++;
         }
         panelItemService.setMembershipsForTest(test, positionByPanelId, ControllerUtills.getSysUserId(request));
+        affectedPanelIds.addAll(positionByPanelId.keySet());
+        // null only in hand-constructed unit-style tests (field-injected)
+        if (typeOfSamplePanelService != null) {
+            for (String panelId : affectedPanelIds) {
+                typeOfSamplePanelService.syncPanelSampleTypes(panelId, ControllerUtills.getSysUserId(request));
+            }
+        }
+        refreshPanelDisplayLists();
         return ResponseEntity.ok(toTestPanels(testId));
+    }
+
+    /**
+     * OGC-224 — the ordered member list write for the panel editor's Tests section.
+     */
+    public static class PanelTestItem {
+        public String testId;
+        public Integer position;
+    }
+
+    public static class PanelTestsUpdate {
+        public List<PanelTestItem> tests = new ArrayList<>();
+        /**
+         * Create-flow only: a newly created panel defaults to Active when its first
+         * test is added. Honored only when the panel is inactive and had zero members
+         * before this write — editing never auto-flips.
+         */
+        public Boolean autoActivate;
+    }
+
+    public static class PanelTestsResponse {
+        public PanelOption panel;
+        public List<PanelTestRow> tests = new ArrayList<>();
+    }
+
+    @PutMapping(value = "/panels/{panelId}/tests", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PanelTestsResponse> savePanelTests(@PathVariable String panelId,
+            @RequestBody PanelTestsUpdate body, HttpServletRequest request) {
+        Panel panel = findPanel(panelId);
+        if (panel == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        Map<String, Integer> positionByTestId = new LinkedHashMap<>();
+        int fallback = 1;
+        for (PanelTestItem item : body.tests) {
+            if (isBlank(item.testId) || positionByTestId.containsKey(item.testId)) {
+                // blank or duplicate member — reject the whole request
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            Test test = testService.getTestById(item.testId);
+            if (test == null) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            // OGC-224 domain guard — only tests in the panel's domain are
+            // accepted; a panel never mixes domains.
+            if (!Domain.normalize(panel.getDomain()).equals(Domain.normalize(test.getDomain()))) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            positionByTestId.put(item.testId, item.position != null ? item.position : fallback);
+            fallback++;
+        }
+        int priorCount = panelItemService.getPanelItemsForPanel(panel.getId()).size();
+        panelItemService.setMembershipsForPanel(panel, positionByTestId, sysUserId);
+        // SAMPLETYPE_PANEL follows the membership write (order entry reads it);
+        // null only in hand-constructed unit-style tests (field-injected)
+        if (typeOfSamplePanelService != null) {
+            typeOfSamplePanelService.syncPanelSampleTypes(panel.getId(), sysUserId);
+        }
+        // FRS activation rule: create → add first test → active. Only the
+        // panel's first-ever test at creation (client sends autoActivate on the
+        // create flow); editing never auto-flips.
+        if (Boolean.TRUE.equals(body.autoActivate) && priorCount == 0 && !positionByTestId.isEmpty()
+                && !"Y".equals(panel.getIsActive())) {
+            panel.setIsActive("Y");
+            panel.setSysUserId(sysUserId);
+            panelService.update(panel);
+        }
+        refreshPanelDisplayLists();
+        PanelTestsResponse resp = new PanelTestsResponse();
+        resp.panel = toPanelOption(panelService.getPanelById(panel.getId()));
+        resp.tests = getPanelTestOrder(panel.getId()).getBody().tests;
+        return ResponseEntity.ok(resp);
     }
 
     private TestPanelsResponse toTestPanels(String testId) {

@@ -9,6 +9,7 @@ import {
   isValidPanelSection,
 } from "./panelSectionConfig";
 import PanelBasicInfoSection from "./sections/PanelBasicInfoSection";
+import PanelTestsSection from "./sections/PanelTestsSection";
 import { domainTagType } from "./PanelsList";
 
 /**
@@ -29,6 +30,9 @@ const PanelEditor = () => {
 
   const [panel, setPanel] = useState(null);
   const [loading, setLoading] = useState(!isCreate);
+  // set when this editor session just created the panel — drives the FRS
+  // "first test at creation auto-activates" rule in the Tests section
+  const [justCreated, setJustCreated] = useState(false);
 
   const loadPanel = useCallback(() => {
     if (!panelId || isCreate) {
@@ -110,21 +114,37 @@ const PanelEditor = () => {
           {loading ? (
             <Loading small withOverlay={false} />
           ) : (
-            activeSection === "basic-info" && (
-              <PanelBasicInfoSection
-                panel={panel}
-                isCreate={isCreate}
-                onSaved={(saved) => {
-                  if (isCreate && saved?.id) {
-                    history.replace(
-                      `${basePath}/TestCatalogEditor/panel/${saved.id}/${DEFAULT_PANEL_SECTION}`,
-                    );
-                  } else {
+            <>
+              {activeSection === "basic-info" && (
+                <PanelBasicInfoSection
+                  panel={panel}
+                  isCreate={isCreate}
+                  onSaved={(saved) => {
+                    if (isCreate && saved?.id) {
+                      // remember the create flow: the first test added in this
+                      // editor session auto-activates the panel (FRS), never on
+                      // later edits
+                      setJustCreated(true);
+                      history.replace(
+                        `${basePath}/TestCatalogEditor/panel/${saved.id}/${DEFAULT_PANEL_SECTION}`,
+                      );
+                    } else {
+                      setPanel(saved);
+                    }
+                  }}
+                />
+              )}
+              {activeSection === "tests" && !isCreate && (
+                <PanelTestsSection
+                  panel={panel}
+                  autoActivate={justCreated}
+                  onSaved={(saved) => {
+                    setJustCreated(false);
                     setPanel(saved);
-                  }
-                }}
-              />
-            )
+                  }}
+                />
+              )}
+            </>
           )}
         </Column>
       </Grid>

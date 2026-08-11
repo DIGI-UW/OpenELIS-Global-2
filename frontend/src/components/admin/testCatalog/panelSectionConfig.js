@@ -9,7 +9,7 @@
  * terminology (C4). Vector Config is deferred to the Environmental/Vector
  * phase and is not registered while only Clinical is enabled.
  */
-export const PANEL_SECTIONS = ["basic-info"];
+export const PANEL_SECTIONS = ["basic-info", "tests"];
 
 export const DEFAULT_PANEL_SECTION = PANEL_SECTIONS[0];
 
