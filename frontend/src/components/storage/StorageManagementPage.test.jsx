@@ -5,6 +5,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import StorageManagementPage from "./StorageManagementPage";
+import { NotificationContext } from "../layout/Layout";
 import * as Utils from "../utils/Utils";
 import messages from "../../languages/en.json";
 
@@ -30,30 +31,38 @@ vi.mock("./pages/ShelvesPage", () => ({
 vi.mock("./pages/RacksPage", () => ({ default: () => <div>racks-table</div> }));
 vi.mock("./pages/BoxesPage", () => ({ default: () => <div>boxes-table</div> }));
 
+const mockNotificationContext = {
+  notificationVisible: false,
+  setNotificationVisible: vi.fn(),
+  addNotification: vi.fn(),
+};
+
 const renderAt = (path) =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <MemoryRouter initialEntries={[path]}>
-        <Route path="/Storage/:resource?">
-          <StorageManagementPage />
-        </Route>
-        <Route
-          path="*"
-          render={({ location, history }) => (
-            <>
-              <span data-testid="path">{location.pathname}</span>
-              {/* Stands in for what create/delete does: stamp ?t= to refresh. */}
-              <button
-                onClick={() =>
-                  history.replace(`${location.pathname}?t=${Date.now()}`)
-                }
-              >
-                stamp-refresh
-              </button>
-            </>
-          )}
-        />
-      </MemoryRouter>
+      <NotificationContext.Provider value={mockNotificationContext}>
+        <MemoryRouter initialEntries={[path]}>
+          <Route path="/Storage/:resource?">
+            <StorageManagementPage />
+          </Route>
+          <Route
+            path="*"
+            render={({ location, history }) => (
+              <>
+                <span data-testid="path">{location.pathname}</span>
+                {/* Stands in for what create/delete does: stamp ?t= to refresh. */}
+                <button
+                  onClick={() =>
+                    history.replace(`${location.pathname}?t=${Date.now()}`)
+                  }
+                >
+                  stamp-refresh
+                </button>
+              </>
+            )}
+          />
+        </MemoryRouter>
+      </NotificationContext.Provider>
     </IntlProvider>,
   );
 
