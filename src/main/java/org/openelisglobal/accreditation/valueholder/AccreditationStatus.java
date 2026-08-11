@@ -56,4 +56,16 @@ public enum AccreditationStatus {
         return ACTIVE;
     }
 
+    /**
+     * Whether a body in this status may be claimed on a patient report (FR-30).
+     *
+     * <p>
+     * EXPIRING is still a valid accreditation — the warning is for the lab's
+     * renewal workflow, not for the report reader. Only INACTIVE and EXPIRED are
+     * excluded.
+     */
+    public boolean isValidForReporting() {
+        return this == ACTIVE || this == EXPIRING;
+    }
+
 }

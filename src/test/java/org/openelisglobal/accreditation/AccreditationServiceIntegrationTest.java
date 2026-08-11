@@ -22,6 +22,8 @@ import org.openelisglobal.accreditation.service.TestAccreditationService;
 import org.openelisglobal.accreditation.valueholder.AccreditationStatus;
 import org.openelisglobal.accreditation.valueholder.AccreditingBody;
 import org.openelisglobal.accreditation.valueholder.LogoVisibilityMode;
+import org.openelisglobal.image.service.ImageService;
+import org.openelisglobal.image.valueholder.Image;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -60,6 +62,9 @@ public class AccreditationServiceIntegrationTest extends BaseWebContextSensitive
     private TestAccreditationDAO testAccreditationDAO;
 
     @Autowired
+    private ImageService imageService;
+
+    @Autowired
     private DataSource dataSource;
 
     private JdbcTemplate jdbc;
@@ -81,6 +86,7 @@ public class AccreditationServiceIntegrationTest extends BaseWebContextSensitive
     private void clean() {
         jdbc.update("DELETE FROM clinlims.test_accreditation");
         jdbc.update("DELETE FROM clinlims.accrediting_body");
+        jdbc.update("DELETE FROM clinlims.image WHERE description = 'accreditation-logo-test'");
     }
 
     // ---- bodies: create + validation ----
@@ -293,6 +299,44 @@ public class AccreditationServiceIntegrationTest extends BaseWebContextSensitive
         accreditingBodyService.deleteBody(bodyId, USER);
 
         assertTrue(accreditingBodyService.getBodyViews().isEmpty());
+    }
+
+    // ---- logo image lifecycle: no orphaned image rows ----
+
+    @Test
+    public void logoImage_cleanedUpOnReplaceRemoveAndBodyDelete() {
+        Long bodyId = accreditingBodyService.createBody(body("SANAS", "S", LocalDate.now().plusYears(1)), USER).getId();
+
+        String first = saveImage();
+        accreditingBodyService.setLogo(bodyId, first, USER);
+
+        // Replace: the previous image must not be left dangling.
+        String second = saveImage();
+        accreditingBodyService.setLogo(bodyId, second, USER);
+        assertEquals(0, imageRowCount(first));
+        assertEquals(1, imageRowCount(second));
+
+        // Remove (set to null): the current image goes too.
+        accreditingBodyService.setLogo(bodyId, null, USER);
+        assertEquals(0, imageRowCount(second));
+
+        // Delete body: its logo image is removed with it.
+        String third = saveImage();
+        accreditingBodyService.setLogo(bodyId, third, USER);
+        accreditingBodyService.deleteBody(bodyId, USER);
+        assertEquals(0, imageRowCount(third));
+    }
+
+    private String saveImage() {
+        Image image = new Image();
+        image.setImage(new byte[] { 1, 2, 3 });
+        image.setDescription("accreditation-logo-test");
+        return imageService.save(image).getId();
+    }
+
+    private int imageRowCount(String imageId) {
+        return jdbc.queryForObject("SELECT count(*) FROM clinlims.image WHERE id = ?", Integer.class,
+                Long.valueOf(imageId));
     }
 
     // ---- summary (page banner + QA Overview Q5) ----

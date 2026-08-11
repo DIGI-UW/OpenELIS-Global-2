@@ -1,5 +1,6 @@
 package org.openelisglobal.accreditation.dao;
 
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.accreditation.valueholder.TestAccreditation;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -14,6 +15,12 @@ public interface TestAccreditationDAO extends BaseDAO<TestAccreditation, Long> {
 
     /** Enrollment rows for one test — backs the {@code ?testId=} deep link. */
     List<TestAccreditation> getByTest(String testId);
+
+    /**
+     * Enrollment rows for any of these tests — one query per rendered patient
+     * report, which is why the report resolver never loops per test.
+     */
+    List<TestAccreditation> getByTestIds(Collection<String> testIds);
 
     /** The (test, body) row if it exists, else null. Enforces FR-19 uniqueness. */
     TestAccreditation getByTestAndBody(String testId, Long accreditingBodyId);

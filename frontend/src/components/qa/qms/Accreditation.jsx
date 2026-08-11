@@ -72,6 +72,13 @@ const BODY_HEADERS = [
   "qa.qms.accreditation.body.column.actions",
 ];
 
+const EQA_COVERAGE_HEADERS = [
+  "qa.qms.accreditation.eqa.column.body",
+  "qa.qms.accreditation.eqa.column.scope",
+  "qa.qms.accreditation.eqa.column.covered",
+  "qa.qms.accreditation.eqa.column.gaps",
+];
+
 const ENROLLMENT_HEADERS = [
   "qa.qms.accreditation.enrollment.column.test",
   "qa.qms.accreditation.enrollment.column.body",
@@ -80,6 +87,22 @@ const ENROLLMENT_HEADERS = [
   "qa.qms.accreditation.enrollment.column.status",
   "qa.qms.accreditation.enrollment.column.actions",
 ];
+
+/** Names the first few uncovered tests; a long tail would swamp the row. */
+const GAP_NAMES_SHOWN = 5;
+
+const gapSummary = (gaps, intl) => {
+  const names = gaps
+    .slice(0, GAP_NAMES_SHOWN)
+    .map((g) => g.testName || g.testId);
+  const rest = gaps.length - names.length;
+  return rest > 0
+    ? intl.formatMessage(
+        { id: "qa.qms.accreditation.eqa.gapsMore" },
+        { names: names.join(", "), count: rest },
+      )
+    : names.join(", ");
+};
 
 const headerRow = (ids) => (
   <TableHead>
@@ -107,6 +130,7 @@ const Accreditation = () => {
   const [summary, setSummary] = useState();
   const [bodies, setBodies] = useState();
   const [enrollments, setEnrollments] = useState();
+  const [eqaCoverage, setEqaCoverage] = useState();
   const [bodyFilter, setBodyFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -130,6 +154,9 @@ const Accreditation = () => {
     );
     getFromOpenElisServer("/rest/accreditation/enrollments", (res) =>
       setEnrollments(Array.isArray(res) ? res : null),
+    );
+    getFromOpenElisServer("/rest/accreditation/eqa-coverage", (res) =>
+      setEqaCoverage(Array.isArray(res) ? res : null),
     );
   }, []);
 
@@ -343,12 +370,20 @@ const Accreditation = () => {
                               hasIconOnly
                               renderIcon={TrashCan}
                               disabled={b.enrolledTestCount > 0}
-                              iconDescription={intl.formatMessage({
-                                id:
-                                  b.enrolledTestCount > 0
-                                    ? "qa.qms.accreditation.body.delete.blocked"
-                                    : "qa.qms.accreditation.body.delete",
-                              })}
+                              // FRS §6: say how many rows are in the way, the
+                              // same count the REST rejection reports.
+                              iconDescription={
+                                b.enrolledTestCount > 0
+                                  ? intl.formatMessage(
+                                      {
+                                        id: "qa.qms.accreditation.body.delete.blocked",
+                                      },
+                                      { count: b.enrolledTestCount },
+                                    )
+                                  : intl.formatMessage({
+                                      id: "qa.qms.accreditation.body.delete",
+                                    })
+                              }
                               onClick={() => setDeleteBody(b)}
                               data-testid={`delete-body-${b.id}`}
                             />
@@ -491,6 +526,64 @@ const Accreditation = () => {
                 }}
               />
             </>
+          )}
+
+          {/* D.5: ISO 15189 §7.7 — is every accredited test in a live EQA scheme?
+              Derived from data the lab already keeps in the EQA module, so there is
+              nothing to maintain here and no way for the answer to go stale. */}
+          <div className="qi-dashboard__controls">
+            <h3>
+              <FormattedMessage id="qa.qms.accreditation.eqa.title" />
+            </h3>
+          </div>
+          <p className="qi-dashboard__subtitle">
+            <FormattedMessage id="qa.qms.accreditation.eqa.subtitle" />
+          </p>
+
+          {eqaCoverage === undefined ? (
+            <DataTableSkeleton
+              columnCount={EQA_COVERAGE_HEADERS.length}
+              rowCount={2}
+            />
+          ) : eqaCoverage === null ? (
+            <p className="qi-tile__message">
+              <FormattedMessage id="qa.qms.accreditation.eqa.error" />
+            </p>
+          ) : eqaCoverage.length === 0 ? (
+            <QAEmptyState
+              titleKey="qa.empty.accreditation.eqa.title"
+              subheadKey="qa.empty.accreditation.eqa.subhead"
+            />
+          ) : (
+            <TableContainer>
+              <Table size="sm">
+                {headerRow(EQA_COVERAGE_HEADERS)}
+                <TableBody>
+                  {eqaCoverage.map((row) => (
+                    <TableRow
+                      key={row.accreditingBodyId}
+                      data-testid={`eqa-coverage-${row.accreditingBodyId}`}
+                    >
+                      <TableCell>{`${row.bodyCode} — ${row.bodyName}`}</TableCell>
+                      <TableCell>{row.enrolledTestCount}</TableCell>
+                      <TableCell>{row.coveredTestCount}</TableCell>
+                      <TableCell>
+                        {(row.gaps || []).length === 0 ? (
+                          <Tag type="green">
+                            <FormattedMessage id="qa.qms.accreditation.eqa.noGaps" />
+                          </Tag>
+                        ) : (
+                          <>
+                            <Tag type="red">{row.gaps.length}</Tag>{" "}
+                            {gapSummary(row.gaps, intl)}
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
         </>
       )}

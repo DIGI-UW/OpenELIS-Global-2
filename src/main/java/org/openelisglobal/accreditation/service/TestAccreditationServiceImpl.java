@@ -4,16 +4,21 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.openelisglobal.accreditation.dao.AccreditingBodyDAO;
 import org.openelisglobal.accreditation.dao.TestAccreditationDAO;
+import org.openelisglobal.accreditation.dto.EqaCoverageView;
 import org.openelisglobal.accreditation.dto.TestAccreditationView;
 import org.openelisglobal.accreditation.valueholder.AccreditationStatus;
 import org.openelisglobal.accreditation.valueholder.AccreditingBody;
 import org.openelisglobal.accreditation.valueholder.TestAccreditation;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.eqa.dao.EQALabProgramEnrollmentDAO;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -51,6 +56,9 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Autowired
     private AccreditingBodyDAO accreditingBodyDAO;
+
+    @Autowired
+    private EQALabProgramEnrollmentDAO eqaLabProgramEnrollmentDAO;
 
     public TestAccreditationServiceImpl() {
         super(TestAccreditation.class);
@@ -132,6 +140,48 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
                 .orElseThrow(() -> new IllegalArgumentException("No test accreditation with id " + id));
         row.setSysUserId(sysUserId);
         delete(row);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EqaCoverageView> getEqaCoverage() {
+        Set<String> coveredTestIds = new HashSet<>(eqaLabProgramEnrollmentDAO.findEqaCoveredTestIds());
+        Map<Long, AccreditingBody> bodies = bodiesById();
+        LocalDate today = LocalDate.now();
+
+        Map<Long, EqaCoverageView> rowsByBody = new LinkedHashMap<>();
+        // getAll() is already the whole enrollment table; grouping here beats a
+        // per-body query, and the table is one row per accredited test.
+        for (TestAccreditation enrollment : baseObjectDAO.getAll()) {
+            AccreditingBody body = bodies.get(enrollment.getAccreditingBodyId());
+            if (body == null) {
+                continue;
+            }
+            EqaCoverageView row = rowsByBody.computeIfAbsent(body.getId(), id -> newCoverageRow(body, today));
+            row.enrolledTestCount++;
+            if (coveredTestIds.contains(enrollment.getTestId())) {
+                row.coveredTestCount++;
+            } else {
+                row.gaps.add(
+                        new EqaCoverageView.GapTest(enrollment.getTestId(), testDisplayName(enrollment.getTestId())));
+            }
+        }
+
+        List<EqaCoverageView> rows = new ArrayList<>(rowsByBody.values());
+        for (EqaCoverageView row : rows) {
+            row.gaps.sort(Comparator.comparing((EqaCoverageView.GapTest g) -> g.testName, NULLS_FIRST));
+        }
+        rows.sort(Comparator.comparing((EqaCoverageView v) -> v.bodyCode, NULLS_FIRST));
+        return rows;
+    }
+
+    private EqaCoverageView newCoverageRow(AccreditingBody body, LocalDate asOf) {
+        EqaCoverageView row = new EqaCoverageView();
+        row.accreditingBodyId = body.getId();
+        row.bodyCode = body.getCode();
+        row.bodyName = body.getName();
+        row.status = AccreditationStatus.of(body.getActive(), body.getExpiresOn(), asOf).name();
+        return row;
     }
 
     private Map<Long, AccreditingBody> bodiesById() {

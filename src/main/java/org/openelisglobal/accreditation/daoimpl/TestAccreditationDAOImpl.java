@@ -1,5 +1,7 @@
 package org.openelisglobal.accreditation.daoimpl;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -39,6 +41,19 @@ public class TestAccreditationDAOImpl extends BaseDAOImpl<TestAccreditation, Lon
         Query<TestAccreditation> query = entityManager.unwrap(Session.class)
                 .createQuery("from TestAccreditation ta where ta.testId = :testId", TestAccreditation.class);
         query.setParameter("testId", testId);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TestAccreditation> getByTestIds(Collection<String> testIds) {
+        if (testIds == null || testIds.isEmpty()) {
+            // An empty IN list is a syntax error in Postgres, so never build the query.
+            return Collections.emptyList();
+        }
+        Query<TestAccreditation> query = entityManager.unwrap(Session.class)
+                .createQuery("from TestAccreditation ta where ta.testId in (:testIds)", TestAccreditation.class);
+        query.setParameterList("testIds", testIds);
         return query.list();
     }
 
