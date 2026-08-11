@@ -208,4 +208,61 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
         // The whole request is rejected — no partial write for the valid panel.
         assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
     }
+
+    /**
+     * Free-text panel creation (OGC-1112 FR-43) — create-if-not-exists, over HTTP
+     * so the real bean (with its field-injected localization service) and Jackson
+     * binding are exercised. A new name creates the panel (201); the SAME name
+     * again returns the existing panel (200, same id) instead of a duplicate or the
+     * previous blank 500 (uncaught LIMSDuplicateRecordException). The created panel
+     * is immediately assignable and the membership round-trips.
+     */
+    @org.junit.Test
+    public void createPanel_isCreateIfNotExists_andAssignable() throws Exception {
+        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
+        usd.setSytemUserId(1);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        try {
+            org.springframework.test.web.servlet.MvcResult created = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/rest/test-catalog/panels")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"PanelsIT Freetext\"}").session(session))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                    .andReturn();
+            String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+            // same name again — the existing panel, not a duplicate, not a 500
+            org.springframework.test.web.servlet.MvcResult again = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/rest/test-catalog/panels")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"PanelsIT Freetext\"}").session(session))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andReturn();
+            org.junit.Assert.assertEquals(panelId,
+                    json.readTree(again.getResponse().getContentAsString()).get("id").asText());
+            Integer rows = jdbc.queryForObject("SELECT count(*) FROM clinlims.panel WHERE name = 'PanelsIT Freetext'",
+                    Integer.class);
+            org.junit.Assert.assertEquals(Integer.valueOf(1), rows);
+
+            // the created panel is assignable and the membership persists
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/tests/" + testId() + "/panels")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"memberships\":[{\"panelId\":\"" + panelId + "\",\"position\":4}]}").session(session))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.memberships[0].panelId").value(panelId));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .get("/rest/test-catalog/tests/" + testId() + "/panels").session(session))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.memberships[0].panelId").value(panelId));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE test_id = ?", TEST_ID);
+            jdbc.update("DELETE FROM clinlims.panel WHERE name = 'PanelsIT Freetext'");
+        }
+    }
 }

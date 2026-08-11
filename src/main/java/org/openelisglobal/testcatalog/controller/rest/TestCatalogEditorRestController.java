@@ -1773,6 +1773,19 @@ public class TestCatalogEditorRestController {
         }
         String sysUserId = ControllerUtills.getSysUserId(request);
         String name = body.name.trim();
+
+        // Create-if-not-exists: a name that already belongs to a panel returns
+        // that panel (200) instead of minting a duplicate — the service layer
+        // would otherwise throw LIMSDuplicateRecordException out as a blank 500,
+        // which read as "the panel was not created" in the editor.
+        Panel existing = panelService.getPanelByName(name);
+        if (existing != null) {
+            PanelOption option = new PanelOption();
+            option.id = existing.getId();
+            option.name = existing.getPanelName();
+            return ResponseEntity.ok(option);
+        }
+
         // panel.name_localization_id is NOT NULL — create the name localization
         // first, mirroring the legacy panel-add flow.
         Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(name, name,
@@ -1787,11 +1800,24 @@ public class TestCatalogEditorRestController {
         panel.setIsActive("Y");
         panel.setSortOrderInt(Integer.MAX_VALUE);
         panel.setSysUserId(sysUserId);
-        String id = panelService.insert(panel);
-        PanelOption created = new PanelOption();
-        created.id = id;
-        created.name = panel.getPanelName();
-        return ResponseEntity.status(201).body(created);
+        try {
+            String id = panelService.insert(panel);
+            PanelOption created = new PanelOption();
+            created.id = id;
+            created.name = panel.getPanelName();
+            return ResponseEntity.status(201).body(created);
+        } catch (org.openelisglobal.common.exception.LIMSDuplicateRecordException e) {
+            // race-safe fallback: someone created it between the lookup and the
+            // insert, or the description collides — resolve to the existing row
+            Panel raced = panelService.getPanelByName(name);
+            if (raced != null) {
+                PanelOption option = new PanelOption();
+                option.id = raced.getId();
+                option.name = raced.getPanelName();
+                return ResponseEntity.ok(option);
+            }
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
     }
 
     @GetMapping(value = "/tests/{testId}/panels", produces = MediaType.APPLICATION_JSON_VALUE)

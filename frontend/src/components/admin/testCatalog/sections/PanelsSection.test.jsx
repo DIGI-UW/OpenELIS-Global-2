@@ -19,7 +19,8 @@ vi.mock("../../../layout/Layout", async () => {
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
-  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -31,7 +32,8 @@ import { IntlProvider } from "react-intl";
 import PanelsSection from "./PanelsSection";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
+  postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
@@ -57,9 +59,26 @@ const renderSection = () =>
     </IntlProvider>,
   );
 
+const okPut = (membershipsOf = (payload) => payload.memberships) =>
+  putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) => {
+    const parsed = JSON.parse(payload);
+    cb({
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          testId: "42",
+          memberships: membershipsOf(parsed).map((m, i) => ({
+            panelId: m.panelId,
+            panelName: `Panel ${m.panelId}`,
+            position: m.position == null ? i + 1 : m.position,
+          })),
+        }),
+    });
+  });
+
 beforeEach(() => {
   vi.clearAllMocks();
-  putToOpenElisServer.mockImplementation((url, payload, cb) => cb(200));
+  okPut();
 });
 
 describe("PanelsSection", () => {
@@ -83,9 +102,11 @@ describe("PanelsSection", () => {
     // Membership row appears.
     expect(await screen.findByTestId("panel-membership-2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
     expect(
-      JSON.parse(putToOpenElisServer.mock.calls[0][1]).memberships,
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).memberships,
     ).toEqual([{ panelId: "2", position: null }]);
   });
 
@@ -98,9 +119,11 @@ describe("PanelsSection", () => {
       target: { value: "5" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
     expect(
-      JSON.parse(putToOpenElisServer.mock.calls[0][1]).memberships,
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).memberships,
     ).toEqual([{ panelId: "1", position: 5 }]);
   });
 
@@ -120,10 +143,106 @@ describe("PanelsSection", () => {
     );
     fireEvent.click(confirmButton);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
     expect(
-      JSON.parse(putToOpenElisServer.mock.calls[0][1]).memberships,
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).memberships,
     ).toEqual([]);
+  });
+
+  it("free-text create assigns AND persists in one action", async () => {
+    wire([]);
+    postToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 201,
+        json: () => Promise.resolve({ id: "9", name: "Chem Panel" }),
+      }),
+    );
+    renderSection();
+    await screen.findByText(messages["label.testCatalog.panels.empty"]);
+    fireEvent.change(document.querySelector("#new-panel-name"), {
+      target: { value: "Chem Panel" },
+    });
+    fireEvent.click(screen.getByTestId("create-panel-button"));
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/rest/test-catalog/panels",
+        JSON.stringify({ name: "Chem Panel" }),
+        expect.any(Function),
+      ),
+    );
+    // the assignment is persisted immediately — no separate Save required
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).memberships,
+    ).toEqual([{ panelId: "9", position: null }]);
+    // and the rendered row comes from the SERVER response (refresh)
+    expect(await screen.findByTestId("panel-membership-9")).toBeInTheDocument();
+  });
+
+  it("free-text name matching an existing panel assigns it without POSTing", async () => {
+    wire([]);
+    renderSection();
+    await screen.findByText(messages["label.testCatalog.panels.empty"]);
+    fireEvent.change(document.querySelector("#new-panel-name"), {
+      target: { value: "lipid panel" },
+    });
+    fireEvent.click(screen.getByTestId("create-panel-button"));
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).memberships,
+    ).toEqual([{ panelId: "1", position: null }]);
+  });
+
+  it("save renders the server's response, not the optimistic list", async () => {
+    wire([{ panelId: "1", panelName: "Lipid Panel", position: 3 }]);
+    // server normalizes the null position to 7
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            testId: "42",
+            memberships: [
+              { panelId: "1", panelName: "Lipid Panel", position: 7 },
+            ],
+          }),
+      }),
+    );
+    renderSection();
+    await screen.findByText("Lipid Panel");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      const row = screen.getByTestId("panel-membership-1");
+      expect(within(row).getByRole("spinbutton")).toHaveValue(7);
+    });
+  });
+
+  it("a failed save keeps the staged edits and does not fake success", async () => {
+    wire([]);
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 422, json: () => Promise.resolve({}) }),
+    );
+    renderSection();
+    await screen.findByText(messages["label.testCatalog.panels.empty"]);
+    const combo = screen.getByPlaceholderText(
+      messages["label.testCatalog.panels.addToPanel"],
+    );
+    fireEvent.click(combo);
+    fireEvent.click(screen.getByText("Metabolic Panel"));
+    expect(await screen.findByTestId("panel-membership-2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    // staged row still present for correction — not cleared, not "saved"
+    expect(screen.getByTestId("panel-membership-2")).toBeInTheDocument();
   });
 
   it("shows an error state when the fetch fails", async () => {
