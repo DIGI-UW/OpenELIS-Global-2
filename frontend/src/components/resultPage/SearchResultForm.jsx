@@ -2155,6 +2155,9 @@ export function SearchResults(props) {
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
+      // attachments live in order_attachment now (OGC-811); round-tripping
+      // the legacy inline resultFile would clone a result_file row per save
+      delete result.resultFile;
     });
     postToOpenElisServerJsonResponse(
       searchEndPoint,
