@@ -124,7 +124,7 @@ describe("RacksPage — feedback", () => {
     await waitFor(() => expect(notifyCtx.addNotification).toHaveBeenCalled());
     expect(notifyCtx.setNotificationVisible).toHaveBeenCalledWith(true);
     expect(notifyCtx.addNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Storage location created" }),
+      expect.objectContaining({ message: "Rack created" }),
     );
   });
 });
