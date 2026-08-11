@@ -3,6 +3,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
+import AddLocationModal from "../components/AddLocationModal";
 
 /** ShelvesPage — /Storage/shelves. List of shelves with per-row Edit. */
 export default function ShelvesPage({ embedded = false }) {
@@ -12,6 +13,7 @@ export default function ShelvesPage({ embedded = false }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const mapRow = useCallback(
     (s) => ({
@@ -85,8 +87,20 @@ export default function ShelvesPage({ embedded = false }) {
         pageSize={pageSize}
         setPageSize={setPageSize}
         editHref={(shelf) => `/Storage/shelves/${shelf.id}/edit`}
-        addHref="/Storage/shelves/new"
+        onAddRequested={() => setAddOpen(true)}
         onDeleteRequested={setDeleteTarget}
+      />
+      <AddLocationModal
+        level="shelf"
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => {
+          setAddOpen(false);
+          history.replace({
+            pathname: location.pathname,
+            search: `?t=${Date.now()}`,
+          });
+        }}
       />
       <DeleteLocationConfirmModal
         isOpen={Boolean(deleteTarget)}

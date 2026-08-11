@@ -46,7 +46,7 @@ export default function StorageResourcePage({
   pageSize,
   setPageSize,
   editHref,
-  addHref,
+  onAddRequested,
   onDeleteRequested,
   // Rendered inside the Storage Management dashboard tab, where the container
   // already supplies the breadcrumb and heading.
@@ -138,13 +138,9 @@ export default function StorageResourcePage({
         </>
       )}
 
-      {addHref && isGlobalAdmin && (
+      {onAddRequested && isGlobalAdmin && (
         <div style={{ margin: "1rem 0" }}>
-          <Button
-            kind="primary"
-            renderIcon={Add}
-            onClick={() => history.push(addHref)}
-          >
+          <Button kind="primary" renderIcon={Add} onClick={onAddRequested}>
             <FormattedMessage id="label.add" defaultMessage="Add" />
           </Button>
         </div>
