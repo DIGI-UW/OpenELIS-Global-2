@@ -4,6 +4,11 @@ import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
 import SampleStatusBlock, { QuantitySnapshot } from "./SampleStatusBlock";
 import {
+  ScopedAttachment,
+  attachmentVisibleOnRow as scopeVisible,
+  scopedAttachmentUploadUrl,
+} from "../attachmentScope";
+import {
   getFromOpenElisServer,
   postToOpenElisServerFormData,
 } from "../../utils/Utils";
@@ -230,13 +235,9 @@ export const StorageSection: React.FC<
   );
 };
 
-interface AttachmentDto {
-  id: number;
-  fileName?: string;
-  fileType?: string;
-  fileSizeBytes?: number;
-  uploadedAt?: string;
-}
+type AttachmentDto = ScopedAttachment;
+
+export { attachmentVisibleOnRow } from "../attachmentScope";
 
 /** legacy per-analysis file (result_file) carried inline on the row */
 export interface LegacyResultFile {
@@ -273,10 +274,20 @@ export const openLegacyResultFile = (file: LegacyResultFile): void => {
 export const AttachmentsSection: React.FC<
   SectionProps & {
     accessionNumber?: string;
+    analysisId?: string;
+    componentId?: string;
     editable?: boolean;
     legacyResultFile?: LegacyResultFile;
   }
-> = ({ open, onToggle, accessionNumber, editable, legacyResultFile }) => {
+> = ({
+  open,
+  onToggle,
+  accessionNumber,
+  analysisId,
+  componentId,
+  editable,
+  legacyResultFile,
+}) => {
   const intl = useIntl();
   const [files, setFiles] = useState<AttachmentDto[] | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -300,7 +311,10 @@ export const AttachmentsSection: React.FC<
     (legacyResultFile.base64Content || legacyResultFile.content)
       ? legacyResultFile
       : null;
-  const count = (files?.length || 0) + (legacy ? 1 : 0);
+  const visibleFiles = (files || []).filter((file) =>
+    scopeVisible(file, analysisId, componentId),
+  );
+  const count = visibleFiles.length + (legacy ? 1 : 0);
   const sizeLabel = (bytes?: number) =>
     bytes ? `${Math.max(1, Math.round(bytes / 1024))} KB` : "";
 
@@ -320,7 +334,7 @@ export const AttachmentsSection: React.FC<
     const formData = new FormData();
     formData.append("files", file, file.name);
     postToOpenElisServerFormData(
-      `/rest/order/${accessionNumber}/attachments`,
+      scopedAttachmentUploadUrl(accessionNumber, analysisId, componentId),
       formData,
       (status: number) => {
         setUploading(false);
@@ -352,7 +366,7 @@ export const AttachmentsSection: React.FC<
       open={open}
       onToggle={onToggle}
     >
-      {(files || []).map((file) => (
+      {visibleFiles.map((file) => (
         <div className="unifiedHistoryRow" key={file.id}>
           <span className="unifiedHistoryDetail">
             {file.fileName}
@@ -362,6 +376,15 @@ export const AttachmentsSection: React.FC<
               {file.uploadedAt ? ` · ${file.uploadedAt}` : ""}
             </span>
           </span>
+          <Tag size="sm" type={file.analysisId ? "blue" : "purple"}>
+            <FormattedMessage
+              id={
+                file.analysisId
+                  ? "label.results.attachments.resultsScope"
+                  : "label.results.attachments.orderScope"
+              }
+            />
+          </Tag>
           <Button
             kind="ghost"
             size="sm"

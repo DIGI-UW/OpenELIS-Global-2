@@ -20,6 +20,7 @@ import {
   AttachmentsSection,
   OrderInfoSection,
   ProgrammeSection,
+  attachmentVisibleOnRow,
 } from "./orderContextSections";
 
 /**
@@ -245,5 +246,102 @@ describe("orderContextSections (FR-C3/C5)", () => {
     expect(screen.getByTestId("legacy-result-file")).toBeInTheDocument();
     expect(screen.getByText("scan.png")).toBeInTheDocument();
     expect(screen.getByText("Result")).toBeInTheDocument();
+  });
+
+  it("attachment visibility follows the persisted scope (component isolation)", () => {
+    const orderLevel = { id: 1, analysisId: "", testResultComponentId: "" };
+    const analysisWide = { id: 2, analysisId: "28", testResultComponentId: "" };
+    const componentA = {
+      id: 3,
+      analysisId: "28",
+      testResultComponentId: "comp-A",
+    };
+    // order-level: everywhere
+    expect(attachmentVisibleOnRow(orderLevel, "28", "comp-A")).toBe(true);
+    expect(attachmentVisibleOnRow(orderLevel, "99", undefined)).toBe(true);
+    // analysis-wide: only that analysis's rows
+    expect(attachmentVisibleOnRow(analysisWide, "28", "comp-A")).toBe(true);
+    expect(attachmentVisibleOnRow(analysisWide, "28", "comp-B")).toBe(true);
+    expect(attachmentVisibleOnRow(analysisWide, "99", "comp-A")).toBe(false);
+    // component-scoped: only the matching component row
+    expect(attachmentVisibleOnRow(componentA, "28", "comp-A")).toBe(true);
+    expect(attachmentVisibleOnRow(componentA, "28", "comp-B")).toBe(false);
+    expect(attachmentVisibleOnRow(componentA, "99", "comp-A")).toBe(false);
+  });
+
+  it("component rows only show their own attachments; order-level shows everywhere", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof url !== "string" || typeof cb !== "function") {
+        return;
+      }
+      if (url.includes("/attachments")) {
+        cb([
+          { id: 1, fileName: "order.pdf", analysisId: "" },
+          {
+            id: 2,
+            fileName: "hgb.png",
+            analysisId: "28",
+            testResultComponentId: "comp-A",
+          },
+          {
+            id: 3,
+            fileName: "wbc.png",
+            analysisId: "28",
+            testResultComponentId: "comp-B",
+          },
+        ]);
+      }
+    });
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+        analysisId="28"
+        componentId="comp-A"
+      />,
+    );
+    expect(screen.getByText("order.pdf")).toBeInTheDocument();
+    expect(screen.getByText("hgb.png")).toBeInTheDocument();
+    expect(screen.queryByText("wbc.png")).not.toBeInTheDocument();
+    expect(screen.getByText("Order Entry")).toBeInTheDocument();
+    expect(screen.getByText("Results")).toBeInTheDocument();
+  });
+
+  it("uploads carry the row's analysis + component scope", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof cb === "function") {
+        cb([]);
+      }
+    });
+    postFormMock.mockImplementation(
+      (_url: string, _form: FormData, cb: (status: number) => void) => {
+        if (typeof cb === "function") {
+          cb(200);
+        }
+      },
+    );
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+        analysisId="28"
+        componentId="comp-A"
+        editable
+      />,
+    );
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const file = new File(["%PDF-1.4"], "hgb.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(postFormMock).toHaveBeenCalledWith(
+      "/rest/order/DEV1/attachments?analysisId=28&testResultComponentId=comp-A",
+      expect.any(FormData),
+      expect.any(Function),
+    );
   });
 });

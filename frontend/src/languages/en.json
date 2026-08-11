@@ -2960,6 +2960,8 @@
   "label.results.attachments.tooLarge": "File exceeds the 10 MB limit.",
   "label.results.attachments.uploadFailed": "Upload failed — PDF, JPG, PNG, or TIFF up to 10 MB.",
   "label.results.attachments.resultScope": "Result",
+  "label.results.attachments.resultsScope": "Results",
+  "label.results.attachments.orderScope": "Order Entry",
   "label.results.attachments.view": "View",
   "label.results.attachments.download": "Download",
   "label.results.section.interpretation": "Interpretation",

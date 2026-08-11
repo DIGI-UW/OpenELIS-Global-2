@@ -652,6 +652,9 @@ const UnifiedResults: React.FC = () => {
       const item: Record<string, unknown> = { ...row, isModified: true };
       delete item.result;
       delete item.analysisNotes;
+      // attachments live in order_attachment now (OGC-811); round-tripping
+      // the legacy inline resultFile would clone a result_file row per save
+      delete item.resultFile;
       // TestResultItem serializes reportable as "Y"/"N" but deserializes it
       // as boolean — same normalization the legacy page applies before POST
       item.reportable = item.reportable !== "N";

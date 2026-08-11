@@ -755,6 +755,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           open={isSectionOpen(sectionLayout, "attachments", false)}
           onToggle={(open) => toggleSection("attachments", open)}
           accessionNumber={row.accessionNumber}
+          analysisId={row.analysisId as string | undefined}
+          componentId={row.testResultComponentId as string | undefined}
           editable={editable}
           legacyResultFile={
             row.resultFile as
