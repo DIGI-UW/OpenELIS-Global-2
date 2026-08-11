@@ -5,7 +5,7 @@ import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
 
 /** RoomsPage — /Storage/rooms. List of rooms with per-row Edit. */
-export default function RoomsPage({ embedded = false }) {
+export default function RoomsPage() {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
@@ -26,7 +26,6 @@ export default function RoomsPage({ embedded = false }) {
   return (
     <>
       <StorageResourcePage
-        embedded={embedded}
         crumbs={[
           {
             label: intl.formatMessage({

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import {
   Tabs,
@@ -6,186 +6,161 @@ import {
   Tab,
   TabPanels,
   TabPanel,
-  ContentSwitcher,
-  Switch,
+  Grid,
+  Column,
+  ClickableTile,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import BreadcrumbNav from "./components/BreadcrumbNav";
-import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+import { getFromOpenElisServer } from "../utils/Utils";
 import SampleItemsPage from "./pages/SampleItemsPage";
 import InventoryLotsPage from "./pages/InventoryLotsPage";
-import RoomsPage from "./pages/RoomsPage";
-import DevicesPage from "./pages/DevicesPage";
-import ShelvesPage from "./pages/ShelvesPage";
-import RacksPage from "./pages/RacksPage";
-import BoxesPage from "./pages/BoxesPage";
 import "./StorageDashboard.css";
 
-/**
- * StorageManagementPage — /Storage and its per-resource URLs.
- *
- * Storage used to spend seven sidenav entries on one module, presenting
- * Room/Device/Shelf/Rack/Box as five peers when they are levels of a single
- * hierarchy, and mixing them with the occupant listings. This gathers them
- * under one destination: containers live behind the Locations tab's level
- * switcher, occupants are tabs of their own.
- *
- * Every previous URL still resolves — /Storage/racks selects Locations with
- * Racks active — so bookmarks and the menu table keep working.
- */
-
-// Level order matches the hierarchy, not the alphabet.
-const LEVELS = [
+const breadcrumbs = [
+  { label: "home.label", link: "/", defaultMessage: "Home" },
   {
-    slug: "rooms",
-    labelId: "storage.nav.rooms",
-    label: "Rooms",
-    Page: RoomsPage,
-  },
-  {
-    slug: "devices",
-    labelId: "storage.nav.devices",
-    label: "Devices",
-    Page: DevicesPage,
-  },
-  {
-    slug: "shelves",
-    labelId: "storage.nav.shelves",
-    label: "Shelves",
-    Page: ShelvesPage,
-  },
-  {
-    slug: "racks",
-    labelId: "storage.nav.racks",
-    label: "Racks",
-    Page: RacksPage,
-  },
-  {
-    slug: "boxes",
-    labelId: "storage.nav.boxes",
-    label: "Boxes",
-    Page: BoxesPage,
+    label: "sidenav.label.storage.management",
+    link: "/Storage",
+    defaultMessage: "Storage Management",
   },
 ];
 
-const TABS = ["overview", "locations", "sample-items", "inventory-lots"];
+/**
+ * StorageManagementPage — /Storage.
+ *
+ * Storage used to spend six sidenav rows on one module, five of them
+ * (Rooms/Devices/Shelves/Racks/Boxes) levels of a single hierarchy shown as
+ * peers. They are now tiles on the Dashboard tab, counted and clickable, with
+ * the occupant listings as tabs beside it — the same shape as Inventory
+ * Management.
+ */
 
-export default function StorageManagementPage() {
+// Hierarchy order, not alphabetical.
+const LEVELS = [
+  { key: "rooms", labelId: "storage.nav.rooms", label: "Rooms" },
+  { key: "devices", labelId: "storage.nav.devices", label: "Devices" },
+  { key: "shelves", labelId: "storage.nav.shelves", label: "Shelves" },
+  { key: "racks", labelId: "storage.nav.racks", label: "Racks" },
+  { key: "boxes", labelId: "storage.nav.boxes", label: "Boxes" },
+];
+
+const TABS = ["dashboard", "sample-items", "inventory-lots"];
+
+function LocationTiles() {
   const intl = useIntl();
   const history = useHistory();
-  // The route is /Storage/:resource?, so the URL is the single source of
-  // truth for which tab and level are showing.
-  const { resource } = useParams();
+  const [counts, setCounts] = useState({});
 
-  const levelIndex = useMemo(
-    () => LEVELS.findIndex((l) => l.slug === resource),
-    [resource],
-  );
-
-  const tabIndex = useMemo(() => {
-    if (levelIndex >= 0) return TABS.indexOf("locations");
-    const direct = TABS.indexOf(resource);
-    return direct >= 0 ? direct : 0;
-  }, [resource, levelIndex]);
-
-  const activeLevel = levelIndex >= 0 ? levelIndex : 0;
-
-  const goTo = (slug) => {
-    history.push(slug === "overview" ? "/Storage" : `/Storage/${slug}`);
-  };
-
-  const crumbs = [
-    {
-      label: intl.formatMessage({
-        id: "storage.breadcrumb.storage",
-        defaultMessage: "Storage",
-      }),
-      href: "/Storage",
-    },
-  ];
+  useEffect(() => {
+    let mounted = true;
+    getFromOpenElisServer("/rest/storage/dashboard/location-counts", (res) => {
+      if (mounted && res) setCounts(res);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
-    <div className="storage-management-page pageContent">
-      <BreadcrumbNav crumbs={crumbs} />
-      <h1>
-        <FormattedMessage
-          id="storage.dashboard.title"
-          defaultMessage="Storage"
-        />
-      </h1>
-
-      <Tabs
-        selectedIndex={tabIndex}
-        onChange={({ selectedIndex }) => {
-          const next = TABS[selectedIndex];
-          goTo(next === "locations" ? LEVELS[activeLevel].slug : next);
-        }}
-      >
-        <TabList aria-label="Storage management sections" contained>
-          <Tab>
-            <FormattedMessage
-              id="storage.tab.overview"
-              defaultMessage="Overview"
-            />
-          </Tab>
-          <Tab>
-            <FormattedMessage
-              id="storage.tab.locations"
-              defaultMessage="Locations"
-            />
-          </Tab>
-          <Tab>
-            <FormattedMessage
-              id="storage.tab.samples"
-              defaultMessage="Sample Items"
-            />
-          </Tab>
-          <Tab>
-            <FormattedMessage
-              id="storage.tab.inventoryLots"
-              defaultMessage="Inventory Lots"
-            />
-          </Tab>
-        </TabList>
-
-        <TabPanels>
-          <TabPanel>
-            <StorageLocationsMetricCard />
-          </TabPanel>
-
-          <TabPanel>
-            <div
-              className="storage-management-level-switcher"
-              style={{ margin: "1rem 0" }}
-            >
-              <ContentSwitcher
-                selectedIndex={activeLevel}
-                onChange={({ index }) => goTo(LEVELS[index].slug)}
-              >
-                {LEVELS.map((level) => (
-                  <Switch
-                    key={level.slug}
-                    name={level.slug}
-                    text={intl.formatMessage({
-                      id: level.labelId,
-                      defaultMessage: level.label,
-                    })}
-                  />
-                ))}
-              </ContentSwitcher>
+    <Grid className="storage-metrics-grid" fullWidth={false}>
+      {LEVELS.map((level) => (
+        <Column
+          key={level.key}
+          lg={3}
+          md={2}
+          sm={4}
+          className="storage-metric-column"
+        >
+          <ClickableTile
+            className="storage-metric-tile"
+            onClick={() => history.push(`/Storage/${level.key}`)}
+          >
+            <div className="metric-value">{counts[level.key] ?? 0}</div>
+            <div className="metric-label">
+              {intl.formatMessage({
+                id: level.labelId,
+                defaultMessage: level.label,
+              })}
             </div>
-            {React.createElement(LEVELS[activeLevel].Page, { embedded: true })}
-          </TabPanel>
+          </ClickableTile>
+        </Column>
+      ))}
+    </Grid>
+  );
+}
 
-          <TabPanel>
-            <SampleItemsPage embedded />
-          </TabPanel>
+export default function StorageManagementPage() {
+  const history = useHistory();
+  // The URL is the source of truth for the active tab, so a deep link and a
+  // click land on the same place and the tab is shareable.
+  const { resource } = useParams();
 
-          <TabPanel>
-            <InventoryLotsPage embedded />
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
-    </div>
+  const tabIndex = useMemo(() => {
+    const direct = TABS.indexOf(resource);
+    return direct > 0 ? direct : 0;
+  }, [resource]);
+
+  return (
+    <>
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <div className="orderLegendBody">
+            <h2>
+              <FormattedMessage
+                id="sidenav.label.storage.management"
+                defaultMessage="Storage Management"
+              />
+            </h2>
+
+            <Tabs
+              selectedIndex={tabIndex}
+              onChange={({ selectedIndex }) => {
+                const next = TABS[selectedIndex];
+                history.push(
+                  next === "dashboard" ? "/Storage" : `/Storage/${next}`,
+                );
+              }}
+            >
+              <TabList aria-label="Storage management tabs" contained>
+                <Tab>
+                  <FormattedMessage
+                    id="storage.tab.dashboard"
+                    defaultMessage="Dashboard"
+                  />
+                </Tab>
+                <Tab>
+                  <FormattedMessage
+                    id="storage.tab.samples"
+                    defaultMessage="Sample Items"
+                  />
+                </Tab>
+                <Tab>
+                  <FormattedMessage
+                    id="storage.tab.inventoryLots"
+                    defaultMessage="Inventory Lots"
+                  />
+                </Tab>
+              </TabList>
+
+              <TabPanels>
+                <TabPanel>
+                  <LocationTiles />
+                </TabPanel>
+
+                <TabPanel>
+                  <SampleItemsPage embedded />
+                </TabPanel>
+
+                <TabPanel>
+                  <InventoryLotsPage embedded />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          </div>
+        </Column>
+      </Grid>
+    </>
   );
 }

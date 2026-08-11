@@ -180,3 +180,49 @@
 .storage-dashboard .cds--table-container {
   margin-top: 0;
 }
+
+/*
+ * Location tiles on the Storage Management dashboard tab. Deliberately the
+ * same shape as .inventory-metric-tile so the two modules read as siblings;
+ * duplicated rather than shared because the inventory rules live in that
+ * module's stylesheet.
+ */
+.storage-metrics-grid {
+  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+}
+
+.storage-metric-column {
+  padding: 0 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.storage-metric-tile {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.storage-metric-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.storage-metric-tile .metric-value {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #161616;
+  line-height: 1.2;
+}
+
+.storage-metric-tile .metric-label {
+  font-size: 0.875rem;
+  color: #525252;
+  margin-top: 0.5rem;
+  font-weight: 400;
+}

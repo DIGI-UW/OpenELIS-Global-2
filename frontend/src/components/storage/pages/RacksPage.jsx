@@ -5,7 +5,7 @@ import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
 
 /** RacksPage — /Storage/racks. List of racks with per-row Edit. */
-export default function RacksPage({ embedded = false }) {
+export default function RacksPage() {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
@@ -27,7 +27,6 @@ export default function RacksPage({ embedded = false }) {
   return (
     <>
       <StorageResourcePage
-        embedded={embedded}
         crumbs={[
           {
             label: intl.formatMessage({

@@ -1,31 +1,25 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import StorageManagementPage from "./StorageManagementPage";
+import * as Utils from "../utils/Utils";
 import messages from "../../languages/en.json";
 
-// Each panel's list page is covered by its own test file; here we only care
-// which one the container decides to show.
-vi.mock("./StorageDashboard/StorageLocationsMetricCard", () => ({
-  default: () => <div>metric-card</div>,
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
+
+// Each panel's list page has its own tests; here we only assert which one the
+// container shows.
 vi.mock("./pages/SampleItemsPage", () => ({
   default: () => <div>sample-items-panel</div>,
 }));
 vi.mock("./pages/InventoryLotsPage", () => ({
   default: () => <div>inventory-lots-panel</div>,
 }));
-vi.mock("./pages/RoomsPage", () => ({ default: () => <div>rooms-panel</div> }));
-vi.mock("./pages/DevicesPage", () => ({
-  default: () => <div>devices-panel</div>,
-}));
-vi.mock("./pages/ShelvesPage", () => ({
-  default: () => <div>shelves-panel</div>,
-}));
-vi.mock("./pages/RacksPage", () => ({ default: () => <div>racks-panel</div> }));
-vi.mock("./pages/BoxesPage", () => ({ default: () => <div>boxes-panel</div> }));
 
 const renderAt = (path) =>
   render(
@@ -34,16 +28,39 @@ const renderAt = (path) =>
         <Route path="/Storage/:resource?">
           <StorageManagementPage />
         </Route>
+        <Route
+          path="*"
+          render={({ location }) => (
+            <span data-testid="path">{location.pathname}</span>
+          )}
+        />
       </MemoryRouter>
     </IntlProvider>,
   );
 
+beforeEach(() => {
+  Utils.getFromOpenElisServer.mockReset();
+  Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+    cb({ rooms: 2, devices: 3, shelves: 4, racks: 5, boxes: 6 }),
+  );
+});
+
 describe("StorageManagementPage", () => {
-  it("gathers storage into four tabs instead of seven sidenav entries", () => {
+  it("follows the Inventory Management shell — breadcrumb, orderLegendBody, heading", () => {
+    const { container } = renderAt("/Storage");
+
+    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(container.querySelector(".orderLegendBody")).toBeInTheDocument();
+    expect(container.querySelector(".orderLegendBody h2")).toHaveTextContent(
+      "Storage Management",
+    );
+  });
+
+  it("has exactly three tabs", () => {
     renderAt("/Storage");
 
-    expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Locations" })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab")).toHaveLength(3);
+    expect(screen.getByRole("tab", { name: "Dashboard" })).toBeInTheDocument();
     expect(
       screen.getByRole("tab", { name: "Sample Items" }),
     ).toBeInTheDocument();
@@ -52,32 +69,32 @@ describe("StorageManagementPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("lands on Overview at /Storage", () => {
-    renderAt("/Storage");
+  it("shows one counted tile per hierarchy level on the dashboard", async () => {
+    const { container } = renderAt("/Storage");
 
-    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute(
-      "aria-selected",
-      "true",
+    await waitFor(() =>
+      expect(container.querySelectorAll(".storage-metric-tile")).toHaveLength(
+        5,
+      ),
     );
-    expect(screen.getByText("metric-card")).toBeInTheDocument();
+    ["Rooms", "Devices", "Shelves", "Racks", "Boxes"].forEach((label) =>
+      expect(screen.getByText(label)).toBeInTheDocument(),
+    );
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("6")).toBeInTheDocument();
   });
 
-  // The five levels used to be sidenav siblings; their URLs must keep working.
-  it.each([
-    ["/Storage/rooms", "rooms-panel", "Rooms"],
-    ["/Storage/devices", "devices-panel", "Devices"],
-    ["/Storage/shelves", "shelves-panel", "Shelves"],
-    ["/Storage/racks", "racks-panel", "Racks"],
-    ["/Storage/boxes", "boxes-panel", "Boxes"],
-  ])("deep link %s selects Locations with %s", (path, panel, switchLabel) => {
-    renderAt(path);
-
-    expect(screen.getByRole("tab", { name: "Locations" })).toHaveAttribute(
-      "aria-selected",
-      "true",
+  it("navigates to a level listing when its tile is clicked", async () => {
+    const { container } = renderAt("/Storage");
+    await waitFor(() =>
+      expect(container.querySelector(".storage-metric-tile")).toBeTruthy(),
     );
-    expect(screen.getByText(panel)).toBeInTheDocument();
-    expect(screen.getByText(switchLabel)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Racks").closest("button, a"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("path")).toHaveTextContent("/Storage/racks"),
+    );
   });
 
   it("deep link /Storage/sample-items selects the Samples tab", () => {
@@ -100,11 +117,12 @@ describe("StorageManagementPage", () => {
     expect(screen.getByText("inventory-lots-panel")).toBeInTheDocument();
   });
 
-  it("switching level navigates so the URL stays shareable", () => {
-    renderAt("/Storage/rooms");
+  it("lands on the Dashboard tab at /Storage", () => {
+    renderAt("/Storage");
 
-    fireEvent.click(screen.getByText("Racks"));
-
-    expect(screen.getByText("racks-panel")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Dashboard" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 });
