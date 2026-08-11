@@ -8,7 +8,7 @@ import { useOrderContext } from "./OrderContext";
  * OrderStepper - Progress indicator for the order workflow.
  *
  * Clinical: Enter → Collect → Label → QA (4 steps)
- * Environmental: Enter → Label → QA (3 steps)
+ * Environmental: Enter → Collect → Label → QA (4 steps)
  * Vector: Enter → Label → QA (3 steps)
  *
  * Step completion is based on:
@@ -34,6 +34,11 @@ const ENVIRONMENTAL_ORDER_STEPS = [
     label: "order.step.enter",
     path: "/order/environmental/enter",
     key: "enter",
+  },
+  {
+    label: "order.step.collect",
+    path: "/order/environmental/collect",
+    key: "collect",
   },
   {
     label: "order.step.label",

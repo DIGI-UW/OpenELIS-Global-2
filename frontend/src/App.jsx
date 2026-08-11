@@ -676,6 +676,12 @@ export default function App() {
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
+                          path={`${match.path}/collect`}
+                          exact
+                          component={() => <OrderCollect />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
                           path={`${match.path}/label`}
                           exact
                           component={() => <OrderLabel />}

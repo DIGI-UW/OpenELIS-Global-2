@@ -231,8 +231,8 @@ const EnvironmentalOrderEnter = () => {
       markStepComplete("enter");
       history.push(
         labNumber
-          ? `/order/environmental/label?order=${encodeURIComponent(labNumber)}`
-          : "/order/environmental/label",
+          ? `/order/environmental/collect?order=${encodeURIComponent(labNumber)}`
+          : "/order/environmental/collect",
       );
     } catch (error) {
       addNotification({
