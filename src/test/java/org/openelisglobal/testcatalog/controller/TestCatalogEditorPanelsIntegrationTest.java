@@ -174,12 +174,61 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @org.junit.Test
     public void listPanels_includesSeededPanels() {
         boolean found = false;
-        for (PanelOption o : controller.listPanels()) {
+        for (PanelOption o : controller.listPanels(false)) {
             if (panelAId.equals(o.id)) {
                 found = true;
             }
         }
         assertTrue("the seeded panel should appear in the typeahead list", found);
+    }
+
+    /**
+     * OGC-224 — the list endpoint carries the management fields the Panels list
+     * renders: domain (backfilled CLINICAL by liquibase 074), test count, derived
+     * sample types (from member tests — panels store none), and the active flag.
+     * The picker contract ({id, name}) stays untouched.
+     */
+    @org.junit.Test
+    public void listPanels_managementFields_domainTestCountAndDerivedSampleTypes() {
+        Long sampleTypeId = jdbc.queryForObject("SELECT id FROM clinlims.type_of_sample ORDER BY id LIMIT 1",
+                Long.class);
+        jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (952224, ?, ?)",
+                sampleTypeId, TEST_ID);
+        // the test->sample-type map is a lazy singleton cache; the jdbc seed
+        // above is invisible to it until cleared
+        typeOfSampleService.clearCache();
+        try {
+            put(membership(panelAId, 1));
+
+            PanelOption row = controller.listPanels(true).stream().filter(o -> panelAId.equals(o.id)).findFirst()
+                    .orElse(null);
+            assertTrue("the panel must appear in the management list", row != null);
+            assertEquals("existing panels backfill to CLINICAL", "CLINICAL", row.domain);
+            assertTrue("the member test must be counted", row.testCount >= 1);
+            assertTrue("sample types derive from the member tests", !row.sampleTypes.isEmpty());
+            assertTrue("the panel is active", row.active);
+        } finally {
+            jdbc.update("DELETE FROM clinlims.sampletype_test WHERE id = 952224");
+            typeOfSampleService.clearCache();
+        }
+    }
+
+    /**
+     * OGC-224 — the management list includes inactive panels only when asked
+     * (includeInactive=true); the default stays active-only so the test editor's
+     * add-to-panel typeahead never offers an inactive panel.
+     */
+    @org.junit.Test
+    public void listPanels_includeInactiveGatesInactivePanels() {
+        jdbc.update("UPDATE clinlims.panel SET is_active = 'N' WHERE id = ?", Long.parseLong(panelBId));
+        try {
+            boolean inDefault = controller.listPanels(false).stream().anyMatch(o -> panelBId.equals(o.id));
+            boolean inManagement = controller.listPanels(true).stream().anyMatch(o -> panelBId.equals(o.id));
+            assertTrue("default list must exclude the inactive panel", !inDefault);
+            assertTrue("management list must include the inactive panel", inManagement);
+        } finally {
+            jdbc.update("UPDATE clinlims.panel SET is_active = 'Y' WHERE id = ?", Long.parseLong(panelBId));
+        }
     }
 
     @org.junit.Test

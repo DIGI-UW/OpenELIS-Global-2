@@ -35,6 +35,7 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import useDomains from "../../common/useDomains";
 import { DEFAULT_SECTION } from "./sectionConfig";
+import PanelsList from "./PanelsList";
 
 /**
  * OGC-949 / OGC-1112 — Test List View.
@@ -71,7 +72,21 @@ const SEARCH_DEBOUNCE_MS = 300;
 // FR-61 — errors sort ahead of warnings ahead of info in the per-row tag list.
 const SEVERITY_RANK = { ERROR: 0, WARNING: 1, INFO: 2 };
 
+/**
+ * OGC-224 — the list route hosts multiple catalog entities (FRS: Tests /
+ * Panels / Sample Types as peers). ?entity=panels renders the Panels context;
+ * no param (or any other value) keeps the historic Tests list untouched.
+ */
 const TestCatalogList = () => {
+  const history = useHistory();
+  const entity = new URLSearchParams(history.location.search).get("entity");
+  if (entity === "panels") {
+    return <PanelsList />;
+  }
+  return <TestsList />;
+};
+
+const TestsList = () => {
   const domainOptions = [
     ALL_DOMAINS_OPTION,
     ...useDomains().map((d) => ({ id: d.id, label: d.labelKey })),

@@ -1707,10 +1707,23 @@ public class TestCatalogEditorRestController {
 
     // ── Panels — this test's panel memberships (OGC-980..982) ─────────────────
 
-    /** A selectable panel for the add-to-panel typeahead. */
+    /**
+     * A selectable panel for the add-to-panel typeahead — and, with the management
+     * fields (OGC-224), one row of the Panels list. Additive: the typeahead keeps
+     * reading {id, name} only.
+     */
     public static class PanelOption {
         public String id;
         public String name;
+        public String description;
+        public String loinc;
+        /** CLINICAL / ENVIRONMENTAL / VECTOR — never null (defaults CLINICAL). */
+        public String domain;
+        public boolean active;
+        public Integer sortOrder;
+        public int testCount;
+        /** Derived from the member tests — panels store no sample types. */
+        public List<String> sampleTypes = new ArrayList<>();
     }
 
     /** A panel this test belongs to, and its position within that panel. */
@@ -1747,15 +1760,46 @@ public class TestCatalogEditorRestController {
     }
 
     @GetMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<PanelOption> listPanels() {
+    public List<PanelOption> listPanels(@RequestParam(defaultValue = "false") boolean includeInactive) {
+        List<Panel> panels = includeInactive ? panelService.getAllPanels() : panelService.getAllActivePanels();
         List<PanelOption> options = new ArrayList<>();
-        for (Panel p : panelService.getAllActivePanels()) {
-            PanelOption o = new PanelOption();
-            o.id = p.getId();
-            o.name = p.getPanelName();
-            options.add(o);
+        for (Panel p : panels) {
+            options.add(toPanelOption(p));
         }
         return options;
+    }
+
+    private PanelOption toPanelOption(Panel p) {
+        PanelOption o = new PanelOption();
+        o.id = p.getId();
+        o.name = p.getPanelName();
+        o.description = p.getDescription();
+        o.loinc = p.getLoinc();
+        o.domain = Domain.normalize(p.getDomain());
+        o.active = "Y".equals(p.getIsActive());
+        o.sortOrder = p.getSortOrderInt();
+        // Sample types are DERIVED from the member tests (FRS v2.2) — the panel
+        // stores none; SAMPLETYPE_PANEL is a backend-synced junction, never the
+        // display source.
+        Set<String> derivedTypes = new LinkedHashSet<>();
+        List<PanelItem> items = panelItemService.getPanelItemsForPanel(p.getId());
+        o.testCount = items.size();
+        for (PanelItem item : items) {
+            if (item.getTest() == null) {
+                continue;
+            }
+            // getTypeOfSampleForTest returns null (not empty) for a test with
+            // no specimen association — the fresh member test case.
+            List<TypeOfSample> types = typeOfSampleService.getTypeOfSampleForTest(item.getTest().getId());
+            if (types == null) {
+                continue;
+            }
+            for (TypeOfSample type : types) {
+                derivedTypes.add(type.getLocalizedName());
+            }
+        }
+        o.sampleTypes.addAll(derivedTypes);
+        return o;
     }
 
     /**

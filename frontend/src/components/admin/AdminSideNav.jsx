@@ -151,6 +151,28 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
     };
   };
 
+  // OGC-224 — the list route hosts two entities (?entity=panels); the two
+  // entity links disambiguate on the query string so only one lights up.
+  const onPanelsList =
+    new URLSearchParams(location.search).get("entity") === "panels";
+  const entityListNavProps = (targetPath, isActive) => ({
+    href: targetPath,
+    isActive,
+    "aria-current": isActive ? "page" : undefined,
+    onClick: handleNavigation(targetPath),
+  });
+  const testsListNavProps = (targetPath) =>
+    entityListNavProps(
+      targetPath,
+      normalizePath(location.pathname) === normalizePath(targetPath) &&
+        !onPanelsList,
+    );
+  const panelsListNavProps = (targetPath) =>
+    entityListNavProps(
+      targetPath,
+      /\/TestCatalogList(\/|$)/.test(location.pathname) && onPanelsList,
+    );
+
   return (
     <SideNavItems className="adminSideNav">
       <SideNavLink
@@ -202,7 +224,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         </SideNavMenuItem>
         <SideNavMenuItem
           data-cy="testCatalogList"
-          {...navProps(`${path}/TestCatalogList`)}
+          {...testsListNavProps(`${path}/TestCatalogList`)}
         >
           <FormattedMessage
             id={
@@ -211,6 +233,14 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                 : "sidenav.label.admin.testmgt.testCatalogEditor"
             }
           />
+        </SideNavMenuItem>
+        {/* OGC-224 — Panels is a peer entity of Tests / Sample Types in this
+            shell; the list route hosts it via ?entity=panels. */}
+        <SideNavMenuItem
+          data-cy="panelsList"
+          {...panelsListNavProps(`${path}/TestCatalogList?entity=panels`)}
+        >
+          <FormattedMessage id="label.testCatalog.entity.panels" />
         </SideNavMenuItem>
         {editorSampleTypeId ? (
           <>
