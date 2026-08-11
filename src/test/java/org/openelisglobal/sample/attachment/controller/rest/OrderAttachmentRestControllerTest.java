@@ -169,12 +169,18 @@ public class OrderAttachmentRestControllerTest extends BaseWebContextSensitiveTe
                 .andExpect(jsonPath("$[0].fileSizeBytes").value(4));
 
         // idempotent — re-running migrates nothing new; orphan excluded;
-        // result_file untouched
+        // result_file untouched (counts scoped to this test's rows — the
+        // shared test DB carries result_file rows from other suites)
         jdbc.execute(MIGRATION_SQL);
-        Integer migrated = jdbc.queryForObject(
-                "SELECT count(*) FROM clinlims.order_attachment WHERE is_deleted = false", Integer.class);
+        Integer migrated = jdbc.queryForObject("SELECT count(*) FROM clinlims.order_attachment WHERE is_deleted ="
+                + " false AND analysis_id = 1 AND original_file_name = 'legacy.jpg'", Integer.class);
         org.junit.Assert.assertEquals(Integer.valueOf(1), migrated);
-        Integer legacyRows = jdbc.queryForObject("SELECT count(*) FROM clinlims.result_file", Integer.class);
+        Integer orphanMigrated = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.order_attachment WHERE" + " original_file_name = 'orphan.jpg'",
+                Integer.class);
+        org.junit.Assert.assertEquals(Integer.valueOf(0), orphanMigrated);
+        Integer legacyRows = jdbc.queryForObject("SELECT count(*) FROM clinlims.result_file WHERE id IN (9601, 9602)",
+                Integer.class);
         org.junit.Assert.assertEquals(Integer.valueOf(2), legacyRows);
     }
 }
