@@ -54,8 +54,7 @@ public class RollingCalculator implements StatisticsCalculator {
             BigDecimal diff = result.getResultValue().subtract(mean);
             varianceSum = varianceSum.add(diff.multiply(diff));
         }
-        BigDecimal variance = varianceSum.divide(BigDecimal.valueOf(recentResults.size() - 1), 4,
-                RoundingMode.HALF_UP);
+        BigDecimal variance = varianceSum.divide(BigDecimal.valueOf(recentResults.size() - 1), 4, RoundingMode.HALF_UP);
         BigDecimal stdDev = BigDecimal.valueOf(Math.sqrt(variance.doubleValue())).setScale(4, RoundingMode.HALF_UP);
 
         // Create statistics entity

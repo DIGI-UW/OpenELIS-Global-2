@@ -44,8 +44,8 @@ public class QCControlLotValidator {
      * GAP-5: capture, statistics and charting all key on controlLotId, so two live
      * rows for "the same" lot silently split its statistics between them. The
      * uniqueness key is (lotNumber, testId, controlLevel): the same physical lot
-     * number legitimately recurs across different tests, and EXPIRED (retired)
-     * lots never block reuse. Mirrored by the partial unique index
+     * number legitimately recurs across different tests, and EXPIRED (retired) lots
+     * never block reuse. Mirrored by the partial unique index
      * uq_qc_control_lot_active (qc-028) per the inversion-test convention.
      */
     private void validateNoDuplicateLot(QCControlLot lot) {
