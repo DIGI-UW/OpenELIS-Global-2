@@ -146,6 +146,10 @@ public class TestCatalogEditorRestController {
     @Autowired(required = false)
     private org.openelisglobal.typeofsample.service.TypeOfSamplePanelService typeOfSamplePanelService;
 
+    // Field-injected (optional) for the OGC-224 panel Terminology section.
+    @Autowired(required = false)
+    private org.openelisglobal.panelterminology.service.PanelTerminologyMappingService panelTerminologyService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
@@ -1841,6 +1845,87 @@ public class TestCatalogEditorRestController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_INACTIVE);
+    }
+
+    // ── Panel terminology (OGC-224 C4) — parity with the sample-type mapper,
+    // including WHONET; the LOINC mapping is the panel's primary identifier ──
+
+    private static final Set<String> PANEL_TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL", "WHONET");
+
+    public static class PanelTerminologyMappingDto {
+        public String id;
+        public String source;
+        public String code;
+        public String relationship;
+
+        // no entity-arg constructor: a second public constructor reads as an
+        // implicit Jackson creator under the strict mapper and breaks request
+        // binding (400)
+        static PanelTerminologyMappingDto of(
+                org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping m) {
+            PanelTerminologyMappingDto dto = new PanelTerminologyMappingDto();
+            dto.id = m.getId();
+            dto.source = m.getSource();
+            dto.code = m.getCode();
+            dto.relationship = m.getRelationship();
+            return dto;
+        }
+    }
+
+    public static class PanelTerminologyResponse {
+        public String panelId;
+        public List<PanelTerminologyMappingDto> mappings = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/panels/{panelId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PanelTerminologyResponse> getPanelTerminology(@PathVariable String panelId) {
+        if (findPanel(panelId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toPanelTerminology(panelId));
+    }
+
+    @PutMapping(value = "/panels/{panelId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PanelTerminologyResponse> savePanelTerminology(@PathVariable String panelId,
+            @RequestBody PanelTerminologyResponse body, HttpServletRequest request) {
+        if (findPanel(panelId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // (source, code) unique within the request — the DB enforces it per
+        // panel, but reject early + cleanly rather than surfacing a raw 500.
+        Set<String> seen = new HashSet<>();
+        List<org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping> desired = new ArrayList<>();
+        for (PanelTerminologyMappingDto m : body.mappings) {
+            if (isBlank(m.source) || !PANEL_TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!seen.add(m.source + " " + m.code.trim())) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping e = new org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping();
+            e.setSource(m.source);
+            e.setCode(m.code.trim());
+            e.setRelationship(isBlank(m.relationship) ? null : m.relationship);
+            desired.add(e);
+        }
+        panelTerminologyService.saveMappingsForPanel(panelId, desired, ControllerUtills.getSysUserId(request));
+        // panel.loinc may have changed (denormalized primary) — order entry lists
+        // show it
+        refreshPanelDisplayLists();
+        return ResponseEntity.ok(toPanelTerminology(panelId));
+    }
+
+    private PanelTerminologyResponse toPanelTerminology(String panelId) {
+        PanelTerminologyResponse resp = new PanelTerminologyResponse();
+        resp.panelId = panelId;
+        for (org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping m : panelTerminologyService
+                .getActiveByPanelId(panelId)) {
+            resp.mappings.add(PanelTerminologyMappingDto.of(m));
+        }
+        return resp;
     }
 
     @GetMapping(value = "/panels/{panelId}", produces = MediaType.APPLICATION_JSON_VALUE)

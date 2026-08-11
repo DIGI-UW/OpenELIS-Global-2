@@ -199,4 +199,7 @@
   <!-- OGC-224: panels carry a domain (backfilled CLINICAL); membership is domain-guarded -->
   <include relativeToChangelogFile="true" file="074-panel-domain.xml"/>
 
+  <!-- OGC-224: panel terminology mappings (LOINC backfilled from panel.loinc, the FHIR routing key) -->
+  <include relativeToChangelogFile="true" file="075-panel-terminology-mapping.xml"/>
+
 </databaseChangeLog>

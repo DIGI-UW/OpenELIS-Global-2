@@ -10,6 +10,7 @@ import {
 } from "./panelSectionConfig";
 import PanelBasicInfoSection from "./sections/PanelBasicInfoSection";
 import PanelTestsSection from "./sections/PanelTestsSection";
+import PanelTerminologySection from "./sections/PanelTerminologySection";
 import { domainTagType } from "./PanelsList";
 
 /**
@@ -143,6 +144,9 @@ const PanelEditor = () => {
                     setPanel(saved);
                   }}
                 />
+              )}
+              {activeSection === "terminology" && !isCreate && (
+                <PanelTerminologySection panel={panel} onSaved={setPanel} />
               )}
             </>
           )}

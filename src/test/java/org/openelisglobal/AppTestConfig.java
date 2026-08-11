@@ -92,6 +92,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testsamplehandling.service", "org.openelisglobal.testsamplehandling.daoimpl",
         "org.openelisglobal.testterminology.service", "org.openelisglobal.testterminology.daoimpl",
         "org.openelisglobal.sampletypeterminology.service", "org.openelisglobal.sampletypeterminology.daoimpl",
+        "org.openelisglobal.panelterminology.service", "org.openelisglobal.panelterminology.daoimpl",
         "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
         "org.openelisglobal.testalertrule", "org.openelisglobal.testcatalog.service",
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.plugin",

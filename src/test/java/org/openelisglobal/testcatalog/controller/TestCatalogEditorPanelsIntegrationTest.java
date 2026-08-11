@@ -630,4 +630,103 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.domain")
                         .value("CLINICAL"));
     }
+
+    /**
+     * OGC-224 C4 — the panel terminology mapper: reconcile keyed (source, code)
+     * with reactivation, WHONET accepted, validation 422s, and panel.loinc kept
+     * denormalized to the SAME_AS LOINC mapping (the FHIR routing key) — cleared
+     * when the mapping is removed, restored on re-add without a unique violation.
+     */
+    @org.junit.Test
+    public void panelTerminology_reconcile_andLoincDenormalization() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        org.springframework.test.web.servlet.MvcResult created = mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/test-catalog/panels")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"PanelsIT Terms\",\"active\":false}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                .andReturn();
+        String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+        try {
+            // LOINC (primary) + WHONET both accepted; loinc denormalizes
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"24331-1\","
+                            + "\"relationship\":\"SAME_AS\"},{\"source\":\"WHONET\",\"code\":\"WN-1\"}]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.mappings.length()").value(2));
+            assertEquals("24331-1", jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(panelId)));
+
+            // dropping the LOINC mapping soft-deletes it and clears panel.loinc
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"WN-1\"}]}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.mappings.length()").value(1));
+            assertEquals(null, jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(panelId)));
+            assertEquals("N",
+                    jdbc.queryForObject(
+                            "SELECT is_active FROM clinlims.panel_terminology_mapping"
+                                    + " WHERE panel_id = ? AND source = 'LOINC' AND code = '24331-1'",
+                            String.class, Long.parseLong(panelId)));
+
+            // re-adding the same (source, code) reactivates — no unique collision
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"24331-1\","
+                            + "\"relationship\":\"SAME_AS\"}]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+            assertEquals(Integer.valueOf(1),
+                    jdbc.queryForObject(
+                            "SELECT count(*) FROM clinlims.panel_terminology_mapping"
+                                    + " WHERE panel_id = ? AND source = 'LOINC' AND code = '24331-1'",
+                            Integer.class, Long.parseLong(panelId)));
+            assertEquals("24331-1", jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(panelId)));
+
+            // validation: unknown source and in-request duplicates are 422s
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"BOGUS\",\"code\":\"1\"}]}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"1\"},"
+                            + "{\"source\":\"LOINC\",\"code\":\"1\"}]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.panel_terminology_mapping WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(panelId));
+        }
+    }
+
+    /**
+     * OGC-224 C4 — the liquibase backfill seeded a SAME_AS LOINC mapping for every
+     * panel that already carried a PANEL.LOINC (deprecate-in-place).
+     */
+    @org.junit.Test
+    public void panelTerminology_backfillCoversExistingLoincs() {
+        Integer unmapped = jdbc
+                .queryForObject(
+                        "SELECT count(*) FROM clinlims.panel p WHERE p.loinc IS NOT NULL AND length(trim(p.loinc)) > 0"
+                                + " AND NOT EXISTS (SELECT 1 FROM clinlims.panel_terminology_mapping m"
+                                + " WHERE m.panel_id = p.id AND m.source = 'LOINC' AND m.code = trim(p.loinc))",
+                        Integer.class);
+        assertEquals(Integer.valueOf(0), unmapped);
+    }
 }
