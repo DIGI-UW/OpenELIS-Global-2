@@ -48,6 +48,9 @@ export default function StorageResourcePage({
   editHref,
   addHref,
   onDeleteRequested,
+  // Rendered inside the Storage Management dashboard tab, where the container
+  // already supplies the breadcrumb and heading.
+  embedded = false,
 }) {
   const history = useHistory();
   const location = useLocation();
@@ -123,9 +126,17 @@ export default function StorageResourcePage({
   }, [headers, editHref, isGlobalAdmin, onDeleteRequested]);
 
   return (
-    <div className="storage-resource-page pageContent">
-      <BreadcrumbNav crumbs={crumbs} />
-      <h1>{heading}</h1>
+    <div
+      className={
+        embedded ? "storage-resource-page" : "storage-resource-page pageContent"
+      }
+    >
+      {!embedded && (
+        <>
+          <BreadcrumbNav crumbs={crumbs} />
+          <h1>{heading}</h1>
+        </>
+      )}
 
       {addHref && isGlobalAdmin && (
         <div style={{ margin: "1rem 0" }}>

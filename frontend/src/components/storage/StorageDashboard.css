@@ -226,3 +226,14 @@
   margin-top: 0.5rem;
   font-weight: 400;
 }
+
+/* The selected tile is the table's current level, so it needs to read as a
+   state rather than just a hover target. */
+.storage-metric-tile--selected {
+  outline: 2px solid #0f62fe;
+  outline-offset: -2px;
+}
+
+.storage-metric-tile--selected .metric-value {
+  color: #0f62fe;
+}

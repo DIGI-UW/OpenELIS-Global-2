@@ -5,7 +5,7 @@ import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
 
 /** ShelvesPage — /Storage/shelves. List of shelves with per-row Edit. */
-export default function ShelvesPage() {
+export default function ShelvesPage({ embedded = false }) {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
@@ -27,6 +27,7 @@ export default function ShelvesPage() {
   return (
     <>
       <StorageResourcePage
+        embedded={embedded}
         crumbs={[
           {
             label: intl.formatMessage({

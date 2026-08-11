@@ -20,6 +20,15 @@ vi.mock("./pages/SampleItemsPage", () => ({
 vi.mock("./pages/InventoryLotsPage", () => ({
   default: () => <div>inventory-lots-panel</div>,
 }));
+vi.mock("./pages/RoomsPage", () => ({ default: () => <div>rooms-table</div> }));
+vi.mock("./pages/DevicesPage", () => ({
+  default: () => <div>devices-table</div>,
+}));
+vi.mock("./pages/ShelvesPage", () => ({
+  default: () => <div>shelves-table</div>,
+}));
+vi.mock("./pages/RacksPage", () => ({ default: () => <div>racks-table</div> }));
+vi.mock("./pages/BoxesPage", () => ({ default: () => <div>boxes-table</div> }));
 
 const renderAt = (path) =>
   render(
@@ -84,7 +93,14 @@ describe("StorageManagementPage", () => {
     expect(screen.getByText("6")).toBeInTheDocument();
   });
 
-  it("navigates to a level listing when its tile is clicked", async () => {
+  it("shows one table under the tiles, defaulting to rooms", async () => {
+    renderAt("/Storage");
+
+    expect(await screen.findByText("rooms-table")).toBeInTheDocument();
+    expect(screen.queryByText("racks-table")).not.toBeInTheDocument();
+  });
+
+  it("swaps which level the table shows when a tile is picked", async () => {
     const { container } = renderAt("/Storage");
     await waitFor(() =>
       expect(container.querySelector(".storage-metric-tile")).toBeTruthy(),
@@ -92,9 +108,32 @@ describe("StorageManagementPage", () => {
 
     fireEvent.click(screen.getByText("Racks").closest("button, a"));
 
+    expect(await screen.findByText("racks-table")).toBeInTheDocument();
+    expect(screen.queryByText("rooms-table")).not.toBeInTheDocument();
+    // The URL follows so the view stays shareable.
+    expect(screen.getByTestId("path")).toHaveTextContent("/Storage/racks");
+  });
+
+  it("marks the tile whose level the table is showing", async () => {
+    const { container } = renderAt("/Storage/shelves");
+
     await waitFor(() =>
-      expect(screen.getByTestId("path")).toHaveTextContent("/Storage/racks"),
+      expect(
+        container.querySelectorAll(".storage-metric-tile--selected"),
+      ).toHaveLength(1),
     );
+    const selected = container.querySelector(".storage-metric-tile--selected");
+    expect(selected).toHaveTextContent("Shelves");
+  });
+
+  it("a level deep link stays on the Dashboard tab", async () => {
+    renderAt("/Storage/boxes");
+
+    expect(screen.getByRole("tab", { name: "Dashboard" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(await screen.findByText("boxes-table")).toBeInTheDocument();
   });
 
   it("deep link /Storage/sample-items selects the Samples tab", () => {
