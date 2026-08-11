@@ -423,6 +423,14 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * _seq} convention and whose id column is numeric. Tables with UUID ids or
      * unconventionally named sequences are skipped — no worse than before, when
      * nothing was resynced at all.
+     *
+     * <p>
+     * Forward-only, via GREATEST against the sequence's own high-water mark:
+     * fixture rows never advance the sequence, so bumping it past MAX(id) fixes
+     * literal-id collisions — but pulling a high sequence DOWN to a just-truncated
+     * table's MAX+1 creates the opposite collision, because other tests insert
+     * literal low ids by raw JDBC outside any dataset load (dictionary id 8,
+     * history id 100009 in CI). A sequence may only ever move up.
      */
     private void resyncSequencesForTables(String[] tableNames) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
@@ -443,8 +451,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     }
                 }
                 try (Statement st = conn.createStatement()) {
-                    st.execute("SELECT setval('clinlims." + sequence + "', (SELECT COALESCE(MAX(id), 0) + 1 FROM "
-                            + "clinlims." + tableName + ")::bigint, false)");
+                    st.execute("SELECT setval('clinlims." + sequence + "', GREATEST("
+                            + "(SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims." + tableName + ")::bigint, "
+                            + "(SELECT last_value + 1 FROM clinlims." + sequence + ")), false)");
                 }
             }
         }
