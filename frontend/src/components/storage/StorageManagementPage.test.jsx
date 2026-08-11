@@ -39,8 +39,18 @@ const renderAt = (path) =>
         </Route>
         <Route
           path="*"
-          render={({ location }) => (
-            <span data-testid="path">{location.pathname}</span>
+          render={({ location, history }) => (
+            <>
+              <span data-testid="path">{location.pathname}</span>
+              {/* Stands in for what create/delete does: stamp ?t= to refresh. */}
+              <button
+                onClick={() =>
+                  history.replace(`${location.pathname}?t=${Date.now()}`)
+                }
+              >
+                stamp-refresh
+              </button>
+            </>
           )}
         />
       </MemoryRouter>
@@ -163,5 +173,21 @@ describe("StorageManagementPage", () => {
       "aria-selected",
       "true",
     );
+  });
+
+  it("re-reads the counts when a location is created, so tiles do not go stale", async () => {
+    // Creating stamps ?t= on the URL to refresh the table; the tiles must follow.
+    let call = 0;
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      call += 1;
+      cb({ rooms: call, devices: 3, shelves: 4, racks: 5, boxes: 6 });
+    });
+
+    renderAt("/Storage/rooms");
+    await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("stamp-refresh"));
+
+    await waitFor(() => expect(screen.getByText("2")).toBeInTheDocument());
   });
 });

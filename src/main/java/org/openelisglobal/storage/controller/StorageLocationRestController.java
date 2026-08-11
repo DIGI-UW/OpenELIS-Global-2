@@ -1796,7 +1796,16 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    // ========== Dashboard Endpoints ==========
+    @GetMapping("/boxes/search")
+    public ResponseEntity<List<Map<String, Object>>> searchBoxes(@RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> response = storageSearchService.searchBoxes(q);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error searching boxes", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     /**
      * Get location counts by type for active locations only (FR-057, FR-057a). GET

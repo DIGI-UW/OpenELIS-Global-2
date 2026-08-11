@@ -6298,6 +6298,7 @@
   "storage.room.placeholder": "Select or type to create room...",
   "storage.room.samples": "Samples",
   "storage.sampleitem.id": "SampleItem ID",
+  "storage.search.boxes.placeholder": "Search boxes by label or code...",
   "storage.search.devices.placeholder": "Search by device name or code...",
   "storage.search.location.minLength": "Keep typing, at least 2 characters",
   "storage.search.location.searching": "Searching...",
