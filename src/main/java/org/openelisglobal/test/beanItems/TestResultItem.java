@@ -234,6 +234,8 @@ public class TestResultItem implements ResultItem, Serializable {
         private String subject;
         private String author;
         private String date;
+        /** OGC-811 — null means analysis-level; set means scoped to one component. */
+        private String testResultComponentId;
 
         public String getText() {
             return text;
@@ -273,6 +275,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
         public void setDate(String date) {
             this.date = date;
+        }
+
+        public String getTestResultComponentId() {
+            return testResultComponentId;
+        }
+
+        public void setTestResultComponentId(String testResultComponentId) {
+            this.testResultComponentId = testResultComponentId;
         }
     }
 

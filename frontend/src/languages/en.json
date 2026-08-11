@@ -2874,6 +2874,7 @@
   "label.results.note.visibility": "Visibility",
   "label.results.note.internal": "In lab only",
   "label.results.note.external": "Send with result",
+  "label.results.note.analysisLevel": "Analysis-level",
   "label.results.note.externalWarning": "This note will appear on the patient report.",
   "label.results.note.placeholder": "Add a note…",
   "label.results.dilution.measured": "Measured value",

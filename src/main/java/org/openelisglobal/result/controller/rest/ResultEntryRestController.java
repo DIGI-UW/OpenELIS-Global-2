@@ -164,7 +164,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     @ResponseBody
     @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<Map<String, Object>> getAnalysisHistory(@PathVariable String analysisId,
-            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize) {
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize,
+            @RequestParam(required = false) String componentId) {
         Analysis analysis;
         try {
             analysis = analysisService.get(analysisId);
@@ -178,6 +179,15 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         int boundedPage = Math.max(1, page);
 
         List<AnalysisTimelineService.AnalysisTimelineEvent> all = analysisTimelineService.getTimeline(analysis);
+        // OGC-811 — component-aware presentation: a component row sees its own
+        // events plus every analysis-level event (componentId null: creation,
+        // status, referral, NCE, legacy records). No componentId param = the
+        // unchanged analysis-level contract.
+        if (!GenericValidator.isBlankOrNull(componentId)) {
+            all = all.stream()
+                    .filter(event -> event.getComponentId() == null || componentId.equals(event.getComponentId()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
         int from = Math.min(all.size(), (boundedPage - 1) * boundedPageSize);
         int to = Math.min(all.size(), from + boundedPageSize);
 

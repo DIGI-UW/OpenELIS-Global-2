@@ -1,6 +1,9 @@
 package org.openelisglobal.result.controller.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -651,5 +654,125 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 Integer.class);
         assertEquals("primary-row save must bind to the legacy null-component result", before, after);
         assertEquals("93.0", resultService.get("3").getValue());
+    }
+
+    private void seedComponent(String componentId, String code) {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES (?, 1, ?, ?, false, 'Y', NOW())", componentId, code, code);
+    }
+
+    /**
+     * OGC-811 — a note authored from a component row is stored scoped to that
+     * component; Component A's note must never surface on Component B's row.
+     */
+    @Test
+    public void save_noteFromComponentRow_isScopedToThatComponent() throws Exception {
+        seedComponent("c-note-1", "COMP_A");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"component A note\",\"testResultComponentId\":\"c-note-1\""))
+                .session(session)).andExpect(status().isOk());
+
+        assertEquals("c-note-1", jdbc.queryForObject("SELECT test_result_component_id FROM clinlims.note"
+                + " WHERE reference_id = 1 AND text = 'component A note'", String.class));
+    }
+
+    /**
+     * OGC-811 backward compatibility — a save without a component (legacy pages,
+     * single-component tests) keeps the historic analysis-level scope: null
+     * component id, displayed on every row.
+     */
+    @Test
+    public void save_noteWithoutComponent_staysAnalysisLevel() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(
+                        saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"), "\"note\":\"analysis-wide note\""))
+                .session(session)).andExpect(status().isOk());
+
+        assertNull(jdbc.queryForObject("SELECT test_result_component_id FROM clinlims.note"
+                + " WHERE reference_id = 1 AND text = 'analysis-wide note'", String.class));
+    }
+
+    /**
+     * OGC-811 — the free-text interpretation (an EXTERNAL note under its own
+     * subject) is associated with the component it was authored on.
+     */
+    @Test
+    public void save_interpretationFromComponentRow_isScopedToThatComponent() throws Exception {
+        seedComponent("c-interp-1", "COMP_I");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"\",\"interpretation\":\"Consistent with iron deficiency.\","
+                                + "\"testResultComponentId\":\"c-interp-1\""))
+                .session(session)).andExpect(status().isOk());
+
+        assertEquals("c-interp-1",
+                jdbc.queryForObject(
+                        "SELECT test_result_component_id FROM clinlims.note WHERE reference_id = 1"
+                                + " AND subject = 'Interpretation' AND text = 'Consistent with iron deficiency.'",
+                        String.class));
+    }
+
+    /**
+     * OGC-811 — the worklist load surfaces each note's component scope so the
+     * unified panel can filter per row (legacy analysis-level notes have none).
+     */
+    @Test
+    public void worklistLoad_surfacesNoteComponentScope() throws Exception {
+        seedComponent("c-note-load", "COMP_L");
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"scoped note\",\"testResultComponentId\":\"c-note-load\""))
+                .session(session)).andExpect(status().isOk());
+
+        try {
+            loadWorklistFor12345().andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].text").value("scoped note"))
+                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].testResultComponentId").value("c-note-load"));
+        } finally {
+            reset(webApplicationContext.getBean(DisplayListService.class));
+        }
+    }
+
+    /**
+     * OGC-811 — component-aware history: with a componentId the timeline returns
+     * that component's events plus every analysis-level event; without one the
+     * analysis-level contract is unchanged. The audit services are untouched —
+     * attribution rides data already present at emission time.
+     */
+    @Test
+    public void history_componentIdParam_filtersToComponentPlusAnalysisLevel() throws Exception {
+        seedComponent("c-hist-1", "COMP_H1");
+        seedComponent("c-hist-2", "COMP_H2");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"scoped to A\",\"testResultComponentId\":\"c-hist-1\""))
+                .session(session)).andExpect(status().isOk());
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"), "\"note\":\"analysis wide\""))
+                .session(session)).andExpect(status().isOk());
+
+        String unfiltered = mockMvc
+                .perform(get("/rest/results-entry/analysis/1/history").param("pageSize", "100").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue("unchanged contract must include component events", unfiltered.contains("scoped to A"));
+        assertTrue(unfiltered.contains("analysis wide"));
+
+        String componentA = mockMvc
+                .perform(get("/rest/results-entry/analysis/1/history").param("pageSize", "100")
+                        .param("componentId", "c-hist-1").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue("own component's events stay visible", componentA.contains("scoped to A"));
+        assertTrue("analysis-level events show on every component", componentA.contains("analysis wide"));
+
+        String componentB = mockMvc
+                .perform(get("/rest/results-entry/analysis/1/history").param("pageSize", "100")
+                        .param("componentId", "c-hist-2").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertFalse("another component's events must not leak", componentB.contains("scoped to A"));
+        assertTrue(componentB.contains("analysis wide"));
     }
 }

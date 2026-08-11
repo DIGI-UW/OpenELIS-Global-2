@@ -21,6 +21,13 @@ public interface AnalysisTimelineService {
         private String when;
         private String detail;
         private String by;
+        /**
+         * OGC-811 — the result component this event is attributable to (from the
+         * result's test_result.component_id or the note's component scope). Null means
+         * analysis-level: creation, status, referral, NCE, retests and any legacy
+         * record with no component association.
+         */
+        private String componentId;
 
         public AnalysisTimelineEvent() {
         }
@@ -71,6 +78,14 @@ public interface AnalysisTimelineService {
 
         public void setBy(String by) {
             this.by = by;
+        }
+
+        public String getComponentId() {
+            return componentId;
+        }
+
+        public void setComponentId(String componentId) {
+            this.componentId = componentId;
         }
     }
 }

@@ -193,4 +193,7 @@
   <!-- OGC-811: legacy analysis result files become component-scoped order attachments -->
   <include relativeToChangelogFile="true" file="072-migrate-result-files-to-order-attachments.xml"/>
 
+  <!-- OGC-811: notes authored on a component row are scoped to that component -->
+  <include relativeToChangelogFile="true" file="073-note-component-scope.xml"/>
+
 </databaseChangeLog>

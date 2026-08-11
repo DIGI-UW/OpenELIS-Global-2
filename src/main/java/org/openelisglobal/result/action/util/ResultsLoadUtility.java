@@ -1362,6 +1362,7 @@ public class ResultsLoadUtility {
             item.setDate(
                     note.getLastupdated() != null ? DateUtil.convertTimestampToStringDateAndTime(note.getLastupdated())
                             : "");
+            item.setTestResultComponentId(note.getTestResultComponentId());
             items.add(item);
         }
         return items;

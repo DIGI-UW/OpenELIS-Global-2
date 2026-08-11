@@ -36,6 +36,7 @@ import ReferralAction, {
 // @ts-ignore
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
+import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
 import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
 import { dilutionApplies, computeReportedValue } from "./dilution";
@@ -62,13 +63,8 @@ export interface IdValue {
   value: string;
 }
 
-export interface AnalysisNote {
-  text?: string;
-  noteType?: string;
-  subject?: string;
-  author?: string;
-  date?: string;
-}
+export type { AnalysisNote } from "./noteScope";
+export { noteVisibleOnRow } from "./noteScope";
 
 export interface PanelRow extends ResultCellRow {
   accessionNumber?: string;
@@ -239,7 +235,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
   // one order-record fetch per accession feeds Order info + Programme
   const orderContext = useOrderContext(row.accessionNumber);
-  const notes = row.analysisNotes || [];
+  // notes and the interpretation are component-scoped on component rows;
+  // legacy analysis-level notes (no component id) still show everywhere
+  const rowComponentId = row.testResultComponentId as string | undefined;
+  const notes = (row.analysisNotes || []).filter((note) =>
+    noteVisibleOnRow(note, rowComponentId),
+  );
   const latestInterpretation = [...notes]
     .reverse()
     .find((note) => note.subject === "Interpretation")?.text;
@@ -379,6 +380,11 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 <span>{note.author}</span>
                 {noteContextTag(note.subject)}
                 {noteVisibilityTag(note.noteType)}
+                {rowComponentId && !note.testResultComponentId && (
+                  <Tag type="cool-gray" size="sm">
+                    <FormattedMessage id="label.results.note.analysisLevel" />
+                  </Tag>
+                )}
               </div>
               <div>{note.text}</div>
             </div>
@@ -761,6 +767,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
         <HistorySection
           analysisId={row.analysisId as string | undefined}
+          componentId={rowComponentId}
           open={isSectionOpen(sectionLayout, "history", false)}
           onToggle={(open) => toggleSection("history", open)}
         />
