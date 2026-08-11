@@ -314,4 +314,157 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
             jdbc.update("DELETE FROM clinlims.panel WHERE name = 'PanelsIT Freetext'");
         }
     }
+
+    private static MockHttpSession authedSession() {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        return session;
+    }
+
+    /**
+     * OGC-224 C2 — the panel envelope reads back the management fields; unknown and
+     * non-numeric ids are 404s.
+     */
+    @org.junit.Test
+    public void getPanel_envelope_and404Guards() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/rest/test-catalog/panels/" + panelAId).session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id")
+                        .value(panelAId))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.domain")
+                        .value("CLINICAL"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.name")
+                        .isNotEmpty());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/rest/test-catalog/panels/99999999").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/rest/test-catalog/panels/notanumber").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+    }
+
+    /**
+     * OGC-224 C2 — Basic Info rename updates BOTH name sources (PANEL.NAME and the
+     * display localization order entry reads), and the response carries the saved
+     * row.
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_renameUpdatesNameAndLocalization() throws Exception {
+        String originalName = jdbc.queryForObject("SELECT name FROM clinlims.panel WHERE id = ?", String.class,
+                Long.parseLong(panelAId));
+        try {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"PanelsIT Renamed\",\"description\":\"renamed by IT\"}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.name")
+                            .value("PanelsIT Renamed"));
+            assertEquals("PanelsIT Renamed", jdbc.queryForObject("SELECT name FROM clinlims.panel WHERE id = ?",
+                    String.class, Long.parseLong(panelAId)));
+            assertEquals("PanelsIT Renamed",
+                    jdbc.queryForObject("SELECT lv.value FROM clinlims.localization_value lv"
+                            + " JOIN clinlims.panel p ON p.name_localization_id = lv.localization_id"
+                            + " WHERE p.id = ? AND lv.locale = 'en'", String.class, Long.parseLong(panelAId)));
+            assertEquals("renamed by IT", jdbc.queryForObject("SELECT description FROM clinlims.panel WHERE id = ?",
+                    String.class, Long.parseLong(panelAId)));
+        } finally {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"" + originalName + "\",\"description\":\"" + originalName + "\"}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+        }
+    }
+
+    /**
+     * OGC-224 C2 — the FRS activation rules: a zero-test panel can never be
+     * activated (422); once it has a member it can; deactivating is always allowed;
+     * a create with active=false starts inactive.
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_activationRules() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        org.springframework.test.web.servlet.MvcResult created = mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/test-catalog/panels")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"PanelsIT Act\",\"active\":false}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                .andReturn();
+        String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+        try {
+            assertEquals("N", jdbc.queryForObject("SELECT is_active FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(panelId)));
+
+            // zero tests → activation is rejected
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"active\":true}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity());
+
+            // give it a member test → activation succeeds
+            put(membership(panelId, 1));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"active\":true}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.active")
+                            .value(true));
+
+            // deactivating is always allowed
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"active\":false}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.active")
+                            .value(false));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(panelId));
+        }
+    }
+
+    /**
+     * OGC-224 C2 — domain writes are validated: an unknown domain is 422, and the
+     * domain can never move away from existing member tests (a panel never mixes
+     * domains).
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_domainValidationAndMemberGuard() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"domain\":\"BOGUS\"}")
+                .session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isUnprocessableEntity());
+
+        // TEST_ID's test.domain defaults to CLINICAL — with it as a member,
+        // moving the panel to ENVIRONMENTAL would mix domains → 422
+        put(membership(panelAId, 1));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"domain\":\"ENVIRONMENTAL\"}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isUnprocessableEntity());
+
+        // the members' own domain is always acceptable
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"domain\":\"CLINICAL\"}")
+                .session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.domain")
+                        .value("CLINICAL"));
+    }
 }

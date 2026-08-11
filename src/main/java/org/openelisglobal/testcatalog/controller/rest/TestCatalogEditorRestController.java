@@ -1803,11 +1803,116 @@ public class TestCatalogEditorRestController {
     }
 
     /**
-     * Name-only inline panel create (OGC-1112 FR-43). Further config is done in
-     * Panel Management.
+     * Inline panel create (OGC-1112 FR-43). `active` is optional: absent keeps the
+     * historic Y (the test-side inline create adds its test immediately —
+     * OGC-1140's Active-on-create); the panel editor passes false so a blank panel
+     * honors the "never active with zero tests" rule (OGC-224).
      */
     public static class CreatePanelRequest {
         public String name;
+        public Boolean active;
+    }
+
+    /** OGC-224 — Basic Info save; null fields are left unchanged. */
+    public static class PanelBasicInfoRequest {
+        public String name;
+        public String description;
+        public String domain;
+        public Boolean active;
+    }
+
+    /** getPanelById throws on unknown AND non-numeric ids — both are a 404. */
+    private Panel findPanel(String panelId) {
+        try {
+            return panelService.getPanelById(panelId);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private void refreshPanelDisplayLists() {
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_INACTIVE);
+    }
+
+    @GetMapping(value = "/panels/{panelId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PanelOption> getPanel(@PathVariable String panelId) {
+        Panel panel = findPanel(panelId);
+        if (panel == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toPanelOption(panel));
+    }
+
+    /**
+     * OGC-224 — Basic Info save with the FRS rules: name required (also updates the
+     * display localization so order entry follows the rename); domain must be a
+     * real Domain and cannot change while member tests of another domain exist;
+     * activation requires ≥1 member test ("never active with zero tests"); editing
+     * never auto-flips the active state — only this explicit toggle.
+     */
+    @PutMapping(value = "/panels/{panelId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PanelOption> savePanelBasicInfo(@PathVariable String panelId,
+            @RequestBody PanelBasicInfoRequest body, HttpServletRequest request) {
+        Panel panel = findPanel(panelId);
+        if (panel == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+
+        if (body.name != null) {
+            String name = body.name.trim();
+            if (name.isEmpty() || name.length() > 20) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            panel.setPanelName(name);
+            Localization localization = panel.getLocalization();
+            if (localization != null) {
+                localization.setEnglish(name);
+                localization.setFrench(name);
+                localization.setSysUserId(sysUserId);
+                localizationService.update(localization);
+            }
+        }
+        if (body.description != null) {
+            String description = body.description.trim();
+            if (description.length() > 60) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            // the DESCRIPTION column is NOT NULL — a cleared field falls back
+            // to the panel's name, matching the create flow
+            panel.setDescription(description.isEmpty() ? panel.getPanelName() : description);
+        }
+        List<PanelItem> members = panelItemService.getPanelItemsForPanel(panel.getId());
+        if (body.domain != null) {
+            Domain requested;
+            try {
+                requested = Domain.valueOf(body.domain);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            // domain-guard: a panel never mixes domains — the domain cannot move
+            // away from its member tests
+            for (PanelItem member : members) {
+                if (member.getTest() != null
+                        && !requested.name().equals(Domain.normalize(member.getTest().getDomain()))) {
+                    return ResponseEntity.unprocessableEntity().build();
+                }
+            }
+            panel.setDomain(requested.name());
+        }
+        if (body.active != null) {
+            if (body.active && members.isEmpty()) {
+                // FRS activation rule: never active with zero tests
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            panel.setIsActive(body.active ? "Y" : "N");
+        }
+        panel.setSysUserId(sysUserId);
+        panelService.update(panel);
+        refreshPanelDisplayLists();
+        return ResponseEntity.ok(toPanelOption(panelService.getPanelById(panel.getId())));
     }
 
     @PostMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1841,11 +1946,12 @@ public class TestCatalogEditorRestController {
         panel.setPanelName(name);
         panel.setDescription(name);
         panel.setLocalization(localizationService.get(localizationId));
-        panel.setIsActive("Y");
+        panel.setIsActive(Boolean.FALSE.equals(body.active) ? "N" : "Y");
         panel.setSortOrderInt(Integer.MAX_VALUE);
         panel.setSysUserId(sysUserId);
         try {
             String id = panelService.insert(panel);
+            refreshPanelDisplayLists();
             PanelOption created = new PanelOption();
             created.id = id;
             created.name = panel.getPanelName();
