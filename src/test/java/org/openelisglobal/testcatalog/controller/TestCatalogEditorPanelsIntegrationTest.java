@@ -3,15 +3,16 @@ package org.openelisglobal.testcatalog.controller;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
 import java.util.UUID;
 import org.junit.After;
-import org.junit.Assume;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationServiceImpl;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.login.valueholder.UserSessionData;
-import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.MembershipItem;
@@ -38,6 +39,17 @@ import org.springframework.mock.web.MockHttpSession;
 public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final long TEST_ID = 95451L;
+
+    /**
+     * The two panels these tests operate on are seeded here rather than taken from
+     * whatever Liquibase left behind: under a full-suite run earlier classes can
+     * leave fewer than two active panels, which used to skip this class entirely.
+     */
+    private static final long PANEL_A_ID = 95452L;
+
+    private static final long PANEL_B_ID = 95453L;
+
+    private static final long SAMPLE_TYPE_ID = 95454L;
 
     @Autowired
     private TestService testService;
@@ -66,6 +78,8 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @Autowired
     private org.openelisglobal.panel.service.PanelService panelService;
     @Autowired
+    private LocalizationService localizationService;
+    @Autowired
     private org.openelisglobal.panelitem.service.PanelItemService panelItemService;
     @Autowired
     private javax.sql.DataSource dataSource;
@@ -84,11 +98,9 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
                 analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
                 panelService, panelItemService);
-        List<Panel> panels = panelService.getAllActivePanels();
-        Assume.assumeTrue("needs at least two Liquibase-seeded panels", panels.size() >= 2);
-        panelAId = panels.get(0).getId();
-        panelBId = panels.get(1).getId();
         cleanup();
+        panelAId = seedPanel(PANEL_A_ID, "PanelsITAlpha");
+        panelBId = seedPanel(PANEL_B_ID, "PanelsITBeta");
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
@@ -100,9 +112,78 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
         cleanup();
     }
 
+    /**
+     * Sample types are ambient data here — the derived-sample-type assertions only
+     * need one to exist. Other classes' DBUnit datasets empty the table, so seed
+     * one when it is missing rather than reading whatever happens to be there.
+     */
+    private Long ensureSampleType() {
+        java.util.List<Long> existing = jdbc.queryForList("SELECT id FROM clinlims.type_of_sample ORDER BY id LIMIT 1",
+                Long.class);
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+        Localization nameLocalization = LocalizationServiceImpl.createNewLocalization("PanelsITSampleType",
+                "PanelsITSampleType", LocalizationServiceImpl.LocalizationType.TEST_NAME);
+        nameLocalization.setSysUserId("1");
+        String localizationId = localizationService.insert(nameLocalization);
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_sample (id, description, name_localization_id, is_active, lastupdated)"
+                        + " VALUES (?, ?, ?, true, NOW())",
+                SAMPLE_TYPE_ID, "PanelsITSampleType", Long.parseLong(localizationId));
+        typeOfSampleService.clearCache();
+        return SAMPLE_TYPE_ID;
+    }
+
+    private void refreshPanelLists() {
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_INACTIVE);
+    }
+
+    private String seedPanel(long id, String name) {
+        Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(name, name,
+                LocalizationServiceImpl.LocalizationType.PANEL_NAME);
+        nameLocalization.setSysUserId("1");
+        String localizationId = localizationService.insert(nameLocalization);
+        jdbc.update(
+                "INSERT INTO clinlims.panel (id, name, description, is_active, sort_order, domain,"
+                        + " name_localization_id, lastupdated) VALUES (?, ?, ?, 'Y', 1, 'CLINICAL', ?, NOW())",
+                id, name, name, Long.parseLong(localizationId));
+        refreshPanelLists();
+        return String.valueOf(id);
+    }
+
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.panel_item WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        java.util.List<Long> seededSampleTypeLocalizations = jdbc.queryForList(
+                "SELECT name_localization_id FROM clinlims.type_of_sample WHERE id = ?", Long.class, SAMPLE_TYPE_ID);
+        jdbc.update("DELETE FROM clinlims.sampletype_test WHERE sample_type_id = ?", SAMPLE_TYPE_ID);
+        jdbc.update("DELETE FROM clinlims.sampletype_panel WHERE sample_type_id = ?", SAMPLE_TYPE_ID);
+        jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id = ?", SAMPLE_TYPE_ID);
+        for (Long localizationId : seededSampleTypeLocalizations) {
+            if (localizationId != null) {
+                jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id = ?", localizationId);
+                jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", localizationId);
+            }
+        }
+        typeOfSampleService.clearCache();
+        for (long panelId : new long[] { PANEL_A_ID, PANEL_B_ID }) {
+            java.util.List<Long> localizationIds = jdbc
+                    .queryForList("SELECT name_localization_id FROM clinlims.panel WHERE id = ?", Long.class, panelId);
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE panel_id = ?", panelId);
+            jdbc.update("DELETE FROM clinlims.sampletype_panel WHERE panel_id = ?", panelId);
+            jdbc.update("DELETE FROM clinlims.panel_terminology_mapping WHERE panel_id = ?", panelId);
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", panelId);
+            for (Long localizationId : localizationIds) {
+                if (localizationId != null) {
+                    jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id = ?", localizationId);
+                    jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", localizationId);
+                }
+            }
+        }
+        refreshPanelLists();
     }
 
     private String testId() {
@@ -190,8 +271,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
      */
     @org.junit.Test
     public void listPanels_managementFields_domainTestCountAndDerivedSampleTypes() {
-        Long sampleTypeId = jdbc.queryForObject("SELECT id FROM clinlims.type_of_sample ORDER BY id LIMIT 1",
-                Long.class);
+        Long sampleTypeId = ensureSampleType();
         jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (952224, ?, ?)",
                 sampleTypeId, TEST_ID);
         // the test->sample-type map is a lazy singleton cache; the jdbc seed
@@ -443,8 +523,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @org.junit.Test
     public void savePanelTests_roundTrip_syncsSampleTypePanel_andAutoActivates() throws Exception {
         com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
-        Long sampleTypeId = jdbc.queryForObject("SELECT id FROM clinlims.type_of_sample ORDER BY id LIMIT 1",
-                Long.class);
+        Long sampleTypeId = ensureSampleType();
         jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (952225, ?, ?)",
                 sampleTypeId, TEST_ID);
         org.springframework.test.web.servlet.MvcResult created = mockMvc
@@ -528,8 +607,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @org.junit.Test
     public void saveTestPanels_syncsSampleTypePanel() throws Exception {
         com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
-        Long sampleTypeId = jdbc.queryForObject("SELECT id FROM clinlims.type_of_sample ORDER BY id LIMIT 1",
-                Long.class);
+        Long sampleTypeId = ensureSampleType();
         jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (952226, ?, ?)",
                 sampleTypeId, TEST_ID);
         org.springframework.test.web.servlet.MvcResult created = mockMvc
@@ -721,9 +799,18 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
      */
     @org.junit.Test
     public void panelTerminology_backfillCoversExistingLoincs() {
+        assertEquals("the backfill changeset must have run", Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.databasechangelog WHERE id = ?", Integer.class,
+                        "OGC-224-panel-loinc-mapping-backfill"));
+        // The backfill only promises coverage for panels that existed when it ran, so
+        // exclude anything written afterwards — other tests in the suite create
+        // panels of their own, and counting those made this assertion depend on run
+        // order rather than on the migration.
         Integer unmapped = jdbc
                 .queryForObject(
                         "SELECT count(*) FROM clinlims.panel p WHERE p.loinc IS NOT NULL AND length(trim(p.loinc)) > 0"
+                                + " AND p.lastupdated < (SELECT dateexecuted FROM clinlims.databasechangelog"
+                                + " WHERE id = 'OGC-224-panel-loinc-mapping-backfill')"
                                 + " AND NOT EXISTS (SELECT 1 FROM clinlims.panel_terminology_mapping m"
                                 + " WHERE m.panel_id = p.id AND m.source = 'LOINC' AND m.code = trim(p.loinc))",
                         Integer.class);
