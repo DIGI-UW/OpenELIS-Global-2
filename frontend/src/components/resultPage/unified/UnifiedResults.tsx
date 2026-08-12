@@ -6,8 +6,6 @@ import React, {
   useState,
 } from "react";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
   Button,
   Column,
   DatePicker,
@@ -74,6 +72,7 @@ import { FlagChip, accentClass } from "./flags";
 import Avatar from "./Avatar";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import config from "../../../config.json";
 import "./unified-results.scss";
 
@@ -88,6 +87,11 @@ import "./unified-results.scss";
  * presence (FR-O1–O3), and cross-domain rendering driven by the selected Lab
  * Unit (FR-M1–M4).
  */
+
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "sidenav.label.results", link: "/Results" },
+];
 
 interface LabUnit {
   id: string;
@@ -836,16 +840,9 @@ const UnifiedResults: React.FC = () => {
   return (
     <>
       <AlertDialog />
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth className="unifiedResultsPage">
         <Column lg={16} md={8} sm={4}>
-          <Breadcrumb>
-            <BreadcrumbItem href="/">
-              <FormattedMessage id="home.label" />
-            </BreadcrumbItem>
-            <BreadcrumbItem href="/WorkplanByTest">
-              <FormattedMessage id="sidenav.label.workplan" />
-            </BreadcrumbItem>
-          </Breadcrumb>
           <Section>
             <Heading>
               <FormattedMessage id="sidenav.label.results" />

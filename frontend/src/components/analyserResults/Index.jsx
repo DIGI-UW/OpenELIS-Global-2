@@ -18,7 +18,11 @@ import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "banner.menu.results", link: "/Results" },
+  { label: "banner.menu.results.analyzer", link: "/AnalyzerResults" },
+];
 
 const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
