@@ -57,10 +57,6 @@ import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
 import SampleTypeTestAssign from "./testManagementConfigMenu/SampleTypeTestAssign";
 import UomManagement from "./testManagementConfigMenu/UomManagement";
 import UomCreate from "./testManagementConfigMenu/UomCreate";
-import PanelManagement from "./testManagementConfigMenu/PanelManagement";
-import PanelCreate from "./testManagementConfigMenu/PanelCreate";
-import PanelOrder from "./testManagementConfigMenu/PanelOrder";
-import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign";
 import TestActivation from "./testManagementConfigMenu/TestActivation";
 import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry";
 import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry";
@@ -193,10 +189,26 @@ function Admin() {
       />
       <Route path={`${path}/UomManagement`} component={UomManagement} />
       <Route path={`${path}/UomCreate`} component={UomCreate} />
-      <Route path={`${path}/PanelManagement`} component={PanelManagement} />
-      <Route path={`${path}/PanelCreate`} component={PanelCreate} />
-      <Route path={`${path}/PanelOrder`} component={PanelOrder} />
-      <Route path={`${path}/PanelTestAssign`} component={PanelTestAssign} />
+      {/* OGC-224 — the Panels context of the Test Catalog Management shell
+          replaces the legacy PanelManagement / PanelCreate / PanelOrder /
+          PanelTestAssign pages; bookmarks and the config-menu tile redirect
+          there rather than 404ing. */}
+      <Redirect
+        from={`${path}/PanelManagement`}
+        to={`${path}/TestCatalogList?entity=panels`}
+      />
+      <Redirect
+        from={`${path}/PanelCreate`}
+        to={`${path}/TestCatalogEditor/panel/new/basic-info`}
+      />
+      <Redirect
+        from={`${path}/PanelOrder`}
+        to={`${path}/TestCatalogList?entity=panels`}
+      />
+      <Redirect
+        from={`${path}/PanelTestAssign`}
+        to={`${path}/TestCatalogList?entity=panels`}
+      />
       <Route path={`${path}/TestActivation`} component={TestActivation} />
       <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
       <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />

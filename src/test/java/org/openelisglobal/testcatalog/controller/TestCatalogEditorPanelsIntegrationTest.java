@@ -729,4 +729,51 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                         Integer.class);
         assertEquals(Integer.valueOf(0), unmapped);
     }
+
+    /**
+     * OGC-224 C5 / OGC-1140 — a panel created inline from a test inherits that
+     * test's domain and is Active on creation (the test becomes its first member).
+     * An absent or unknown domain falls back to CLINICAL, the launch scope, so the
+     * historic name-only contract keeps working.
+     */
+    @org.junit.Test
+    public void createPanel_inheritsDomain_andDefaultsClinical() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        String inherited = null;
+        String legacy = null;
+        try {
+            org.springframework.test.web.servlet.MvcResult envCreated = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/rest/test-catalog/panels")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"PanelsIT Env\",\"domain\":\"ENVIRONMENTAL\"}")
+                            .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                    .andReturn();
+            inherited = json.readTree(envCreated.getResponse().getContentAsString()).get("id").asText();
+            assertEquals("ENVIRONMENTAL", jdbc.queryForObject("SELECT domain FROM clinlims.panel WHERE id = ?",
+                    String.class, Long.parseLong(inherited)));
+            // Active on creation (OGC-1140) — the caller adds the test right after
+            assertEquals("Y", jdbc.queryForObject("SELECT is_active FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(inherited)));
+
+            // the historic name-only payload still works and lands CLINICAL
+            org.springframework.test.web.servlet.MvcResult legacyCreated = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/rest/test-catalog/panels")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"PanelsIT NoDom\"}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                    .andReturn();
+            legacy = json.readTree(legacyCreated.getResponse().getContentAsString()).get("id").asText();
+            assertEquals("CLINICAL", jdbc.queryForObject("SELECT domain FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(legacy)));
+        } finally {
+            for (String id : new String[] { inherited, legacy }) {
+                if (id != null) {
+                    jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(id));
+                }
+            }
+        }
+    }
 }

@@ -55,7 +55,7 @@ const wire = (memberships) => {
 const renderSection = () =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <PanelsSection testId="42" />
+      <PanelsSection testId="42" testDomain="CLINICAL" />
     </IntlProvider>,
   );
 
@@ -168,7 +168,8 @@ describe("PanelsSection", () => {
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
         "/rest/test-catalog/panels",
-        JSON.stringify({ name: "Chem Panel" }),
+        // OGC-1140: the inline create inherits the originating test's domain
+        JSON.stringify({ name: "Chem Panel", domain: "CLINICAL" }),
         expect.any(Function),
       ),
     );

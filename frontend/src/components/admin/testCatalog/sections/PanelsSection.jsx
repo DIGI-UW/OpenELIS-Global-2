@@ -40,7 +40,7 @@ const toInt = (v) => {
   return Number.isNaN(n) ? null : n;
 };
 
-const PanelsSection = ({ testId }) => {
+const PanelsSection = ({ testId, testDomain }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -220,7 +220,9 @@ const PanelsSection = ({ testId }) => {
     }
     postToOpenElisServerFullResponse(
       "/rest/test-catalog/panels",
-      JSON.stringify({ name }),
+      // OGC-1140: the new panel inherits this test's domain (the membership
+      // write below makes the test its first member, so it starts Active)
+      JSON.stringify({ name, domain: testDomain || "CLINICAL" }),
       (response) => {
         if (response && (response.status === 201 || response.status === 200)) {
           response.json().then(assignAndPersist);

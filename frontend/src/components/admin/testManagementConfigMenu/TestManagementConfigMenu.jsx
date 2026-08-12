@@ -278,8 +278,10 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
+                {/* OGC-224 — panels are curated in the Test Catalog
+                    Management shell's Panels context now */}
                 <ClickableTile
-                  href="/MasterListsPage/PanelManagement"
+                  href="/MasterListsPage/TestCatalogList?entity=panels"
                   id="PanelManagement"
                 >
                   <FormattedMessage id="configuration.panel.manage" />

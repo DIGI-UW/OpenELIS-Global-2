@@ -1822,6 +1822,11 @@ public class TestCatalogEditorRestController {
     public static class CreatePanelRequest {
         public String name;
         public Boolean active;
+        /**
+         * OGC-1140 — a panel created inline from a test inherits that test's domain.
+         * Absent defaults to CLINICAL (the launch scope).
+         */
+        public String domain;
     }
 
     /** OGC-224 — Basic Info save; null fields are left unchanged. */
@@ -2039,6 +2044,9 @@ public class TestCatalogEditorRestController {
         panel.setDescription(name);
         panel.setLocalization(localizationService.get(localizationId));
         panel.setIsActive(Boolean.FALSE.equals(body.active) ? "N" : "Y");
+        // OGC-1140: inherit the originating test's domain (Domain.normalize
+        // defaults an absent/unknown value to CLINICAL, the launch scope)
+        panel.setDomain(Domain.normalize(body.domain));
         panel.setSortOrderInt(Integer.MAX_VALUE);
         panel.setSysUserId(sysUserId);
         try {
