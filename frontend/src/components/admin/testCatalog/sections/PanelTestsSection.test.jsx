@@ -18,6 +18,7 @@ vi.mock("../../../utils/Utils", () => ({
 // ========== IMPORTS ==========
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import PanelTestsSection from "./PanelTestsSection";
@@ -45,12 +46,26 @@ const notification = {
   setNotificationVisible: vi.fn(),
 };
 
+const SAMPLE_TYPES = {
+  success: true,
+  data: [
+    { id: 2, name: "Serum" },
+    { id: 4, name: "Whole Blood" },
+  ],
+};
+// tests filtered to sample type 2 — only Hemoglobin is on Serum
+const SERUM_ONLY = {
+  rows: [{ testId: "12", name: "Hemoglobin", code: "HGB", domain: "CLINICAL" }],
+};
+
 const mockServer = (members = MEMBERS) => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
     if (url.includes("/test-order")) {
       cb({ panelId: "7", tests: members });
+    } else if (url === "/rest/sample-types") {
+      cb(SAMPLE_TYPES);
     } else if (url.startsWith("/rest/test-catalog/tests?")) {
-      cb(CANDIDATES);
+      cb(url.includes("sampleType=2") ? SERUM_ONLY : CANDIDATES);
     } else {
       cb(undefined);
     }
@@ -89,7 +104,7 @@ describe("PanelTestsSection", () => {
     expect(pickerCall[0]).toContain("domain=CLINICAL");
     expect(pickerCall[0]).toContain("status=active");
     // open the combobox: candidate 12 offered, member 10 not re-offered
-    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(document.getElementById("panel-add-test"));
     expect(screen.getByText(/Hemoglobin — HGB/)).toBeInTheDocument();
     expect(screen.queryByText(/WBC Count — WBC/)).not.toBeInTheDocument();
   });
@@ -98,7 +113,7 @@ describe("PanelTestsSection", () => {
     mockServer();
     wrap();
     await screen.findByText("WBC Count");
-    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(document.getElementById("panel-add-test"));
     fireEvent.click(screen.getByText(/Hemoglobin — HGB/));
     const rows = screen.getAllByRole("row").map((row) => row.textContent || "");
     expect(rows[rows.length - 1]).toContain("Hemoglobin");
@@ -140,5 +155,74 @@ describe("PanelTestsSection", () => {
     expect(
       await screen.findByText(messages["empty.panel.tests"]),
     ).toBeInTheDocument();
+  });
+
+  it("offers a Sample Type filter populated from the shared sample-types source", async () => {
+    mockServer();
+    wrap();
+    await screen.findByText("WBC Count");
+    const filter = document.querySelector("#panel-test-sampletype-filter");
+    expect(filter).not.toBeNull();
+    const options = Array.from(filter.querySelectorAll("option")).map((o) => ({
+      value: o.value,
+      text: o.textContent,
+    }));
+    // "All sample types" sentinel plus every shared sample type
+    expect(options[0].value).toBe("");
+    expect(options.map((o) => o.value)).toContain("2");
+    expect(options.map((o) => o.text)).toContain("Whole Blood");
+  });
+
+  it("the filter narrows the candidates server-side and clearing it restores them", async () => {
+    mockServer();
+    wrap();
+    await screen.findByText("WBC Count");
+
+    fireEvent.change(document.querySelector("#panel-test-sampletype-filter"), {
+      target: { value: "2" },
+    });
+    await waitFor(() =>
+      expect(
+        getFromOpenElisServer.mock.calls.some(
+          ([url]) =>
+            url.startsWith("/rest/test-catalog/tests?") &&
+            url.includes("sampleType=2"),
+        ),
+      ).toBe(true),
+    );
+    // only the Serum test is offered now
+    fireEvent.click(document.getElementById("panel-add-test"));
+    expect(screen.getByText(/Hemoglobin — HGB/)).toBeInTheDocument();
+
+    // clearing returns to the unfiltered domain-compatible fetch
+    fireEvent.change(document.querySelector("#panel-test-sampletype-filter"), {
+      target: { value: "" },
+    });
+    await waitFor(() => {
+      const last = getFromOpenElisServer.mock.calls
+        .map(([url]) => url)
+        .filter((url) => url.startsWith("/rest/test-catalog/tests?"))
+        .pop();
+      expect(last).not.toContain("sampleType=");
+      expect(last).toContain("domain=CLINICAL");
+    });
+  });
+
+  it("the filter composes with the typeahead search", async () => {
+    mockServer();
+    wrap();
+    await screen.findByText("WBC Count");
+    fireEvent.change(document.querySelector("#panel-test-sampletype-filter"), {
+      target: { value: "2" },
+    });
+    await waitFor(() =>
+      expect(document.getElementById("panel-add-test")).toBeInTheDocument(),
+    );
+    // typing still filters within the sample-type-narrowed candidate set
+    fireEvent.click(document.getElementById("panel-add-test"));
+    fireEvent.change(document.getElementById("panel-add-test"), {
+      target: { value: "zzz" },
+    });
+    expect(screen.queryByText(/Hemoglobin — HGB/)).not.toBeInTheDocument();
   });
 });

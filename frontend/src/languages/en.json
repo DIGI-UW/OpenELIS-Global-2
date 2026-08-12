@@ -4991,6 +4991,8 @@
   "sidenav.label.admin.panel.addingNew": "Adding a new panel",
   "label.panel.testsCount": "tests",
   "label.panel.addTest": "Add a test",
+  "label.panel.tests.filterBySampleType": "Filter by sample type",
+  "label.panel.tests.filterBySampleType.all": "All sample types",
   "placeholder.panel.addTest": "Search by name or code…",
   "helper.panel.membershipSync": "Membership writes keep order entry's panel list in sync.",
   "label.panel.col.order": "Order",
