@@ -201,19 +201,6 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
             placeholder={intl.formatMessage({
               id: "placeholder.panel.addTest",
             })}
-            helperText={
-              intl.formatMessage(
-                { id: "helper.panel.domainGuard" },
-                {
-                  domain: intl.formatMessage({
-                    id: `label.domain.${panel?.domain || "CLINICAL"}`,
-                    defaultMessage: panel?.domain || "CLINICAL",
-                  }),
-                },
-              ) +
-              " " +
-              intl.formatMessage({ id: "helper.panel.membershipSync" })
-            }
             items={addable}
             itemToString={(item) =>
               item ? `${item.name}${item.code ? ` — ${item.code}` : ""}` : ""
@@ -245,6 +232,28 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
           />
         </div>
       </div>
+      {/* the domain/sync explanation sits under the row rather than inside the
+          ComboBox as helper text, so the filter and the search stay on one
+          horizontal level — the alignment Sample Type -> Associated Tests uses */}
+      <p
+        style={{
+          fontSize: "0.75rem",
+          color: "var(--cds-text-secondary, #6f6f6f)",
+          margin: 0,
+        }}
+        data-testid="panel-tests-domain-note"
+      >
+        {intl.formatMessage(
+          { id: "helper.panel.domainGuard" },
+          {
+            domain: intl.formatMessage({
+              id: `label.domain.${panel?.domain || "CLINICAL"}`,
+              defaultMessage: panel?.domain || "CLINICAL",
+            }),
+          },
+        )}{" "}
+        {intl.formatMessage({ id: "helper.panel.membershipSync" })}
+      </p>
       <Table size="md" data-testid="panel-tests-table">
         <TableHead>
           <TableRow>

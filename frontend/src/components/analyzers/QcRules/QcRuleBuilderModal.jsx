@@ -5,6 +5,7 @@ import { useIntl } from "react-intl";
 import { useHistory, useParams } from "react-router-dom";
 import QcRuleRow from "./QcRuleRow";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import {
   getAnalyzer,
   getQcRules,
@@ -169,6 +170,14 @@ const QcRulePage = () => {
 
   return (
     <div data-testid="qc-rule-page" className="qc-rule-page">
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          { label: "analyzer.page.hierarchy.root", link: "" },
+          { label: analyzer?.name || "analyzer.page.hierarchy.list", link: "" },
+          { label: "analyzer.qcRules.breadcrumb", link: "" },
+        ]}
+      />
       <PageTitle
         breadcrumbs={[
           {

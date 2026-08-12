@@ -651,7 +651,12 @@
         <dependency>
             <groupId>org.jfree</groupId>
             <artifactId>jfreechart</artifactId>
-            <version>1.5.0</version>
+            <!-- Pinned to the 1.0.x line on purpose: JasperReports 6.15.0 compiles
+                its DefaultChartTheme against it and calls AbstractRenderer.setBaseItemLabelsVisible,
+                which 1.5.x renamed to setDefaultItemLabelsVisible. On 1.5.0 every charted
+                report died with NoSuchMethodError at fill time (Section Performance Indicator,
+                the app's only charted template). Raise this only together with JasperReports. -->
+            <version>1.0.19</version>
         </dependency>
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>

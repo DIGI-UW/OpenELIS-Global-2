@@ -39,8 +39,8 @@ const ReportIndex = () => {
   const breadcrumbs = [
     { label: "home.label", link: "/" },
     studyLabel
-      ? { label: "label.study.Reports", link: "/StudyReports" }
-      : { label: "routine.reports", link: "/RoutineReports" },
+      ? { label: "label.study.Reports", link: "" }
+      : { label: "routine.reports", link: "" },
     ...(reportLabel ? [{ label: reportLabel, link: "" }] : []),
   ];
 

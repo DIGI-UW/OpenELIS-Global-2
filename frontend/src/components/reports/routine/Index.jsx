@@ -134,7 +134,7 @@ const RoutineIndex = () => {
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
-          { label: "routine.reports", link: "/RoutineReports" },
+          { label: "routine.reports", link: "" },
           ...(ROUTINE_REPORT_LABELS[`${type}_${report}`]
             ? [
                 {

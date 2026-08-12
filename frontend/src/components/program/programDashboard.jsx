@@ -28,7 +28,6 @@ import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "banner.menu.results", link: "/Results" },
   {
     label: "banner.menu.results.order.programmes",
     link: "/genericProgram",

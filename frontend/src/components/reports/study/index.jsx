@@ -212,7 +212,7 @@ const StudyIndex = () => {
       if (breadcrumbId) {
         setBreadcrumbs([
           { label: "home.label", link: "/" },
-          { label: "label.study.Reports", link: "/StudyReports" },
+          { label: "label.study.Reports", link: "" },
           {
             label: breadcrumbId,
             link: `/StudyReport?type=${paramType}&report=${paramReport}`,
