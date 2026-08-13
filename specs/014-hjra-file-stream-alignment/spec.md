@@ -1,6 +1,27 @@
 # Feature Specification: File Stream Alignment — GenericFile Coordination
 
-## Current Status (updated 2026-04-20)
+## Current Status (updated 2026-08-13)
+
+### Target ownership amendment
+
+The target architecture is final for new work:
+
+- Analyzer Bridge owns portable FILE profiles, format parsing/normalization,
+  directory watching, archive/error movement, retries, and transport.
+- OpenELIS owns lab-facing configuration, desired Bridge registration, direct
+  normalized ingestion, local clinical catalog binding, operational QC,
+  result processing, hold/review, and audit.
+- OpenELIS must not add a FILE poller, raw FILE parser, or second portable
+  profile authority. Existing app-side readers and profile consumers are
+  migration inputs to characterize and retire, not extension points.
+- A compatible FILE instrument is Bridge profile and analyzer-mock fixture work;
+  add Bridge runtime code only when representative export evidence proves the
+  generic contract insufficient.
+
+This amendment and [`AGENTS.md`](../../AGENTS.md) supersede implementation and
+ownership statements below where they conflict. The older coordination record
+remains in place for git provenance. OGC-1054 delivery is governed by the
+[authoritative analyzer roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
 
 This spec coordinates the **FILE stream** (Pattern C) — flat-file ingestion
 (CSV, XLSX, XML, vendor-custom templates), handled by the `GenericFile` plugin
@@ -71,8 +92,9 @@ For FILE transport, ownership is now explicit:
   delivery.
 - OpenELIS owns analyzer/file configuration and ingestion/processing domain
   logic.
-- No OpenELIS app-side FILE poller is implemented on this branch. If a fallback
-  poller is added later, it must remain disabled by default.
+- An OpenELIS app-side FILE poller is outside the target architecture and must
+  not be added. Changing this requires an explicit superseding architecture
+  decision.
 
 If older sections mention OpenELIS as the active watcher owner, treat this
 section as the authoritative override during remediation.
