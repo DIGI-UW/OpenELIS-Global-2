@@ -2,12 +2,14 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
@@ -209,6 +211,27 @@ public class MicroOrderRoutingServiceTest {
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
                 List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
+    }
+
+    @Test
+    public void routeAnalysesRejectsCollectionBeforeAdmission() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService, "");
+        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.admissionDate = "2026-08-04";
+        SampleItem sampleItem = sampleItem("1001");
+        sampleItem.setCollectionDate(Timestamp.valueOf("2026-08-03 09:00:00"));
+
+        try {
+            service.routeAnalysesForSampleItem(sampleItem,
+                    List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
+            fail("Expected collection before admission to be rejected");
+        } catch (IllegalArgumentException e) {
+            assertEquals("Collection date cannot be before admission date", e.getMessage());
+        }
+
+        verify(caseService, never()).createOrGetCase(any(String.class), any(MicroWorkflowType.class), any(String.class),
+                any(String.class));
     }
 
     @Test

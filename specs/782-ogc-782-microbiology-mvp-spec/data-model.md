@@ -259,10 +259,10 @@ Fields:
 - `sampleId` (nullable after routing; unique while draft-owned)
 - `cultureMethodId`
 - `patientOrigin`
+- `admissionDate` (nullable date-only value; cleared for Outpatient context)
 - `numberOfSets` (1-10)
 - `clinicalHistory` (maximum 1000 characters)
 - `antibioticExposure` (nullable boolean)
-- `criticalNotificationPreference` (nullable boolean)
 - audit actor/time fields
 
 Relationships and constraints:
@@ -277,6 +277,9 @@ Relationships and constraints:
   order entry and the case panel obtain labels and WHONET identity from the
   reference service. This preserves existing order-detail compatibility without
   making the product contract depend on a particular foreign-key layout.
+- `criticalNotificationPreference` remains a nullable legacy column only so
+  historical rows can still be read. New forms and submission contracts omit
+  it; critical behavior is owned by the Test Catalog and M-11 workflow.
 - Macro expansion is not persisted here. Clinical History will consume the
   separately owned Macro Library when that feature is available.
 
