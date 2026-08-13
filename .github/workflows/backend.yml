@@ -75,12 +75,21 @@ jobs:
       - name: Enforce no @PreAuthorize on controllers (S011c)
         run: |
           # Authorization must live on service interfaces, not controllers.
-          # LoggingController is the only permitted exception: it mutates runtime
-          # log config directly with no backing service.
+          # Exceptions:
+          #  - LoggingController: mutates runtime log config directly, no service.
+          #  - SampleTypeManagementRestController: admin management surface.
+          #  - /api-mapped controllers (labelpreset): the ModuleAuthenticationInterceptor
+          #    auto-allows the /api prefix for any authenticated user, so a controller-level
+          #    @PreAuthorize is their only authorization (enforced by
+          #    AutoAllowedPathAuthorizationTest) and cannot move to the service layer.
           violations=$(grep -rn "^\s*@PreAuthorize" src/main/java \
             --include="*Controller.java" \
             -l | grep -v "LoggingController.java" \
-               | grep -v "SampleTypeManagementRestController.java" || true)
+               | grep -v "SampleTypeManagementRestController.java" \
+               | grep -v "LabelPresetRestController.java" \
+               | grep -v "OrderEntryLabelRequestController.java" \
+               | grep -v "OrderLabelReprintController.java" \
+               | grep -v "SiteWideBarcodeSettingsRestController.java" || true)
           if [ -n "$violations" ]; then
             echo "ERROR: @PreAuthorize found on controller(s) — move authorization to the service interface:"
             echo "$violations"
