@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { useTranslation } from "react-i18next";
+import { useIntl } from "react-intl";
 import {
   DataTable,
   Table,
@@ -38,7 +38,7 @@ function formatDateHeader(iso: string): string {
 export const GroupedTimeline = () => {
   const { activeTests, timelineData, checkboxes, someChecked } =
     useContext(FilterContext);
-  const { t } = useTranslation();
+  const intl = useIntl();
 
   if (!activeTests || !timelineData || !timelineData.loaded) return null;
 
@@ -56,8 +56,8 @@ export const GroupedTimeline = () => {
   if (!visibleRows.length) {
     return (
       <EmptyState
-        displayText={t("data", "data")}
-        headerTitle={t("dataTimelineText", "Data Timeline")}
+        displayText={intl.formatMessage({ id: "label.test.resultsData" })}
+        headerTitle={intl.formatMessage({ id: "label.test.results" })}
       />
     );
   }
@@ -65,7 +65,7 @@ export const GroupedTimeline = () => {
   // Static "Test" column + one column per sorted date (desc). The matrix
   // shape is positional: row.entries[i] aligns with sortedTimes[i].
   const headers = [
-    { key: "test", header: t("Test", "Test") },
+    { key: "test", header: intl.formatMessage({ id: "label.results.test" }) },
     ...sortedTimes.map((time: string, i: number) => ({
       key: `d${i}`,
       header: formatDateHeader(time),
@@ -77,10 +77,16 @@ export const GroupedTimeline = () => {
     // units are independent context that should not be suppressed by a
     // missing range (e.g., qualitative results with a unit but no range).
     const rangeAndUnits = [row.range, row.units].filter(Boolean).join(" ");
-    const rangeSuffix = rangeAndUnits ? ` (${rangeAndUnits})` : "";
     const base: any = {
       id: row.flatName ?? `row-${ri}`,
-      test: `${row.display}${rangeSuffix}`,
+      // A test can run on several sample types and hold several components, so
+      // the name alone does not say which result this is: the specimen and the
+      // component travel with it.
+      test: {
+        name: row.testName || row.display,
+        context: [row.sampleType, row.component].filter(Boolean).join(" · "),
+        range: rangeAndUnits,
+      },
     };
     (row.entries || []).forEach((entry: any, i: number) => {
       base[`d${i}`] = entry
@@ -109,7 +115,25 @@ export const GroupedTimeline = () => {
                 <TableRow key={row.id} {...getRowProps({ row })}>
                   {row.cells.map((cell: any) => {
                     if (cell.info.header === "test") {
-                      return <TableCell key={cell.id}>{cell.value}</TableCell>;
+                      return (
+                        <TableCell key={cell.id}>
+                          <div className="timelineTestCell">
+                            <div className="timelineTestName">
+                              {cell.value.name}
+                            </div>
+                            {cell.value.context && (
+                              <div className="timelineTestMeta">
+                                {cell.value.context}
+                              </div>
+                            )}
+                            {cell.value.range && (
+                              <div className="timelineTestMeta">
+                                {cell.value.range}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      );
                     }
                     const v = cell.value;
                     if (!v) return <TableCell key={cell.id}>—</TableCell>;

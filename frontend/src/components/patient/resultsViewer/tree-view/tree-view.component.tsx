@@ -7,7 +7,7 @@ import GroupedTimeline from "../grouped-timeline";
 import Trendline from "../trendline/trendline.component";
 //import styles from '../results-viewer.styles.scss';
 import "../results-viewer.styles.scss";
-import { useTranslation } from "react-i18next";
+import { FormattedMessage, useIntl } from "react-intl";
 import TabletOverlay from "../tablet-overlay";
 
 interface TreeViewProps {
@@ -29,7 +29,7 @@ const TreeView: React.FC<TreeViewProps> = ({
 }) => {
   const tablet = useLayoutType() === "tablet";
   const [showTreeOverlay, setShowTreeOverlay] = useState(false);
-  const { t } = useTranslation();
+  const intl = useIntl();
 
   const { timelineData, resetTree } = useContext(FilterContext);
 
@@ -42,12 +42,14 @@ const TreeView: React.FC<TreeViewProps> = ({
             renderIcon={TreeViewAlt}
             hasIconOnly
             onClick={() => setShowTreeOverlay(true)}
-            iconDescription={t("showTree", "Show tree")}
+            iconDescription={intl.formatMessage({
+              id: "label.patientHistory.showTree",
+            })}
           />
         </div>
         {showTreeOverlay && (
           <TabletOverlay
-            headerText={t("Tree", "Tree")}
+            headerText={intl.formatMessage({ id: "label.patientHistory.tree" })}
             close={() => setShowTreeOverlay(false)}
             buttonsGroup={
               <>
@@ -57,7 +59,7 @@ const TreeView: React.FC<TreeViewProps> = ({
                   onClick={resetTree}
                   disabled={loading}
                 >
-                  {t("resetTreeText", "Reset tree")}
+                  <FormattedMessage id="label.patientHistory.resetTree" />
                 </Button>
                 <Button
                   kind="primary"
@@ -65,11 +67,15 @@ const TreeView: React.FC<TreeViewProps> = ({
                   onClick={() => setShowTreeOverlay(false)}
                   disabled={loading}
                 >
-                  {`${t("view", "View")} ${
-                    !loading && timelineData?.loaded
-                      ? timelineData?.data?.rowData?.length
-                      : ""
-                  } ${t("resultsText", "results")}`}
+                  <FormattedMessage
+                    id="label.patientHistory.viewResults"
+                    values={{
+                      count:
+                        !loading && timelineData?.loaded
+                          ? timelineData?.data?.rowData?.length
+                          : "",
+                    }}
+                  />
                 </Button>
               </>
             }

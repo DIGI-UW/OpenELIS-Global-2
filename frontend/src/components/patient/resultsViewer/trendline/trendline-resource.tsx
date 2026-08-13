@@ -12,13 +12,16 @@ function computeTrendlineData(treeNode: TreeNode): Array<TreeNode> {
   treeNode?.subSets.forEach((subNode) => {
     if ((subNode as TreeNode)?.obs) {
       const TreeNode = subNode as TreeNode;
-      const assess = assessValue(TreeNode.obs);
+      // Interpretation is assessed against the node's own limits — passing the
+      // observations here left every point unassessed, and so uncoloured.
+      const assess = assessValue(TreeNode);
       tests.push({
         ...TreeNode,
         range:
-          TreeNode.hiNormal && TreeNode.lowNormal
+          TreeNode.range ||
+          (TreeNode.hiNormal && TreeNode.lowNormal
             ? `${TreeNode.lowNormal} - ${TreeNode.hiNormal}`
-            : "",
+            : ""),
         obs: TreeNode.obs.map((ob) => ({
           ...ob,
           interpretation: assess(ob.value),

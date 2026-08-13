@@ -2,19 +2,32 @@ package org.openelisglobal.common.rest.provider.bean.patientHistory;
 
 import java.util.List;
 
+/**
+ * One series of the Patient History tree: the results of a single test, sample
+ * type and result component. {@code display} is the tree label — the test name,
+ * qualified with the component when the test has more than one — while
+ * {@code testName}, {@code sampleType} and {@code component} keep the three
+ * apart so the timeline can identify what a row actually measures.
+ */
 public class TestDisplay {
 
     // observations
     List<ResultDisplay> obs;
     String datatype;
-    Double lowAbsolute;
     String display;
+    String testName;
+    String sampleType;
+    String component;
+    String componentId;
     String conceptUuid;
     String units;
+    String range;
     Double hiNormal;
     Double lowNormal;
-    Double highCritical;
+    Double hiCritical;
     Double lowCritical;
+    Double hiAbsolute;
+    Double lowAbsolute;
 
     public List<ResultDisplay> getObs() {
         return obs;
@@ -32,20 +45,44 @@ public class TestDisplay {
         this.datatype = datatype;
     }
 
-    public Double getLowAbsolute() {
-        return lowAbsolute;
-    }
-
-    public void setLowAbsolute(Double lowAbsolute) {
-        this.lowAbsolute = lowAbsolute;
-    }
-
     public String getDisplay() {
         return display;
     }
 
     public void setDisplay(String display) {
         this.display = display;
+    }
+
+    public String getTestName() {
+        return testName;
+    }
+
+    public void setTestName(String testName) {
+        this.testName = testName;
+    }
+
+    public String getSampleType() {
+        return sampleType;
+    }
+
+    public void setSampleType(String sampleType) {
+        this.sampleType = sampleType;
+    }
+
+    public String getComponent() {
+        return component;
+    }
+
+    public void setComponent(String component) {
+        this.component = component;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
     }
 
     public String getConceptUuid() {
@@ -64,6 +101,14 @@ public class TestDisplay {
         this.units = units;
     }
 
+    public String getRange() {
+        return range;
+    }
+
+    public void setRange(String range) {
+        this.range = range;
+    }
+
     public Double getHiNormal() {
         return hiNormal;
     }
@@ -80,12 +125,12 @@ public class TestDisplay {
         this.lowNormal = lowNormal;
     }
 
-    public Double getHighCritical() {
-        return highCritical;
+    public Double getHiCritical() {
+        return hiCritical;
     }
 
-    public void setHighCritical(Double highCritical) {
-        this.highCritical = highCritical;
+    public void setHiCritical(Double hiCritical) {
+        this.hiCritical = hiCritical;
     }
 
     public Double getLowCritical() {
@@ -94,5 +139,21 @@ public class TestDisplay {
 
     public void setLowCritical(Double lowCritical) {
         this.lowCritical = lowCritical;
+    }
+
+    public Double getHiAbsolute() {
+        return hiAbsolute;
+    }
+
+    public void setHiAbsolute(Double hiAbsolute) {
+        this.hiAbsolute = hiAbsolute;
+    }
+
+    public Double getLowAbsolute() {
+        return lowAbsolute;
+    }
+
+    public void setLowAbsolute(Double lowAbsolute) {
+        this.lowAbsolute = lowAbsolute;
     }
 }

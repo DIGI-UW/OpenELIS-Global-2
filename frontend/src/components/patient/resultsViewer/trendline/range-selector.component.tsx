@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useIntl } from "react-intl";
 import { Tab, Tabs, TabList } from "@carbon/react";
 //import styles from './trendline.scss';
 import "./trendline.scss";
@@ -8,45 +8,46 @@ const RangeSelector: React.FC<{
   setLowerRange: (lowerRange: Date) => void;
   upperRange: Date;
 }> = ({ setLowerRange, upperRange }) => {
-  const { t } = useTranslation();
+  const intl = useIntl();
+  const label = (id: string) => intl.formatMessage({ id });
   const ranges: Array<[string, () => void]> = [
     [
-      t("1 day", "1 day"),
+      label("label.patientHistory.range.oneDay"),
       () =>
         setLowerRange(
           new Date(Date.parse(upperRange.toString()) - 1 * 24 * 3600 * 1000),
         ),
     ],
     [
-      t("5 day", "5 days"),
+      label("label.patientHistory.range.fiveDays"),
       () =>
         setLowerRange(
           new Date(Date.parse(upperRange.toString()) - 5 * 24 * 3600 * 1000),
         ),
     ],
     [
-      t("1 month", "1 month"),
+      label("label.patientHistory.range.oneMonth"),
       () =>
         setLowerRange(
           new Date(Date.parse(upperRange.toString()) - 30 * 24 * 3600 * 1000),
         ),
     ],
     [
-      t("6 month", "6 months"),
+      label("label.patientHistory.range.sixMonths"),
       () =>
         setLowerRange(
           new Date(Date.parse(upperRange.toString()) - 182 * 24 * 3600 * 1000),
         ),
     ],
     [
-      t("1 year", "1 year"),
+      label("label.patientHistory.range.oneYear"),
       () =>
         setLowerRange(
           new Date(Date.parse(upperRange.toString()) - 365 * 24 * 3600 * 1000),
         ),
     ],
     [
-      t("5 years", "5 years"),
+      label("label.patientHistory.range.fiveYears"),
       () =>
         setLowerRange(
           new Date(
@@ -54,7 +55,7 @@ const RangeSelector: React.FC<{
           ),
         ),
     ],
-    [t("All", "All"), () => setLowerRange(new Date(0))],
+    [label("label.patientHistory.range.all"), () => setLowerRange(new Date(0))],
   ];
 
   return (
