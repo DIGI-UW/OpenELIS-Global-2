@@ -14,7 +14,6 @@ import org.openelisglobal.configuration.service.ConfigurationReloadOptions;
 import org.openelisglobal.configuration.service.ConfigurationReloadResult;
 import org.openelisglobal.configuration.service.ConfigurationReloadService;
 import org.openelisglobal.security.DaemonContextExecutor;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +25,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 @WebAppConfiguration
