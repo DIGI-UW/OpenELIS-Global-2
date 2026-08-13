@@ -359,8 +359,8 @@ An executor given the goal “execute this roadmap through deployed MVP” must:
 3. create or reuse exactly the branch and base named below;
 4. record a failing test before production implementation, implement to green,
    refactor, and attach the red/green/refactor commands and commits to the PR;
-5. update this roadmap's status ledger and evidence links in the same checkpoint
-   PR;
+5. update this roadmap's status ledger, acceptance record, issue/ambiguity
+   register, and evidence links in the same checkpoint PR;
 6. continue to the next stacked checkpoint without waiting for a product review;
 7. stop only for a permission/credential boundary, a required external review
    or merge, or evidence that contradicts this fixed architecture.
@@ -370,6 +370,59 @@ prerequisite merges, rebase the dependent branch on current `develop`/`main`,
 retarget its PR, rerun its gates, and update the recorded base SHA. Never merge
 a PR automatically, force a review conclusion, or mark a checkpoint accepted
 because code merely exists.
+
+Each checkpoint is a manageable implementation and review unit. Work within a
+checkpoint proceeds one independently testable behavior at a time. Start at the
+lowest layer that owns the rule, add integration or contract coverage only when
+the behavior crosses a persistence or repository boundary, add RTL coverage for
+user interaction and route state, and reserve Playwright for an assembled
+visible user story. Repeating a mocked assertion at every layer is not evidence
+of integration.
+
+### Required checkpoint acceptance record
+
+Every checkpoint PR must update this roadmap or link a committed checkpoint
+record containing all of the following. PR prose alone is not the record of
+truth.
+
+| Record field           | Required content                                                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Scope                  | Checkpoint ID, assigned criteria, exclusions, repository, branch, base SHA, and red/green/refactor/evidence SHAs  |
+| Current-code baseline  | Current paths and tests that establish what exists before the increment                                           |
+| Red                    | Test name, owning layer, exact command, observed failure, and commit containing the failing test                  |
+| Green                  | Smallest implementation commit and exact targeted command that makes the same test pass                           |
+| Refactor               | Refactor commit or explicit `NO_REFACTOR_NEEDED`, followed by the targeted command                                |
+| Layer validation       | Unit/service, persistence, contract, RTL, harness, Playwright, and UAT marked `RUN`, `NOT_APPLICABLE`, or `LATER` |
+| Acceptance crosswalk   | Criterion ID to automated test, visible workflow where applicable, and evidence artifact                          |
+| Legacy-path audit      | Touched superseded paths removed, guarded, or linked to a priority removal issue                                  |
+| Decisions              | Engineering decisions grounded in current code/ADR/contract; product references remain functional/visual only     |
+| Issues and ambiguities | Stable ID, evidence, impact, owner, resolution gate, status, and decision or conservative interim behavior        |
+| Final gate             | Formatting, focused regression, required broader suite, CI, review threads, and resulting status transition       |
+
+An ambiguity is blocking when resolving it could change clinical safety,
+repository ownership, durable data semantics, a cross-repository contract, or
+an acceptance criterion. No production implementation proceeds through that
+ambiguity. A non-blocking ambiguity may use a conservative interim behavior only
+when that behavior and its removal/review gate are recorded. Failed tests,
+missing evidence, or unavailable credentials are issues, not assumptions to
+silently route around.
+
+### Current issue and ambiguity register
+
+| ID             | Kind       | Status     | Impact / next deterministic action                                                                                                                                   |
+| -------------- | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ISSUE-R0-001` | Review     | `OPEN`     | OE-R0 is green but requires external approval and merge before it can become `ACCEPTED`; F0 may be prepared but cannot be accepted first.                            |
+| `ISSUE-R0-002` | Validation | `RESOLVED` | The original command block retained `frontend` as its working directory; commands now run in repository-rooted subshells.                                            |
+| `ISSUE-R0-003` | Validation | `RESOLVED` | The final Playwright story is absent on the R0 base; OE-M4 owns its creation and earlier checkpoint records must mark that full-story gate `LATER`.                  |
+| `ISSUE-R0-004` | Provenance | `RESOLVED` | A commit cannot name its own SHA; committed records name implementation/evidence commits and CI records the final immutable PR-head SHA.                             |
+| `ISSUE-R0-005` | Provenance | `OPEN`     | PR #3792 carries an earlier divergent blob at this path; after OE-F0 opens, retitle and close #3792 with links to OE-R0/OE-F0 and retain its branch only as history. |
+| `AMB-F0-001`   | Scope      | `OPEN`     | Compatible behavior in #3792 is not assumed. F0 must classify every considered behavior in the salvage manifest before reimplementation.                             |
+| `AMB-E0-001`   | Contract   | `OPEN`     | Portable profile/site-binding persistence and migration semantics require a current-code ADR plus failing producer/consumer tests before code.                       |
+| `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                      |
+| `ISSUE-G0-001` | Operations | `OPEN`     | Exact-SHA deployment, Grist authoring, and report-download permissions require a G0 preflight; this does not substitute for earlier automated gates.                 |
+
+Resolved rows remain in the table for provenance. New evidence updates a row in
+the checkpoint that discovers or resolves it; IDs are never reused.
 
 ### Status ledger
 
@@ -699,9 +752,11 @@ functional proof.
 | Playwright                | Complete lab-facing story                                                                             | Visible UI only; seed may establish preconditions but cannot perform the story       |
 | Remote UAT                | Human acceptance and visual coherence                                                                 | Grist overlay against exact build, inspected evidence, final MP4                     |
 
-These commands are the current acceptance contract. If a script or project name
-changes, amend this roadmap in the PR that changes it; do not silently substitute
-a different gate.
+These commands are the full G0 acceptance contract. Each checkpoint runs and
+records its currently applicable subset. OE-M4 owns creation of the named final
+Playwright story; earlier records mark that command `LATER`, never substitute an
+API-level test or unrelated E2E. If a script or project name changes, amend this
+roadmap in the PR that changes it; do not silently substitute a different gate.
 
 ```bash
 # OpenELIS
@@ -709,24 +764,30 @@ mvn -Dtest=org.openelisglobal.analyzer.**,org.openelisglobal.analyzerimport.**,o
 mvn spotless:check
 
 # Frontend
-cd frontend
-npm test
-npm run typecheck
-npm run check-format
-npm run lint
-npm run build
-npm run pw:guard
-npm run pw:test -- --project=harness-demo --workers=1 playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts
-PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 npm run pw:test -- --project=harness-demo-video --workers=1 playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts
+(
+  cd frontend
+  npm test
+  npm run typecheck
+  npm run check-format
+  npm run lint
+  npm run build
+  npm run pw:guard
+  npm run pw:test -- --project=harness-demo --workers=1 playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts
+  PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 npm run pw:test -- --project=harness-demo-video --workers=1 playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts
+)
 
 # Bridge
-cd tools/openelis-analyzer-bridge
-mvn test
-mvn verify
+(
+  cd tools/openelis-analyzer-bridge
+  mvn test
+  mvn verify
+)
 
 # Analyzer mock
-cd tools/analyzer-mock-server
-python -m pytest
+(
+  cd tools/analyzer-mock-server
+  python3 -m pytest
+)
 ```
 
 For remote G0, the same focused Playwright file runs with
