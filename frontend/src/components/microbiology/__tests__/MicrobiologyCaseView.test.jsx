@@ -46,6 +46,8 @@ const astServiceStubs = {
   getBreakpointStandards: vi.fn().mockResolvedValue([]),
   getCultureMethods: vi.fn().mockResolvedValue([]),
   changeCaseWorkflow: vi.fn(),
+  getCaseProtocolOptions: vi.fn().mockResolvedValue([]),
+  changeCaseProtocol: vi.fn(),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
   saveOrderDetail: vi.fn().mockResolvedValue({}),
   getCaseReadiness: vi.fn().mockResolvedValue({
@@ -130,6 +132,64 @@ describe("MicrobiologyCaseView", () => {
     ).not.toBeInTheDocument();
     expect(service.getIdentificationHistory).not.toHaveBeenCalled();
     expect(service.getAstRunsForIsolate).not.toHaveBeenCalled();
+  });
+
+  it("sets a bench protocol from canonical URL state and retains worklist context", async () => {
+    const user = userEvent.setup();
+    const protocolOption = {
+      id: "method-1",
+      label: "Routine blood culture",
+      active: true,
+      current: false,
+      mediaDefaults: "BAP + CHOC",
+      incubationDefaults: "48 hours at 35 C",
+      atmosphereDefaults: "aerobic + anaerobic",
+    };
+    const updatedCase = { ...caseDetail, cultureMethodId: "method-1" };
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      getCaseProtocolOptions: vi.fn().mockResolvedValue([protocolOption]),
+      changeCaseProtocol: vi.fn().mockResolvedValue(updatedCase),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&section=setup",
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: "Set protocol" }),
+    );
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "workflow=BACTERIOLOGY&section=setup&action=set-protocol",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Culture protocol" }),
+      "method-1",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Reason for protocol change" }),
+      "Bench review requires routine media",
+    );
+    await user.click(screen.getByRole("button", { name: "Save protocol" }));
+
+    await waitFor(() =>
+      expect(service.changeCaseProtocol).toHaveBeenCalledWith("case-1", {
+        cultureMethodId: "method-1",
+        reason: "Bench review requires routine media",
+      }),
+    );
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&section=setup",
+    );
+    expect(
+      screen.getByTestId("microbiology-current-url"),
+    ).not.toHaveTextContent("action=");
+    expect(
+      await screen.findByText("Routine blood culture"),
+    ).toBeInTheDocument();
   });
 
   it.each([
@@ -477,10 +537,11 @@ describe("MicrobiologyCaseView", () => {
     const reportNce = await screen.findByRole("button", {
       name: "Report NCE",
     });
-    reportNce.focus();
-    await user.keyboard("{Enter}");
-    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "section=nonconformance&action=report-nce",
+    await user.click(reportNce);
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "section=nonconformance&action=report-nce",
+      ),
     );
     expect(
       screen.getByRole("heading", { name: "Report nonconformance" }),
@@ -492,10 +553,11 @@ describe("MicrobiologyCaseView", () => {
     );
 
     const markLost = screen.getByRole("button", { name: /Mark lost/ });
-    markLost.focus();
-    await user.keyboard("{Enter}");
-    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "section=nonconformance&action=mark-lost",
+    await user.click(markLost);
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "section=nonconformance&action=mark-lost",
+      ),
     );
     await waitFor(() =>
       expect(

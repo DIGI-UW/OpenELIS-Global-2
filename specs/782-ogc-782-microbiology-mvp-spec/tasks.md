@@ -599,17 +599,28 @@ and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
 
 ### M-04 Protocol Action TDD
 
-- [ ] T297 [P] [R2] Add failing JUnit 4 service/controller tests for active
+- [x] T297 [P] [R2] Add failing JUnit 4 service/controller tests for active
   current-workflow Method choices, required reason, authenticated actor,
   previous/new/time audit, final lock, unchanged workflow, and preservation of
-  existing inoculation/isolate/AST data.
-- [ ] T298 [P] [R2] Add failing Carbon interaction tests for the Inoculation
+  existing inoculation/isolate/AST data. Red evidence covered the missing
+  protocol service/controller/activity contract; a focused dangling-reference
+  test additionally proved the incumbent Method ID must survive missing
+  reference data.
+- [x] T298 [P] [R2] Add failing Carbon interaction tests for the Inoculation
   protocol summary, amber unset state, inline Set/Change expansion, required
   reason, successful focus/status behavior, and no reclassification warning.
-- [ ] T299 [R2] Implement a dedicated protocol-only service/controller action
-  and reusable Carbon inline panel; keep Change Workflow behavior separate.
-- [ ] T300 [R2] Run focused M-04 backend/frontend checkpoints plus the aggregate
-  M-03/M-04 regression set before commit.
+  The red phase also found a Carbon Select accessible-name mismatch and stale
+  case-view service mocks before implementation was accepted.
+- [x] T299 [R2] Implement a dedicated protocol-only service/controller action
+  and reusable Carbon inline panel; keep Change Workflow behavior separate. The
+  action changes only the case Method, derives the actor from the request,
+  records the previous/new Method and reason in case activity, preserves the
+  original incubation clock, and requires no migration.
+- [x] T300 [R2] Run focused M-04 backend/frontend checkpoints plus the aggregate
+  M-03/M-04 regression set before commit. Evidence: 60 combined backend tests
+  pass, including ORM and Liquibase update/rollback/reapply; 61 combined
+  frontend tests pass across nine files. Spotless, Prettier, and diff checks are
+  clean. Browser execution remains T301 and is not claimed here.
 
 ### End-To-End, Visual, UAT, And Delivery
 

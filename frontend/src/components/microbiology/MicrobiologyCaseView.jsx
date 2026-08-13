@@ -25,6 +25,7 @@ import CaseInoculationPanel from "./CaseInoculationPanel";
 import CaseCultureTransitionPanel from "./CaseCultureTransitionPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CaseNonconformancePanel from "./CaseNonconformancePanel";
+import CaseProtocolPanel from "./CaseProtocolPanel";
 import ChangeWorkflowPanel from "./ChangeWorkflowPanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
@@ -406,6 +407,31 @@ const MicrobiologyCaseView = ({
     setCaseDetail(detail);
     history.replace(
       getMicrobiologyCaseUrl(caseId, { ...routeState, section: "case-info" }),
+    );
+  };
+
+  const protocolChanged = (detail) => {
+    setCaseDetail(detail);
+    setReadinessRefreshToken((token) => token + 1);
+  };
+
+  const openProtocolAction = () => {
+    history.push(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "setup",
+        action: caseDetail.cultureMethodId ? "change-protocol" : "set-protocol",
+      }),
+    );
+  };
+
+  const closeProtocolAction = () => {
+    history.replace(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "setup",
+        action: "",
+      }),
     );
   };
 
@@ -905,6 +931,18 @@ const MicrobiologyCaseView = ({
                           onCancel={() => selectSection("setup")}
                         />
                       )}
+                      <CaseProtocolPanel
+                        caseId={caseDetail.id}
+                        currentMethodId={caseDetail.cultureMethodId}
+                        open={["set-protocol", "change-protocol"].includes(
+                          routeState.action,
+                        )}
+                        readOnly={finalReleased && !amendmentOpen}
+                        service={service}
+                        onOpen={openProtocolAction}
+                        onClose={closeProtocolAction}
+                        onChanged={protocolChanged}
+                      />
                       <CaseInoculationPanel
                         inoculations={inoculations}
                         onRecord={recordInoculation}
