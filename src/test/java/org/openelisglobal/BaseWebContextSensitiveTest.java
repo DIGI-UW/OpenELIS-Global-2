@@ -145,70 +145,63 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         // for any test whose own fixture doesn't include system_user.
         ensureBaselineSystemUserRows();
 
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
-                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"),
-                        new SimpleGrantedAuthority("PRIV_ADMIN_SYSTEM"),
-                        new SimpleGrantedAuthority("PRIV_ALERT_MANAGE"), new SimpleGrantedAuthority("PRIV_ALERT_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_ANALYTE_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_ANALYZER_CONFIGURE"),
-                        new SimpleGrantedAuthority("PRIV_ANALYZER_IMPORT"),
-                        new SimpleGrantedAuthority("PRIV_AUDIT_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_BARCODE_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_BARCODE_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_BRANDING_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_BRANDING_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_CALENDAR_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_CALENDAR_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_COLDSTORAGE_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_COLDSTORAGE_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_DICTIONARY_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_DICTIONARY_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_EQA_MANAGE"), new SimpleGrantedAuthority("PRIV_EQA_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_ESIG_USE"),
-                        new SimpleGrantedAuthority("PRIV_EXTCONNECTION_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_EXTCONNECTION_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_INVENTORY_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_INVENTORY_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_LOCALIZATION_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_LOCALIZATION_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_METHOD_VIEW"), new SimpleGrantedAuthority("PRIV_NCE_CREATE"),
-                        new SimpleGrantedAuthority("PRIV_NCE_EDIT"), new SimpleGrantedAuthority("PRIV_NCE_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_NOTEBOOK_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_NOTEBOOK_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_NOTIFICATION_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_NOTIFICATION_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_ORDER_CREATE"), new SimpleGrantedAuthority("PRIV_ORDER_EDIT"),
-                        new SimpleGrantedAuthority("PRIV_ORDER_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_ORGANIZATION_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_ORGANIZATION_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_PANEL_MANAGE"), new SimpleGrantedAuthority("PRIV_PANEL_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_PATIENT_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_PATIENT_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_PROVIDER_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_PROVIDER_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_REFERRAL_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_REFERRAL_VIEW"), new SimpleGrantedAuthority("PRIV_REPORT_RUN"),
-                        new SimpleGrantedAuthority("PRIV_RESULT_ENTER"),
-                        new SimpleGrantedAuthority("PRIV_RESULT_PATHOLOGY_SIGN_OFF"),
-                        new SimpleGrantedAuthority("PRIV_RESULT_VALIDATE"),
-                        new SimpleGrantedAuthority("PRIV_RESULT_VIEW"), new SimpleGrantedAuthority("PRIV_ROLE_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_ROLE_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_SAMPLE_REQUESTER_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_SAMPLE_STATUS_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_SAMPLE_TYPE_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_SHIPMENT_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_SHIPMENT_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_SITE_INFO_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_STORAGE_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_STORAGE_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"),
-                        new SimpleGrantedAuthority("PRIV_SYSTEM_USER_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_SYSTEM_USER_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_TESTCALC_VIEW"),
-                        new SimpleGrantedAuthority("PRIV_TEST_CONFIGURE"),
-                        new SimpleGrantedAuthority("PRIV_USER_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_USER_ROLE_MANAGE"),
-                        new SimpleGrantedAuthority("PRIV_USER_ROLE_VIEW"))));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A", fullTestAuthorities()));
+    }
+
+    /**
+     * The full role + privilege set granted to the default test principal. Shared
+     * by {@link #setDefaultTestAuthentication()} and
+     * {@link #authenticateAs(String)} so that a test which re-authenticates as a
+     * fixture user keeps the privileges the service-layer {@code @PreAuthorize}
+     * gates require (roles alone are not enough under privilege-based RBAC).
+     */
+    protected static List<SimpleGrantedAuthority> fullTestAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"),
+                new SimpleGrantedAuthority("PRIV_ADMIN_SYSTEM"), new SimpleGrantedAuthority("PRIV_ALERT_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_ALERT_VIEW"), new SimpleGrantedAuthority("PRIV_ANALYTE_VIEW"),
+                new SimpleGrantedAuthority("PRIV_ANALYZER_CONFIGURE"),
+                new SimpleGrantedAuthority("PRIV_ANALYZER_IMPORT"), new SimpleGrantedAuthority("PRIV_AUDIT_VIEW"),
+                new SimpleGrantedAuthority("PRIV_BARCODE_MANAGE"), new SimpleGrantedAuthority("PRIV_BARCODE_VIEW"),
+                new SimpleGrantedAuthority("PRIV_BRANDING_MANAGE"), new SimpleGrantedAuthority("PRIV_BRANDING_VIEW"),
+                new SimpleGrantedAuthority("PRIV_CALENDAR_MANAGE"), new SimpleGrantedAuthority("PRIV_CALENDAR_VIEW"),
+                new SimpleGrantedAuthority("PRIV_COLDSTORAGE_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_COLDSTORAGE_VIEW"),
+                new SimpleGrantedAuthority("PRIV_DICTIONARY_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_DICTIONARY_VIEW"), new SimpleGrantedAuthority("PRIV_EQA_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("PRIV_ESIG_USE"),
+                new SimpleGrantedAuthority("PRIV_EXTCONNECTION_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_EXTCONNECTION_VIEW"),
+                new SimpleGrantedAuthority("PRIV_INVENTORY_MANAGE"), new SimpleGrantedAuthority("PRIV_INVENTORY_VIEW"),
+                new SimpleGrantedAuthority("PRIV_LOCALIZATION_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_LOCALIZATION_VIEW"), new SimpleGrantedAuthority("PRIV_METHOD_VIEW"),
+                new SimpleGrantedAuthority("PRIV_NCE_CREATE"), new SimpleGrantedAuthority("PRIV_NCE_EDIT"),
+                new SimpleGrantedAuthority("PRIV_NCE_VIEW"), new SimpleGrantedAuthority("PRIV_NOTEBOOK_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_NOTEBOOK_VIEW"),
+                new SimpleGrantedAuthority("PRIV_NOTIFICATION_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_NOTIFICATION_VIEW"), new SimpleGrantedAuthority("PRIV_ORDER_CREATE"),
+                new SimpleGrantedAuthority("PRIV_ORDER_EDIT"), new SimpleGrantedAuthority("PRIV_ORDER_VIEW"),
+                new SimpleGrantedAuthority("PRIV_ORGANIZATION_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_ORGANIZATION_VIEW"), new SimpleGrantedAuthority("PRIV_PANEL_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_PANEL_VIEW"), new SimpleGrantedAuthority("PRIV_PATIENT_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_PATIENT_VIEW"), new SimpleGrantedAuthority("PRIV_PROVIDER_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_PROVIDER_VIEW"), new SimpleGrantedAuthority("PRIV_REFERRAL_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_REFERRAL_VIEW"), new SimpleGrantedAuthority("PRIV_REPORT_RUN"),
+                new SimpleGrantedAuthority("PRIV_RESULT_ENTER"),
+                new SimpleGrantedAuthority("PRIV_RESULT_PATHOLOGY_SIGN_OFF"),
+                new SimpleGrantedAuthority("PRIV_RESULT_VALIDATE"), new SimpleGrantedAuthority("PRIV_RESULT_VIEW"),
+                new SimpleGrantedAuthority("PRIV_ROLE_MANAGE"), new SimpleGrantedAuthority("PRIV_ROLE_VIEW"),
+                new SimpleGrantedAuthority("PRIV_SAMPLE_REQUESTER_VIEW"),
+                new SimpleGrantedAuthority("PRIV_SAMPLE_STATUS_VIEW"),
+                new SimpleGrantedAuthority("PRIV_SAMPLE_TYPE_VIEW"),
+                new SimpleGrantedAuthority("PRIV_SAMPLE_TYPE_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_SHIPMENT_MANAGE"), new SimpleGrantedAuthority("PRIV_SHIPMENT_VIEW"),
+                new SimpleGrantedAuthority("PRIV_SITE_INFO_VIEW"), new SimpleGrantedAuthority("PRIV_STORAGE_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_STORAGE_VIEW"), new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"),
+                new SimpleGrantedAuthority("PRIV_SYSTEM_USER_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_SYSTEM_USER_VIEW"), new SimpleGrantedAuthority("PRIV_TESTCALC_VIEW"),
+                new SimpleGrantedAuthority("PRIV_TEST_CONFIGURE"), new SimpleGrantedAuthority("PRIV_USER_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_USER_ROLE_MANAGE"), new SimpleGrantedAuthority("PRIV_USER_ROLE_VIEW"));
     }
 
     @After
@@ -237,8 +230,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * @PreAuthorize-protected paths still pass.
      */
     protected void authenticateAs(String loginName) {
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(loginName, "N/A",
-                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"))));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(loginName, "N/A", fullTestAuthorities()));
     }
 
     /**
