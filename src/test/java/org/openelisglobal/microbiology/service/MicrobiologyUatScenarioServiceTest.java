@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -464,6 +465,11 @@ public class MicrobiologyUatScenarioServiceTest {
         when(testService.getTestByDescription("UAT microbiology TB culture")).thenReturn(null);
         when(testService.getTestByDescription("UAT routine non-culture test")).thenReturn(null);
         doAnswer(invocation -> {
+            Method inserted = invocation.getArgument(0);
+            inserted.setId("method-alternate");
+            return null;
+        }).when(methodService).insert(any(Method.class));
+        doAnswer(invocation -> {
             org.openelisglobal.test.valueholder.Test inserted = invocation.getArgument(0);
             if ("UAT microbiology TB culture".equals(inserted.getDescription())) {
                 inserted.setId("test-tb");
@@ -483,17 +489,25 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("case-unassigned", result.caseId);
         assertEquals("case-bacteriology", result.siblingCaseId);
         assertEquals("method-1", result.methodId);
+        assertEquals("method-alternate", result.alternateMethodId);
         assertEquals("sample-type-1", result.sampleTypeId);
         assertEquals("test-1", result.cultureTestId);
         assertEquals("test-tb", result.tbCultureTestId);
         assertEquals("test-routine", result.nonCultureTestId);
-        verify(testMethodService, times(3)).linkMethod(any(TestMethod.class));
+        ArgumentCaptor<TestMethod> methodLinkCaptor = ArgumentCaptor.forClass(TestMethod.class);
+        verify(testMethodService, times(4)).linkMethod(methodLinkCaptor.capture());
+        TestMethod alternateLink = methodLinkCaptor.getAllValues().stream()
+                .filter(link -> "method-alternate".equals(link.getMethodId())).findFirst().orElseThrow();
+        assertEquals("test-1", alternateLink.getTestId());
+        assertFalse(alternateLink.getIsDefaultMethod());
         verify(caseService).createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1");
         ArgumentCaptor<org.openelisglobal.microbiology.valueholder.MicroCultureSetup> setupCaptor = ArgumentCaptor
                 .forClass(org.openelisglobal.microbiology.valueholder.MicroCultureSetup.class);
-        verify(configurationService, times(2)).getOrCreateCultureSetup(setupCaptor.capture());
+        verify(configurationService, times(3)).getOrCreateCultureSetup(setupCaptor.capture());
         assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), setupCaptor.getAllValues().get(0).getWorkflowType());
         assertEquals(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), setupCaptor.getAllValues().get(1).getWorkflowType());
+        assertEquals("method-alternate", setupCaptor.getAllValues().get(2).getMethodId());
+        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), setupCaptor.getAllValues().get(2).getWorkflowType());
     }
 
     @Test

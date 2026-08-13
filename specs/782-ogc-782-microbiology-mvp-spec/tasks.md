@@ -624,9 +624,12 @@ and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
 
 ### End-To-End, Visual, UAT, And Delivery
 
-- [ ] T301 [R2] Add one registered Playwright `core-app` journey through order
+- [x] T301 [R2] Add one registered Playwright `core-app` journey through order
   entry to case Inoculation protocol change using service-created fixtures,
   Carbon-accessible interactions, readiness assertions, and no arbitrary waits.
+  The focused authenticated run passed in 9.7 seconds (setup plus one journey).
+  The R1 fixture now creates the alternate non-default Method, test link, and
+  compatible culture setup through existing services with no SQL or fixed IDs.
 - [ ] T302 [R2] Capture stable desktop and mobile M-03/M-04 screenshots and
   compare them to the pinned mocks, recording only intentional differences.
 - [ ] T303 [R2] Run pinned `tools/code-qa` meaningful coverage, spec/code

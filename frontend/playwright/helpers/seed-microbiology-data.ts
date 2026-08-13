@@ -19,6 +19,7 @@ export interface SeededMicrobiologyCase {
   loadedBreakpointStandardId?: string;
   unmappedOrganismId?: string;
   methodId?: string;
+  alternateMethodId?: string;
   sampleTypeId?: string;
   cultureTestId?: string;
   tbCultureTestId?: string;

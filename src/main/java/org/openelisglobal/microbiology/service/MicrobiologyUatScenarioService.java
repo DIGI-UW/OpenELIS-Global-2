@@ -93,6 +93,8 @@ public class MicrobiologyUatScenarioService {
     private static final String CLASSIFICATION_SCENARIO = "R1";
     private static final String UAT_METHOD_NAME = "UAT micro culture";
     private static final String UAT_METHOD_DESCRIPTION = "UAT microbiology culture method";
+    private static final String UAT_ALTERNATE_METHOD_NAME = "UAT alt culture";
+    private static final String UAT_ALTERNATE_METHOD_DESCRIPTION = "UAT alternate microbiology culture method";
     private static final String UAT_TEST_DESCRIPTION = "UAT microbiology culture";
     private static final String UAT_TB_TEST_DESCRIPTION = "UAT microbiology TB culture";
     private static final String UAT_NON_CULTURE_TEST_DESCRIPTION = "UAT routine non-culture test";
@@ -212,6 +214,8 @@ public class MicrobiologyUatScenarioService {
 
         ensureSampleType(sampleItem, performedBy);
         Method method = getOrCreateUatMethod(performedBy);
+        Method alternateMethod = CLASSIFICATION_SCENARIO.equals(scenario) ? getOrCreateUatAlternateMethod(performedBy)
+                : null;
         Test test = getOrCreateUatTest(method, performedBy);
         Test tbTest = null;
         Test nonCultureTest = null;
@@ -221,6 +225,7 @@ public class MicrobiologyUatScenarioService {
             nonCultureTest = getOrCreateUatTest(UAT_NON_CULTURE_TEST_DESCRIPTION, null, false, method, performedBy);
             ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), tbTest, performedBy);
             ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), nonCultureTest, performedBy);
+            ensureTestMethodLink(test, alternateMethod, false, performedBy);
         }
         ensureInventoryTraceability(test, performedBy);
         ensureSpecimenLostVocabulary(performedBy);
@@ -228,6 +233,10 @@ public class MicrobiologyUatScenarioService {
         ensureRemarkTestResult(test, performedBy);
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
         configureCultureSetup(method, reportableTestAnalyte);
+        if (alternateMethod != null) {
+            configureCultureSetup(alternateMethod, reportableTestAnalyte, MicroWorkflowType.BACTERIOLOGY,
+                    "UAT alternate bacteriology culture");
+        }
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
         MicroCase routedCase = routeCultureAnalysis(sampleItem, analysis, performedBy);
         MicroCase microCase = routedCase;
@@ -254,6 +263,7 @@ public class MicrobiologyUatScenarioService {
         form.analysisId = analysis.getId();
         form.reportableTestAnalyteId = reportableTestAnalyte.getId();
         form.methodId = method.getId();
+        form.alternateMethodId = alternateMethod == null ? null : alternateMethod.getId();
         form.sampleTypeId = sampleItem.getTypeOfSample().getId();
         form.cultureTestId = test.getId();
         form.tbCultureTestId = tbTest == null ? null : tbTest.getId();
@@ -619,24 +629,35 @@ public class MicrobiologyUatScenarioService {
     }
 
     private Method getOrCreateUatMethod(String performedBy) {
-        Method method = methodService.getMethods(UAT_METHOD_NAME).stream()
-                .filter(candidate -> UAT_METHOD_NAME.equals(candidate.getMethodName())).findFirst().orElse(null);
+        return getOrCreateUatMethod(UAT_METHOD_NAME, UAT_METHOD_DESCRIPTION, "UATMICRO", "method.UAT_micro_culture",
+                performedBy);
+    }
+
+    private Method getOrCreateUatAlternateMethod(String performedBy) {
+        return getOrCreateUatMethod(UAT_ALTERNATE_METHOD_NAME, UAT_ALTERNATE_METHOD_DESCRIPTION, "UATMICROALT",
+                "method.UAT_alternate_micro_culture", performedBy);
+    }
+
+    private Method getOrCreateUatMethod(String methodName, String description, String code, String nameKey,
+            String performedBy) {
+        Method method = methodService.getMethods(methodName).stream()
+                .filter(candidate -> methodName.equals(candidate.getMethodName())).findFirst().orElse(null);
         if (method == null) {
             method = new Method();
-            method.setMethodName(UAT_METHOD_NAME);
-            method.setDescription(UAT_METHOD_DESCRIPTION);
-            method.setReportingDescription(UAT_METHOD_DESCRIPTION);
-            method.setCode("UATMICRO");
-            method.setNameKey("method.UAT_micro_culture");
+            method.setMethodName(methodName);
+            method.setDescription(description);
+            method.setReportingDescription(description);
+            method.setCode(code);
+            method.setNameKey(nameKey);
             method.setIsActive(IActionConstants.YES);
             method.setSysUserId(performedBy);
-            method.setLocalization(createUatMethodLocalization(performedBy));
+            method.setLocalization(createUatMethodLocalization(methodName, description, performedBy));
             methodService.insert(method);
             return method;
         }
         boolean changed = false;
         if (method.getLocalization() == null) {
-            method.setLocalization(createUatMethodLocalization(performedBy));
+            method.setLocalization(createUatMethodLocalization(methodName, description, performedBy));
             changed = true;
         }
         if (!IActionConstants.YES.equals(method.getIsActive())) {
@@ -650,16 +671,16 @@ public class MicrobiologyUatScenarioService {
         return method;
     }
 
-    private Localization createUatMethodLocalization(String performedBy) {
+    private Localization createUatMethodLocalization(String methodName, String description, String performedBy) {
         Localization localization = new Localization();
-        localization.setDescription(UAT_METHOD_DESCRIPTION);
+        localization.setDescription(description);
         localization.setSysUserId(performedBy);
         List<Locale> activeLocales = localizationService.getAllActiveLocales();
         if (activeLocales.isEmpty()) {
-            localization.setEnglish(UAT_METHOD_NAME);
+            localization.setEnglish(methodName);
         } else {
             for (Locale locale : activeLocales) {
-                localization.setLocalizedValue(locale.getLanguage(), UAT_METHOD_NAME);
+                localization.setLocalizedValue(locale.getLanguage(), methodName);
             }
         }
         localizationService.insert(localization);
@@ -705,13 +726,17 @@ public class MicrobiologyUatScenarioService {
     }
 
     private void ensureTestMethodLink(Test test, Method method, String performedBy) {
+        ensureTestMethodLink(test, method, true, performedBy);
+    }
+
+    private void ensureTestMethodLink(Test test, Method method, boolean defaultMethod, String performedBy) {
         if (testMethodService.testMethodLinkExists(test.getId(), method.getId())) {
             return;
         }
         TestMethod link = new TestMethod();
         link.setTestId(test.getId());
         link.setMethodId(method.getId());
-        link.setIsDefaultMethod(true);
+        link.setIsDefaultMethod(defaultMethod);
         link.setEffectiveDate(new Date(System.currentTimeMillis()));
         link.setIsActive(IActionConstants.YES);
         link.setSysUserId(performedBy);
