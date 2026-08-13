@@ -645,9 +645,15 @@ and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
   R2 implementation is lean and uses no direct fixture SQL, forced browser
   actions, or arbitrary waits. Full findings are recorded in
   `evidence/code-qa-r2-2026-08-13.md`.
-- [ ] T304 [R2] Publish separate focused M-03 and M-04 Grist stories at the new
+- [x] T304 [R2] Publish separate focused M-03 and M-04 Grist stories at the new
   baseline, remove stale controls, verify routes/controls against the deployed
   SHA, and keep historical regression stories outside the focused delta run.
+  The live `amr` checklist at revision
+  `4083b219ccb746ce8a88e6b835f8cfccff4c4ef2f388518beda13dee2d5e4087`
+  contains 23 stories and 71 steps. `AMR-S01` v3.0 covers R2 M-03 with four
+  required steps and one optional configured-subunit step; `AMR-S28` v1.0
+  independently covers the two required M-04 protocol actions. Grist reports no
+  story or step problems, and the public endpoint serves HTTP 200.
 - [x] T305 [R2] Push and open the official stacked R2 PR with #4004's branch as
   its GitHub base; update both PR descriptions with exact head/base/evidence.
   PR #4051 is the single R2 PR and is based directly on #4004's branch; its
