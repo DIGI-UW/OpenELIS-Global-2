@@ -81,8 +81,8 @@ export default {
         "Demo specs must not call browser `fetch`. Drive the workflow " +
         "through visible controls and assert visible outcomes.",
       backendPoll:
-        "Demo specs must not use `expect.poll` to inspect backend state. " +
-        "Synchronize through visible UI assertions.",
+        "Demo specs must not use `expect.poll`. Synchronize through " +
+        "Playwright's web-first visible UI assertions.",
       networkStub:
         "Demo specs must not stub or intercept network traffic. They must " +
         "exercise the deployed user workflow.",

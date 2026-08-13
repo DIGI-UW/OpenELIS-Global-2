@@ -15,7 +15,7 @@
 #   projects/analyzer-harness/ci-parity-test.sh --seed-only
 #   projects/analyzer-harness/ci-parity-test.sh --mode video
 #   projects/analyzer-harness/ci-parity-test.sh --project harness-demo-video
-#   projects/analyzer-harness/ci-parity-test.sh --test-file playwright/tests/demo/harness/analyzer-demo-flow.spec.ts
+#   projects/analyzer-harness/ci-parity-test.sh --test-file playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts
 #   projects/analyzer-harness/ci-parity-test.sh --shard 2/2
 #   projects/analyzer-harness/ci-parity-test.sh --artifact-dir /tmp/oe-ci-parity
 

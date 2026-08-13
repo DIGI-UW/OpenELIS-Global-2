@@ -1,4 +1,5 @@
-import { expect, Page, test } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";
@@ -40,8 +41,8 @@ type FileImportHarnessScenario = {
   readonly importDirSafeName: string;
   /** Mock server template name (maps to templates/{name}.json). */
   readonly mockTemplate: string;
-  readonly demoTitle: string;
-  readonly demoSubtitle: string;
+  readonly presentationTitle: string;
+  readonly presentationSubtitle: string;
   /**
    * Admin-declared test code for upload path (production parity). Set for
    * analyzers whose fixture files have no per-row test-code column —
@@ -56,22 +57,24 @@ type FileImportHarnessScenario = {
 // seed-analyzers.sh. The harness baseline trimmed to 4 representative
 // analyzers (one per transport class); FILE coverage is QS5 + QS7 here.
 // Coverage for FluoroCycler / Wondfo / Tecan / Multiskan lives in
-// analyzer-demo-flow.spec.ts, which creates analyzers from scratch via the
+// analyzer-protocol-flows.spec.ts, which creates analyzers from scratch via the
 // dashboard UI rather than relying on the harness seed.
 const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
   {
     analyzerName: "QuantStudio 7",
     importDirSafeName: "quantstudio-7",
     mockTemplate: "quantstudio7",
-    demoTitle: "QuantStudio 7 File Import",
-    demoSubtitle: "Drop a result file, review staged results, and accept them.",
+    presentationTitle: "QuantStudio 7 File Import",
+    presentationSubtitle:
+      "Exercise file transport, staged results, and acceptance.",
   },
   {
     analyzerName: "QuantStudio 5",
     importDirSafeName: "quantstudio-5",
     mockTemplate: "quantstudio5",
-    demoTitle: "QuantStudio 5 File Import",
-    demoSubtitle: "Drop a result file, review staged results, and accept them.",
+    presentationTitle: "QuantStudio 5 File Import",
+    presentationSubtitle:
+      "Exercise file transport, staged results, and acceptance.",
   },
 ];
 
@@ -135,7 +138,10 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
     }, testInfo) => {
       const presentation = createDemoPresentation(page, testInfo);
 
-      await presentation.title(scenario.demoTitle, scenario.demoSubtitle);
+      await presentation.title(
+        scenario.presentationTitle,
+        scenario.presentationSubtitle,
+      );
 
       await goToAnalyzerDashboard(page, testInfo);
 
@@ -177,7 +183,7 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
 
       await presentation.title(
         "Story Complete",
-        "The file import flow relies on visible UI evidence only.",
+        "The file transport integration completed.",
       );
     });
   });

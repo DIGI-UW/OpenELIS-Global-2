@@ -1,5 +1,5 @@
 /**
- * Unified Madagascar Analyzer Demo Flows
+ * Unified Madagascar Analyzer Protocol Flows
  *
  * Each test exercises the full E2E lifecycle:
  *   1. Create analyzer from profile via dashboard UI
@@ -241,11 +241,13 @@ async function verifyResults(
 
 // ── Test Suite ───────────────────────────────────────────────────
 
-test.describe("Madagascar analyzer demo flows", () => {
+test.describe("Madagascar analyzer protocol integrations", () => {
   test.setTimeout(240_000);
 
   for (const config of CONFIGS) {
-    test(`${config.displayName}: full E2E flow`, async ({ page }, testInfo) => {
+    test(`${config.displayName}: transport integration flow`, async ({
+      page,
+    }, testInfo) => {
       const presentation = createDemoPresentation(page, testInfo);
 
       await presentation.title(
