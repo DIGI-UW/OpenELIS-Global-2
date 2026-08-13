@@ -15,6 +15,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerEventPersistenceService;
+import org.openelisglobal.analyzer.service.AnalyzerEventRegistration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO;
@@ -53,7 +54,8 @@ public class MicroCultureAnalyzerEventServiceTest {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         microCase.setStage(MicroCaseStage.INCUBATING.name());
-        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class))).thenReturn(received);
+        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class)))
+                .thenReturn(new AnalyzerEventRegistration(received, true));
         when(inoculationDAO.getByContainerIdentifier("bottle-42")).thenReturn(List.of(inoculation));
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
 
@@ -73,7 +75,8 @@ public class MicroCultureAnalyzerEventServiceTest {
         first.setCaseId("case-1");
         MicroCaseInoculation second = new MicroCaseInoculation();
         second.setCaseId("case-2");
-        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class))).thenReturn(received);
+        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class)))
+                .thenReturn(new AnalyzerEventRegistration(received, true));
         when(inoculationDAO.getByContainerIdentifier("bottle-42")).thenReturn(List.of(first, second));
 
         service.receive(
@@ -83,6 +86,23 @@ public class MicroCultureAnalyzerEventServiceTest {
         verify(stateService, never()).advanceStage(any(String.class), any(MicroCaseStage.class), any(String.class),
                 any(String.class));
         verify(persistenceService).markFailed(received, "CULTURE_ANALYZER_SOURCE_AMBIGUOUS");
+    }
+
+    @Test
+    public void concurrentDuplicateDoesNotAdvanceTheCaseAgain() {
+        AnalyzerEvent received = receivedEvent();
+        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class)))
+                .thenReturn(new AnalyzerEventRegistration(received, false));
+
+        AnalyzerEvent result = service.receive(
+                new MicroCultureAnalyzerEventCommand("evt-1", "POSITIVE_SIGNAL", "analyzer-7", "bottle-42", null, null),
+                "bridge-user");
+
+        assertEquals(received, result);
+        verify(stateService, never()).advanceStage(any(String.class), any(MicroCaseStage.class), any(String.class),
+                any(String.class));
+        verify(persistenceService, never()).markApplied(any(), any());
+        verify(persistenceService, never()).markFailed(any(), any());
     }
 
     private AnalyzerEvent receivedEvent() {

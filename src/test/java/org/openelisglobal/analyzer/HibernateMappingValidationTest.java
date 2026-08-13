@@ -3,11 +3,13 @@ package org.openelisglobal.analyzer;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
@@ -16,6 +18,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
+import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
@@ -26,6 +29,7 @@ import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.w3c.dom.NodeList;
 
 /**
  * Validates Hibernate ORM mappings WITHOUT requiring database connection. This
@@ -57,6 +61,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerFieldMapping.class); // Migrated in Phase 3
         // AnalyzerConfiguration removed: merged into Analyzer entity
         configuration.addAnnotatedClass(AnalyzerError.class);
+        configuration.addAnnotatedClass(AnalyzerEvent.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
         // FileImportConfiguration removed: merged into Analyzer entity
         configuration.addAnnotatedClass(ValidationRuleConfiguration.class);
@@ -103,6 +108,7 @@ public class HibernateMappingValidationTest {
                 sessionFactory.getMetamodel().entity(QualitativeResultMapping.class));
         assertNotNull("UnitMapping should be registered", sessionFactory.getMetamodel().entity(UnitMapping.class));
         assertNotNull("AnalyzerError should be registered", sessionFactory.getMetamodel().entity(AnalyzerError.class));
+        assertNotNull("AnalyzerEvent should be registered", sessionFactory.getMetamodel().entity(AnalyzerEvent.class));
         assertNotNull("CustomFieldType should be registered",
                 sessionFactory.getMetamodel().entity(CustomFieldType.class));
         assertNotNull("ValidationRuleConfiguration should be registered",
@@ -124,7 +130,7 @@ public class HibernateMappingValidationTest {
         Class<?>[] entities = { Analyzer.class, AnalyzerType.class, AnalyzerField.class, AnalyzerResults.class,
                 AnalyzerTestMapping.class, AnalyzerFieldMapping.class, QualitativeResultMapping.class,
                 UnitMapping.class, AnalyzerError.class, CustomFieldType.class, ValidationRuleConfiguration.class,
-                SerialPortConfiguration.class };
+                SerialPortConfiguration.class, AnalyzerEvent.class };
 
         for (Class<?> entityClass : entities) {
             // Check each entity independently for getter conflicts
@@ -150,6 +156,27 @@ public class HibernateMappingValidationTest {
                             + " should not have conflicting getters: " + getters);
                 }
             }
+        }
+    }
+
+    @Test
+    public void analyzerEventIsRegisteredInRuntimeAndTestPersistenceUnits() throws Exception {
+        assertPersistenceUnitContains("persistence/persistence.xml", AnalyzerEvent.class.getName());
+        assertPersistenceUnitContains("persistence/test-persistence.xml", AnalyzerEvent.class.getName());
+    }
+
+    private void assertPersistenceUnitContains(String resource, String entityClass) throws Exception {
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream(resource)) {
+            assertNotNull(resource + " should exist", input);
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            NodeList classes = factory.newDocumentBuilder().parse(input).getElementsByTagNameNS("*", "class");
+            for (int index = 0; index < classes.getLength(); index++) {
+                if (entityClass.equals(classes.item(index).getTextContent().trim())) {
+                    return;
+                }
+            }
+            fail(entityClass + " should be registered in " + resource);
         }
     }
 }

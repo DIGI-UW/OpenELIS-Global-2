@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.openelisglobal.analyzer.service.AnalyzerEventPersistenceService;
+import org.openelisglobal.analyzer.service.AnalyzerEventRegistration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO;
@@ -40,8 +41,9 @@ public class MicroCultureAnalyzerEventService {
 
     public AnalyzerEvent receive(MicroCultureAnalyzerEventCommand command, String performedBy) {
         validate(command);
-        AnalyzerEvent event = persistenceService.createIfAbsent(toEvent(command));
-        if (!"RECEIVED".equals(event.getStatus())) {
+        AnalyzerEventRegistration registration = persistenceService.createIfAbsent(toEvent(command));
+        AnalyzerEvent event = registration.event();
+        if (!registration.created() || !"RECEIVED".equals(event.getStatus())) {
             return event;
         }
         try {
